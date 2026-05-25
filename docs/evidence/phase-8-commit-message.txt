@@ -1,0 +1,15 @@
+feat(phase-8): Obsidian writer + Daily Brief module (MarkerBoundedWriter, marker preservation, redacted generation from extraction/classification, vault conventions) for hb-personal-assistant v0.8.0
+
+- Implemented MarkerBoundedWriter (idempotent HB-DAILY-BRIEF marker handling, user-content preservation 100%, frontmatter, dry-run) + DailyBriefGenerator (assembles redacted sections from Phase 7 action_items + Phase 6 signals + source links; produces Dataview-friendly output per 09 + baseline).
+- Thin safe CLI `diagnostics brief sample --json` (redacted preview or dry-run to temp; no real vault mutation in sample).
+- Tests (marker roundtrips, preservation, redaction/leak proofs on temp vault, store/registry integration) — all green.
+- New docs/architecture/08-obsidian-writer-and-daily-brief-module.md (mermaid + decisions + integration).
+- Evidence: phase-8-sample-*.md + preservation-proof.json (redacted + traces), phase-8-validation-outputs/, full append to prompt log + register row.
+- Validation: all 8 commands + new brief helper + custom smoke pass; sensitive scan clean; zero full bodies/tokens in any vault artifact or evidence.
+- Guardrails: marker-bounded only, preserve user text exactly, redacted-by-construction, dry-run first, read-only M365, 20/13/14/15/09/02/07/00 gates honored, data outside repo.
+- GitHub: committed + pushed to bobbyfetting/hb-personal-assistant.
+- Next: Prompt 09 (Attachment And Microsoft 365 File Link Discovery) + continued retrieval/automation (writer is both consumer and vault producer).
+
+Refs: Prompt 08, 02 plan row 7, 09 Obsidian spec, 07/13/14/15/20/00/02 + baseline vault conventions + source-link-types, Phase 5-7 foundation (store + links + extraction + classification + redaction + PathPolicy).
+
+Manifest: v0.8.0 (Obsidian Writer And Daily Brief Module complete)

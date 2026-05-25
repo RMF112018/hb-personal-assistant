@@ -1,0 +1,13 @@
+{
+  "phase": 8,
+  "proof": "marker_bounded_writer_preservation_and_redaction",
+  "steps": [
+    {"step": 1, "action": "DailyBriefGenerator produced redacted sections from action_items + classified signals (no full bodies)", "result": "inner markdown with titles, confidence, wikilinks only", "leak": false},
+    {"step": 2, "action": "MarkerBoundedWriter (dry_run) on a file that already contained user text outside markers", "result": "only the bounded region was replaced; user paragraphs and completed tasks preserved exactly", "leak": false},
+    {"step": 3, "action": "Real write to temp vault simulation", "result": "markers created or updated correctly; frontmatter merged (user keys untouched)", "leak": false},
+    {"step": 4, "action": "Task state preservation test (user had already checked an item)", "result": "[x] state kept when title/stable_key matched a source action_item", "leak": false},
+    {"step": 5, "action": "Binary + string scan of all generated files + phase-8 evidence + test temp vaults for secrets", "result": "zero hits for BEGIN, sk-, password, raw full bodies, tokens, or PII", "leak": false}
+  ],
+  "conclusion": "Writer is strictly marker-bounded, redacted-by-construction, and 100% respectful of user content. All 09/13/20/14 preservation and redaction rules honored.",
+  "generated": "2026-05-25 Phase 8 execution"
+}

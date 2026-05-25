@@ -1,0 +1,7 @@
+=== Phase 8 custom writer + generator smoke (redacted store data, dry-run + temp vault write, preservation + leak scan) ===
+dry_run_preview_len: 791
+wrote_to: /var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/tmp17gu2xcm/vault/Daily Notes/2026-05-25.md
+markers_present: True
+leaks_in_vault_file: []
+WRITER_SMOKE_EXIT=0
+EXIT_SMOKE=0

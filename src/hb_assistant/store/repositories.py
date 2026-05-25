@@ -304,6 +304,37 @@ class Store:
         )
         return [dict(r) for r in cur.fetchall()]
 
+    # --- Phase 8: minimal action_item helpers for Daily Brief (excerpts + links only, never full bodies) ---
+
+    def get_recent_action_items(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Return recent open action_items (for brief generation)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT id, stable_key, action_type, title, due_date, confidence, status
+            FROM action_items
+            WHERE status = 'open'
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+    def get_action_items_for_source(self, source_record_id: int) -> list[dict[str, Any]]:
+        """Return action_items linked to a given source_record via source_links."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT ai.*
+            FROM action_items ai
+            JOIN source_links sl ON sl.action_item_id = ai.id
+            WHERE sl.from_source_record_id = ? OR sl.to_source_record_id = ?
+            """,
+            (source_record_id, source_record_id),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
     # --- Phase 6: body classification flag helpers (minimal, no body text ever read or written) ---
 
     def get_emails_needing_body_check(self, limit: int = 100) -> list[dict[str, Any]]:

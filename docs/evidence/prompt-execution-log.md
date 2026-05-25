@@ -359,3 +359,55 @@ Implement deterministic, preview-only body mention detection and lightweight ema
 
 **Status**: COMPLETE
 
+
+---
+
+## Prompt 08 — Obsidian Writer And Daily Brief Module
+
+**Executed**: 2026-05-25
+
+### Objective
+Implement the MarkerBoundedWriter and DailyBriefGenerator that safely produce marker-bounded, redacted, source-traceable Daily Brief content in the user's Obsidian vault (embedded in Daily Notes + optional companion in AI Outputs), consuming Phase 6/7 classified + extracted data. Strict preservation of user content outside markers; zero full bodies or secrets ever written.
+
+### Files Changed (major)
+- Version 0.8.0
+- New: src/hb_assistant/obsidian/ (full package: __init__.py, writer.py with MarkerBoundedWriter (marker logic, preservation, frontmatter merge, dry-run), brief.py with DailyBriefGenerator (redacted sections from action_items + signals + links))
+- Updated: src/hb_assistant/store/repositories.py (minimal get_recent_action_items + get_action_items_for_source helpers)
+- Updated: src/hb_assistant/__init__.py (export obsidian)
+- Updated: src/hb_assistant/cli/diagnostics.py (new thin `diagnostics brief sample --json` — always dry-run, redacted preview)
+- New: tests/test_obsidian_writer.py (4 tests: marker create/replace/preserve, dry-run no-mutation, generator redacted output + frontmatter, end-to-end leak/redaction proof on temp vault — all green)
+- New: docs/architecture/08-obsidian-writer-and-daily-brief-module.md (mermaid, decisions, integration, refs)
+- Evidence: phase-8-sample-daily-brief.md, phase-8-marker-preservation-proof.json, phase-8-validation-outputs/
+- Appended: this section + validation register row
+
+### Key Implementation Notes
+- Markers exactly as specified in 09 spec (`<!-- HB-DAILY-BRIEF:START/END -->`).
+- 100% user text outside markers preserved; completed tasks kept on identity match.
+- All content redacted (titles, excerpts, confidence, wikilinks only). No full bodies, file contents, or secrets reach the vault or evidence.
+- Dry-run is the default for every CLI surface and the writer itself.
+- Frontmatter is Dataview-friendly and merges with (never destroys) user keys.
+- Uses existing PathPolicy (vault paths), Store (action_items + links), and SourceLinkRegistry ("written_to_note").
+- Generator is intentionally lightweight for v0.8.0; becomes rich once Phase 7 extraction is fully populated.
+
+### Validation
+- pytest (new obsidian tests + all prior green)
+- ruff / mypy clean
+- All 8 hb-assistant * --json + new `diagnostics brief sample --json` (safe redacted dry-run preview)
+- Custom writer + generator smoke (redacted store data → dry-run/temp vault → verify markers, preservation, redaction, links + clean leak scan)
+- Sensitive scan clean (repo + any temp vault artifacts)
+
+### Evidence
+- phase-8-sample-daily-brief.md (example redacted output with markers + frontmatter)
+- phase-8-marker-preservation-proof.json (5-step trace proving exact preservation + zero leaks)
+- phase-8-validation-outputs/ (raw command outputs + smoke)
+- Updated prompt log + register
+
+### Acceptance
+- Objective complete.
+- No broad refactor, no M365 writes, zero full bodies/tokens/secrets in any vault artifact, log, or evidence.
+- Architecture docs updated with dedicated 08- file + mermaid + explicit decisions (embedded + companion, marker choice, preservation rules).
+- Logs/register updated.
+- Git commit + push performed (v0.8.0).
+
+**Status**: COMPLETE
+

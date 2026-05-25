@@ -303,3 +303,41 @@ def classify_sample(
     }
     typer.echo(json.dumps(payload, indent=2))
     raise typer.Exit(0)
+
+
+@app.command("brief")
+def brief_sample(
+    json_out: bool = typer.Option(True, "--json"),
+    dry_run: bool = typer.Option(True, "--dry-run"),
+) -> None:
+    """Safe, redacted Daily Brief preview (Phase 8, marker-bounded writer dry-run)."""
+    from datetime import date
+
+    from hb_assistant.obsidian import DailyBriefGenerator, MarkerBoundedWriter
+
+    gen = DailyBriefGenerator()
+    writer = MarkerBoundedWriter()
+
+    target = date.today()
+    inner, fm = gen.generate_for_date(target)
+
+    # Always dry-run in sample mode (never mutate real vault)
+    would_be = writer.write_bounded_section(
+        target,
+        inner,
+        frontmatter_updates=fm,
+        dry_run=True,
+    )
+
+    payload = {
+        "mode": "brief-preview-dry-run",
+        "target_date": target.isoformat(),
+        "preview_length": len(would_be) if isinstance(would_be, str) else 0,
+        "note": "This is a redacted preview only. No files were written to your vault. Use the full morning run (later phase) for real writes.",
+        "markers_used": ["<!-- HB-DAILY-BRIEF:START -->", "<!-- HB-DAILY-BRIEF:END -->"],
+    }
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2))
+    else:
+        typer.echo(would_be[:2000] if isinstance(would_be, str) else str(payload))
+    raise typer.Exit(0)
