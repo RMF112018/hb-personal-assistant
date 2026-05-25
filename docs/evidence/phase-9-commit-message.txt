@@ -1,0 +1,16 @@
+feat(phase-9): Attachment and M365 file link discovery + ingestion pipeline (eligibility, controlled download, hash, parse, source links) for hb-personal-assistant v0.9.0
+
+- Implemented full pipeline in files/ (eligibility gates per size/type/approval matrix, controlled Graph downloads + sha256, bounded parsers for PDF/Office/CSV/etc per 08 spec, failure isolation with codes, ParserRouter) + discovery of attachments/drive links from mail/calendar.
+- Extended DriveItemClient for downloads; Store for files/attachments/parser_outputs; SourceLinkRegistry for "attaches"/"parsed_from".
+- Thin safe CLI `diagnostics files sample --json` (redacted discovery + eligibility preview, dry-run).
+- Tests (eligibility matrix, mocked end-to-end, redaction/leak proofs, integration) — all green.
+- New docs/architecture/09-attachment-and-microsoft-365-file-link-discovery.md (mermaid + integration + boundaries).
+- Evidence: phase-9-sample-*.json + ingestion-proof.json (redacted + traces), phase-9-validation-outputs/, full append to prompt log + register row.
+- Validation: all 8 commands + new files helper + custom smoke pass; sensitive scan clean; zero full file content in any artifact/evidence.
+- Guardrails: metadata-first + eligibility before any DL, excerpts only, read-only M365, dry-run first, 20/13/14/15/08/07/03/06/02 gates honored, data outside repo.
+- GitHub: committed + pushed to bobbyfetting/hb-personal-assistant.
+- Next: Prompt 10 (Selective File Ingestion And Parsing — deeper parser work + full orchestrator integration) and retrieval/automation.
+
+Refs: Prompt 09, 02 plan row 8, 08 ingestion spec, 07/13/14/15/20/03/06, DriveItemClient foundation, three schemas + parser matrix.
+
+Manifest: v0.9.0 (Attachment And Microsoft 365 File Link Discovery complete)

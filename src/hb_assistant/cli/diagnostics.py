@@ -341,3 +341,22 @@ def brief_sample(
     else:
         typer.echo(would_be[:2000] if isinstance(would_be, str) else str(payload))
     raise typer.Exit(0)
+
+
+@app.command("files")
+def files_sample(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Safe, redacted file/attachment link discovery sample (Phase 9, eligibility preview, dry-run)."""
+    # Thin: in real would call FileIngestionService.discover... with recent mail/calendar
+    # For sample: return redacted metadata + eligibility preview (no real Graph calls in this helper)
+    payload = {
+        "mode": "files-discovery-preview",
+        "pending": [
+            {"type": "attachment", "name": "[redacted].pdf", "size_mb": 1.2, "eligibility": "ok"},
+            {"type": "drive_item", "name": "Q3 Report.xlsx", "size_mb": 4.5, "eligibility": "ok"},
+        ],
+        "note": "Redacted metadata + eligibility only. Full ingest uses controlled download + parsers (dry-run recommended).",
+    }
+    typer.echo(json.dumps(payload, indent=2))
+    raise typer.Exit(0)

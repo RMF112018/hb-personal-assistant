@@ -404,3 +404,36 @@ class Store:
                 "started_at": row[6],
             }
         return summary
+
+    # --- Phase 9: file/attachment/parser_output persistence (excerpts + status only) ---
+
+    def persist_file(self, drive_item: "DriveItem", source_record_id: int, sha256: Optional[str] = None, local_cache: Optional[str] = None) -> int:
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO files (source_record_id, drive_item_id, name, size_bytes, web_url, sha256, local_cache_path, download_status, parse_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'downloaded', 'not_parsed')
+                ON CONFLICT(source_record_id) DO UPDATE SET download_status='downloaded', sha256=COALESCE(excluded.sha256, files.sha256), local_cache_path=COALESCE(excluded.local_cache_path, files.local_cache_path)
+                """,
+                (source_record_id, drive_item.id, drive_item.name, drive_item.size, drive_item.web_url, sha256, local_cache),
+            )
+        return source_record_id
+
+    def update_file_status(self, source_record_id: int, *, download_status: Optional[str] = None, parse_status: Optional[str] = None) -> None:
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            sets, vals = [], []
+            if download_status: sets.append("download_status=?"); vals.append(download_status)
+            if parse_status: sets.append("parse_status=?"); vals.append(parse_status)
+            if sets:
+                conn.execute(f"UPDATE files SET {', '.join(sets)} WHERE source_record_id=?", vals + [source_record_id])
+
+    def persist_parser_output(self, file_source_record_id: int, parser_name: str, parser_version: str, content_hash: str, excerpt: str, char_count: int, status: str = "success") -> int:
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                "INSERT INTO parser_outputs (file_source_record_id, parser_name, parser_version, content_hash, extraction_status, text_excerpt, char_count) VALUES (?,?,?,?,?,?,?) RETURNING id",
+                (file_source_record_id, parser_name, parser_version, content_hash, status, excerpt, char_count),
+            )
+            return int(cur.fetchone()[0])

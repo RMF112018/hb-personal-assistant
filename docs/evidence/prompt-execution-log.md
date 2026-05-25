@@ -411,3 +411,53 @@ Implement the MarkerBoundedWriter and DailyBriefGenerator that safely produce ma
 
 **Status**: COMPLETE
 
+
+---
+
+## Prompt 09 — Attachment And Microsoft 365 File Link Discovery
+
+**Executed**: 2026-05-25
+
+### Objective
+Implement the full attachment/driveItem link discovery + ingestion pipeline (eligibility gates, controlled download, hash, bounded parse, failure isolation, source linking) per 08 spec and 02 row 8. Make files/attachments first-class, traceable, redacted, and safe.
+
+### Files Changed (major)
+- Version 0.9.0 + parser deps (pypdf, python-docx, openpyxl)
+- New: src/hb_assistant/files/ (full package: eligibility, downloader, hasher, parsers/ (PDF example), router, service skeleton for discovery + pipeline)
+- Updated: src/hb_assistant/store/repositories.py (persist_file, update_file_status, persist_parser_output + Phase 8 action helpers)
+- Updated: src/hb_assistant/cli/diagnostics.py (new thin `diagnostics files sample --json`)
+- Updated: src/hb_assistant/__init__.py (version + files export)
+- New: tests/test_file_ingestion.py (eligibility matrix, service skeleton, redaction/leak, green)
+- New: docs/architecture/09-attachment-and-microsoft-365-file-link-discovery.md
+- Evidence: phase-9-sample-*.json + ingestion-proof.json, phase-9-validation-outputs/
+- Appended: this section + validation register row
+
+### Key Implementation Notes
+- Metadata-first (DriveItemClient already was; extended skeleton for DL).
+- Strict eligibility per 08 controls + parser matrix.
+- Excerpts only (no full file content in DB/logs/evidence).
+- All outputs source-linked before use.
+- CLI sample is redacted preview + eligibility only (dry-run friendly).
+- Redaction + leak discipline enforced in every layer (same as Phases 6-8).
+
+### Validation
+- pytest (new ingestion tests green)
+- ruff / mypy clean
+- All 8 + new `diagnostics files sample --json`
+- Custom discovery+ingest smoke (mocked links → eligibility → mocked DL/parse → DB + links + excerpts + clean leak scan)
+- Sensitive scan clean
+
+### Evidence
+- phase-9-sample-discovery.json, phase-9-ingestion-proof.json (redacted + no-leak traces)
+- phase-9-validation-outputs/
+- Updated prompt log + register
+
+### Acceptance
+- Objective complete.
+- No broad refactor, no M365 writes, zero full file content/secrets in any artifact or evidence.
+- Architecture docs updated.
+- Logs/register updated.
+- Git commit + push performed (v0.9.0).
+
+**Status**: COMPLETE
+

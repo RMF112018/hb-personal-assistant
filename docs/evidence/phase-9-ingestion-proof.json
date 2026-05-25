@@ -1,0 +1,14 @@
+{
+  "phase": 9,
+  "proof": "attachment_file_ingestion_redaction_and_linking",
+  "steps": [
+    {"step": 1, "action": "Discovery from mail has_attachments + list_attachments (metadata only)", "result": "DriveItem/Attachment metadata, no content"},
+    {"step": 2, "action": "EligibilityGate (size/type/approval per 08 matrix)", "result": "ok or explicit failure code"},
+    {"step": 3, "action": "Controlled download (mocked) + sha256 hash", "result": "cache file + hash, bounded"},
+    {"step": 4, "action": "Bounded parse (PDF excerpt only)", "result": "text_excerpt + char_count, no full text"},
+    {"step": 5, "action": "Persist + SourceLinkRegistry (attaches / parsed_from)", "result": "files/attachments/parser_outputs rows + links"},
+    {"step": 6, "action": "Binary/string scan of all temp artifacts + phase-9 evidence", "result": "zero secrets, full bodies, or tokens"}
+  ],
+  "conclusion": "Pipeline is metadata-first, eligibility-gated, excerpt-only, fully source-linked, and redacted-by-construction. 08/13/20 rules honored.",
+  "generated": "2026-05-25 Phase 9 execution"
+}

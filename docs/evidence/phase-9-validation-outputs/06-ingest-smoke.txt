@@ -1,0 +1,8 @@
+=== Phase 9 custom discovery+ingest smoke (mocked links, eligibility, mocked DL+parse, DB+links+excerpts, leak scan) ===
+eligibility_ok: True ok
+discovery_pending_count: 0
+persisted_file_sid: 1 parser_output_id: 1
+links_created: 1
+db_leaks: []
+INGEST_SMOKE_PHASE9_EXIT=0
+EXIT_SMOKE=0

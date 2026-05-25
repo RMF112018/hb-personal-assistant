@@ -1,0 +1,17 @@
+{
+  "phase": 9,
+  "type": "file_link_discovery_sample",
+  "description": "Redacted metadata + eligibility preview for attachments/driveItems discovered from mail/calendar (safe for evidence)",
+  "samples": [
+    {
+      "source": "mail:msg-123",
+      "attachment_id": "att-456",
+      "name_redacted": "[redacted-report].pdf",
+      "size_mb": 1.8,
+      "eligibility": {"eligible": true, "reason": "ok"},
+      "parent_source_record_id": 4242
+    }
+  ],
+  "note": "Only redacted names, sizes, eligibility flags. No full content or tokens.",
+  "generated_by": "FileIngestionService (Phase 9 skeleton)"
+}
