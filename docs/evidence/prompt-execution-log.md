@@ -1,0 +1,60 @@
+# Prompt Execution Log
+
+## Prompt
+Prompt 00 — Phase 0 Environment Auth And Vault Discovery
+
+## Objective
+Execute this phase for `hb-personal-assistant` as part of the HB Personal Assistant + Work Product Intelligence System MVP.
+
+Follow the phase sequence in `02_Final_Implementation_Plan.md`.
+Honor `20_Manual_Approval_Gates.md`.
+Preserve read-only Microsoft 365 runtime behavior.
+Add or update tests and evidence for this phase (evidence only; no tests yet — Phase 1+).
+
+## Files Changed
+- Renamed staging: /Users/bobbyfetting/my-pa -> /Users/bobbyfetting/hb-personal-assistant (aligns with repo slug)
+- Created: .gitignore (comprehensive, per 19_Privacy + safety baseline)
+- Created: README.md (stub with phase status, guardrails, paths)
+- Created dirs: docs/evidence/ (with phase-0-validation-outputs/), docs/validation/
+- Created evidence (sanitized):
+  - docs/evidence/phase-0-env-facts.json
+  - docs/evidence/phase-0-auth-readiness.json
+  - docs/evidence/phase-0-vault-conventions.json
+  - docs/evidence/phase-0-sensitive-scan.json
+  - docs/evidence/prompt-execution-log.md (this file)
+- Updated: docs/plans/my-pa-phase-0/resources/validation-result-register.md (appended Phase 0 row)
+- No src/, no pyproject, no CLI code (reserved for Prompt 01 / Phase 1)
+- No changes to app registration, Graph permissions, or any M365 resources
+
+## Validation
+All applicable commands from 02/00 executed (or attempted with venv; see validation-capture todo and phase-0-validation-outputs/):
+- python -m pytest (pre-scaffold: expected collection errors)
+- ruff check .
+- mypy src (pre-scaffold: expected)
+- hb-assistant diagnostics env --json (no entrypoint yet)
+- hb-assistant auth status --json
+- hb-assistant diagnostics graph --safe --json
+- hb-assistant run morning --dry-run --json
+- hb-assistant diagnostics scan-sensitive --repo . --json
+
+Full outputs + exit codes captured in docs/evidence/phase-0-validation-outputs/ (sanitized; no tokens/keys/bodies).
+
+Delegated proof re-use + cert re-verification via openssl subprocess (metadata only).
+
+## Evidence
+- 4 primary JSON fact files under docs/evidence/ (see individual files for details)
+- cert-meta.txt and env-facts.txt temp captures (used to build JSONs)
+- GitHub repo to be created + initial commit in github-commit todo
+- All evidence strictly sanitized per 05_Delegated_Graph_Proof_Specification.md redaction rules and 19_Privacy controls
+
+## Acceptance
+- Objective complete: env, cert (600, valid), vault (Daily Notes + AI Outputs patterns confirmed), delegated readiness (Bobby user proven; mail scope gap noted without reg change), sensitive clean.
+- No broad unrelated refactor.
+- No Microsoft 365 write-back.
+- No tokens/private keys/full bodies/full file contents/PEMs logged or committed.
+- Evidence created under `docs/evidence/`.
+- Prompt execution log updated (this file).
+- Manual Approval Gates honored (app reg change for Mail.Read identified but not executed; no other gates triggered).
+- Next: Prompt 01 (Phase 1 scaffold) on the new hb-personal-assistant repo.
+
+**Status**: COMPLETE for Phase 0 / Prompt 00

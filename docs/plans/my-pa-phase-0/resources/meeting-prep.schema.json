@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MeetingPrepResult",
+  "type": "object",
+  "required": [
+    "event_source_record_id",
+    "prep_items"
+  ],
+  "properties": {
+    "event_source_record_id": {
+      "type": "string"
+    },
+    "prep_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "source_record_ids",
+          "confidence"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "source_record_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

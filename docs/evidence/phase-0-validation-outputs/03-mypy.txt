@@ -1,0 +1,7 @@
+=== COMMAND: mypy src (via venv) ===
+PWD=/Users/bobbyfetting/hb-personal-assistant
+src: error: Cannot find implementation or library stub for module named "src"
+src: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+Found 1 error in 1 file (errors prevented further checking)
+EXIT_CODE=1
+Note: Expected pre-scaffold (no src/ dir until Prompt 01). mypy src will be valid after Phase 1 scaffold.

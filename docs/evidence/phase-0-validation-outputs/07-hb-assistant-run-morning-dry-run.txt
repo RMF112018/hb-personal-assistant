@@ -1,0 +1,4 @@
+=== COMMAND: hb-assistant run morning --dry-run --json ===
+/bin/sh: hb-assistant: command not found
+EXIT_CODE=127
+Note: Morning run orchestrator + dry-run is Phase 8/11 target. --dry-run and --json flags per 11_CLI spec. Will produce plan/preview without writes.

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FileReviewResult",
+  "type": "object",
+  "required": [
+    "file_source_record_id",
+    "review_required",
+    "source_record_ids",
+    "confidence"
+  ],
+  "properties": {
+    "file_source_record_id": {
+      "type": "string"
+    },
+    "review_required": {
+      "type": "boolean"
+    },
+    "source_record_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}

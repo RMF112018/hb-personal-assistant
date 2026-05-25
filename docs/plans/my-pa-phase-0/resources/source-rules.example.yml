@@ -1,0 +1,5 @@
+project_detection:
+  project_number_regex: '\b\d{2}-\d{3}-\d{2}\b'
+body_mentions:
+  aliases: ["Bobby", "Bobby Fetting", "Robert Fetting", "bfetting", "bfetting@outlook.com", "bfetting@hedrickbrothers.com"]
+  include_body_only_mentions: true

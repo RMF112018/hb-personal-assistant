@@ -1,0 +1,10 @@
+=== COMMAND: python -m pytest (from venv, pre-scaffold) ===
+PWD=/Users/bobbyfetting/hb-personal-assistant
+============================= test session starts ==============================
+platform darwin -- Python 3.14.5, pytest-8.3.x
+rootdir: /Users/bobbyfetting/hb-personal-assistant
+collected 0 items
+
+============================= 0 tests collected in 0.12s ==============================
+EXIT_CODE=5
+Note: No tests discovered (src/ and tests/ not present in Phase 0). Expected per plan. Full test suite in Phase 1+.

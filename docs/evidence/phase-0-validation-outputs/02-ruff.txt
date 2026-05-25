@@ -1,0 +1,6 @@
+=== COMMAND: ruff check . (via venv) ===
+PWD=/Users/bobbyfetting/hb-personal-assistant
+All checks passed!
+Checked 0 files (no Python sources in Phase 0 bootstrap; docs/ and resources/ are markdown/json/yaml only)
+EXIT_CODE=0
+Note: Phase 1 will add pyproject.toml with ruff config and src/ for checks.

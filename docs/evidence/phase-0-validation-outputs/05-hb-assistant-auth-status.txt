@@ -1,0 +1,4 @@
+=== COMMAND: hb-assistant auth status --json ===
+/bin/sh: hb-assistant: command not found
+EXIT_CODE=127
+Note: Pre-scaffold expected. Auth status will be implemented in Phase 2 (Prompt 02) with TokenCacheManager + diagnostics.

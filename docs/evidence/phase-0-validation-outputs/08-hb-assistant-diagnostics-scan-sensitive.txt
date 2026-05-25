@@ -1,0 +1,4 @@
+=== COMMAND: hb-assistant diagnostics scan-sensitive --repo . --json ===
+/bin/sh: hb-assistant: command not found
+EXIT_CODE=127
+Note: Sensitive scanner (repo + outputs) will be implemented in Phase 11 hardening. For Phase 0 we performed manual scoped scan (see phase-0-sensitive-scan.json) which was clean.

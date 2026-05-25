@@ -1,0 +1,20 @@
+{
+  "phase": "0",
+  "prompt": "Prompt_00_Phase_0_Environment_Auth_And_Vault_Discovery",
+  "generated_at": "2026-05-25T08:44:00Z",
+  "source": "baseline_inputs/phase-0-auth-artifact-safety-check(1).md + post-bootstrap scan of hb-personal-assistant/ (docs only)",
+  "git_status_at_bootstrap": "N/A (my-pa staging had no .git; new repo init pending in github-commit todo)",
+  "scan_method": "targeted find/grep for token|secret|cert|pem|pfx|key|cache|sqlite|msal patterns, scoped to exclude .smart-env/, Work/HB Intel large mirrors, node_modules, .venv (in prior proof dir)",
+  "findings": {
+    "raw_tokens_or_keys_in_repo": false,
+    "pem_or_private_key_material": false,
+    "full_email_bodies": false,
+    "msal_cache_files": false,
+    "sqlite_dbs": false,
+    "false_positives": "Many from documentation filenames containing 'token-cache', 'auth-artifact', 'certificate' in markdown titles and paths (expected, non-secret)",
+    "new_artifacts_from_phase0": "Only sanitized JSON evidence and .gitignore/README; no secrets introduced"
+  },
+  "gitignore_enforcement": ".gitignore created with blocks from safety baseline + 19_Privacy (auth/, *.pem, docs/evidence/private/, .venv*, *.sqlite, *msal*, cache/, logs/)",
+  "recommendation": "Before any future commit: run `git ls-files | grep -Ei '...' ` + `find docs/evidence -type f ! -path '*/private/*' | xargs grep -l 'BEGIN RSA|sk-[a-z]' || true` (sanitized patterns). Add exclude for noisy doc trees if needed.",
+  "conclusion": "Phase 0 bootstrap maintains secret hygiene. Repo is safe to initialize and push. No broad refactor or unrelated files added."
+}

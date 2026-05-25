@@ -1,0 +1,57 @@
+{
+  "phase": "0",
+  "prompt": "Prompt_00_Phase_0_Environment_Auth_And_Vault_Discovery",
+  "generated_at": "2026-05-25T08:42:00Z",
+  "summary": "Delegated Graph auth path is viable for Bobby user (bfetting@hedrickbrothers.com). Certificate app-only path proven for admin/proof only. Mail.Read scope gap identified (403 on /messages) — requires app registration change (Manual Approval Gate #1 per 20_Manual_Approval_Gates.md); NOT performed in Phase 0.",
+  "delegated_proof_source": "/Users/bobbyfetting/hb-daily-brief-auth-proof/docs/evidence/delegated-graph-capability-proof.json (2026-05-25)",
+  "delegated_token": {
+    "client_id": "08c399eb-a394-4087-b859-659d493f8dc7",
+    "tenant_id": "0e834bd7-628b-42c8-b9ec-ecebc9719be4",
+    "upn": "bfetting@hedrickbrothers.com",
+    "name": "Bobby Fetting",
+    "token_type": "delegated",
+    "scp_present": true,
+    "roles_present": false,
+    "scp_sample": "User.Read Calendars.Read.Shared Files.ReadWrite.All ... (no Mail.Read observed)",
+    "classification": "delegated (scp present, roles null) — suitable for MVP runtime per 04_Auth_And_Permissions_Model.md"
+  },
+  "delegated_capability_results": {
+    "/me": {"status": 200, "ok": true, "sample_user": "Bobby Fetting"},
+    "/me/messages (metadata)": {"status": 403, "ok": false, "error": "ErrorAccessDenied - likely missing Mail.Read delegated permission"},
+    "/me/calendarView": {"status": 200, "ok": true, "events": 10, "nextLink": true},
+    "/me/drive/root": {"status": 200, "ok": true},
+    "/me/drive/children": {"status": 200, "ok": true}
+  },
+  "app_only_proof_source": "baseline_inputs/phase-0-certificate-viability-proof(1).md",
+  "app_only": {
+    "token_acquisition": "success (msal)",
+    "classification": "app-only (roles present, scp absent)",
+    "graph_probe_org": 403,
+    "notes": "Confirmed viable for certificate auth. NOT for mail/calendar runtime per 04 and 05 specs. 403 on org probe is permission, not cert failure."
+  },
+  "token_classifier_expectations": {
+    "delegated": "scp present -> runtime allowed for /me, mail, calendar, drive (after scope grants)",
+    "app_only": "roles present + scp absent -> fail closed for mail/calendar; allowed only for proof/admin endpoints",
+    "ambiguous": "both -> fail closed",
+    "invalid": "neither -> fail closed",
+    "implementation": "Phase 2 (Prompt 02)"
+  },
+  "readiness_gates_05_spec": {
+    "1_/me": "PASS (delegated proof)",
+    "2_mail_metadata": "BLOCKED (403, scope gap)",
+    "3_message_body": "NOT ATTEMPTED (requires mail metadata)",
+    "4_body_mention": "NOT ATTEMPTED",
+    "5_calendarView": "PASS",
+    "6_attachment_metadata": "NOT ATTEMPTED",
+    "7_file_metadata": "PASS (drive)",
+    "8_controlled_download": "NOT ATTEMPTED (Phase 0 scope; future after eligibility)",
+    "9_app_only_rejection": "PASS (classifier design + proof separation)",
+    "10_sensitive_scan": "PASS (see phase-0-sensitive-scan.json)"
+  },
+  "approval_gates_status_20": {
+    "app_registration_changes": "REQUIRED for Mail.Read (and possibly Mail.ReadBasic, Calendars.Read) but DEFERRED; no change executed in Phase 0",
+    "m365_writeback": "NEVER ATTEMPTED (proofs are GET only)",
+    "other": "None triggered"
+  },
+  "next_steps": "Phase 3+ after Prompt 01/02 scaffold: add Mail.Read to app reg (with Bobby approval), re-run delegated proof, implement TokenClassifier + Graph client."
+}

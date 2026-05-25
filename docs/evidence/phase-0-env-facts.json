@@ -1,0 +1,78 @@
+{
+  "phase": "0",
+  "prompt": "Prompt_00_Phase_0_Environment_Auth_And_Vault_Discovery",
+  "generated_at": "2026-05-25T08:40:00Z",
+  "objective": "Prove environment, manifest, cache paths, certificate facts, vault conventions, and delegated Graph readiness. No secrets exposed.",
+  "python_environment": {
+    "version": "3.14.5 (main, 2026-??) [Clang ...]",
+    "executable": "/opt/homebrew/bin/python3",
+    "source": "Homebrew",
+    "notes": "Target per 13_Standards is 3.12+; 3.14.5 acceptable for MVP. No global msal, pyyaml, click, ruff, mypy, pytest installed in system python."
+  },
+  "ollama": {
+    "client_version": "0.24.0",
+    "binary": "/opt/homebrew/bin/ollama",
+    "running": false,
+    "connect_error": "could not connect to a running Ollama instance",
+    "notes": "Local model host available for Phase 6+ extraction; not required for Phase 0."
+  },
+  "certificate": {
+    "bundle_path": "/Users/bobbyfetting/.secrets/hb-sharepoint-creator/hb-sharepoint-creator.bundle.pem",
+    "exists": true,
+    "permissions": "-rw-------",
+    "owner": "bobbyfetting",
+    "group": "staff",
+    "subject": "CN=HB SharePoint Creator Local Provisioning",
+    "issuer": "CN=HB SharePoint Creator Local Provisioning",
+    "valid_from": "May 15 16:28:03 2026 GMT",
+    "valid_until": "May 15 16:28:03 2027 GMT",
+    "sha1_fingerprint": "6E:BA:F3:63:A3:F9:DB:AF:33:8A:6F:73:64:CE:12:DD:05:FB:C0:BE",
+    "serial": "047DE1664F3EE68F2B5511CB83185859897F302C",
+    "private_key_usable": "Key is valid (openssl pkey -check)",
+    "notes": "Viable for app-only token acquisition per baseline proof. 600 perms appropriate. No key material or PEM body in this evidence."
+  },
+  "application_support": {
+    "hb_personal_assistant_dir": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/",
+    "exists": false,
+    "note": "Will be created on first auth/config use. Parent ~/Library/Application Support/ exists and is user-owned."
+  },
+  "unrelated_auth_caches": [
+    "/Users/bobbyfetting/Library/Application Support/.IdentityService/msal.cache.*",
+    "/Users/bobbyfetting/.azure/msal_token_cache.json",
+    "/Users/bobbyfetting/.cli-m365-msal.json"
+  ],
+  "manifest_facts": {
+    "app_name": "HB SharePoint Creator",
+    "client_id": "08c399eb-a394-4087-b859-659d493f8dc7",
+    "tenant_id": "0e834bd7-628b-42c8-b9ec-ecebc9719be4",
+    "tenant_domain": "hedrickbrothers.com",
+    "sharepoint_root": "https://hedrickbrotherscom.sharepoint.com/",
+    "certificate_key_id": "72b2e600-eac6-4b1b-a4b1-4d48048e6667",
+    "allowPublicClient": true,
+    "redirect_uris": ["http://localhost"],
+    "notes": "Extracted from baseline_inputs/HB_SharePoint_Creator(7).json and proofs. keyCredentials match fingerprint."
+  },
+  "vault": {
+    "path": "/Users/bobbyfetting/Documents/Obsidian Vault",
+    "daily_notes_folder": "Daily Notes",
+    "daily_notes_example": "Daily Notes/2026-05-24.md",
+    "daily_notes_config": {"folder": "Daily Notes", "template": "Templates/Template - Project Note"},
+    "ai_outputs_examples": [
+      "AI Outputs/Daily Knowledge Brief - 2026-05-24.md",
+      "AI Outputs/HB Intel Decision Extracts - 2026-05-24.md"
+    ],
+    "agent_briefs_count": 3,
+    "templates_operational": [
+      "Templates/Template - Weekly Knowledge Brief.md",
+      "Templates/Template - Project Note.md",
+      "Templates/Template - Meeting Note.md"
+    ],
+    "notes": "Conventions per baseline obsidian-vault-conventions(2).md + fresh glob discovery. See phase-0-vault-conventions.json"
+  },
+  "guardrails_check": {
+    "no_secrets_in_repo": true,
+    "no_pem_in_repo": true,
+    "app_support_outside_repo": true,
+    "read_only_m365_intent": true
+  }
+}

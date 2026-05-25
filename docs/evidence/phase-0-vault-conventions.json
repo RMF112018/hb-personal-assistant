@@ -1,0 +1,83 @@
+{
+  "phase": "0",
+  "prompt": "Prompt_00_Phase_0_Environment_Auth_And_Vault_Discovery",
+  "generated_at": "2026-05-25T08:43:00Z",
+  "vault_path": "/Users/bobbyfetting/Documents/Obsidian Vault",
+  "source": "baseline_inputs/obsidian-vault-conventions(2).md + fresh Glob discovery + .obsidian/daily-notes.json read",
+  "top_level_folders": [
+    "AI Outputs/",
+    "Agent Briefs/",
+    "Archive/",
+    "Daily Notes/",
+    "Inbox/",
+    "Knowledge/",
+    "People/",
+    "Side Hustle/",
+    "Templates/",
+    "Work/",
+    ".obsidian/",
+    "copilot/"
+  ],
+  "daily_notes": {
+    "folder": "Daily Notes",
+    "filename_pattern": "YYYY-MM-DD.md",
+    "example": "Daily Notes/2026-05-24.md",
+    "config": {
+      "folder": "Daily Notes",
+      "template": "Templates/Template - Project Note"
+    },
+    "note": "Template mismatch with daily workflow observed in baseline; will use date-anchored daily note for brief embedding or companion in AI Outputs."
+  },
+  "generated_output_locations": {
+    "primary_recommended_for_brief": "Daily Notes/YYYY-MM-DD.md (marker-bounded section)",
+    "secondary": "AI Outputs/Daily Knowledge Brief - YYYY-MM-DD.md (existing pattern)",
+    "agent_briefs": "Agent Briefs/ (for operational reports)",
+    "do_not_touch": [
+      "Work/HB Intel/Architecture/MASTER/** (ingested canonical corpus)",
+      "Work/HB Intel/Architecture/_agent/tmp/**",
+      ".obsidian/"
+    ]
+  },
+  "ai_outputs_examples": [
+    "AI Outputs/Daily Knowledge Brief - 2026-05-24.md",
+    "AI Outputs/HB Intel Decision Extracts - 2026-05-24.md",
+    "AI Outputs/Weekly Synthesis - 2026-W21.md"
+  ],
+  "agent_briefs_examples": [
+    "Agent Briefs/HB Intel Ingestion Run - 2026-05-24.md",
+    "Agent Briefs/Vault Maintenance Report - 2026-05-24.md"
+  ],
+  "frontmatter_properties_observed": {
+    "core": ["type", "domain", "status", "tags"],
+    "source": ["source.kind", "source.path", "source.url", "source.commit"],
+    "other": ["related", "owner", "last_reviewed", "created", "updated"],
+    "style": "YAML scalars quoted for strings/dates; tags as array; related as wikilink or array"
+  },
+  "link_conventions": {
+    "wikilinks": "[[Work/...]] dominant for internal MOC",
+    "markdown_relative": "used in mirrored docs",
+    "source_links_recommended": "Deep links with labels for M365 items + wikilinks for vault notes"
+  },
+  "tag_taxonomy": {
+    "core": ["#work", "#side-hustle", "#knowledge"],
+    "program": ["#hb-intel", "#construction-tech"],
+    "operational": ["#risk", "#decision", "#operations"],
+    "recommendation_for_brief": ["daily-brief", "work", "action-items", "meeting-prep"]
+  },
+  "task_syntax": "Standard - [ ] and - [x] observed; Tasks plugin syntax limited in operational notes",
+  "plugins": {
+    "core": "properties, daily-notes, templates, graph, etc.",
+    "community": "dataview, tasks, templater (inferred from usage)"
+  },
+  "recommendations_for_09_obsidian_writer": {
+    "brief_location": "Daily Notes/ + marker pair <!-- HB-ASSISTANT:DAILY-BRIEF:START --> ... <!-- END -->",
+    "preserve_user_edits": "Outside markers",
+    "frontmatter_for_brief": {
+      "type": "brief",
+      "domain": "work",
+      "status": "active",
+      "tags": ["work", "daily-brief"],
+      "source.kind": "graph-derived"
+    }
+  }
+}

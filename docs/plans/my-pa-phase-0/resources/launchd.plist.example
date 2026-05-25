@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>com.hb.personal-assistant.morning</string>
+<key>ProgramArguments</key><array>
+<string>/Users/bobbyfetting/path/to/hb-personal-assistant/.venv/bin/hb-assistant</string>
+<string>run</string><string>morning</string>
+</array>
+<key>WorkingDirectory</key><string>/Users/bobbyfetting/path/to/hb-personal-assistant</string>
+<key>StartCalendarInterval</key><dict><key>Hour</key><integer>5</integer><key>Minute</key><integer>0</integer></dict>
+<key>StandardOutPath</key><string>/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/run-logs/launchd-morning.out.log</string>
+<key>StandardErrorPath</key><string>/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/error-logs/launchd-morning.err.log</string>
+<key>EnvironmentVariables</key><dict><key>PYTHONUNBUFFERED</key><string>1</string></dict>
+</dict></plist>

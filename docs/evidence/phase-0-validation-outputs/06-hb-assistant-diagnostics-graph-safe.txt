@@ -1,0 +1,4 @@
+=== COMMAND: hb-assistant diagnostics graph --safe --json ===
+/bin/sh: hb-assistant: command not found
+EXIT_CODE=127
+Note: Graph diagnostics (safe mode, no token) planned for Phase 2/3. Will validate delegated/app-only classifier + connectivity without secrets.

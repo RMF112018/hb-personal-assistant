@@ -1,0 +1,4 @@
+=== COMMAND: hb-assistant diagnostics env --json ===
+/bin/sh: hb-assistant: command not found
+EXIT_CODE=127
+Note: CLI entrypoint (hb-assistant) does not exist until Phase 1 (Prompt 01) pyproject + src/hb_assistant/cli/ + console_scripts. Expected failure.

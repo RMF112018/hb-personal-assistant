@@ -1,0 +1,336 @@
+{
+	"id": "0d581040-e410-48c0-9360-356686cd9f97",
+	"acceptMappedClaims": null,
+	"accessTokenAcceptedVersion": null,
+	"addIns": [],
+	"allowPublicClient": true,
+	"appId": "08c399eb-a394-4087-b859-659d493f8dc7",
+	"appRoles": [
+		{
+			"allowedMemberTypes": [
+				"User"
+			],
+			"description": "Read-only access to registry, placement, sync status, and readiness data",
+			"displayName": "HB Intel Foleon Reader",
+			"id": "b66f3fc0-802c-48a0-a89c-fe2cea7c710d",
+			"isEnabled": true,
+			"lang": null,
+			"origin": "Application",
+			"value": "HBIntelFoleonReader"
+		},
+		{
+			"allowedMemberTypes": [
+				"User"
+			],
+			"description": "Can create/update Foleon content records and draft placements, but not publish/administer config",
+			"displayName": "HB Intel Foleon Editor",
+			"id": "54bbb6f1-b7b7-4af2-9f68-0010aed24ede",
+			"isEnabled": true,
+			"lang": null,
+			"origin": "Application",
+			"value": "HBIntelFoleonEditor"
+		},
+		{
+			"allowedMemberTypes": [
+				"User"
+			],
+			"description": "Can stage, validate, approve, and publish homepage Foleon placements",
+			"displayName": "HB Intel Foleon Publisher",
+			"id": "42a46314-6d4a-422e-81e1-2585ea37b7f8",
+			"isEnabled": true,
+			"lang": null,
+			"origin": "Application",
+			"value": "HBIntelFoleonPublisher"
+		},
+		{
+			"allowedMemberTypes": [
+				"User"
+			],
+			"description": "Full Manager administration: config, sync, placements, diagnostics, publish controls",
+			"displayName": "HB Intel Foleon Administrator",
+			"id": "789178e6-fc51-4739-bb38-b3137163443d",
+			"isEnabled": true,
+			"lang": null,
+			"origin": "Application",
+			"value": "HBIntelFoleonAdministrator"
+		},
+		{
+			"allowedMemberTypes": [
+				"User"
+			],
+			"description": "Can operate Safety preview, ingest, and replay workflows.",
+			"displayName": "HB Intel Safety Operator",
+			"id": "ef260f71-59f3-48d1-816b-1c4bb956187b",
+			"isEnabled": true,
+			"lang": null,
+			"origin": "Application",
+			"value": "HBIntelSafetyOperator"
+		},
+		{
+			"allowedMemberTypes": [
+				"User"
+			],
+			"description": "Can submit Safety workbook ingestion requests.",
+			"displayName": "HB Intel Safety Submitter",
+			"id": "1959931d-df52-4a2e-b068-8ae93e5c1d8a",
+			"isEnabled": true,
+			"lang": null,
+			"origin": "Application",
+			"value": "HBIntelSafetySubmitter"
+		},
+		{
+			"allowedMemberTypes": [
+				"User"
+			],
+			"description": "Can preview/review Safety ingestion records and participate in review workflows.",
+			"displayName": "HB Intel Safety Reviewer",
+			"id": "18896147-482a-47f5-a923-f4187a2fdaa3",
+			"isEnabled": true,
+			"lang": null,
+			"origin": "Application",
+			"value": "HBIntelSafetyReviewer"
+		},
+		{
+			"allowedMemberTypes": [
+				"User",
+				"Application"
+			],
+			"description": "Admin role for HB Intel Function App legacy-fallback and admin APIs",
+			"displayName": "Admin",
+			"id": "f4e99f06-358e-4550-8d73-0da2b80c8778",
+			"isEnabled": true,
+			"lang": null,
+			"origin": "Application",
+			"value": "Admin"
+		}
+	],
+	"oauth2AllowUrlPathMatching": false,
+	"createdDateTime": "2025-12-12T15:22:24Z",
+	"description": null,
+	"certification": null,
+	"disabledByMicrosoftStatus": null,
+	"groupMembershipClaims": null,
+	"identifierUris": [
+		"api://08c399eb-a394-4087-b859-659d493f8dc7"
+	],
+	"informationalUrls": {
+		"termsOfService": null,
+		"support": null,
+		"privacy": null,
+		"marketing": null
+	},
+	"keyCredentials": [
+		{
+			"customKeyIdentifier": "6EBAF363A3F9DBAF338A6F7364CE12DD05FBC0BE",
+			"endDate": "2027-05-15T16:28:03Z",
+			"keyId": "72b2e600-eac6-4b1b-a4b1-4d48048e6667",
+			"startDate": "2026-05-15T16:28:03Z",
+			"type": "AsymmetricX509Cert",
+			"usage": "Verify",
+			"value": "MIIDRzCCAi+gAwIBAgIUBH3hZk8+5o8rVRHLgxhYWYl/MCwwDQYJKoZIhvcNAQELBQAwMzExMC8GA1UEAwwoSEIgU2hhcmVQb2ludCBDcmVhdG9yIExvY2FsIFByb3Zpc2lvbmluZzAeFw0yNjA1MTUxNjI4MDNaFw0yNzA1MTUxNjI4MDNaMDMxMTAvBgNVBAMMKEhCIFNoYXJlUG9pbnQgQ3JlYXRvciBMb2NhbCBQcm92aXNpb25pbmcwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCsupWX7k/3oh3dMDAQXkptisa1/Jei3/0CKaMsRjlfK+/4VpZ3oSCav5+fxGWkdSkZvzk42qDq6gSRYXA+FgdgHLzSRuiz+aZ9JS0lUUOQCAhbuHgCHG5N5ilr/f3vmeQQtPlnK/JlVm2uRfIKvOO5qYrI0/1WtsC2ZMFcdaZOMafsKuE44uokJmOQVO7O6DqL+HVUyTc7YkUg8oEImGMwayg/5iSGHu5S9qTVs60k8KATai5FgYwCjsWsna6NXxFF+q8H6w7dX9p1K5COs6qAEFEr8tezGklAFNHyhQG+2tCypIoziFVQMTFFUPKgCLiiyNcr4qbAwe/wbgNs6LstAgMBAAGjUzBRMB0GA1UdDgQWBBRb1/su6Vv/HpA8nwFHh7d8C6xxLjAfBgNVHSMEGDAWgBRb1/su6Vv/HpA8nwFHh7d8C6xxLjAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQA8YdSECT1v9pCXSKqhwGpiYUVB1B7OdjTzdn1wMUFvg1zYgkfTKWJjL8Ddn5pU09IoNzZJg5K58UH+RSPKjPBGCkyQntHMYs9UNUjio2rkHtSyh7p4tryEjI2NCoCeST+i8W2js0bagGn85dn2cLyZZUXf0mM9aHLCfAEUv5awyhjpFNAbM+yJgVuL09BHHjFuKGCJvFJ97JiaNn9tuIXPsesCYGbvm4Zm/9Kop7ItMoZp0FSQGQvFmlQaPEBe4B6yvqSXDkmbERTJnXC5Keb2aL/kSyJ9H2nnORoepFVY6Mv6SJx/6tXwOjxmrK/V/FHn3kd+cuhULi7y8l1a16NI",
+			"displayName": "CN=HB SharePoint Creator Local Provisioning"
+		}
+	],
+	"knownClientApplications": [],
+	"logoUrl": "https://aadcdn.msftauthimages.net/dbd5a2dd-jsn2ijditsmcyabglb-fqrbvc8gwrf9kqjngl2qwu0q/appbranding/gxhjfbw6bio6w-wjyl-oeaealzqpcam2-yjkoyichg/1033/bannerlogo?ts=639127919013114886",
+	"logoutUrl": null,
+	"name": "HB SharePoint Creator",
+	"notes": null,
+	"oauth2AllowIdTokenImplicitFlow": false,
+	"oauth2AllowImplicitFlow": false,
+	"oauth2Permissions": [
+		{
+			"adminConsentDescription": "Allows the application to access the HB Intel backend API on behalf of the signed-in user.",
+			"adminConsentDisplayName": "Access HB Intel API as a user",
+			"id": "721572b9-1ac9-4ab0-a2bf-c4a827dd096c",
+			"isEnabled": true,
+			"lang": null,
+			"origin": "Application",
+			"type": "User",
+			"userConsentDescription": "Allows access to the HB Intel backend API on your behalf.",
+			"userConsentDisplayName": "Access HB Intel API as a user",
+			"value": "access_as_user"
+		}
+	],
+	"oauth2RequirePostResponse": false,
+	"optionalClaims": null,
+	"orgRestrictions": [],
+	"parentalControlSettings": {
+		"countriesBlockedForMinors": [],
+		"legalAgeGroupRule": "Allow"
+	},
+	"passwordCredentials": [
+		{
+			"customKeyIdentifier": null,
+			"endDate": "2028-05-21T21:28:49.986Z",
+			"keyId": "8950c52e-6462-4020-9c04-d7beda2924af",
+			"startDate": "2026-05-22T21:28:49.986Z",
+			"value": null,
+			"createdOn": "2026-05-22T21:28:59.4901147Z",
+			"hint": "pvQ",
+			"displayName": "Local Provisioning"
+		},
+		{
+			"customKeyIdentifier": null,
+			"endDate": "2026-11-11T15:43:40.764Z",
+			"keyId": "c938b28b-222c-4cfc-ae95-d644003f0d1a",
+			"startDate": "2026-05-15T14:43:40.764Z",
+			"value": null,
+			"createdOn": "2026-05-15T14:43:50.7121138Z",
+			"hint": "SBU",
+			"displayName": "Provisioning"
+		},
+		{
+			"customKeyIdentifier": null,
+			"endDate": "2026-10-16T10:46:44.803Z",
+			"keyId": "c872f1d7-b3c0-463f-b031-1372f095a092",
+			"startDate": "2026-04-19T10:46:44.803Z",
+			"value": null,
+			"createdOn": "2026-04-19T10:46:51.3895991Z",
+			"hint": "idl",
+			"displayName": "Staging"
+		},
+		{
+			"customKeyIdentifier": null,
+			"endDate": "2026-10-10T12:50:11.252Z",
+			"keyId": "1b85903a-947f-4e23-ba50-b136c9e598d7",
+			"startDate": "2026-04-13T12:50:11.252Z",
+			"value": null,
+			"createdOn": "2026-04-13T12:50:25.9014089Z",
+			"hint": "kwv",
+			"displayName": "TestingPhase"
+		}
+	],
+	"preAuthorizedApplications": [
+		{
+			"appId": "08e18876-6177-487e-b8b5-cf950c1e598c",
+			"permissionIds": [
+				"721572b9-1ac9-4ab0-a2bf-c4a827dd096c"
+			]
+		}
+	],
+	"publisherDomain": "hedrickbrothers.com",
+	"replyUrlsWithType": [
+		{
+			"url": "http://localhost",
+			"type": "InstalledClient"
+		}
+	],
+	"requiredResourceAccess": [
+		{
+			"resourceAppId": "00000003-0000-0000-c000-000000000000",
+			"resourceAccess": [
+				{
+					"id": "2b9c4092-424d-4249-948d-b43879977640",
+					"type": "Scope"
+				},
+				{
+					"id": "12466101-c9b8-439a-8589-dd09ee67e8e9",
+					"type": "Scope"
+				},
+				{
+					"id": "863451e7-0667-486c-a5d6-d135439485f0",
+					"type": "Scope"
+				},
+				{
+					"id": "4e46008b-f24c-477d-8fff-7bb4ec7aafe0",
+					"type": "Scope"
+				},
+				{
+					"id": "570282fd-fa5c-430d-a7fd-fc8dc98a9dca",
+					"type": "Scope"
+				},
+				{
+					"id": "024d486e-b451-40bb-833d-3e66d98c5c73",
+					"type": "Scope"
+				},
+				{
+					"id": "37f7f235-527c-4136-accd-4a02d197296e",
+					"type": "Scope"
+				},
+				{
+					"id": "14dad69e-099b-42c9-810b-d002981feec1",
+					"type": "Scope"
+				},
+				{
+					"id": "5a54b8b3-347c-476d-8f8e-42d5c7424d29",
+					"type": "Scope"
+				},
+				{
+					"id": "65e50fdc-43b7-4915-933e-e8138f11f40a",
+					"type": "Scope"
+				},
+				{
+					"id": "89fe6a52-be36-487e-b7d8-d061c450a026",
+					"type": "Scope"
+				},
+				{
+					"id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d",
+					"type": "Scope"
+				},
+				{
+					"id": "b340eb25-3456-403f-be2f-af7a0d370277",
+					"type": "Scope"
+				},
+				{
+					"id": "62a82d76-70ea-41e2-9197-370581804d09",
+					"type": "Role"
+				},
+				{
+					"id": "dbaae8cf-10b5-4b86-a4a1-f871c94c6695",
+					"type": "Role"
+				},
+				{
+					"id": "80819dd8-2b3b-4551-a1ad-2700fc44f533",
+					"type": "Role"
+				},
+				{
+					"id": "a82116e5-55eb-4c41-a434-62fe8a61c773",
+					"type": "Role"
+				},
+				{
+					"id": "0c0bf378-bf22-4481-8f81-9e89a9b4960a",
+					"type": "Role"
+				},
+				{
+					"id": "332a536c-c7ef-4017-ab91-336970924f0d",
+					"type": "Role"
+				},
+				{
+					"id": "9492366f-7969-46a4-8d15-ed1a20078fff",
+					"type": "Role"
+				},
+				{
+					"id": "883ea226-0bf2-4a8f-9f9d-92c9162a727d",
+					"type": "Role"
+				}
+			]
+		},
+		{
+			"resourceAppId": "00000003-0000-0ff1-ce00-000000000000",
+			"resourceAccess": [
+				{
+					"id": "9ac4404a-0323-446d-b334-b4ae4d18b38a",
+					"type": "Scope"
+				},
+				{
+					"id": "56680e0d-d2a3-4ae1-80d8-3c4f2100e3d0",
+					"type": "Scope"
+				},
+				{
+					"id": "678536fe-1083-478a-9c59-b99265e6b0d3",
+					"type": "Role"
+				},
+				{
+					"id": "20d37865-089c-4dee-8c41-6967602d4ac8",
+					"type": "Role"
+				}
+			]
+		}
+	],
+	"samlMetadataUrl": null,
+	"signInUrl": null,
+	"signInAudience": "AzureADMyOrg",
+	"tags": [],
+	"tokenEncryptionKeyId": null
+}

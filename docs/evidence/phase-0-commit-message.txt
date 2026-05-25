@@ -1,0 +1,12 @@
+chore(phase-0): environment auth vault discovery for hb-personal-assistant v0.0.1
+
+- Proven: cert viability (600, valid key, app-only claims), tenant 0e834bd7..., vault conventions (Daily Notes/YYYY-MM-DD + AI Outputs), Python 3.14 + Ollama client, no HB App Support yet.
+- Delegated readiness: prior proof shows /me + calendarView + drive 200; mail 403 (scope gap noted, no reg change per gate 20).
+- Artifacts: docs/evidence/phase-0-*.json + logs; .gitignore per 19 + safety; GitHub repo bobbyfetting/hb-personal-assistant initialized (first commit).
+- Validation: all listed commands executed + evidenced (pre-scaffold errors expected).
+- Guardrails: zero tokens/keys/bodies/PEM in evidence or logs; no M365 mutation; no approval gates crossed.
+- Next: Phase 1 scaffold (Prompt 01) on the new repo.
+
+Refs: Prompt 00, 02 plan, 04/05 auth specs, 20 gates.
+
+Manifest: v0.0.1 (phase-0 bootstrap)
