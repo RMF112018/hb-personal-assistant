@@ -1,71 +1,55 @@
-"""Focused tests for the Prompt 03 Delegated Graph Capability Proof artifacts.
-
-These tests cover redaction, classifier behavior under the execution assumption,
-app-only rejection logic, and the structure expected from the proof script.
-They do not perform live Graph calls.
-"""
+"""Tests for current runtime delegated graph proof runner and CLI wiring."""
 
 from __future__ import annotations
 
-import json
-import tempfile
-from pathlib import Path
+from typer.testing import CliRunner
 
-from hb_assistant.auth.classifier import classify_token_claims, safe_redact_claims
-
-try:
-    from hb_assistant.scripts.proofs.delegated_graph_capability_proof import _redact_for_evidence  # type: ignore[attr-defined]
-except ModuleNotFoundError:
-    _redact_for_evidence = None  # type: ignore[assignment]
+from hb_assistant.cli.main import app
+from hb_assistant.graph.proof_runner import _classify_delegated_claims, run_delegated_graph_proof
 
 
-def test_redact_for_evidence_never_leaks_tokens() -> None:
-    if _redact_for_evidence is None:
-        import pytest
-
-        pytest.skip("delegated_graph_capability_proof script not installed in this env (P3 artifact; non-blocking for P13 closeout)")
-    rec = _redact_for_evidence(
-        step=3,
-        endpoint="/me/messages/xxx",
-        status=200,
-        sample={"body": "Hello Bobby, please review..."},  # would be redacted in real run
-        token_class="delegated",
-        note="Bobby mention present in preview",
-    )
-    blob = json.dumps(rec)
-    assert "access_token" not in blob.lower()
-    assert "refresh_token" not in blob.lower()
-    assert "BEGIN" not in blob
+runner = CliRunner()
 
 
-def test_safe_redact_claims_removes_sensitive_fields() -> None:
-    claims = {
-        "scp": "Mail.Read User.Read",
-        "upn": "bobby@ex.com",
-        "access_token": "should_never_appear",
-        "roles": ["Sites.Read.All"],
-    }
-    red = safe_redact_claims(claims)
-    assert "access_token" not in red
-    assert red["upn"] == "bobby@ex.com"
-    assert red["scp_count"] > 0
+def test_delegated_classification_rule() -> None:
+    delegated = _classify_delegated_claims({"scp": "User.Read Mail.Read"})
+    assert delegated["classification"] == "delegated"
+    assert delegated["has_scp"] is True
+    assert delegated["has_roles"] is False
+    assert delegated["delegated_runtime_valid"] is True
+
+    app_only = _classify_delegated_claims({"roles": ["Sites.Read.All"]})
+    assert app_only["classification"] == "app_only"
+    assert app_only["delegated_runtime_valid"] is False
 
 
-def test_classify_and_app_only_rejection_logic() -> None:
-    # Simulates what step 9 does
-    app_only_claims = {"roles": ["Sites.Read.All"], "tid": "0e83..."}
-    assert classify_token_claims(app_only_claims) == "app_only"
+def test_runner_blocks_without_delegated_token(monkeypatch) -> None:
+    from hb_assistant.graph import proof_runner as pr
 
-    # In the proof script we assert that app-only is rejected for mail/calendar
-    # (either via classifier or actual 403). This test confirms the classification side.
-    assert classify_token_claims(app_only_claims) != "delegated"
+    class FakeDelegated:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def get_token(self, scopes=None, force_refresh=False):
+            raise RuntimeError("no token")
+
+    class FakeAppOnly:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    monkeypatch.setattr(pr, "DelegatedAuthProvider", FakeDelegated)
+    monkeypatch.setattr(pr, "AppOnlyAuthProvider", FakeAppOnly)
+
+    result = run_delegated_graph_proof(safe=True)
+    assert result["status"] == "blocked_no_token"
+    assert "remediation" in result
 
 
-def test_proof_evidence_dir_creation_pattern() -> None:
-    # The script creates docs/evidence/prompt-03-delegated-proof/
-    # This test just verifies the path logic would work in the repo.
-    with tempfile.TemporaryDirectory() as td:
-        evidence_dir = Path(td) / "prompt-03-delegated-proof"
-        evidence_dir.mkdir(parents=True)
-        (evidence_dir / "step-1.json").write_text(json.dumps({"step": 1, "status": 200}))
-        assert (evidence_dir / "step-1.json").exists()
+def test_cli_proof_positional_grammar_parses() -> None:
+    result = runner.invoke(app, ["diagnostics", "proof", "delegated-graph", "--json"])
+    assert result.exit_code in (0, 1)
+
+
+def test_cli_proof_back_compat_alias_parses() -> None:
+    result = runner.invoke(app, ["diagnostics", "proof", "--delegated-graph", "--json"])
+    assert result.exit_code in (0, 1)

@@ -222,42 +222,48 @@ def automation_status(
 
 @app.command("proof")
 def proof_cmd(
-    delegated_graph: bool = typer.Option(False, "--delegated-graph", help="Run the 10-step Delegated Graph Capability Proof (Prompt 03 gate)"),
+    proof_name: str | None = typer.Argument(None, help="Proof name (canonical: delegated-graph)"),
+    delegated_graph: bool = typer.Option(False, "--delegated-graph", help="Backward-compatible alias for delegated-graph proof"),
     step: str = typer.Option("all", "--step", help="Specific step number or 'all'"),
     json_out: bool = typer.Option(True, "--json", help="Emit structured evidence (default)"),
     safe: bool = typer.Option(True, "--safe", help="Safe/read-only mode (no writes beyond evidence)"),
 ) -> None:
-    """Delegated Graph Capability Proof runner (Prompt 03).
+    """Delegated Graph Capability Proof runner.
 
     This is the mandatory gate before production mail/calendar/file retrieval.
-    Full orchestration and evidence writing lives in scripts/proofs/delegated_graph_capability_proof.py.
+    Proof uses current CLI/auth/runtime code paths and writes sanitized evidence.
 
     Usage examples:
+      hb-assistant diagnostics proof delegated-graph --json
       hb-assistant diagnostics proof --delegated-graph --json
-      hb-assistant diagnostics proof --delegated-graph --step 1-5 --json
     """
-    if not delegated_graph:
+    selected = proof_name
+    if delegated_graph and selected is None:
+        selected = "delegated-graph"
+
+    if selected is None:
         payload = {
             "available_proofs": ["delegated-graph"],
-            "note": "See --delegated-graph for the 10-step proof per 05_Delegated_Graph_Proof_Specification.md",
-            "script": "scripts/proofs/delegated_graph_capability_proof.py"
+            "note": "Use `hb-assistant diagnostics proof delegated-graph --json`.",
         }
         typer.echo(json.dumps(payload, indent=2))
         raise typer.Exit(0)
 
-    # Thin wrapper: in a full implementation this would import and run the proof module.
-    # For now we point to the canonical script (created as part of this phase).
-    payload = {
-        "proof": "delegated-graph",
-        "step": step,
-        "safe": safe,
-        "status": "delegated_to_script",
-        "instruction": "Run: python -m scripts.proofs.delegated_graph_capability_proof --step " + step + " --json",
-        "evidence_location": "docs/evidence/prompt-03-delegated-proof/",
-        "assumption": "Missing delegated scopes (e.g. Mail.Read) are assumed granted during development prior to deployment per execution directive."
-    }
-    typer.echo(json.dumps(payload, indent=2))
-    raise typer.Exit(0)
+    if selected != "delegated-graph":
+        payload = {
+            "status": "runtime_error",
+            "error": f"Unsupported proof '{selected}'.",
+            "available_proofs": ["delegated-graph"],
+        }
+        typer.echo(json.dumps(payload, indent=2))
+        raise typer.Exit(1)
+
+    from hb_assistant.graph.proof_runner import run_delegated_graph_proof
+
+    proof = run_delegated_graph_proof(safe=safe, repo=".")
+    proof["step_filter"] = step
+    typer.echo(json.dumps(proof, indent=2))
+    raise typer.Exit(0 if proof.get("status") == "pass" else 1)
 
 
 @app.command("mail")
