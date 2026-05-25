@@ -130,13 +130,23 @@ class GraphHttpClient:
         *,
         params: Optional[Dict[str, Any]] = None,
         scopes: Optional[List[str]] = None,
+        max_pages: Optional[int] = None,
+        max_items: Optional[int] = None,
     ) -> Iterator[Dict[str, Any]]:
         """Yield every item across @odata.nextLink pages (safe for bounded queries)."""
         p = dict(params or {})
+        pages_seen = 0
+        items_seen = 0
         while True:
+            if max_pages is not None and pages_seen >= max_pages:
+                break
             data = self.get(path, params=p, scopes=scopes)
+            pages_seen += 1
             for item in data.get("value", []):
+                if max_items is not None and items_seen >= max_items:
+                    return
                 yield item
+                items_seen += 1
             next_link = data.get("@odata.nextLink")
             if not next_link:
                 break

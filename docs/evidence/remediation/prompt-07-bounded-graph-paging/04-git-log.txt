@@ -1,0 +1,5 @@
+5f77c5e test(graph): refresh delegated graph proof for current runtime
+3ce58ec fix(validation): make tests lint and type checks pass
+56fe523 fix(automation): correct launchd executable and command rendering
+4bcb90b fix(cli): align auth and run command groups with canonical grammar
+8e5e687 chore(audit): reconcile repo truth and closeout evidence

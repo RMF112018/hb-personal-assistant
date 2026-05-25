@@ -26,8 +26,12 @@ class CalendarClient:
     def list_events(self, top: int = 10) -> List[CalendarEvent]:
         start, end = self._window()
         url = f"/me/calendarView?startDateTime={start}&endDateTime={end}&$top={top}&$select=id,subject,organizer,start,end,location,isCancelled,isOnlineMeeting,webLink,hasAttachments,iCalUId"
-        data = self.client.get(url)
+        max_items = min(top, self.cfg.calendar.max_items_per_run)
         events = []
-        for ev in data.get("value", []):
+        for ev in self.client.get_all_pages(
+            url,
+            max_pages=self.cfg.graph.max_pages_per_call,
+            max_items=max_items,
+        ):
             events.append(CalendarEvent.from_graph_event(ev))
         return events

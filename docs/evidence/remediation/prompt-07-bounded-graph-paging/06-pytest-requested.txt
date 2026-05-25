@@ -1,0 +1,1 @@
+zsh:1: no matches found: tests/test_mail*.py

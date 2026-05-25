@@ -1,0 +1,12 @@
+ M config/config.example.yml
+ M docs/evidence/remediation/prompt-05-delegated-graph-proof/summary.json
+ M src/hb_assistant/config/models.py
+ M src/hb_assistant/graph/calendar_client.py
+ M src/hb_assistant/graph/drive_item_client.py
+ M src/hb_assistant/graph/http_client.py
+ M src/hb_assistant/graph/mail_client.py
+ M tests/test_auth.py
+ M tests/test_graph_clients.py
+?? .tmp-app-support-remediation/
+?? docs/evidence/remediation/prompt-07-bounded-graph-paging/
+?? docs/plans/my-pa-phase-0/gap-closure/

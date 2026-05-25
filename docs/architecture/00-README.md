@@ -8,6 +8,7 @@ This directory contains living architecture and decision records for the HB Pers
 - `remediation-gap-closure.md` — Prompt 01 repo truth reconciliation and remediation acceptance baseline
 - `remediation-validation-baseline.md` — Prompt 04 validation baseline and scoped standards (pytest/ruff/mypy reconciliation)
 - `remediation-delegated-graph-proof.md` — Prompt 05 runtime delegated Graph proof refresh and truthful gap reporting
+- `remediation-bounded-graph-paging.md` — Prompt 07 bounded, deterministic Graph paging across mail/calendar/drive clients
 - `docs/decisions/` — Closed technical decisions (D-CLI-001 etc.)
 
 Remediation context: implementation reached `v1.3.0`, but acceptance is gated on remediation validation; prior closeout claims are superseded pending green remediation evidence.

@@ -39,21 +39,28 @@ class MailClient:
         filter_q = self._inbound_window()
         select = "id,conversationId,internetMessageId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,webLink"
         url = f"/me/mailFolders/inbox/messages?$filter={filter_q}&$select={select}&$top={top}"
-        data = self.client.get(url)
+        max_items = min(top, self.cfg.mail.max_items_per_run)
         emails = []
-        for msg in data.get("value", []):
+        for msg in self.client.get_all_pages(
+            url,
+            max_pages=self.cfg.graph.max_pages_per_call,
+            max_items=max_items,
+        ):
             e = Email.from_graph_message(msg, folder="inbox")
             emails.append(e)
-        # Handle paging if needed (nextLink) - omitted for brevity in skeleton; full impl would iterate
         return emails
 
     def list_sent(self, top: int = 25) -> List[Email]:
         filter_q = self._sent_window()
         select = "id,conversationId,internetMessageId,subject,from,toRecipients,ccRecipients,sentDateTime,bodyPreview,hasAttachments,webLink"
         url = f"/me/mailFolders/sentItems/messages?$filter={filter_q}&$select={select}&$top={top}"
-        data = self.client.get(url)
+        max_items = min(top, self.cfg.mail.max_items_per_run)
         emails = []
-        for msg in data.get("value", []):
+        for msg in self.client.get_all_pages(
+            url,
+            max_pages=self.cfg.graph.max_pages_per_call,
+            max_items=max_items,
+        ):
             e = Email.from_graph_message(msg, folder="sent")
             emails.append(e)
         return emails

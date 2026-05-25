@@ -15,9 +15,11 @@ mail:
   inbound_lookback_days: 5
   sent_lookback_days: 7
   max_body_retrieval_per_run: 75
+  max_items_per_run: 25
   persist_full_body: false
 calendar:
   window: { start: "yesterday", end: "next_2_business_days" }
+  max_items_per_run: 25
 files:
   max_file_size_mb_default: 100
   max_file_size_mb_pdf: 250
@@ -27,6 +29,9 @@ files:
   require_manual_approval_above_mb: 300
   parse_timeout_seconds: 180
   ocr_enabled: false
+  max_drive_items_per_run: 25
+graph:
+  max_pages_per_call: 5
 automation:
   morning_run:
     time: "05:00"

@@ -42,11 +42,13 @@ class MailConfig(BaseModel):
     inbound_lookback_days: int = 5
     sent_lookback_days: int = 7
     max_body_retrieval_per_run: int = 75
+    max_items_per_run: int = 25
     persist_full_body: bool = False
 
 
 class CalendarConfig(BaseModel):
     window: dict = Field(default_factory=lambda: {"start": "yesterday", "end": "next_2_business_days"})
+    max_items_per_run: int = 25
 
 
 class FilesConfig(BaseModel):
@@ -58,6 +60,11 @@ class FilesConfig(BaseModel):
     require_manual_approval_above_mb: int = 300
     parse_timeout_seconds: int = 180
     ocr_enabled: bool = False
+    max_drive_items_per_run: int = 25
+
+
+class GraphConfig(BaseModel):
+    max_pages_per_call: int = 5
 
 
 class MorningRunConfig(BaseModel):
@@ -93,6 +100,7 @@ class AppConfig(BaseModel):
     mail: MailConfig = Field(default_factory=MailConfig)
     calendar: CalendarConfig = Field(default_factory=CalendarConfig)
     files: FilesConfig = Field(default_factory=FilesConfig)
+    graph: GraphConfig = Field(default_factory=GraphConfig)
     automation: AutomationConfig = Field(default_factory=AutomationConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
 

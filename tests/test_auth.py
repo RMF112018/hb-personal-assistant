@@ -152,3 +152,43 @@ def test_graph_client_paging_and_retry(mock_requests: MagicMock) -> None:
     assert data == {"value": []}
 
     client.close()
+
+
+@patch("hb_assistant.graph.http_client.requests")
+def test_graph_client_get_all_pages_respects_max_items(mock_requests: MagicMock) -> None:
+    from hb_assistant.graph.http_client import GraphHttpClient
+
+    def fake_token(scopes=None):
+        return {"access_token": "fake", "id_token_claims": {"scp": "User.Read"}}
+
+    client = GraphHttpClient(fake_token)
+
+    page_1 = MagicMock(status_code=200)
+    page_1.json.return_value = {"value": [{"id": "1"}, {"id": "2"}], "@odata.nextLink": "https://graph.example/next"}
+    page_2 = MagicMock(status_code=200)
+    page_2.json.return_value = {"value": [{"id": "3"}, {"id": "4"}]}
+    mock_requests.Session.return_value.request.side_effect = [page_1, page_2]
+
+    items = list(client.get_all_pages("/me/messages", max_items=3))
+    assert [item["id"] for item in items] == ["1", "2", "3"]
+    assert mock_requests.Session.return_value.request.call_count == 2
+
+
+@patch("hb_assistant.graph.http_client.requests")
+def test_graph_client_get_all_pages_respects_max_pages(mock_requests: MagicMock) -> None:
+    from hb_assistant.graph.http_client import GraphHttpClient
+
+    def fake_token(scopes=None):
+        return {"access_token": "fake", "id_token_claims": {"scp": "User.Read"}}
+
+    client = GraphHttpClient(fake_token)
+
+    page_1 = MagicMock(status_code=200)
+    page_1.json.return_value = {"value": [{"id": "1"}], "@odata.nextLink": "https://graph.example/next"}
+    page_2 = MagicMock(status_code=200)
+    page_2.json.return_value = {"value": [{"id": "2"}]}
+    mock_requests.Session.return_value.request.side_effect = [page_1, page_2]
+
+    items = list(client.get_all_pages("/me/messages", max_pages=1))
+    assert [item["id"] for item in items] == ["1"]
+    assert mock_requests.Session.return_value.request.call_count == 1
