@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import pwd
+import sqlite3
 import stat
 from pathlib import Path
 from typing import Any, Optional
@@ -273,3 +274,72 @@ class PathPolicy:
             "logs_error": str(self.get_logs_dir() / "error-logs"),
             "evidence": str(self.get_evidence_dir()),
         }
+
+    def ensure_db_ready(self, *, return_report: bool = False) -> None | dict[str, Any]:
+        """Validate SQLite DB path readiness with actionable diagnostics."""
+        app_support = self.get_app_support()
+        db_path = self.get_db_path()
+        db_parent = db_path.parent
+
+        checks: dict[str, Any] = {
+            "app_support_exists": app_support.exists(),
+            "db_parent_exists": db_parent.exists(),
+            "db_parent_is_dir": db_parent.is_dir() if db_parent.exists() else False,
+            "db_parent_writable": os.access(db_parent, os.W_OK) if db_parent.exists() else False,
+            "sqlite_openable": False,
+            "wal_mode": None,
+        }
+        report: dict[str, Any] = {
+            "ok": False,
+            "status": "blocked_db_unavailable",
+            "db_path": str(db_path),
+            "db_parent": str(db_parent),
+            "checks": checks,
+            "repair_guidance": [
+                f'mkdir -p "{db_parent}"',
+                f'chmod u+rwx "{db_parent}"',
+                f'# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) "{app_support}"',
+            ],
+            "error": None,
+        }
+
+        if not checks["app_support_exists"]:
+            report["error"] = "app_support_missing"
+            return report if return_report else None
+
+        if not checks["db_parent_exists"]:
+            report["error"] = "db_parent_missing"
+            return report if return_report else None
+
+        if not checks["db_parent_is_dir"]:
+            report["error"] = "db_parent_not_directory"
+            return report if return_report else None
+
+        if not checks["db_parent_writable"]:
+            report["error"] = "db_parent_not_writable"
+            return report if return_report else None
+
+        conn = None
+        try:
+            conn = sqlite3.connect(str(db_path), timeout=5)
+            checks["sqlite_openable"] = True
+            try:
+                wal = conn.execute("PRAGMA journal_mode = WAL").fetchone()
+                wal_mode = str(wal[0]).lower() if wal and wal[0] is not None else "unknown"
+                checks["wal_mode"] = wal_mode
+            except Exception:
+                checks["wal_mode"] = "degraded"
+        except Exception as e:
+            report["error"] = f"sqlite_open_failed: {e}"
+            return report if return_report else None
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+        report["ok"] = True
+        report["status"] = "ok"
+        report["error"] = None
+        return report if return_report else None

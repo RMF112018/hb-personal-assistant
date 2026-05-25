@@ -1,0 +1,13 @@
+ M docs/evidence/remediation/prompt-05-delegated-graph-proof/summary.json
+ M src/hb_assistant/cli/files.py
+ M src/hb_assistant/cli/run.py
+ M src/hb_assistant/config/path_policy.py
+ M src/hb_assistant/store/__init__.py
+ M src/hb_assistant/store/connection.py
+ M tests/test_automation.py
+ M tests/test_files_cli.py
+?? .tmp-app-support-remediation/
+?? docs/evidence/remediation-addendum/prompt-03/
+?? docs/plans/my-pa-phase-0/gap-closure/
+?? src/hb_assistant/store/errors.py
+?? tests/test_store.py

@@ -1,0 +1,30 @@
+{
+  "command": "files ingest",
+  "mode": "real",
+  "status": "blocked_db_unavailable",
+  "dry_run": true,
+  "limit": 5,
+  "results": [],
+  "error": "Database unavailable at /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "readiness": {
+    "ok": false,
+    "status": "blocked_db_unavailable",
+    "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+    "db_parent": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db",
+    "checks": {
+      "app_support_exists": true,
+      "db_parent_exists": true,
+      "db_parent_is_dir": true,
+      "db_parent_writable": false,
+      "sqlite_openable": false,
+      "wal_mode": null
+    },
+    "repair_guidance": [
+      "mkdir -p \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db\"",
+      "chmod u+rwx \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db\"",
+      "# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant\""
+    ],
+    "error": "db_parent_not_writable"
+  }
+}

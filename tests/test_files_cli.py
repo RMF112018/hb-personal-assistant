@@ -6,6 +6,7 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from hb_assistant.cli.main import app
+from hb_assistant.store.errors import StoreReadinessError
 
 
 runner = CliRunner()
@@ -41,3 +42,18 @@ def test_files_ingest_uses_real_persisted_candidates() -> None:
     assert result.exit_code == 0
     assert '"mode": "real"' in result.stdout
     assert '"status": "ok"' in result.stdout
+
+
+def test_files_ingest_dry_run_returns_blocked_db_unavailable_json() -> None:
+    with patch(
+        "hb_assistant.cli.files.Store",
+        side_effect=StoreReadinessError(
+            status="blocked_db_unavailable",
+            message="Database unavailable for dry-run",
+            db_path="/tmp/test.sqlite",
+            report={"ok": False, "status": "blocked_db_unavailable", "error": "db_parent_not_writable"},
+        ),
+    ):
+        result = runner.invoke(app, ["files", "ingest", "--dry-run", "--json"], env=_env())
+    assert result.exit_code == 1
+    assert '"status": "blocked_db_unavailable"' in result.stdout

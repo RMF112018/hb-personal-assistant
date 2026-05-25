@@ -14,6 +14,7 @@ import typer
 from hb_assistant.files import FileIngestionService
 from hb_assistant.normalize.drive_item import DriveItem
 from hb_assistant.store.repositories import Store
+from hb_assistant.store.errors import StoreReadinessError
 
 app = typer.Typer(help="Selective file/attachment ingestion (relevance, eligibility, approval, bounded parse). Dry-run safe.")
 
@@ -91,6 +92,20 @@ def files_ingest(
     """Real provenance-backed ingest path (dry-run default)."""
     try:
         store = Store()
+    except StoreReadinessError as ex:
+        payload = {
+            "command": "files ingest",
+            "mode": "real",
+            "status": "blocked_db_unavailable",
+            "dry_run": dry_run and not apply,
+            "limit": limit,
+            "results": [],
+            "error": ex.message[:200],
+            "db_path": ex.db_path,
+            "readiness": ex.report,
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str))
+        raise typer.Exit(1)
     except Exception as ex:
         payload = {
             "command": "files ingest",
@@ -105,17 +120,44 @@ def files_ingest(
         raise typer.Exit(1)
     svc = FileIngestionService(drive_client=object(), store=store)
     candidates = []
-    for row in store.list_pending_ingest_candidates(limit=limit):
-        candidates.append(
-            DriveItem(
-                id=str(row.get("drive_item_id") or ""),
-                name=row.get("name"),
-                size=row.get("size_bytes"),
-                web_url=row.get("web_url"),
-                is_file=True,
-                source_record_id=row.get("source_record_id"),
+    try:
+        for row in store.list_pending_ingest_candidates(limit=limit):
+            candidates.append(
+                DriveItem(
+                    id=str(row.get("drive_item_id") or ""),
+                    name=row.get("name"),
+                    size=row.get("size_bytes"),
+                    web_url=row.get("web_url"),
+                    is_file=True,
+                    source_record_id=row.get("source_record_id"),
+                )
             )
-        )
+    except StoreReadinessError as ex:
+        payload = {
+            "command": "files ingest",
+            "mode": "real",
+            "status": "blocked_db_unavailable",
+            "dry_run": dry_run and not apply,
+            "limit": limit,
+            "results": [],
+            "error": ex.message[:200],
+            "db_path": ex.db_path,
+            "readiness": ex.report,
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str))
+        raise typer.Exit(1)
+    except Exception as ex:
+        payload = {
+            "command": "files ingest",
+            "mode": "real",
+            "status": "candidate_discovery_error",
+            "dry_run": dry_run and not apply,
+            "limit": limit,
+            "results": [],
+            "error": str(ex)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str))
+        raise typer.Exit(1)
 
     if not candidates:
         payload = {

@@ -12,7 +12,9 @@ from unittest.mock import patch
 
 from hb_assistant.automation import LaunchdManager, MorningRunOrchestrator
 from hb_assistant.cli.automation import app
+from hb_assistant.cli.main import app as main_app
 from hb_assistant.config.models import MorningRunConfig
+from hb_assistant.store.errors import StoreReadinessError
 from hb_assistant.store.repositories import Store
 from typer.testing import CliRunner
 
@@ -161,3 +163,21 @@ def test_no_secrets_in_automation_artifacts(tmp_path):
     if "evidence_path" in res:
         content = Path(res["evidence_path"]).read_text()
         assert "PRIVATE KEY" not in content
+
+
+def test_run_morning_dry_run_returns_blocked_db_unavailable_json() -> None:
+    runner = CliRunner()
+    with patch(
+        "hb_assistant.links.registry.SourceLinkRegistry",
+        side_effect=StoreReadinessError(
+            status="blocked_db_unavailable",
+            message="Database unavailable for dry-run",
+            db_path="/tmp/test.sqlite",
+            report={"ok": False, "status": "blocked_db_unavailable", "error": "db_parent_not_writable"},
+        ),
+    ):
+        result = runner.invoke(main_app, ["run", "morning", "--dry-run", "--json"])
+
+    assert result.exit_code == 1
+    assert '"status": "blocked_db_unavailable"' in result.output
+    assert "Traceback" not in result.output

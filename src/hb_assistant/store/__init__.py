@@ -5,12 +5,14 @@ and integration points for the SourceLinkRegistry.
 """
 
 from .connection import get_connection, transaction
+from .errors import StoreReadinessError
 from .migrator import SQLiteMigrator
 from .repositories import Store
 
 __all__ = [
     "get_connection",
     "transaction",
+    "StoreReadinessError",
     "SQLiteMigrator",
     "Store",
 ]
