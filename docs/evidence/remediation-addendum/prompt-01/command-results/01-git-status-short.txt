@@ -1,0 +1,5 @@
+ M docs/evidence/remediation/prompt-05-delegated-graph-proof/summary.json
+ M src/hb_assistant/security/sensitive_scan.py
+?? .tmp-app-support-remediation/
+?? docs/evidence/remediation-addendum/
+?? docs/plans/my-pa-phase-0/gap-closure/

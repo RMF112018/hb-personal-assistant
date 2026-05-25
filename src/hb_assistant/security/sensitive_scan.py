@@ -6,7 +6,6 @@ Never emits matched secret values.
 
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path

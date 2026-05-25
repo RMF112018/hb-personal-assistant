@@ -1,5 +1,5 @@
 """Security scanning utilities (bounded, redacted)."""
 
-from .sensitive_scan import SensitiveScanner, ScanConfig
+from .sensitive_scan import ScanConfig, SensitiveScanner
 
-__all__ = ["SensitiveScanner", "ScanConfig"]
+__all__ = ["ScanConfig", "SensitiveScanner"]

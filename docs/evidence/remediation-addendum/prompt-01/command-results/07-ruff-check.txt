@@ -1,0 +1,14 @@
+I001 [*] Import block is un-sorted or un-formatted
+ --> src/hb_assistant/security/__init__.py:3:1
+  |
+1 | """Security scanning utilities (bounded, redacted)."""
+2 |
+3 | from .sensitive_scan import SensitiveScanner, ScanConfig
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+4 |
+5 | __all__ = ["SensitiveScanner", "ScanConfig"]
+  |
+help: Organize imports
+
+Found 1 error.
+[*] 1 fixable with the `--fix` option.
