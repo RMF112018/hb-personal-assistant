@@ -497,6 +497,53 @@ class Store:
         )
         return [dict(r) for r in cur.fetchall()]
 
+    def list_upcoming_calendar_events(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Return upcoming calendar rows (metadata only, bounded)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT source_record_id, start_datetime, end_datetime, web_link, is_cancelled
+            FROM calendar_events
+            WHERE is_cancelled = 0
+            ORDER BY start_datetime ASC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+    def list_file_review_queue(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Return files needing review/processing (metadata only, bounded)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT source_record_id, name, size_bytes, download_status, parse_status
+            FROM files
+            WHERE download_status != 'downloaded'
+               OR parse_status != 'success'
+            ORDER BY source_record_id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+    def list_recent_body_mentions(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Return source records flagged by body mention detection (redacted metadata only)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT sr.id as source_record_id, sr.title_redacted, e.sender_domain, e.web_link
+            FROM source_records sr
+            JOIN emails e ON e.source_record_id = sr.id
+            WHERE e.body_mention_detected = 1
+            ORDER BY sr.last_seen_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
     # --- Phase 11: retrieval helpers (redacted excerpts/previews only, for Retriever) ---
 
     def list_recent_parser_outputs(self, limit: int = 100) -> list[dict[str, Any]]:

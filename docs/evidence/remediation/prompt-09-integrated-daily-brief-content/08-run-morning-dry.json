@@ -1,0 +1,48 @@
+{
+  "implemented": true,
+  "phase": 12,
+  "run_id": 5,
+  "orchestrator": {
+    "run_id": 6,
+    "started_at": "2026-05-25T14:58:32.017679+00:00",
+    "dry_run": true,
+    "config": {
+      "time": "05:00",
+      "weekend_behavior": "manual_only",
+      "catch_up": true
+    },
+    "stages": [
+      {
+        "stage": "context",
+        "status": "ok",
+        "reason": null,
+        "summary": {
+          "retrieved": 0,
+          "actions": 0
+        }
+      },
+      {
+        "stage": "brief_preview",
+        "status": "ok",
+        "reason": null,
+        "summary": {
+          "generated": true,
+          "len": 406
+        }
+      },
+      {
+        "stage": "files_discover",
+        "status": "ok",
+        "reason": null,
+        "summary": {
+          "candidates": 0
+        }
+      }
+    ],
+    "notes": [
+      "catch-up not required (recent ledger entry)"
+    ],
+    "decision": "completed",
+    "evidence_path": "/private/tmp/hb-pa-p08-appsupport/evidence/phase-12-runs/morning-orchestrator-20260525-105832.json"
+  }
+}

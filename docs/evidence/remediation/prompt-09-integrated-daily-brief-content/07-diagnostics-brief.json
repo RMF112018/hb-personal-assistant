@@ -1,0 +1,10 @@
+{
+  "mode": "brief-preview-dry-run",
+  "target_date": "2026-05-25",
+  "preview_length": 678,
+  "note": "This is a redacted preview only. No files were written to your vault. Use the full morning run for real writes.",
+  "markers_used": [
+    "<!-- HB-DAILY-BRIEF:START -->",
+    "<!-- HB-DAILY-BRIEF:END -->"
+  ]
+}

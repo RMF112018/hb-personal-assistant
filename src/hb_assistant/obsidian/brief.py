@@ -11,6 +11,7 @@ from datetime import date
 from typing import Any, Optional
 
 from hb_assistant.links.registry import SourceLinkRegistry
+from hb_assistant.retrieval import WorkstreamContext, WorkstreamContextBuilder
 from hb_assistant.store.repositories import Store
 
 
@@ -21,13 +22,23 @@ class DailyBriefGenerator:
         self.store = store or Store()
         self.registry = registry or SourceLinkRegistry(self.store)
 
-    def generate_for_date(self, target_date: date) -> tuple[str, dict[str, Any]]:
+    def generate_for_date(
+        self,
+        target_date: date,
+        context: Optional[WorkstreamContext] = None,
+    ) -> tuple[str, dict[str, Any]]:
         """
         Return (inner_markdown_content, frontmatter_updates).
         Content is safe for direct insertion between HB-DAILY-BRIEF markers.
         """
+        if context is None:
+            context = WorkstreamContextBuilder(store=self.store).build_for_today(limit_per=4)
+
         # Fetch recent action_items (from extraction or prior signals)
         actions = self.store.get_recent_action_items(limit=15)
+        calendar_items = self.store.list_upcoming_calendar_events(limit=8)
+        file_queue = self.store.list_file_review_queue(limit=8)
+        mention_items = self.store.list_recent_body_mentions(limit=8)
 
         # Build sections (redacted titles only)
         priority_actions = []
@@ -41,11 +52,54 @@ class DailyBriefGenerator:
             else:
                 priority_actions.append(line)
 
-        # For demo: also pull any high-signal classified items linked to recent sources (Phase 6)
-        # In real runs the morning orchestrator would pass the relevant source_record_ids.
+        # Add waiting-style signals from retrieval context.
+        for hit in (context.retrieved or [])[:8]:
+            excerpt = str(hit.get("excerpt", ""))
+            if "waiting" in excerpt.lower():
+                sid = hit.get("source_record_id")
+                waiting_on.append(f"- [ ] [signal] {excerpt[:90]}{'...' if len(excerpt) > 90 else ''} (src={sid})")
+
+        meeting_prep = []
+        for ev in calendar_items:
+            sid = ev.get("source_record_id")
+            start = ev.get("start_datetime") or "unknown_start"
+            meeting_prep.append(f"- Meeting source {sid} at {start}")
+
+        file_review = []
+        for f in file_queue:
+            sid = f.get("source_record_id")
+            name = f.get("name") or "[redacted file]"
+            ds = f.get("download_status") or "unknown"
+            ps = f.get("parse_status") or "unknown"
+            file_review.append(f"- {name} (src={sid}, download={ds}, parse={ps})")
+
         signals_section = []
-        # Placeholder: in a full run we would query recent emails with body_mention_detected or waiting signals
-        # and turn them into "Follow-Ups" or "Project Signals".
+        for m in mention_items:
+            sid = m.get("source_record_id")
+            title = m.get("title_redacted") or "[redacted mention]"
+            signals_section.append(f"- body_mention_detected: {title} (src={sid})")
+        for hit in (context.retrieved or [])[:8]:
+            excerpt = str(hit.get("excerpt", ""))
+            sid = hit.get("source_record_id")
+            signals_section.append(f"- retrieval hit (src={sid}): {excerpt[:100]}{'...' if len(excerpt) > 100 else ''}")
+
+        source_map: dict[int, set[str]] = {}
+        for hit in (context.retrieved or []):
+            sid = hit.get("source_record_id")
+            if not sid:
+                continue
+            source_map.setdefault(int(sid), set())
+            for ln in hit.get("links", []) or []:
+                lt = ln.get("link_type")
+                if lt:
+                    source_map[int(sid)].add(str(lt))
+        for sid in [m.get("source_record_id") for m in mention_items] + [f.get("source_record_id") for f in file_queue] + [e.get("source_record_id") for e in calendar_items]:
+            if sid:
+                source_map.setdefault(int(sid), set())
+        source_lines = []
+        for sid in sorted(source_map.keys())[:20]:
+            link_types = sorted(source_map[sid])
+            source_lines.append(f"- src={sid} links={', '.join(link_types) if link_types else 'none'}")
 
         sections = [
             "## Priority Actions",
@@ -55,16 +109,16 @@ class DailyBriefGenerator:
             "\n".join(waiting_on) if waiting_on else "_Nothing explicitly waiting on others._",
             "",
             "## Meeting Prep & Follow-Ups",
-            "_(Populated from calendar events + extraction in later runs.)_",
+            "\n".join(meeting_prep) if meeting_prep else "No meeting prep items found for the configured window.",
             "",
             "## File Review Queue",
-            "_(Linked driveItem / attachment reviews will appear here after Phase 9.)_",
+            "\n".join(file_review) if file_review else "No current file review candidates found.",
             "",
             "## Project / Workstream Signals",
-            "_(Derived from Phase 6 bobby_mention + Phase 7 signals.)_",
+            "\n".join(signals_section) if signals_section else "_No current retrieval/body-mention signals._",
             "",
             "## Sources",
-            "All items are source-linked. See the corresponding Daily Note or AI Outputs companion for full provenance.",
+            "\n".join(source_lines) if source_lines else "_No source links available in current context._",
         ]
 
         inner = "\n".join(sections)

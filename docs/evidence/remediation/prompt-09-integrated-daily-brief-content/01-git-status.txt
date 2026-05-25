@@ -1,0 +1,7 @@
+ M src/hb_assistant/cli/diagnostics.py
+ M src/hb_assistant/obsidian/brief.py
+ M src/hb_assistant/store/repositories.py
+?? .tmp-app-support-remediation/
+?? docs/evidence/remediation/prompt-09-integrated-daily-brief-content/
+?? docs/plans/my-pa-phase-0/gap-closure/
+?? tests/test_brief_content.py
