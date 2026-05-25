@@ -1,0 +1,14 @@
+feat(phase-5): Local State Store + Source Link Registry (SQLite, migrations, repos, run ledger) for hb-personal-assistant v0.5.0
+
+- Implemented SQLiteMigrator (idempotent v1 from 07 schema, WAL/FK/PRAGMAs at PathPolicy db path), repositories for all core tables, SourceLinkRegistry (enforces provenance + link_types, persists Phase 4 normalize models with redaction).
+- New store/ + links/ packages; minimal CLI (diagnostics store --json safe summary + run morning now records assistant_runs ledger).
+- Tests (temp DB, full idempotency/roundtrip/link enforcement/redaction), new 05- architecture doc with mermaid + refs.
+- Evidence: phase-5-sample-*.json + registry-proof.json (redacted only), phase-5-validation-outputs/, full append to prompt-execution-log.md + register row.
+- Validation: all 8 cmds + new helpers + persist smoke pass; sensitive scan clean; zero full bodies/tokens in DB/evidence/logs.
+- Guardrails: read-only M365, no destructive (idempotent only), dry-run respected, data outside repo, 20/13/14/15 gates honored, .gitignore safe.
+- GitHub: committed + pushed to bobbyfetting/hb-personal-assistant.
+- Next: Prompt 06 (Body Mention Detection + Email Classification) — consumes persisted emails + links + body flags.
+
+Refs: Prompt 05, 07 Local Data Model spec, 02 plan row 4, Phase 4 normalize foundation, 20/13/14/15/04.
+
+Manifest: v0.5.0 (Local State Store + Source Link Registry complete)

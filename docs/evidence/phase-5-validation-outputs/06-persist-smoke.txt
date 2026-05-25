@@ -1,0 +1,8 @@
+=== Phase 5 custom persist smoke (redacted objects via registry, roundtrip, leak check) ===
+email sid: 1
+email links count: 1
+event sid: 2
+summary counts: {'source_records': 2, 'emails': 1, 'calendar_events': 1, 'attachments': 0, 'files': 0, 'assistant_runs': 0, 'source_links': 2}
+leak_check_bad_patterns_found: []
+PERSIST_SMOKE_EXIT=0
+EXIT_SMOKE=0

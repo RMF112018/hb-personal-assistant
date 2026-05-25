@@ -254,3 +254,55 @@ Implement the Graph read models (Mail 5d/7d, calendarView window, attachments/fi
 
 **Status**: COMPLETE
 
+
+---
+
+## Prompt 05 — Local State Store And Source Link Registry
+
+**Executed**: 2026-05-25
+
+### Objective
+Implement the local SQLite store (under Application Support via PathPolicy) + SourceLinkRegistry provenance gate per 07 spec and 02 plan row 4. Wire Phase 4 normalize models to durable source_records + child tables + links + assistant_runs ledger. Strict redaction, idempotent migrations, no full bodies/tokens ever written.
+
+### Files Changed (major)
+- Version 0.5.0
+- New: src/hb_assistant/store/ (full package: __init__, connection.py with PRAGMAs/WAL/FK/tx, migrator.py with embedded v1 schema + SQLiteMigrator, repositories.py with Store facade + typed persist_* + ledger)
+- New: src/hb_assistant/links/ (full package: __init__, registry.py with SourceLinkRegistry enforcing ALLOWED_LINK_TYPES + provenance + populate source_links on models)
+- Updated: src/hb_assistant/cli/diagnostics.py (new thin `diagnostics store --json` safe summary)
+- Updated: src/hb_assistant/cli/main.py (minimal run_cmd ledger wiring: records assistant_runs on invocation, returns run_id)
+- Updated: src/hb_assistant/__init__.py (exports store + links)
+- New: tests/test_store_links.py (7 tests: idempotent migrate/upsert, link enforcement, redacted roundtrips with Phase 4 models, ledger, all green)
+- New: docs/architecture/05-local-state-store-and-source-link-registry.md (mermaid + integration + guardrails + refs)
+- Evidence: phase-5-sample-*.json, phase-5-source-link-registry-proof.json, phase-5-validation-outputs/
+- Appended: this section + validation register row
+
+### Key Implementation Notes
+- DB location & PRAGMAs exactly as PathPolicy + 07 (WAL, foreign_keys, busy_timeout).
+- All upserts by (source_type, source_key); last_seen_at bumped.
+- Registry is the gate: every persist_* creates >=1 valid link (self or attaches for attachments); rejects unknown types.
+- Redaction preserved end-to-end (title_redacted, excerpts, hashes, flags only; no bodies/files/tokens in any row or evidence).
+- CLI helpers are thin/read-only or ledger-only (no full orchestrator yet).
+- Tests use isolated temp DBs; cover every 14 requirement for this phase.
+
+### Validation
+- pytest (new 7 tests green)
+- ruff / mypy clean
+- All 8 hb-assistant * --json + new `diagnostics store --json` + enhanced `run morning --dry-run --json` (ledger recorded)
+- Sensitive scan clean
+- Custom persist smoke (redacted Email/Calendar/Attachment via registry) + query-back assertions
+
+### Evidence
+- phase-5-sample-source-record.json, phase-5-sample-run-ledger.json (redacted)
+- phase-5-source-link-registry-proof.json (enforcement trace + no-leak)
+- phase-5-validation-outputs/ (raw command outputs)
+- Updated prompt log + register
+
+### Acceptance
+- Objective complete.
+- No broad refactor, no M365 writes, zero secrets/full bodies in DB/evidence/code/logs.
+- Architecture docs updated.
+- Logs/register updated.
+- Git commit + push performed (v0.5.0).
+
+**Status**: COMPLETE
+

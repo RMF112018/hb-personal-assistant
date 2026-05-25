@@ -1,0 +1,18 @@
+=== Phase 5: pytest (incl. new store/links tests) ===
+
+==================================== ERRORS ====================================
+__________________ ERROR collecting tests/test_graph_proof.py __________________
+ImportError while importing test module '/Users/bobbyfetting/hb-personal-assistant/tests/test_graph_proof.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.14/3.14.5/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_graph_proof.py:15: in <module>
+    from hb_assistant.scripts.proofs.delegated_graph_capability_proof import _redact_for_evidence  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ModuleNotFoundError: No module named 'hb_assistant.scripts'
+=========================== short test summary info ============================
+ERROR tests/test_graph_proof.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+EXIT_CODE=2

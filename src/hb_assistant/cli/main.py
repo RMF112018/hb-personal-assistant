@@ -121,14 +121,34 @@ def run_cmd(
     dry_run: bool = typer.Option(False, "--dry-run"),
     json_out: bool = typer.Option(False, "--json"),
 ) -> None:
-    """Run commands (morning, etc.) — later phases."""
+    """Run commands (morning, etc.) — later phases.
+
+    Phase 5: records an entry in assistant_runs ledger (exercises store + links).
+    Full morning orchestrator remains target_phase 8.
+    """
+    from hb_assistant.links.registry import SourceLinkRegistry
+
+    reg = SourceLinkRegistry()
+    run_id = reg.record_run(
+        run_type="morning" if morning else "generic",
+        target_date="today",
+        trigger="cli",
+        dry_run=dry_run,
+        status="started",
+    )
+    # Immediately "finish" for the stub (real runs would finish after work)
+    reg.finish_run(run_id, status="completed-dry-run" if dry_run else "completed-stub")
+
     payload = {
         "implemented": False,
         "target_phase": 8,
-        "message": "Morning run orchestrator not yet implemented.",
+        "message": "Morning run orchestrator not yet implemented (Phase 8+).",
         "dry_run_requested": dry_run,
+        "ledger_recorded": True,
+        "run_id": run_id,
+        "note": "assistant_runs entry created for traceability (Phase 5).",
     }
-    typer.echo(json.dumps(payload, indent=2) if json_out else "run: not implemented")
+    typer.echo(json.dumps(payload, indent=2) if json_out else f"run: ledger recorded (id={run_id})")
     raise typer.Exit(0)
 
 

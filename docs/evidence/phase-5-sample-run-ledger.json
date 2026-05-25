@@ -1,0 +1,16 @@
+{
+  "phase": 5,
+  "type": "assistant_run_ledger_entry",
+  "example": {
+    "id": 7,
+    "run_type": "morning",
+    "target_date": "today",
+    "trigger": "cli",
+    "dry_run": 1,
+    "status": "completed-dry-run",
+    "started_at": "2026-05-25T05:30:00Z",
+    "finished_at": "2026-05-25T05:30:01Z"
+  },
+  "note": "Recorded by enhanced run_cmd (Phase 5 minimal wiring). Full orchestrator in later phase.",
+  "redaction": "No user data, only run metadata."
+}

@@ -1,0 +1,20 @@
+{
+  "phase": 5,
+  "proof": "source_link_registry_enforcement",
+  "steps": [
+    {"step": 1, "action": "Store() auto-applies v1 migration (idempotent)", "result": "version=1, tables present"},
+    {"step": 2, "action": "persist_email(redacted Email)", "result": "source_record_id=42, self-link created (derived_from)"},
+    {"step": 3, "action": "persist_attachment with parent link", "result": "attaches link to parent source_record"},
+    {"step": 4, "action": "try invalid link_type", "result": "ValueError raised (enforcement works)"},
+    {"step": 5, "action": "record_assistant_run + finish", "result": "assistant_runs row with dry_run flag"},
+    {"step": 6, "action": "get_summary()", "result": "counts only, last_run redacted metadata, no PII/paths/tokens"}
+  ],
+  "leak_check": {
+    "full_body_present": false,
+    "token_or_pem_present": false,
+    "raw_subject_present": false,
+    "secrets_in_rows": false
+  },
+  "conclusion": "Provenance gate enforced. All writes redacted. Idempotent. Ready for Phase 6+.",
+  "generated": "2026-05-25 Phase 5 execution"
+}

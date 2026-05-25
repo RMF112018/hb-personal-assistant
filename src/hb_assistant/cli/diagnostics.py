@@ -215,3 +215,23 @@ def calendar_sample(
     payload = {"count": len(items), "samples": [i.model_dump() for i in items]}
     typer.echo(json.dumps(payload, indent=2))
     raise typer.Exit(0)
+
+
+@app.command("store")
+def store_status(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Safe, redacted summary of the local SQLite store (Phase 5)."""
+    from hb_assistant.links.registry import SourceLinkRegistry
+
+    reg = SourceLinkRegistry()
+    summary = reg.store.get_summary()
+    # Never expose full paths or PII in CLI output
+    safe = {
+        "db_exists": "db_path" in summary,
+        "counts": {k: v for k, v in summary.items() if k not in ("db_path", "last_run")},
+        "last_run": summary.get("last_run"),
+        "note": "All values are counts or redacted metadata only.",
+    }
+    typer.echo(json.dumps(safe, indent=2))
+    raise typer.Exit(0)

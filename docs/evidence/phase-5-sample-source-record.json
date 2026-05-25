@@ -1,0 +1,32 @@
+{
+  "phase": 5,
+  "type": "normalized_persisted_source_record",
+  "description": "Example source_record + email row after registry.persist_email (fully redacted, safe for evidence)",
+  "example": {
+    "source_record": {
+      "id": 42,
+      "source_type": "graph:mail",
+      "source_key": "graph:mail:AAMkAG...",
+      "source_system": "microsoft-graph",
+      "title_redacted": "[redacted:3f8a9c2e1d4b...]",
+      "external_id": "AAMkAG...",
+      "first_seen_at": "2026-05-25T10:00:00Z",
+      "last_seen_at": "2026-05-25T10:00:00Z",
+      "status": "active"
+    },
+    "email_row": {
+      "source_record_id": 42,
+      "folder": "inbox",
+      "sender_domain": "ex.com",
+      "received_datetime": "2026-05-20T14:32:00Z",
+      "has_attachments": 1,
+      "body_checked": 0,
+      "body_mention_detected": 0
+    },
+    "links": [
+      {"id": 1, "from_source_record_id": 42, "to_source_record_id": 42, "link_type": "derived_from", "confidence": 1.0}
+    ]
+  },
+  "redaction_note": "Only redacted title, domain, flags, and hashes. No subject, body, tokens, or PII. Matches 07 schema + Phase 4 normalize model.",
+  "generated_by": "SourceLinkRegistry.persist_email + Store (Phase 5)"
+}

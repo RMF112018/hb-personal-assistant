@@ -1,0 +1,2610 @@
+=== Phase 5: ruff ===
+[1;33mwarning[0m[1m:[0m [1mThe top-level linter settings are deprecated in favour of their counterparts in the `lint` section. Please update the following options in `pyproject.toml`:
+  - 'ignore' -> 'lint.ignore'
+  - 'select' -> 'lint.select'[0m
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`sys` imported but unused[0m
+  [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:33:8
+   [1m[94m|[0m
+[1m[94m31 |[0m import hashlib
+[1m[94m32 |[0m import json
+[1m[94m33 |[0m import sys
+   [1m[94m|[0m        [1m[91m^^^[0m
+[1m[94m34 |[0m import tempfile
+[1m[94m35 |[0m from datetime import datetime, timedelta, timezone
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `sys`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`tempfile` imported but unused[0m
+  [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:34:8
+   [1m[94m|[0m
+[1m[94m32 |[0m import json
+[1m[94m33 |[0m import sys
+[1m[94m34 |[0m import tempfile
+   [1m[94m|[0m        [1m[91m^^^^^^^^[0m
+[1m[94m35 |[0m from datetime import datetime, timedelta, timezone
+[1m[94m36 |[0m from pathlib import Path
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `tempfile`[0m
+
+[1m[91mUP035 [0m[1m`typing.Dict` is deprecated, use `dict` instead[0m
+  [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:37:1
+   [1m[94m|[0m
+[1m[94m35 |[0m from datetime import datetime, timedelta, timezone
+[1m[94m36 |[0m from pathlib import Path
+[1m[94m37 |[0m from typing import Any, Dict, List, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m38 |[0m
+[1m[94m39 |[0m # Project imports (works when run as module or after `pip install -e .`)
+   [1m[94m|[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+  [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:37:1
+   [1m[94m|[0m
+[1m[94m35 |[0m from datetime import datetime, timedelta, timezone
+[1m[94m36 |[0m from pathlib import Path
+[1m[94m37 |[0m from typing import Any, Dict, List, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m38 |[0m
+[1m[94m39 |[0m # Project imports (works when run as module or after `pip install -e .`)
+   [1m[94m|[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Optional` imported but unused[0m
+  [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:37:37
+   [1m[94m|[0m
+[1m[94m35 |[0m from datetime import datetime, timedelta, timezone
+[1m[94m36 |[0m from pathlib import Path
+[1m[94m37 |[0m from typing import Any, Dict, List, Optional
+   [1m[94m|[0m                                     [1m[91m^^^^^^^^[0m
+[1m[94m38 |[0m
+[1m[94m39 |[0m # Project imports (works when run as module or after `pip install -e .`)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `typing.Optional`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`hb_assistant.auth.classifier.safe_redact_claims` imported but unused[0m
+  [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:40:65
+   [1m[94m|[0m
+[1m[94m39 |[0m # Project imports (works when run as module or after `pip install -e .`)
+[1m[94m40 |[0m from hb_assistant.auth.classifier import classify_token_claims, safe_redact_claims
+   [1m[94m|[0m                                                                 [1m[91m^^^^^^^^^^^^^^^^^^[0m
+[1m[94m41 |[0m from hb_assistant.auth.providers import AppOnlyAuthProvider, DelegatedAuthProvider
+[1m[94m42 |[0m from hb_assistant.config.loader import load_config
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `hb_assistant.auth.classifier.safe_redact_claims`[0m
+
+[1m[91mUP017 [0m[[1m[96m*[0m] [1mUse `datetime.UTC` alias[0m
+  [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:69:25
+   [1m[94m|[0m
+[1m[94m68 |[0m def _now_iso() -> str:
+[1m[94m69 |[0m     return datetime.now(timezone.utc).isoformat()
+   [1m[94m|[0m                         [1m[91m^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `datetime.UTC` alias[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:72:115
+   [1m[94m|[0m
+[1m[94m72 |[0m def _redact_for_evidence(step: int, endpoint: str, status: int, sample: Any, token_class: str, note: str = "") -> Dict[str, Any]:
+   [1m[94m|[0m                                                                                                                   [1m[91m^^^^[0m
+[1m[94m73 |[0m     """Produce strictly redacted evidence record per 05 spec."""
+[1m[94m74 |[0m     allowed = {
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP017 [0m[[1m[96m*[0m] [1mUse `datetime.UTC` alias[0m
+   [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:113:24
+    [1m[94m|[0m
+[1m[94m111 |[0m def _build_calendar_window() -> tuple[str, str]:
+[1m[94m112 |[0m     """yesterday / today / next 2 business days (simple UTC window for proof)."""
+[1m[94m113 |[0m     now = datetime.now(timezone.utc)
+    [1m[94m|[0m                        [1m[91m^^^^^^^^^^^^[0m
+[1m[94m114 |[0m     start = (now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+[1m[94m115 |[0m     end = (now + timedelta(days=3)).replace(hour=23, minute=59, second=59, microsecond=0)
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `datetime.UTC` alias[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+   [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:119:92
+    [1m[94m|[0m
+[1m[94m119 |[0m def run_proof(step_filter: str = "all", emit_json: bool = True, safe_mode: bool = True) -> Dict[str, Any]:
+    [1m[94m|[0m                                                                                            [1m[91m^^^^[0m
+[1m[94m120 |[0m     """
+[1m[94m121 |[0m     Execute the 10-step proof.
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+   [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:152:14
+    [1m[94m|[0m
+[1m[94m150 |[0m     client = GraphHttpClient(lambda scopes=None: del_prov.get_token(scopes or ["User.Read"]))
+[1m[94m151 |[0m
+[1m[94m152 |[0m     results: List[Dict[str, Any]] = []
+    [1m[94m|[0m              [1m[91m^^^^[0m
+[1m[94m153 |[0m     summary: Dict[str, Any] = {
+[1m[94m154 |[0m         "proof": "delegated-graph-capability",
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+   [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:152:19
+    [1m[94m|[0m
+[1m[94m150 |[0m     client = GraphHttpClient(lambda scopes=None: del_prov.get_token(scopes or ["User.Read"]))
+[1m[94m151 |[0m
+[1m[94m152 |[0m     results: List[Dict[str, Any]] = []
+    [1m[94m|[0m                   [1m[91m^^^^[0m
+[1m[94m153 |[0m     summary: Dict[str, Any] = {
+[1m[94m154 |[0m         "proof": "delegated-graph-capability",
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+   [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:153:14
+    [1m[94m|[0m
+[1m[94m152 |[0m     results: List[Dict[str, Any]] = []
+[1m[94m153 |[0m     summary: Dict[str, Any] = {
+    [1m[94m|[0m              [1m[91m^^^^[0m
+[1m[94m154 |[0m         "proof": "delegated-graph-capability",
+[1m[94m155 |[0m         "version": "0.3.0",
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mF841 [0m[1mLocal variable `message_id` is assigned to but never used[0m
+   [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:187:5
+    [1m[94m|[0m
+[1m[94m185 |[0m     # For simplicity in the proof we attempt to get a body from the first message of step 2 if we have an ID.
+[1m[94m186 |[0m     # In a real run with Mail.Read this will succeed.
+[1m[94m187 |[0m     message_id = None
+    [1m[94m|[0m     [1m[91m^^^^^^^^^^[0m
+[1m[94m188 |[0m     # (We would have captured IDs in step 2 sample in a fuller implementation; here we keep the script focused.)
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `message_id`[0m
+
+[1m[91mF841 [0m[1mLocal variable `root` is assigned to but never used[0m
+   [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:214:9
+    [1m[94m|[0m
+[1m[94m212 |[0m     # Discover one item from drive root children
+[1m[94m213 |[0m     try:
+[1m[94m214 |[0m         root = client.get("/me/drive/root?$select=id,name,webUrl")
+    [1m[94m|[0m         [1m[91m^^^^[0m
+[1m[94m215 |[0m         children = client.get("/me/drive/root/children?$top=3&$select=id,name,size,file,folder,webUrl,lastModifiedDateTime")
+[1m[94m216 |[0m         items = children.get("value", [])
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `root`[0m
+
+[1m[91mF841 [0m[1mLocal variable `app_token` is assigned to but never used[0m
+   [1m[94m-->[0m scripts/proofs/delegated_graph_capability_proof.py:254:9
+    [1m[94m|[0m
+[1m[94m252 |[0m     try:
+[1m[94m253 |[0m         # Attempt a mail endpoint with app-only token (should be blocked by classification or Graph)
+[1m[94m254 |[0m         app_token = app_prov.get_token(["https://graph.microsoft.com/.default"])
+    [1m[94m|[0m         [1m[91m^^^^^^^^^[0m
+[1m[94m255 |[0m         app_class = classify_token_claims({"roles": ["Sites.Read.All"]})  # simulated; real app token has roles
+[1m[94m256 |[0m         _record(9, "/me/messages (app-only attempt)", 403, None, f"App-only token (classification={app_class}) correctly rejected for[1m[94m…[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `app_token`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m src/hb_assistant/__init__.py:8:1
+   [1m[94m|[0m
+[1m[94m 6 |[0m __version__ = "0.5.0"
+[1m[94m 7 |[0m
+[1m[94m 8 |[0m from . import store, links  # Phase 5
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m 9 |[0m
+[1m[94m10 |[0m __all__ = ["__version__", "store", "links"]
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m src/hb_assistant/auth/classifier.py:6:1
+   [1m[94m|[0m
+[1m[94m 4 |[0m   """
+[1m[94m 5 |[0m
+[1m[94m 6 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 7 |[0m [1m[91m|[0m
+[1m[94m 8 |[0m [1m[91m|[0m from typing import Literal
+[1m[94m 9 |[0m [1m[91m|[0m
+[1m[94m10 |[0m [1m[91m|[0m from .exceptions import ClassificationError
+   [1m[94m|[0m [1m[91m|___________________________________________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`os` imported but unused[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:9:8
+   [1m[94m|[0m
+[1m[94m 7 |[0m from __future__ import annotations
+[1m[94m 8 |[0m
+[1m[94m 9 |[0m import os
+   [1m[94m|[0m        [1m[91m^^[0m
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Callable, Dict, List, Optional
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `os`[0m
+
+[1m[91mUP035 [0m[[1m[96m*[0m] [1mImport from `collections.abc` instead: `Callable`[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:11:1
+   [1m[94m|[0m
+[1m[94m 9 |[0m import os
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Callable, Dict, List, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m12 |[0m
+[1m[94m13 |[0m import msal  # type: ignore
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mImport from `collections.abc`[0m
+
+[1m[91mUP035 [0m[1m`typing.Dict` is deprecated, use `dict` instead[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:11:1
+   [1m[94m|[0m
+[1m[94m 9 |[0m import os
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Callable, Dict, List, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m12 |[0m
+[1m[94m13 |[0m import msal  # type: ignore
+   [1m[94m|[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:11:1
+   [1m[94m|[0m
+[1m[94m 9 |[0m import os
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Callable, Dict, List, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m12 |[0m
+[1m[94m13 |[0m import msal  # type: ignore
+   [1m[94m|[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Callable` imported but unused[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:11:25
+   [1m[94m|[0m
+[1m[94m 9 |[0m import os
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Callable, Dict, List, Optional
+   [1m[94m|[0m                         [1m[91m^^^^^^^^[0m
+[1m[94m12 |[0m
+[1m[94m13 |[0m import msal  # type: ignore
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `typing.Callable`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`.classifier.require_delegated` imported but unused[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:17:48
+   [1m[94m|[0m
+[1m[94m15 |[0m from hb_assistant.config.path_policy import PathPolicy
+[1m[94m16 |[0m
+[1m[94m17 |[0m from .classifier import classify_token_claims, require_delegated, safe_redact_claims
+   [1m[94m|[0m                                                [1m[91m^^^^^^^^^^^^^^^^^[0m
+[1m[94m18 |[0m from .exceptions import AuthError, CertificateError, NoTokenError
+[1m[94m19 |[0m from .token_cache_manager import TokenCacheManager
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `.classifier.require_delegated`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:23:37
+   [1m[94m|[0m
+[1m[94m22 |[0m class _BaseProvider:
+[1m[94m23 |[0m     def __init__(self, path_policy: Optional[PathPolicy] = None) -> None:
+   [1m[94m|[0m                                     [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m24 |[0m         self._pp = path_policy or PathPolicy()
+[1m[94m25 |[0m         self._cache_mgr = TokenCacheManager(self._pp)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:34:64
+   [1m[94m|[0m
+[1m[94m32 |[0m     """Delegated (user) auth using MSAL PublicClientApplication + device/interactive."""
+[1m[94m33 |[0m
+[1m[94m34 |[0m     def __init__(self, tenant_id: str, client_id: str, scopes: List[str], path_policy: Optional[PathPolicy] = None) -> None:
+   [1m[94m|[0m                                                                [1m[91m^^^^[0m
+[1m[94m35 |[0m         super().__init__(path_policy)
+[1m[94m36 |[0m         self.tenant_id = tenant_id
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:34:88
+   [1m[94m|[0m
+[1m[94m32 |[0m     """Delegated (user) auth using MSAL PublicClientApplication + device/interactive."""
+[1m[94m33 |[0m
+[1m[94m34 |[0m     def __init__(self, tenant_id: str, client_id: str, scopes: List[str], path_policy: Optional[PathPolicy] = None) -> None:
+   [1m[94m|[0m                                                                                        [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m35 |[0m         super().__init__(path_policy)
+[1m[94m36 |[0m         self.tenant_id = tenant_id
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:39:20
+   [1m[94m|[0m
+[1m[94m37 |[0m         self.client_id = client_id
+[1m[94m38 |[0m         self.default_scopes = scopes or ["User.Read", "offline_access"]
+[1m[94m39 |[0m         self._app: Optional[msal.PublicClientApplication] = None
+   [1m[94m|[0m                    [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m40 |[0m
+[1m[94m41 |[0m     def _get_app(self) -> msal.PublicClientApplication:
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:52:29
+   [1m[94m|[0m
+[1m[94m50 |[0m         return self._app
+[1m[94m51 |[0m
+[1m[94m52 |[0m     def login(self, scopes: Optional[List[str]] = None, use_device_code: bool = True) -> Dict[str, Any]:
+   [1m[94m|[0m                             [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m53 |[0m         """Interactive or device_code login. Persists to delegated cache."""
+[1m[94m54 |[0m         app = self._get_app()
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:52:38
+   [1m[94m|[0m
+[1m[94m50 |[0m         return self._app
+[1m[94m51 |[0m
+[1m[94m52 |[0m     def login(self, scopes: Optional[List[str]] = None, use_device_code: bool = True) -> Dict[str, Any]:
+   [1m[94m|[0m                                      [1m[91m^^^^[0m
+[1m[94m53 |[0m         """Interactive or device_code login. Persists to delegated cache."""
+[1m[94m54 |[0m         app = self._get_app()
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:52:90
+   [1m[94m|[0m
+[1m[94m50 |[0m         return self._app
+[1m[94m51 |[0m
+[1m[94m52 |[0m     def login(self, scopes: Optional[List[str]] = None, use_device_code: bool = True) -> Dict[str, Any]:
+   [1m[94m|[0m                                                                                          [1m[91m^^^^[0m
+[1m[94m53 |[0m         """Interactive or device_code login. Persists to delegated cache."""
+[1m[94m54 |[0m         app = self._get_app()
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:82:33
+   [1m[94m|[0m
+[1m[94m80 |[0m         return {"status": "success", "account": result.get("id_token_claims", {}).get("upn") or result.get("id_token_claims", {}).get([1m[94m…[0m
+[1m[94m81 |[0m
+[1m[94m82 |[0m     def get_token(self, scopes: Optional[List[str]] = None, force_refresh: bool = False) -> Dict[str, Any]:
+   [1m[94m|[0m                                 [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m83 |[0m         app = self._get_app()
+[1m[94m84 |[0m         scopes = scopes or self.default_scopes
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:82:42
+   [1m[94m|[0m
+[1m[94m80 |[0m         return {"status": "success", "account": result.get("id_token_claims", {}).get("upn") or result.get("id_token_claims", {}).get([1m[94m…[0m
+[1m[94m81 |[0m
+[1m[94m82 |[0m     def get_token(self, scopes: Optional[List[str]] = None, force_refresh: bool = False) -> Dict[str, Any]:
+   [1m[94m|[0m                                          [1m[91m^^^^[0m
+[1m[94m83 |[0m         app = self._get_app()
+[1m[94m84 |[0m         scopes = scopes or self.default_scopes
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:82:93
+   [1m[94m|[0m
+[1m[94m80 |[0m         return {"status": "success", "account": result.get("id_token_claims", {}).get("upn") or result.get("id_token_claims", {}).get([1m[94m…[0m
+[1m[94m81 |[0m
+[1m[94m82 |[0m     def get_token(self, scopes: Optional[List[str]] = None, force_refresh: bool = False) -> Dict[str, Any]:
+   [1m[94m|[0m                                                                                             [1m[91m^^^^[0m
+[1m[94m83 |[0m         app = self._get_app()
+[1m[94m84 |[0m         scopes = scopes or self.default_scopes
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/auth/providers.py:96:25
+   [1m[94m|[0m
+[1m[94m94 |[0m         return result
+[1m[94m95 |[0m
+[1m[94m96 |[0m     def logout(self) -> List[str]:
+   [1m[94m|[0m                         [1m[91m^^^^[0m
+[1m[94m97 |[0m         app = self._get_app()
+[1m[94m98 |[0m         deleted = self._cache_mgr.clear_cache(app_only=False)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:103:30
+    [1m[94m|[0m
+[1m[94m101 |[0m         return deleted
+[1m[94m102 |[0m
+[1m[94m103 |[0m     def status_info(self) -> Dict[str, Any]:
+    [1m[94m|[0m                              [1m[91m^^^^[0m
+[1m[94m104 |[0m         cache_info = self._cache_mgr.check_permissions()
+[1m[94m105 |[0m         try:
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:126:67
+    [1m[94m|[0m
+[1m[94m124 |[0m     """App-only (certificate) auth for proof/admin only. Never used for mail/calendar runtime."""
+[1m[94m125 |[0m
+[1m[94m126 |[0m     def __init__(self, tenant_id: str, client_id: str, cert_path: Optional[str], path_policy: Optional[PathPolicy] = None) -> None:
+    [1m[94m|[0m                                                                   [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m127 |[0m         super().__init__(path_policy)
+[1m[94m128 |[0m         self.tenant_id = tenant_id
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:126:95
+    [1m[94m|[0m
+[1m[94m124 |[0m     """App-only (certificate) auth for proof/admin only. Never used for mail/calendar runtime."""
+[1m[94m125 |[0m
+[1m[94m126 |[0m     def __init__(self, tenant_id: str, client_id: str, cert_path: Optional[str], path_policy: Optional[PathPolicy] = None) -> None:
+    [1m[94m|[0m                                                                                               [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m127 |[0m         super().__init__(path_policy)
+[1m[94m128 |[0m         self.tenant_id = tenant_id
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:131:20
+    [1m[94m|[0m
+[1m[94m129 |[0m         self.client_id = client_id
+[1m[94m130 |[0m         self.cert_path = Path(cert_path).expanduser() if cert_path else None
+[1m[94m131 |[0m         self._app: Optional[msal.ConfidentialClientApplication] = None
+    [1m[94m|[0m                    [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m132 |[0m
+[1m[94m133 |[0m     def _get_app(self) -> msal.ConfidentialClientApplication:
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:150:29
+    [1m[94m|[0m
+[1m[94m148 |[0m         return self._app
+[1m[94m149 |[0m
+[1m[94m150 |[0m     def login(self, scopes: Optional[List[str]] = None) -> Dict[str, Any]:
+    [1m[94m|[0m                             [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m151 |[0m         """Acquire app-only token via certificate (for proof flows only)."""
+[1m[94m152 |[0m         app = self._get_app()
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:150:38
+    [1m[94m|[0m
+[1m[94m148 |[0m         return self._app
+[1m[94m149 |[0m
+[1m[94m150 |[0m     def login(self, scopes: Optional[List[str]] = None) -> Dict[str, Any]:
+    [1m[94m|[0m                                      [1m[91m^^^^[0m
+[1m[94m151 |[0m         """Acquire app-only token via certificate (for proof flows only)."""
+[1m[94m152 |[0m         app = self._get_app()
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:150:60
+    [1m[94m|[0m
+[1m[94m148 |[0m         return self._app
+[1m[94m149 |[0m
+[1m[94m150 |[0m     def login(self, scopes: Optional[List[str]] = None) -> Dict[str, Any]:
+    [1m[94m|[0m                                                            [1m[91m^^^^[0m
+[1m[94m151 |[0m         """Acquire app-only token via certificate (for proof flows only)."""
+[1m[94m152 |[0m         app = self._get_app()
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:160:33
+    [1m[94m|[0m
+[1m[94m158 |[0m         return {"status": "success", "token_type": "app_only"}
+[1m[94m159 |[0m
+[1m[94m160 |[0m     def get_token(self, scopes: Optional[List[str]] = None, force_refresh: bool = False) -> Dict[str, Any]:
+    [1m[94m|[0m                                 [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m161 |[0m         app = self._get_app()
+[1m[94m162 |[0m         scopes = scopes or [".default"]
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:160:42
+    [1m[94m|[0m
+[1m[94m158 |[0m         return {"status": "success", "token_type": "app_only"}
+[1m[94m159 |[0m
+[1m[94m160 |[0m     def get_token(self, scopes: Optional[List[str]] = None, force_refresh: bool = False) -> Dict[str, Any]:
+    [1m[94m|[0m                                          [1m[91m^^^^[0m
+[1m[94m161 |[0m         app = self._get_app()
+[1m[94m162 |[0m         scopes = scopes or [".default"]
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:160:93
+    [1m[94m|[0m
+[1m[94m158 |[0m         return {"status": "success", "token_type": "app_only"}
+[1m[94m159 |[0m
+[1m[94m160 |[0m     def get_token(self, scopes: Optional[List[str]] = None, force_refresh: bool = False) -> Dict[str, Any]:
+    [1m[94m|[0m                                                                                             [1m[91m^^^^[0m
+[1m[94m161 |[0m         app = self._get_app()
+[1m[94m162 |[0m         scopes = scopes or [".default"]
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:169:25
+    [1m[94m|[0m
+[1m[94m167 |[0m         return result
+[1m[94m168 |[0m
+[1m[94m169 |[0m     def logout(self) -> List[str]:
+    [1m[94m|[0m                         [1m[91m^^^^[0m
+[1m[94m170 |[0m         return self._cache_mgr.clear_cache(app_only=True)
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:172:30
+    [1m[94m|[0m
+[1m[94m170 |[0m         return self._cache_mgr.clear_cache(app_only=True)
+[1m[94m171 |[0m
+[1m[94m172 |[0m     def status_info(self) -> Dict[str, Any]:
+    [1m[94m|[0m                              [1m[91m^^^^[0m
+[1m[94m173 |[0m         cache_info = self._cache_mgr.check_permissions()
+[1m[94m174 |[0m         try:
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mF841 [0m[1mLocal variable `claims` is assigned to but never used[0m
+   [1m[94m-->[0m src/hb_assistant/auth/providers.py:176:13
+    [1m[94m|[0m
+[1m[94m174 |[0m         try:
+[1m[94m175 |[0m             result = self.get_token(["https://graph.microsoft.com/.default"])
+[1m[94m176 |[0m             claims = {}  # app-only tokens rarely have rich id claims in the result; we can decode if needed later
+    [1m[94m|[0m             [1m[91m^^^^^^[0m
+[1m[94m177 |[0m             return {
+[1m[94m178 |[0m                 "token_type": "app_only",
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `claims`[0m
+
+[1m[91mUP035 [0m[1m`typing.Dict` is deprecated, use `dict` instead[0m
+  [1m[94m-->[0m src/hb_assistant/auth/token_cache_manager.py:15:1
+   [1m[94m|[0m
+[1m[94m13 |[0m import stat
+[1m[94m14 |[0m from pathlib import Path
+[1m[94m15 |[0m from typing import Any, Dict, List, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m16 |[0m
+[1m[94m17 |[0m import msal  # type: ignore
+   [1m[94m|[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+  [1m[94m-->[0m src/hb_assistant/auth/token_cache_manager.py:15:1
+   [1m[94m|[0m
+[1m[94m13 |[0m import stat
+[1m[94m14 |[0m from pathlib import Path
+[1m[94m15 |[0m from typing import Any, Dict, List, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m16 |[0m
+[1m[94m17 |[0m import msal  # type: ignore
+   [1m[94m|[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/auth/token_cache_manager.py:30:37
+   [1m[94m|[0m
+[1m[94m28 |[0m     APPONLY_CACHE = "msal-token-cache-app.bin"
+[1m[94m29 |[0m
+[1m[94m30 |[0m     def __init__(self, path_policy: Optional[PathPolicy] = None) -> None:
+   [1m[94m|[0m                                     [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m31 |[0m         self._pp = path_policy or PathPolicy()
+[1m[94m32 |[0m         self._auth_dir = self._pp.get_auth_dir()
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/auth/token_cache_manager.py:70:37
+   [1m[94m|[0m
+[1m[94m68 |[0m             raise TokenCacheError(f"Failed to save cache {p}: {e}") from e
+[1m[94m69 |[0m
+[1m[94m70 |[0m     def clear_cache(self, app_only: Optional[bool] = None) -> List[str]:
+   [1m[94m|[0m                                     [1m[91m^^^^^^^^^^^^^^[0m
+[1m[94m71 |[0m         """Delete cache file(s). Returns list of deleted paths (for status/evidence)."""
+[1m[94m72 |[0m         deleted: List[str] = []
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/auth/token_cache_manager.py:70:63
+   [1m[94m|[0m
+[1m[94m68 |[0m             raise TokenCacheError(f"Failed to save cache {p}: {e}") from e
+[1m[94m69 |[0m
+[1m[94m70 |[0m     def clear_cache(self, app_only: Optional[bool] = None) -> List[str]:
+   [1m[94m|[0m                                                               [1m[91m^^^^[0m
+[1m[94m71 |[0m         """Delete cache file(s). Returns list of deleted paths (for status/evidence)."""
+[1m[94m72 |[0m         deleted: List[str] = []
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/auth/token_cache_manager.py:72:18
+   [1m[94m|[0m
+[1m[94m70 |[0m     def clear_cache(self, app_only: Optional[bool] = None) -> List[str]:
+[1m[94m71 |[0m         """Delete cache file(s). Returns list of deleted paths (for status/evidence)."""
+[1m[94m72 |[0m         deleted: List[str] = []
+   [1m[94m|[0m                  [1m[91m^^^^[0m
+[1m[94m73 |[0m         targets = [self._cache_path(False), self._cache_path(True)] if app_only is None else [self._cache_path(app_only)]
+[1m[94m74 |[0m         for p in targets:
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/auth/token_cache_manager.py:83:55
+   [1m[94m|[0m
+[1m[94m81 |[0m         return deleted
+[1m[94m82 |[0m
+[1m[94m83 |[0m     def get_accounts(self, app_only: bool = False) -> List[Dict[str, Any]]:
+   [1m[94m|[0m                                                       [1m[91m^^^^[0m
+[1m[94m84 |[0m         """Return list of accounts known to the cache (safe fields only)."""
+[1m[94m85 |[0m         cache = self.load_cache(app_only)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/auth/token_cache_manager.py:83:60
+   [1m[94m|[0m
+[1m[94m81 |[0m         return deleted
+[1m[94m82 |[0m
+[1m[94m83 |[0m     def get_accounts(self, app_only: bool = False) -> List[Dict[str, Any]]:
+   [1m[94m|[0m                                                            [1m[91m^^^^[0m
+[1m[94m84 |[0m         """Return list of accounts known to the cache (safe fields only)."""
+[1m[94m85 |[0m         cache = self.load_cache(app_only)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mF841 [0m[1mLocal variable `cache` is assigned to but never used[0m
+  [1m[94m-->[0m src/hb_assistant/auth/token_cache_manager.py:85:9
+   [1m[94m|[0m
+[1m[94m83 |[0m     def get_accounts(self, app_only: bool = False) -> List[Dict[str, Any]]:
+[1m[94m84 |[0m         """Return list of accounts known to the cache (safe fields only)."""
+[1m[94m85 |[0m         cache = self.load_cache(app_only)
+   [1m[94m|[0m         [1m[91m^^^^^[0m
+[1m[94m86 |[0m         # MSAL exposes accounts via the cache state; we avoid loading full app here.
+[1m[94m87 |[0m         # Parse minimally from serialized if needed, but for Phase 2 we return empty or basic.
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `cache`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/auth/token_cache_manager.py:91:36
+   [1m[94m|[0m
+[1m[94m89 |[0m         return []
+[1m[94m90 |[0m
+[1m[94m91 |[0m     def check_permissions(self) -> Dict[str, Any]:
+   [1m[94m|[0m                                    [1m[91m^^^^[0m
+[1m[94m92 |[0m         """Return permission status for the two cache files (used by diagnostics)."""
+[1m[94m93 |[0m         info: Dict[str, Any] = {}
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/auth/token_cache_manager.py:93:15
+   [1m[94m|[0m
+[1m[94m91 |[0m     def check_permissions(self) -> Dict[str, Any]:
+[1m[94m92 |[0m         """Return permission status for the two cache files (used by diagnostics)."""
+[1m[94m93 |[0m         info: Dict[str, Any] = {}
+   [1m[94m|[0m               [1m[91m^^^^[0m
+[1m[94m94 |[0m         for name, app_only in [(self.DELEGATED_CACHE, False), (self.APPONLY_CACHE, True)]:
+[1m[94m95 |[0m             p = self._cache_path(app_only)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP035 [0m[1m`typing.Dict` is deprecated, use `dict` instead[0m
+  [1m[94m-->[0m src/hb_assistant/cli/diagnostics.py:14:1
+   [1m[94m|[0m
+[1m[94m12 |[0m import sys
+[1m[94m13 |[0m from pathlib import Path
+[1m[94m14 |[0m from typing import Any, Dict, List, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m15 |[0m
+[1m[94m16 |[0m import typer
+   [1m[94m|[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+  [1m[94m-->[0m src/hb_assistant/cli/diagnostics.py:14:1
+   [1m[94m|[0m
+[1m[94m12 |[0m import sys
+[1m[94m13 |[0m from pathlib import Path
+[1m[94m14 |[0m from typing import Any, Dict, List, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m15 |[0m
+[1m[94m16 |[0m import typer
+   [1m[94m|[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`hb_assistant.auth.classifier.safe_redact_claims` imported but unused[0m
+  [1m[94m-->[0m src/hb_assistant/cli/diagnostics.py:18:42
+   [1m[94m|[0m
+[1m[94m16 |[0m import typer
+[1m[94m17 |[0m
+[1m[94m18 |[0m from hb_assistant.auth.classifier import safe_redact_claims
+   [1m[94m|[0m                                          [1m[91m^^^^^^^^^^^^^^^^^^[0m
+[1m[94m19 |[0m from hb_assistant.auth.providers import DelegatedAuthProvider
+[1m[94m20 |[0m from hb_assistant.config.loader import load_config
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `hb_assistant.auth.classifier.safe_redact_claims`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/cli/diagnostics.py:49:11
+   [1m[94m|[0m
+[1m[94m47 |[0m     summary = pp.summary()
+[1m[94m48 |[0m
+[1m[94m49 |[0m     data: Dict[str, Any] = {
+   [1m[94m|[0m           [1m[91m^^^^[0m
+[1m[94m50 |[0m         "phase": 1,
+[1m[94m51 |[0m         "python": {
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/cli/diagnostics.py:91:30
+   [1m[94m|[0m
+[1m[94m89 |[0m     del_prov = DelegatedAuthProvider(cfg.identity.tenant_id, cfg.identity.client_id, cfg.identity.delegated_scopes, path_policy=pp)
+[1m[94m90 |[0m
+[1m[94m91 |[0m     def token_getter(scopes: Optional[List[str]] = None) -> Dict[str, Any]:
+   [1m[94m|[0m                              [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m92 |[0m         try:
+[1m[94m93 |[0m             return del_prov.get_token(scopes or ["User.Read"])
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/cli/diagnostics.py:91:39
+   [1m[94m|[0m
+[1m[94m89 |[0m     del_prov = DelegatedAuthProvider(cfg.identity.tenant_id, cfg.identity.client_id, cfg.identity.delegated_scopes, path_policy=pp)
+[1m[94m90 |[0m
+[1m[94m91 |[0m     def token_getter(scopes: Optional[List[str]] = None) -> Dict[str, Any]:
+   [1m[94m|[0m                                       [1m[91m^^^^[0m
+[1m[94m92 |[0m         try:
+[1m[94m93 |[0m             return del_prov.get_token(scopes or ["User.Read"])
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/cli/diagnostics.py:91:61
+   [1m[94m|[0m
+[1m[94m89 |[0m     del_prov = DelegatedAuthProvider(cfg.identity.tenant_id, cfg.identity.client_id, cfg.identity.delegated_scopes, path_policy=pp)
+[1m[94m90 |[0m
+[1m[94m91 |[0m     def token_getter(scopes: Optional[List[str]] = None) -> Dict[str, Any]:
+   [1m[94m|[0m                                                             [1m[91m^^^^[0m
+[1m[94m92 |[0m         try:
+[1m[94m93 |[0m             return del_prov.get_token(scopes or ["User.Read"])
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/cli/diagnostics.py:98:13
+    [1m[94m|[0m
+[1m[94m 97 |[0m     client = GraphHttpClient(token_getter)
+[1m[94m 98 |[0m     result: Dict[str, Any] = {"safe": safe, "probes": []}
+    [1m[94m|[0m             [1m[91m^^^^[0m
+[1m[94m 99 |[0m     try:
+[1m[94m100 |[0m         me = client.get("/me?$select=id,displayName,userPrincipalName,mail")
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+   [1m[94m-->[0m src/hb_assistant/cli/diagnostics.py:173:5
+    [1m[94m|[0m
+[1m[94m171 |[0m   ) -> None:
+[1m[94m172 |[0m       """Safe, redacted sample of recent inbound mail (Phase 4 verification)."""
+[1m[94m173 |[0m [1m[91m/[0m     from hb_assistant.config.loader import load_config
+[1m[94m174 |[0m [1m[91m|[0m     from hb_assistant.config.path_policy import PathPolicy
+[1m[94m175 |[0m [1m[91m|[0m     from hb_assistant.auth.providers import DelegatedAuthProvider
+[1m[94m176 |[0m [1m[91m|[0m     from hb_assistant.graph.http_client import GraphHttpClient
+[1m[94m177 |[0m [1m[91m|[0m     from hb_assistant.graph.mail_client import MailClient
+    [1m[94m|[0m [1m[91m|_________________________________________________________^[0m
+[1m[94m178 |[0m
+[1m[94m179 |[0m       cfg = load_config()
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+   [1m[94m-->[0m src/hb_assistant/cli/diagnostics.py:199:5
+    [1m[94m|[0m
+[1m[94m197 |[0m   ) -> None:
+[1m[94m198 |[0m       """Safe, redacted sample of upcoming calendar events (Phase 4 verification)."""
+[1m[94m199 |[0m [1m[91m/[0m     from hb_assistant.config.loader import load_config
+[1m[94m200 |[0m [1m[91m|[0m     from hb_assistant.config.path_policy import PathPolicy
+[1m[94m201 |[0m [1m[91m|[0m     from hb_assistant.auth.providers import DelegatedAuthProvider
+[1m[94m202 |[0m [1m[91m|[0m     from hb_assistant.graph.http_client import GraphHttpClient
+[1m[94m203 |[0m [1m[91m|[0m     from hb_assistant.graph.calendar_client import CalendarClient
+    [1m[94m|[0m [1m[91m|_________________________________________________________________^[0m
+[1m[94m204 |[0m
+[1m[94m205 |[0m       cfg = load_config()
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`sys` imported but unused[0m
+  [1m[94m-->[0m src/hb_assistant/cli/main.py:14:8
+   [1m[94m|[0m
+[1m[94m13 |[0m import json
+[1m[94m14 |[0m import sys
+   [1m[94m|[0m        [1m[91m^^^[0m
+[1m[94m15 |[0m from typing import Optional
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `sys`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Optional` imported but unused[0m
+  [1m[94m-->[0m src/hb_assistant/cli/main.py:15:20
+   [1m[94m|[0m
+[1m[94m13 |[0m import json
+[1m[94m14 |[0m import sys
+[1m[94m15 |[0m from typing import Optional
+   [1m[94m|[0m                    [1m[91m^^^^^^^^[0m
+[1m[94m16 |[0m
+[1m[94m17 |[0m import typer
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `typing.Optional`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m src/hb_assistant/config/__init__.py:3:1
+   [1m[94m|[0m
+[1m[94m 1 |[0m   """Configuration models, loader, and path policy for HB Personal Assistant."""
+[1m[94m 2 |[0m
+[1m[94m 3 |[0m [1m[91m/[0m from .loader import load_config, AppConfig
+[1m[94m 4 |[0m [1m[91m|[0m from .models import (
+[1m[94m 5 |[0m [1m[91m|[0m     AppConfig as _AppConfig,  # re-export for convenience
+[1m[94m 6 |[0m [1m[91m|[0m     ProjectConfig,
+[1m[94m 7 |[0m [1m[91m|[0m     IdentityConfig,
+[1m[94m 8 |[0m [1m[91m|[0m     PathsConfig,
+[1m[94m 9 |[0m [1m[91m|[0m     MailConfig,
+[1m[94m10 |[0m [1m[91m|[0m     CalendarConfig,
+[1m[94m11 |[0m [1m[91m|[0m     FilesConfig,
+[1m[94m12 |[0m [1m[91m|[0m     AutomationConfig,
+[1m[94m13 |[0m [1m[91m|[0m     SecurityConfig,
+[1m[94m14 |[0m [1m[91m|[0m )
+[1m[94m15 |[0m [1m[91m|[0m from .path_policy import PathPolicy
+   [1m[94m|[0m [1m[91m|___________________________________^[0m
+[1m[94m16 |[0m
+[1m[94m17 |[0m   __all__ = [
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mF401 [0m[1m`.models.AppConfig` imported but unused; consider removing, adding to `__all__`, or using a redundant alias[0m
+ [1m[94m-->[0m src/hb_assistant/config/__init__.py:5:18
+  [1m[94m|[0m
+[1m[94m3 |[0m from .loader import load_config, AppConfig
+[1m[94m4 |[0m from .models import (
+[1m[94m5 |[0m     AppConfig as _AppConfig,  # re-export for convenience
+  [1m[94m|[0m                  [1m[91m^^^^^^^^^^[0m
+[1m[94m6 |[0m     ProjectConfig,
+[1m[94m7 |[0m     IdentityConfig,
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mAdd unused import `_AppConfig` to __all__[0m
+
+[1m[91mUP035 [0m[1m`typing.Dict` is deprecated, use `dict` instead[0m
+  [1m[94m-->[0m src/hb_assistant/config/loader.py:11:1
+   [1m[94m|[0m
+[1m[94m 9 |[0m import os
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Dict, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m12 |[0m
+[1m[94m13 |[0m import yaml
+   [1m[94m|[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/config/loader.py:18:31
+   [1m[94m|[0m
+[1m[94m18 |[0m def _load_yaml(path: Path) -> Dict[str, Any]:
+   [1m[94m|[0m                               [1m[91m^^^^[0m
+[1m[94m19 |[0m     if not path.exists():
+[1m[94m20 |[0m         return {}
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/config/loader.py:28:32
+   [1m[94m|[0m
+[1m[94m28 |[0m def load_config(override_path: Optional[Path | str] = None) -> AppConfig:
+   [1m[94m|[0m                                [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m29 |[0m     """Load and validate configuration.
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/config/loader.py:41:18
+   [1m[94m|[0m
+[1m[94m39 |[0m     """
+[1m[94m40 |[0m     # Start with defaults
+[1m[94m41 |[0m     config_data: Dict[str, Any] = {}
+   [1m[94m|[0m                  [1m[91m^^^^[0m
+[1m[94m42 |[0m
+[1m[94m43 |[0m     # 1. repo level config/config.yml (conventional location after scaffold)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+  [1m[94m-->[0m src/hb_assistant/config/models.py:9:1
+   [1m[94m|[0m
+[1m[94m 8 |[0m from pathlib import Path
+[1m[94m 9 |[0m from typing import List, Literal
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m10 |[0m
+[1m[94m11 |[0m from pydantic import BaseModel, Field, field_validator
+   [1m[94m|[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/config/models.py:22:23
+   [1m[94m|[0m
+[1m[94m20 |[0m     tenant_id: str = "0e834bd7-628b-42c8-b9ec-ecebc9719be4"
+[1m[94m21 |[0m     client_id: str = "08c399eb-a394-4087-b859-659d493f8dc7"
+[1m[94m22 |[0m     delegated_scopes: List[str] = Field(
+   [1m[94m|[0m                       [1m[91m^^^^[0m
+[1m[94m23 |[0m         default_factory=lambda: [
+[1m[94m24 |[0m             "User.Read",
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/config/path_policy.py:31:32
+   [1m[94m|[0m
+[1m[94m29 |[0m     APP_NAME = "HB Personal Assistant"
+[1m[94m30 |[0m
+[1m[94m31 |[0m     def __init__(self, config: Optional[AppConfig] = None) -> None:
+   [1m[94m|[0m                                [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m32 |[0m         self._config = config or load_config()
+[1m[94m33 |[0m         self._repo_root: Optional[Path] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/config/path_policy.py:33:26
+   [1m[94m|[0m
+[1m[94m31 |[0m     def __init__(self, config: Optional[AppConfig] = None) -> None:
+[1m[94m32 |[0m         self._config = config or load_config()
+[1m[94m33 |[0m         self._repo_root: Optional[Path] = None
+   [1m[94m|[0m                          [1m[91m^^^^^^^^^^^^^^[0m
+[1m[94m34 |[0m         self._app_support: Optional[Path] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/config/path_policy.py:34:28
+   [1m[94m|[0m
+[1m[94m32 |[0m         self._config = config or load_config()
+[1m[94m33 |[0m         self._repo_root: Optional[Path] = None
+[1m[94m34 |[0m         self._app_support: Optional[Path] = None
+   [1m[94m|[0m                            [1m[91m^^^^^^^^^^^^^^[0m
+[1m[94m35 |[0m
+[1m[94m36 |[0m     # --- Repo root ---
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mSIM105 [0m[1mUse `contextlib.suppress(PermissionError)` instead of `try`-`except`-`pass`[0m
+   [1m[94m-->[0m src/hb_assistant/config/path_policy.py:122:13
+    [1m[94m|[0m
+[1m[94m120 |[0m               d.mkdir(parents=True, exist_ok=True)
+[1m[94m121 |[0m               # default umask usually fine; explicit 0o755 for clarity on non-sensitive
+[1m[94m122 |[0m [1m[91m/[0m             try:
+[1m[94m123 |[0m [1m[91m|[0m                 os.chmod(d, 0o755)
+[1m[94m124 |[0m [1m[91m|[0m             except PermissionError:
+[1m[94m125 |[0m [1m[91m|[0m                 pass  # best effort
+    [1m[94m|[0m [1m[91m|____________________^[0m
+[1m[94m126 |[0m
+[1m[94m127 |[0m       def check_perms(self, strict: bool = False) -> dict[str, bool]:
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace `try`-`except`-`pass` with `with contextlib.suppress(PermissionError): ...`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+ [1m[94m-->[0m src/hb_assistant/graph/__init__.py:3:1
+  [1m[94m|[0m
+[1m[94m1 |[0m   """Graph package (Phase 2 base + Phase 4 read models)."""
+[1m[94m2 |[0m
+[1m[94m3 |[0m [1m[91m/[0m from .http_client import GraphHttpClient, GraphHttpError
+[1m[94m4 |[0m [1m[91m|[0m from .mail_client import MailClient
+[1m[94m5 |[0m [1m[91m|[0m from .calendar_client import CalendarClient
+[1m[94m6 |[0m [1m[91m|[0m from .drive_item_client import DriveItemClient
+  [1m[94m|[0m [1m[91m|______________________________________________^[0m
+[1m[94m7 |[0m
+[1m[94m8 |[0m   __all__ = [
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+ [1m[94m-->[0m src/hb_assistant/graph/calendar_client.py:6:1
+  [1m[94m|[0m
+[1m[94m5 |[0m from datetime import datetime, timedelta, timezone
+[1m[94m6 |[0m from typing import List
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m7 |[0m
+[1m[94m8 |[0m from hb_assistant.config.loader import load_config
+  [1m[94m|[0m
+
+[1m[91mUP017 [0m[[1m[96m*[0m] [1mUse `datetime.UTC` alias[0m
+  [1m[94m-->[0m src/hb_assistant/graph/calendar_client.py:20:28
+   [1m[94m|[0m
+[1m[94m19 |[0m     def _window(self) -> tuple[str, str]:
+[1m[94m20 |[0m         now = datetime.now(timezone.utc)
+   [1m[94m|[0m                            [1m[91m^^^^^^^^^^^^[0m
+[1m[94m21 |[0m         # Simple window per spec (yesterday/today/next 2 business days)
+[1m[94m22 |[0m         start = (now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `datetime.UTC` alias[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/graph/calendar_client.py:26:45
+   [1m[94m|[0m
+[1m[94m24 |[0m         return start.isoformat(), end.isoformat()
+[1m[94m25 |[0m
+[1m[94m26 |[0m     def list_events(self, top: int = 10) -> List[CalendarEvent]:
+   [1m[94m|[0m                                             [1m[91m^^^^[0m
+[1m[94m27 |[0m         start, end = self._window()
+[1m[94m28 |[0m         url = f"/me/calendarView?startDateTime={start}&endDateTime={end}&$top={top}&$select=id,subject,organizer,start,end,location,is[1m[94m…[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+ [1m[94m-->[0m src/hb_assistant/graph/drive_item_client.py:5:1
+  [1m[94m|[0m
+[1m[94m3 |[0m from __future__ import annotations
+[1m[94m4 |[0m
+[1m[94m5 |[0m from typing import List, Optional
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m6 |[0m
+[1m[94m7 |[0m from hb_assistant.normalize.attachment import Attachment
+  [1m[94m|[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/graph/drive_item_client.py:17:41
+   [1m[94m|[0m
+[1m[94m15 |[0m         self.client = http_client
+[1m[94m16 |[0m
+[1m[94m17 |[0m     def get_item(self, item_id: str) -> Optional[DriveItem]:
+   [1m[94m|[0m                                         [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m18 |[0m         url = f"/me/drive/items/{item_id}?$select=id,name,size,file,folder,webUrl,parentReference,lastModifiedDateTime,eTag,cTag"
+[1m[94m19 |[0m         data = self.client.get(url)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/graph/drive_item_client.py:33:72
+   [1m[94m|[0m
+[1m[94m31 |[0m         )
+[1m[94m32 |[0m
+[1m[94m33 |[0m     def list_children(self, parent_id: str = "root", top: int = 10) -> List[DriveItem]:
+   [1m[94m|[0m                                                                        [1m[91m^^^^[0m
+[1m[94m34 |[0m         url = f"/me/drive/items/{parent_id}/children?$top={top}&$select=id,name,size,file,folder,webUrl,lastModifiedDateTime"
+[1m[94m35 |[0m         data = self.client.get(url)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/graph/drive_item_client.py:48:59
+   [1m[94m|[0m
+[1m[94m47 |[0m     # Attachment metadata (example; full would be per message/event)
+[1m[94m48 |[0m     def list_attachments(self, parent_message_id: str) -> List[Attachment]:
+   [1m[94m|[0m                                                           [1m[91m^^^^[0m
+[1m[94m49 |[0m         url = f"/me/messages/{parent_message_id}/attachments?$select=id,name,contentType,size,isInline,lastModifiedDateTime"
+[1m[94m50 |[0m         data = self.client.get(url)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP035 [0m[[1m[96m*[0m] [1mImport from `collections.abc` instead: `Callable`, `Iterator`[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:15:1
+   [1m[94m|[0m
+[1m[94m14 |[0m import time
+[1m[94m15 |[0m from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m16 |[0m
+[1m[94m17 |[0m import requests
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mImport from `collections.abc`[0m
+
+[1m[91mUP035 [0m[1m`typing.Dict` is deprecated, use `dict` instead[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:15:1
+   [1m[94m|[0m
+[1m[94m14 |[0m import time
+[1m[94m15 |[0m from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m16 |[0m
+[1m[94m17 |[0m import requests
+   [1m[94m|[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:15:1
+   [1m[94m|[0m
+[1m[94m14 |[0m import time
+[1m[94m15 |[0m from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m16 |[0m
+[1m[94m17 |[0m import requests
+   [1m[94m|[0m
+
+[1m[91mUP035 [0m[1m`typing.Tuple` is deprecated, use `tuple` instead[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:15:1
+   [1m[94m|[0m
+[1m[94m14 |[0m import time
+[1m[94m15 |[0m from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m16 |[0m
+[1m[94m17 |[0m import requests
+   [1m[94m|[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Tuple` imported but unused[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:15:67
+   [1m[94m|[0m
+[1m[94m14 |[0m import time
+[1m[94m15 |[0m from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+   [1m[94m|[0m                                                                   [1m[91m^^^^^[0m
+[1m[94m16 |[0m
+[1m[94m17 |[0m import requests
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `typing.Tuple`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`hb_assistant.auth.exceptions.AuthError` imported but unused[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:20:42
+   [1m[94m|[0m
+[1m[94m19 |[0m from hb_assistant.auth.classifier import require_delegated
+[1m[94m20 |[0m from hb_assistant.auth.exceptions import AuthError
+   [1m[94m|[0m                                          [1m[91m^^^^^^^^^[0m
+[1m[94m21 |[0m
+[1m[94m22 |[0m # Retry policy (from 06 spec)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `hb_assistant.auth.exceptions.AuthError`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:48:33
+   [1m[94m|[0m
+[1m[94m46 |[0m     def __init__(
+[1m[94m47 |[0m         self,
+[1m[94m48 |[0m         token_getter: Callable[[Optional[List[str]]], Dict[str, Any]],
+   [1m[94m|[0m                                 [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m49 |[0m         *,
+[1m[94m50 |[0m         timeout: float = 30.0,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:48:42
+   [1m[94m|[0m
+[1m[94m46 |[0m     def __init__(
+[1m[94m47 |[0m         self,
+[1m[94m48 |[0m         token_getter: Callable[[Optional[List[str]]], Dict[str, Any]],
+   [1m[94m|[0m                                          [1m[91m^^^^[0m
+[1m[94m49 |[0m         *,
+[1m[94m50 |[0m         timeout: float = 30.0,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:48:55
+   [1m[94m|[0m
+[1m[94m46 |[0m     def __init__(
+[1m[94m47 |[0m         self,
+[1m[94m48 |[0m         token_getter: Callable[[Optional[List[str]]], Dict[str, Any]],
+   [1m[94m|[0m                                                       [1m[91m^^^^[0m
+[1m[94m49 |[0m         *,
+[1m[94m50 |[0m         timeout: float = 30.0,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:63:17
+   [1m[94m|[0m
+[1m[94m61 |[0m         path: str,
+[1m[94m62 |[0m         *,
+[1m[94m63 |[0m         params: Optional[Dict[str, Any]] = None,
+   [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m64 |[0m         scopes: Optional[List[str]] = None,
+[1m[94m65 |[0m         headers: Optional[Dict[str, str]] = None,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:63:26
+   [1m[94m|[0m
+[1m[94m61 |[0m         path: str,
+[1m[94m62 |[0m         *,
+[1m[94m63 |[0m         params: Optional[Dict[str, Any]] = None,
+   [1m[94m|[0m                          [1m[91m^^^^[0m
+[1m[94m64 |[0m         scopes: Optional[List[str]] = None,
+[1m[94m65 |[0m         headers: Optional[Dict[str, str]] = None,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:64:17
+   [1m[94m|[0m
+[1m[94m62 |[0m         *,
+[1m[94m63 |[0m         params: Optional[Dict[str, Any]] = None,
+[1m[94m64 |[0m         scopes: Optional[List[str]] = None,
+   [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m65 |[0m         headers: Optional[Dict[str, str]] = None,
+[1m[94m66 |[0m         data: Any = None,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:64:26
+   [1m[94m|[0m
+[1m[94m62 |[0m         *,
+[1m[94m63 |[0m         params: Optional[Dict[str, Any]] = None,
+[1m[94m64 |[0m         scopes: Optional[List[str]] = None,
+   [1m[94m|[0m                          [1m[91m^^^^[0m
+[1m[94m65 |[0m         headers: Optional[Dict[str, str]] = None,
+[1m[94m66 |[0m         data: Any = None,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:65:18
+   [1m[94m|[0m
+[1m[94m63 |[0m         params: Optional[Dict[str, Any]] = None,
+[1m[94m64 |[0m         scopes: Optional[List[str]] = None,
+[1m[94m65 |[0m         headers: Optional[Dict[str, str]] = None,
+   [1m[94m|[0m                  [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m66 |[0m         data: Any = None,
+[1m[94m67 |[0m         json: Any = None,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/graph/http_client.py:65:27
+   [1m[94m|[0m
+[1m[94m63 |[0m         params: Optional[Dict[str, Any]] = None,
+[1m[94m64 |[0m         scopes: Optional[List[str]] = None,
+[1m[94m65 |[0m         headers: Optional[Dict[str, str]] = None,
+   [1m[94m|[0m                           [1m[91m^^^^[0m
+[1m[94m66 |[0m         data: Any = None,
+[1m[94m67 |[0m         json: Any = None,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/graph/http_client.py:116:17
+    [1m[94m|[0m
+[1m[94m114 |[0m         path: str,
+[1m[94m115 |[0m         *,
+[1m[94m116 |[0m         params: Optional[Dict[str, Any]] = None,
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m117 |[0m         scopes: Optional[List[str]] = None,
+[1m[94m118 |[0m     ) -> Dict[str, Any]:
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/graph/http_client.py:116:26
+    [1m[94m|[0m
+[1m[94m114 |[0m         path: str,
+[1m[94m115 |[0m         *,
+[1m[94m116 |[0m         params: Optional[Dict[str, Any]] = None,
+    [1m[94m|[0m                          [1m[91m^^^^[0m
+[1m[94m117 |[0m         scopes: Optional[List[str]] = None,
+[1m[94m118 |[0m     ) -> Dict[str, Any]:
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/graph/http_client.py:117:17
+    [1m[94m|[0m
+[1m[94m115 |[0m         *,
+[1m[94m116 |[0m         params: Optional[Dict[str, Any]] = None,
+[1m[94m117 |[0m         scopes: Optional[List[str]] = None,
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m118 |[0m     ) -> Dict[str, Any]:
+[1m[94m119 |[0m         """GET and return JSON (single page or first page)."""
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/graph/http_client.py:117:26
+    [1m[94m|[0m
+[1m[94m115 |[0m         *,
+[1m[94m116 |[0m         params: Optional[Dict[str, Any]] = None,
+[1m[94m117 |[0m         scopes: Optional[List[str]] = None,
+    [1m[94m|[0m                          [1m[91m^^^^[0m
+[1m[94m118 |[0m     ) -> Dict[str, Any]:
+[1m[94m119 |[0m         """GET and return JSON (single page or first page)."""
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/graph/http_client.py:118:10
+    [1m[94m|[0m
+[1m[94m116 |[0m         params: Optional[Dict[str, Any]] = None,
+[1m[94m117 |[0m         scopes: Optional[List[str]] = None,
+[1m[94m118 |[0m     ) -> Dict[str, Any]:
+    [1m[94m|[0m          [1m[91m^^^^[0m
+[1m[94m119 |[0m         """GET and return JSON (single page or first page)."""
+[1m[94m120 |[0m         resp = self._request("GET", path, params=params, scopes=scopes)
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/graph/http_client.py:128:17
+    [1m[94m|[0m
+[1m[94m126 |[0m         path: str,
+[1m[94m127 |[0m         *,
+[1m[94m128 |[0m         params: Optional[Dict[str, Any]] = None,
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m129 |[0m         scopes: Optional[List[str]] = None,
+[1m[94m130 |[0m     ) -> Iterator[Dict[str, Any]]:
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/graph/http_client.py:128:26
+    [1m[94m|[0m
+[1m[94m126 |[0m         path: str,
+[1m[94m127 |[0m         *,
+[1m[94m128 |[0m         params: Optional[Dict[str, Any]] = None,
+    [1m[94m|[0m                          [1m[91m^^^^[0m
+[1m[94m129 |[0m         scopes: Optional[List[str]] = None,
+[1m[94m130 |[0m     ) -> Iterator[Dict[str, Any]]:
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/graph/http_client.py:129:17
+    [1m[94m|[0m
+[1m[94m127 |[0m         *,
+[1m[94m128 |[0m         params: Optional[Dict[str, Any]] = None,
+[1m[94m129 |[0m         scopes: Optional[List[str]] = None,
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m130 |[0m     ) -> Iterator[Dict[str, Any]]:
+[1m[94m131 |[0m         """Yield every item across @odata.nextLink pages (safe for bounded queries)."""
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/graph/http_client.py:129:26
+    [1m[94m|[0m
+[1m[94m127 |[0m         *,
+[1m[94m128 |[0m         params: Optional[Dict[str, Any]] = None,
+[1m[94m129 |[0m         scopes: Optional[List[str]] = None,
+    [1m[94m|[0m                          [1m[91m^^^^[0m
+[1m[94m130 |[0m     ) -> Iterator[Dict[str, Any]]:
+[1m[94m131 |[0m         """Yield every item across @odata.nextLink pages (safe for bounded queries)."""
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+   [1m[94m-->[0m src/hb_assistant/graph/http_client.py:130:19
+    [1m[94m|[0m
+[1m[94m128 |[0m         params: Optional[Dict[str, Any]] = None,
+[1m[94m129 |[0m         scopes: Optional[List[str]] = None,
+[1m[94m130 |[0m     ) -> Iterator[Dict[str, Any]]:
+    [1m[94m|[0m                   [1m[91m^^^^[0m
+[1m[94m131 |[0m         """Yield every item across @odata.nextLink pages (safe for bounded queries)."""
+[1m[94m132 |[0m         p = dict(params or {})
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP028 [0m[1mReplace `yield` over `for` loop with `yield from`[0m
+   [1m[94m-->[0m src/hb_assistant/graph/http_client.py:135:13
+    [1m[94m|[0m
+[1m[94m133 |[0m           while True:
+[1m[94m134 |[0m               data = self.get(path, params=p, scopes=scopes)
+[1m[94m135 |[0m [1m[91m/[0m             for item in data.get("value", []):
+[1m[94m136 |[0m [1m[91m|[0m                 yield item
+    [1m[94m|[0m [1m[91m|__________________________^[0m
+[1m[94m137 |[0m               next_link = data.get("@odata.nextLink")
+[1m[94m138 |[0m               if not next_link:
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `yield from`[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+  [1m[94m-->[0m src/hb_assistant/graph/mail_client.py:13:1
+   [1m[94m|[0m
+[1m[94m12 |[0m from datetime import datetime, timedelta, timezone
+[1m[94m13 |[0m from typing import List, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m14 |[0m
+[1m[94m15 |[0m from hb_assistant.config.loader import load_config
+   [1m[94m|[0m
+
+[1m[91mUP017 [0m[[1m[96m*[0m] [1mUse `datetime.UTC` alias[0m
+  [1m[94m-->[0m src/hb_assistant/graph/mail_client.py:30:31
+   [1m[94m|[0m
+[1m[94m28 |[0m     def _inbound_window(self) -> str:
+[1m[94m29 |[0m         days = self.cfg.mail.inbound_lookback_days
+[1m[94m30 |[0m         since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+   [1m[94m|[0m                               [1m[91m^^^^^^^^^^^^[0m
+[1m[94m31 |[0m         return f"receivedDateTime ge {since}"
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `datetime.UTC` alias[0m
+
+[1m[91mUP017 [0m[[1m[96m*[0m] [1mUse `datetime.UTC` alias[0m
+  [1m[94m-->[0m src/hb_assistant/graph/mail_client.py:35:31
+   [1m[94m|[0m
+[1m[94m33 |[0m     def _sent_window(self) -> str:
+[1m[94m34 |[0m         days = self.cfg.mail.sent_lookback_days
+[1m[94m35 |[0m         since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+   [1m[94m|[0m                               [1m[91m^^^^^^^^^^^^[0m
+[1m[94m36 |[0m         return f"sentDateTime ge {since}"
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `datetime.UTC` alias[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/graph/mail_client.py:38:46
+   [1m[94m|[0m
+[1m[94m36 |[0m         return f"sentDateTime ge {since}"
+[1m[94m37 |[0m
+[1m[94m38 |[0m     def list_inbound(self, top: int = 25) -> List[Email]:
+   [1m[94m|[0m                                              [1m[91m^^^^[0m
+[1m[94m39 |[0m         filter_q = self._inbound_window()
+[1m[94m40 |[0m         select = "id,conversationId,internetMessageId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachmen[1m[94m…[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/graph/mail_client.py:50:43
+   [1m[94m|[0m
+[1m[94m48 |[0m         return emails
+[1m[94m49 |[0m
+[1m[94m50 |[0m     def list_sent(self, top: int = 25) -> List[Email]:
+   [1m[94m|[0m                                           [1m[91m^^^^[0m
+[1m[94m51 |[0m         filter_q = self._sent_window()
+[1m[94m52 |[0m         select = "id,conversationId,internetMessageId,subject,from,toRecipients,ccRecipients,sentDateTime,bodyPreview,hasAttachments,w[1m[94m…[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/graph/mail_client.py:61:75
+   [1m[94m|[0m
+[1m[94m59 |[0m         return emails
+[1m[94m60 |[0m
+[1m[94m61 |[0m     def get_message(self, message_id: str, include_body: bool = False) -> Optional[Email]:
+   [1m[94m|[0m                                                                           [1m[91m^^^^^^^^^^^^^^^[0m
+[1m[94m62 |[0m         select = "id,conversationId,internetMessageId,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview[1m[94m…[0m
+[1m[94m63 |[0m         if include_body and self.cfg.mail.persist_full_body:  # guarded, default false
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+ [1m[94m-->[0m src/hb_assistant/links/__init__.py:7:1
+  [1m[94m|[0m
+[1m[94m5 |[0m """
+[1m[94m6 |[0m
+[1m[94m7 |[0m from .registry import SourceLinkRegistry, ALLOWED_LINK_TYPES
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m8 |[0m
+[1m[94m9 |[0m __all__ = ["SourceLinkRegistry", "ALLOWED_LINK_TYPES"]
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/links/registry.py:39:31
+   [1m[94m|[0m
+[1m[94m37 |[0m     """High-level API for persisting normalize models with mandatory source linking."""
+[1m[94m38 |[0m
+[1m[94m39 |[0m     def __init__(self, store: Optional[Store] = None):
+   [1m[94m|[0m                               [1m[91m^^^^^^^^^^^^^^^[0m
+[1m[94m40 |[0m         self.store = store or Store()
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/__init__.py:8:1
+   [1m[94m|[0m
+[1m[94m 6 |[0m   """
+[1m[94m 7 |[0m
+[1m[94m 8 |[0m [1m[91m/[0m from .email import Email
+[1m[94m 9 |[0m [1m[91m|[0m from .calendar_event import CalendarEvent
+[1m[94m10 |[0m [1m[91m|[0m from .attachment import Attachment
+[1m[94m11 |[0m [1m[91m|[0m from .drive_item import DriveItem
+[1m[94m12 |[0m [1m[91m|[0m from .redaction import redact_subject, redact_recipient, hash_value, truncate_preview
+   [1m[94m|[0m [1m[91m|_____________________________________________________________________________________^[0m
+[1m[94m13 |[0m
+[1m[94m14 |[0m   __all__ = [
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/attachment.py:13:11
+   [1m[94m|[0m
+[1m[94m11 |[0m     id: str
+[1m[94m12 |[0m     parent_source_record_id: int  # links to email or calendar_event source_record
+[1m[94m13 |[0m     name: Optional[str] = None
+   [1m[94m|[0m           [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m14 |[0m     content_type: Optional[str] = None
+[1m[94m15 |[0m     size: Optional[int] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/attachment.py:14:19
+   [1m[94m|[0m
+[1m[94m12 |[0m     parent_source_record_id: int  # links to email or calendar_event source_record
+[1m[94m13 |[0m     name: Optional[str] = None
+[1m[94m14 |[0m     content_type: Optional[str] = None
+   [1m[94m|[0m                   [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m15 |[0m     size: Optional[int] = None
+[1m[94m16 |[0m     is_inline: bool = False
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/attachment.py:15:11
+   [1m[94m|[0m
+[1m[94m13 |[0m     name: Optional[str] = None
+[1m[94m14 |[0m     content_type: Optional[str] = None
+[1m[94m15 |[0m     size: Optional[int] = None
+   [1m[94m|[0m           [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m16 |[0m     is_inline: bool = False
+[1m[94m17 |[0m     web_link: Optional[str] = None  # if referenceAttachment
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/attachment.py:17:15
+   [1m[94m|[0m
+[1m[94m15 |[0m     size: Optional[int] = None
+[1m[94m16 |[0m     is_inline: bool = False
+[1m[94m17 |[0m     web_link: Optional[str] = None  # if referenceAttachment
+   [1m[94m|[0m               [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m18 |[0m     source_record_id: Optional[int] = None
+[1m[94m19 |[0m     source_links: list = []
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/attachment.py:18:23
+   [1m[94m|[0m
+[1m[94m16 |[0m     is_inline: bool = False
+[1m[94m17 |[0m     web_link: Optional[str] = None  # if referenceAttachment
+[1m[94m18 |[0m     source_record_id: Optional[int] = None
+   [1m[94m|[0m                       [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m19 |[0m     source_links: list = []
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+ [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:6:1
+  [1m[94m|[0m
+[1m[94m5 |[0m from datetime import datetime
+[1m[94m6 |[0m from typing import List, Optional
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m7 |[0m
+[1m[94m8 |[0m from pydantic import BaseModel, Field
+  [1m[94m|[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:15:15
+   [1m[94m|[0m
+[1m[94m13 |[0m class CalendarEvent(BaseModel):
+[1m[94m14 |[0m     id: str
+[1m[94m15 |[0m     ical_uid: Optional[str] = None
+   [1m[94m|[0m               [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m16 |[0m     subject_redacted: Optional[str] = None
+[1m[94m17 |[0m     organizer_hash: Optional[str] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:16:23
+   [1m[94m|[0m
+[1m[94m14 |[0m     id: str
+[1m[94m15 |[0m     ical_uid: Optional[str] = None
+[1m[94m16 |[0m     subject_redacted: Optional[str] = None
+   [1m[94m|[0m                       [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m17 |[0m     organizer_hash: Optional[str] = None
+[1m[94m18 |[0m     attendees_hashes: List[str] = Field(default_factory=list)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:17:21
+   [1m[94m|[0m
+[1m[94m15 |[0m     ical_uid: Optional[str] = None
+[1m[94m16 |[0m     subject_redacted: Optional[str] = None
+[1m[94m17 |[0m     organizer_hash: Optional[str] = None
+   [1m[94m|[0m                     [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m18 |[0m     attendees_hashes: List[str] = Field(default_factory=list)
+[1m[94m19 |[0m     start: Optional[datetime] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:18:23
+   [1m[94m|[0m
+[1m[94m16 |[0m     subject_redacted: Optional[str] = None
+[1m[94m17 |[0m     organizer_hash: Optional[str] = None
+[1m[94m18 |[0m     attendees_hashes: List[str] = Field(default_factory=list)
+   [1m[94m|[0m                       [1m[91m^^^^[0m
+[1m[94m19 |[0m     start: Optional[datetime] = None
+[1m[94m20 |[0m     end: Optional[datetime] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:19:12
+   [1m[94m|[0m
+[1m[94m17 |[0m     organizer_hash: Optional[str] = None
+[1m[94m18 |[0m     attendees_hashes: List[str] = Field(default_factory=list)
+[1m[94m19 |[0m     start: Optional[datetime] = None
+   [1m[94m|[0m            [1m[91m^^^^^^^^^^^^^^^^^^[0m
+[1m[94m20 |[0m     end: Optional[datetime] = None
+[1m[94m21 |[0m     timezone: Optional[str] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:20:10
+   [1m[94m|[0m
+[1m[94m18 |[0m     attendees_hashes: List[str] = Field(default_factory=list)
+[1m[94m19 |[0m     start: Optional[datetime] = None
+[1m[94m20 |[0m     end: Optional[datetime] = None
+   [1m[94m|[0m          [1m[91m^^^^^^^^^^^^^^^^^^[0m
+[1m[94m21 |[0m     timezone: Optional[str] = None
+[1m[94m22 |[0m     location_redacted: Optional[str] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:21:15
+   [1m[94m|[0m
+[1m[94m19 |[0m     start: Optional[datetime] = None
+[1m[94m20 |[0m     end: Optional[datetime] = None
+[1m[94m21 |[0m     timezone: Optional[str] = None
+   [1m[94m|[0m               [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m22 |[0m     location_redacted: Optional[str] = None
+[1m[94m23 |[0m     is_online_meeting: bool = False
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:22:24
+   [1m[94m|[0m
+[1m[94m20 |[0m     end: Optional[datetime] = None
+[1m[94m21 |[0m     timezone: Optional[str] = None
+[1m[94m22 |[0m     location_redacted: Optional[str] = None
+   [1m[94m|[0m                        [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m23 |[0m     is_online_meeting: bool = False
+[1m[94m24 |[0m     online_meeting_link: Optional[str] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:24:26
+   [1m[94m|[0m
+[1m[94m22 |[0m     location_redacted: Optional[str] = None
+[1m[94m23 |[0m     is_online_meeting: bool = False
+[1m[94m24 |[0m     online_meeting_link: Optional[str] = None
+   [1m[94m|[0m                          [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m25 |[0m     web_link: Optional[str] = None
+[1m[94m26 |[0m     has_attachments: bool = False
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:25:15
+   [1m[94m|[0m
+[1m[94m23 |[0m     is_online_meeting: bool = False
+[1m[94m24 |[0m     online_meeting_link: Optional[str] = None
+[1m[94m25 |[0m     web_link: Optional[str] = None
+   [1m[94m|[0m               [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m26 |[0m     has_attachments: bool = False
+[1m[94m27 |[0m     is_cancelled: bool = False
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:29:23
+   [1m[94m|[0m
+[1m[94m27 |[0m     is_cancelled: bool = False
+[1m[94m28 |[0m     is_private: bool = False
+[1m[94m29 |[0m     source_record_id: Optional[int] = None
+   [1m[94m|[0m                       [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m30 |[0m     source_links: List[dict] = Field(default_factory=list)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:30:19
+   [1m[94m|[0m
+[1m[94m28 |[0m     is_private: bool = False
+[1m[94m29 |[0m     source_record_id: Optional[int] = None
+[1m[94m30 |[0m     source_links: List[dict] = Field(default_factory=list)
+   [1m[94m|[0m                   [1m[91m^^^^[0m
+[1m[94m31 |[0m
+[1m[94m32 |[0m     @classmethod
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP037 [0m[[1m[96m*[0m] [1mRemove quotes from type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/calendar_event.py:33:44
+   [1m[94m|[0m
+[1m[94m32 |[0m     @classmethod
+[1m[94m33 |[0m     def from_graph_event(cls, ev: dict) -> "CalendarEvent":
+   [1m[94m|[0m                                            [1m[91m^^^^^^^^^^^^^^^[0m
+[1m[94m34 |[0m         org = ev.get("organizer", {}).get("emailAddress", {}).get("address")
+[1m[94m35 |[0m         return cls(
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove quotes[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/drive_item.py:13:11
+   [1m[94m|[0m
+[1m[94m11 |[0m class DriveItem(BaseModel):
+[1m[94m12 |[0m     id: str
+[1m[94m13 |[0m     name: Optional[str] = None
+   [1m[94m|[0m           [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m14 |[0m     size: Optional[int] = None
+[1m[94m15 |[0m     web_url: Optional[str] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/drive_item.py:14:11
+   [1m[94m|[0m
+[1m[94m12 |[0m     id: str
+[1m[94m13 |[0m     name: Optional[str] = None
+[1m[94m14 |[0m     size: Optional[int] = None
+   [1m[94m|[0m           [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m15 |[0m     web_url: Optional[str] = None
+[1m[94m16 |[0m     is_file: bool = False
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/drive_item.py:15:14
+   [1m[94m|[0m
+[1m[94m13 |[0m     name: Optional[str] = None
+[1m[94m14 |[0m     size: Optional[int] = None
+[1m[94m15 |[0m     web_url: Optional[str] = None
+   [1m[94m|[0m              [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m16 |[0m     is_file: bool = False
+[1m[94m17 |[0m     is_folder: bool = False
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/drive_item.py:18:23
+   [1m[94m|[0m
+[1m[94m16 |[0m     is_file: bool = False
+[1m[94m17 |[0m     is_folder: bool = False
+[1m[94m18 |[0m     parent_reference: Optional[dict] = None
+   [1m[94m|[0m                       [1m[91m^^^^^^^^^^^^^^[0m
+[1m[94m19 |[0m     last_modified: Optional[datetime] = None
+[1m[94m20 |[0m     e_tag: Optional[str] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/drive_item.py:19:20
+   [1m[94m|[0m
+[1m[94m17 |[0m     is_folder: bool = False
+[1m[94m18 |[0m     parent_reference: Optional[dict] = None
+[1m[94m19 |[0m     last_modified: Optional[datetime] = None
+   [1m[94m|[0m                    [1m[91m^^^^^^^^^^^^^^^^^^[0m
+[1m[94m20 |[0m     e_tag: Optional[str] = None
+[1m[94m21 |[0m     c_tag: Optional[str] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/drive_item.py:20:12
+   [1m[94m|[0m
+[1m[94m18 |[0m     parent_reference: Optional[dict] = None
+[1m[94m19 |[0m     last_modified: Optional[datetime] = None
+[1m[94m20 |[0m     e_tag: Optional[str] = None
+   [1m[94m|[0m            [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m21 |[0m     c_tag: Optional[str] = None
+[1m[94m22 |[0m     source_record_id: Optional[int] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/drive_item.py:21:12
+   [1m[94m|[0m
+[1m[94m19 |[0m     last_modified: Optional[datetime] = None
+[1m[94m20 |[0m     e_tag: Optional[str] = None
+[1m[94m21 |[0m     c_tag: Optional[str] = None
+   [1m[94m|[0m            [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m22 |[0m     source_record_id: Optional[int] = None
+[1m[94m23 |[0m     source_links: list = []
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/drive_item.py:22:23
+   [1m[94m|[0m
+[1m[94m20 |[0m     e_tag: Optional[str] = None
+[1m[94m21 |[0m     c_tag: Optional[str] = None
+[1m[94m22 |[0m     source_record_id: Optional[int] = None
+   [1m[94m|[0m                       [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m23 |[0m     source_links: list = []
+[1m[94m24 |[0m     cached_path: Optional[str] = None  # local cache after controlled download
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/drive_item.py:24:18
+   [1m[94m|[0m
+[1m[94m22 |[0m     source_record_id: Optional[int] = None
+[1m[94m23 |[0m     source_links: list = []
+[1m[94m24 |[0m     cached_path: Optional[str] = None  # local cache after controlled download
+   [1m[94m|[0m                  [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m25 |[0m     download_status: Optional[str] = None  # pending, success, skipped, error
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/drive_item.py:25:22
+   [1m[94m|[0m
+[1m[94m23 |[0m     source_links: list = []
+[1m[94m24 |[0m     cached_path: Optional[str] = None  # local cache after controlled download
+[1m[94m25 |[0m     download_status: Optional[str] = None  # pending, success, skipped, error
+   [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:9:1
+   [1m[94m|[0m
+[1m[94m 8 |[0m from datetime import datetime
+[1m[94m 9 |[0m from typing import List, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m10 |[0m
+[1m[94m11 |[0m from pydantic import BaseModel, Field
+   [1m[94m|[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:21:19
+   [1m[94m|[0m
+[1m[94m19 |[0m     # Core identifiers (immutable where possible)
+[1m[94m20 |[0m     id: str
+[1m[94m21 |[0m     immutable_id: Optional[str] = None
+   [1m[94m|[0m                   [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m22 |[0m     conversation_id: Optional[str] = None
+[1m[94m23 |[0m     internet_message_id: Optional[str] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:22:22
+   [1m[94m|[0m
+[1m[94m20 |[0m     id: str
+[1m[94m21 |[0m     immutable_id: Optional[str] = None
+[1m[94m22 |[0m     conversation_id: Optional[str] = None
+   [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m23 |[0m     internet_message_id: Optional[str] = None
+[1m[94m24 |[0m     web_link: Optional[str] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:23:26
+   [1m[94m|[0m
+[1m[94m21 |[0m     immutable_id: Optional[str] = None
+[1m[94m22 |[0m     conversation_id: Optional[str] = None
+[1m[94m23 |[0m     internet_message_id: Optional[str] = None
+   [1m[94m|[0m                          [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m24 |[0m     web_link: Optional[str] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:24:15
+   [1m[94m|[0m
+[1m[94m22 |[0m     conversation_id: Optional[str] = None
+[1m[94m23 |[0m     internet_message_id: Optional[str] = None
+[1m[94m24 |[0m     web_link: Optional[str] = None
+   [1m[94m|[0m               [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m25 |[0m
+[1m[94m26 |[0m     # Folder context
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:30:23
+   [1m[94m|[0m
+[1m[94m29 |[0m     # Redacted/timestamped fields
+[1m[94m30 |[0m     subject_redacted: Optional[str] = None
+   [1m[94m|[0m                       [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m31 |[0m     sender_domain: Optional[str] = None
+[1m[94m32 |[0m     sender_hash: Optional[str] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:31:20
+   [1m[94m|[0m
+[1m[94m29 |[0m     # Redacted/timestamped fields
+[1m[94m30 |[0m     subject_redacted: Optional[str] = None
+[1m[94m31 |[0m     sender_domain: Optional[str] = None
+   [1m[94m|[0m                    [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m32 |[0m     sender_hash: Optional[str] = None
+[1m[94m33 |[0m     from_redacted: Optional[str] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:32:18
+   [1m[94m|[0m
+[1m[94m30 |[0m     subject_redacted: Optional[str] = None
+[1m[94m31 |[0m     sender_domain: Optional[str] = None
+[1m[94m32 |[0m     sender_hash: Optional[str] = None
+   [1m[94m|[0m                  [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m33 |[0m     from_redacted: Optional[str] = None
+[1m[94m34 |[0m     to_recipients_redacted: List[str] = Field(default_factory=list)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:33:20
+   [1m[94m|[0m
+[1m[94m31 |[0m     sender_domain: Optional[str] = None
+[1m[94m32 |[0m     sender_hash: Optional[str] = None
+[1m[94m33 |[0m     from_redacted: Optional[str] = None
+   [1m[94m|[0m                    [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m34 |[0m     to_recipients_redacted: List[str] = Field(default_factory=list)
+[1m[94m35 |[0m     cc_recipients_redacted: List[str] = Field(default_factory=list)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:34:29
+   [1m[94m|[0m
+[1m[94m32 |[0m     sender_hash: Optional[str] = None
+[1m[94m33 |[0m     from_redacted: Optional[str] = None
+[1m[94m34 |[0m     to_recipients_redacted: List[str] = Field(default_factory=list)
+   [1m[94m|[0m                             [1m[91m^^^^[0m
+[1m[94m35 |[0m     cc_recipients_redacted: List[str] = Field(default_factory=list)
+[1m[94m36 |[0m     received_datetime: Optional[datetime] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:35:29
+   [1m[94m|[0m
+[1m[94m33 |[0m     from_redacted: Optional[str] = None
+[1m[94m34 |[0m     to_recipients_redacted: List[str] = Field(default_factory=list)
+[1m[94m35 |[0m     cc_recipients_redacted: List[str] = Field(default_factory=list)
+   [1m[94m|[0m                             [1m[91m^^^^[0m
+[1m[94m36 |[0m     received_datetime: Optional[datetime] = None
+[1m[94m37 |[0m     sent_datetime: Optional[datetime] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:36:24
+   [1m[94m|[0m
+[1m[94m34 |[0m     to_recipients_redacted: List[str] = Field(default_factory=list)
+[1m[94m35 |[0m     cc_recipients_redacted: List[str] = Field(default_factory=list)
+[1m[94m36 |[0m     received_datetime: Optional[datetime] = None
+   [1m[94m|[0m                        [1m[91m^^^^^^^^^^^^^^^^^^[0m
+[1m[94m37 |[0m     sent_datetime: Optional[datetime] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:37:20
+   [1m[94m|[0m
+[1m[94m35 |[0m     cc_recipients_redacted: List[str] = Field(default_factory=list)
+[1m[94m36 |[0m     received_datetime: Optional[datetime] = None
+[1m[94m37 |[0m     sent_datetime: Optional[datetime] = None
+   [1m[94m|[0m                    [1m[91m^^^^^^^^^^^^^^^^^^[0m
+[1m[94m38 |[0m
+[1m[94m39 |[0m     # Preview (bounded, redacted)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:40:28
+   [1m[94m|[0m
+[1m[94m39 |[0m     # Preview (bounded, redacted)
+[1m[94m40 |[0m     body_preview_redacted: Optional[str] = None
+   [1m[94m|[0m                            [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m41 |[0m
+[1m[94m42 |[0m     # Flags
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:44:17
+   [1m[94m|[0m
+[1m[94m42 |[0m     # Flags
+[1m[94m43 |[0m     has_attachments: bool = False
+[1m[94m44 |[0m     importance: Optional[str] = None
+   [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m45 |[0m
+[1m[94m46 |[0m     # Source traceability (populated by client or registry)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:47:23
+   [1m[94m|[0m
+[1m[94m46 |[0m     # Source traceability (populated by client or registry)
+[1m[94m47 |[0m     source_record_id: Optional[int] = None
+   [1m[94m|[0m                       [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m48 |[0m     source_links: List[dict] = Field(default_factory=list)  # type from source-link-types.json
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:48:19
+   [1m[94m|[0m
+[1m[94m46 |[0m     # Source traceability (populated by client or registry)
+[1m[94m47 |[0m     source_record_id: Optional[int] = None
+[1m[94m48 |[0m     source_links: List[dict] = Field(default_factory=list)  # type from source-link-types.json
+   [1m[94m|[0m                   [1m[91m^^^^[0m
+[1m[94m49 |[0m
+[1m[94m50 |[0m     @classmethod
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP037 [0m[[1m[96m*[0m] [1mRemove quotes from type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/email.py:51:70
+   [1m[94m|[0m
+[1m[94m50 |[0m     @classmethod
+[1m[94m51 |[0m     def from_graph_message(cls, msg: dict, folder: str = "inbox") -> "Email":
+   [1m[94m|[0m                                                                      [1m[91m^^^^^^^[0m
+[1m[94m52 |[0m         """Construct from raw Graph message dict (after $select), applying redaction."""
+[1m[94m53 |[0m         from_addr = msg.get("from", {}).get("emailAddress", {})
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove quotes[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/redaction.py:17:23
+   [1m[94m|[0m
+[1m[94m17 |[0m def hash_value(value: Optional[str]) -> Optional[str]:
+   [1m[94m|[0m                       [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m18 |[0m     if not value:
+[1m[94m19 |[0m         return None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/redaction.py:17:41
+   [1m[94m|[0m
+[1m[94m17 |[0m def hash_value(value: Optional[str]) -> Optional[str]:
+   [1m[94m|[0m                                         [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m18 |[0m     if not value:
+[1m[94m19 |[0m         return None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/redaction.py:23:29
+   [1m[94m|[0m
+[1m[94m23 |[0m def redact_subject(subject: Optional[str]) -> Optional[str]:
+   [1m[94m|[0m                             [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m24 |[0m     if not subject:
+[1m[94m25 |[0m         return None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/redaction.py:23:47
+   [1m[94m|[0m
+[1m[94m23 |[0m def redact_subject(subject: Optional[str]) -> Optional[str]:
+   [1m[94m|[0m                                               [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m24 |[0m     if not subject:
+[1m[94m25 |[0m         return None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/redaction.py:30:29
+   [1m[94m|[0m
+[1m[94m30 |[0m def redact_recipient(email: Optional[str]) -> Optional[str]:
+   [1m[94m|[0m                             [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m31 |[0m     if not email:
+[1m[94m32 |[0m         return None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/redaction.py:30:47
+   [1m[94m|[0m
+[1m[94m30 |[0m def redact_recipient(email: Optional[str]) -> Optional[str]:
+   [1m[94m|[0m                                               [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m31 |[0m     if not email:
+[1m[94m32 |[0m         return None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/redaction.py:39:31
+   [1m[94m|[0m
+[1m[94m39 |[0m def truncate_preview(preview: Optional[str], max_len: int = 120) -> Optional[str]:
+   [1m[94m|[0m                               [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m40 |[0m     if not preview:
+[1m[94m41 |[0m         return None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/redaction.py:39:69
+   [1m[94m|[0m
+[1m[94m39 |[0m def truncate_preview(preview: Optional[str], max_len: int = 120) -> Optional[str]:
+   [1m[94m|[0m                                                                     [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m40 |[0m     if not preview:
+[1m[94m41 |[0m         return None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/redaction.py:47:31
+   [1m[94m|[0m
+[1m[94m47 |[0m def redact_location(location: Optional[str]) -> Optional[str]:
+   [1m[94m|[0m                               [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m48 |[0m     if not location:
+[1m[94m49 |[0m         return None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/normalize/redaction.py:47:49
+   [1m[94m|[0m
+[1m[94m47 |[0m def redact_location(location: Optional[str]) -> Optional[str]:
+   [1m[94m|[0m                                                 [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m48 |[0m     if not location:
+[1m[94m49 |[0m         return None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP035 [0m[[1m[96m*[0m] [1mImport from `collections.abc` instead: `Iterator`[0m
+  [1m[94m-->[0m src/hb_assistant/store/connection.py:12:1
+   [1m[94m|[0m
+[1m[94m10 |[0m from contextlib import contextmanager
+[1m[94m11 |[0m from pathlib import Path
+[1m[94m12 |[0m from typing import Iterator
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m13 |[0m
+[1m[94m14 |[0m from hb_assistant.config.path_policy import PathPolicy
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mImport from `collections.abc`[0m
+
+[1m[91mUP017 [0m[[1m[96m*[0m] [1mUse `datetime.UTC` alias[0m
+   [1m[94m-->[0m src/hb_assistant/store/migrator.py:176:36
+    [1m[94m|[0m
+[1m[94m174 |[0m             cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 1")
+[1m[94m175 |[0m             if cur.fetchone() is None:
+[1m[94m176 |[0m                 now = datetime.now(timezone.utc).isoformat()
+    [1m[94m|[0m                                    [1m[91m^^^^^^^^^^^^[0m
+[1m[94m177 |[0m                 conn.execute(
+[1m[94m178 |[0m                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (1, 'v1_initial_schema', ?)",
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `datetime.UTC` alias[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`json` imported but unused[0m
+  [1m[94m-->[0m src/hb_assistant/store/repositories.py:10:8
+   [1m[94m|[0m
+[1m[94m 8 |[0m from __future__ import annotations
+[1m[94m 9 |[0m
+[1m[94m10 |[0m import json
+   [1m[94m|[0m        [1m[91m^^^^[0m
+[1m[94m11 |[0m import sqlite3
+[1m[94m12 |[0m from datetime import datetime, timezone
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `json`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/store/repositories.py:45:25
+   [1m[94m|[0m
+[1m[94m43 |[0m         source_key: str,
+[1m[94m44 |[0m         source_system: str,
+[1m[94m45 |[0m         title_redacted: Optional[str] = None,
+   [1m[94m|[0m                         [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m46 |[0m         source_url: Optional[str] = None,
+[1m[94m47 |[0m         external_id: Optional[str] = None,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/store/repositories.py:46:21
+   [1m[94m|[0m
+[1m[94m44 |[0m         source_system: str,
+[1m[94m45 |[0m         title_redacted: Optional[str] = None,
+[1m[94m46 |[0m         source_url: Optional[str] = None,
+   [1m[94m|[0m                     [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m47 |[0m         external_id: Optional[str] = None,
+[1m[94m48 |[0m         immutable_id: Optional[str] = None,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/store/repositories.py:47:22
+   [1m[94m|[0m
+[1m[94m45 |[0m         title_redacted: Optional[str] = None,
+[1m[94m46 |[0m         source_url: Optional[str] = None,
+[1m[94m47 |[0m         external_id: Optional[str] = None,
+   [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m48 |[0m         immutable_id: Optional[str] = None,
+[1m[94m49 |[0m         content_hash: Optional[str] = None,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/store/repositories.py:48:23
+   [1m[94m|[0m
+[1m[94m46 |[0m         source_url: Optional[str] = None,
+[1m[94m47 |[0m         external_id: Optional[str] = None,
+[1m[94m48 |[0m         immutable_id: Optional[str] = None,
+   [1m[94m|[0m                       [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m49 |[0m         content_hash: Optional[str] = None,
+[1m[94m50 |[0m         metadata_hash: Optional[str] = None,
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/store/repositories.py:49:23
+   [1m[94m|[0m
+[1m[94m47 |[0m         external_id: Optional[str] = None,
+[1m[94m48 |[0m         immutable_id: Optional[str] = None,
+[1m[94m49 |[0m         content_hash: Optional[str] = None,
+   [1m[94m|[0m                       [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m50 |[0m         metadata_hash: Optional[str] = None,
+[1m[94m51 |[0m     ) -> int:
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/store/repositories.py:50:24
+   [1m[94m|[0m
+[1m[94m48 |[0m         immutable_id: Optional[str] = None,
+[1m[94m49 |[0m         content_hash: Optional[str] = None,
+[1m[94m50 |[0m         metadata_hash: Optional[str] = None,
+   [1m[94m|[0m                        [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m51 |[0m     ) -> int:
+[1m[94m52 |[0m         """Upsert a source_record. Returns its id (new or existing)."""
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP017 [0m[[1m[96m*[0m] [1mUse `datetime.UTC` alias[0m
+  [1m[94m-->[0m src/hb_assistant/store/repositories.py:54:28
+   [1m[94m|[0m
+[1m[94m52 |[0m         """Upsert a source_record. Returns its id (new or existing)."""
+[1m[94m53 |[0m         conn = get_connection(self._db_path)
+[1m[94m54 |[0m         now = datetime.now(timezone.utc).isoformat()
+   [1m[94m|[0m                            [1m[91m^^^^^^^^^^^^[0m
+[1m[94m55 |[0m         with transaction(conn):
+[1m[94m56 |[0m             cur = conn.execute(
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `datetime.UTC` alias[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/store/repositories.py:84:59
+   [1m[94m|[0m
+[1m[94m82 |[0m             return int(row[0])
+[1m[94m83 |[0m
+[1m[94m84 |[0m     def get_source_record(self, source_record_id: int) -> Optional[dict[str, Any]]:
+   [1m[94m|[0m                                                           [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m85 |[0m         conn = get_connection(self._db_path)
+[1m[94m86 |[0m         cur = conn.execute("SELECT * FROM source_records WHERE id = ?", (source_record_id,))
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP017 [0m[[1m[96m*[0m] [1mUse `datetime.UTC` alias[0m
+   [1m[94m-->[0m src/hb_assistant/store/repositories.py:268:28
+    [1m[94m|[0m
+[1m[94m266 |[0m     def finish_assistant_run(self, run_id: int, status: str = "completed") -> None:
+[1m[94m267 |[0m         conn = get_connection(self._db_path)
+[1m[94m268 |[0m         now = datetime.now(timezone.utc).isoformat()
+    [1m[94m|[0m                            [1m[91m^^^^^^^^^^^^[0m
+[1m[94m269 |[0m         with transaction(conn):
+[1m[94m270 |[0m             conn.execute(
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `datetime.UTC` alias[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/store/repositories.py:280:32
+    [1m[94m|[0m
+[1m[94m278 |[0m         self,
+[1m[94m279 |[0m         *,
+[1m[94m280 |[0m         from_source_record_id: Optional[int],
+    [1m[94m|[0m                                [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m281 |[0m         to_source_record_id: Optional[int],
+[1m[94m282 |[0m         action_item_id: Optional[int] = None,
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/store/repositories.py:281:30
+    [1m[94m|[0m
+[1m[94m279 |[0m         *,
+[1m[94m280 |[0m         from_source_record_id: Optional[int],
+[1m[94m281 |[0m         to_source_record_id: Optional[int],
+    [1m[94m|[0m                              [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m282 |[0m         action_item_id: Optional[int] = None,
+[1m[94m283 |[0m         link_type: str,
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/store/repositories.py:282:25
+    [1m[94m|[0m
+[1m[94m280 |[0m         from_source_record_id: Optional[int],
+[1m[94m281 |[0m         to_source_record_id: Optional[int],
+[1m[94m282 |[0m         action_item_id: Optional[int] = None,
+    [1m[94m|[0m                         [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m283 |[0m         link_type: str,
+[1m[94m284 |[0m         confidence: Optional[float] = None,
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+   [1m[94m-->[0m src/hb_assistant/store/repositories.py:284:21
+    [1m[94m|[0m
+[1m[94m282 |[0m         action_item_id: Optional[int] = None,
+[1m[94m283 |[0m         link_type: str,
+[1m[94m284 |[0m         confidence: Optional[float] = None,
+    [1m[94m|[0m                     [1m[91m^^^^^^^^^^^^^^^[0m
+[1m[94m285 |[0m     ) -> int:
+[1m[94m286 |[0m         conn = get_connection(self._db_path)
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP035 [0m[[1m[96m*[0m] [1mImport from `collections.abc` instead: `Iterator`[0m
+ [1m[94m-->[0m tests/conftest.py:6:1
+  [1m[94m|[0m
+[1m[94m5 |[0m from pathlib import Path
+[1m[94m6 |[0m from typing import Iterator
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m7 |[0m
+[1m[94m8 |[0m import pytest
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mImport from `collections.abc`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Iterator` imported but unused[0m
+ [1m[94m-->[0m tests/conftest.py:6:20
+  [1m[94m|[0m
+[1m[94m5 |[0m from pathlib import Path
+[1m[94m6 |[0m from typing import Iterator
+  [1m[94m|[0m                    [1m[91m^^^^^^^^[0m
+[1m[94m7 |[0m
+[1m[94m8 |[0m import pytest
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `typing.Iterator`[0m
+
+[1m[91mF841 [0m[1mLocal variable `tmp_path` is assigned to but never used[0m
+  [1m[94m-->[0m tests/conftest.py:34:45
+   [1m[94m|[0m
+[1m[94m32 |[0m         "project": {"name": "Test HB PA", "slug": "test-hb-pa"},
+[1m[94m33 |[0m         "paths": {
+[1m[94m34 |[0m             "application_support_root": str(tmp_path := Path("/tmp/fake-support")),  # will be overridden in tests
+   [1m[94m|[0m                                             [1m[91m^^^^^^^^[0m
+[1m[94m35 |[0m             "obsidian_vault": "/tmp/fake-vault",
+[1m[94m36 |[0m         },
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `tmp_path`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m tests/test_auth.py:6:1
+   [1m[94m|[0m
+[1m[94m 4 |[0m   """
+[1m[94m 5 |[0m
+[1m[94m 6 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 7 |[0m [1m[91m|[0m
+[1m[94m 8 |[0m [1m[91m|[0m import json
+[1m[94m 9 |[0m [1m[91m|[0m import tempfile
+[1m[94m10 |[0m [1m[91m|[0m from pathlib import Path
+[1m[94m11 |[0m [1m[91m|[0m from typing import Any, Dict, List
+[1m[94m12 |[0m [1m[91m|[0m from unittest.mock import MagicMock, patch
+[1m[94m13 |[0m [1m[91m|[0m
+[1m[94m14 |[0m [1m[91m|[0m import pytest
+[1m[94m15 |[0m [1m[91m|[0m
+[1m[94m16 |[0m [1m[91m|[0m from hb_assistant.auth.classifier import classify_token_claims, require_delegated, safe_redact_claims
+[1m[94m17 |[0m [1m[91m|[0m from hb_assistant.auth.exceptions import ClassificationError
+[1m[94m18 |[0m [1m[91m|[0m from hb_assistant.auth.providers import AppOnlyAuthProvider, DelegatedAuthProvider
+[1m[94m19 |[0m [1m[91m|[0m from hb_assistant.auth.token_cache_manager import TokenCacheManager
+[1m[94m20 |[0m [1m[91m|[0m from hb_assistant.config.models import AppConfig
+[1m[94m21 |[0m [1m[91m|[0m from hb_assistant.config.path_policy import PathPolicy
+[1m[94m22 |[0m [1m[91m|[0m from hb_assistant.graph.http_client import GraphHttpClient
+   [1m[94m|[0m [1m[91m|__________________________________________________________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`pathlib.Path` imported but unused[0m
+  [1m[94m-->[0m tests/test_auth.py:10:21
+   [1m[94m|[0m
+[1m[94m 8 |[0m import json
+[1m[94m 9 |[0m import tempfile
+[1m[94m10 |[0m from pathlib import Path
+   [1m[94m|[0m                     [1m[91m^^^^[0m
+[1m[94m11 |[0m from typing import Any, Dict, List
+[1m[94m12 |[0m from unittest.mock import MagicMock, patch
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `pathlib.Path`[0m
+
+[1m[91mUP035 [0m[1m`typing.Dict` is deprecated, use `dict` instead[0m
+  [1m[94m-->[0m tests/test_auth.py:11:1
+   [1m[94m|[0m
+[1m[94m 9 |[0m import tempfile
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Dict, List
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m12 |[0m from unittest.mock import MagicMock, patch
+   [1m[94m|[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+  [1m[94m-->[0m tests/test_auth.py:11:1
+   [1m[94m|[0m
+[1m[94m 9 |[0m import tempfile
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Dict, List
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m12 |[0m from unittest.mock import MagicMock, patch
+   [1m[94m|[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Any` imported but unused[0m
+  [1m[94m-->[0m tests/test_auth.py:11:20
+   [1m[94m|[0m
+[1m[94m 9 |[0m import tempfile
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Dict, List
+   [1m[94m|[0m                    [1m[91m^^^[0m
+[1m[94m12 |[0m from unittest.mock import MagicMock, patch
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Dict` imported but unused[0m
+  [1m[94m-->[0m tests/test_auth.py:11:25
+   [1m[94m|[0m
+[1m[94m 9 |[0m import tempfile
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Dict, List
+   [1m[94m|[0m                         [1m[91m^^^^[0m
+[1m[94m12 |[0m from unittest.mock import MagicMock, patch
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.List` imported but unused[0m
+  [1m[94m-->[0m tests/test_auth.py:11:31
+   [1m[94m|[0m
+[1m[94m 9 |[0m import tempfile
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Dict, List
+   [1m[94m|[0m                               [1m[91m^^^^[0m
+[1m[94m12 |[0m from unittest.mock import MagicMock, patch
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`hb_assistant.graph.http_client.GraphHttpClient` imported but unused[0m
+  [1m[94m-->[0m tests/test_auth.py:22:44
+   [1m[94m|[0m
+[1m[94m20 |[0m from hb_assistant.config.models import AppConfig
+[1m[94m21 |[0m from hb_assistant.config.path_policy import PathPolicy
+[1m[94m22 |[0m from hb_assistant.graph.http_client import GraphHttpClient
+   [1m[94m|[0m                                            [1m[91m^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `hb_assistant.graph.http_client.GraphHttpClient`[0m
+
+[1m[91mF811 [0m[[1m[96m*[0m] [1mRedefinition of unused `GraphHttpClient` from line 22[0m
+   [1m[94m-->[0m tests/test_auth.py:122:48
+    [1m[94m|[0m
+[1m[94m120 |[0m @patch("hb_assistant.graph.http_client.requests")
+[1m[94m121 |[0m def test_graph_client_paging_and_retry(mock_requests: MagicMock) -> None:
+[1m[94m122 |[0m     from hb_assistant.graph.http_client import GraphHttpClient
+    [1m[94m|[0m                                                [1m[91m^^^^^^^^^^^^^^^[0m [1m[91m`GraphHttpClient` redefined here[0m
+[1m[94m123 |[0m
+[1m[94m124 |[0m     # Fake token getter
+    [1m[94m|[0m
+   [1m[94m:::[0m tests/test_auth.py:22:44
+    [1m[94m|[0m
+[1m[94m 20 |[0m from hb_assistant.config.models import AppConfig
+[1m[94m 21 |[0m from hb_assistant.config.path_policy import PathPolicy
+[1m[94m 22 |[0m from hb_assistant.graph.http_client import GraphHttpClient
+    [1m[94m|[0m                                            [1m[33m---------------[0m [1m[33mprevious definition of `GraphHttpClient` here[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove definition: `GraphHttpClient`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`pytest` imported but unused[0m
+  [1m[94m-->[0m tests/test_config.py:9:8
+   [1m[94m|[0m
+[1m[94m 7 |[0m from pathlib import Path
+[1m[94m 8 |[0m
+[1m[94m 9 |[0m import pytest
+   [1m[94m|[0m        [1m[91m^^^^^^[0m
+[1m[94m10 |[0m
+[1m[94m11 |[0m from hb_assistant.config.loader import load_config
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `pytest`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m tests/test_graph_clients.py:7:1
+   [1m[94m|[0m
+[1m[94m 5 |[0m   """
+[1m[94m 6 |[0m
+[1m[94m 7 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 8 |[0m [1m[91m|[0m
+[1m[94m 9 |[0m [1m[91m|[0m from unittest.mock import MagicMock
+[1m[94m10 |[0m [1m[91m|[0m
+[1m[94m11 |[0m [1m[91m|[0m from hb_assistant.config.loader import load_config
+[1m[94m12 |[0m [1m[91m|[0m from hb_assistant.graph.mail_client import MailClient
+[1m[94m13 |[0m [1m[91m|[0m from hb_assistant.graph.calendar_client import CalendarClient
+[1m[94m14 |[0m [1m[91m|[0m from hb_assistant.graph.drive_item_client import DriveItemClient
+[1m[94m15 |[0m [1m[91m|[0m from hb_assistant.normalize.email import Email
+[1m[94m16 |[0m [1m[91m|[0m from hb_assistant.normalize.calendar_event import CalendarEvent
+   [1m[94m|[0m [1m[91m|_______________________________________________________________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m tests/test_graph_proof.py:8:1
+   [1m[94m|[0m
+[1m[94m 6 |[0m   """
+[1m[94m 7 |[0m
+[1m[94m 8 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 9 |[0m [1m[91m|[0m
+[1m[94m10 |[0m [1m[91m|[0m import json
+[1m[94m11 |[0m [1m[91m|[0m import tempfile
+[1m[94m12 |[0m [1m[91m|[0m from pathlib import Path
+[1m[94m13 |[0m [1m[91m|[0m
+[1m[94m14 |[0m [1m[91m|[0m from hb_assistant.auth.classifier import classify_token_claims, safe_redact_claims
+[1m[94m15 |[0m [1m[91m|[0m from hb_assistant.scripts.proofs.delegated_graph_capability_proof import _redact_for_evidence  # type: ignore
+   [1m[94m|[0m [1m[91m|_____________________________________________________________________________________________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m tests/test_store_links.py:7:1
+   [1m[94m|[0m
+[1m[94m 5 |[0m   """
+[1m[94m 6 |[0m
+[1m[94m 7 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 8 |[0m [1m[91m|[0m
+[1m[94m 9 |[0m [1m[91m|[0m import tempfile
+[1m[94m10 |[0m [1m[91m|[0m from datetime import datetime, timezone
+[1m[94m11 |[0m [1m[91m|[0m from pathlib import Path
+[1m[94m12 |[0m [1m[91m|[0m
+[1m[94m13 |[0m [1m[91m|[0m import pytest
+[1m[94m14 |[0m [1m[91m|[0m
+[1m[94m15 |[0m [1m[91m|[0m from hb_assistant.links.registry import SourceLinkRegistry, ALLOWED_LINK_TYPES
+[1m[94m16 |[0m [1m[91m|[0m from hb_assistant.normalize.email import Email
+[1m[94m17 |[0m [1m[91m|[0m from hb_assistant.normalize.calendar_event import CalendarEvent
+[1m[94m18 |[0m [1m[91m|[0m from hb_assistant.normalize.attachment import Attachment
+[1m[94m19 |[0m [1m[91m|[0m from hb_assistant.store.migrator import SQLiteMigrator
+[1m[94m20 |[0m [1m[91m|[0m from hb_assistant.store.repositories import Store
+   [1m[94m|[0m [1m[91m|_________________________________________________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mSIM105 [0m[1mUse `contextlib.suppress(FileNotFoundError)` instead of `try`-`except`-`pass`[0m
+  [1m[94m-->[0m tests/test_store_links.py:29:5
+   [1m[94m|[0m
+[1m[94m27 |[0m           path = Path(f.name)
+[1m[94m28 |[0m       yield path
+[1m[94m29 |[0m [1m[91m/[0m     try:
+[1m[94m30 |[0m [1m[91m|[0m         path.unlink()
+[1m[94m31 |[0m [1m[91m|[0m     except FileNotFoundError:
+[1m[94m32 |[0m [1m[91m|[0m         pass
+   [1m[94m|[0m [1m[91m|____________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace `try`-`except`-`pass` with `with contextlib.suppress(FileNotFoundError): ...`[0m
+
+[1m[91mUP017 [0m[[1m[96m*[0m] [1mUse `datetime.UTC` alias[0m
+  [1m[94m-->[0m tests/test_store_links.py:74:63
+   [1m[94m|[0m
+[1m[94m72 |[0m         from_redacted="hash@ex.com",
+[1m[94m73 |[0m         body_preview_redacted="Hello there...",
+[1m[94m74 |[0m         received_datetime=datetime(2026, 5, 25, 10, 0, tzinfo=timezone.utc),
+   [1m[94m|[0m                                                               [1m[91m^^^^^^^^^^^^[0m
+[1m[94m75 |[0m         has_attachments=False,
+[1m[94m76 |[0m     )
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `datetime.UTC` alias[0m
+
+[1m[91mUP017 [0m[[1m[96m*[0m] [1mUse `datetime.UTC` alias[0m
+  [1m[94m-->[0m tests/test_store_links.py:92:24
+   [1m[94m|[0m
+[1m[94m90 |[0m def test_persist_calendar_and_attachment_link(temp_db_path: Path):
+[1m[94m91 |[0m     reg = SourceLinkRegistry(store=Store(db_path=str(temp_db_path)))
+[1m[94m92 |[0m     now = datetime.now(timezone.utc)
+   [1m[94m|[0m                        [1m[91m^^^^^^^^^^^^[0m
+[1m[94m93 |[0m     ev = CalendarEvent(id="evt-1", subject_redacted="[redacted:cal]", start=now, end=now)
+[1m[94m94 |[0m     sid_ev = reg.persist_calendar_event(ev)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `datetime.UTC` alias[0m
+
+[1m[91mE741 [0m[1mAmbiguous variable name: `l`[0m
+   [1m[94m-->[0m tests/test_store_links.py:100:49
+    [1m[94m|[0m
+[1m[94m 99 |[0m     links = reg.get_links(sid_att)
+[1m[94m100 |[0m     assert any(l["link_type"] == "attaches" for l in links)
+    [1m[94m|[0m                                                 [1m[91m^[0m
+    [1m[94m|[0m
+
+Found 219 errors.
+[[36m*[0m] 188 fixable with the `--fix` option (7 hidden fixes can be enabled with the `--unsafe-fixes` option).
+EXIT_CODE=1
