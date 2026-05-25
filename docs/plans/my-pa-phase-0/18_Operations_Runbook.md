@@ -12,7 +12,7 @@ hb-assistant diagnostics env --json
 ## Auth
 
 ```bash
-hb-assistant auth login
+hb-assistant auth login --json
 hb-assistant auth status --json
 hb-assistant diagnostics auth --json
 ```

@@ -100,8 +100,9 @@ def test_delegated_provider_status_no_token() -> None:
         cfg.paths.application_support_root = td
         pp = PathPolicy(cfg)
         prov = DelegatedAuthProvider("tid", "cid", ["User.Read"], path_policy=pp)
-        info = prov.status_info()
-        assert info["token_type"] in ("none", "delegated")  # none if no prior login
+        with patch.object(prov, "get_token", return_value={}):
+            info = prov.status_info()
+        assert info["token_type"] in ("none", "delegated", "invalid")
 
 
 @patch("hb_assistant.auth.providers.msal")

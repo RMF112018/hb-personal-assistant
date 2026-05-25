@@ -1,0 +1,15 @@
+                                                                                
+ Usage: hb-assistant auth [OPTIONS] COMMAND [ARGS]...                           
+                                                                                
+ Authentication commands (delegated default; app-only proof/admin flow).        
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ login        Perform login in delegated (default) or app-only mode.          │
+│ status       Show safe token/cache status.                                   │
+│ logout       Logout and remove known account/cached auth for target mode.    │
+│ clear-cache  Clear auth cache files for target mode.                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+

@@ -1,0 +1,48 @@
+{
+  "implemented": true,
+  "phase": 12,
+  "run_id": 3,
+  "orchestrator": {
+    "run_id": 4,
+    "started_at": "2026-05-25T11:39:21.191584+00:00",
+    "dry_run": true,
+    "config": {
+      "time": "05:00",
+      "weekend_behavior": "manual_only",
+      "catch_up": true
+    },
+    "stages": [
+      {
+        "stage": "context",
+        "status": "ok",
+        "reason": null,
+        "summary": {
+          "retrieved": 0,
+          "actions": 0
+        }
+      },
+      {
+        "stage": "brief_preview",
+        "status": "ok",
+        "reason": null,
+        "summary": {
+          "generated": true,
+          "len": 519
+        }
+      },
+      {
+        "stage": "files_discover",
+        "status": "ok",
+        "reason": null,
+        "summary": {
+          "candidates": 0
+        }
+      }
+    ],
+    "notes": [
+      "catch-up not required (recent ledger entry)"
+    ],
+    "decision": "completed",
+    "evidence_path": "/Users/bobbyfetting/hb-personal-assistant/.tmp-app-support-remediation/evidence/phase-12-runs/morning-orchestrator-20260525-073921.json"
+  }
+}

@@ -22,7 +22,7 @@ Follows 02 row 10 (launchd automation), 11_CLI spec, 18 runbook, 20 gates (weeke
 - `src/hb_assistant/automation/launchd_manager.py`: LaunchdManager (render via plistlib dict from config + PathPolicy, ensure dirs, subprocess launchctl with sanitized output, status, dry-run preview).
 - `src/hb_assistant/automation/orchestrator.py`: MorningRunOrchestrator (gates + ledger, stage loop with try/except skip+reason, calls to WorkstreamContextBuilder / DailyBriefGenerator / FileIngestionService etc. via stable imports, evidence json under evidence/phase-12-runs).
 - `src/hb_assistant/cli/automation.py`: Typer commands (install/uninstall/kickstart).
-- Edits to `cli/main.py` (wiring + minimal delegation in run --morning).
+- Edits to `cli/main.py` (wiring + minimal delegation in run morning).
 - `cli/diagnostics.py` (automation status + real scan-sensitive MVP).
 - Minor PathPolicy (run-logs / error-logs subdirs).
 

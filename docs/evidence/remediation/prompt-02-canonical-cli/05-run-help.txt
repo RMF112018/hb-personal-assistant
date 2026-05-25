@@ -1,0 +1,12 @@
+                                                                                
+ Usage: hb-assistant run [OPTIONS] COMMAND [ARGS]...                            
+                                                                                
+ Run workflows (morning orchestrator and related runtime commands).             
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ morning  Execute morning workflow via orchestrator (Phase 12).               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+

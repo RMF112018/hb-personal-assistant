@@ -1,0 +1,30 @@
+                                                                                
+ Usage: hb-assistant [OPTIONS] COMMAND [ARGS]...                                
+                                                                                
+ HB Personal Assistant + Work Product Intelligence System (local-first MVP)     
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --version             -V        Show version and exit.                       │
+│ --install-completion            Install completion for the current shell.    │
+│ --show-completion               Show completion for the current shell, to    │
+│                                 copy it or customize the installation.       │
+│ --help                          Show this message and exit.                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ vault                                                                        │
+│ sync                                                                         │
+│ actions                                                                      │
+│ brief                                                                        │
+│ auth         Authentication commands (delegated default; app-only            │
+│              proof/admin flow).                                              │
+│ diagnostics  Safe diagnostics and proof commands (read-only).                │
+│ files        Selective file/attachment ingestion (relevance, eligibility,    │
+│              approval, bounded parse). Dry-run safe.                         │
+│ search       Retrieval & search (deterministic + gated semantic over         │
+│              redacted excerpts). Dry-run safe.                               │
+│ run          Run workflows (morning orchestrator and related runtime         │
+│              commands).                                                      │
+│ automation   Launchd automation (install/uninstall/kickstart user            │
+│              LaunchAgent for morning run). Dry-run safe.                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+

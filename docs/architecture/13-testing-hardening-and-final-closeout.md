@@ -9,7 +9,7 @@
 Prompt 13 completes the HB Personal Assistant + Work Product Intelligence System MVP (manifest v1.3.0).
 
 - Added `tests/test_mutation_lockout.py` (pure static analysis): proves zero M365 write API surface in graph clients (Mail/Calendar/DriveItem) and automation/orchestrator. Only GET/list paths used. Config `microsoft_365_writeback_enabled=False` as runtime defense. Redaction self-proof in test source.
-- Executed exact 8 validation commands + P13 extras (`diagnostics automation --json`, full `scan-sensitive --repo . --json`, `run --morning --dry-run --json` exercising P12 orchestrator + P11 retrieval + P10 files + P8 brief etc.).
+- Executed exact 8 validation commands + P13 extras (`diagnostics automation --json`, full `scan-sensitive --repo . --json`, `run morning --dry-run --json` exercising P12 orchestrator + P11 retrieval + P10 files + P8 brief etc.).
 - Produced `phase-13-closure-proof.json` containing the complete 15-item checklist matrix (every item mapped to concrete evidence links from P1–P13 + new artifacts) + mutation lockout results + scan outputs + orchestrator traces + conclusion: "COMPLETE, CLEAN, NO WRITES".
 - Populated `phase-13-validation-outputs/` with full command JSON captures, pytest/ruff/mypy summaries, and sanitized traces.
 - Appended verbatim P13 section to `prompt-execution-log.md` and new row (Phase 13 / 1.3.0) to `validation-result-register.md`.
@@ -23,7 +23,7 @@ All guardrails honored: read-only Microsoft 365 (static + dynamic), no tokens/bo
 
 - All prior phases (1–12) wired and exercised together via the MorningRunOrchestrator (context → brief → files discover → …) with gate/ledger/evidence isolation.
 - `diagnostics automation` + `scan-sensitive` (MVP bounded) fully functional.
-- `run --morning --dry-run` exercises the complete integrated pipeline safely.
+- `run morning --dry-run` exercises the complete integrated pipeline safely.
 - Mutation lockout proven at rest (source) and at runtime (config).
 - 15/15 closure checklist items verified PASS with evidence.
 - Sensitive scan clean on repo + real Application Support paths (findings reported by category only; no secret values ever emitted).
