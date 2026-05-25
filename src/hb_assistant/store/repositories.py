@@ -304,6 +304,49 @@ class Store:
         )
         return [dict(r) for r in cur.fetchall()]
 
+    # --- Phase 6: body classification flag helpers (minimal, no body text ever read or written) ---
+
+    def get_emails_needing_body_check(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Return source_records + basic email metadata for emails not yet body-checked.
+
+        Returns only metadata + redacted preview (never full body). Used by classification batch jobs.
+        """
+        conn = get_connection(self._db_path)
+        # Join source_records + emails where body_checked=0
+        cur = conn.execute(
+            """
+            SELECT sr.id as source_record_id, sr.source_key, sr.title_redacted,
+                   e.folder, e.sender_domain, e.received_datetime, e.web_link,
+                   e.body_checked, e.body_mention_detected
+            FROM source_records sr
+            JOIN emails e ON e.source_record_id = sr.id
+            WHERE e.body_checked = 0
+            ORDER BY sr.last_seen_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+    def update_email_body_flags(
+        self,
+        source_record_id: int,
+        *,
+        body_checked: bool,
+        body_mention_detected: bool,
+    ) -> None:
+        """Idempotent update of the two body classification flags on the emails row."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                UPDATE emails
+                SET body_checked = ?, body_mention_detected = ?
+                WHERE source_record_id = ?
+                """,
+                (1 if body_checked else 0, 1 if body_mention_detected else 0, source_record_id),
+            )
+
     # --- Diagnostics / counts (safe, redacted) ---
 
     def get_summary(self) -> dict[str, Any]:

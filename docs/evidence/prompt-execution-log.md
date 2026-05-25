@@ -306,3 +306,56 @@ Implement the local SQLite store (under Application Support via PathPolicy) + So
 
 **Status**: COMPLETE
 
+
+---
+
+## Prompt 06 — Body Mention Detection And Email Classification
+
+**Executed**: 2026-05-25
+
+### Objective
+Implement deterministic, preview-only body mention detection and lightweight email classification on the redacted data persisted by Phase 5. Detect Bobby/aliases in body_preview_redacted, set the two body_* flags, create "mentions" + "waiting_on" links, emit ClassificationResult per schema. Strict adherence to "never log full body" (03/06/13/20).
+
+### Files Changed (major)
+- Version 0.6.0
+- New: src/hb_assistant/classification/ (full package: __init__, aliases.py with Bobby variants, detector.py (preview-only), classifier.py with EmailClassifier + ClassificationResult Pydantic)
+- Updated: src/hb_assistant/normalize/email.py (added body_checked + body_mention_detected fields for in-memory roundtrip; defaults False)
+- Updated: src/hb_assistant/store/repositories.py (added get_emails_needing_body_check + update_email_body_flags — metadata only, never any body text)
+- Updated: src/hb_assistant/cli/diagnostics.py (new thin `diagnostics classify sample --json` — synthetic redacted previews, detector direct, no store mutation)
+- Updated: src/hb_assistant/__init__.py (version + classification export)
+- New: tests/test_classification.py (7 tests: alias variants, detector signals, full roundtrip with flag+link side-effects, idempotency, schema compliance, explicit leak/redaction proofs on temp DB — all green)
+- New: docs/architecture/06-body-mention-detection-and-email-classification.md (mermaid, explicit preview-only human decision rationale, integration, guardrails, refs)
+- Evidence: phase-6-sample-*.json, phase-6-mention-proof.json (redacted + no-leak traces), phase-6-validation-outputs/
+- Appended: this section + validation register row
+
+### Key Implementation Notes
+- **Preview-only by design** (major human decision): Detector and classifier receive only the already-redacted/truncated body_preview_redacted that Phase 4/5 safely stored. No Graph calls, no persist_full_body, no full body ever materialized. Satisfies 03/06/13/20 literally.
+- Deterministic alias list (from source-rules) + conservative signals for "possible_action_or_waiting".
+- Store updates are flag-only (no body columns touched).
+- Registry reused for all link creation ("mentions", "waiting_on", "derived_from").
+- ClassificationResult exactly matches the canonical schema.
+- CLI sample and all evidence are redacted-by-construction.
+- Tests include explicit binary/string leak scans for common secret patterns.
+
+### Validation
+- pytest (new classification tests + all prior green)
+- ruff / mypy clean
+- All 8 hb-assistant * --json + new `diagnostics classify sample --json` (safe redacted output)
+- Custom persist + classify smoke (synthetic redacted previews → detector → classifier → flags + links → query-back + leak scan)
+- Sensitive scan clean (including DB file + all phase-6 evidence)
+
+### Evidence
+- phase-6-sample-classification.json, phase-6-sample-links.json (redacted)
+- phase-6-mention-proof.json (7-step trace proving preview-only + zero leaks)
+- phase-6-validation-outputs/ (raw command outputs + smoke)
+- Updated prompt log + register
+
+### Acceptance
+- Objective complete.
+- No broad refactor, no M365 writes, zero full bodies/tokens/secrets in any code path, DB row, log, or evidence artifact.
+- Architecture docs updated with dedicated 06- file + explicit decision record.
+- Logs/register updated.
+- Git commit + push performed (v0.6.0).
+
+**Status**: COMPLETE
+

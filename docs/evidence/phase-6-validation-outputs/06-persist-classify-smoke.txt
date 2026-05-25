@@ -1,0 +1,6 @@
+=== Phase 6 custom persist+classify smoke (synthetic redacted previews only, full detector→classifier→flags+links, leak scan) ===
+results: [{'id': 'synth-bobby-1', 'sid': 1, 'mention': True, 'classifications': ['bobby_mention', 'possible_action_or_waiting'], 'confidence': 0.85, 'flags_after': {'checked': True, 'mention': True}}, {'id': 'synth-no-mention', 'sid': 2, 'mention': False, 'classifications': [], 'confidence': 0.15, 'flags_after': {'checked': True, 'mention': False}}, {'id': 'synth-waiting', 'sid': 3, 'mention': False, 'classifications': ['possible_action_or_waiting'], 'confidence': 0.15, 'flags_after': {'checked': True, 'mention': False}}]
+db_file_leak_patterns: []
+result_leak_patterns: []
+PERSIST_CLASSIFY_SMOKE_EXIT=0
+EXIT_SMOKE=0

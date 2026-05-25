@@ -43,6 +43,10 @@ class Email(BaseModel):
     has_attachments: bool = False
     importance: Optional[str] = None
 
+    # Body classification flags (Phase 6) — persisted in emails table, default False/0 in DB
+    body_checked: bool = False
+    body_mention_detected: bool = False
+
     # Source traceability (populated by client or registry)
     source_record_id: Optional[int] = None
     source_links: List[dict] = Field(default_factory=list)  # type from source-link-types.json
@@ -71,4 +75,6 @@ class Email(BaseModel):
             body_preview_redacted=truncate_preview(msg.get("bodyPreview")),
             has_attachments=msg.get("hasAttachments", False),
             importance=msg.get("importance"),
+            body_checked=False,
+            body_mention_detected=False,
         )

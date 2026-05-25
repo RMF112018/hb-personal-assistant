@@ -1,0 +1,16 @@
+feat(phase-6): Body mention detection + email classification (aliases, preview-only detector, flags + mentions/waiting_on links) for hb-personal-assistant v0.6.0
+
+- Implemented AliasResolver + BodyMentionDetector (deterministic on persisted body_preview_redacted + Bobby aliases) + EmailClassifier (sets body_checked / body_mention_detected, emits ClassificationResult per schema, creates "mentions" + "waiting_on" links via existing Registry; optional lightweight action_items).
+- Minimal Store extensions (get_unchecked + flag updates) — zero body text ever read or written.
+- Thin safe CLI `diagnostics classify sample --json` (redacted preview → results only).
+- Tests (alias variants, mention detection, flag+link side-effects, schema compliance, redaction/leak proofs on temp DB) — all green.
+- New docs/architecture/06-body-mention-detection-and-email-classification.md (mermaid + explicit preview-only decision + guardrails).
+- Evidence: phase-6-sample-*.json + mention-proof.json (fully redacted), phase-6-validation-outputs/, full append to prompt log + register row.
+- Validation: all 8 commands + new classify helper + custom smoke pass; sensitive scan clean; zero full bodies/tokens anywhere.
+- Guardrails: preview-only (no full body risk), read-only M365, idempotent, dry-run friendly, 20/13/14/15/03/06/07 gates honored, data outside repo.
+- GitHub: committed + pushed to bobbyfetting/hb-personal-assistant.
+- Next: Prompt 07 (Action Extraction And Schema Validation) — consumes classified emails + mentions links + body flags.
+
+Refs: Prompt 06, 02 plan Phase 5 row, 07/10/03/06/13/14/15/20, Phase 4/5 foundation (normalize + store + links), email-classification.schema + source-rules.
+
+Manifest: v0.6.0 (Body Mention Detection + Email Classification complete)

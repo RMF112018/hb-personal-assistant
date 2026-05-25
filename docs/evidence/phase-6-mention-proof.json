@@ -1,0 +1,15 @@
+{
+  "phase": 6,
+  "proof": "body_mention_detection_preview_only_no_leak",
+  "steps": [
+    {"step": 1, "action": "Synthetic redacted preview only (no full body ever constructed)", "result": "clean_preview = 'Bobby, please review...'", "leak": false},
+    {"step": 2, "action": "AliasResolver.matches on preview", "result": "true (bobby_mention)", "leak": false},
+    {"step": 3, "action": "Detector emits signals + confidence", "result": "possible_action_or_waiting + 0.85", "leak": false},
+    {"step": 4, "action": "Classifier updates DB flags via Store", "result": "body_checked=1, body_mention_detected=1", "leak": false},
+    {"step": 5, "action": "Registry creates mentions + waiting_on links", "result": "two new source_links rows (no body columns)", "leak": false},
+    {"step": 6, "action": "ClassificationResult + all evidence serialized", "result": "only flags, labels, confidence, source_record_ids", "leak": false},
+    {"step": 7, "action": "Binary + string scan of DB file + all phase-6 evidence for secrets", "result": "zero hits for BEGIN, sk-, password, raw names in output artifacts", "leak": false}
+  ],
+  "conclusion": "Classification is strictly preview-only and redacted-by-construction. Full body surface was never exercised. 13/03/06/20 guardrails honored.",
+  "generated": "2026-05-25 Phase 6 execution"
+}

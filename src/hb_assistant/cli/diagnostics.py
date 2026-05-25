@@ -235,3 +235,71 @@ def store_status(
     }
     typer.echo(json.dumps(safe, indent=2))
     raise typer.Exit(0)
+
+
+@app.command("classify")
+def classify_sample(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Safe, redacted body-mention classification sample (Phase 6, preview-only).
+
+    Runs the deterministic detector + classifier on synthetic redacted previews.
+    Never reads full bodies, never mutates the store in sample mode.
+    """
+    from hb_assistant.classification import EmailClassifier, ClassificationResult
+    from hb_assistant.normalize.email import Email
+
+    # Synthetic redacted previews (never real full bodies)
+    samples = [
+        Email(
+            id="synth-1",
+            folder="inbox",
+            subject_redacted="[redacted:s1]",
+            sender_domain="ex.com",
+            body_preview_redacted="Hey Bobby, quick update on the project timeline...",
+            source_record_id=999001,
+        ),
+        Email(
+            id="synth-2",
+            folder="inbox",
+            subject_redacted="[redacted:s2]",
+            sender_domain="partner.com",
+            body_preview_redacted="Can you review the Q3 numbers by Friday?",
+            source_record_id=999002,
+        ),
+        Email(
+            id="synth-3",
+            folder="sent",
+            subject_redacted="[redacted:s3]",
+            sender_domain="ex.com",
+            body_preview_redacted="Thanks, I will handle the follow-up with the vendor.",
+            source_record_id=999003,
+        ),
+    ]
+
+    clf = EmailClassifier()
+    results = []
+    for e in samples:
+        # In sample mode we do NOT call the store update path (use detector directly for safety)
+        det = clf.detector.detect(e.body_preview_redacted)
+        classifications = []
+        if det["body_mention_detected"]:
+            classifications.append("bobby_mention")
+        if "possible_direct_ask_or_waiting" in det.get("signals", []):
+            classifications.append("possible_action_or_waiting")
+        res = ClassificationResult(
+            message_source_record_id=str(e.source_record_id),
+            classifications=classifications,
+            body_mention_detected=det["body_mention_detected"],
+            confidence=det["confidence"],
+        )
+        results.append(res.model_dump())
+
+    payload = {
+        "mode": "sample-preview-only",
+        "count": len(results),
+        "results": results,
+        "note": "All inputs/outputs are redacted previews only. No store mutation in sample mode.",
+    }
+    typer.echo(json.dumps(payload, indent=2))
+    raise typer.Exit(0)

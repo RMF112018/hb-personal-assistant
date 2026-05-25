@@ -1,0 +1,16 @@
+{
+  "phase": 6,
+  "type": "source_links_created_by_classification",
+  "description": "Links created for a bobby_mention + waiting_on case (redacted, safe)",
+  "example": {
+    "source_record_id": 4242,
+    "links": [
+      {"link_type": "mentions", "confidence": 0.85},
+      {"link_type": "waiting_on", "confidence": 0.6},
+      {"link_type": "derived_from", "confidence": 1.0}
+    ],
+    "body_mention_detected": true,
+    "body_checked": true
+  },
+  "note": "Links are pure provenance. No PII, no body text."
+}

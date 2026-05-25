@@ -1,0 +1,21 @@
+{
+  "phase": 6,
+  "type": "classification_result_sample",
+  "description": "Example ClassificationResult from preview-only detector on synthetic redacted previews (safe for evidence/logs)",
+  "examples": [
+    {
+      "message_source_record_id": "999001",
+      "classifications": ["bobby_mention"],
+      "body_mention_detected": true,
+      "confidence": 0.85
+    },
+    {
+      "message_source_record_id": "999002",
+      "classifications": ["possible_action_or_waiting"],
+      "body_mention_detected": false,
+      "confidence": 0.15
+    }
+  ],
+  "redaction_note": "Only flags, classification labels, and confidence. No names, subjects, or preview text in final result objects for evidence. All source previews were already redacted/truncated before classification.",
+  "generated_by": "EmailClassifier + BodyMentionDetector (Phase 6, preview-only)"
+}
