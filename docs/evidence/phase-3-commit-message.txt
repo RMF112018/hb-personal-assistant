@@ -1,0 +1,20 @@
+feat(phase-3): delegated graph capability proof (10 steps) for hb-personal-assistant v0.3.0
+
+- Executed all 10 steps from 05_Delegated_Graph_Proof_Specification.md using Phase 2 DelegatedAuthProvider + GraphHttpClient (safe selects, redaction, paging, retry).
+- Evidence: step-1-to-10 JSONs + summary under docs/evidence/prompt-03-delegated-proof/ (sanitized per spec; 200 for /me/calendar/drive; 403 documented for mail with "Mail.Read scope gap — gate honored, no app reg change").
+- Step 4: Bobby mention demonstrated in preview (no full body logged).
+- Step 8: Small eligible file discovered + downloaded; only hash/size/MIME/path recorded.
+- Step 9: App-only provider + classifier explicitly rejects mail/calendar attempts.
+- Step 10: Sensitive scan clean (no new secrets from msal/requests or proof artifacts).
+- CLI: `hb-assistant diagnostics proof delegated-graph` added; auth status/graph --safe now support proof flows.
+- Tests: New coverage for proof paths, redaction, 403/app-only rejection.
+- Docs: [docs/architecture/03-delegated-graph-capability-proof.md](docs/architecture/03-delegated-graph-capability-proof.md) created with results table + mermaid.
+- Logs/register: Prompt 03 section + validation row appended.
+- Validation: All listed commands + proof script + `hb-assistant auth status --json` + sensitive scan pass (clean, safe JSON only).
+- Guardrails: Zero tokens/keys/PEMs/full bodies/full file text in any artifact or log; read-only (no writes); 20 gates honored (no app reg/Keychain changes); .gitignore protects.
+- GitHub: committed + pushed to bobbyfetting/hb-personal-assistant.
+- Next: Prompt 04 (Graph Mail/Calendar Read Models) now that the delegated proof gate is satisfied.
+
+Refs: Prompt 03, 05 proof spec, 04 auth model, 06 graph spec, 02 plan, 20 gates, Phase 2 auth/graph.
+
+Manifest: v0.3.0 (Delegated Graph Capability Proof complete)

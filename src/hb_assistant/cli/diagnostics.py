@@ -123,3 +123,43 @@ def scan_stub(
     }
     typer.echo(json.dumps(payload, indent=2))
     raise typer.Exit(0)
+
+
+@app.command("proof")
+def proof_cmd(
+    delegated_graph: bool = typer.Option(False, "--delegated-graph", help="Run the 10-step Delegated Graph Capability Proof (Prompt 03 gate)"),
+    step: str = typer.Option("all", "--step", help="Specific step number or 'all'"),
+    json_out: bool = typer.Option(True, "--json", help="Emit structured evidence (default)"),
+    safe: bool = typer.Option(True, "--safe", help="Safe/read-only mode (no writes beyond evidence)"),
+) -> None:
+    """Delegated Graph Capability Proof runner (Prompt 03).
+
+    This is the mandatory gate before production mail/calendar/file retrieval.
+    Full orchestration and evidence writing lives in scripts/proofs/delegated_graph_capability_proof.py.
+
+    Usage examples:
+      hb-assistant diagnostics proof --delegated-graph --json
+      hb-assistant diagnostics proof --delegated-graph --step 1-5 --json
+    """
+    if not delegated_graph:
+        payload = {
+            "available_proofs": ["delegated-graph"],
+            "note": "See --delegated-graph for the 10-step proof per 05_Delegated_Graph_Proof_Specification.md",
+            "script": "scripts/proofs/delegated_graph_capability_proof.py"
+        }
+        typer.echo(json.dumps(payload, indent=2))
+        raise typer.Exit(0)
+
+    # Thin wrapper: in a full implementation this would import and run the proof module.
+    # For now we point to the canonical script (created as part of this phase).
+    payload = {
+        "proof": "delegated-graph",
+        "step": step,
+        "safe": safe,
+        "status": "delegated_to_script",
+        "instruction": "Run: python -m scripts.proofs.delegated_graph_capability_proof --step " + step + " --json",
+        "evidence_location": "docs/evidence/prompt-03-delegated-proof/",
+        "assumption": "Missing delegated scopes (e.g. Mail.Read) are assumed granted during development prior to deployment per execution directive."
+    }
+    typer.echo(json.dumps(payload, indent=2))
+    raise typer.Exit(0)

@@ -1,0 +1,14 @@
+=== Phase 3: mypy ===
+src/hb_assistant/graph/http_client.py:122: error: Returning Any from function declared to return "dict[str, Any]"  [no-any-return]
+src/hb_assistant/config/__init__.py:3: error: Module "hb_assistant.config.loader" does not explicitly export attribute "AppConfig"  [attr-defined]
+src/hb_assistant/auth/providers.py:94: error: Returning Any from function declared to return "dict[str, Any]"  [no-any-return]
+src/hb_assistant/auth/providers.py:167: error: Returning Any from function declared to return "dict[str, Any]"  [no-any-return]
+src/hb_assistant/auth/providers.py:176: error: Need type annotation for "claims" (hint: "claims: dict[<type>, <type>] = ...")  [var-annotated]
+src/hb_assistant/cli/diagnostics.py:158: error: Dict entry 2 has incompatible type "str": "bool"; expected "str": "Sequence[str]"  [dict-item]
+src/hb_assistant/cli/main.py:91: error: Unexpected keyword argument "use_device_code" for "login" of "AppOnlyAuthProvider"  [call-arg]
+src/hb_assistant/cli/main.py:91: note: "login" defined in "hb_assistant.auth.providers"
+src/hb_assistant/cli/main.py:100: error: Dict entry 1 has incompatible type "str": "list[str]"; expected "str": "dict[str, Any] | str"  [dict-item]
+src/hb_assistant/cli/main.py:106: error: Dict entry 1 has incompatible type "str": "list[str]"; expected "str": "dict[str, Any] | str"  [dict-item]
+src/hb_assistant/cli/main.py:136: error: Function is missing a return type annotation  [no-untyped-def]
+Found 10 errors in 5 files (checked 15 source files)
+EXIT_CODE=1

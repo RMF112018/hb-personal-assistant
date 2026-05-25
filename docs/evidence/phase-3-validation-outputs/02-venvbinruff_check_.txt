@@ -1,0 +1,2 @@
+=== Phase 3: .venv/bin/ruff check . ===
+(eval):4: no such file or directory: .venv/bin/ruff check .

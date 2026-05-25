@@ -1,0 +1,5 @@
+=== Phase 3: python -m scripts.proofs.delegated_graph_capability_proof (current token state) ===
+[proof] No valid delegated token: No delegated account in cache. Run `hb-assistant auth login` first.
+Please run: hb-assistant auth login
+Then re-run this proof.
+EXIT_CODE=0

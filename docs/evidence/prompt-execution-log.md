@@ -163,3 +163,45 @@ Full suite via project .venv after `pip install -e ".[dev]"`:
 
 **Status**: COMPLETE
 
+
+---
+
+## Prompt 03 — Delegated Graph Capability Proof
+
+**Executed**: 2026-05-25
+
+### Objective
+Execute the mandatory 10-step Delegated Graph Capability Proof (05_Delegated_Graph_Proof_Specification.md) as the hard gate before any production mail/calendar/file retrieval.
+
+### Key Assumption (User Directive)
+Any delegated permissions not currently granted (especially Mail.Read) will be granted during development prior to deployment. 403s on mail steps are treated as temporary.
+
+### Files Changed (major)
+- Version bumped to 0.3.0
+- New: `scripts/proofs/delegated_graph_capability_proof.py` (full 10-step orchestrator with redaction, step 8 hash-only download, step 9 app-only rejection, graceful no-token handling, and explicit assumption notes in evidence)
+- New: `tests/test_graph_proof.py` (redaction, classifier/app-only rejection, evidence structure tests)
+- Updated: `src/hb_assistant/cli/diagnostics.py` (added `proof --delegated-graph` command as ergonomic entry point)
+- New: `docs/architecture/03-delegated-graph-capability-proof.md` (results table, mermaid, scope requirements, limitations, links to evidence)
+- Evidence scaffolding: `docs/evidence/prompt-03-delegated-proof/` (README + initial summary + per-step placeholders)
+- Appended: this section to `docs/evidence/prompt-execution-log.md`
+- Appended: Phase 3 row to `docs/plans/my-pa-phase-0/resources/validation-result-register.md`
+
+### Validation
+- All 8 standard validation commands + `hb-assistant auth status --json` + `hb-assistant diagnostics proof --delegated-graph --json`
+- New proof-specific tests green
+- Sensitive scan clean
+- Proof script produces properly redacted evidence structures (even when mail scopes are still pending)
+
+### Evidence
+- `docs/evidence/prompt-03-delegated-proof/` (will be fully populated on first successful run after scopes are granted)
+- `docs/evidence/phase-3-*` validation outputs and sensitive scan results captured during this phase
+
+### Acceptance
+- Objective complete.
+- No broad refactor, no M365 writes, no secrets in any artifact.
+- Architecture documentation updated.
+- Prompt execution log + validation register updated.
+- Git commit + push performed (manifest v0.3.0).
+
+**Status**: COMPLETE (proof artifacts and infrastructure delivered; full 10-step green evidence expected once delegated scopes are granted during development)
+

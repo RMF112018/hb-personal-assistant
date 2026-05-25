@@ -1,0 +1,6 @@
+=== Phase 3: hb-assistant diagnostics proof --delegated-graph --json ===
+Traceback (most recent call last):
+  File "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant", line 3, in <module>
+    from hb_assistant.cli.main import cli
+ImportError: cannot import name 'cli' from 'hb_assistant.cli.main' (/Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/cli/main.py)
+EXIT_CODE=1
