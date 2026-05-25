@@ -1,0 +1,8 @@
+ M src/hb_assistant/cli/diagnostics.py
+ M src/hb_assistant/graph/proof_runner.py
+?? .tmp-app-support-remediation/
+?? docs/evidence/remediation/prompt-10-bounded-content-sensitive-scan/
+?? docs/plans/my-pa-phase-0/gap-closure/
+?? src/hb_assistant/security/
+?? tests/test_sensitive_scan.py
+?? tests/test_sensitive_scan_cli.py

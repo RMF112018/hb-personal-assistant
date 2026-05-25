@@ -122,48 +122,10 @@ def scan_sensitive(
     repo: str = typer.Option(".", "--repo"),
     json_out: bool = typer.Option(False, "--json"),
 ) -> None:
-    """Bounded MVP sensitive artifact scanner (Phase 12, secondary to automation readiness).
+    """Bounded sensitive scan (Phase 12), content-aware and redacted."""
+    from hb_assistant.security import SensitiveScanner
 
-    Scans repo root + configured Application Support paths for obvious unsafe artifacts only.
-    Outputs categories + paths only. Never emits secret values.
-    """
-    from hb_assistant.config.path_policy import PathPolicy
-
-    pp = PathPolicy()
-    targets = [Path(repo).resolve()]
-    try:
-        targets.append(pp.get_app_support())
-    except Exception:
-        pass
-
-    patterns = {
-        "pem_key": [".pem", ".key", ".pfx", ".crt", ".cer"],
-        "token_cache": ["token_cache", ".bin", "msal"],
-        "db_files": [".sqlite", "hb-personal-assistant.sqlite"],
-        "env_secrets": [".env"],
-        "raw_token": ["access_token", "Bearer "],  # heuristic only
-    }
-
-    findings: Dict[str, List[str]] = {k: [] for k in patterns}
-    for base in targets:
-        if not base or not base.exists():
-            continue
-        for p in base.rglob("*"):
-            if p.is_dir():
-                continue
-            name = p.name.lower()
-            for cat, subs in patterns.items():
-                if any(s in name for s in subs):
-                    findings[cat].append(str(p).replace(str(Path.home()), "~"))
-
-    payload = {
-        "implemented": True,
-        "phase": 12,
-        "repo": str(repo),
-        "scanned_paths": [str(t).replace(str(Path.home()), "~") for t in targets],
-        "findings_by_category": findings,
-        "note": "MVP bounded scanner. Categories only; no secret values. Primary automation diagnostics in 'diagnostics automation'.",
-    }
+    payload = SensitiveScanner().scan(repo=repo)
     typer.echo(json.dumps(payload, indent=2) if json_out else json.dumps(payload, indent=2))
     raise typer.Exit(0)
 

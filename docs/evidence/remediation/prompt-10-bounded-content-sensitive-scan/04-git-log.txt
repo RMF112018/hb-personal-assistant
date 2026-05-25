@@ -1,0 +1,5 @@
+c4d2848 feat(brief): wire daily brief to current context sources
+aad4181 fix(files): require source provenance for file ingestion
+47dc343 feat(graph): add bounded paging to read clients
+5f77c5e test(graph): refresh delegated graph proof for current runtime
+3ce58ec fix(validation): make tests lint and type checks pass

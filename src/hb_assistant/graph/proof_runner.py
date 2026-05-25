@@ -55,37 +55,9 @@ def _sanitize_message_meta(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def _scan_sensitive(repo: str = ".") -> dict[str, Any]:
-    pp = PathPolicy()
-    targets = [Path(repo).resolve()]
-    try:
-        targets.append(pp.get_app_support())
-    except Exception:
-        pass
+    from hb_assistant.security import SensitiveScanner
 
-    patterns = {
-        "pem_key": [".pem", ".key", ".pfx", ".crt", ".cer"],
-        "token_cache": ["token_cache", ".bin", "msal"],
-        "db_files": [".sqlite", "hb-personal-assistant.sqlite"],
-        "env_secrets": [".env"],
-    }
-
-    findings: dict[str, list[str]] = {k: [] for k in patterns}
-    for base in targets:
-        if not base.exists():
-            continue
-        for path in base.rglob("*"):
-            if path.is_dir():
-                continue
-            name = path.name.lower()
-            for cat, subs in patterns.items():
-                if any(s in name for s in subs):
-                    findings[cat].append(str(path).replace(str(Path.home()), "~"))
-
-    return {
-        "repo": repo,
-        "scanned_paths": [str(t).replace(str(Path.home()), "~") for t in targets],
-        "findings_by_category": findings,
-    }
+    return SensitiveScanner().scan(repo=repo)
 
 
 def run_delegated_graph_proof(*, safe: bool = True, repo: str = ".") -> dict[str, Any]:

@@ -11,6 +11,7 @@ This directory contains living architecture and decision records for the HB Pers
 - `remediation-bounded-graph-paging.md` — Prompt 07 bounded, deterministic Graph paging across mail/calendar/drive clients
 - `remediation-provenance-safe-file-ingestion.md` — Prompt 08 provenance-safe ingest contract (`files sample` vs real `files ingest`)
 - `remediation-integrated-daily-brief-content.md` — Prompt 09 Daily Brief sections wired to current context/store sources with explicit empty states
+- `remediation-bounded-content-sensitive-scan.md` — Prompt 10 bounded line-level sensitive scanner with redacted findings output
 - `docs/decisions/` — Closed technical decisions (D-CLI-001 etc.)
 
 Remediation context: implementation reached `v1.3.0`, but acceptance is gated on remediation validation; prior closeout claims are superseded pending green remediation evidence.
