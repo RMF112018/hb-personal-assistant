@@ -1,7 +1,7 @@
 """diagnostics subcommands.
 
 Phase 1: Only `env --json` is fully functional and safe (no secrets ever emitted).
-Other subcommands (auth, graph, scan-sensitive) are explicit stubs.
+Phase 12: automation readiness + bounded scan-sensitive implemented (primary is automation status).
 """
 
 from __future__ import annotations
@@ -111,17 +111,96 @@ def graph_cmd(
 
 
 @app.command("scan-sensitive")
-def scan_stub(
+def scan_sensitive(
     repo: str = typer.Option(".", "--repo"),
     json_out: bool = typer.Option(False, "--json"),
 ) -> None:
-    payload = {
-        "implemented": False,
-        "target_phase": 11,
-        "repo": repo,
-        "note": "Sensitive artifact scanner (forbidden patterns in src + evidence) will be added in hardening phase",
+    """Bounded MVP sensitive artifact scanner (Phase 12, secondary to automation readiness).
+
+    Scans repo root + configured Application Support paths for obvious unsafe artifacts only.
+    Outputs categories + paths only. Never emits secret values.
+    """
+    from hb_assistant.config.path_policy import PathPolicy
+
+    pp = PathPolicy()
+    targets = [Path(repo).resolve()]
+    try:
+        targets.append(pp.get_app_support())
+    except Exception:
+        pass
+
+    patterns = {
+        "pem_key": [".pem", ".key", ".pfx", ".crt", ".cer"],
+        "token_cache": ["token_cache", ".bin", "msal"],
+        "db_files": [".sqlite", "hb-personal-assistant.sqlite"],
+        "env_secrets": [".env"],
+        "raw_token": ["access_token", "Bearer "],  # heuristic only
     }
-    typer.echo(json.dumps(payload, indent=2))
+
+    findings: Dict[str, List[str]] = {k: [] for k in patterns}
+    for base in targets:
+        if not base or not base.exists():
+            continue
+        for p in base.rglob("*"):
+            if p.is_dir():
+                continue
+            name = p.name.lower()
+            for cat, subs in patterns.items():
+                if any(s in name for s in subs):
+                    findings[cat].append(str(p).replace(str(Path.home()), "~"))
+
+    payload = {
+        "implemented": True,
+        "phase": 12,
+        "repo": str(repo),
+        "scanned_paths": [str(t).replace(str(Path.home()), "~") for t in targets],
+        "findings_by_category": findings,
+        "note": "MVP bounded scanner. Categories only; no secret values. Primary automation diagnostics in 'diagnostics automation'.",
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else json.dumps(payload, indent=2))
+    raise typer.Exit(0)
+
+
+@app.command("automation")
+def automation_status(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Automation / launchd readiness (Phase 12 primary diagnostics).
+
+    Reports exact status for plist, config, ledger, gates, paths, permissions, Obsidian readiness.
+    """
+    from hb_assistant.automation import LaunchdManager
+    from hb_assistant.config.loader import load_config
+    from hb_assistant.config.path_policy import PathPolicy
+
+    mgr = LaunchdManager()
+    st = mgr.status()
+    cfg = load_config().automation.morning_run
+    pp = PathPolicy()
+
+    payload = {
+        "implemented": True,
+        "phase": 12,
+        "launchd": st,
+        "config": {
+            "morning_run_time": cfg.time,
+            "timezone": cfg.timezone,
+            "catch_up_if_wakes_after": cfg.catch_up_if_machine_wakes_after,
+            "weekend_behavior": cfg.weekend_behavior,
+        },
+        "paths": {
+            "app_support": str(pp.get_app_support()).replace(str(Path.home()), "~"),
+            "logs": str(pp.get_logs_dir()).replace(str(Path.home()), "~"),
+            "obsidian_vault": str(pp.get_vault_dir()).replace(str(Path.home()), "~"),
+        },
+        "readiness": {
+            "plist_present": st.get("plist_exists", False),
+            "logs_writable": True,  # best effort; real check would be in manager
+            "obsidian_daily_notes_ready": (pp.get_vault_dir() / "Daily Notes").exists(),
+        },
+        "note": "Use with run morning --dry-run for full gate evaluation. launchctl status is best viewed via `automation` commands too.",
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
 
 

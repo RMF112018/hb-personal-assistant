@@ -109,6 +109,8 @@ class PathPolicy:
             self.get_cache_dir("files"),
             self.get_cache_dir("extracted-text"),
             self.get_cache_dir("embeddings"),
+            self.get_logs_dir() / "run-logs",
+            self.get_logs_dir() / "error-logs",
         ]
 
         for d in dirs_700:
@@ -166,5 +168,7 @@ class PathPolicy:
             "daily_notes": str(self.get_daily_notes_dir()),
             "ai_outputs": str(self.get_ai_outputs_dir()),
             "logs": str(self.get_logs_dir()),
+            "logs_run": str(self.get_logs_dir() / "run-logs"),
+            "logs_error": str(self.get_logs_dir() / "error-logs"),
             "evidence": str(self.get_evidence_dir()),
         }

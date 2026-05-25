@@ -1,0 +1,18 @@
+{
+  "phase": 12,
+  "version": "1.2.0",
+  "mode": "morning-dry-run-with-gates",
+  "timestamp": "2026-05-25T10:45:00Z",
+  "decision": "completed",
+  "gates": {
+    "weekend": "run (forced for test)",
+    "catch_up": "not_required (recent ledger)"
+  },
+  "stages": [
+    {"stage": "context", "status": "ok", "summary": {"retrieved": 2, "actions": 1}},
+    {"stage": "brief_preview", "status": "ok"},
+    {"stage": "files_discover", "status": "ok", "summary": {"candidates": 1}}
+  ],
+  "evidence_path": "docs/evidence/phase-12-validation-outputs/morning-....json",
+  "note": "Redacted, dry-run, source-linked. No full content or tokens."
+}

@@ -22,6 +22,7 @@ from hb_assistant.auth.providers import AppOnlyAuthProvider, DelegatedAuthProvid
 from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
 
+from . import automation as auto_mod  # Phase 12: launchd + morning orchestrator
 from . import diagnostics as diag_mod
 from . import files as files_mod  # Phase 10
 from . import search as search_mod  # Phase 11: retrieval / semantic search (det + gated)
@@ -63,6 +64,9 @@ app.add_typer(files_mod.app, name="files")
 
 # Phase 11: search / retrieval (deterministic + semantic over redacted excerpts)
 app.add_typer(search_mod.app, name="search")
+
+# Phase 12: automation (launchd management + morning run orchestration)
+app.add_typer(auto_mod.app, name="automation")
 
 
 # --- Stub command groups (Phase 1) ---
@@ -145,17 +149,36 @@ def run_cmd(
         dry_run=dry_run,
         status="started",
     )
-    # Immediately "finish" for the stub (real runs would finish after work)
-    reg.finish_run(run_id, status="completed-dry-run" if dry_run else "completed-stub")
+    # Phase 12: delegate morning to the real (bounded) orchestrator when --morning
+    if morning:
+        try:
+            from hb_assistant.automation.orchestrator import MorningRunOrchestrator
+            orch = MorningRunOrchestrator()
+            orch_result = orch.run(dry_run=dry_run)
+            reg.finish_run(run_id, status="completed-dry-run" if dry_run else "completed")
+            payload = {
+                "implemented": True,
+                "phase": 12,
+                "run_id": run_id,
+                "orchestrator": orch_result,
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else "run morning: orchestrator completed (see json for details)")
+            raise typer.Exit(0)
+        except Exception as ex:
+            reg.finish_run(run_id, status="error")
+            payload = {"error": str(ex)[:200], "run_id": run_id, "note": "orchestrator failed; ledger updated"}
+            typer.echo(json.dumps(payload, indent=2) if json_out else f"run morning error: {ex}")
+            raise typer.Exit(1)
 
+    # non-morning or fallback
+    reg.finish_run(run_id, status="completed-dry-run" if dry_run else "completed-stub")
     payload = {
         "implemented": False,
         "target_phase": 8,
-        "message": "Morning run orchestrator not yet implemented (Phase 8+).",
+        "message": "Morning run orchestrator (Phase 12) active for --morning; generic run remains stub.",
         "dry_run_requested": dry_run,
         "ledger_recorded": True,
         "run_id": run_id,
-        "note": "assistant_runs entry created for traceability (Phase 5).",
     }
     typer.echo(json.dumps(payload, indent=2) if json_out else f"run: ledger recorded (id={run_id})")
     raise typer.Exit(0)
@@ -170,7 +193,7 @@ def _make_stub(name: str):
         raise typer.Exit(0)
     return _stub
 
-for _n in ("vault", "sync", "actions", "brief", "automation"):
+for _n in ("vault", "sync", "actions", "brief"):
     _make_stub(_n)
 
 

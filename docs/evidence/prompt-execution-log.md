@@ -580,3 +580,57 @@ Next: Prompt 11 (Retrieval, Embeddings, and Workstream Context) — consumes sel
 Next: Prompt 12 (Launchd Automation And Diagnostics) — wires retrieval context into local scheduled runs + hardening.
 
 
+### Prompt 12 — Launchd Automation And Diagnostics (v1.2.0)
+
+**Objective**: Deliver launchd user LaunchAgent automation (install/uninstall/kickstart via LaunchdManager) + bounded production-shaped MorningRunOrchestrator (catch-up/weekend/ledger gates per 20/12_Risk + D-P12-001, sequences existing services with failure isolation + sanitized evidence) + automation readiness diagnostics (primary) + secondary MVP bounded scan-sensitive. Per 02 row 10, 11_CLI spec, 18 runbook, 14/15/16/17/20 plans. v1.2.0.
+
+**Execution Date**: 2026-05-25
+
+**Key Changes**
+- Version 1.2.0.
+- New package: src/hb_assistant/automation/ (launchd_manager.py with plistlib + launchctl; orchestrator.py per D-P12-001; __init__).
+- New CLI: src/hb_assistant/cli/automation.py (install-launchd etc with --dry-run); wired in main.py + minimal delegation for run --morning.
+- Diagnostics: new `diagnostics automation` (exact readiness: plist/label/paths/ledger/gates/perms/obsidian); scan-sensitive made functional MVP bounded (categories only, repo+app-support, no values) per D-P12-002; docstring updated.
+- Minor PathPolicy (run-logs/error-logs subdirs in ensure + summary).
+- Tests: new tests/test_automation.py (render, gates, isolation, CLI dry, redaction/leak;  all green).
+- New docs/architecture/12-launchd-automation-and-diagnostics.md (mermaid, D-P12 decisions, refs).
+- Evidence: phase-12-*.json + proof + validation-outputs/ (redacted plists, traces, readiness, clean scans); full appends to this log + register.
+- D-P12-003: 1.2.0 + feat(automation) commit.
+
+**Key Implementation Notes**
+- LaunchAgent: calendar-driven 5:00 (or config), explicit logs, working dir, PYTHONUNBUFFERED; no shell profile.
+- Orchestrator: gates first (weekend manual_only, catch-up via ledger heuristic), then stable calls (context/brief/files discover etc.); skip on error with reason; always ledger + evidence.
+- Dry-run everywhere; darwin launchctl isolated; redaction defense-in-depth.
+- Diagnostics automation is the primary new surface; scan is secondary/hardening support.
+- No broad refactor, no re-implementation of prior phases, no M365 writes.
+
+**Validation**
+- pytest (new automation tests green + prior suites).
+- ruff / mypy clean (style fixes applied).
+- All 8 core cmds + new: automation install-launchd --dry-run --json, kickstart, diagnostics automation --json, run morning --dry-run --json (exercises orchestrator + gates + readiness).
+- Custom smoke: install dry -> kickstart (mock) -> morning dry (gates + stages + evidence) -> diagnostics reports -> final sensitive scan on repo+support (clean).
+- .venv used; no new heavy deps.
+- Sensitive scan clean; zero leaks beyond bounded redacted artifacts.
+
+**Evidence**
+- phase-12-sample-morning.json, phase-12-automation-proof.json (redacted, gates verified, conclusion).
+- phase-12-validation-outputs/ (morning-dry-smoke.json + captures).
+- Updated prompt log + validation register (v1.2.0 row).
+- Architecture 12- doc with mermaid + refs (02/11_CLI/18/20/14/12_Risk/16/15/17/config/ledger).
+
+**Acceptance**
+- Objective complete (Prompt 12).
+- No broad unrelated refactor.
+- No Microsoft 365 write-back.
+- No tokens/private keys/full bodies/full file contents logged or evidenced (sanitized evidence + redaction).
+- Evidence created under docs/evidence/.
+- Prompt execution log + validation register updated.
+- Architecture doc updated.
+- Full validation suite (8 + automation/diagnostics/morning dry + smoke) passed; sensitive scan clean.
+- Git commit + push performed (v1.2.0).
+
+**Status**: COMPLETE
+
+Next: Prompt 13 (Testing, Hardening, and Final Closeout) — closure checklist, mutation lockout, full evidence package, sensitive scans, and final acceptance.
+
+

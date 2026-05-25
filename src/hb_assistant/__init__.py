@@ -3,7 +3,7 @@
 Bobby-only local-first MVP.
 """
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 from . import store, links, obsidian, retrieval  # Phase 5 + 8 + 11
 

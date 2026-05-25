@@ -1,0 +1,9 @@
+{
+  "run": "phase-12-morning-smoke",
+  "status": "completed",
+  "orchestrator": "ok (gates + 3 stages + evidence)",
+  "launchd": "dry install + kickstart mocked ok",
+  "diagnostics": "automation + scan-sensitive functional",
+  "leaks": "none",
+  "note": "Full validate captured in validate-capture step."
+}
