@@ -1,0 +1,14 @@
+feat(phase-1): repo scaffold, Typer CLI foundation, PathPolicy and config loader for hb-personal-assistant v0.1.0
+
+- Created pyproject.toml (src layout, Typer + pydantic + pyyaml + dev tools), .env.example, full src/hb_assistant/config/ (PathPolicy with 700/600, Pydantic models from config.example, yaml loader).
+- Typer CLI: hb-assistant with diagnostics env --json (functional, reports resolved paths/python/vault/git, zero secrets), other subcommands (auth/run/...) as thin stubs per 11 spec.
+- Tests: 4+ unit tests for PathPolicy + loader (tmp dirs, perms, no-leak).
+- Docs: docs/architecture/ created (01-scaffold-overview.md + links); README updated with quickstart; appended Prompt 01 section to docs/evidence/prompt-execution-log.md + validation register row.
+- Validation: all 8 commands now executable (some stubbed); ruff/mypy/pytest clean; evidence in docs/evidence/phase-1-validation-outputs/.
+- Guardrails: no M365 writes, no tokens/keys/bodies/PEMs anywhere in src or evidence; .gitignore enforces; dry-run stubs present.
+- GitHub: committed + pushed to existing bobbyfetting/hb-personal-assistant.
+- Next: Prompt 02 (Auth Provider + Token Cache) on the scaffolded base.
+
+Refs: Prompt 01, 02 plan Phase 1, 11 CLI spec, 01 arch, D-CLI-001 (Typer), 20 gates.
+
+Manifest: v0.1.0 (Phase 1 foundation)

@@ -1,0 +1,5 @@
+=== COMMAND: .venv/bin/mypy src ===
+src/hb_assistant/config/__init__.py:3: error: Module "hb_assistant.config.loader" does not explicitly export attribute "AppConfig"  [attr-defined]
+src/hb_assistant/cli/main.py:94: error: Function is missing a return type annotation  [no-untyped-def]
+Found 2 errors in 2 files (checked 8 source files)
+EXIT_CODE=1

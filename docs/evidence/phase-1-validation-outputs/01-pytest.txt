@@ -1,0 +1,16 @@
+=== COMMAND: .venv/bin/python -m pytest ===
+...F                                                                     [100%]
+=================================== FAILURES ===================================
+______________________ test_no_secrets_in_paths_or_config ______________________
+tests/test_config.py:60: in test_no_secrets_in_paths_or_config
+    assert bad.lower() not in blob.lower()
+E   assert 'secret' not in '{"repo_root...t/evidence"}'
+E     
+E     'secret' is contained here:
+E     ?           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       /test_no_secrets_in_paths_or_co0/application support/hb personal assistant", "auth_dir": "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/t/pytest-of-bobbyfetting/pytest-0/test_no_secrets_in_paths_or_co0/application support/hb personal assistant/auth", "db_path": "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/t/pytest-of-bobbyfetting/pytest-0/test_no_secrets_in_paths_or_co0/application support/hb personal assistant/db/hb-personal-assistant.sqlite", "vault_root": "/tmp/fake-vault-for-tes...
+E     
+E     ...Full output truncated (2 lines hidden), use '-vv' to show
+=========================== short test summary info ============================
+FAILED tests/test_config.py::test_no_secrets_in_paths_or_config - assert 'sec...
+EXIT_CODE=1

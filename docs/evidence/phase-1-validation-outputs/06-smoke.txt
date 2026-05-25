@@ -1,0 +1,9 @@
+=== SMOKE: import + PathPolicy + hb-assistant env ===
+version: 0.1.0
+summary keys: ['repo_root', 'app_support', 'auth_dir', 'db_path', 'vault_root', 'daily_notes', 'ai_outputs', 'logs', 'evidence']
+app_support exists after ensure: False
+Traceback (most recent call last):
+  File "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant", line 3, in <module>
+    from hb_assistant.cli.main import cli
+ImportError: cannot import name 'cli' from 'hb_assistant.cli.main' (/Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/cli/main.py)
+EXIT_SMOKE=0

@@ -1,0 +1,248 @@
+=== COMMAND: .venv/bin/ruff check . ===
+[1;33mwarning[0m[1m:[0m [1mThe top-level linter settings are deprecated in favour of their counterparts in the `lint` section. Please update the following options in `pyproject.toml`:
+  - 'ignore' -> 'lint.ignore'
+  - 'select' -> 'lint.select'[0m
+[1m[91mUP035 [0m[1m`typing.Dict` is deprecated, use `dict` instead[0m
+  [1m[94m-->[0m src/hb_assistant/cli/diagnostics.py:14:1
+   [1m[94m|[0m
+[1m[94m12 |[0m import sys
+[1m[94m13 |[0m from pathlib import Path
+[1m[94m14 |[0m from typing import Any, Dict
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m15 |[0m
+[1m[94m16 |[0m import typer
+   [1m[94m|[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/cli/diagnostics.py:45:11
+   [1m[94m|[0m
+[1m[94m43 |[0m     summary = pp.summary()
+[1m[94m44 |[0m
+[1m[94m45 |[0m     data: Dict[str, Any] = {
+   [1m[94m|[0m           [1m[91m^^^^[0m
+[1m[94m46 |[0m         "phase": 1,
+[1m[94m47 |[0m         "python": {
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`sys` imported but unused[0m
+  [1m[94m-->[0m src/hb_assistant/cli/main.py:14:8
+   [1m[94m|[0m
+[1m[94m13 |[0m import json
+[1m[94m14 |[0m import sys
+   [1m[94m|[0m        [1m[91m^^^[0m
+[1m[94m15 |[0m from typing import Optional
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `sys`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Optional` imported but unused[0m
+  [1m[94m-->[0m src/hb_assistant/cli/main.py:15:20
+   [1m[94m|[0m
+[1m[94m13 |[0m import json
+[1m[94m14 |[0m import sys
+[1m[94m15 |[0m from typing import Optional
+   [1m[94m|[0m                    [1m[91m^^^^^^^^[0m
+[1m[94m16 |[0m
+[1m[94m17 |[0m import typer
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `typing.Optional`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m src/hb_assistant/config/__init__.py:3:1
+   [1m[94m|[0m
+[1m[94m 1 |[0m   """Configuration models, loader, and path policy for HB Personal Assistant."""
+[1m[94m 2 |[0m
+[1m[94m 3 |[0m [1m[91m/[0m from .loader import load_config, AppConfig
+[1m[94m 4 |[0m [1m[91m|[0m from .models import (
+[1m[94m 5 |[0m [1m[91m|[0m     AppConfig as _AppConfig,  # re-export for convenience
+[1m[94m 6 |[0m [1m[91m|[0m     ProjectConfig,
+[1m[94m 7 |[0m [1m[91m|[0m     IdentityConfig,
+[1m[94m 8 |[0m [1m[91m|[0m     PathsConfig,
+[1m[94m 9 |[0m [1m[91m|[0m     MailConfig,
+[1m[94m10 |[0m [1m[91m|[0m     CalendarConfig,
+[1m[94m11 |[0m [1m[91m|[0m     FilesConfig,
+[1m[94m12 |[0m [1m[91m|[0m     AutomationConfig,
+[1m[94m13 |[0m [1m[91m|[0m     SecurityConfig,
+[1m[94m14 |[0m [1m[91m|[0m )
+[1m[94m15 |[0m [1m[91m|[0m from .path_policy import PathPolicy
+   [1m[94m|[0m [1m[91m|___________________________________^[0m
+[1m[94m16 |[0m
+[1m[94m17 |[0m   __all__ = [
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mF401 [0m[1m`.models.AppConfig` imported but unused; consider removing, adding to `__all__`, or using a redundant alias[0m
+ [1m[94m-->[0m src/hb_assistant/config/__init__.py:5:18
+  [1m[94m|[0m
+[1m[94m3 |[0m from .loader import load_config, AppConfig
+[1m[94m4 |[0m from .models import (
+[1m[94m5 |[0m     AppConfig as _AppConfig,  # re-export for convenience
+  [1m[94m|[0m                  [1m[91m^^^^^^^^^^[0m
+[1m[94m6 |[0m     ProjectConfig,
+[1m[94m7 |[0m     IdentityConfig,
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mAdd unused import `_AppConfig` to __all__[0m
+
+[1m[91mUP035 [0m[1m`typing.Dict` is deprecated, use `dict` instead[0m
+  [1m[94m-->[0m src/hb_assistant/config/loader.py:11:1
+   [1m[94m|[0m
+[1m[94m 9 |[0m import os
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Dict, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m12 |[0m
+[1m[94m13 |[0m import yaml
+   [1m[94m|[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/config/loader.py:18:31
+   [1m[94m|[0m
+[1m[94m18 |[0m def _load_yaml(path: Path) -> Dict[str, Any]:
+   [1m[94m|[0m                               [1m[91m^^^^[0m
+[1m[94m19 |[0m     if not path.exists():
+[1m[94m20 |[0m         return {}
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/config/loader.py:28:32
+   [1m[94m|[0m
+[1m[94m28 |[0m def load_config(override_path: Optional[Path | str] = None) -> AppConfig:
+   [1m[94m|[0m                                [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m29 |[0m     """Load and validate configuration.
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `dict` instead of `Dict` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/config/loader.py:41:18
+   [1m[94m|[0m
+[1m[94m39 |[0m     """
+[1m[94m40 |[0m     # Start with defaults
+[1m[94m41 |[0m     config_data: Dict[str, Any] = {}
+   [1m[94m|[0m                  [1m[91m^^^^[0m
+[1m[94m42 |[0m
+[1m[94m43 |[0m     # 1. repo level config/config.yml (conventional location after scaffold)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `dict`[0m
+
+[1m[91mUP035 [0m[1m`typing.List` is deprecated, use `list` instead[0m
+  [1m[94m-->[0m src/hb_assistant/config/models.py:9:1
+   [1m[94m|[0m
+[1m[94m 8 |[0m from pathlib import Path
+[1m[94m 9 |[0m from typing import List, Literal
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m10 |[0m
+[1m[94m11 |[0m from pydantic import BaseModel, Field, field_validator
+   [1m[94m|[0m
+
+[1m[91mUP006 [0m[[1m[96m*[0m] [1mUse `list` instead of `List` for type annotation[0m
+  [1m[94m-->[0m src/hb_assistant/config/models.py:22:23
+   [1m[94m|[0m
+[1m[94m20 |[0m     tenant_id: str = "0e834bd7-628b-42c8-b9ec-ecebc9719be4"
+[1m[94m21 |[0m     client_id: str = "08c399eb-a394-4087-b859-659d493f8dc7"
+[1m[94m22 |[0m     delegated_scopes: List[str] = Field(
+   [1m[94m|[0m                       [1m[91m^^^^[0m
+[1m[94m23 |[0m         default_factory=lambda: [
+[1m[94m24 |[0m             "User.Read",
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `list`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/config/path_policy.py:31:32
+   [1m[94m|[0m
+[1m[94m29 |[0m     APP_NAME = "HB Personal Assistant"
+[1m[94m30 |[0m
+[1m[94m31 |[0m     def __init__(self, config: Optional[AppConfig] = None) -> None:
+   [1m[94m|[0m                                [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m32 |[0m         self._config = config or load_config()
+[1m[94m33 |[0m         self._repo_root: Optional[Path] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/config/path_policy.py:33:26
+   [1m[94m|[0m
+[1m[94m31 |[0m     def __init__(self, config: Optional[AppConfig] = None) -> None:
+[1m[94m32 |[0m         self._config = config or load_config()
+[1m[94m33 |[0m         self._repo_root: Optional[Path] = None
+   [1m[94m|[0m                          [1m[91m^^^^^^^^^^^^^^[0m
+[1m[94m34 |[0m         self._app_support: Optional[Path] = None
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mUP045 [0m[[1m[96m*[0m] [1mUse `X | None` for type annotations[0m
+  [1m[94m-->[0m src/hb_assistant/config/path_policy.py:34:28
+   [1m[94m|[0m
+[1m[94m32 |[0m         self._config = config or load_config()
+[1m[94m33 |[0m         self._repo_root: Optional[Path] = None
+[1m[94m34 |[0m         self._app_support: Optional[Path] = None
+   [1m[94m|[0m                            [1m[91m^^^^^^^^^^^^^^[0m
+[1m[94m35 |[0m
+[1m[94m36 |[0m     # --- Repo root ---
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mConvert to `X | None`[0m
+
+[1m[91mSIM105 [0m[1mUse `contextlib.suppress(PermissionError)` instead of `try`-`except`-`pass`[0m
+   [1m[94m-->[0m src/hb_assistant/config/path_policy.py:122:13
+    [1m[94m|[0m
+[1m[94m120 |[0m               d.mkdir(parents=True, exist_ok=True)
+[1m[94m121 |[0m               # default umask usually fine; explicit 0o755 for clarity on non-sensitive
+[1m[94m122 |[0m [1m[91m/[0m             try:
+[1m[94m123 |[0m [1m[91m|[0m                 os.chmod(d, 0o755)
+[1m[94m124 |[0m [1m[91m|[0m             except PermissionError:
+[1m[94m125 |[0m [1m[91m|[0m                 pass  # best effort
+    [1m[94m|[0m [1m[91m|____________________^[0m
+[1m[94m126 |[0m
+[1m[94m127 |[0m       def check_perms(self, strict: bool = False) -> dict[str, bool]:
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace `try`-`except`-`pass` with `with contextlib.suppress(PermissionError): ...`[0m
+
+[1m[91mUP035 [0m[[1m[96m*[0m] [1mImport from `collections.abc` instead: `Iterator`[0m
+ [1m[94m-->[0m tests/conftest.py:6:1
+  [1m[94m|[0m
+[1m[94m5 |[0m from pathlib import Path
+[1m[94m6 |[0m from typing import Iterator
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m7 |[0m
+[1m[94m8 |[0m import pytest
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mImport from `collections.abc`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Iterator` imported but unused[0m
+ [1m[94m-->[0m tests/conftest.py:6:20
+  [1m[94m|[0m
+[1m[94m5 |[0m from pathlib import Path
+[1m[94m6 |[0m from typing import Iterator
+  [1m[94m|[0m                    [1m[91m^^^^^^^^[0m
+[1m[94m7 |[0m
+[1m[94m8 |[0m import pytest
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `typing.Iterator`[0m
+
+[1m[91mF841 [0m[1mLocal variable `tmp_path` is assigned to but never used[0m
+  [1m[94m-->[0m tests/conftest.py:34:45
+   [1m[94m|[0m
+[1m[94m32 |[0m         "project": {"name": "Test HB PA", "slug": "test-hb-pa"},
+[1m[94m33 |[0m         "paths": {
+[1m[94m34 |[0m             "application_support_root": str(tmp_path := Path("/tmp/fake-support")),  # will be overridden in tests
+   [1m[94m|[0m                                             [1m[91m^^^^^^^^[0m
+[1m[94m35 |[0m             "obsidian_vault": "/tmp/fake-vault",
+[1m[94m36 |[0m         },
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `tmp_path`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`pytest` imported but unused[0m
+  [1m[94m-->[0m tests/test_config.py:9:8
+   [1m[94m|[0m
+[1m[94m 7 |[0m from pathlib import Path
+[1m[94m 8 |[0m
+[1m[94m 9 |[0m import pytest
+   [1m[94m|[0m        [1m[91m^^^^^^[0m
+[1m[94m10 |[0m
+[1m[94m11 |[0m from hb_assistant.config.loader import load_config
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `pytest`[0m
+
+Found 20 errors.
+[[36m*[0m] 14 fixable with the `--fix` option.
+EXIT_CODE=1

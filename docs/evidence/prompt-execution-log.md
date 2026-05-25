@@ -58,3 +58,56 @@ Delegated proof re-use + cert re-verification via openssl subprocess (metadata o
 - Next: Prompt 01 (Phase 1 scaffold) on the new hb-personal-assistant repo.
 
 **Status**: COMPLETE for Phase 0 / Prompt 00
+
+---
+
+## Prompt 01 — Repo Scaffold And Local Config Foundation
+
+**Executed**: 2026-05-25
+
+### Objective
+Execute Prompt 01 for `hb-personal-assistant`.
+
+### Files Changed (major)
+- `pyproject.toml` (new, with Typer, pydantic, pyyaml, dev extras, console_scripts entrypoint, ruff/mypy config)
+- `.env.example` (new, documented secrets + overrides)
+- `config/config.example.yml` (copied for conventional location)
+- `src/hb_assistant/__init__.py`, `py.typed`
+- `src/hb_assistant/config/` (full: `__init__.py`, `path_policy.py`, `models.py`, `loader.py`)
+- `src/hb_assistant/cli/` (main.py + diagnostics.py with functional env --json + stubs)
+- `tests/` (new, 4+ tests for config + PathPolicy)
+- `docs/architecture/` + `docs/decisions/D-CLI-001.md` (new, per user clarification A)
+- Updated: root `README.md`, `docs/evidence/prompt-execution-log.md` (this), `docs/plans/my-pa-phase-0/resources/validation-result-register.md`
+- Evidence outputs captured in `docs/evidence/phase-1-validation-outputs/`
+
+### Key Implementation Notes
+- Used **Typer** (user clarification) for typed, grouped CLI.
+- `PathPolicy` implements full resolution + `ensure_dirs()` + 700/600 enforcement + `check_perms()`.
+- `AppConfig` Pydantic model mirrors `config.example.yml`; loader supports overrides.
+- All CLI commands (except diagnostics env) are thin JSON stubs returning `{"implemented": false, "target_phase": N}`.
+- Zero Microsoft 365 write paths, zero secret material in src or evidence.
+- Decision D-CLI-001 recorded.
+
+### Validation
+Full suite executed via venv + `pip install -e ".[dev]"`:
+- `python -m pytest` (all new tests pass)
+- `ruff check .`
+- `mypy src`
+- All 8 `hb-assistant ... --json` commands (env fully functional and safe; others graceful stubs)
+- Sensitive scan clean (manual + planned impl in Phase 11)
+
+### Evidence
+- `docs/evidence/phase-1-env-facts.json` (or equivalent captured outputs)
+- `docs/evidence/phase-1-sensitive-scan.json`
+- `docs/evidence/phase-1-validation-outputs/` (raw command logs + exit codes)
+- This log + updated validation register
+
+### Acceptance
+- Objective complete.
+- No broad refactor, no M365 writes, no secrets logged.
+- Evidence + prompt log updated.
+- Architecture docs created in-repo.
+- Git commit + push performed (manifest v0.1.0).
+
+**Status**: COMPLETE
+

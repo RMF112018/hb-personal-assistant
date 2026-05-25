@@ -1,0 +1,27 @@
+{
+  "phase": 1,
+  "prompt": "Prompt_01_Repo_Scaffold_And_Local_Config_Foundation",
+  "generated_at": "2026-05-25T09:20:00Z",
+  "objective": "Scaffold Python package, Typer CLI, PathPolicy, Pydantic config, tests, architecture docs.",
+  "python_environment": {
+    "version": "3.14.5",
+    "venv": ".venv (project)",
+    "installed_via": "pip install -e '.[dev]'"
+  },
+  "cli_entrypoint": {
+    "command": "hb-assistant",
+    "version": "0.1.0",
+    "diagnostics_env_json": "functional and safe (no secrets)"
+  },
+  "package_structure": {
+    "pyproject.toml": "present with Typer + pydantic + pyyaml + dev tools",
+    "src_layout": true,
+    "tests": "4+ passing (config + PathPolicy)"
+  },
+  "guardrails": {
+    "no_m365_write_code": true,
+    "no_secrets_in_src": true,
+    "auth_perms_700_enforced": true,
+    "dry_run_stubs": true
+  }
+}
