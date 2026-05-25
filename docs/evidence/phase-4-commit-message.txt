@@ -1,0 +1,16 @@
+feat(phase-4): Graph Mail/Calendar read models (clients + normalized redacted objects) for hb-personal-assistant v0.4.0
+
+- Implemented MailClient (5d inbound / 7d sent, bounded body, redacted fields + source links), CalendarClient (calendarView window, redacted metadata), DriveItem/Attachment clients (metadata-first) per 06 spec.
+- New normalize/ package with Pydantic models matching sqlite expectations (emails, calendar_events, attachments, files) + consistent redaction/hashing for PII and SourceLink construction.
+- All clients built on Phase 2 GraphHttpClient + post-Phase 3 delegated auth (scopes assumed granted during dev).
+- Tests, safe CLI sample helpers, full redaction discipline (no full bodies/files/tokens ever logged or evidenced).
+- Architecture: new docs/architecture/04-graph-mail-calendar-read-models.md with diagrams + examples.
+- Evidence: phase-4-*.json (sample normalized objects, client traces), updated prompt log + validation register.
+- Validation: all commands + new diagnostics helpers pass; clients produce correct redacted output; sensitive scan clean.
+- Guardrails: zero full bodies, file contents, tokens, keys, PEMs in code/evidence/logs; read-only; 20 gates honored; .gitignore protects.
+- GitHub: committed + pushed to bobbyfetting/hb-personal-assistant.
+- Next: Prompt 05 (Local State Store + Source Link Registry) to persist the objects produced here.
+
+Refs: Prompt 04, 06 Graph spec, 02 plan Phase 4, 05/07/20, Phase 2/3 foundation.
+
+Manifest: v0.4.0 (Graph Mail/Calendar Read Models complete)

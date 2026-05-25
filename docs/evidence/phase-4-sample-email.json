@@ -1,0 +1,25 @@
+{
+  "phase": 4,
+  "type": "normalized_email_sample",
+  "description": "Example redacted Email object produced by MailClient (inbound, safe for evidence/logs)",
+  "example": {
+    "id": "AAMkAG...",
+    "immutable_id": "AAMkAG...",
+    "conversation_id": "AAQkAG...",
+    "folder": "inbox",
+    "subject_redacted": "[redacted:3f8a9c2e1d4b...]",
+    "sender_domain": "ex.com",
+    "sender_hash": "a1b2c3d4e5f6...",
+    "from_redacted": "a1b2c3d4e5f6...@ex.com",
+    "to_recipients_redacted": ["f7e8d9c0b1a2...@ex.com"],
+    "received_datetime": "2026-05-20T14:32:00Z",
+    "body_preview_redacted": "Hi Bobby, quick update on the project timeline...",
+    "has_attachments": true,
+    "source_links": [
+      {"type": "mentions", "target": "source_record_id:42"},
+      {"type": "same_project", "target": "source_record_id:99"}
+    ]
+  },
+  "redaction_note": "Subject hashed, recipients domain+hash only, preview truncated. No full body or tokens present.",
+  "generated_by": "MailClient.list_inbound (Phase 4)"
+}

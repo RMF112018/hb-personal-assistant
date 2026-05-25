@@ -1,0 +1,6 @@
+=== Phase 4 smoke: normalize + clients imports ===
+version: 0.4.0
+redact_subject test: [redacted:7e32a729b1226ed1]
+models + clients import OK
+SMOKE_EXIT=0
+EXIT_SMOKE=0

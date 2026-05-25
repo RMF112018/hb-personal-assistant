@@ -1,0 +1,16 @@
+{
+  "phase": 4,
+  "type": "normalized_calendar_event_sample",
+  "example": {
+    "id": "AAMkAG...",
+    "ical_uid": "040000008200E...",
+    "subject_redacted": "[redacted:9d8c7b6a...]",
+    "organizer_hash": "a1b2c3d4...",
+    "start": "2026-05-26T09:00:00Z",
+    "location_redacted": "[redacted:5e4f3a...]",
+    "is_online_meeting": true,
+    "has_attachments": false,
+    "source_links": [{"type": "prepares_for", "target": "source_record_id:77"}]
+  },
+  "note": "Redacted per 06 spec. Ready for source_links and persistence."
+}

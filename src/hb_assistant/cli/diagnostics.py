@@ -163,3 +163,55 @@ def proof_cmd(
     }
     typer.echo(json.dumps(payload, indent=2))
     raise typer.Exit(0)
+
+
+@app.command("mail")
+def mail_sample(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Safe, redacted sample of recent inbound mail (Phase 4 verification)."""
+    from hb_assistant.config.loader import load_config
+    from hb_assistant.config.path_policy import PathPolicy
+    from hb_assistant.auth.providers import DelegatedAuthProvider
+    from hb_assistant.graph.http_client import GraphHttpClient
+    from hb_assistant.graph.mail_client import MailClient
+
+    cfg = load_config()
+    pp = PathPolicy(cfg)
+    prov = DelegatedAuthProvider(cfg.identity.tenant_id, cfg.identity.client_id, cfg.identity.delegated_scopes, path_policy=pp)
+
+    def token_getter(scopes=None):
+        return prov.get_token(scopes or ["Mail.Read", "User.Read"])
+
+    client = GraphHttpClient(token_getter)
+    mail = MailClient(client, cfg)
+    items = mail.list_inbound(top=3)
+    payload = {"count": len(items), "samples": [i.model_dump() for i in items]}
+    typer.echo(json.dumps(payload, indent=2))
+    raise typer.Exit(0)
+
+
+@app.command("calendar")
+def calendar_sample(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Safe, redacted sample of upcoming calendar events (Phase 4 verification)."""
+    from hb_assistant.config.loader import load_config
+    from hb_assistant.config.path_policy import PathPolicy
+    from hb_assistant.auth.providers import DelegatedAuthProvider
+    from hb_assistant.graph.http_client import GraphHttpClient
+    from hb_assistant.graph.calendar_client import CalendarClient
+
+    cfg = load_config()
+    pp = PathPolicy(cfg)
+    prov = DelegatedAuthProvider(cfg.identity.tenant_id, cfg.identity.client_id, cfg.identity.delegated_scopes, path_policy=pp)
+
+    def token_getter(scopes=None):
+        return prov.get_token(scopes or ["Calendars.Read", "User.Read"])
+
+    client = GraphHttpClient(token_getter)
+    cal = CalendarClient(client, cfg)
+    items = cal.list_events(top=3)
+    payload = {"count": len(items), "samples": [i.model_dump() for i in items]}
+    typer.echo(json.dumps(payload, indent=2))
+    raise typer.Exit(0)

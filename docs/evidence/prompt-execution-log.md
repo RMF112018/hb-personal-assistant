@@ -205,3 +205,52 @@ Any delegated permissions not currently granted (especially Mail.Read) will be g
 
 **Status**: COMPLETE (proof artifacts and infrastructure delivered; full 10-step green evidence expected once delegated scopes are granted during development)
 
+
+---
+
+## Prompt 04 — Graph Mail Calendar Read Model
+
+**Executed**: 2026-05-25
+
+### Objective
+Implement the Graph read models (Mail 5d/7d, calendarView window, attachments/files metadata) per 06 spec, producing normalized, redacted, source-linked objects in normalize/ + dedicated clients.
+
+### Files Changed (major)
+- Version 0.4.0
+- New: src/hb_assistant/normalize/ (full package: email.py, calendar_event.py, attachment.py, drive_item.py + redaction helpers)
+- New: src/hb_assistant/graph/mail_client.py, calendar_client.py, drive_item_client.py (exact 06 queries, windows, paging, redaction, returning normalized models)
+- Updated: src/hb_assistant/graph/__init__.py (exports)
+- Updated: src/hb_assistant/cli/diagnostics.py (mail sample --json and calendar sample --json safe helpers)
+- New: tests/test_graph_clients.py (mocks for selects, redaction, windows)
+- New: docs/architecture/04-graph-mail-calendar-read-models.md (mermaid + examples + integration)
+- Evidence: phase-4-sample-*.json, phase-4-validation-outputs/
+- Appended: this section + validation register row
+
+### Key Implementation Notes
+- All models apply consistent redaction (subject hash, sender/recipient domain+hash, truncated preview, location redaction).
+- Body retrieval explicitly staged/bounded (never full body logged/persisted by these models).
+- Clients enforce lookbacks from AppConfig and use GraphHttpClient + delegated provider (scopes assumed granted during dev).
+- Source links constructed using types from resources/source-link-types.json.
+- No M365 writes, no full bodies/files in evidence/logs.
+
+### Validation
+- pytest (new graph client tests green)
+- ruff / mypy clean
+- All 8 hb-assistant * --json + new diagnostics mail/calendar sample --json (produce safe redacted JSON only)
+- Sensitive scan clean
+- Proof script + Phase 3 artifacts still functional
+
+### Evidence
+- phase-4-sample-email.json, phase-4-sample-calendar.json (fully redacted examples)
+- phase-4-validation-outputs/ (raw command outputs)
+- Updated prompt log + register
+
+### Acceptance
+- Objective complete.
+- No broad refactor, no M365 writes, zero secrets/full bodies in artifacts.
+- Architecture docs updated.
+- Logs/register updated.
+- Git commit + push performed (v0.4.0).
+
+**Status**: COMPLETE
+

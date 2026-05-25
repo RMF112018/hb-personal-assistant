@@ -1,8 +1,14 @@
-"""Graph package (Phase 2 base).
+"""Graph package (Phase 2 base + Phase 4 read models)."""
 
-Exports GraphHttpClient for centralized, safe, retried calls.
-"""
+from .http_client import GraphHttpClient, GraphHttpError
+from .mail_client import MailClient
+from .calendar_client import CalendarClient
+from .drive_item_client import DriveItemClient
 
-from .http_client import GraphHttpClient
-
-__all__ = ["GraphHttpClient"]
+__all__ = [
+    "GraphHttpClient",
+    "GraphHttpError",
+    "MailClient",
+    "CalendarClient",
+    "DriveItemClient",
+]
