@@ -6,9 +6,8 @@ All status output is safe (no tokens, keys, or full bodies).
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import msal  # type: ignore
 

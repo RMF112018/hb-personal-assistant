@@ -1,0 +1,30 @@
+{
+  "git": {
+    "sha": null
+  },
+  "notes": "All values are safe for logging/evidence. No secret material is present.",
+  "paths": {
+    "ai_outputs": "/Users/bobbyfetting/hb-personal-assistant/.tmp-vault-remediation/AI Outputs",
+    "app_support": "/Users/bobbyfetting/hb-personal-assistant/.tmp-app-support-remediation",
+    "auth_dir": "/Users/bobbyfetting/hb-personal-assistant/.tmp-app-support-remediation/auth",
+    "daily_notes": "/Users/bobbyfetting/hb-personal-assistant/.tmp-vault-remediation/Daily Notes",
+    "db_path": "/Users/bobbyfetting/hb-personal-assistant/.tmp-app-support-remediation/db/hb-personal-assistant.sqlite",
+    "evidence": "/Users/bobbyfetting/hb-personal-assistant/.tmp-app-support-remediation/evidence",
+    "logs": "/Users/bobbyfetting/hb-personal-assistant/.tmp-app-support-remediation/logs",
+    "logs_error": "/Users/bobbyfetting/hb-personal-assistant/.tmp-app-support-remediation/logs/error-logs",
+    "logs_run": "/Users/bobbyfetting/hb-personal-assistant/.tmp-app-support-remediation/logs/run-logs",
+    "repo_root": "/Users/bobbyfetting/hb-personal-assistant",
+    "vault_root": "/Users/bobbyfetting/hb-personal-assistant/.tmp-vault-remediation"
+  },
+  "permissions": {
+    "auth_dir_700": true,
+    "msal-token-cache-app.bin_600": true,
+    "msal-token-cache.bin_600": true
+  },
+  "phase": 1,
+  "python": {
+    "executable": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python3.12",
+    "platform": "macOS-26.4-arm64-arm-64bit",
+    "version": "3.12.11"
+  }
+}

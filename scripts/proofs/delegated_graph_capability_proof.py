@@ -30,14 +30,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import sys
-import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 # Project imports (works when run as module or after `pip install -e .`)
-from hb_assistant.auth.classifier import classify_token_claims, safe_redact_claims
+from hb_assistant.auth.classifier import classify_token_claims
 from hb_assistant.auth.providers import AppOnlyAuthProvider, DelegatedAuthProvider
 from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
@@ -184,7 +182,6 @@ def run_proof(step_filter: str = "all", emit_json: bool = True, safe_mode: bool 
     # ========== Step 3 & 4: Body + mention (use first message if available) ==========
     # For simplicity in the proof we attempt to get a body from the first message of step 2 if we have an ID.
     # In a real run with Mail.Read this will succeed.
-    message_id = None
     # (We would have captured IDs in step 2 sample in a fuller implementation; here we keep the script focused.)
 
     # Placeholder: we note that full body retrieval (step 3) and mention detection (step 4)
@@ -211,7 +208,7 @@ def run_proof(step_filter: str = "all", emit_json: bool = True, safe_mode: bool 
     # ========== Step 7: driveItem metadata ==========
     # Discover one item from drive root children
     try:
-        root = client.get("/me/drive/root?$select=id,name,webUrl")
+        client.get("/me/drive/root?$select=id,name,webUrl")
         children = client.get("/me/drive/root/children?$top=3&$select=id,name,size,file,folder,webUrl,lastModifiedDateTime")
         items = children.get("value", [])
         if items:
@@ -251,7 +248,7 @@ def run_proof(step_filter: str = "all", emit_json: bool = True, safe_mode: bool 
     # ========== Step 9: App-only rejection for mail/calendar ==========
     try:
         # Attempt a mail endpoint with app-only token (should be blocked by classification or Graph)
-        app_token = app_prov.get_token(["https://graph.microsoft.com/.default"])
+        app_prov.get_token(["https://graph.microsoft.com/.default"])
         app_class = classify_token_claims({"roles": ["Sites.Read.All"]})  # simulated; real app token has roles
         _record(9, "/me/messages (app-only attempt)", 403, None, f"App-only token (classification={app_class}) correctly rejected for mail endpoint per 04 policy.")
     except Exception as e:

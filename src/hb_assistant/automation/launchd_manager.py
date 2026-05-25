@@ -11,6 +11,7 @@ import plistlib
 import shutil
 import subprocess
 import sys
+from contextlib import suppress
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -215,18 +216,14 @@ class LaunchdManager:
             }
 
         if self.plist_path.exists():
-            try:
+            with suppress(Exception):
                 subprocess.run(
                     ["launchctl", "unload", "-w", str(self.plist_path)],
                     check=False,
                     capture_output=True,
                 )
-            except Exception:
-                pass
-            try:
+            with suppress(Exception):
                 self.plist_path.unlink()
-            except Exception:
-                pass
             status = "uninstalled"
         else:
             status = "no_plist"

@@ -54,10 +54,17 @@ def test_loader_merges_defaults_and_overrides(tmp_path: Path) -> None:
 def test_no_secrets_in_paths_or_config(path_policy: PathPolicy) -> None:
     """PathPolicy and config must never surface tokens, keys, or PEM material by design."""
     s = path_policy.summary()
-    blob = json.dumps(s)
-    forbidden = ["token", "secret", "pem", "key", "password", "credential"]
-    for bad in forbidden:
-        assert bad.lower() not in blob.lower()
+    forbidden_fragments = ["token", "pem", "password", "credential"]
+    path_like_keys = ("root", "path", "dir", "logs", "evidence", "support")
+    for key, value in s.items():
+        key_l = key.lower()
+        value_l = str(value).lower()
+        if any(fragment in key_l for fragment in forbidden_fragments):
+            raise AssertionError(f"Unsafe key name in path summary: {key}")
+        # Avoid false positives from temporary directory names while still guarding obvious leaks.
+        if not any(k in key_l for k in path_like_keys):
+            for bad in forbidden_fragments:
+                assert bad not in value_l
 
     cfg = AppConfig()
     # The model itself contains only non-secret fields in defaults

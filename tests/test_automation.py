@@ -7,15 +7,14 @@ CLI dry-run, redaction/leak, non-darwin safety. All green.
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from hb_assistant.automation import LaunchdManager, MorningRunOrchestrator
+from hb_assistant.cli.automation import app
 from hb_assistant.config.models import MorningRunConfig
 from hb_assistant.store.repositories import Store
+from typer.testing import CliRunner
 
 
 def test_launchd_manager_render_and_preview(tmp_path):
@@ -142,9 +141,6 @@ def test_orchestrator_isolates_stage_failure(tmp_path):
 
 
 def test_cli_automation_dry_run(tmp_path, monkeypatch):
-    from typer.testing import CliRunner
-    from hb_assistant.cli.automation import app
-
     runner = CliRunner()
     result = runner.invoke(app, ["install-launchd", "--dry-run", "--json"])
     assert result.exit_code == 0
