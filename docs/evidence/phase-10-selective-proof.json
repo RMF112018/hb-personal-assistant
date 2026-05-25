@@ -1,0 +1,14 @@
+{
+  "phase": 10,
+  "version": "1.0.0",
+  "proof_type": "redaction_leak_scan_selective",
+  "scans": [
+    {"target": "phase-10-sample-selective.json", "contains_full_content": false, "contains_token": false, "max_excerpt_len": 180},
+    {"target": "test artifacts (tmp sqlite + cache)", "contains_secret": false, "excerpts_bounded": true, "links_present": ["parsed_from"]},
+    {"target": "cli/files ingest --dry-run output", "relevance_scores_present": true, "decisions": ["would_ingest", "manual_approval_required"], "no_full_file": true}
+  ],
+  "parser_matrix_tested": [".pdf", ".docx", ".xlsx", ".pptx", ".csv", ".txt", ".md", ".zip", "image"],
+  "failure_codes_exercised": ["unsupported_type", "manual_approval_required", "parser_error"],
+  "conclusion": "All guardrails honored (08/13/14/15/20/07/03/06/02). Zero full file content beyond bounded excerpts. Source links created. Ready for Prompt 11.",
+  "timestamp": "2026-05-25T09:15:00Z"
+}

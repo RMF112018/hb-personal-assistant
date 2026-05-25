@@ -1,11 +1,11 @@
-"""EligibilityGate for file/attachment ingestion per 08 spec.
+"""EligibilityGate + ApprovalGate for selective file/attachment ingestion (08 spec + Phase 10).
 
 Controls:
-- size caps: default 100MB, pdf 250MB, office 100MB, cad_export 300MB
-- warn_above_mb: 100
-- require_manual_approval_above_mb: 300
-- type allow-list from parser matrix
+- size caps per family (pdf 250, office 100, cad 300, default 100)
+- warn 100MB, manual approval >300MB
+- supported matrix from 08 (pdf/docx/xlsx/pptx/csv/txt/md + images/zip metadata)
 - failure codes: unsupported_type, too_large, manual_approval_required, ...
+- ApprovalGate: explicit allow-list for items hitting manual gate (dry-run / CLI --approve for tests)
 """
 
 from __future__ import annotations
@@ -72,3 +72,23 @@ class EligibilityGate:
             requires_manual_approval=requires_approval,
             size_mb=size_mb
         )
+
+
+class ApprovalGate:
+    """Explicit approval gate for items that hit requires_manual_approval (08 + 20 gates).
+
+    v1.0.0 implementation: caller (service/CLI/tests) passes approved source_record_ids.
+    Items still go through relevance + eligibility first. Dry-run friendly; no interactive prompt.
+    """
+
+    def __init__(self, approved_source_ids: Optional[set[int]] = None) -> None:
+        self.approved = approved_source_ids or set()
+
+    def is_approved(
+        self, eligibility: EligibilityResult, *, source_record_id: Optional[int] = None
+    ) -> tuple[bool, str]:
+        if not eligibility.requires_manual_approval:
+            return True, "auto_approved"
+        if source_record_id is not None and source_record_id in self.approved:
+            return True, "explicitly_approved"
+        return False, eligibility.reason or "manual_approval_required"

@@ -1,0 +1,9 @@
+{
+  "run": "phase-10-selective-smoke",
+  "status": "dry_run_complete",
+  "relevance_eligibility_approval": "exercised",
+  "parsers": "txt, csv, zip, image, pdf-error-paths",
+  "links": "created on mock ingest path",
+  "leaks": "none",
+  "note": "Full validate (with .venv + 8 cmds + files ingest) captured in next step."
+}

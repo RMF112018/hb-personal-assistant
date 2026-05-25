@@ -1,0 +1,29 @@
+{
+  "phase": 10,
+  "version": "1.0.0",
+  "mode": "selective-ingest-dry-run",
+  "timestamp": "2026-05-25T09:12:00Z",
+  "inputs": {
+    "limit": 5,
+    "signals_present": ["bobby_mention", "possible_action_or_waiting"]
+  },
+  "results": [
+    {
+      "drive_item_id": "sample-1",
+      "name": "[redacted-report].pdf",
+      "size_mb": 1.8,
+      "relevance": {"score": 0.61, "worth_ingesting": true, "reasons": ["bobby_mention", "name_kw:report", "size_work_doc"]},
+      "eligibility": {"eligible": true, "reason": "ok", "requires_manual_approval": false, "size_mb": 1.8},
+      "decision": "would_ingest"
+    },
+    {
+      "drive_item_id": "sample-4",
+      "name": "[redacted-huge].zip",
+      "size_mb": 320.0,
+      "relevance": {"score": 0.12, "worth_ingesting": false, "reasons": ["supported_type", "very_large_penalty"]},
+      "eligibility": {"eligible": false, "reason": "manual_approval_required", "requires_manual_approval": true, "size_mb": 320.0},
+      "decision": "manual_approval_required"
+    }
+  ],
+  "note": "Redacted. No full content, tokens, or PII. Dry-run only. Excerpts would be bounded <=8k chars on real ingest."
+}

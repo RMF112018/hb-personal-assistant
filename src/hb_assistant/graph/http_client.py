@@ -12,6 +12,7 @@ Phase 2 base implementation per 06_Graph_Integration_Specification:
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 import requests
@@ -65,6 +66,7 @@ class GraphHttpClient:
         headers: Optional[Dict[str, str]] = None,
         data: Any = None,
         json: Any = None,
+        stream: bool = False,
     ) -> requests.Response:
         url = f"{self.GRAPH_ROOT}/{path.lstrip('/')}" if not path.startswith("http") else path
         token = self._get_token(scopes)
@@ -87,6 +89,7 @@ class GraphHttpClient:
                     data=data,
                     json=json,
                     timeout=self._timeout,
+                    stream=stream,
                 )
             except requests.RequestException as e:
                 if attempt == MAX_RETRIES:
@@ -143,3 +146,46 @@ class GraphHttpClient:
 
     def close(self) -> None:
         self._session.close()
+
+    def download_to_file(
+        self,
+        path: str,
+        target: Path,
+        *,
+        max_bytes: Optional[int] = None,
+        scopes: Optional[List[str]] = None,
+        chunk_size: int = 8192,
+    ) -> int:
+        """Stream binary content from Graph to target file (retry policy, size guard, no full body in memory).
+
+        Checks Content-Length header upfront if present. Streams chunks, aborts on exceed.
+        Returns bytes_written. Raises GraphHttpError or ValueError on violation/IO error.
+        Never logs or returns full content; only size and status.
+        """
+        target = Path(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # Request with stream=True so we control consumption
+        resp = self._request("GET", path, scopes=scopes, stream=True)
+        try:
+            # Size guard from header (if provided by Graph)
+            cl = resp.headers.get("Content-Length")
+            if cl is not None:
+                try:
+                    declared = int(cl)
+                    if max_bytes is not None and declared > max_bytes:
+                        raise ValueError(f"declared_size {declared} exceeds max_bytes {max_bytes}")
+                except (ValueError, TypeError):
+                    pass  # proceed, will check during stream
+
+            written = 0
+            with target.open("wb") as f:
+                for chunk in resp.iter_content(chunk_size=chunk_size):
+                    if not chunk:
+                        continue
+                    f.write(chunk)
+                    written += len(chunk)
+                    if max_bytes is not None and written > max_bytes:
+                        raise ValueError(f"stream_exceeded max_bytes {max_bytes} (written={written})")
+            return written
+        finally:
+            resp.close()

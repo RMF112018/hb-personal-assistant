@@ -5,7 +5,8 @@ Entry point: hb-assistant
 Subcommand groups (per 11_CLI spec):
   auth, diagnostics, vault, sync, files, actions, brief, search, run, automation
 
-Phase 1: Only diagnostics (env --json functional). All others are thin stubs.
+Phase 1-9: diagnostics + run + auth real; others thin stubs.
+Phase 10: `files` (ingest --dry-run) real (selective pipeline).
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
 
 from . import diagnostics as diag_mod
+from . import files as files_mod  # Phase 10: selective ingest (relevance/eligibility/approval + pipeline)
 
 app = typer.Typer(
     name="hb-assistant",
@@ -54,6 +56,9 @@ def main(
 
 # Register diagnostics sub-app
 app.add_typer(diag_mod.app, name="diagnostics")
+
+# Phase 10: files (selective ingest commands under top-level `files`)
+app.add_typer(files_mod.app, name="files")
 
 
 # --- Stub command groups (Phase 1) ---
@@ -152,7 +157,7 @@ def run_cmd(
     raise typer.Exit(0)
 
 
-# Explicit thin stubs for help discoverability (Phase 1)
+# Explicit thin stubs for remaining (Phase 1 baseline; files promoted in Phase 10)
 def _make_stub(name: str):
     @app.command(name)
     def _stub(json_out: bool = typer.Option(False, "--json")) -> None:
@@ -161,9 +166,12 @@ def _make_stub(name: str):
         raise typer.Exit(0)
     return _stub
 
-for _n in ("vault", "sync", "files", "actions", "brief", "search", "automation"):
+for _n in ("vault", "sync", "actions", "brief", "search", "automation"):
     _make_stub(_n)
 
+
+# Entry point for console script (pyproject.toml: hb_assistant.cli.main:cli)
+cli = app
 
 if __name__ == "__main__":  # pragma: no cover
     app()

@@ -347,16 +347,38 @@ def brief_sample(
 def files_sample(
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
-    """Safe, redacted file/attachment link discovery sample (Phase 9, eligibility preview, dry-run)."""
-    # Thin: in real would call FileIngestionService.discover... with recent mail/calendar
-    # For sample: return redacted metadata + eligibility preview (no real Graph calls in this helper)
+    """Safe, redacted file/attachment selective sample (Phase 10: relevance + eligibility + decision preview, dry-run)."""
+    # Thin: no Graph, no DL, no real service (safe even unauthed). Shows new selective fields.
+    # Real ingest via `hb-assistant files ingest --dry-run`
     payload = {
-        "mode": "files-discovery-preview",
+        "mode": "files-selective-preview-v1.0",
         "pending": [
-            {"type": "attachment", "name": "[redacted].pdf", "size_mb": 1.2, "eligibility": "ok"},
-            {"type": "drive_item", "name": "Q3 Report.xlsx", "size_mb": 4.5, "eligibility": "ok"},
+            {
+                "type": "attachment",
+                "name": "[redacted].pdf",
+                "size_mb": 1.2,
+                "relevance": {"score": 0.42, "worth_ingesting": True, "reasons": ["bobby_mention", "supported_type"]},
+                "eligibility": {"eligible": True, "reason": "ok", "requires_manual_approval": False, "size_mb": 1.2},
+                "decision": "would_ingest",
+            },
+            {
+                "type": "drive_item",
+                "name": "Q3 Report.xlsx",
+                "size_mb": 4.5,
+                "relevance": {"score": 0.61, "worth_ingesting": True, "reasons": ["name_kw:report", "action_signal", "supported_type"]},
+                "eligibility": {"eligible": True, "reason": "ok", "requires_manual_approval": False, "size_mb": 4.5},
+                "decision": "would_ingest",
+            },
+            {
+                "type": "drive_item",
+                "name": "huge_archive.zip",
+                "size_mb": 320.0,
+                "relevance": {"score": 0.15, "worth_ingesting": False, "reasons": ["supported_type", "very_large_penalty"]},
+                "eligibility": {"eligible": False, "reason": "manual_approval_required", "requires_manual_approval": True, "size_mb": 320.0},
+                "decision": "manual_approval_required",
+            },
         ],
-        "note": "Redacted metadata + eligibility only. Full ingest uses controlled download + parsers (dry-run recommended).",
+        "note": "Phase 10 selective: relevance (Phase 6 signals + heuristics) first, then eligibility/approval gate. Excerpts + links only on ingest. Dry-run safe. Use `files ingest --dry-run --json` for service path.",
     }
     typer.echo(json.dumps(payload, indent=2))
     raise typer.Exit(0)

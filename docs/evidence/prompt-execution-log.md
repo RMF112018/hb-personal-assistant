@@ -461,3 +461,64 @@ Implement the full attachment/driveItem link discovery + ingestion pipeline (eli
 
 **Status**: COMPLETE
 
+
+### Prompt 10 — Selective File Ingestion And Parsing (v1.0.0)
+
+**Objective**: Complete selective aspects of file/attachment ingestion per 02 row 8 + 08 spec (relevance scoring using Phase 6 signals + heuristics, full approval gate, complete ParserRouter + parsers for full matrix, real streaming download + guards, full selective pipeline in service + thin CLI, expanded tests, arch doc, evidence/logs).
+
+**Execution Date**: 2026-05-25
+
+**Key Changes**
+- Version bump to 1.0.0 (pyproject + __init__); added python-pptx dep for PPTX parser.
+- New: src/hb_assistant/files/relevance.py (FileRelevanceScorer + RelevanceScore Pydantic, redacted)
+- Extended: src/hb_assistant/files/eligibility.py (ApprovalGate for manual_approval_required items)
+- Completed: parsers/ (docx, xlsx, pptx, csv, txt, image, zip + enhanced pdf with failure codes); router full dispatch + isolation
+- Real: downloader streaming + http_client download_to_file (retry, chunked, size guards, no full body); DriveItemClient.download_content
+- Updated: files/service.py (ingest_items full selective pipeline + discover enhancements); __init__.py exports
+- Store: added get_file / list_parser_outputs / get_files_by_status
+- CLI: enhanced diagnostics files sample (relevance/eligibility/decision previews); new cli/files.py + main wiring for `files ingest --dry-run --json` (exercises pipeline safely)
+- Tests: expanded test_file_ingestion.py (relevance matrix, approval gate, multi-parser bounds/errors/failure codes, full pipeline dry+mocked real with links/persist, leak/redaction guards on excerpts/DB/results) — all green
+- New: docs/architecture/10-selective-file-ingestion-and-parsing.md (mermaid pipeline, decisions, integration, refs)
+- Evidence: phase-10-sample-selective.json, phase-10-selective-proof.json (redacted traces, no leaks), phase-10-validation-outputs/
+- Appended: this section + validation register row (v1.0.0)
+
+**Key Implementation Notes**
+- Relevance first (heuristic, Phase 6 signals + name/size/type) before any eligibility/approval/DL.
+- Approval gate: explicit approved_source_ids (CLI --apply for small approved in tests; real manual later).
+- Excerpts only (<=8k chars typical); metadata for images/zip; failure isolation per item (08 codes).
+- Real streaming DL only on approved + !dry + bounded size; cache + sha + parse + persist + links ("parsed_from").
+- All redacted/bounded; dry-run default; mocks everywhere; no full file content in any artifact/evidence/log.
+- FK safety for source_record before files/parser rows.
+- 1.0.0 manifest milestone (selective ingestion production-ready for Prompt 11).
+
+**Validation**
+- pytest (expanded ingestion tests: 7/7 green, including relevance/approval/parsers/pipeline/leaks)
+- ruff / mypy clean
+- hb-assistant diagnostics env --json / auth status --json / graph --safe --json
+- hb-assistant run morning --dry-run --json
+- hb-assistant diagnostics scan-sensitive --repo . --json (clean)
+- New: hb-assistant diagnostics files sample --json (relevance/eligibility/decision previews)
+- New: hb-assistant files ingest --dry-run --json (full selective pipeline exercised on samples + signals; redacted outputs)
+- Custom selective smoke (mocked signals/links → relevance + eligibility + approved dry/real-mocked DL/parse → DB + links + bounded excerpts + clean leak scan)
+- .venv created + pip install -e '.[dev]' (includes new python-pptx + pytest etc)
+- Sensitive scan clean; zero full content/tokens beyond excerpts
+
+**Evidence**
+- phase-10-sample-selective.json (redacted relevance/eligibility/decision samples)
+- phase-10-selective-proof.json (leak scans, matrix tested, failure codes, conclusion)
+- phase-10-validation-outputs/ (selective-smoke-dry-run.json + future captures)
+- Updated prompt log + validation register (v1.0.0 row)
+- Architecture 10- doc with mermaid + refs to 02/08/07/13-15/20/03/06/09 + schemas
+
+**Acceptance**
+- Objective complete (Prompt 10).
+- No broad refactor, no M365 writes, zero full file content/secrets in any artifact or evidence.
+- Architecture docs updated.
+- Logs/register updated.
+- Git commit + push performed (v1.0.0).
+
+**Status**: COMPLETE
+
+Next: Prompt 11 (Retrieval, Embeddings, and Workstream Context) — consumes selectively parsed files + excerpts + links.
+
+

@@ -437,3 +437,45 @@ class Store:
                 (file_source_record_id, parser_name, parser_version, content_hash, status, excerpt, char_count),
             )
             return int(cur.fetchone()[0])
+
+    # --- Phase 10: file/parser_output query helpers (for tests, CLI, validation, selective status) ---
+
+    def get_file(self, source_record_id: int) -> Optional[dict[str, Any]]:
+        """Return files row for a source (post DL)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute("SELECT * FROM files WHERE source_record_id = ?", (source_record_id,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+    def list_parser_outputs(self, file_source_record_id: int) -> list[dict[str, Any]]:
+        """Return parser outputs linked to a file (excerpts only, never full content)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            "SELECT * FROM parser_outputs WHERE file_source_record_id = ? ORDER BY id DESC",
+            (file_source_record_id,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+    def get_files_by_status(
+        self,
+        download_status: Optional[str] = None,
+        parse_status: Optional[str] = None,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """Query files by status (for smoke tests / monitoring)."""
+        conn = get_connection(self._db_path)
+        where: list[str] = []
+        vals: list[Any] = []
+        if download_status:
+            where.append("download_status=?")
+            vals.append(download_status)
+        if parse_status:
+            where.append("parse_status=?")
+            vals.append(parse_status)
+        sql = "SELECT * FROM files"
+        if where:
+            sql += " WHERE " + " AND ".join(where)
+        sql += " ORDER BY source_record_id DESC LIMIT ?"
+        vals.append(limit)
+        cur = conn.execute(sql, vals)
+        return [dict(r) for r in cur.fetchall()]

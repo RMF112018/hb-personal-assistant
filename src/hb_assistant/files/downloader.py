@@ -1,4 +1,4 @@
-"""ControlledDownloader: bounded download via GraphHttpClient + size guard + streaming to cache."""
+"""ControlledDownloader: bounded streaming download via Graph + size guard + hash prep to cache."""
 
 from __future__ import annotations
 
@@ -16,10 +16,18 @@ class ControlledDownloader:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def download(self, drive_item_id: str, max_bytes: Optional[int] = None) -> Path:
-        """Download to cache/<id>.bin . Raises on size violation or error."""
-        # In real impl: use /me/drive/items/{id}/content with streaming + size check
-        # For v0.9 MVP skeleton: return a placeholder path; full integration in service.
+        """Stream download of /me/drive/items/{id}/content to cache/<id>.bin .
+
+        Uses GraphHttpClient retry + streaming (no full body in mem). Enforces max_bytes.
+        Returns the target path on success. Raises ValueError/GraphHttpError on violation or failure.
+        """
         target = self.cache_dir / f"{drive_item_id}.bin"
-        # Placeholder: in tests we mock the http response
-        target.write_bytes(b"")  # will be overwritten in real download
+        url_path = f"/me/drive/items/{drive_item_id}/content"
+        # delegated scopes sufficient for Drive.Read
+        self.client.download_to_file(
+            url_path,
+            target,
+            max_bytes=max_bytes,
+            scopes=["https://graph.microsoft.com/Files.Read"],
+        )
         return target

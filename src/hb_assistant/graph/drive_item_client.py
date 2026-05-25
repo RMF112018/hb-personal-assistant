@@ -1,7 +1,11 @@
-"""DriveItemClient + attachment metadata (metadata-first, controlled download later)."""
+"""DriveItemClient + attachment metadata + controlled streaming download (Phase 10).
+
+Metadata methods + download_content (delegates to GraphHttpClient streaming + guards).
+"""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import List, Optional
 
 from hb_assistant.normalize.attachment import Attachment
@@ -59,3 +63,21 @@ class DriveItemClient:
                 is_inline=a.get("isInline", False),
             ))
         return atts
+
+    def download_content(
+        self,
+        item_id: str,
+        target: Path,
+        max_bytes: Optional[int] = None,
+    ) -> int:
+        """Streaming download of DriveItem content to target file (retry, size guard, no full body in mem).
+
+        Returns bytes_written. Raises on violation or Graph error. Used by ControlledDownloader / selective ingest.
+        """
+        url = f"/me/drive/items/{item_id}/content"
+        return self.client.download_to_file(
+            url,
+            target,
+            max_bytes=max_bytes,
+            scopes=["https://graph.microsoft.com/Files.Read"],
+        )
