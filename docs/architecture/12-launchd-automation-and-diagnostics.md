@@ -14,6 +14,7 @@ Prompt 12 delivers the local scheduling and morning orchestration capability for
 - Thin safe CLI under `automation` (install-launchd --dry-run etc.).
 - Diagnostics: new `diagnostics automation` (exact readiness for plist, ledger, gates, paths, perms, Obsidian) + secondary MVP bounded `scan-sensitive` (categories only on repo + app-support paths; no secret values).
 - All read-only M365, dry-run first, macOS launchd native, no shell profile dep, strong redaction.
+- Prompt 03 remediation: launchd executable and working directory now resolve from explicit config overrides (or safe runtime defaults), and dry-run reports blocking readiness if executable/path validation fails.
 
 Follows 02 row 10 (launchd automation), 11_CLI spec, 18 runbook, 20 gates (weekend), 14/15/12_Risk/16/17 plans, and D-P12-001/002/003.
 

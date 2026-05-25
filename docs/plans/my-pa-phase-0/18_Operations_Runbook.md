@@ -22,7 +22,7 @@ hb-assistant diagnostics auth --json
 ```bash
 hb-assistant run morning --dry-run --json
 hb-assistant brief generate --date today --dry-run
-hb-assistant run morning --force
+hb-assistant run morning --json
 ```
 
 ## launchd
@@ -32,6 +32,17 @@ hb-assistant automation install-launchd --dry-run
 hb-assistant automation install-launchd
 hb-assistant automation kickstart
 hb-assistant automation uninstall-launchd
+```
+
+Optional launchd overrides in `config/config.yml`:
+
+```yaml
+automation:
+  launchd:
+    executable_path: "/absolute/path/to/hb-assistant"
+    working_directory: "/absolute/path/to/hb-personal-assistant"
+    label: "com.hb.personal-assistant.morning"
+    python_path: null
 ```
 
 ## Troubleshooting

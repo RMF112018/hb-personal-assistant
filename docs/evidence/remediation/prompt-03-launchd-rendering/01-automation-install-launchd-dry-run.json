@@ -1,0 +1,41 @@
+{
+  "action": "preview_install",
+  "label": "com.hb.personal-assistant.morning",
+  "plist_path": "~/Library/LaunchAgents/com.hb.personal-assistant.morning.plist",
+  "plist": {
+    "Label": "com.hb.personal-assistant.morning",
+    "ProgramArguments": [
+      "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+      "run",
+      "morning"
+    ],
+    "WorkingDirectory": "/Users/bobbyfetting/hb-personal-assistant",
+    "StartCalendarInterval": {
+      "Hour": 5,
+      "Minute": 0
+    },
+    "StandardOutPath": "/Users/bobbyfetting/hb-personal-assistant/.tmp-app-support-remediation/logs/run-logs/launchd-morning.out.log",
+    "StandardErrorPath": "/Users/bobbyfetting/hb-personal-assistant/.tmp-app-support-remediation/logs/error-logs/launchd-morning.err.log",
+    "EnvironmentVariables": {
+      "PYTHONUNBUFFERED": "1"
+    }
+  },
+  "readiness": {
+    "executable_exists": true,
+    "executable_is_file": true,
+    "executable_is_executable": true,
+    "working_directory_exists": true,
+    "working_directory_is_directory": true,
+    "command_grammar_valid": true,
+    "log_directories_writable": true,
+    "plist_path": "~/Library/LaunchAgents/com.hb.personal-assistant.morning.plist",
+    "blocking": false,
+    "ready": true
+  },
+  "commands": [
+    "launchctl load -w ~/Library/LaunchAgents/com.hb.personal-assistant.morning.plist",
+    "launchctl kickstart -k gui/$(id -u)/com.hb.personal-assistant.morning"
+  ],
+  "note": "Dry-run only. Real install uses launchctl on the written plist.",
+  "status": "ready"
+}

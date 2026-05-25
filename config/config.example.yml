@@ -33,6 +33,11 @@ automation:
     timezone: "America/New_York"
     catch_up_if_machine_wakes_after: true
     weekend_behavior: "manual_only"
+  launchd:
+    executable_path: null
+    working_directory: null
+    label: null
+    python_path: null
 security:
   microsoft_365_writeback_enabled: false
   external_llm_enabled: false

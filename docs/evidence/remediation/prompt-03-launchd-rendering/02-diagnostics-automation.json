@@ -1,0 +1,64 @@
+{
+  "implemented": true,
+  "phase": 12,
+  "launchd": {
+    "label": "com.hb.personal-assistant.morning",
+    "plist_exists": false,
+    "plist_path": null,
+    "config_time": "05:00",
+    "weekend_behavior": "manual_only",
+    "catch_up": true,
+    "last_run_from_ledger": {
+      "id": 4,
+      "run_type": "morning",
+      "target_date": "today",
+      "trigger": "dry-run",
+      "dry_run": true,
+      "status": "completed-dry-run",
+      "started_at": "2026-05-25 11:39:21"
+    },
+    "program_arguments": [
+      "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+      "run",
+      "morning"
+    ],
+    "working_directory": "/Users/bobbyfetting/hb-personal-assistant",
+    "readiness": {
+      "executable_exists": true,
+      "executable_is_file": true,
+      "executable_is_executable": true,
+      "working_directory_exists": true,
+      "working_directory_is_directory": true,
+      "command_grammar_valid": true,
+      "log_directories_writable": true,
+      "plist_path": "~/Library/LaunchAgents/com.hb.personal-assistant.morning.plist",
+      "blocking": false,
+      "ready": true
+    }
+  },
+  "config": {
+    "morning_run_time": "05:00",
+    "timezone": "America/New_York",
+    "catch_up_if_wakes_after": true,
+    "weekend_behavior": "manual_only",
+    "launchd_overrides": {
+      "executable_path": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+      "working_directory": "/Users/bobbyfetting/hb-personal-assistant",
+      "label": "com.hb.personal-assistant.morning",
+      "python_path": null
+    }
+  },
+  "paths": {
+    "app_support": "~/hb-personal-assistant/.tmp-app-support-remediation",
+    "logs": "~/hb-personal-assistant/.tmp-app-support-remediation/logs",
+    "obsidian_vault": "~/hb-personal-assistant/.tmp-vault-remediation"
+  },
+  "readiness": {
+    "plist_present": false,
+    "logs_writable": true,
+    "launchd_blocking": false,
+    "launchd_ready": true,
+    "obsidian_daily_notes_ready": false
+  },
+  "note": "Use with run morning --dry-run for full gate evaluation. launchctl status is best viewed via `automation` commands too."
+}

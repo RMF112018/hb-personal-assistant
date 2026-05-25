@@ -67,8 +67,16 @@ class MorningRunConfig(BaseModel):
     weekend_behavior: Literal["manual_only", "run"] = "manual_only"
 
 
+class LaunchdConfig(BaseModel):
+    executable_path: str | None = None
+    working_directory: str | None = None
+    label: str | None = None
+    python_path: str | None = None
+
+
 class AutomationConfig(BaseModel):
     morning_run: MorningRunConfig = Field(default_factory=MorningRunConfig)
+    launchd: LaunchdConfig = Field(default_factory=LaunchdConfig)
 
 
 class SecurityConfig(BaseModel):

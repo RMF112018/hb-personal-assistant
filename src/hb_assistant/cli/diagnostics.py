@@ -182,7 +182,8 @@ def automation_status(
 
     mgr = LaunchdManager()
     st = mgr.status()
-    cfg = load_config().automation.morning_run
+    auto_cfg = load_config().automation
+    cfg = auto_cfg.morning_run
     pp = PathPolicy()
 
     payload = {
@@ -194,6 +195,12 @@ def automation_status(
             "timezone": cfg.timezone,
             "catch_up_if_wakes_after": cfg.catch_up_if_machine_wakes_after,
             "weekend_behavior": cfg.weekend_behavior,
+            "launchd_overrides": {
+                "executable_path": auto_cfg.launchd.executable_path,
+                "working_directory": auto_cfg.launchd.working_directory,
+                "label": auto_cfg.launchd.label,
+                "python_path": auto_cfg.launchd.python_path,
+            },
         },
         "paths": {
             "app_support": str(pp.get_app_support()).replace(str(Path.home()), "~"),
@@ -202,7 +209,9 @@ def automation_status(
         },
         "readiness": {
             "plist_present": st.get("plist_exists", False),
-            "logs_writable": True,  # best effort; real check would be in manager
+            "logs_writable": st.get("readiness", {}).get("log_directories_writable", False),
+            "launchd_blocking": st.get("readiness", {}).get("blocking", True),
+            "launchd_ready": st.get("readiness", {}).get("ready", False),
             "obsidian_daily_notes_ready": (pp.get_vault_root() / "Daily Notes").exists(),
         },
         "note": "Use with run morning --dry-run for full gate evaluation. launchctl status is best viewed via `automation` commands too.",

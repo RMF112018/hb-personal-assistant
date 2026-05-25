@@ -22,14 +22,18 @@ def test_launchd_manager_render_and_preview(tmp_path):
     mgr = LaunchdManager()
     data = mgr.render_plist()
     assert data["Label"] == "com.hb.personal-assistant.morning"
-    assert "run" in data["ProgramArguments"]
-    assert "morning" in data["ProgramArguments"]
+    assert len(data["ProgramArguments"]) == 3
+    assert data["ProgramArguments"][1:] == ["run", "morning"]
+    assert Path(data["ProgramArguments"][0]).name == "hb-assistant"
+    assert data["WorkingDirectory"] == str(mgr.pp.resolve_repo_root())
     assert "StartCalendarInterval" in data
     assert data["StartCalendarInterval"]["Hour"] in range(0, 24)
 
     preview = mgr.preview_install()
     assert preview["action"] == "preview_install"
+    assert "readiness" in preview
     assert "plist" in preview
+    assert "status" in preview
     assert "--dry-run" not in str(preview)  # just structure check
 
 
@@ -38,7 +42,59 @@ def test_launchd_manager_status_and_paths(tmp_path):
     st = mgr.status()
     assert "label" in st
     assert "plist_exists" in st
+    assert "program_arguments" in st
+    assert "working_directory" in st
+    assert "readiness" in st
     assert "last_run_from_ledger" in st or "config_time" in st  # flexible
+
+
+def test_launchd_manager_blocking_on_invalid_executable(tmp_path, monkeypatch):
+    bad_cfg = tmp_path / "launchd-bad.yml"
+    bad_cfg.write_text(
+        "paths:\n"
+        f"  application_support_root: {tmp_path / 'support'}\n"
+        f"  obsidian_vault: {tmp_path / 'vault'}\n"
+        "automation:\n"
+        "  launchd:\n"
+        "    executable_path: /definitely/not/a/real/hb-assistant\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HB_PA_CONFIG", str(bad_cfg))
+    mgr = LaunchdManager()
+    preview = mgr.preview_install()
+    assert preview["status"] == "blocking_diagnostic"
+    assert preview["readiness"]["blocking"] is True
+    assert preview["readiness"]["ready"] is False
+    assert preview["readiness"]["executable_exists"] is False
+
+
+def test_launchd_manager_overrides_working_directory_and_label(tmp_path, monkeypatch):
+    wd = tmp_path / "workdir"
+    wd.mkdir(parents=True, exist_ok=True)
+    exe = tmp_path / "hb-assistant"
+    exe.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    exe.chmod(0o755)
+
+    cfg = tmp_path / "launchd-good.yml"
+    cfg.write_text(
+        "paths:\n"
+        f"  application_support_root: {tmp_path / 'support'}\n"
+        f"  obsidian_vault: {tmp_path / 'vault'}\n"
+        "automation:\n"
+        "  launchd:\n"
+        f"    executable_path: {exe}\n"
+        f"    working_directory: {wd}\n"
+        "    label: com.hb.custom\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HB_PA_CONFIG", str(cfg))
+    mgr = LaunchdManager()
+    data = mgr.render_plist()
+    assert data["Label"] == "com.hb.custom"
+    assert data["ProgramArguments"] == [str(exe), "run", "morning"]
+    assert data["WorkingDirectory"] == str(wd)
+    preview = mgr.preview_install()
+    assert preview["readiness"]["blocking"] is False
 
 
 def test_morning_orchestrator_gates_and_stages(tmp_path):
