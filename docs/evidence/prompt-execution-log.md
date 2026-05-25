@@ -694,3 +694,35 @@ Next: Prompt 13 (Testing, Hardening, and Final Closeout) — closure checklist, 
 
 Next: none (MVP complete and hardened per 02/14/15/20/13_Standards; future phases beyond scope of this plan).
 
+
+---
+
+## Prompt 11 — Final Truthful Closeout
+
+**Executed**: 2026-05-25
+
+### Objective
+Regenerate final remediation closeout evidence only after rerunning the full validation matrix and mark acceptance truthfully.
+
+### Result
+- Final status: **NOT_ACCEPTED**
+- Canonical closeout evidence: `docs/evidence/remediation/final-closeout/`
+
+### Validation Matrix Execution
+Executed all matrix commands with `.venv` activation wrapper and captured outputs/exit codes under `docs/evidence/remediation/final-closeout/command-results/`.
+
+### Blockers
+1. Ruff failures in current tree (`src/hb_assistant/security/__init__.py`, `src/hb_assistant/security/sensitive_scan.py`).
+2. Runtime permission blocker on Application Support path for delegated auth/graph/proof commands.
+3. Runtime database open blocker for `files ingest --dry-run` and `run morning --dry-run`.
+
+### Artifacts Generated
+- `docs/evidence/remediation/final-closeout/final-closeout-proof.json`
+- `docs/evidence/remediation/final-closeout/final-validation-summary.md`
+- `docs/evidence/remediation/final-closeout/known-issues.md`
+- `docs/evidence/remediation/final-closeout/command-results/`
+
+### Documentation Updates
+- `README.md` status line updated with Prompt 11 `NOT_ACCEPTED` closeout result.
+- Added architecture note: `docs/architecture/remediation-final-truthful-closeout.md`
+- Updated architecture index and validation result register.

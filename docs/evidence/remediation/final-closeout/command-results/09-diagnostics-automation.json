@@ -1,0 +1,56 @@
+{
+  "implemented": true,
+  "phase": 12,
+  "launchd": {
+    "label": "com.hb.personal-assistant.morning",
+    "plist_exists": false,
+    "plist_path": null,
+    "config_time": "05:00",
+    "weekend_behavior": "manual_only",
+    "catch_up": true,
+    "last_run_from_ledger": null,
+    "program_arguments": [
+      "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+      "run",
+      "morning"
+    ],
+    "working_directory": "/Users/bobbyfetting/hb-personal-assistant",
+    "readiness": {
+      "executable_exists": true,
+      "executable_is_file": true,
+      "executable_is_executable": true,
+      "working_directory_exists": true,
+      "working_directory_is_directory": true,
+      "command_grammar_valid": true,
+      "log_directories_writable": false,
+      "plist_path": "~/Library/LaunchAgents/com.hb.personal-assistant.morning.plist",
+      "blocking": true,
+      "ready": false
+    }
+  },
+  "config": {
+    "morning_run_time": "05:00",
+    "timezone": "America/New_York",
+    "catch_up_if_wakes_after": true,
+    "weekend_behavior": "manual_only",
+    "launchd_overrides": {
+      "executable_path": null,
+      "working_directory": null,
+      "label": null,
+      "python_path": null
+    }
+  },
+  "paths": {
+    "app_support": "~/Library/Application Support/HB Personal Assistant",
+    "logs": "~/Library/Application Support/HB Personal Assistant/logs",
+    "obsidian_vault": "~/Documents/Obsidian Vault"
+  },
+  "readiness": {
+    "plist_present": false,
+    "logs_writable": false,
+    "launchd_blocking": true,
+    "launchd_ready": false,
+    "obsidian_daily_notes_ready": true
+  },
+  "note": "Use with run morning --dry-run for full gate evaluation. launchctl status is best viewed via `automation` commands too."
+}

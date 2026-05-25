@@ -1,0 +1,79 @@
+╭───────────────────── Traceback (most recent call last) ──────────────────────╮
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/cli/diagnostics.p │
+│ y:225 in proof_cmd                                                           │
+│                                                                              │
+│   222 │                                                                      │
+│   223 │   from hb_assistant.graph.proof_runner import                        │
+│       run_delegated_graph_proof                                              │
+│   224 │                                                                      │
+│ ❱ 225 │   proof = run_delegated_graph_proof(safe=safe, repo=".")             │
+│   226 │   proof["step_filter"] = step                                        │
+│   227 │   typer.echo(json.dumps(proof, indent=2))                            │
+│   228 │   raise typer.Exit(0 if proof.get("status") == "pass" else 1)        │
+│                                                                              │
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/graph/proof_runne │
+│ r.py:69 in run_delegated_graph_proof                                         │
+│                                                                              │
+│    66 │   evidence_root =                                                    │
+│       Path("docs/evidence/remediation/prompt-05-delegated-graph-proof")      │
+│    67 │   evidence_root.mkdir(parents=True, exist_ok=True)                   │
+│    68 │                                                                      │
+│ ❱  69 │   delegated = DelegatedAuthProvider(cfg.identity.tenant_id,          │
+│       cfg.identity.client_id, cfg.identity.delegated_scopes, path_policy=pp) │
+│    70 │   app_only = AppOnlyAuthProvider(cfg.identity.tenant_id,             │
+│       cfg.identity.client_id, DEFAULT_CERT_BUNDLE, path_policy=pp)           │
+│    71 │                                                                      │
+│    72 │   result: dict[str, Any] = {                                         │
+│                                                                              │
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/auth/providers.py │
+│ :34 in __init__                                                              │
+│                                                                              │
+│    31 │   """Delegated (user) auth using MSAL PublicClientApplication +      │
+│       device/interactive."""                                                 │
+│    32 │                                                                      │
+│    33 │   def __init__(self, tenant_id: str, client_id: str, scopes:         │
+│       List[str], path_policy: Optional[PathPolicy] = None) -> None:          │
+│ ❱  34 │   │   super().__init__(path_policy)                                  │
+│    35 │   │   self.tenant_id = tenant_id                                     │
+│    36 │   │   self.client_id = client_id                                     │
+│    37 │   │   self.default_scopes = scopes or ["User.Read",                  │
+│       "offline_access"]                                                      │
+│                                                                              │
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/auth/providers.py │
+│ :24 in __init__                                                              │
+│                                                                              │
+│    21 class _BaseProvider:                                                   │
+│    22 │   def __init__(self, path_policy: Optional[PathPolicy] = None) ->    │
+│       None:                                                                  │
+│    23 │   │   self._pp = path_policy or PathPolicy()                         │
+│ ❱  24 │   │   self._cache_mgr = TokenCacheManager(self._pp)                  │
+│    25 │                                                                      │
+│    26 │   def _get_auth_dir(self) -> Path:                                   │
+│    27 │   │   return self._pp.get_auth_dir()                                 │
+│                                                                              │
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/auth/token_cache_ │
+│ manager.py:33 in __init__                                                    │
+│                                                                              │
+│    30 │   def __init__(self, path_policy: Optional[PathPolicy] = None) ->    │
+│       None:                                                                  │
+│    31 │   │   self._pp = path_policy or PathPolicy()                         │
+│    32 │   │   self._auth_dir = self._pp.get_auth_dir()                       │
+│ ❱  33 │   │   self._pp.ensure_dirs(create_sensitive=True)                    │
+│    34 │                                                                      │
+│    35 │   def _cache_path(self, app_only: bool = False) -> Path:             │
+│    36 │   │   name = self.APPONLY_CACHE if app_only else                     │
+│       self.DELEGATED_CACHE                                                   │
+│                                                                              │
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/config/path_polic │
+│ y.py:119 in ensure_dirs                                                      │
+│                                                                              │
+│   116 │   │   for d in dirs_700:                                             │
+│   117 │   │   │   d.mkdir(parents=True, exist_ok=True)                       │
+│   118 │   │   │   if create_sensitive:                                       │
+│ ❱ 119 │   │   │   │   os.chmod(d, 0o700)                                     │
+│   120 │   │                                                                  │
+│   121 │   │   for d in dirs_755:                                             │
+│   122 │   │   │   d.mkdir(parents=True, exist_ok=True)                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+PermissionError: [Errno 1] Operation not permitted: 
+'/Users/bobbyfetting/Library/Application Support/HB Personal Assistant'

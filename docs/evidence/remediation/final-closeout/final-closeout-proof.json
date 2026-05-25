@@ -1,0 +1,34 @@
+{
+  "status": "NOT_ACCEPTED",
+  "timestamp": "2026-05-25T11:00:00-04:00",
+  "validation_matrix": "docs/plans/my-pa-phase-0/gap-closure/04_validation/01_validation_matrix.md",
+  "gates": {
+    "pytest": {"pass": true, "command": "python -m pytest", "exit_code": 0, "evidence": "docs/evidence/remediation/final-closeout/command-results/01-python-m-pytest.txt"},
+    "ruff": {"pass": false, "command": "ruff check .", "exit_code": 1, "evidence": "docs/evidence/remediation/final-closeout/command-results/02-ruff-check.txt"},
+    "mypy": {"pass": true, "command": "mypy src", "exit_code": 0, "evidence": "docs/evidence/remediation/final-closeout/command-results/03-mypy-src.txt"},
+    "canonical_cli_commands": {"pass": false, "commands_checked": ["hb-assistant --version", "hb-assistant auth status --json", "hb-assistant diagnostics env --json", "hb-assistant diagnostics graph --safe --json", "hb-assistant diagnostics proof delegated-graph --json", "hb-assistant diagnostics automation --json", "hb-assistant diagnostics scan-sensitive --repo . --json", "hb-assistant files ingest --dry-run --json", "hb-assistant run morning --dry-run --json"]},
+    "delegated_graph_proof": {"pass": false, "command": "hb-assistant diagnostics proof delegated-graph --json", "exit_code": 1, "manual_blocker": true, "evidence": "docs/evidence/remediation/final-closeout/command-results/08-diagnostics-proof-delegated-graph.json"},
+    "sensitive_scan": {"pass": true, "command": "hb-assistant diagnostics scan-sensitive --repo . --json", "exit_code": 0, "evidence": "docs/evidence/remediation/final-closeout/command-results/10-diagnostics-scan-sensitive.json"}
+  },
+  "blockers": [
+    {
+      "id": "BLOCKER-RUFF-001",
+      "summary": "Ruff check fails due lint violations in new security scanner files.",
+      "command": "ruff check .",
+      "evidence": "docs/evidence/remediation/final-closeout/command-results/02-ruff-check.txt"
+    },
+    {
+      "id": "BLOCKER-AUTH-PERM-001",
+      "summary": "Auth/graph/proof commands blocked by local Application Support permission error.",
+      "command": "hb-assistant auth status --json; hb-assistant diagnostics graph --safe --json; hb-assistant diagnostics proof delegated-graph --json",
+      "evidence": "docs/evidence/remediation/final-closeout/command-results/05-auth-status.json"
+    },
+    {
+      "id": "BLOCKER-DB-PATH-001",
+      "summary": "files ingest and run morning fail to open local database path in current runtime.",
+      "command": "hb-assistant files ingest --dry-run --json; hb-assistant run morning --dry-run --json",
+      "evidence": "docs/evidence/remediation/final-closeout/command-results/11-files-ingest-dry-run.json"
+    }
+  ],
+  "redaction_confirmation": "Evidence contains command metadata, exit codes, and sanitized outputs only; no tokens, keys, PEM bodies, full email bodies, or full file contents emitted."
+}

@@ -1,0 +1,18 @@
+{
+  "generated_at": "2026-05-25T11:00:00-04:00",
+  "redaction_confirmation": true,
+  "commands": [
+    {"command": "python -m pytest", "timestamp": "2026-05-25T11:00:00-04:00", "exit_code": 0, "pass": true, "output": "01-python-m-pytest.txt", "summary": "test suite passed"},
+    {"command": "ruff check .", "timestamp": "2026-05-25T11:00:00-04:00", "exit_code": 1, "pass": false, "output": "02-ruff-check.txt", "summary": "lint violations detected"},
+    {"command": "mypy src", "timestamp": "2026-05-25T11:00:00-04:00", "exit_code": 0, "pass": true, "output": "03-mypy-src.txt", "summary": "type check passed"},
+    {"command": "hb-assistant --version", "timestamp": "2026-05-25T11:00:00-04:00", "exit_code": 0, "pass": true, "output": "04-hb-version.txt", "summary": "version command passed"},
+    {"command": "hb-assistant auth status --json", "timestamp": "2026-05-25T11:00:00-04:00", "exit_code": 1, "pass": false, "output": "05-auth-status.json", "summary": "permission blocker on app support"},
+    {"command": "hb-assistant diagnostics env --json", "timestamp": "2026-05-25T11:00:00-04:00", "exit_code": 0, "pass": true, "output": "06-diagnostics-env.json", "summary": "environment diagnostics passed"},
+    {"command": "hb-assistant diagnostics graph --safe --json", "timestamp": "2026-05-25T11:00:00-04:00", "exit_code": 1, "pass": false, "output": "07-diagnostics-graph-safe.json", "summary": "permission blocker on app support"},
+    {"command": "hb-assistant diagnostics proof delegated-graph --json", "timestamp": "2026-05-25T11:00:00-04:00", "exit_code": 1, "pass": false, "output": "08-diagnostics-proof-delegated-graph.json", "summary": "manual/runtime auth blocker"},
+    {"command": "hb-assistant diagnostics automation --json", "timestamp": "2026-05-25T11:00:00-04:00", "exit_code": 0, "pass": true, "output": "09-diagnostics-automation.json", "summary": "automation diagnostics passed"},
+    {"command": "hb-assistant diagnostics scan-sensitive --repo . --json", "timestamp": "2026-05-25T11:00:00-04:00", "exit_code": 0, "pass": true, "output": "10-diagnostics-scan-sensitive.json", "summary": "sensitive scan emitted categorized redacted findings"},
+    {"command": "hb-assistant files ingest --dry-run --json", "timestamp": "2026-05-25T11:00:00-04:00", "exit_code": 1, "pass": false, "output": "11-files-ingest-dry-run.json", "summary": "database open blocker"},
+    {"command": "hb-assistant run morning --dry-run --json", "timestamp": "2026-05-25T11:00:00-04:00", "exit_code": 1, "pass": false, "output": "12-run-morning-dry-run.json", "summary": "database open blocker"}
+  ]
+}

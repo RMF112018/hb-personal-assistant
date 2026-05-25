@@ -1,0 +1,60 @@
+╭───────────────────── Traceback (most recent call last) ──────────────────────╮
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/cli/run.py:25 in  │
+│ morning_cmd                                                                  │
+│                                                                              │
+│   22 │   """Execute morning workflow via orchestrator (Phase 12)."""         │
+│   23 │   from hb_assistant.links.registry import SourceLinkRegistry          │
+│   24 │                                                                       │
+│ ❱ 25 │   reg = SourceLinkRegistry()                                          │
+│   26 │   run_id = reg.record_run(                                            │
+│   27 │   │   run_type="morning",                                             │
+│   28 │   │   target_date="today",                                            │
+│                                                                              │
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/links/registry.py │
+│ :40 in __init__                                                              │
+│                                                                              │
+│    37 │   """High-level API for persisting normalize models with mandatory   │
+│       source linking."""                                                     │
+│    38 │                                                                      │
+│    39 │   def __init__(self, store: Optional[Store] = None):                 │
+│ ❱  40 │   │   self.store = store or Store()                                  │
+│    41 │                                                                      │
+│    42 │   def _require_valid_link_type(self, link_type: str) -> None:        │
+│    43 │   │   if link_type not in ALLOWED_LINK_TYPES:                        │
+│                                                                              │
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/store/repositorie │
+│ s.py:35 in __init__                                                          │
+│                                                                              │
+│    32 │   │   # Ensure schema on first use (cheap idempotent call)           │
+│    33 │   │   from .migrator import SQLiteMigrator                           │
+│    34 │   │                                                                  │
+│ ❱  35 │   │   SQLiteMigrator(db_path).apply()                                │
+│    36 │                                                                      │
+│    37 │   # --- Source records (universal) ---                               │
+│    38                                                                        │
+│                                                                              │
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/store/migrator.py │
+│ :180 in apply                                                                │
+│                                                                              │
+│   177 │                                                                      │
+│   178 │   def apply(self) -> int:                                            │
+│   179 │   │   """Apply all pending migrations (idempotent). Returns current  │
+│       schema version."""                                                     │
+│ ❱ 180 │   │   conn = get_connection(self._db_path)                           │
+│   181 │   │   with transaction(conn):                                        │
+│   182 │   │   │   # Ensure migrations table exists (first statement is       │
+│       self-contained)                                                        │
+│   183 │   │   │   for stmt in self.V1_STATEMENTS:                            │
+│                                                                              │
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/store/connection. │
+│ py:31 in get_connection                                                      │
+│                                                                              │
+│   28 │                                                                       │
+│   29 │   # Required per 07 + schema                                          │
+│   30 │   conn.execute("PRAGMA foreign_keys = ON")                            │
+│ ❱ 31 │   conn.execute("PRAGMA journal_mode = WAL")                           │
+│   32 │   conn.execute("PRAGMA busy_timeout = 5000")                          │
+│   33 │                                                                       │
+│   34 │   return conn                                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+OperationalError: unable to open database file

@@ -9,6 +9,7 @@ Bobby-only local-first MVP for Microsoft 365 delegated access, source-linked ret
 - Latest implemented manifest in this repository: `v1.3.0`
 - Remediation status: **Implemented through v1.3.0 but not accepted until remediation validation is green.**
 - Closeout status note: Prior Phase 13 closeout evidence is preserved and superseded pending remediation validation.
+- Final remediation closeout status (Prompt 11): **NOT_ACCEPTED** (see `docs/evidence/remediation/final-closeout/`).
 
 ## Quickstart (after clone)
 

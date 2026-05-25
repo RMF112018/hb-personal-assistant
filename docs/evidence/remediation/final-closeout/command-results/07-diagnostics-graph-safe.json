@@ -1,0 +1,6 @@
+{
+  "safe": true,
+  "probes": [],
+  "status": "graph_diagnostics_error",
+  "error": "[Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant'"
+}

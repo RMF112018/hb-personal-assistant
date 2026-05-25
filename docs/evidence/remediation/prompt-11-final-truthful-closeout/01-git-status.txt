@@ -1,0 +1,3 @@
+?? .tmp-app-support-remediation/
+?? docs/evidence/remediation/prompt-11-final-truthful-closeout/
+?? docs/plans/my-pa-phase-0/gap-closure/

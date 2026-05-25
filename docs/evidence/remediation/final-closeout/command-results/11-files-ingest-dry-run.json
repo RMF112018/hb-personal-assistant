@@ -1,0 +1,9 @@
+{
+  "command": "files ingest",
+  "mode": "real",
+  "status": "runtime_error",
+  "dry_run": true,
+  "limit": 5,
+  "results": [],
+  "error": "unable to open database file"
+}
