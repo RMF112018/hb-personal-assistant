@@ -4,16 +4,17 @@ Bobby-only local-first MVP for Microsoft 365 delegated access, source-linked ret
 
 **The Daily Brief is a module, not the project name.**
 
-## Current Phase
+## Repository Status
 
-- **Phase 0**: Environment, Auth, Vault, Evidence Discovery — COMPLETE
-- **Phase 1**: Repo Scaffold, Typer CLI foundation, PathPolicy + Pydantic config loader — **COMPLETE** (this README)
+- Latest implemented manifest in this repository: `v1.3.0`
+- Remediation status: **Implemented through v1.3.0 but not accepted until remediation validation is green.**
+- Closeout status note: Prior Phase 13 closeout evidence is preserved and superseded pending remediation validation.
 
 ## Quickstart (after clone)
 
 ```bash
 # Use the phase-0 venv or create fresh
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 
@@ -22,14 +23,12 @@ hb-assistant --help
 hb-assistant diagnostics env --json
 ```
 
-All validation commands (pytest, ruff, mypy, hb-assistant * --json) now execute cleanly (some commands are intentional Phase 2+ stubs that return safe JSON).
-
 ## Key Paths (macOS)
 
 - Application Support: `~/Library/Application Support/HB Personal Assistant/`
 - Obsidian Vault: `/Users/bobbyfetting/Documents/Obsidian Vault/`
 
-See `docs/architecture/01-scaffold-overview.md` for component diagram and `docs/plans/my-pa-phase-0/` for the full implementation package.
+See `docs/architecture/` for implementation and remediation records, and `docs/plans/my-pa-phase-0/` for the original implementation package.
 
 ## Guardrails (Global)
 
@@ -41,16 +40,10 @@ See `docs/architecture/01-scaffold-overview.md` for component diagram and `docs/
 - Dry-run before writes.
 - Every output carries source traceability.
 
-## Next
-
-Prompt 02 (Auth Provider + Token Cache) on the solid Phase 1 foundation.
-
 ## Validation & Evidence
 
-All commands from the plan executed and captured under `docs/evidence/`.
+Remediation baseline evidence is tracked at:
 
-See `docs/evidence/prompt-execution-log.md` (Prompt 01 section) and the validation result register.
+- `docs/evidence/remediation/remediation-baseline.md`
 
----
-
-Prepared: 2026-05-25 | Phase 1 scaffold complete | v0.1.0
+Historical evidence remains under `docs/evidence/`, including prior Phase 13 closeout artifacts (superseded pending remediation validation).
