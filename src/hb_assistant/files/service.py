@@ -111,6 +111,14 @@ class FileIngestionService:
                 "web_url": getattr(item, "web_url", None),
             }
             sid = getattr(item, "source_record_id", None)
+            if not sid or sid <= 0:
+                rec["decision"] = "blocked_missing_provenance"
+                results.append(rec)
+                continue
+            if not getattr(item, "id", None) or not getattr(item, "name", None) or getattr(item, "size", None) is None:
+                rec["decision"] = "blocked_incomplete_graph_metadata"
+                results.append(rec)
+                continue
 
             # 1. Relevance (Phase 6 signals if provided via classifications_by_source or store lookup possible later)
             parent_classifs: List[str] = []
@@ -162,7 +170,6 @@ class FileIngestionService:
                 local_path = self.downloader.download(item.id, max_bytes=max_b)
                 sha = self.hasher.hash_file(local_path)
 
-                sid = sid or 0
                 self.store.persist_file(item, sid, sha256=sha, local_cache=str(local_path))
                 self.store.update_file_status(sid, download_status="downloaded")
 
@@ -175,9 +182,8 @@ class FileIngestionService:
                 )
 
                 # Source links (idempotent)
-                if sid:
-                    self.registry.link_sources(sid, sid, link_type="parsed_from", confidence=1.0)
-                    # if this came from attachment context, caller can have added "attaches" earlier
+                self.registry.link_sources(sid, sid, link_type="parsed_from", confidence=1.0)
+                # if this came from attachment context, caller can have added "attaches" earlier
 
                 self.store.update_file_status(sid, parse_status=pstatus)
 
@@ -190,7 +196,7 @@ class FileIngestionService:
                 rec["decision"] = "error"
                 rec["error"] = str(ex)[:200]
                 try:
-                    self.store.update_file_status(sid or 0, download_status="error", parse_status="error")
+                    self.store.update_file_status(sid, download_status="error", parse_status="error")
                 except Exception:
                     pass
             results.append(rec)

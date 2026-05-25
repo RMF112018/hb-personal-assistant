@@ -168,6 +168,54 @@ def test_service_ingest_items_full_pipeline_dry_and_links(tmp_path: Path):
         assert any(l.get("link_type") == "parsed_from" for l in links)
 
 
+def test_service_blocks_missing_provenance_and_never_persists(tmp_path: Path):
+    store = Store(db_path=str(tmp_path / "prov.sqlite"))
+    svc = FileIngestionService(drive_client=MagicMock(), store=store)
+    item = DriveItem(id="f-no-sid", name="NoSid.pdf", size=1024, is_file=True, source_record_id=None)
+
+    res = svc.ingest_items([item], dry_run=False)
+    assert res[0]["decision"] == "blocked_missing_provenance"
+    assert store.get_file(0) is None
+
+
+def test_service_blocks_incomplete_graph_metadata(tmp_path: Path):
+    store = Store(db_path=str(tmp_path / "meta.sqlite"))
+    svc = FileIngestionService(drive_client=MagicMock(), store=store)
+    sid = store.upsert_source_record(source_type="graph:drive-item", source_key="graph:drive-item:test", source_system="microsoft-graph")
+    item = DriveItem(id="", name=None, size=None, is_file=True, source_record_id=sid)
+
+    res = svc.ingest_items([item], dry_run=False)
+    assert res[0]["decision"] == "blocked_incomplete_graph_metadata"
+    assert store.get_file(sid) is None
+
+
+def test_dry_run_no_download_or_parse(tmp_path: Path):
+    store = Store(db_path=str(tmp_path / "dry.sqlite"))
+    svc = FileIngestionService(drive_client=MagicMock(), store=store)
+    sid = store.upsert_source_record(source_type="email", source_key="test:dry", source_system="m365")
+    item = DriveItem(id="dry-1", name="DryRun.pdf", size=1234, is_file=True, source_record_id=sid)
+    with patch.object(svc, "downloader") as mock_dl, patch.object(svc, "parser") as mock_pr:
+        res = svc.ingest_items([item], dry_run=True, classifications_by_source={sid: ["bobby_mention"]})
+        assert res[0]["decision"] == "would_ingest"
+        mock_dl.download.assert_not_called()
+        mock_pr.parse.assert_not_called()
+    assert store.get_file(sid) is None
+
+
+def test_source_link_failure_fails_closed(tmp_path: Path):
+    store = Store(db_path=str(tmp_path / "link.sqlite"))
+    svc = FileIngestionService(drive_client=MagicMock(), store=store)
+    sid = store.upsert_source_record(source_type="email", source_key="test:link", source_system="m365")
+    item = DriveItem(id="i-link", name="Link.pdf", size=2048, is_file=True, source_record_id=sid)
+    with patch.object(svc, "downloader") as mock_dl, patch.object(svc, "parser") as mock_pr, patch.object(svc.registry, "link_sources", side_effect=RuntimeError("link fail")):
+        fake = tmp_path / "link.bin"
+        fake.write_text("x")
+        mock_dl.download.return_value = fake
+        mock_pr.parse.return_value = {"text_excerpt": "ok", "char_count": 2}
+        res = svc.ingest_items([item], dry_run=False, classifications_by_source={sid: ["bobby_mention"]})
+    assert res[0]["decision"] == "error"
+
+
 def test_no_full_file_content_in_any_artifact_or_excerpt(tmp_path: Path):
     """Strict leak guard: no full content, secrets, or long unredacted in DB, results, temp, or evidence-like."""
     dbp = tmp_path / "leak.sqlite"

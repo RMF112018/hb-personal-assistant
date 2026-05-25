@@ -480,6 +480,23 @@ class Store:
         cur = conn.execute(sql, vals)
         return [dict(r) for r in cur.fetchall()]
 
+    def list_pending_ingest_candidates(self, limit: int = 25) -> list[dict[str, Any]]:
+        """Return provenance-backed drive file candidates not yet fully ingested."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT source_record_id, drive_item_id, name, size_bytes, web_url, download_status, parse_status
+            FROM files
+            WHERE source_record_id > 0
+              AND (download_status IS NULL OR download_status != 'downloaded'
+                   OR parse_status IS NULL OR parse_status != 'success')
+            ORDER BY source_record_id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
     # --- Phase 11: retrieval helpers (redacted excerpts/previews only, for Retriever) ---
 
     def list_recent_parser_outputs(self, limit: int = 100) -> list[dict[str, Any]]:

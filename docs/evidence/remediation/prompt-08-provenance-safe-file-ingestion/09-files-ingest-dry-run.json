@@ -1,0 +1,9 @@
+{
+  "command": "files ingest",
+  "mode": "real",
+  "status": "no_provenance_candidates",
+  "dry_run": true,
+  "limit": 5,
+  "results": [],
+  "note": "No persisted provenance-backed file candidates found. Run discovery/persistence flows first."
+}

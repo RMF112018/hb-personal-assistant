@@ -1,0 +1,8 @@
+ M src/hb_assistant/cli/files.py
+ M src/hb_assistant/files/service.py
+ M src/hb_assistant/store/repositories.py
+ M tests/test_file_ingestion.py
+?? .tmp-app-support-remediation/
+?? docs/evidence/remediation/prompt-08-provenance-safe-file-ingestion/
+?? docs/plans/my-pa-phase-0/gap-closure/
+?? tests/test_files_cli.py

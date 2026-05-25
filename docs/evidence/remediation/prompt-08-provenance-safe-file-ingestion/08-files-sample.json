@@ -1,0 +1,142 @@
+{
+  "command": "files sample",
+  "mode": "sample",
+  "dry_run": true,
+  "limit": 5,
+  "results": [
+    {
+      "drive_item_id": "sample-pdf-1",
+      "name": "Q3 Financial Report.pdf",
+      "size_mb": 1.72,
+      "web_url": null,
+      "relevance": {
+        "score": 0.7,
+        "reasons": [
+          "supported_type",
+          "bobby_mention",
+          "name_kw:q3",
+          "size_work_doc"
+        ],
+        "signals": {
+          "size_mb": 1.72,
+          "is_file": true,
+          "bobby_mention": true,
+          "name_hits": [
+            "q3"
+          ]
+        },
+        "worth_ingesting": true
+      },
+      "eligibility": {
+        "eligible": true,
+        "reason": "ok",
+        "requires_manual_approval": false,
+        "size_mb": 1.71661376953125
+      },
+      "decision": "would_ingest"
+    },
+    {
+      "drive_item_id": "sample-xlsx-2",
+      "name": "Board Deck Q2.xlsx",
+      "size_mb": 4.01,
+      "web_url": null,
+      "relevance": {
+        "score": 0.6,
+        "reasons": [
+          "supported_type",
+          "action_or_waiting_signal",
+          "name_kw:deck",
+          "size_work_doc"
+        ],
+        "signals": {
+          "size_mb": 4.01,
+          "is_file": true,
+          "action_signal": true,
+          "name_hits": [
+            "deck"
+          ]
+        },
+        "worth_ingesting": true
+      },
+      "eligibility": {
+        "eligible": true,
+        "reason": "ok",
+        "requires_manual_approval": false,
+        "size_mb": 4.00543212890625
+      },
+      "decision": "would_ingest"
+    },
+    {
+      "drive_item_id": "sample-pptx-3",
+      "name": "Strategy Review.pptx",
+      "size_mb": 11.44,
+      "web_url": null,
+      "relevance": {
+        "score": 0.98,
+        "reasons": [
+          "supported_type",
+          "bobby_mention",
+          "action_or_waiting_signal",
+          "name_kw:strategy",
+          "size_work_doc"
+        ],
+        "signals": {
+          "size_mb": 11.44,
+          "is_file": true,
+          "bobby_mention": true,
+          "action_signal": true,
+          "name_hits": [
+            "strategy"
+          ]
+        },
+        "worth_ingesting": true
+      },
+      "eligibility": {
+        "eligible": true,
+        "reason": "ok",
+        "requires_manual_approval": false,
+        "size_mb": 11.444091796875
+      },
+      "decision": "would_ingest"
+    },
+    {
+      "drive_item_id": "sample-zip-4",
+      "name": "archive_export.zip",
+      "size_mb": 320.0,
+      "web_url": null,
+      "relevance": {
+        "score": 0.0,
+        "reasons": [
+          "supported_type",
+          "very_large_penalty"
+        ],
+        "signals": {
+          "size_mb": 320.0,
+          "is_file": true
+        },
+        "worth_ingesting": false
+      },
+      "decision": "skipped_low_relevance"
+    },
+    {
+      "drive_item_id": "sample-txt-5",
+      "name": "notes.md",
+      "size_mb": 0.0,
+      "web_url": null,
+      "relevance": {
+        "score": 0.03,
+        "reasons": [
+          "supported_type",
+          "tiny_file_penalty"
+        ],
+        "signals": {
+          "size_mb": 0.0,
+          "is_file": true
+        },
+        "worth_ingesting": false
+      },
+      "decision": "skipped_low_relevance"
+    }
+  ],
+  "note": "Synthetic records only. No real candidate discovery, download, parse, or persist."
+}
