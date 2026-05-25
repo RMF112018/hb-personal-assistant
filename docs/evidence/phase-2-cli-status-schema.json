@@ -1,0 +1,27 @@
+{
+  "example_safe_status_output": {
+    "mode": "delegated",
+    "token_type": "delegated",
+    "classification": "delegated",
+    "upn": "bfetting@hedrickbrothers.com",
+    "tenant": "0e834bd7-...",
+    "scopes": ["User.Read", "Mail.Read", "..."],
+    "expires_in": 3599,
+    "cache": {
+      "msal-token-cache.bin": {"exists": true, "mode": "0o600", "perms_ok": true},
+      "msal-token-cache-app.bin": {"exists": false, "mode": null, "perms_ok": true}
+    },
+    "safe_claims": {
+      "upn": "...",
+      "tid": "...",
+      "scp_count": 12,
+      "exp": 17166...
+    },
+    "note": "Never contains access_token, id_token, refresh_token, or full PEM/key material."
+  },
+  "app_only_example": {
+    "mode": "app_only",
+    "token_type": "app_only",
+    "note": "Proof/admin only — not used for mail/calendar runtime per 04 spec."
+  }
+}

@@ -17,6 +17,9 @@ from typing import Optional
 import typer
 
 from hb_assistant import __version__
+from hb_assistant.auth.providers import AppOnlyAuthProvider, DelegatedAuthProvider
+from hb_assistant.config.loader import load_config
+from hb_assistant.config.path_policy import PathPolicy
 
 from . import diagnostics as diag_mod
 
@@ -57,20 +60,59 @@ app.add_typer(diag_mod.app, name="diagnostics")
 
 @app.command("auth")
 def auth_cmd(
-    status: bool = typer.Option(False, "--status", help="Show cached token status (stub)"),
-    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+    login: bool = typer.Option(False, "--login", help="Perform delegated (or --app-only) login"),
+    status: bool = typer.Option(False, "--status", help="Show safe token/cache status"),
+    logout: bool = typer.Option(False, "--logout", help="Logout and remove accounts (delegated by default)"),
+    clear_cache: bool = typer.Option(False, "--clear-cache", help="Delete cache files (delegated by default)"),
+    app_only: bool = typer.Option(False, "--app-only", help="Target app-only certificate flow (proof only)"),
+    no_device_code: bool = typer.Option(False, "--no-device-code", help="Force interactive browser login instead of device code"),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON (always safe, never contains tokens)"),
 ) -> None:
-    """Auth commands (login/status/logout/clear-cache) — Phase 2 implementation."""
-    payload = {
-        "implemented": False,
-        "target_phase": 2,
-        "message": "Auth provider and token cache not yet implemented (Prompt 02).",
-    }
-    if json_out or status:
-        typer.echo(json.dumps(payload, indent=2))
-    else:
-        typer.echo("auth: not implemented (see --json or Phase 2)")
-    raise typer.Exit(0 if json_out else 1)
+    """Auth commands (login/status/logout/clear-cache) — real Phase 2 implementation.
+
+    All --json output is sanitized. Never prints or logs access/refresh/id tokens.
+    """
+    cfg = load_config()
+    pp = PathPolicy(cfg)
+    tenant = cfg.identity.tenant_id
+    client = cfg.identity.client_id
+    scopes = cfg.identity.delegated_scopes
+
+    # Known cert path from Phase 0 evidence (graceful if missing)
+    cert_path = "/Users/bobbyfetting/.secrets/hb-sharepoint-creator/hb-sharepoint-creator.bundle.pem"
+
+    del_auth = DelegatedAuthProvider(tenant, client, scopes, path_policy=pp)
+    app_auth = AppOnlyAuthProvider(tenant, client, cert_path, path_policy=pp)
+
+    target = app_auth if app_only else del_auth
+
+    if login:
+        try:
+            info = target.login(use_device_code=not no_device_code) if not app_only else target.login()
+            payload = {"status": "login_success", "mode": "app_only" if app_only else "delegated", "info": info}
+        except Exception as e:
+            payload = {"status": "login_failed", "mode": "app_only" if app_only else "delegated", "error": str(e)[:200]}
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0 if "success" in payload.get("status", "") else 1)
+
+    if logout:
+        deleted = target.logout()
+        payload = {"status": "logout_complete", "deleted_caches": deleted, "mode": "app_only" if app_only else "delegated"}
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+
+    if clear_cache:
+        deleted = target.logout()  # logout does clear for the target
+        payload = {"status": "clear_cache_complete", "deleted": deleted}
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+
+    # Default or explicit --status
+    info = target.status_info()
+    payload = {"mode": "app_only" if app_only else "delegated", **info}
+    typer.echo(json.dumps(payload, indent=2))
+    # Non-zero only if no token at all (for scripting)
+    raise typer.Exit(0 if info.get("token_type") not in (None, "none") else 1)
 
 
 @app.command("run")

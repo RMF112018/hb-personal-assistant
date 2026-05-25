@@ -1,0 +1,43 @@
+=== COMMAND: .venv/bin/python -m pytest (Phase 2 auth tests) ===
+.......F.....F                                                           [100%]
+=================================== FAILURES ===================================
+___________________ test_delegated_provider_status_no_token ____________________
+.venv/lib/python3.14/site-packages/msal/authority.py:98: in __init__
+    openid_config = tenant_discovery(
+.venv/lib/python3.14/site-packages/msal/authority.py:298: in tenant_discovery
+    raise ValueError("OIDC Discovery failed on {}. HTTP status: {}, Error: {}".format(
+E   ValueError: OIDC Discovery failed on https://login.microsoftonline.com/tid/v2.0/.well-known/openid-configuration. HTTP status: 400, Error: {"error":"invalid_tenant","error_description":"AADSTS90002: Tenant 'tid' not found. Check to make sure you have the correct tenant ID and are signing into the correct cloud. Check with your subscription administrator, this may happen if there are no active subscriptions for the tenant. Trace ID: 3de1a1b6-57d7-44a7-8e86-c1e3591a5b00 Correlation ID: dbfdcdb6-1285-46e2-976a-9c139fad4064 Timestamp: 2026-05-25 09:01:37Z","error_codes":[90002],"timestamp":"2026-05-25 09:01:37Z","trace_id":"3de1a1b6-57d7-44a7-8e86-c1e3591a5b00","correlation_id":"dbfdcdb6-1285-46e2-976a-9c139fad4064","error_uri":"https://login.microsoftonline.com/error?code=90002"}
+
+During handling of the above exception, another exception occurred:
+tests/test_auth.py:103: in test_delegated_provider_status_no_token
+    info = prov.status_info()
+           ^^^^^^^^^^^^^^^^^^
+src/hb_assistant/auth/providers.py:106: in status_info
+    result = self.get_token(["User.Read"], force_refresh=False)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/auth/providers.py:83: in get_token
+    app = self._get_app()
+          ^^^^^^^^^^^^^^^
+src/hb_assistant/auth/providers.py:45: in _get_app
+    self._app = msal.PublicClientApplication(
+.venv/lib/python3.14/site-packages/msal/application.py:2093: in __init__
+    super(PublicClientApplication, self).__init__(
+.venv/lib/python3.14/site-packages/msal/application.py:649: in __init__
+    self.authority = Authority(
+.venv/lib/python3.14/site-packages/msal/authority.py:114: in __init__
+    raise ValueError(error_message)
+E   ValueError: Unable to get authority configuration for https://login.microsoftonline.com/tid. Authority would typically be in a format of https://login.microsoftonline.com/your_tenant or https://tenant_name.ciamlogin.com or https://tenant_name.b2clogin.com/tenant.onmicrosoft.com/policy.  Also please double check your tenant name or GUID is correct.
+______________________ test_no_secrets_in_paths_or_config ______________________
+tests/test_config.py:60: in test_no_secrets_in_paths_or_config
+    assert bad.lower() not in blob.lower()
+E   assert 'secret' not in '{"repo_root...t/evidence"}'
+E     
+E     'secret' is contained here:
+E     ?           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       /test_no_secrets_in_paths_or_co0/application support/hb personal assistant", "auth_dir": "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/t/pytest-of-bobbyfetting/pytest-1/test_no_secrets_in_paths_or_co0/application support/hb personal assistant/auth", "db_path": "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/t/pytest-of-bobbyfetting/pytest-1/test_no_secrets_in_paths_or_co0/application support/hb personal assistant/db/hb-personal-assistant.sqlite", "vault_root": "/tmp/fake-vault-for-tes...
+E     
+E     ...Full output truncated (2 lines hidden), use '-vv' to show
+=========================== short test summary info ============================
+FAILED tests/test_auth.py::test_delegated_provider_status_no_token - ValueErr...
+FAILED tests/test_config.py::test_no_secrets_in_paths_or_config - assert 'sec...
+EXIT_CODE=1

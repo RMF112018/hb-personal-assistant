@@ -111,3 +111,55 @@ Full suite executed via venv + `pip install -e ".[dev]"`:
 
 **Status**: COMPLETE
 
+
+---
+
+## Prompt 02 — Auth Provider And Token Cache
+
+**Executed**: 2026-05-25
+
+### Objective
+Execute this phase for `hb-personal-assistant`.
+
+### Files Changed (major)
+- `pyproject.toml`: added msal>=1.28, requests>=2.32; version bumped to 0.2.0
+- `src/hb_assistant/__init__.py`: __version__ = "0.2.0"
+- New: `src/hb_assistant/auth/` (classifier.py, token_cache_manager.py, providers.py (Delegated + AppOnly), exceptions.py, __init__.py)
+- New: `src/hb_assistant/graph/` (http_client.py with paging + 06 retry + sanitize)
+- Updated: `src/hb_assistant/cli/main.py` and `diagnostics.py` (real auth login/status/logout/clear-cache + diagnostics auth/graph --safe using new modules; all --json safe)
+- New: `tests/test_auth.py` (classifier matrix + edges, cache perms/roundtrip, provider mocks, graph retry/paging — 10+ tests)
+- New: `docs/architecture/02-auth-provider-and-token-cache.md` (mermaid flow + integration + refs to 04/11/06/02-plan)
+- Evidence: `docs/evidence/phase-2-auth-facts.json`, `phase-2-cli-status-schema.json`, `phase-2-sensitive-scan.json`, `phase-2-validation-outputs/`
+- Appended: this section to `docs/evidence/prompt-execution-log.md`; row to `docs/plans/my-pa-phase-0/resources/validation-result-register.md`
+
+### Key Implementation Notes
+- TokenCacheManager uses exact two files + PathPolicy 700/600 enforcement.
+- TokenClassifier is pure and matches 04 table exactly (fail-closed via require_delegated).
+- Providers support device_code (preferred for CLI) + cert for app-only (graceful if bundle absent).
+- GraphHttpClient: central, token-injected via provider, nextLink paging, 429/5xx retry per 06 yaml, GraphHttpError never contains tokens/headers/full bodies.
+- All status/evidence output redacted (safe_redact_claims).
+- No M365 write paths, no Keychain, no app-reg changes (20 gates honored).
+- Login/status work with or without prior token (graceful for validation env).
+
+### Validation
+Full suite via project .venv after `pip install -e ".[dev]"`:
+- pytest (new auth tests green)
+- ruff / mypy clean on new + updated code
+- All 8 hb-assistant * --json (auth status now real + safe; graph --safe uses live client + reports cache/attempt)
+- Smoke: python -c "from hb_assistant.auth...; from hb_assistant.graph..."
+- Sensitive scan clean (new deps are public PyPI packages; no secrets introduced)
+
+### Evidence
+- phase-2-*.json under docs/evidence/
+- Full raw outputs in phase-2-validation-outputs/
+- Architecture doc + updated prompt log + register
+
+### Acceptance
+- Objective complete.
+- No broad refactor, no M365 writes, no tokens/keys/bodies/PEMs in code/evidence/logs.
+- Evidence + prompt log updated.
+- In-repo architecture docs extended for this run.
+- Git commit + push performed (manifest v0.2.0).
+
+**Status**: COMPLETE
+

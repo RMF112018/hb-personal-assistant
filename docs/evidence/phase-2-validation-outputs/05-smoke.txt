@@ -1,0 +1,7 @@
+=== SMOKE Phase 2 imports + basic flows ===
+version: 0.2.0
+classify empty: invalid
+imports OK
+cache perms check keys: ['msal-token-cache.bin', 'msal-token-cache-app.bin']
+SMOKE_EXIT=0
+EXIT_SMOKE=0

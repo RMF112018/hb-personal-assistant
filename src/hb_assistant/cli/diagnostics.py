@@ -11,11 +11,15 @@ import platform
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 import typer
 
+from hb_assistant.auth.classifier import safe_redact_claims
+from hb_assistant.auth.providers import DelegatedAuthProvider
+from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
+from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
 
 app = typer.Typer(help="Safe diagnostics and proof commands (read-only).")
 
@@ -63,24 +67,46 @@ def env_cmd(
 
 
 @app.command("auth")
-def auth_stub(json_out: bool = typer.Option(False, "--json")) -> None:
-    payload = {"implemented": False, "target_phase": 2, "note": "Token classification + cache status in Prompt 02"}
+def auth_cmd(json_out: bool = typer.Option(False, "--json")) -> None:
+    """Safe auth/cache status using TokenClassifier + TokenCacheManager (Phase 2)."""
+    cfg = load_config()
+    pp = PathPolicy(cfg)
+    del_prov = DelegatedAuthProvider(cfg.identity.tenant_id, cfg.identity.client_id, cfg.identity.delegated_scopes, path_policy=pp)
+    info = del_prov.status_info()
+    payload = {"diagnostics": "auth", "delegated": info, "note": "App-only status available via `hb-assistant auth status --app-only --json`"}
     typer.echo(json.dumps(payload, indent=2))
     raise typer.Exit(0)
 
 
 @app.command("graph")
-def graph_stub(
+def graph_cmd(
     safe: bool = typer.Option(True, "--safe"),
     json_out: bool = typer.Option(False, "--json"),
 ) -> None:
-    payload = {
-        "implemented": False,
-        "target_phase": 3,
-        "safe_mode": safe,
-        "note": "Graph connectivity + delegated proof in later phases (after Prompt 02/03)",
-    }
-    typer.echo(json.dumps(payload, indent=2))
+    """Safe Graph probe using the new GraphHttpClient (Phase 2 base, no full models)."""
+    cfg = load_config()
+    pp = PathPolicy(cfg)
+    del_prov = DelegatedAuthProvider(cfg.identity.tenant_id, cfg.identity.client_id, cfg.identity.delegated_scopes, path_policy=pp)
+
+    def token_getter(scopes: Optional[List[str]] = None) -> Dict[str, Any]:
+        try:
+            return del_prov.get_token(scopes or ["User.Read"])
+        except Exception as e:
+            return {"error": str(e)[:100], "no_token": True}
+
+    client = GraphHttpClient(token_getter)
+    result: Dict[str, Any] = {"safe": safe, "probes": []}
+    try:
+        me = client.get("/me?$select=id,displayName,userPrincipalName,mail")
+        result["probes"].append({"path": "/me", "status": 200, "sample": {"id_present": bool(me.get("id")), "upn": me.get("userPrincipalName")}})
+    except GraphHttpError as e:
+        result["probes"].append({"path": "/me", "status": e.status, "error": e.message[:150]})
+    except Exception as e:
+        result["probes"].append({"path": "/me", "error": str(e)[:150]})
+
+    # Also report cache state
+    result["cache"] = del_prov.status_info().get("cache", {})
+    typer.echo(json.dumps(result, indent=2))
     raise typer.Exit(0)
 
 

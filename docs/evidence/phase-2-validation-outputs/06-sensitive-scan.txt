@@ -1,0 +1,8 @@
+=== Sensitive scan (scoped, post Phase 2) ===
+Scanning src/ + docs/evidence/ for forbidden patterns (no private/)
+src/hb_assistant/auth/classifier.py:    Never includes access_token, id_token, refresh_token, or full 'scp' lists if long.
+src/hb_assistant/auth/providers.py:            if result and "access_token" in result:
+src/hb_assistant/auth/providers.py:        if not result or "access_token" not in result:
+src/hb_assistant/auth/providers.py:        if not result or "access_token" not in result:
+src/hb_assistant/auth/providers.py:        if not result or "access_token" not in result:
+EXIT_SCAN=0

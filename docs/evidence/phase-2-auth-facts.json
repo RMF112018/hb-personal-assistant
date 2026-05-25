@@ -1,0 +1,41 @@
+{
+  "phase": 2,
+  "prompt": "Prompt_02_Auth_Provider_And_Token_Cache",
+  "generated_at": "2026-05-25T09:45:00Z",
+  "objective": "Implement MSAL delegated + app-only providers, TokenCacheManager, TokenClassifier, GraphHttpClient base, CLI wiring, tests.",
+  "msal_version": "1.28+ (added to pyproject)",
+  "cache_layout": {
+    "delegated": "msal-token-cache.bin",
+    "app_only": "msal-token-cache-app.bin",
+    "dir_perms": "700",
+    "file_perms": "600",
+    "enforced_by": "PathPolicy + TokenCacheManager"
+  },
+  "classifier_rules": {
+    "delegated": "scp present",
+    "app_only": "roles present + scp absent",
+    "ambiguous": "both present",
+    "invalid": "neither or null",
+    "fail_closed": "require_delegated raises ClassificationError for non-delegated"
+  },
+  "providers": {
+    "delegated": "PublicClientApplication + device_code (preferred) / interactive",
+    "app_only": "ConfidentialClientApplication + certificate bundle (graceful if missing)",
+    "status_output": "always safe (redacted claims, cache perms, no tokens)"
+  },
+  "graph_client": {
+    "features": "token injection via provider, @odata.nextLink paging, 429/5xx retry per 06 yaml, sanitized GraphHttpError",
+    "used_by": "diagnostics graph --safe (Phase 2 probes only)"
+  },
+  "cli": {
+    "auth_commands": ["login", "status", "logout", "clear-cache"],
+    "json_always_safe": true,
+    "app_only_flag": "for certificate proof flow"
+  },
+  "guardrails": {
+    "no_m365_mutation": true,
+    "no_token_logging": true,
+    "no_app_reg_changes": true,
+    "keychain_deferred": true
+  }
+}

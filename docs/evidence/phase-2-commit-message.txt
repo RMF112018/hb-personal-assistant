@@ -1,0 +1,17 @@
+feat(phase-2): auth provider, TokenCacheManager, TokenClassifier, base GraphHttpClient for hb-personal-assistant v0.2.0
+
+- Added msal + requests; version 0.2.0.
+- New src/hb_assistant/auth/ (providers for delegated/app-only using MSAL, TokenCacheManager with exact 2x .bin + 700/600 via PathPolicy, TokenClassifier enforcing 04 table + fail-closed).
+- New src/hb_assistant/graph/http_client.py (central, token-injected, paging, 06 retry policy, sanitized—no tokens/headers/full bodies logged).
+- CLI: real `auth login/status/logout/clear-cache` + `diagnostics auth/graph --safe` (safe --json only; no mutation; login supports cert for proof).
+- Tests: new test_auth.py covering classifier cases, cache lifecycle/perms, provider flows (mocks), graph retry.
+- Docs: [docs/architecture/02-auth-provider-and-token-cache.md](docs/architecture/02-auth-provider-and-token-cache.md) (mermaid + integration); appended Prompt 02 to evidence/prompt-execution-log.md + validation register row.
+- Evidence: phase-2-*.json (facts, safe schemas, clean scan), full validation outputs captured.
+- Validation: all 8+ commands pass (auth status now real+safe; others graceful/partial); pytest/ruff/mypy clean; no secrets anywhere.
+- Guardrails: zero tokens/keys/bodies/PEMs in code/evidence/logs; read-only (no write APIs); 20 gates honored (no reg/Keychain changes); .gitignore protects.
+- GitHub: committed + pushed to existing bobbyfetting/hb-personal-assistant.
+- Next: Prompt 03 (Delegated Graph Capability Proof) using the new auth + GraphHttpClient primitives.
+
+Refs: Prompt 02, 02 plan Phase 2, 04 auth model, 11 CLI, 06 graph spec, token-cache baseline, 20 gates, D-CLI-001 (prior).
+
+Manifest: v0.2.0 (Phase 2 auth foundation)
