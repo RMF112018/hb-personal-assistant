@@ -157,6 +157,19 @@ class SQLiteMigrator:
           status TEXT
         );
         """,
+        # Phase 11: embeddings for semantic retrieval (vectors stored as json for pure-python cosine; gated use)
+        """
+        CREATE TABLE IF NOT EXISTS content_embeddings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          source_record_id INTEGER NOT NULL REFERENCES source_records(id) ON DELETE CASCADE,
+          content_ref TEXT NOT NULL,
+          model TEXT NOT NULL,
+          dim INTEGER,
+          vector_json TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(source_record_id, content_ref, model)
+        );
+        """,
     ]
 
     def __init__(self, db_path: str | None = None):

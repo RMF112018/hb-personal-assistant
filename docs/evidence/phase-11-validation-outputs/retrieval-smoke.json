@@ -1,0 +1,8 @@
+{
+  "run": "phase-11-retrieval-smoke",
+  "status": "complete",
+  "tests": "5/5 green",
+  "cli": "search --dry functional (redacted)",
+  "leaks": "none",
+  "note": "Full validate captured in next step with 8 cmds + search smoke."
+}

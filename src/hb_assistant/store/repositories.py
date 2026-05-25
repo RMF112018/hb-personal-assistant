@@ -479,3 +479,16 @@ class Store:
         vals.append(limit)
         cur = conn.execute(sql, vals)
         return [dict(r) for r in cur.fetchall()]
+
+    # --- Phase 11: retrieval helpers (redacted excerpts/previews only, for Retriever) ---
+
+    def list_recent_parser_outputs(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Recent parser outputs for retrieval (excerpts only)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            "SELECT * FROM parser_outputs ORDER BY id DESC LIMIT ?",
+            (limit,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+    # email retrieval helper removed for schema compat (emails table stores flags + redacted subject not preview text); parser_outputs + actions sufficient for Phase 11 MVP

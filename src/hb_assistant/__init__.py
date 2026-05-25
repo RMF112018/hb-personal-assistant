@@ -3,8 +3,8 @@
 Bobby-only local-first MVP.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
-from . import store, links, obsidian  # Phase 5 + Phase 8
+from . import store, links, obsidian, retrieval  # Phase 5 + 8 + 11
 
-__all__ = ["__version__", "store", "links", "obsidian"]
+__all__ = ["__version__", "store", "links", "obsidian", "retrieval"]

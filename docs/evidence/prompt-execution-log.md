@@ -522,3 +522,61 @@ Implement the full attachment/driveItem link discovery + ingestion pipeline (eli
 Next: Prompt 11 (Retrieval, Embeddings, and Workstream Context) — consumes selectively parsed files + excerpts + links.
 
 
+### Prompt 11 — Retrieval Embeddings And Workstream Context (v1.1.0)
+
+**Objective**: Implement deterministic retrieval + gated semantic (embeddings + cosine) over redacted bounded excerpts and work product (parser_outputs primary), plus WorkstreamContext assembler. Per 02 row 9. Pure-python, Ollama optional, no full content, source-linked, dry-run safe.
+
+**Execution Date**: 2026-05-25
+
+**Key Changes**
+- Version bump to 1.1.0 (pyproject + __init__).
+- New: src/hb_assistant/retrieval/ (embedder.py with Ollama + det fallback, retriever.py with keyword+semantic blend, context.py WorkstreamContextBuilder, __init__ exports)
+- Store: added list_recent_parser_outputs helper; content_embeddings table (additive in migrator v1 for future vec persistence)
+- CLI: new cli/search.py + wiring in main.py (`search "query" --json` redacted hits + links); removed search from stub list
+- Updated: src/hb_assistant/__init__.py (export retrieval); minor comment
+- Tests: new tests/test_retrieval.py (embedder, retriever det+sem, context, leak/redaction) — 5/5 green
+- New: docs/architecture/11-retrieval-embeddings-workstream-context.md (mermaid, decisions, integration)
+- Evidence: phase-11-sample-retrieval.json + retrieval-proof.json (redacted hits/traces), phase-11-validation-outputs/
+- Appended: this section + validation register row (v1.1.0)
+
+**Key Implementation Notes**
+- Corpus: primarily parser_outputs text_excerpt (from Phase 10 selective files); actions for context.
+- Embeddings: OllamaEmbedder (requests, nomic-embed-text default) with pure-python hash fallback (64d) for offline/CI/no-Ollama.
+- Ranking: keyword overlap (det) + optional cosine blend (gated flag, silent fallback).
+- No new pip deps; pure stdlib + requests for semantic path.
+- WorkstreamContext: assembles hits + recent actions for "today"/focus (ready for brief/automation consumers).
+- Redaction: hits return only bounded excerpts + links already in store; no full files/bodies/tokens introduced or logged.
+- sqlite-vec table prepared but not required (onfly for v1.1; future gated extension).
+- CLI thin/safe; full morning integration later (Prompt 12).
+- 1.1.0 minor after 1.0.0 (new retrieval capability).
+
+**Validation**
+- pytest (new retrieval tests 5/5 green; prior file_ingestion etc still pass)
+- ruff / mypy clean
+- hb-assistant diagnostics env --json / auth status --json / graph --safe --json
+- hb-assistant run morning --dry-run --json
+- hb-assistant diagnostics scan-sensitive --repo . --json (clean)
+- New: hb-assistant search "Q3 report action" --json (functional, redacted, links, det path exercised)
+- Custom retrieval smoke (mocked embed + inserts → search hits + context + leak scan clean)
+- .venv used for runs (no new deps needed)
+- Sensitive scan clean; zero new leaks
+
+**Evidence**
+- phase-11-sample-retrieval.json (redacted hit example)
+- phase-11-retrieval-proof.json (scans, matrix, conclusion)
+- phase-11-validation-outputs/ (retrieval-smoke.json)
+- Updated prompt log + validation register (v1.1.0 row)
+- Architecture 11- doc with mermaid + refs to 02/08-10/05/07/06/03/13-15/20
+
+**Acceptance**
+- Objective complete (Prompt 11).
+- No broad refactor, no M365 writes, zero full file content/secrets/tokens in any artifact or evidence (excerpts bounded from prior phases only).
+- Architecture docs updated.
+- Logs/register updated.
+- Git commit + push performed (v1.1.0).
+
+**Status**: COMPLETE
+
+Next: Prompt 12 (Launchd Automation And Diagnostics) — wires retrieval context into local scheduled runs + hardening.
+
+

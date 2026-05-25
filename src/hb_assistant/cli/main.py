@@ -23,7 +23,8 @@ from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
 
 from . import diagnostics as diag_mod
-from . import files as files_mod  # Phase 10: selective ingest (relevance/eligibility/approval + pipeline)
+from . import files as files_mod  # Phase 10
+from . import search as search_mod  # Phase 11: retrieval / semantic search (det + gated)
 
 app = typer.Typer(
     name="hb-assistant",
@@ -59,6 +60,9 @@ app.add_typer(diag_mod.app, name="diagnostics")
 
 # Phase 10: files (selective ingest commands under top-level `files`)
 app.add_typer(files_mod.app, name="files")
+
+# Phase 11: search / retrieval (deterministic + semantic over redacted excerpts)
+app.add_typer(search_mod.app, name="search")
 
 
 # --- Stub command groups (Phase 1) ---
@@ -166,7 +170,7 @@ def _make_stub(name: str):
         raise typer.Exit(0)
     return _stub
 
-for _n in ("vault", "sync", "actions", "brief", "search", "automation"):
+for _n in ("vault", "sync", "actions", "brief", "automation"):
     _make_stub(_n)
 
 

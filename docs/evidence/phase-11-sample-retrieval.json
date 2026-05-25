@@ -1,0 +1,19 @@
+{
+  "phase": 11,
+  "version": "1.1.0",
+  "mode": "retrieval-search-dry",
+  "timestamp": "2026-05-25T10:30:00Z",
+  "query": "Q3 report action waiting",
+  "hits": [
+    {
+      "source_record_id": 1234,
+      "type": "parser_excerpt",
+      "excerpt": "The Q3 report mentions waiting on legal review for contract X. Action: follow up with counsel by Friday.",
+      "score": 0.87,
+      "links": [{"link_type": "parsed_from", "to_source_record_id": 1234}],
+      "meta": {"parser": "ParserRouter"}
+    }
+  ],
+  "semantic": false,
+  "note": "Redacted bounded excerpts + provenance only. No full content, tokens, or PII beyond source data."
+}

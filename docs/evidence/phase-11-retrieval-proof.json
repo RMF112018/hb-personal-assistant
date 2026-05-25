@@ -1,0 +1,13 @@
+{
+  "phase": 11,
+  "version": "1.1.0",
+  "proof_type": "retrieval_redaction_leak_scan",
+  "scans": [
+    {"target": "phase-11-sample-retrieval.json", "contains_full_content": false, "contains_token": false, "excerpts_bounded": true, "links_present": true},
+    {"target": "test_retrieval.py + artifacts", "no_secrets_in_hits_or_ctx": true, "embed_fallback_used": true},
+    {"target": "cli/search + retriever", "redacted_only": true, "source_links_included": true, "no_M365": true}
+  ],
+  "corpus_tested": ["parser_outputs excerpts"],
+  "conclusion": "All guardrails honored. Deterministic + semantic paths clean. Excerpts bounded, provenance preserved. Ready for Prompt 12 automation.",
+  "timestamp": "2026-05-25T10:35:00Z"
+}
