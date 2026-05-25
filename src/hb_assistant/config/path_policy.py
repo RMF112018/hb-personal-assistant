@@ -14,9 +14,10 @@ This module must NEVER log tokens, keys, or full paths that could leak in eviden
 from __future__ import annotations
 
 import os
+import pwd
 import stat
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from .loader import load_config
 from .models import AppConfig
@@ -92,39 +93,139 @@ class PathPolicy:
 
     # --- Ensure + Permissions ---
 
-    def ensure_dirs(self, *, create_sensitive: bool = True) -> None:
-        """Create the standard directory tree.
+    def _owner_for_path(self, path: Path) -> str | None:
+        try:
+            uid = path.stat().st_uid
+            return pwd.getpwuid(uid).pw_name
+        except Exception:
+            return None
 
-        Sensitive directories (auth, evidence if it will hold private) get 0o700.
+    def _mode_for_path(self, path: Path) -> str | None:
+        try:
+            return oct(stat.S_IMODE(path.stat().st_mode))
+        except Exception:
+            return None
+
+    def _build_path_status(
+        self,
+        path: Path,
+        *,
+        kind: str,
+        chmod_attempted: bool,
+        chmod_ok: bool,
+        error: str | None,
+    ) -> dict[str, Any]:
+        exists = path.exists()
+        writable = os.access(path, os.W_OK) if exists else False
+        return {
+            "path": str(path),
+            "kind": kind,
+            "exists": exists,
+            "writable": writable,
+            "mode": self._mode_for_path(path) if exists else None,
+            "owner": self._owner_for_path(path) if exists else None,
+            "chmod_attempted": chmod_attempted,
+            "chmod_ok": chmod_ok,
+            "error": error,
+        }
+
+    def ensure_dirs(
+        self,
+        *,
+        create_sensitive: bool = True,
+        strict_sensitive: bool = False,
+        return_report: bool = False,
+    ) -> None | dict[str, Any]:
+        """Create standard app-support directories with bounded permission handling.
+
+        - Non-sensitive path chmod failures are best-effort warnings.
+        - Auth path chmod failure can fail only when strict_sensitive=True.
         """
-        dirs_700 = [
-            self.get_app_support(),
-            self.get_auth_dir(),
-            self.get_evidence_dir(),  # evidence may contain sanitized + private/ subdir
-            self.get_logs_dir(),
-        ]
-        dirs_755 = [
-            self.get_app_support() / "db",
-            self.get_app_support() / "cache",
-            self.get_cache_dir("files"),
-            self.get_cache_dir("extracted-text"),
-            self.get_cache_dir("embeddings"),
-            self.get_logs_dir() / "run-logs",
-            self.get_logs_dir() / "error-logs",
+
+        specs: list[tuple[Path, str, int | None, bool]] = [
+            (self.get_app_support(), "app_support_root", 0o755, False),
+            (self.get_auth_dir(), "auth_dir", 0o700 if create_sensitive else None, True),
+            (self.get_app_support() / "db", "db_dir", 0o755, False),
+            (self.get_app_support() / "cache", "cache_root", 0o755, False),
+            (self.get_cache_dir("files"), "cache_files", 0o755, False),
+            (self.get_cache_dir("extracted-text"), "cache_extracted_text", 0o755, False),
+            (self.get_cache_dir("embeddings"), "cache_embeddings", 0o755, False),
+            (self.get_logs_dir(), "logs_root", 0o755, False),
+            (self.get_logs_dir() / "run-logs", "logs_run", 0o755, False),
+            (self.get_logs_dir() / "error-logs", "logs_error", 0o755, False),
+            (self.get_evidence_dir(), "evidence_dir", 0o755, False),
         ]
 
-        for d in dirs_700:
-            d.mkdir(parents=True, exist_ok=True)
-            if create_sensitive:
-                os.chmod(d, 0o700)
+        report_paths: list[dict[str, Any]] = []
+        warnings: list[str] = []
+        failures: list[str] = []
 
-        for d in dirs_755:
-            d.mkdir(parents=True, exist_ok=True)
-            # default umask usually fine; explicit 0o755 for clarity on non-sensitive
+        for path, kind, chmod_mode, sensitive in specs:
+            chmod_attempted = False
+            chmod_ok = False
+            error: str | None = None
+
             try:
-                os.chmod(d, 0o755)
-            except PermissionError:
-                pass  # best effort
+                path.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                error = f"mkdir_failed: {e}"
+                failures.append(f"{kind}: {e}")
+                report_paths.append(
+                    self._build_path_status(
+                        path,
+                        kind=kind,
+                        chmod_attempted=chmod_attempted,
+                        chmod_ok=chmod_ok,
+                        error=error,
+                    )
+                )
+                if sensitive and strict_sensitive:
+                    raise PermissionError(f"Failed to create sensitive dir {path}: {e}") from e
+                continue
+
+            if chmod_mode is not None:
+                chmod_attempted = True
+                try:
+                    os.chmod(path, chmod_mode)
+                    chmod_ok = True
+                except Exception as e:
+                    error = f"chmod_failed: {e}"
+                    target = failures if sensitive and strict_sensitive else warnings
+                    target.append(f"{kind}: {e}")
+                    if sensitive and strict_sensitive:
+                        report_paths.append(
+                            self._build_path_status(
+                                path,
+                                kind=kind,
+                                chmod_attempted=chmod_attempted,
+                                chmod_ok=chmod_ok,
+                                error=error,
+                            )
+                        )
+                        raise PermissionError(
+                            f"Failed to chmod sensitive dir {path} to {oct(chmod_mode)}: {e}"
+                        ) from e
+
+            report_paths.append(
+                self._build_path_status(
+                    path,
+                    kind=kind,
+                    chmod_attempted=chmod_attempted,
+                    chmod_ok=chmod_ok,
+                    error=error,
+                )
+            )
+
+        report: dict[str, Any] = {
+            "ok": len(failures) == 0,
+            "warnings": warnings,
+            "failures": failures,
+            "paths": report_paths,
+        }
+
+        if return_report:
+            return report
+        return None
 
     def check_perms(self, strict: bool = False) -> dict[str, bool]:
         """Return a dict of permission checks.

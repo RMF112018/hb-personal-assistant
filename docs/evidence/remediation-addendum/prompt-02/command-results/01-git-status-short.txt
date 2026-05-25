@@ -1,0 +1,10 @@
+ M docs/evidence/remediation/prompt-05-delegated-graph-proof/summary.json
+ M src/hb_assistant/auth/token_cache_manager.py
+ M src/hb_assistant/cli/diagnostics.py
+ M src/hb_assistant/config/path_policy.py
+ M tests/test_auth.py
+ M tests/test_cli_canonical.py
+ M tests/test_config.py
+?? .tmp-app-support-remediation/
+?? docs/evidence/remediation-addendum/prompt-02/
+?? docs/plans/my-pa-phase-0/gap-closure/

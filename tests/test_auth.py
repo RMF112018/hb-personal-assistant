@@ -70,6 +70,9 @@ def test_cache_manager_temp_perms_and_roundtrip() -> None:
 
         # Initially no files
         info = mgr.check_permissions()
+        assert "path_status" in info
+        assert "path_error" in info["path_status"]
+        assert "ensure_report" in info["path_status"]
         assert not info["msal-token-cache.bin"]["exists"]
 
         # Simulate save (create dummy content)
@@ -103,6 +106,29 @@ def test_delegated_provider_status_no_token() -> None:
         with patch.object(prov, "get_token", return_value={}):
             info = prov.status_info()
         assert info["token_type"] in ("none", "delegated", "invalid")
+        assert "path_status" in info["cache"]
+
+
+def test_cache_manager_does_not_crash_on_app_support_chmod_failure() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        cfg = AppConfig()
+        cfg.paths.application_support_root = td
+        pp = PathPolicy(cfg)
+        app_support = pp.get_app_support()
+        orig_chmod = Path.chmod
+
+        def _chmod(self: Path, mode: int) -> None:
+            if self == app_support:
+                raise PermissionError("Operation not permitted")
+            orig_chmod(self, mode)
+
+        with patch("os.chmod", side_effect=lambda p, m: _chmod(Path(p), m)):
+            mgr = TokenCacheManager(pp)
+            status = mgr.check_permissions()
+
+        assert "path_status" in status
+        assert status["path_status"]["path_error"] is None
+        assert status["path_status"]["ensure_report"]["warnings"]
 
 
 @patch("hb_assistant.auth.providers.msal")

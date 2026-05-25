@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import stat
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -29,6 +30,45 @@ def test_ensure_dirs_creates_with_perms(path_policy: PathPolicy) -> None:
     mode = stat.S_IMODE(auth.stat().st_mode)
     # On some FS or umask we accept 0o700 or at least owner-only
     assert (mode & 0o700) == 0o700 or (mode & 0o777) in (0o700, 0o755)  # relax for CI containers
+
+
+def test_ensure_dirs_returns_structured_report(path_policy: PathPolicy) -> None:
+    report = path_policy.ensure_dirs(return_report=True)
+    assert isinstance(report, dict)
+    assert "ok" in report
+    assert "warnings" in report
+    assert "failures" in report
+    assert "paths" in report
+    assert any(p.get("kind") == "auth_dir" for p in report["paths"])
+
+
+def test_ensure_dirs_root_chmod_failure_is_non_fatal(path_policy: PathPolicy) -> None:
+    app_support = path_policy.get_app_support()
+    orig_chmod = Path.chmod
+
+    def _chmod(self: Path, mode: int) -> None:
+        if self == app_support:
+            raise PermissionError("Operation not permitted")
+        orig_chmod(self, mode)
+
+    with patch("os.chmod", side_effect=lambda p, m: _chmod(Path(p), m)):
+        report = path_policy.ensure_dirs(return_report=True)
+    assert isinstance(report, dict)
+    assert any("app_support_root" in w for w in report["warnings"])
+
+
+def test_ensure_dirs_strict_sensitive_raises_on_auth_chmod(path_policy: PathPolicy) -> None:
+    auth_dir = path_policy.get_auth_dir()
+    orig_chmod = Path.chmod
+
+    def _chmod(self: Path, mode: int) -> None:
+        if self == auth_dir and mode == 0o700:
+            raise PermissionError("Operation not permitted")
+        orig_chmod(self, mode)
+
+    with patch("os.chmod", side_effect=lambda p, m: _chmod(Path(p), m)):
+        with pytest.raises(PermissionError):
+            path_policy.ensure_dirs(strict_sensitive=True)
 
 
 def test_loader_merges_defaults_and_overrides(tmp_path: Path) -> None:

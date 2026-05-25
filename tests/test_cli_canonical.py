@@ -69,6 +69,21 @@ def test_diagnostics_env_parses() -> None:
     assert result.exit_code == 0
 
 
+def test_diagnostics_paths_parses() -> None:
+    result = _invoke_in_isolated_app_support(["diagnostics", "paths", "--json"])
+    assert result.exit_code == 0
+
+
+def test_diagnostics_paths_repair_dry_run_parses() -> None:
+    result = _invoke_in_isolated_app_support(["diagnostics", "paths", "--repair-dry-run", "--json"])
+    assert result.exit_code == 0
+
+
+def test_diagnostics_paths_repair_parses() -> None:
+    result = _invoke_in_isolated_app_support(["diagnostics", "paths", "--repair", "--json"])
+    assert result.exit_code == 0
+
+
 def test_diagnostics_graph_safe_parses() -> None:
     result = _invoke_in_isolated_app_support(["diagnostics", "graph", "--safe", "--json"])
     assert result.exit_code in (0, 1)

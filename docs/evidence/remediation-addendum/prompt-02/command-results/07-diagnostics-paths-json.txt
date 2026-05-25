@@ -1,0 +1,196 @@
+{
+  "diagnostics": "paths",
+  "status": "ok",
+  "repair_mode": "none",
+  "paths": [
+    {
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant",
+      "kind": "app_support_root",
+      "exists": true,
+      "writable": false,
+      "mode": "0o700",
+      "owner": "bobbyfetting",
+      "chmod_attempted": true,
+      "chmod_ok": false,
+      "error": "chmod_failed: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant'",
+      "repair_recommendation": [
+        "chmod u+rwx \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant\"",
+        "chmod 755 \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant\"",
+        "# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant\""
+      ]
+    },
+    {
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth",
+      "kind": "auth_dir",
+      "exists": true,
+      "writable": false,
+      "mode": "0o700",
+      "owner": "bobbyfetting",
+      "chmod_attempted": true,
+      "chmod_ok": false,
+      "error": "chmod_failed: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth'",
+      "repair_recommendation": [
+        "chmod u+rwx \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth\"",
+        "chmod 700 \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth\"",
+        "# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth\""
+      ]
+    },
+    {
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db",
+      "kind": "db_dir",
+      "exists": true,
+      "writable": false,
+      "mode": "0o755",
+      "owner": "bobbyfetting",
+      "chmod_attempted": true,
+      "chmod_ok": false,
+      "error": "chmod_failed: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db'",
+      "repair_recommendation": [
+        "chmod u+rwx \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db\"",
+        "chmod 755 \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db\"",
+        "# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db\""
+      ]
+    },
+    {
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache",
+      "kind": "cache_root",
+      "exists": true,
+      "writable": false,
+      "mode": "0o755",
+      "owner": "bobbyfetting",
+      "chmod_attempted": true,
+      "chmod_ok": false,
+      "error": "chmod_failed: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache'",
+      "repair_recommendation": [
+        "chmod u+rwx \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache\"",
+        "chmod 755 \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache\"",
+        "# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache\""
+      ]
+    },
+    {
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/files",
+      "kind": "cache_files",
+      "exists": true,
+      "writable": false,
+      "mode": "0o755",
+      "owner": "bobbyfetting",
+      "chmod_attempted": true,
+      "chmod_ok": false,
+      "error": "chmod_failed: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/files'",
+      "repair_recommendation": [
+        "chmod u+rwx \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/files\"",
+        "# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/files\""
+      ]
+    },
+    {
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/extracted-text",
+      "kind": "cache_extracted_text",
+      "exists": true,
+      "writable": false,
+      "mode": "0o755",
+      "owner": "bobbyfetting",
+      "chmod_attempted": true,
+      "chmod_ok": false,
+      "error": "chmod_failed: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/extracted-text'",
+      "repair_recommendation": [
+        "chmod u+rwx \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/extracted-text\"",
+        "# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/extracted-text\""
+      ]
+    },
+    {
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/embeddings",
+      "kind": "cache_embeddings",
+      "exists": true,
+      "writable": false,
+      "mode": "0o755",
+      "owner": "bobbyfetting",
+      "chmod_attempted": true,
+      "chmod_ok": false,
+      "error": "chmod_failed: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/embeddings'",
+      "repair_recommendation": [
+        "chmod u+rwx \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/embeddings\"",
+        "# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/embeddings\""
+      ]
+    },
+    {
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs",
+      "kind": "logs_root",
+      "exists": true,
+      "writable": false,
+      "mode": "0o700",
+      "owner": "bobbyfetting",
+      "chmod_attempted": true,
+      "chmod_ok": false,
+      "error": "chmod_failed: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs'",
+      "repair_recommendation": [
+        "chmod u+rwx \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs\"",
+        "chmod 755 \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs\"",
+        "# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs\""
+      ]
+    },
+    {
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/run-logs",
+      "kind": "logs_run",
+      "exists": true,
+      "writable": false,
+      "mode": "0o755",
+      "owner": "bobbyfetting",
+      "chmod_attempted": true,
+      "chmod_ok": false,
+      "error": "chmod_failed: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/run-logs'",
+      "repair_recommendation": [
+        "chmod u+rwx \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/run-logs\"",
+        "chmod 755 \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/run-logs\"",
+        "# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/run-logs\""
+      ]
+    },
+    {
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/error-logs",
+      "kind": "logs_error",
+      "exists": true,
+      "writable": false,
+      "mode": "0o755",
+      "owner": "bobbyfetting",
+      "chmod_attempted": true,
+      "chmod_ok": false,
+      "error": "chmod_failed: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/error-logs'",
+      "repair_recommendation": [
+        "chmod u+rwx \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/error-logs\"",
+        "chmod 755 \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/error-logs\"",
+        "# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/error-logs\""
+      ]
+    },
+    {
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence",
+      "kind": "evidence_dir",
+      "exists": true,
+      "writable": false,
+      "mode": "0o700",
+      "owner": "bobbyfetting",
+      "chmod_attempted": true,
+      "chmod_ok": false,
+      "error": "chmod_failed: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence'",
+      "repair_recommendation": [
+        "chmod u+rwx \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence\"",
+        "chmod 755 \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence\"",
+        "# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) \"/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence\""
+      ]
+    }
+  ],
+  "warnings": [
+    "app_support_root: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant'",
+    "auth_dir: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth'",
+    "db_dir: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db'",
+    "cache_root: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache'",
+    "cache_files: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/files'",
+    "cache_extracted_text: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/extracted-text'",
+    "cache_embeddings: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/embeddings'",
+    "logs_root: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs'",
+    "logs_run: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/run-logs'",
+    "logs_error: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/error-logs'",
+    "evidence_dir: [Errno 1] Operation not permitted: '/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence'"
+  ],
+  "failures": [],
+  "repair_attempts": [],
+  "note": "No sudo commands are executed automatically. Recommendations may include manual sudo guidance."
+}

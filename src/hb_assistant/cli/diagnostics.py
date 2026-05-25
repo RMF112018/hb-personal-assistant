@@ -7,6 +7,7 @@ Phase 12: automation readiness + bounded scan-sensitive implemented (primary is 
 from __future__ import annotations
 
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -22,6 +23,21 @@ from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
 
 app = typer.Typer(help="Safe diagnostics and proof commands (read-only).")
+
+
+def _repair_recommendation(path: str, exists: bool, writable: bool, kind: str) -> list[str]:
+    recs: list[str] = []
+    quoted = f'"{path}"'
+    if not exists:
+        recs.append(f"mkdir -p {quoted}")
+    if not writable:
+        recs.append(f"chmod u+rwx {quoted}")
+    if kind == "auth_dir":
+        recs.append(f"chmod 700 {quoted}")
+    elif kind.startswith("logs") or kind in {"db_dir", "cache_root", "evidence_dir", "app_support_root"}:
+        recs.append(f"chmod 755 {quoted}")
+    recs.append(f"# If ownership is wrong and local chmod fails: sudo chown -R $(whoami) {quoted}")
+    return recs
 
 
 def _safe_git_sha() -> str | None:
@@ -63,6 +79,64 @@ def env_cmd(
 
     # Always pretty JSON for diagnostics (human + machine)
     typer.echo(json.dumps(data, indent=2, sort_keys=True))
+    raise typer.Exit(0)
+
+
+@app.command("paths")
+def paths_cmd(
+    repair_dry_run: bool = typer.Option(False, "--repair-dry-run", help="Show repair simulation only."),
+    repair: bool = typer.Option(False, "--repair", help="Attempt local non-sudo repair operations."),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Inspect app-support path permissions and provide local repair guidance."""
+    pp = PathPolicy()
+    ensure_report = pp.ensure_dirs(create_sensitive=True, strict_sensitive=False, return_report=True)
+
+    paths: list[dict[str, Any]] = []
+    repair_attempts: list[dict[str, Any]] = []
+    for p in ensure_report.get("paths", []):
+        if not isinstance(p, dict):
+            continue
+        path = str(p.get("path", ""))
+        kind = str(p.get("kind", "unknown"))
+        exists = bool(p.get("exists", False))
+        writable = bool(p.get("writable", False))
+        item = dict(p)
+        item["repair_recommendation"] = _repair_recommendation(path, exists, writable, kind)
+        paths.append(item)
+
+        if repair and path:
+            target = Path(path)
+            attempted = False
+            success = True
+            error: str | None = None
+            try:
+                if not target.exists():
+                    target.mkdir(parents=True, exist_ok=True)
+                    attempted = True
+                if kind == "auth_dir":
+                    os.chmod(target, 0o700)
+                    attempted = True
+                elif kind in {"app_support_root", "db_dir", "cache_root", "evidence_dir", "logs_root", "logs_run", "logs_error", "cache_files", "cache_extracted_text", "cache_embeddings"}:
+                    os.chmod(target, 0o755)
+                    attempted = True
+            except Exception as e:
+                success = False
+                error = str(e)
+            repair_attempts.append({"path": path, "kind": kind, "attempted": attempted, "success": success, "error": error})
+
+    status = "ok" if ensure_report.get("ok", False) else "warnings"
+    payload: Dict[str, Any] = {
+        "diagnostics": "paths",
+        "status": status,
+        "repair_mode": "repair" if repair else "repair_dry_run" if repair_dry_run else "none",
+        "paths": paths,
+        "warnings": ensure_report.get("warnings", []),
+        "failures": ensure_report.get("failures", []),
+        "repair_attempts": repair_attempts,
+        "note": "No sudo commands are executed automatically. Recommendations may include manual sudo guidance.",
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
     raise typer.Exit(0)
 
 
