@@ -1,0 +1,37 @@
+{
+  "implemented": true,
+  "phase": 12,
+  "repo": ".",
+  "scanned_paths": [
+    "~/hb-personal-assistant",
+    "~/Library/Application Support/HB Personal Assistant"
+  ],
+  "findings_by_category": {
+    "pem_key": [
+      "~/hb-personal-assistant/.venv/lib/python3.14/site-packages/certifi/cacert.pem",
+      "~/hb-personal-assistant/.venv/lib/python3.14/site-packages/pip/_vendor/certifi/cacert.pem",
+      "~/hb-personal-assistant/.venv/lib/python3.12/site-packages/certifi/cacert.pem",
+      "~/hb-personal-assistant/.venv/lib/python3.12/site-packages/pip/_vendor/certifi/cacert.pem"
+    ],
+    "token_cache": [
+      "~/hb-personal-assistant/src/hb_assistant/auth/token_cache_manager.py",
+      "~/hb-personal-assistant/src/hb_assistant/auth/__pycache__/token_cache_manager.cpython-314.pyc",
+      "~/hb-personal-assistant/src/hb_assistant/auth/__pycache__/token_cache_manager.cpython-312.pyc",
+      "~/hb-personal-assistant/.git/cursor/crepe/f117872483bc34441e74eb1ecb1303c8e668a003/index.bin",
+      "~/hb-personal-assistant/.git/cursor/crepe/f117872483bc34441e74eb1ecb1303c8e668a003/postings.bin",
+      "~/hb-personal-assistant/.venv/lib/python3.14/site-packages/msal/token_cache.py",
+      "~/hb-personal-assistant/.venv/lib/python3.14/site-packages/msal/__pycache__/token_cache.cpython-314.pyc",
+      "~/hb-personal-assistant/.venv/lib/python3.12/site-packages/msal/token_cache.py",
+      "~/hb-personal-assistant/.venv/lib/python3.12/site-packages/msal/__pycache__/token_cache.cpython-312.pyc",
+      "~/hb-personal-assistant/docs/plans/my-pa-phase-0/prompts/Prompt_02_Auth_Provider_And_Token_Cache.md"
+    ],
+    "db_files": [
+      "~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite"
+    ],
+    "env_secrets": [
+      "~/hb-personal-assistant/.env.example"
+    ],
+    "raw_token": []
+  },
+  "note": "MVP bounded scanner. Categories only; no secret values. Primary automation diagnostics in 'diagnostics automation'."
+}

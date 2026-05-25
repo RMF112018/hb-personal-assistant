@@ -191,12 +191,12 @@ def automation_status(
         "paths": {
             "app_support": str(pp.get_app_support()).replace(str(Path.home()), "~"),
             "logs": str(pp.get_logs_dir()).replace(str(Path.home()), "~"),
-            "obsidian_vault": str(pp.get_vault_dir()).replace(str(Path.home()), "~"),
+            "obsidian_vault": str(pp.get_vault_root()).replace(str(Path.home()), "~"),
         },
         "readiness": {
             "plist_present": st.get("plist_exists", False),
             "logs_writable": True,  # best effort; real check would be in manager
-            "obsidian_daily_notes_ready": (pp.get_vault_dir() / "Daily Notes").exists(),
+            "obsidian_daily_notes_ready": (pp.get_vault_root() / "Daily Notes").exists(),
         },
         "note": "Use with run morning --dry-run for full gate evaluation. launchctl status is best viewed via `automation` commands too.",
     }

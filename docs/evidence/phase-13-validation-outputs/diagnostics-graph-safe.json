@@ -1,0 +1,23 @@
+{
+  "safe": true,
+  "probes": [
+    {
+      "path": "/me",
+      "error": "Delegated token required (invalid) for GET /me?$select=id,displayName,userPrincipalName,mail"
+    }
+  ],
+  "cache": {
+    "msal-token-cache.bin": {
+      "exists": false,
+      "mode": null,
+      "perms_ok": false,
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth/msal-token-cache.bin"
+    },
+    "msal-token-cache-app.bin": {
+      "exists": false,
+      "mode": null,
+      "perms_ok": false,
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth/msal-token-cache-app.bin"
+    }
+  }
+}

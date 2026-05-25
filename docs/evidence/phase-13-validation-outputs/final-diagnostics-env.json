@@ -1,0 +1,30 @@
+{
+  "git": {
+    "sha": null
+  },
+  "notes": "All values are safe for logging/evidence. No secret material is present.",
+  "paths": {
+    "ai_outputs": "/Users/bobbyfetting/Documents/Obsidian Vault/AI Outputs",
+    "app_support": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant",
+    "auth_dir": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth",
+    "daily_notes": "/Users/bobbyfetting/Documents/Obsidian Vault/Daily Notes",
+    "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+    "evidence": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence",
+    "logs": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs",
+    "logs_error": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/error-logs",
+    "logs_run": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/run-logs",
+    "repo_root": "/Users/bobbyfetting/hb-personal-assistant",
+    "vault_root": "/Users/bobbyfetting/Documents/Obsidian Vault"
+  },
+  "permissions": {
+    "auth_dir_700": true,
+    "msal-token-cache-app.bin_600": true,
+    "msal-token-cache.bin_600": true
+  },
+  "phase": 1,
+  "python": {
+    "executable": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python3.12",
+    "platform": "macOS-26.4-arm64-arm-64bit",
+    "version": "3.12.11"
+  }
+}

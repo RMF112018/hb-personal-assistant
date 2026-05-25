@@ -127,13 +127,13 @@ class MorningRunOrchestrator:
                         stage_result["status"] = "ok"
                         stage_result["summary"] = {"retrieved": len(ctx.retrieved), "actions": len(ctx.recent_actions)}
                     elif stage_name == "brief_preview":
-                        # Use the existing dry-run capable brief generator if importable
+                        # Use the existing generator (Phase 8); call real method
+                        from datetime import date
                         from hb_assistant.obsidian.brief import DailyBriefGenerator
                         gen = DailyBriefGenerator()
-                        # dry run path returns redacted payload without writing
-                        brief = gen.generate(dry_run=True)
+                        content, _fm = gen.generate_for_date(date.today())
                         stage_result["status"] = "ok"
-                        stage_result["summary"] = {"sections": list(brief.keys()) if isinstance(brief, dict) else "generated"}
+                        stage_result["summary"] = {"generated": bool(content), "len": len(content) if content else 0}
                     elif stage_name == "files_discover":
                         from hb_assistant.files import FileIngestionService
                         # DriveItemClient not required for discover stub in dry; service accepts mocks

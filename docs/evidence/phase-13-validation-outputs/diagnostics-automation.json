@@ -1,0 +1,30 @@
+{
+  "implemented": true,
+  "phase": 12,
+  "launchd": {
+    "label": "com.hb.personal-assistant.morning",
+    "plist_exists": false,
+    "plist_path": null,
+    "config_time": "05:00",
+    "weekend_behavior": "manual_only",
+    "catch_up": true,
+    "last_run_from_ledger": null
+  },
+  "config": {
+    "morning_run_time": "05:00",
+    "timezone": "America/New_York",
+    "catch_up_if_wakes_after": true,
+    "weekend_behavior": "manual_only"
+  },
+  "paths": {
+    "app_support": "~/Library/Application Support/HB Personal Assistant",
+    "logs": "~/Library/Application Support/HB Personal Assistant/logs",
+    "obsidian_vault": "~/Documents/Obsidian Vault"
+  },
+  "readiness": {
+    "plist_present": false,
+    "logs_writable": true,
+    "obsidian_daily_notes_ready": true
+  },
+  "note": "Use with run morning --dry-run for full gate evaluation. launchctl status is best viewed via `automation` commands too."
+}
