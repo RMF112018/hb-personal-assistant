@@ -1,0 +1,1 @@
+Skipped auth login: auth status did not indicate token_type=none or command preconditions failed.

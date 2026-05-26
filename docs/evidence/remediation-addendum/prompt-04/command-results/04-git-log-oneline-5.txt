@@ -1,0 +1,5 @@
+e962cd3 fix(store): add db readiness checks and structured runtime errors
+baff53d fix(paths): harden application support permission handling
+f5f96b6 fix(security): clean sensitive scanner lint violations
+aa1cf1b chore(closeout): regenerate truthful final remediation evidence
+2e8c4eb fix(security): implement bounded content sensitive scan
