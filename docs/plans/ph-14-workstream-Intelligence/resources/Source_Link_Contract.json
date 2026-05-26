@@ -1,0 +1,23 @@
+{
+  "allowedLinkTypes": [
+    "mentions",
+    "attaches",
+    "references",
+    "derived_from",
+    "follow_up_to",
+    "waiting_on",
+    "prepares_for",
+    "same_conversation",
+    "same_project",
+    "same_file",
+    "written_to_note",
+    "parsed_from",
+    "semantic_match"
+  ],
+  "rules": [
+    "Every persisted action should have at least one source link when a source is available.",
+    "Generated notes should record or report written_to_note relationships.",
+    "Dry-run reports would-link relationships without mutation.",
+    "No full bodies or full file contents in links, metadata, or evidence."
+  ]
+}
