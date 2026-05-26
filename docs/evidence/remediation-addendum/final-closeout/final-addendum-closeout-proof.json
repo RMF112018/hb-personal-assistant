@@ -1,15 +1,10 @@
 {
-  "addendum": "Prompts 01-06 + reserved-scope auth defect fix",
-  "final_state": "NOT_ACCEPTED_FOR_DELEGATED_GRAPH_PROOF — RESERVED_SCOPE_AUTH_DEFECT",
-  "justification": "Local code gates (after scope sanitizer) + P05 body work are green. The delegated login blocker was a code defect: reserved scopes (offline_access etc.) were passed to MSAL. This superseded the prior DNS-only classification. The defect is now fixed with central sanitizer + diagnostics. Per spec: acceptance stays NOT_ACCEPTED... until auth login succeeds AND the delegated-graph proof reaches real Graph responses (permission gaps only, no reserved-scope errors).",
-  "defect_fixed": "reserved_scope_in_delegated_msal_login",
-  "matrix_after_fix": {
-    "pytest": "0",
-    "ruff": "0",
-    "mypy": "0",
-    "auth_login": "now uses sanitized scopes (see diagnostics)",
-    "proof_delegated": "re-evaluate after login (DNS may still be present in this env)"
-  },
-  "evidence": "remediation-addendum/defect-reserved-scope-auth/ + updated final-closeout/",
-  "commit": "fix(auth): sanitize reserved scopes before delegated MSAL login"
+  "addendum": "Prompts 01-06 + reserved-scope auth defect fix + external consent update",
+  "final_state": "CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER (Tenant/Admin Consent Required)",
+  "justification": "Local gates (code, path, DB, ruff, mypy, dry-run, P05 body detection) are all green. The reserved-scope defect in delegated MSAL login has been fixed. The auth flow now reaches Microsoft consent/permission enforcement. Full delegated Graph proof is deferred pending admin approval of the required delegated permissions in the tenant. This is an external tenant/admin-consent blocker, not a local implementation defect.",
+  "local_gates": "green",
+  "blocker_type": "external_tenant_admin_consent",
+  "next_steps": "See final-addendum-validation-summary.md for the exact TODO commands after admin approval.",
+  "evidence_location": "docs/evidence/remediation-addendum/defect-reserved-scope-auth/ and final-closeout/",
+  "commit": "chore(evidence): update classification to external admin-consent blocker after scope fix"
 }

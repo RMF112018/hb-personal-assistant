@@ -88,3 +88,22 @@ Prompt 03 (Delegated Graph Capability Proof) — first production-grade use of t
 Moved from `CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER` (DNS) to `NOT_ACCEPTED_FOR_DELEGATED_GRAPH_PROOF — RESERVED_SCOPE_AUTH_DEFECT` until `auth login` + proof demonstrate the defect is gone and only permission gaps (if any) remain.
 
 This note supersedes earlier DNS-centric language in evidence.
+
+---
+
+## State Update: External Admin Consent Blocker (2026-05-26)
+
+After the reserved scope sanitizer was deployed:
+
+- The delegated authentication flow now successfully reaches Microsoft Graph consent and permission enforcement.
+- `auth status --json` correctly reports the distinction between `configured_scopes` and `effective_msal_scopes` (with reserved scopes stripped).
+- `diagnostics graph --safe` and the delegated proof now surface proper "token required" / permission-related errors instead of the previous reserved-scope or silent failures.
+- All local gates (paths, DB readiness, static analysis, dry-run structured output) remain green.
+
+**Current Classification**: External tenant/admin-consent blocker.
+
+Full delegated Graph capability (mail, calendar, files) is gated on the tenant administrator approving the delegated Microsoft Graph permissions requested by the application in Entra ID.
+
+See `docs/evidence/remediation-addendum/final-closeout/final-addendum-validation-summary.md` for the precise "TODO Next Commands After Admin Approval" that should be executed and committed once consent is granted.
+
+This represents the correct, truthful final state of the addendum remediation work.

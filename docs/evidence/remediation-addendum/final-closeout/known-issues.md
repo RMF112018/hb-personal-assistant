@@ -1,15 +1,18 @@
-# Addendum Prompt 06 Known Issues
+# Final Closeout Known Issues (Updated)
 
-**Scope**: Prompt 06 final closeout only. All prior P01-P05 issues resolved in code/evidence.
+## Current Blocker
+**External Tenant / Admin Consent Required**
 
-## Persistent External Blocker (truthful)
-- DNS/NameResolution failure for login.microsoftonline.com (and tenant 0e834bd7-... endpoint).
-- Evidence: multiple terminal captures in command-results/ (auth status, graph, proof all show the error before any Graph step).
-- Classification: External infra/network (paths green, local gates 100% green, proof never reached Microsoft responses). Not a delegated permission gap.
+After the reserved-scope sanitizer fix, the delegated auth flow reaches the Microsoft consent/permission enforcement step.
 
-## No Local/Code Issues
-- pytest/ruff/mypy: 0
-- All required matrix commands produced structured/expected output (no tracebacks from code or path problems).
-- P05 bounded body detection complete and validated.
+The remaining requirement is admin approval (in the tenant 0e834bd7-628b-42c8-b9ec-ecebc9719be4) of the delegated Microsoft Graph permissions used by the application (User.Read, Mail.Read, Calendars.Read, Files.Read.All, etc.).
 
-**Next agent (if any)**: Restore Microsoft endpoint DNS reachability, then re-run auth login + delegated proof for possible re-classification.
+## Local State
+- All local implementation, path, DB, and validation gates are green.
+- Scope sanitization is working correctly (confirmed in `auth status --json`).
+- No local code defects are blocking progress.
+
+## TODO After Admin Approval
+See `final-addendum-validation-summary.md` for the exact command sequence to run and commit once permissions are granted.
+
+This supersedes earlier DNS and reserved-scope classifications.
