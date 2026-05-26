@@ -1,0 +1,9 @@
+{
+  "command": "actions extract",
+  "mode": "real",
+  "dry_run": true,
+  "results": [],
+  "count": 0,
+  "note": "dry-run: preview only; no writes to action_items or source_links",
+  "would_persist": 0
+}

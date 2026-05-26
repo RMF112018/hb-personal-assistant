@@ -38,8 +38,9 @@ class ActionService:
             dry_run=dry_run,
         )
         try:
-            # Deterministic candidates (signals empty for foundation; extractor falls back to store recent)
-            cands = extract_candidates(signals=[], store=self.store)
+            # P04: pass signals=None to trigger rich bounded signal load/aggregate inside extractor (when store provided).
+            # P03 upsert_action_item + link_action + dry_run guard + ledger + registry.finish_run all preserved exactly.
+            cands = extract_candidates(signals=None, store=self.store)
 
             if not dry_run:
                 for c in cands:
