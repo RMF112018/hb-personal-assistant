@@ -1,0 +1,2 @@
+ M .gitignore
+?? docs/evidence/remediation-addendum/prompt-06/command-results/01-git-status-short.txt

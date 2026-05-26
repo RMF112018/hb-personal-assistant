@@ -9,7 +9,7 @@ Bobby-only local-first MVP for Microsoft 365 delegated access, source-linked ret
 - Latest implemented manifest in this repository: `v1.3.0`
 - Remediation status: **Addendum (Prompts 01–06) complete.**
 - Closeout status (addendum): **CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER** (see `docs/evidence/remediation-addendum/final-closeout/` and `docs/evidence/remediation-addendum/prompt-06/`).
-- DNS/network resolution failure for Microsoft login endpoints is the sole remaining external blocker after local path + code gates (P01–P05) passed. Paths green at final matrix.
+- DNS/network resolution failure for Microsoft login endpoints is the sole remaining external blocker after local path + code gates (P01–P05) passed. Paths green at final matrix. Prompt 06 matrix executed; truthful evidence bundle regenerated.
 
 ## Quickstart (after clone)
 

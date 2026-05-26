@@ -1,32 +1,24 @@
 {
-  "addendum_complete": true,
-  "final_commit": "3e4f856 (P05) + P06 closeout evidence",
-  "acceptance": "CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER",
-  "justification": "All local code gates (lint, mypy, pytest, path readiness, dry-run JSON, P05 body mention) green. Delegated flows blocked at DNS resolution for login.microsoftonline.com (external infra). Paths writable at final matrix. No code or local DB blockers remain. Per P04/P06 rules, external label is truthful because proof never reached Graph responses.",
-  "matrix_summary": {
-    "ruff": "0 (29 + 03)",
-    "mypy": "0 (30 + 03)",
-    "pytest": "0 failures (full + P05 subsets)",
-    "paths": "all writable:true",
-    "auth_status": "status_error (DNS)",
-    "graph_safe": "network error (JSON)",
-    "proof_delegated": "blocked_no_token (no Graph steps)",
-    "files_ingest_dry": "structured (P03)",
-    "run_morning_dry": "structured (P03)",
-    "scan_sensitive": "clean",
-    "diagnostics_classify": "OK (synthetic)",
-    "P05_body": "delivered + 11/11 tests green"
+  "addendum": "Prompts 01-06 complete",
+  "final_state": "CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER",
+  "justification": "All local code, lint (ruff/mypy=0), pytest (full=0), paths (writable), dry-run JSON structured, P05 body detection, and scan gates green per terminal matrix runs. Delegated auth/graph/proof blocked exclusively at DNS resolution for login.microsoftonline.com (NameResolutionError in multiple captures). No Graph responses or token acquisition reached. Per spec rules: external infra blocker (not MS permission gap) because paths green and proof never reached Microsoft. No local code or path defect caused failure.",
+  "matrix": {
+    "pytest": "0 (07)",
+    "ruff": "0 (08)",
+    "mypy": "0 (09)",
+    "paths": "green (13 + context)",
+    "auth_status": "DNS block (11)",
+    "graph_safe": "DNS block (14)",
+    "proof_delegated": "blocked_no_token DNS (15)",
+    "dry_runs": "structured (19,20)",
+    "scan": "clean (17)",
+    "P05_body": "validated prior + matrix green"
   },
-  "external_blocker": {
+  "external_blocker_detail": {
     "type": "dns_network",
-    "endpoint": "login.microsoftonline.com",
-    "tenant": "0e834bd7-628b-42c8-b9ec-ecebc9719be4",
-    "evidence_files": [
-      "prompt-05/command-results/12-17-dns-*.txt",
-      "prompt-05/command-results/18-auth-status-json.txt",
-      "prompt-05/command-results/21-22-*.txt"
-    ]
+    "endpoint": "login.microsoftonline.com + tenant 0e834bd7-628b-42c8-b9ec-ecebc9719be4",
+    "evidence": "prompt-06/command-results/11,14,15 + prior 12-17 probes"
   },
-  "timestamp": "2026-05-26",
-  "note": "After DNS fix, re-run delegated proof for possible permission classification update."
+  "commit": "chore(closeout): regenerate addendum acceptance evidence",
+  "timestamp": "2026-05-26"
 }

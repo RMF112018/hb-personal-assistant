@@ -1,9 +1,8 @@
 {
-  "note": "Core P06 matrix outputs are in prompt-06/command-results/ (01-05) and cross-reference the large prompt-05/ tree (which contains the Phase 0 env + full P05 validation that fed into final closeout).",
-  "primary_evidence_dirs": [
-    "docs/evidence/remediation-addendum/prompt-05/",
-    "docs/evidence/remediation-addendum/prompt-06/",
-    "docs/evidence/remediation-addendum/final-closeout/"
-  ],
-  "generated": "2026-05-26"
+  "prompt": "06",
+  "matrix_captures": "prompt-06/command-results/ (01-20)",
+  "bundle": "final-addendum-closeout-proof.json + validation-summary.md + known-issues.md",
+  "acceptance": "CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER (DNS external; local gates green)",
+  "generated_by": "terminal only (no re-reads per policy)",
+  "date": "2026-05-26"
 }

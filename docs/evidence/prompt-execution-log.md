@@ -232,6 +232,18 @@ All local code + path + DB + lint + test gates green. Delegated proof blocked at
 
 ---
 
+## Prompt 06 — Final Addendum Closeout (executed 2026-05-26)
+
+Full validation matrix run via terminal (no re-reads). All local gates (pytest/ruff/mypy/paths/dry-run/scan/P05) green. Delegated proof blocked at DNS (external infra). 
+
+**Acceptance**: CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER
+
+Evidence: `docs/evidence/remediation-addendum/prompt-06/` + `final-closeout/`
+
+Commit: chore(closeout): regenerate addendum acceptance evidence
+
+---
+
 ## Prompt 04 — Graph Mail Calendar Read Model
 
 **Executed**: 2026-05-25

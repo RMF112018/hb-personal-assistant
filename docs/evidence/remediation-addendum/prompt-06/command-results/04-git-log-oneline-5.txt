@@ -1,0 +1,5 @@
+f12b66e chore(evidence): refresh delegated graph proof and add addendum P06 handoff for v1.3.0
+64739d1 docs(plans): add remediation gap-closure package for hb-personal-assistant v1.3.0
+7757b8f chore(closeout): regenerate addendum acceptance evidence
+3e4f856 feat(mail): add bounded body mention detection beyond preview
+947469d test(graph): rerun delegated proof after local path repair
