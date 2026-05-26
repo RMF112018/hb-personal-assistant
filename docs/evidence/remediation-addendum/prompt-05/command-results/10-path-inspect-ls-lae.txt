@@ -1,0 +1,10 @@
+=== 10-path-inspect-ls-lae ===
+total 0
+drwxr-xr-x@   7 bobbyfetting  staff   224 May 25 05:01 .
+drwx------+ 121 bobbyfetting  staff  3872 May 25 05:01 ..
+ 0: group:everyone deny delete
+drwx------@   2 bobbyfetting  staff    64 May 25 05:01 auth
+drwxr-xr-x@   5 bobbyfetting  staff   160 May 25 05:01 cache
+drwxr-xr-x@   3 bobbyfetting  staff    96 May 25 06:27 db
+drwxr-xr-x@   3 bobbyfetting  staff    96 May 25 06:17 evidence
+drwxr-xr-x@   4 bobbyfetting  staff   128 May 25 06:17 logs

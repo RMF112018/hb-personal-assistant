@@ -47,6 +47,9 @@ class Email(BaseModel):
     body_checked: bool = False
     body_mention_detected: bool = False
 
+    # Prompt 05: optional redacted excerpt from body inspector (in-memory / link metadata only unless store extended)
+    body_excerpt_redacted: Optional[str] = None
+
     # Source traceability (populated by client or registry)
     source_record_id: Optional[int] = None
     source_links: List[dict] = Field(default_factory=list)  # type from source-link-types.json

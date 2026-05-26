@@ -1,0 +1,6 @@
+=== 16-dns-ping ===
+PING www.tm.a.prd.aadg.akadns.net (20.190.157.0): 56 data bytes
+
+--- www.tm.a.prd.aadg.akadns.net ping statistics ---
+3 packets transmitted, 3 packets received, 0.0% packet loss, 3 packets out of wait time
+round-trip min/avg/max/stddev = 51.761/56.402/59.455/3.336 ms

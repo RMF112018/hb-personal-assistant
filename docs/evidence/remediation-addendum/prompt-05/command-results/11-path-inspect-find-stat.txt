@@ -1,0 +1,67 @@
+=== 11-path-inspect-find-stat ===
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant
+bobbyfetting staff drwxr-xr-x /Users/bobbyfetting/Library/Application Support/HB Personal Assistant
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache
+bobbyfetting staff drwxr-xr-x /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/embeddings
+bobbyfetting staff drwxr-xr-x /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/embeddings
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/extracted-text
+bobbyfetting staff drwxr-xr-x /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/extracted-text
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/files
+bobbyfetting staff drwxr-xr-x /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/files
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence
+bobbyfetting staff drwxr-xr-x /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs
+bobbyfetting staff drwxr-xr-x /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4485878448'>.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4485878448'>.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062532.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062532.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062713.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062713.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062159.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062159.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4479867200'>.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4479867200'>.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-061724.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-061724.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4482227168'>.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4482227168'>.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062717.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062717.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062425.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062425.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-061730.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-061730.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062556.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062556.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4445770752'>.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4445770752'>.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062438.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062438.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4451718144'>.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4451718144'>.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062711.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062711.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4521874096'>.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4521874096'>.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062213.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-062213.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4487140352'>.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4487140352'>.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4449641744'>.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-<MagicMock name='datetime.now().strftime()' id='4449641744'>.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-061736.json
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260525-061736.json
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth
+bobbyfetting staff drwx------ /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs
+bobbyfetting staff drwxr-xr-x /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/error-logs
+bobbyfetting staff drwxr-xr-x /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/error-logs
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/run-logs
+bobbyfetting staff drwxr-xr-x /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/run-logs
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db
+bobbyfetting staff drwxr-xr-x /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db
+/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+bobbyfetting staff -rw-r--r-- /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite

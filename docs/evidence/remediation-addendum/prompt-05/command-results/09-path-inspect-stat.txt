@@ -1,0 +1,2 @@
+=== 09-path-inspect-stat ===
+bobbyfetting staff drwxr-xr-x /Users/bobbyfetting/Library/Application Support/HB Personal Assistant

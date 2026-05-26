@@ -1,0 +1,2 @@
+=== 26-pytest-p05-validation (exact per prompt spec) ===
+.................                                                        [100%]

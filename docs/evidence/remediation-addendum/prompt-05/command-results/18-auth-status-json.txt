@@ -1,0 +1,151 @@
+=== 18-auth-status-json (post-inspect) ===
+{
+  "mode": "delegated",
+  "token_type": "none",
+  "message": "No delegated token. Run login.",
+  "cache": {
+    "path_status": {
+      "path_error": null,
+      "ensure_report": {
+        "ok": true,
+        "warnings": [],
+        "failures": [],
+        "paths": [
+          {
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant",
+            "kind": "app_support_root",
+            "exists": true,
+            "writable": true,
+            "mode": "0o755",
+            "owner": "bobbyfetting",
+            "chmod_attempted": true,
+            "chmod_ok": true,
+            "error": null
+          },
+          {
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth",
+            "kind": "auth_dir",
+            "exists": true,
+            "writable": true,
+            "mode": "0o700",
+            "owner": "bobbyfetting",
+            "chmod_attempted": true,
+            "chmod_ok": true,
+            "error": null
+          },
+          {
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db",
+            "kind": "db_dir",
+            "exists": true,
+            "writable": true,
+            "mode": "0o755",
+            "owner": "bobbyfetting",
+            "chmod_attempted": true,
+            "chmod_ok": true,
+            "error": null
+          },
+          {
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache",
+            "kind": "cache_root",
+            "exists": true,
+            "writable": true,
+            "mode": "0o755",
+            "owner": "bobbyfetting",
+            "chmod_attempted": true,
+            "chmod_ok": true,
+            "error": null
+          },
+          {
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/files",
+            "kind": "cache_files",
+            "exists": true,
+            "writable": true,
+            "mode": "0o755",
+            "owner": "bobbyfetting",
+            "chmod_attempted": true,
+            "chmod_ok": true,
+            "error": null
+          },
+          {
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/extracted-text",
+            "kind": "cache_extracted_text",
+            "exists": true,
+            "writable": true,
+            "mode": "0o755",
+            "owner": "bobbyfetting",
+            "chmod_attempted": true,
+            "chmod_ok": true,
+            "error": null
+          },
+          {
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/embeddings",
+            "kind": "cache_embeddings",
+            "exists": true,
+            "writable": true,
+            "mode": "0o755",
+            "owner": "bobbyfetting",
+            "chmod_attempted": true,
+            "chmod_ok": true,
+            "error": null
+          },
+          {
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs",
+            "kind": "logs_root",
+            "exists": true,
+            "writable": true,
+            "mode": "0o755",
+            "owner": "bobbyfetting",
+            "chmod_attempted": true,
+            "chmod_ok": true,
+            "error": null
+          },
+          {
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/run-logs",
+            "kind": "logs_run",
+            "exists": true,
+            "writable": true,
+            "mode": "0o755",
+            "owner": "bobbyfetting",
+            "chmod_attempted": true,
+            "chmod_ok": true,
+            "error": null
+          },
+          {
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/error-logs",
+            "kind": "logs_error",
+            "exists": true,
+            "writable": true,
+            "mode": "0o755",
+            "owner": "bobbyfetting",
+            "chmod_attempted": true,
+            "chmod_ok": true,
+            "error": null
+          },
+          {
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence",
+            "kind": "evidence_dir",
+            "exists": true,
+            "writable": true,
+            "mode": "0o755",
+            "owner": "bobbyfetting",
+            "chmod_attempted": true,
+            "chmod_ok": true,
+            "error": null
+          }
+        ]
+      }
+    },
+    "msal-token-cache.bin": {
+      "exists": false,
+      "mode": null,
+      "perms_ok": false,
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth/msal-token-cache.bin"
+    },
+    "msal-token-cache-app.bin": {
+      "exists": false,
+      "mode": null,
+      "perms_ok": false,
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth/msal-token-cache-app.bin"
+    }
+  }
+}

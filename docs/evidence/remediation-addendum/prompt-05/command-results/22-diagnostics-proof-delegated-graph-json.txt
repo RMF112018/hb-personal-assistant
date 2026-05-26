@@ -1,0 +1,12 @@
+=== 22-diagnostics-proof-delegated-graph-json ===
+{
+  "proof": "delegated-graph",
+  "safe": true,
+  "timestamp": "2026-05-26T06:36:31.265175+00:00",
+  "steps": [],
+  "status": "blocked_no_token",
+  "reason": "delegated_token_unavailable",
+  "remediation": "Run hb-assistant auth login --json and retry proof.",
+  "error": "No delegated account in cache. Run `hb-assistant auth login` first.",
+  "step_filter": "all"
+}

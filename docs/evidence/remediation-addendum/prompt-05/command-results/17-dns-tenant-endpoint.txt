@@ -1,0 +1,28 @@
+=== 17-dns-tenant-endpoint ===
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0 23686    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+HTTP/2 200 
+cache-control: max-age=86400, private
+content-length: 23686
+content-type: text/html; charset=utf-8
+strict-transport-security: max-age=31536000; includeSubDomains
+x-content-type-options: nosniff
+access-control-allow-origin: *
+access-control-allow-methods: GET, OPTIONS
+link: <https://aadcdn.msauth.net>; rel=preconnect; crossorigin
+link: <https://aadcdn.msauth.net>; rel=preconnect; crossorigin,<https://aadcdn.msauth.net>; rel=dns-prefetch
+link: <https://aadcdn.msauth.net>; rel=preconnect; crossorigin,<https://aadcdn.msauth.net>; rel=dns-prefetch,<https://aadcdn.msftauth.net>; rel=dns-prefetch
+x-dns-prefetch-control: on
+p3p: CP="DSP CUR OTPi IND OTRi ONL FIN"
+x-ms-request-id: c68f47a4-436d-4564-ac96-b271deaa2f00
+x-ms-ests-server: 2.1.24362.7 - SCUS ProdSlices
+x-ms-srs: 1.P
+content-security-policy-report-only: object-src 'none'; base-uri 'self'; script-src 'self' 'nonce-DNEBX7MWZkMUkBMMaZYVAQ' 'unsafe-inline' 'unsafe-eval' https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com https://*.microsoftonline-p.com https://*.microsoftazuread-sso.com https://*.azureedge.net https://*.outlook.com https://*.office.com https://*.office365.com https://*.microsoft.com https://*.bing.com 'report-sample'; report-uri https://csp.microsoft.com/report/ESTS-UX-All
+x-xss-protection: 0
+set-cookie: fpc=Atr6YmBj4qVFrVY7WRZnwu0; expires=Thu, 25-Jun-2026 06:35:56 GMT; path=/; secure; HttpOnly; SameSite=None
+set-cookie: esctx=PAQABBwEAAAAdDD7nC9b5Q7JPd_okEQRFRXZvU3RzQXJ0aWZhY3RzDQAAAAAAZi0kAl0mgkdltZGkCNAzwg2cQbi3TLueACHDSRNRXsrBUSS0UTtZNZOeq8Z8G_eFW4rQPD7qgBb06ZQD_T4I4FgCgIX6SWPO7SazXagpCoMELmeTNMowzLrPInnqmB7HS9YiIjSBv_gHvMMazRjJeTTS7rO6RfD3y3ppwDPjU4YgAA; domain=.login.microsoftonline.com; path=/; secure; HttpOnly; SameSite=None
+set-cookie: x-ms-gateway-slice=estsfd; path=/; secure; samesite=none; httponly
+set-cookie: stsservicecookie=estsfd; path=/; secure; samesite=none; httponly
+date: Tue, 26 May 2026 06:35:55 GMT
+

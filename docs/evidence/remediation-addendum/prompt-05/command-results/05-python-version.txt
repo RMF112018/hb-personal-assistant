@@ -1,0 +1,2 @@
+=== 05-python-version (venv) ===
+Python 3.14.5

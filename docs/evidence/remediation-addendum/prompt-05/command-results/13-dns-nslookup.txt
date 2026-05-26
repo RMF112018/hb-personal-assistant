@@ -1,0 +1,25 @@
+=== 13-dns-nslookup ===
+Server:		10.0.0.1
+Address:	10.0.0.1#53
+
+Non-authoritative answer:
+login.microsoftonline.com	canonical name = login.mso.msidentity.com.
+login.mso.msidentity.com	canonical name = ak.privatelink.msidentity.com.
+ak.privatelink.msidentity.com	canonical name = www.tm.a.prd.aadg.akadns.net.
+Name:	www.tm.a.prd.aadg.akadns.net
+Address: 40.126.29.15
+Name:	www.tm.a.prd.aadg.akadns.net
+Address: 20.190.157.15
+Name:	www.tm.a.prd.aadg.akadns.net
+Address: 20.190.157.13
+Name:	www.tm.a.prd.aadg.akadns.net
+Address: 40.126.29.13
+Name:	www.tm.a.prd.aadg.akadns.net
+Address: 40.126.29.11
+Name:	www.tm.a.prd.aadg.akadns.net
+Address: 40.126.29.8
+Name:	www.tm.a.prd.aadg.akadns.net
+Address: 20.190.157.3
+Name:	www.tm.a.prd.aadg.akadns.net
+Address: 40.126.29.12
+

@@ -128,8 +128,10 @@ def test_classification_result_schema_compliance():
         confidence=0.82,
     )
     data = res.model_dump()
-    # Required keys per schema
-    assert set(data.keys()) == {"message_source_record_id", "classifications", "body_mention_detected", "confidence"}
+    # Required keys per schema (P05 added detection_method; keep backward-compatible check)
+    required = {"message_source_record_id", "classifications", "body_mention_detected", "confidence"}
+    assert required.issubset(set(data.keys()))
+    assert "detection_method" in data
     assert isinstance(data["classifications"], list)
     assert isinstance(data["body_mention_detected"], bool)
     assert 0 <= data["confidence"] <= 1

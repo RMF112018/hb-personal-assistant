@@ -1,0 +1,2 @@
+=== 03-git-rev-parse-head ===
+947469d0818aa4c5dbd5c3aca5704d45d441f7e7

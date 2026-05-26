@@ -5,11 +5,13 @@ Never touches or logs full email bodies. Deterministic alias-based detection for
 """
 
 from .aliases import AliasResolver
+from .body_inspector import BodyInspector
 from .detector import BodyMentionDetector
 from .classifier import EmailClassifier, ClassificationResult
 
 __all__ = [
     "AliasResolver",
+    "BodyInspector",
     "BodyMentionDetector",
     "EmailClassifier",
     "ClassificationResult",

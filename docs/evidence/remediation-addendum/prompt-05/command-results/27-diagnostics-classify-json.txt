@@ -1,0 +1,33 @@
+=== 27-diagnostics-classify-json ===
+{
+  "mode": "sample-preview-only",
+  "count": 3,
+  "results": [
+    {
+      "message_source_record_id": "999001",
+      "classifications": [
+        "bobby_mention"
+      ],
+      "body_mention_detected": true,
+      "confidence": 0.85,
+      "detection_method": "preview"
+    },
+    {
+      "message_source_record_id": "999002",
+      "classifications": [
+        "possible_action_or_waiting"
+      ],
+      "body_mention_detected": false,
+      "confidence": 0.15,
+      "detection_method": "preview"
+    },
+    {
+      "message_source_record_id": "999003",
+      "classifications": [],
+      "body_mention_detected": false,
+      "confidence": 0.15,
+      "detection_method": "preview"
+    }
+  ],
+  "note": "All inputs/outputs are redacted previews only. No store mutation in sample mode."
+}

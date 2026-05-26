@@ -1,0 +1,12 @@
+=== 14-dns-dig ===
+login.mso.msidentity.com.
+ak.privatelink.msidentity.com.
+www.tm.a.prd.aadg.akadns.net.
+20.190.157.2
+40.126.29.7
+40.126.29.5
+40.126.29.12
+20.190.157.13
+20.190.157.12
+40.126.29.14
+40.126.29.11

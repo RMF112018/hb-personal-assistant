@@ -56,6 +56,8 @@ class SQLiteMigrator:
           has_attachments INTEGER NOT NULL DEFAULT 0,
           body_checked INTEGER NOT NULL DEFAULT 0,
           body_mention_detected INTEGER NOT NULL DEFAULT 0,
+          body_detection_method TEXT,
+          body_match_excerpt_redacted TEXT,
           web_link TEXT
         );
         """,

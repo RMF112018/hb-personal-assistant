@@ -1,0 +1,6 @@
+=== 08-path-inspect-ls-lde ===
+drwx------@ 108 bobbyfetting  staff  3456 Mar  5 18:50 /Users/bobbyfetting/Library
+ 0: group:everyone deny delete
+drwx------+ 121 bobbyfetting  staff  3872 May 25 05:01 /Users/bobbyfetting/Library/Application Support
+ 0: group:everyone deny delete
+drwxr-xr-x@   7 bobbyfetting  staff   224 May 25 05:01 /Users/bobbyfetting/Library/Application Support/HB Personal Assistant

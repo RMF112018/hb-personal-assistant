@@ -1,0 +1,2 @@
+=== 25-pytest-path-store-config (non-network) ===
+........................                                                 [100%]

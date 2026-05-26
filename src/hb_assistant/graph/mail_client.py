@@ -1,9 +1,10 @@
 """MailClient: inbound (5d) / sent (7d) metadata + bounded body retrieval.
 
-Per 06_Graph_Integration_Specification:
+Per 06_Graph_Integration_Specification + Addendum Prompt 05:
 - Exact $select for minimal fields
 - Redacted subject/sender/recipients/bodyPreview
 - Body retrieval staged/bounded (never log full body)
+- New: get_message_body_for_inspection (in-memory only, for BodyInspector fallback)
 - Source links populated for later registry
 """
 
@@ -75,3 +76,24 @@ class MailClient:
             return Email.from_graph_message(msg)
         except Exception:
             return None
+
+    def get_message_body_for_inspection(self, message_id: str, max_chars: int = 8000) -> str:
+        """Fetch bounded body content **in memory only** for classification/inspector use.
+
+        - Never writes raw body to DB, logs, evidence, or cache.
+        - Truncates after safe extraction.
+        - Intended for BodyInspector + EmailClassifier fallback path (Addendum Prompt 05).
+        - Caller is responsible for redaction before any persistence or logging of results.
+        - Returns empty string on any failure (never raises into classification).
+        """
+        url = f"/me/messages/{message_id}?$select=id,body"
+        try:
+            msg = self.client.get(url)
+            body = msg.get("body") or {}
+            content = body.get("content") or ""
+            # Truncate early; inspector will further clean/strip
+            if len(content) > max_chars:
+                content = content[:max_chars] + "..."
+            return content
+        except Exception:
+            return ""

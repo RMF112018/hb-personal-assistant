@@ -348,7 +348,8 @@ class Store:
             """
             SELECT sr.id as source_record_id, sr.source_key, sr.title_redacted,
                    e.folder, e.sender_domain, e.received_datetime, e.web_link,
-                   e.body_checked, e.body_mention_detected
+                   e.body_checked, e.body_mention_detected,
+                   e.body_detection_method, e.body_match_excerpt_redacted
             FROM source_records sr
             JOIN emails e ON e.source_record_id = sr.id
             WHERE e.body_checked = 0
@@ -365,10 +366,17 @@ class Store:
         *,
         body_checked: bool,
         body_mention_detected: bool,
+        body_detection_method: Optional[str] = None,
+        body_match_excerpt_redacted: Optional[str] = None,
     ) -> None:
-        """Idempotent update of the two body classification flags on the emails row."""
+        """Idempotent update of body classification flags + Prompt 05 detection metadata.
+
+        Additive columns (body_detection_method, body_match_excerpt_redacted) are
+        optional and ignored on older DB schemas.
+        """
         conn = get_connection(self._db_path)
         with transaction(conn):
+            # Base columns always present
             conn.execute(
                 """
                 UPDATE emails
@@ -377,6 +385,20 @@ class Store:
                 """,
                 (1 if body_checked else 0, 1 if body_mention_detected else 0, source_record_id),
             )
+            # Additive P05 columns (best-effort; older schemas silently ignore via try)
+            if body_detection_method is not None or body_match_excerpt_redacted is not None:
+                try:
+                    conn.execute(
+                        """
+                        UPDATE emails
+                        SET body_detection_method = COALESCE(?, body_detection_method),
+                            body_match_excerpt_redacted = COALESCE(?, body_match_excerpt_redacted)
+                        WHERE source_record_id = ?
+                        """,
+                        (body_detection_method, body_match_excerpt_redacted, source_record_id),
+                    )
+                except Exception:
+                    pass  # schema not yet migrated or column missing — safe no-op
 
     # --- Diagnostics / counts (safe, redacted) ---
 
