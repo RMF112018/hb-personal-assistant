@@ -208,6 +208,30 @@ Any delegated permissions not currently granted (especially Mail.Read) will be g
 
 ---
 
+## Addendum Prompts 01–06 (Remediation Closeout) — Executed 2026-05-26
+
+**Executed as continuation after 947469d (P04) and 3e4f856 (P05)**
+
+### Summary of Work
+- P01–P04: lint baseline, path permission hardening + diagnostics paths, DB readiness + structured dry-run JSON, evidence-only delegated proof rerun (per handoff).
+- P05: Implemented `BodyInspector` (stdlib HTML stripper), `MailClient.get_message_body_for_inspection`, classifier body fallback + `detection_method`, additive store columns, `tests/test_body_mentions.py`. All validation green.
+- P06: Full matrix re-execution, final-closeout/ bundle (proof JSON + validation summary), doc updates (README, 00-README, this log), truthful acceptance classification.
+
+### Final Acceptance
+**CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER**
+
+All local code + path + DB + lint + test gates green. Delegated proof blocked at DNS resolution for `login.microsoftonline.com` (external infra). Paths writable at closeout. P05 body requirement satisfied.
+
+### Evidence
+- `docs/evidence/remediation-addendum/prompt-0[1-6]/`
+- `docs/evidence/remediation-addendum/final-closeout/`
+- New architecture note placeholder in 00-README.md
+- This log entry
+
+**Status**: ADDENDUM COMPLETE (scoped, truthful, no scope creep).
+
+---
+
 ## Prompt 04 — Graph Mail Calendar Read Model
 
 **Executed**: 2026-05-25

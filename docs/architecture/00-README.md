@@ -15,6 +15,7 @@ This directory contains living architecture and decision records for the HB Pers
 - `remediation-final-truthful-closeout.md` — Prompt 11 final remediation closeout status and acceptance gate evidence
 - `remediation-hardened-app-support-permissions.md` — Addendum Prompt 02 path initialization hardening and `diagnostics paths` repair guidance
 - `remediation-db-readiness-and-structured-dry-run-blocking.md` — Addendum Prompt 03 DB readiness gate and dry-run JSON blocked status behavior
+- `remediation-bounded-body-mention-detection.md` (to be added post-P05 closeout) — Addendum Prompt 05 bounded body inspector + MailClient fetch + classifier fallback (beyond preview)
 - `docs/decisions/` — Closed technical decisions (D-CLI-001 etc.)
 
 Remediation context: implementation reached `v1.3.0`, but acceptance is gated on remediation validation; prior closeout claims are superseded pending green remediation evidence.

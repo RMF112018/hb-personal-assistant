@@ -1,0 +1,9 @@
+{
+  "note": "Core P06 matrix outputs are in prompt-06/command-results/ (01-05) and cross-reference the large prompt-05/ tree (which contains the Phase 0 env + full P05 validation that fed into final closeout).",
+  "primary_evidence_dirs": [
+    "docs/evidence/remediation-addendum/prompt-05/",
+    "docs/evidence/remediation-addendum/prompt-06/",
+    "docs/evidence/remediation-addendum/final-closeout/"
+  ],
+  "generated": "2026-05-26"
+}
