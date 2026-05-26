@@ -13,9 +13,8 @@ from typing import Optional
 from hb_assistant.actions.extractor import extract_candidates
 from hb_assistant.actions.models import ActionItem
 from hb_assistant.links.registry import SourceLinkRegistry
-from hb_assistant.store import get_connection, transaction
-from hb_assistant.store.repositories import Store
 from hb_assistant.store.errors import StoreReadinessError
+from hb_assistant.store.repositories import Store
 
 
 class ActionService:
@@ -44,31 +43,25 @@ class ActionService:
 
             if not dry_run:
                 for c in cands:
-                    conn = get_connection(self._db_path)
-                    with transaction(conn):
-                        cur = conn.execute(
-                            """
-                            INSERT INTO action_items (stable_key, action_type, title, due_date, confidence, status)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                            ON CONFLICT(stable_key) DO NOTHING
-                            RETURNING id
-                            """,
-                            (c.stable_key, c.action_type, c.title, c.due_date, c.confidence, c.status),
-                        )
-                        row = cur.fetchone()
-                        if row:
-                            ai_id = int(row[0])
-                            # Provenance link using discovered create_source_link (action_item_id support)
-                            src_id = None
-                            if c.sources:
-                                src_id = c.sources[0].get("source_id")
-                            self.store.create_source_link(
-                                from_source_record_id=src_id,
-                                to_source_record_id=src_id,
-                                action_item_id=ai_id,
-                                link_type="parsed_from",
-                                confidence=c.confidence,
-                            )
+                    ai_id = self.store.upsert_action_item(
+                        stable_key=c.stable_key,
+                        action_type=c.action_type,
+                        title=c.title,
+                        due_date=c.due_date,
+                        confidence=c.confidence,
+                        status=c.status,
+                    )
+                    # Provenance via registry (mandatory source link for every persisted action)
+                    src_id = None
+                    if c.sources:
+                        src_id = c.sources[0].get("source_id")
+                    self.registry.link_action(
+                        action_item_id=ai_id,
+                        from_source_record_id=src_id,
+                        to_source_record_id=src_id,
+                        link_type="parsed_from",
+                        confidence=c.confidence,
+                    )
 
             self.registry.finish_run(run_id)
             return cands

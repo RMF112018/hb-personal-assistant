@@ -116,6 +116,34 @@ class SourceLinkRegistry:
             confidence=confidence,
         )
 
+    def link_action(
+        self,
+        action_item_id: int,
+        from_source_record_id: Optional[int] = None,
+        to_source_record_id: Optional[int] = None,
+        link_type: str = "parsed_from",
+        confidence: Optional[float] = None,
+    ) -> int:
+        """Action-aware source link helper (supports action_item_id in create_source_link).
+
+        Idempotent via guard using existing get_links_for_source (ensures links exactly once).
+        Keeps high-level provenance gate.
+        """
+        self._require_valid_link_type(link_type)
+        # Guard for exactly-once: reuse get_links_for_source (no new store helpers)
+        src_id = from_source_record_id or to_source_record_id
+        if src_id is not None:
+            for l in self.store.get_links_for_source(src_id):
+                if l.get("action_item_id") == action_item_id and l.get("link_type") == link_type:
+                    return int(l.get("id", 0))
+        return self.store.create_source_link(
+            from_source_record_id=from_source_record_id,
+            to_source_record_id=to_source_record_id,
+            action_item_id=action_item_id,
+            link_type=link_type,
+            confidence=confidence,
+        )
+
     def get_links(self, source_record_id: int) -> list[dict[str, Any]]:
         return self.store.get_links_for_source(source_record_id)
 

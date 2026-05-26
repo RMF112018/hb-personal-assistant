@@ -335,6 +335,53 @@ class Store:
         )
         return [dict(r) for r in cur.fetchall()]
 
+    def upsert_action_item(
+        self,
+        *,
+        stable_key: str,
+        action_type: str,
+        title: str,
+        confidence: float,
+        due_date: Optional[str] = None,
+        status: str = "open",
+    ) -> int:
+        """Upsert action_item by stable_key. Returns id (new or existing).
+
+        Preserves completed status/completed_at on re-seen (never resets completed items).
+        Updates other fields safely with COALESCE per upsert_source_record pattern.
+        """
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                INSERT INTO action_items
+                    (stable_key, action_type, title, due_date, confidence, status, completed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(stable_key) DO UPDATE SET
+                    action_type = excluded.action_type,
+                    title = COALESCE(excluded.title, action_items.title),
+                    due_date = COALESCE(excluded.due_date, action_items.due_date),
+                    confidence = excluded.confidence,
+                    status = CASE
+                        WHEN action_items.status = 'completed' OR action_items.completed_at IS NOT NULL
+                        THEN action_items.status
+                        ELSE excluded.status
+                    END,
+                    completed_at = COALESCE(action_items.completed_at, excluded.completed_at)
+                RETURNING id
+                """,
+                (stable_key, action_type, title, due_date, confidence, status, None),
+            )
+            row = cur.fetchone()
+            return int(row[0])
+
+    def get_action_item_by_stable_key(self, stable_key: str) -> Optional[dict[str, Any]]:
+        """Return action_item by stable_key or None (for tests/verification)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute("SELECT * FROM action_items WHERE stable_key = ?", (stable_key,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+
     # --- Phase 6: body classification flag helpers (minimal, no body text ever read or written) ---
 
     def get_emails_needing_body_check(self, limit: int = 100) -> list[dict[str, Any]]:
