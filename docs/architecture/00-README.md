@@ -20,6 +20,7 @@ This directory contains living architecture and decision records for the HB Pers
 - `remediation-blocker-taxonomy-correction.md` — Phase 14 Prompt 01: blocker taxonomy correction, removal of stale DNS claims, D-P14-011 decision record, and prompt-01 evidence package.
 - `remediation-idempotent-action-persistence.md` — Phase 14 Prompt 03: idempotent action upsert by stable_key (completed status preserved), action-aware source link helper in Registry, service refactor, and duplicate/completed/migration tests.
 - `remediation-signal-integration-action-intelligence.md` — Phase 14 Prompt 04: multi-source bounded signal loading (body mentions, parser, calendar, file review, retrieval) into actions extractor, phrase mapping for full actionTypes, confidence + weak monitor, with seeded-DB tests and CLI dry-run validation.
+- `remediation-morning-run-orchestration-upgrade.md` — Phase 14 Prompt 07: full 05 stage model in orchestrator with Graph consent blocker classification (skipped_* for Graph while local stages continue), P02-P06 integration (actions, context, brief+obsidian provenance), explicit failure isolation, and exact 05 JSON contract (blocker_classification + stages array).
 - `docs/decisions/` — Closed technical decisions (D-CLI-001 etc.)
 
 Remediation context: implementation reached `v1.3.0`, but acceptance is gated on remediation validation; prior closeout claims are superseded pending green remediation evidence.

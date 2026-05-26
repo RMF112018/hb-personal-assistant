@@ -1,0 +1,130 @@
+=== P07 VERIFICATION: hb run morning --dry-run --json ===
+{
+  "implemented": true,
+  "phase": 14,
+  "run_id": 21,
+  "orchestrator": {
+    "run_id": 22,
+    "started_at": "2026-05-26T11:47:20.603529+00:00",
+    "dry_run": true,
+    "config": {
+      "time": "05:00",
+      "weekend_behavior": "manual_only",
+      "catch_up": true
+    },
+    "stages": [
+      {
+        "stage": "path_readiness",
+        "status": "ok",
+        "reason": null,
+        "counts": {
+          "app_support": true
+        }
+      },
+      {
+        "stage": "store_readiness",
+        "status": "ok",
+        "reason": null,
+        "counts": {}
+      },
+      {
+        "stage": "graph_auth_status",
+        "status": "skipped",
+        "reason": "skipped_no_token",
+        "counts": {}
+      },
+      {
+        "stage": "graph_retrieval",
+        "status": "skipped",
+        "reason": "skipped_no_token",
+        "counts": {}
+      },
+      {
+        "stage": "local_signal_load",
+        "status": "ok",
+        "reason": null,
+        "counts": {
+          "body_mentions": 0,
+          "file_queue": 0
+        }
+      },
+      {
+        "stage": "classification",
+        "status": "ok",
+        "reason": null,
+        "counts": {}
+      },
+      {
+        "stage": "action_extraction",
+        "status": "ok",
+        "reason": null,
+        "counts": {
+          "extracted": 0
+        }
+      },
+      {
+        "stage": "workstream_context",
+        "status": "ok",
+        "reason": null,
+        "counts": {
+          "retrieved": 0,
+          "actions": 0
+        }
+      },
+      {
+        "stage": "file_ingestion_preview",
+        "status": "ok",
+        "reason": null,
+        "counts": {
+          "candidates": 0
+        }
+      },
+      {
+        "stage": "brief_generation",
+        "status": "ok",
+        "reason": null,
+        "counts": {
+          "generated": true,
+          "len": 406
+        }
+      },
+      {
+        "stage": "obsidian_write",
+        "status": "completed_dry_run",
+        "reason": null,
+        "counts": {
+          "wrote": false
+        }
+      },
+      {
+        "stage": "evidence_write",
+        "status": "ok",
+        "reason": null,
+        "counts": {}
+      },
+      {
+        "stage": "run_ledger_finish",
+        "status": "ok",
+        "reason": null,
+        "counts": {}
+      }
+    ],
+    "notes": [
+      "catch-up not required (recent ledger entry)"
+    ],
+    "blocker_classification": "NO_GRAPH_TOKEN",
+    "outputs": {
+      "brief_generated": true,
+      "obsidian_write_mode": "dry_run",
+      "evidence_path": null
+    },
+    "safety": {
+      "m365_writeback": false,
+      "full_email_bodies_persisted": false,
+      "full_file_contents_persisted": false
+    },
+    "decision": "completed_dry_run",
+    "evidence_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260526-074720.json"
+  }
+}
+EXIT_CODE=0

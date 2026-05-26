@@ -1,0 +1,3 @@
+=== P07 VERIFICATION: ruff ===
+[1;32mAll checks passed![0m
+EXIT_CODE=0

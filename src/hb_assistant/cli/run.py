@@ -39,7 +39,7 @@ def morning_cmd(
         reg.finish_run(run_id, status="completed-dry-run" if dry_run else "completed")
         payload: Dict[str, Any] = {
             "implemented": True,
-            "phase": 12,
+            "phase": 14,
             "run_id": run_id,
             "orchestrator": orch_result,
         }
