@@ -23,6 +23,7 @@ from . import diagnostics as diag_mod
 from . import files as files_mod
 from . import run as run_mod
 from . import search as search_mod
+from . import actions as actions_mod
 
 app = typer.Typer(
     name="hb-assistant",
@@ -56,6 +57,7 @@ def main(
 app.add_typer(auth_mod.app, name="auth")
 app.add_typer(diag_mod.app, name="diagnostics")
 app.add_typer(files_mod.app, name="files")
+app.add_typer(actions_mod.app, name="actions")
 app.add_typer(search_mod.app, name="search")
 app.add_typer(run_mod.app, name="run")
 app.add_typer(auto_mod.app, name="automation")
@@ -73,7 +75,7 @@ def _make_stub(name: str):
     return _stub
 
 
-for _n in ("vault", "sync", "actions", "brief"):
+for _n in ("vault", "sync", "brief"):
     _make_stub(_n)
 
 
