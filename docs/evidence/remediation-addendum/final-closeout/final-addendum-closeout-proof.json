@@ -1,24 +1,15 @@
 {
-  "addendum": "Prompts 01-06 complete",
-  "final_state": "CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER",
-  "justification": "All local code, lint (ruff/mypy=0), pytest (full=0), paths (writable), dry-run JSON structured, P05 body detection, and scan gates green per terminal matrix runs. Delegated auth/graph/proof blocked exclusively at DNS resolution for login.microsoftonline.com (NameResolutionError in multiple captures). No Graph responses or token acquisition reached. Per spec rules: external infra blocker (not MS permission gap) because paths green and proof never reached Microsoft. No local code or path defect caused failure.",
-  "matrix": {
-    "pytest": "0 (07)",
-    "ruff": "0 (08)",
-    "mypy": "0 (09)",
-    "paths": "green (13 + context)",
-    "auth_status": "DNS block (11)",
-    "graph_safe": "DNS block (14)",
-    "proof_delegated": "blocked_no_token DNS (15)",
-    "dry_runs": "structured (19,20)",
-    "scan": "clean (17)",
-    "P05_body": "validated prior + matrix green"
+  "addendum": "Prompts 01-06 + reserved-scope auth defect fix",
+  "final_state": "NOT_ACCEPTED_FOR_DELEGATED_GRAPH_PROOF — RESERVED_SCOPE_AUTH_DEFECT",
+  "justification": "Local code gates (after scope sanitizer) + P05 body work are green. The delegated login blocker was a code defect: reserved scopes (offline_access etc.) were passed to MSAL. This superseded the prior DNS-only classification. The defect is now fixed with central sanitizer + diagnostics. Per spec: acceptance stays NOT_ACCEPTED... until auth login succeeds AND the delegated-graph proof reaches real Graph responses (permission gaps only, no reserved-scope errors).",
+  "defect_fixed": "reserved_scope_in_delegated_msal_login",
+  "matrix_after_fix": {
+    "pytest": "0",
+    "ruff": "0",
+    "mypy": "0",
+    "auth_login": "now uses sanitized scopes (see diagnostics)",
+    "proof_delegated": "re-evaluate after login (DNS may still be present in this env)"
   },
-  "external_blocker_detail": {
-    "type": "dns_network",
-    "endpoint": "login.microsoftonline.com + tenant 0e834bd7-628b-42c8-b9ec-ecebc9719be4",
-    "evidence": "prompt-06/command-results/11,14,15 + prior 12-17 probes"
-  },
-  "commit": "chore(closeout): regenerate addendum acceptance evidence",
-  "timestamp": "2026-05-26"
+  "evidence": "remediation-addendum/defect-reserved-scope-auth/ + updated final-closeout/",
+  "commit": "fix(auth): sanitize reserved scopes before delegated MSAL login"
 }

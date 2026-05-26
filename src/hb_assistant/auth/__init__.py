@@ -21,6 +21,7 @@ from .exceptions import (
     TokenCacheError,
 )
 from .providers import AppOnlyAuthProvider, DelegatedAuthProvider
+from .scope_policy import get_scope_diagnostics, sanitize_delegated_scopes
 from .token_cache_manager import TokenCacheManager
 
 __all__ = [
@@ -36,4 +37,6 @@ __all__ = [
     "ClassificationError",
     "TokenCacheError",
     "CertificateError",
+    "sanitize_delegated_scopes",
+    "get_scope_diagnostics",
 ]

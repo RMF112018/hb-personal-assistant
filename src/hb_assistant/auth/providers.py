@@ -15,6 +15,7 @@ from hb_assistant.config.path_policy import PathPolicy
 
 from .classifier import classify_token_claims, require_delegated, safe_redact_claims
 from .exceptions import AuthError, CertificateError, NoTokenError
+from .scope_policy import get_scope_diagnostics, sanitize_delegated_scopes
 from .token_cache_manager import TokenCacheManager
 
 
@@ -34,7 +35,9 @@ class DelegatedAuthProvider(_BaseProvider):
         super().__init__(path_policy)
         self.tenant_id = tenant_id
         self.client_id = client_id
-        self.default_scopes = scopes or ["User.Read", "offline_access"]
+        raw = scopes or ["User.Read", "offline_access"]
+        self._configured_scopes: List[str] = list(raw)
+        self.default_scopes: List[str] = sanitize_delegated_scopes(raw)
         self._app: Optional[msal.PublicClientApplication] = None
 
     def _get_app(self) -> msal.PublicClientApplication:
@@ -51,7 +54,8 @@ class DelegatedAuthProvider(_BaseProvider):
     def login(self, scopes: Optional[List[str]] = None, use_device_code: bool = True) -> Dict[str, Any]:
         """Interactive or device_code login. Persists to delegated cache."""
         app = self._get_app()
-        scopes = scopes or self.default_scopes
+        raw_scopes = scopes or self._configured_scopes
+        scopes = sanitize_delegated_scopes(raw_scopes)
 
         # Try silent first (existing account)
         accounts = app.get_accounts()
@@ -59,7 +63,7 @@ class DelegatedAuthProvider(_BaseProvider):
             result = app.acquire_token_silent(scopes, account=accounts[0])
             if result and "access_token" in result:
                 self._cache_mgr.save_cache(app.token_cache, app_only=False)
-                return {"status": "silent", "account": accounts[0].get("username")}
+                return {"status": "silent", "account": accounts[0].get("username"), **get_scope_diagnostics(raw_scopes)}
 
         # Fresh login
         if use_device_code:
@@ -76,11 +80,12 @@ class DelegatedAuthProvider(_BaseProvider):
             raise AuthError(f"Login failed: {result.get('error_description', result) if result else 'no result'}")
 
         self._cache_mgr.save_cache(app.token_cache, app_only=False)
-        return {"status": "success", "account": result.get("id_token_claims", {}).get("upn") or result.get("id_token_claims", {}).get("preferred_username")}
+        return {"status": "success", "account": result.get("id_token_claims", {}).get("upn") or result.get("id_token_claims", {}).get("preferred_username"), **get_scope_diagnostics(raw_scopes)}
 
     def get_token(self, scopes: Optional[List[str]] = None, force_refresh: bool = False) -> Dict[str, Any]:
         app = self._get_app()
-        scopes = scopes or self.default_scopes
+        raw_scopes = scopes or self._configured_scopes
+        scopes = sanitize_delegated_scopes(raw_scopes)
         accounts = app.get_accounts()
         if not accounts:
             raise NoTokenError("No delegated account in cache. Run `hb-assistant auth login` first.")
@@ -90,7 +95,7 @@ class DelegatedAuthProvider(_BaseProvider):
             raise NoTokenError("Failed to acquire delegated token (expired or revoked). Re-login required.")
 
         self._cache_mgr.save_cache(app.token_cache, app_only=False)
-        return result
+        return {**result, **get_scope_diagnostics(raw_scopes)}
 
     def logout(self) -> List[str]:
         app = self._get_app()
@@ -101,6 +106,7 @@ class DelegatedAuthProvider(_BaseProvider):
 
     def status_info(self) -> Dict[str, Any]:
         cache_info = self._cache_mgr.check_permissions()
+        diag = get_scope_diagnostics(self._configured_scopes)
         try:
             result = self.get_token(["User.Read"], force_refresh=False)
             claims = result.get("id_token_claims") or result.get("claims") or {}
@@ -114,9 +120,10 @@ class DelegatedAuthProvider(_BaseProvider):
                 "expires_in": result.get("expires_in"),
                 "cache": cache_info,
                 "safe_claims": safe_redact_claims(claims),
+                **diag,  # configured_scopes, effective_msal_scopes, removed_reserved_scopes
             }
         except NoTokenError:
-            return {"token_type": "none", "message": "No delegated token. Run login.", "cache": cache_info}
+            return {"token_type": "none", "message": "No delegated token. Run login.", "cache": cache_info, **diag}
 
 
 class AppOnlyAuthProvider(_BaseProvider):

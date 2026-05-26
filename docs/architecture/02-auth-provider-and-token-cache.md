@@ -66,3 +66,25 @@ Prompt 03 (Delegated Graph Capability Proof) — first production-grade use of t
 - `docs/plans/my-pa-phase-0/06_Graph_Integration_Specification.md`
 - `docs/plans/my-pa-phase-0/baseline_inputs/token-cache-location-and-encryption(1).md`
 - `docs/evidence/prompt-execution-log.md` (Prompt 02 section)
+
+---
+
+## Remediation Note: Reserved Scope Sanitization (2026-05-26)
+
+**Defect**: Delegated `auth login` (and `get_token`) passed reserved scopes (`offline_access`, `openid`, `profile`) directly to MSAL `PublicClientApplication.acquire_*` / `initiate_device_flow`. MSAL rejects these, causing login failure that was previously mis-attributed to DNS.
+
+**Fix**:
+- New module: `src/hb_assistant/auth/scope_policy.py`
+  - `sanitize_delegated_scopes()` — removes only the three reserved scopes (case-insensitive), preserves Graph scopes, de-dupes while keeping order.
+  - `get_scope_diagnostics()` — returns `configured_scopes`, `effective_msal_scopes`, `removed_reserved_scopes`.
+- Wired defensively in `DelegatedAuthProvider.__init__`, `login`, and `get_token` (before every MSAL call).
+- `status_info()`, `auth status --json`, `diagnostics graph --safe`, and proof output now surface the three diagnostic fields.
+
+**Why this matters**:
+- MSAL contract: reserved scopes must never be requested in the token request for public client delegated flows.
+- The sanitizer is the single source of truth; raw config scopes remain visible for operators.
+
+**Post-fix acceptance**:
+Moved from `CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER` (DNS) to `NOT_ACCEPTED_FOR_DELEGATED_GRAPH_PROOF — RESERVED_SCOPE_AUTH_DEFECT` until `auth login` + proof demonstrate the defect is gone and only permission gaps (if any) remain.
+
+This note supersedes earlier DNS-centric language in evidence.
