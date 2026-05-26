@@ -8,8 +8,8 @@ Bobby-only local-first MVP for Microsoft 365 delegated access, source-linked ret
 
 - Latest implemented manifest in this repository: `v1.3.0`
 - Remediation status: **Addendum (Prompts 01–06) complete.**
-- Closeout status (addendum): **CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER** (see `docs/evidence/remediation-addendum/final-closeout/` and `docs/evidence/remediation-addendum/prompt-06/`).
-- DNS/network resolution failure for Microsoft login endpoints is the sole remaining external blocker after local path + code gates (P01–P05) passed. Paths green at final matrix. Prompt 06 matrix executed; truthful evidence bundle regenerated.
+- Closeout status (addendum): **CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_ADMIN_CONSENT_BLOCKER** (see `docs/evidence/remediation-addendum/final-closeout/` and `docs/evidence/remediation-addendum/prompt-06/`; DNS language from that era corrected as misattribution in Phase 14 Prompt 01 — see `docs/evidence/phase-14-local-runtime-workstream-intelligence/prompt-01/`).
+- The active external blocker is tenant/admin consent pending for delegated Microsoft Graph permissions (auth flow reaches Microsoft; no current command evidence of DNS failure). Local path + code gates (P01–P05) passed. Prompt 06 matrix executed; truthful evidence bundle regenerated. Blocker taxonomy corrected in Phase 14 Prompt 01.
 
 ## Quickstart (after clone)
 

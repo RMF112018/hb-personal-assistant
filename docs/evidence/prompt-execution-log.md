@@ -218,9 +218,9 @@ Any delegated permissions not currently granted (especially Mail.Read) will be g
 - P06: Full matrix re-execution, final-closeout/ bundle (proof JSON + validation summary), doc updates (README, 00-README, this log), truthful acceptance classification.
 
 ### Final Acceptance
-**CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER**
+**CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER** (at time of Addendum closeout; corrected in Phase 14 Prompt 01 to `CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_ADMIN_CONSENT_BLOCKER`)
 
-All local code + path + DB + lint + test gates green. Delegated proof blocked at DNS resolution for `login.microsoftonline.com` (external infra). Paths writable at closeout. P05 body requirement satisfied.
+All local code + path + DB + lint + test gates green. Delegated proof blocked at DNS resolution for `login.microsoftonline.com` (external infra per evidence at time). Paths writable at closeout. P05 body requirement satisfied. **Taxonomy correction note (P01)**: DNS was a misattribution; active blocker is tenant/admin consent. See `docs/evidence/phase-14-local-runtime-workstream-intelligence/prompt-01/`.
 
 ### Evidence
 - `docs/evidence/remediation-addendum/prompt-0[1-6]/`
@@ -234,9 +234,9 @@ All local code + path + DB + lint + test gates green. Delegated proof blocked at
 
 ## Prompt 06 — Final Addendum Closeout (executed 2026-05-26)
 
-Full validation matrix run via terminal (no re-reads). All local gates (pytest/ruff/mypy/paths/dry-run/scan/P05) green. Delegated proof blocked at DNS (external infra). 
+Full validation matrix run via terminal (no re-reads). All local gates (pytest/ruff/mypy/paths/dry-run/scan/P05) green. Delegated proof blocked at DNS (external infra per P06 evidence). 
 
-**Acceptance**: CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER
+**Acceptance** (at time): CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER. **Corrected in Phase 14 Prompt 01**: `CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_ADMIN_CONSENT_BLOCKER` (see `docs/evidence/phase-14-local-runtime-workstream-intelligence/prompt-01/` for taxonomy, evidence, and validation that DNS claims were stale).
 
 Evidence: `docs/evidence/remediation-addendum/prompt-06/` + `final-closeout/`
 

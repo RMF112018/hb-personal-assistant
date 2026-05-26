@@ -16,7 +16,8 @@ This directory contains living architecture and decision records for the HB Pers
 - `remediation-hardened-app-support-permissions.md` — Addendum Prompt 02 path initialization hardening and `diagnostics paths` repair guidance
 - `remediation-db-readiness-and-structured-dry-run-blocking.md` — Addendum Prompt 03 DB readiness gate and dry-run JSON blocked status behavior
 - `remediation-bounded-body-mention-detection.md` (P05) — Addendum Prompt 05 bounded body inspector + MailClient fetch + classifier fallback (beyond preview)
-- Prompt 06 final closeout: `docs/evidence/remediation-addendum/final-closeout/` + truthful **CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_BLOCKER** (DNS external; all local gates green).
+- Prompt 06 final closeout: `docs/evidence/remediation-addendum/final-closeout/` + truthful **CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_ADMIN_CONSENT_BLOCKER** (DNS language corrected as misattribution in Phase 14 Prompt 01; see `docs/evidence/phase-14-local-runtime-workstream-intelligence/prompt-01/`).
+- `remediation-blocker-taxonomy-correction.md` — Phase 14 Prompt 01: blocker taxonomy correction, removal of stale DNS claims, D-P14-011 decision record, and prompt-01 evidence package.
 - `docs/decisions/` — Closed technical decisions (D-CLI-001 etc.)
 
 Remediation context: implementation reached `v1.3.0`, but acceptance is gated on remediation validation; prior closeout claims are superseded pending green remediation evidence.

@@ -1,0 +1,30 @@
+=== REMOTE ===
+originhttps://github.com/RMF112018/hb-personal-assistant.git (fetch)
+originhttps://github.com/RMF112018/hb-personal-assistant.git (push)
+=== BRANCH ===
+main
+=== HEAD ===
+6f2a3dd0284ee69ade6f22a209b1a35ffc4f2349
+=== LOG (top 20) ===
+6f2a3dd docs(plans): add Phase 14 workstream intelligence package for hb-personal-assistant v1.3.0
+7b36a94 chore(evidence): update to external tenant/admin-consent blocker after scope fix
+dc438ac fix(auth): sanitize reserved scopes before delegated MSAL login
+2972d95 chore(remediation): ignore local app-support artifacts and refresh delegated graph proof
+f7b66d5 chore(closeout): regenerate addendum acceptance evidence
+f12b66e chore(evidence): refresh delegated graph proof and add addendum P06 handoff for v1.3.0
+64739d1 docs(plans): add remediation gap-closure package for hb-personal-assistant v1.3.0
+7757b8f chore(closeout): regenerate addendum acceptance evidence
+3e4f856 feat(mail): add bounded body mention detection beyond preview
+947469d test(graph): rerun delegated proof after local path repair
+e962cd3 fix(store): add db readiness checks and structured runtime errors
+baff53d fix(paths): harden application support permission handling
+f5f96b6 fix(security): clean sensitive scanner lint violations
+aa1cf1b chore(closeout): regenerate truthful final remediation evidence
+2e8c4eb fix(security): implement bounded content sensitive scan
+c4d2848 feat(brief): wire daily brief to current context sources
+aad4181 fix(files): require source provenance for file ingestion
+47dc343 feat(graph): add bounded paging to read clients
+5f77c5e test(graph): refresh delegated graph proof for current runtime
+3ce58ec fix(validation): make tests lint and type checks pass
+=== STATUS ===
+?? CLAUDE.md

@@ -1,0 +1,48 @@
+{
+  "implemented": true,
+  "phase": 12,
+  "run_id": 11,
+  "orchestrator": {
+    "run_id": 12,
+    "started_at": "2026-05-26T08:33:02.194133+00:00",
+    "dry_run": true,
+    "config": {
+      "time": "05:00",
+      "weekend_behavior": "manual_only",
+      "catch_up": true
+    },
+    "stages": [
+      {
+        "stage": "context",
+        "status": "ok",
+        "reason": null,
+        "summary": {
+          "retrieved": 0,
+          "actions": 0
+        }
+      },
+      {
+        "stage": "brief_preview",
+        "status": "ok",
+        "reason": null,
+        "summary": {
+          "generated": true,
+          "len": 406
+        }
+      },
+      {
+        "stage": "files_discover",
+        "status": "ok",
+        "reason": null,
+        "summary": {
+          "candidates": 0
+        }
+      }
+    ],
+    "notes": [
+      "catch-up not required (recent ledger entry)"
+    ],
+    "decision": "completed",
+    "evidence_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence/phase-12-runs/morning-orchestrator-20260526-043302.json"
+  }
+}
