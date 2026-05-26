@@ -1,10 +1,10 @@
 {
   "proof": "delegated-graph",
   "safe": true,
-  "timestamp": "2026-05-25T14:42:33.978845+00:00",
+  "timestamp": "2026-05-26T06:43:35.407308+00:00",
   "steps": [],
   "status": "blocked_no_token",
   "reason": "delegated_token_unavailable",
   "remediation": "Run hb-assistant auth login --json and retry proof.",
-  "error": "HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /0e834bd7-628b-42c8-b9ec-ecebc9719be4/v2.0/.well-known/openid-configuration (Caused by NameResolutionError(\"HTTPSConnection("
+  "error": "No delegated account in cache. Run `hb-assistant auth login` first."
 }
