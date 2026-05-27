@@ -200,6 +200,13 @@ def test_orchestrator_05_stages_and_blocker_classification_dry_run(tmp_path):
     assert all(s.get("status") in ("ok", "skipped", "completed_dry_run") for s in stages)
     assert any("brief" in s.get("stage", "") for s in stages)
 
+    # Prompt 01: action_extraction stage must be present and report counts (post-fix for correct Service.extract invocation)
+    action_stage = next((s for s in stages if s.get("stage") == "action_extraction"), None)
+    assert action_stage is not None
+    assert action_stage.get("status") in ("ok", "completed_dry_run")
+    assert "counts" in action_stage
+    assert "extracted" in action_stage["counts"]
+
 
 def test_graph_consent_blocked_local_stages_continue(tmp_path):
     dbp = tmp_path / "p07-graph.sqlite"
@@ -211,6 +218,12 @@ def test_graph_consent_blocked_local_stages_continue(tmp_path):
     # Even if graph_auth is skipped, local stages (action, context, brief, obsidian) must have run
     local_ok = any(s.get("stage") in ("action_extraction", "workstream_context", "brief_generation", "obsidian_write") and s.get("status") in ("ok", "completed_dry_run") for s in stages)
     assert local_ok or len(stages) > 3  # at minimum the loop executed beyond graph
+
+    # Prompt 01: explicit action_extraction stage success + counts even under Graph consent block (local-only path)
+    action_stage = next((s for s in stages if s.get("stage") == "action_extraction"), None)
+    assert action_stage is not None
+    assert action_stage.get("status") in ("ok", "completed_dry_run")
+    assert "counts" in action_stage and "extracted" in action_stage.get("counts", {})
 
 
 def test_dry_run_05_outputs_no_mutation(tmp_path):

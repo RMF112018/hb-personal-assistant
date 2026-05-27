@@ -181,8 +181,7 @@ class MorningRunOrchestrator:
                         stage_result["status"] = "ok"
                     elif stage_name == "action_extraction":
                         from hb_assistant.actions.service import ActionService
-                        svc = ActionService(store=self.store)
-                        actions = svc.extract_candidates(dry_run=dry_run) if hasattr(svc, "extract_candidates") else []
+                        actions = ActionService(store=self.store).extract(dry_run=dry_run)
                         stage_result["status"] = "ok"
                         stage_result["counts"] = {"extracted": len(actions) if actions else 0}
                     elif stage_name == "workstream_context":
