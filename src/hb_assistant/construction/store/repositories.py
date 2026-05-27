@@ -196,6 +196,31 @@ class ConstructionStore:
         )
         return dict(cur.fetchall())
 
+    def list_inventory_changed_since(
+        self,
+        source_key: str,
+        since_iso: str,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Return inventory rows with last_seen_at > since_iso (most recent first)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT source_key, drive_id, item_id, name, web_url, parent_path,
+                   size_bytes, is_folder, last_modified, etag, status,
+                   first_seen_at, last_seen_at
+            FROM construction_drive_item_inventory
+            WHERE source_key = ? AND last_seen_at > ?
+            ORDER BY last_seen_at DESC
+            LIMIT ?
+            """,
+            (source_key, since_iso, limit),
+        )
+        keys = ("source_key", "drive_id", "item_id", "name", "web_url", "parent_path",
+                "size_bytes", "is_folder", "last_modified", "etag", "status",
+                "first_seen_at", "last_seen_at")
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
     # --- receipts -----------------------------------------------------------
 
     def insert_crawl_receipt(

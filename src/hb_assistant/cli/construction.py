@@ -38,6 +38,12 @@ from hb_assistant.construction.graph import (
     ConstructionGraphResolver,
     ResolutionResult,
 )
+from hb_assistant.construction.manifests import (
+    ConstructionVaultWriter,
+    ManifestRenderer,
+    ManifestService,
+    VaultRootNotConfigured,
+)
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient
 
@@ -305,3 +311,166 @@ def graph_delta(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if receipt.status in {"ok", "unresolved"} else 1)
+
+
+def _utc_iso() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat()
+
+
+@app.command("sync")
+def sync_cmd(
+    source: Optional[str] = typer.Option(None, "--source", help="Run only this source_key."),
+    changed_only: bool = typer.Option(
+        False, "--changed-only",
+        help="Skip sources with no inventory changes since their last receipt.",
+    ),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply",
+        help="Default dry-run. --apply writes Markdown to the construction vault root.",
+    ),
+    source_from_receipts_only: bool = typer.Option(
+        False, "--source-from-receipts-only",
+        help="Skip live Graph crawl entirely and project from stored receipts.",
+    ),
+    max_pages: int = typer.Option(50, "--max-pages"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Build manifest + sync + processing-receipt projections (SQLite is authoritative).
+
+    The Markdown output is a projection only — re-runnable, recomputable, never
+    the source of truth for sync state.
+    """
+
+    import uuid
+
+    registry = load_source_registry()
+    targets = [s for s in registry.sources if source is None or s.source_key == source]
+    if not targets:
+        payload = {
+            "command": "construction-agent sync",
+            "status": "not_found",
+            "requested": source,
+            "available": [s.source_key for s in registry.sources],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    store = ConstructionStore()
+    service = ManifestService(store)
+    run_id = str(uuid.uuid4())
+    started_at = _utc_iso()
+
+    # Construct the crawler if a token is available and the caller hasn't opted out.
+    crawler: Optional[ConstructionDeltaCrawler] = None
+    auth_payload: Optional[dict[str, Any]] = None
+    if not source_from_receipts_only:
+        provider = _build_auth_provider()
+        client, auth_payload = _build_graph_client_or_auth_payload(provider)
+        if client is not None:
+            crawler = ConstructionDeltaCrawler(client, store)
+
+    per_source: list = []
+    skipped: list[dict[str, Any]] = []
+    for src in targets:
+        if changed_only:
+            latest = store.list_recent_receipts(src.source_key, limit=1)
+            since = latest[0]["finished_at"] if latest else "1970-01-01T00:00:00+00:00"
+            changed_rows = store.list_inventory_changed_since(src.source_key, since, limit=1)
+            if not changed_rows:
+                skipped.append({"source_key": src.source_key, "reason": "no_changes_since_last_receipt"})
+                continue
+
+        if crawler is not None:
+            crawl_receipt = crawler.crawl(
+                source_key=src.source_key, dry_run=dry_run, max_pages=max_pages,
+            )
+            per_source.append(service.build_sync_receipt(crawl_receipt))
+        else:
+            per_source.append(
+                service.build_sync_receipt_from_store(src.source_key, run_id, started_at)
+            )
+
+    finished_at = _utc_iso()
+    mode = "dry_run" if dry_run else "apply"
+    processing = service.build_processing_receipt(
+        run_id=run_id,
+        mode=mode,
+        started_at=started_at,
+        finished_at=finished_at,
+        per_source=per_source,
+    )
+    manifests = {
+        src.source_key: service.build_source_manifest(src, run_id=run_id)
+        for src in targets
+        if not any(s["source_key"] == src.source_key for s in skipped)
+    }
+
+    rendered_manifests = {
+        k: ManifestRenderer.render_source_manifest(m) for k, m in manifests.items()
+    }
+    rendered_sync = {
+        r.source_key: ManifestRenderer.render_sync_receipt(r) for r in per_source
+    }
+    rendered_processing = ManifestRenderer.render_processing_receipt(processing)
+
+    written: list[dict[str, Any]] = []
+    apply_error: Optional[str] = None
+    if not dry_run:
+        try:
+            writer = ConstructionVaultWriter()
+            for sk, rendered in rendered_manifests.items():
+                wr = writer.write_source_manifest(source_key=sk, rendered=rendered)
+                written.append({"kind": wr.kind, "path": str(wr.path), "bytes": wr.bytes_written})
+            for r in per_source:
+                wr = writer.write_sync_receipt(
+                    source_key=r.source_key, run_id=r.run_id,
+                    started_at=r.started_at, rendered=rendered_sync[r.source_key],
+                )
+                written.append({"kind": wr.kind, "path": str(wr.path), "bytes": wr.bytes_written})
+            wr = writer.write_processing_receipt(
+                run_id=processing.run_id, started_at=processing.started_at,
+                rendered=rendered_processing,
+            )
+            written.append({"kind": wr.kind, "path": str(wr.path), "bytes": wr.bytes_written})
+        except VaultRootNotConfigured as e:
+            apply_error = str(e)
+
+    payload: dict[str, Any] = {
+        "command": "construction-agent sync",
+        "mode": mode,
+        "run_id": run_id,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "targets": [s.source_key for s in targets],
+        "skipped": skipped,
+        "processing_receipt": processing.model_dump(),
+        "manifests": {k: m.model_dump() for k, m in manifests.items()},
+        "rendered": {
+            "processing_receipt_md": rendered_processing,
+            "sync_receipts_md": rendered_sync,
+            "source_manifests_md": rendered_manifests,
+        },
+        "written": written,
+        "guardrails": {
+            "external_systems": "read_only",
+            "writeback": "none",
+            "metadata_only": True,
+            "markdown_role": "projection_only",
+            "sqlite_authoritative": True,
+            "delta_token_storage": "sqlite",
+        },
+    }
+    if auth_payload is not None:
+        payload["auth"] = auth_payload
+    if apply_error:
+        payload["status"] = "vault_root_not_configured"
+        payload["error"] = apply_error
+        payload["hint"] = (
+            "Set HB_CONSTRUCTION_VAULT_ROOT to a writable directory and re-run --apply."
+        )
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
