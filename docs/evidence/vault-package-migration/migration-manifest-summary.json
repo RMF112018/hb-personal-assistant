@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "project": "HB Personal Assistant",
+  "repo_slug": "RMF112018/hb-personal-assistant",
+  "migration_date": "2026-05-27",
+  "packages": [
+    {"source":"docs/plans/my-pa-phase-0/gap-closure/add-on","destination":"09_Implementation_Packages/Closed/My_PA_Phase_0_Gap_Closure_Add_On","classification":"Closed","source_payload_file_count":18,"copy_hash_verification":"passed","metadata_verification":"passed","post_metadata_hash_status":"changed-as-expected"},
+    {"source":"docs/plans/my-pa-phase-0/gap-closure","destination":"09_Implementation_Packages/Superseded/My_PA_Phase_0_Gap_Closure","classification":"Superseded","source_payload_file_count":25,"copy_hash_verification":"passed","metadata_verification":"passed","post_metadata_hash_status":"changed-as-expected"},
+    {"source":"docs/plans/my-pa-phase-0","destination":"09_Implementation_Packages/Superseded/My_PA_Phase_0","classification":"Superseded","source_payload_file_count":60,"copy_hash_verification":"passed","metadata_verification":"passed","post_metadata_hash_status":"changed-as-expected"},
+    {"source":"docs/plans/ph-14-workstream-Intelligence","destination":"09_Implementation_Packages/Superseded/PH_14_Workstream_Intelligence","classification":"Superseded","source_payload_file_count":41,"copy_hash_verification":"passed","metadata_verification":"passed","post_metadata_hash_status":"changed-as-expected"},
+    {"source":"docs/plans/ph-15-MVP-Local-Runtime-Hardening","destination":"09_Implementation_Packages/Active/PH_15_MVP_Local_Runtime_Hardening","classification":"Active","source_payload_file_count":29,"copy_hash_verification":"passed","metadata_verification":"passed","post_metadata_hash_status":"changed-as-expected"}
+  ],
+  "packages_skipped": [],
+  "registry_updates_pending": true,
+  "repo_cleanup_safe": false
+}

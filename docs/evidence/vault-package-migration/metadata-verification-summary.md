@@ -1,0 +1,24 @@
+# Prompt 03 Metadata Verification Summary
+
+- Verification rule: pre-metadata hashes must match exactly; post-metadata changes are acceptable only when `metadata_modified=true`.
+- Result by package:
+  - docs/plans/my-pa-phase-0/gap-closure/add-on
+    - copy_hash_verification: passed
+    - metadata_verification: passed
+    - post_metadata_hash_status: changed-as-expected
+  - docs/plans/my-pa-phase-0/gap-closure
+    - copy_hash_verification: passed
+    - metadata_verification: passed
+    - post_metadata_hash_status: changed-as-expected
+  - docs/plans/my-pa-phase-0
+    - copy_hash_verification: passed
+    - metadata_verification: passed
+    - post_metadata_hash_status: changed-as-expected
+  - docs/plans/ph-14-workstream-Intelligence
+    - copy_hash_verification: passed
+    - metadata_verification: passed
+    - post_metadata_hash_status: changed-as-expected
+  - docs/plans/ph-15-MVP-Local-Runtime-Hardening
+    - copy_hash_verification: passed
+    - metadata_verification: passed
+    - post_metadata_hash_status: changed-as-expected
