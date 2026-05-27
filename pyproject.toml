@@ -70,20 +70,22 @@ extend-exclude = [
   "src/hb_assistant/graph",
   "src/hb_assistant/links",
   "src/hb_assistant/normalize",
-  "src/hb_assistant/obsidian",
-  "src/hb_assistant/retrieval",
+  # P05: target scope now under strict (obsidian, retrieval, automation, cli/run, relevant tests narrowed)
+  # "src/hb_assistant/obsidian",
+  # "src/hb_assistant/retrieval",
   "src/hb_assistant/store",
   "src/hb_assistant/cli/diagnostics.py",
   "src/hb_assistant/cli/files.py",
   "src/hb_assistant/cli/search.py",
   "src/hb_assistant/cli/auth.py",
-  "src/hb_assistant/cli/run.py",
+  # "src/hb_assistant/cli/run.py",
   "src/hb_assistant/auth",
   "src/hb_assistant/config/__init__.py",
   "src/hb_assistant/config/path_policy.py",
-  "src/hb_assistant/automation/orchestrator.py",
+  # "src/hb_assistant/automation/orchestrator.py",
   "scripts/proofs/delegated_graph_capability_proof.py",
-  "tests/**",
+  # P05: narrowed blanket tests/** 
+  "tests/test_!(actions|automation|obsidian)*.py",
 ]
 
 [tool.ruff.lint]
@@ -113,6 +115,13 @@ module = [
   "hb_assistant.automation.launchd_manager",
   "hb_assistant.config.path_policy",
   "hb_assistant.cli.automation",
+  # P05 target scope (now strict)
+  "hb_assistant.actions.*",
+  "hb_assistant.automation.*",
+  "hb_assistant.obsidian.*",
+  "hb_assistant.retrieval.context",
+  "hb_assistant.cli.actions",
+  "hb_assistant.cli.run",
 ]
 ignore_errors = false
 follow_imports = "normal"

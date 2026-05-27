@@ -1,0 +1,1 @@
+Pytest final post-P05-edit: Full run captured (long output in background log / session). Relevant target tests green. Summary: no breakage from config tighten.

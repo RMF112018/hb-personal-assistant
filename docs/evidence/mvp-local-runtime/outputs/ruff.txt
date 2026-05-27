@@ -1,0 +1,686 @@
+[1m[91mF841 [0m[1mLocal variable `would` is assigned to but never used[0m
+   [1m[94m-->[0m src/hb_assistant/automation/orchestrator.py:219:25
+    [1m[94m|[0m
+[1m[94m217 |[0m [1m[94m…[0m     recent = self.store.get_recent_action_items(limit=20)
+[1m[94m218 |[0m [1m[94m…[0m     aids = [int(a["id"]) for a in recent if a.get("id") is not None]
+[1m[94m219 |[0m [1m[94m…[0m     would = writer.write_bounded_section(date.today(), inner, frontmatter_updates=fm, dry_run=dry_run, record_link=not dry_run, act[1m[94m…[0m
+    [1m[94m|[0m       [1m[91m^^^^^[0m
+[1m[94m220 |[0m [1m[94m…[0m     stage_result["status"] = "ok" if not dry_run else "completed_dry_run"
+[1m[94m221 |[0m [1m[94m…[0m     stage_result["counts"] = {"wrote": not dry_run}
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `would`[0m
+
+[1m[91mB904 [0m[1mWithin an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling[0m
+  [1m[94m-->[0m src/hb_assistant/cli/actions.py:51:9
+   [1m[94m|[0m
+[1m[94m49 |[0m         payload = {"error": "StoreReadinessError", "command": "actions extract", "detail": str(e)}
+[1m[94m50 |[0m         typer.echo(json.dumps(payload, indent=2) if json_out else f"error: {e}")
+[1m[94m51 |[0m         raise typer.Exit(1)
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+
+[1m[91mB904 [0m[1mWithin an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling[0m
+  [1m[94m-->[0m src/hb_assistant/cli/actions.py:78:9
+   [1m[94m|[0m
+[1m[94m76 |[0m         payload = {"error": "StoreReadinessError", "command": "actions list", "detail": str(e)}
+[1m[94m77 |[0m         typer.echo(json.dumps(payload, indent=2) if json_out else f"error: {e}")
+[1m[94m78 |[0m         raise typer.Exit(1)
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m src/hb_assistant/cli/main.py:12:1
+   [1m[94m|[0m
+[1m[94m10 |[0m   """
+[1m[94m11 |[0m
+[1m[94m12 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m13 |[0m [1m[91m|[0m
+[1m[94m14 |[0m [1m[91m|[0m import json
+[1m[94m15 |[0m [1m[91m|[0m
+[1m[94m16 |[0m [1m[91m|[0m import typer
+[1m[94m17 |[0m [1m[91m|[0m
+[1m[94m18 |[0m [1m[91m|[0m from hb_assistant import __version__
+[1m[94m19 |[0m [1m[91m|[0m
+[1m[94m20 |[0m [1m[91m|[0m from . import auth as auth_mod
+[1m[94m21 |[0m [1m[91m|[0m from . import automation as auto_mod
+[1m[94m22 |[0m [1m[91m|[0m from . import diagnostics as diag_mod
+[1m[94m23 |[0m [1m[91m|[0m from . import files as files_mod
+[1m[94m24 |[0m [1m[91m|[0m from . import run as run_mod
+[1m[94m25 |[0m [1m[91m|[0m from . import search as search_mod
+[1m[94m26 |[0m [1m[91m|[0m from . import actions as actions_mod
+   [1m[94m|[0m [1m[91m|____________________________________^[0m
+[1m[94m27 |[0m
+[1m[94m28 |[0m   app = typer.Typer(
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mB904 [0m[1mWithin an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling[0m
+  [1m[94m-->[0m src/hb_assistant/cli/run.py:67:9
+   [1m[94m|[0m
+[1m[94m65 |[0m         }
+[1m[94m66 |[0m         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+[1m[94m67 |[0m         raise typer.Exit(1)
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m68 |[0m     except typer.Exit:
+[1m[94m69 |[0m         raise
+   [1m[94m|[0m
+
+[1m[91mB904 [0m[1mWithin an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling[0m
+  [1m[94m-->[0m src/hb_assistant/cli/run.py:73:9
+   [1m[94m|[0m
+[1m[94m71 |[0m         payload = {"error": str(ex)[:200], "note": "orchestrator failed before or during ledger update"}
+[1m[94m72 |[0m         typer.echo(json.dumps(payload, indent=2) if json_out else f"run morning error: {ex}")
+[1m[94m73 |[0m         raise typer.Exit(1)
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+
+[1m[91mF841 [0m[1mLocal variable `content` is assigned to but never used[0m
+   [1m[94m-->[0m src/hb_assistant/obsidian/writer.py:190:13
+    [1m[94m|[0m
+[1m[94m188 |[0m             # For simplicity in v0.8: overwrite the generated companion (it's in AI Outputs, machine artifact).
+[1m[94m189 |[0m         else:
+[1m[94m190 |[0m             content = ""
+    [1m[94m|[0m             [1m[91m^^^^^^^[0m
+[1m[94m191 |[0m
+[1m[94m192 |[0m         fm_text = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `content`[0m
+
+[1m[91mSIM105 [0m[1mUse `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`[0m
+  [1m[94m-->[0m src/hb_assistant/retrieval/context.py:59:13
+   [1m[94m|[0m
+[1m[94m57 |[0m           actions = []
+[1m[94m58 |[0m           if include_actions:
+[1m[94m59 |[0m [1m[91m/[0m             try:
+[1m[94m60 |[0m [1m[91m|[0m                 actions = self.store.get_recent_action_items(limit=10) or []
+[1m[94m61 |[0m [1m[91m|[0m             except Exception:
+[1m[94m62 |[0m [1m[91m|[0m                 pass
+   [1m[94m|[0m [1m[91m|____________________^[0m
+[1m[94m63 |[0m
+[1m[94m64 |[0m           mentions = self.store.list_recent_body_mentions(limit=limit_per) or []
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`[0m
+
+[1m[91mB905 [0m[1m`zip()` without an explicit `strict=` parameter[0m
+  [1m[94m-->[0m src/hb_assistant/retrieval/retriever.py:31:33
+   [1m[94m|[0m
+[1m[94m29 |[0m     if not a or not b or len(a) != len(b):
+[1m[94m30 |[0m         return 0.0
+[1m[94m31 |[0m     dot = sum(x * y for x, y in zip(a, b))
+   [1m[94m|[0m                                 [1m[91m^^^^^^^^^[0m
+[1m[94m32 |[0m     na = sum(x * x for x in a) ** 0.5
+[1m[94m33 |[0m     nb = sum(y * y for y in b) ** 0.5
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mAdd explicit value for parameter `strict=`[0m
+
+[1m[91mC401 [0m[1mUnnecessary generator (rewrite as a set comprehension)[0m
+  [1m[94m-->[0m src/hb_assistant/retrieval/retriever.py:90:19
+   [1m[94m|[0m
+[1m[94m89 |[0m         # 2. Deterministic keyword filter / score (simple overlap)
+[1m[94m90 |[0m         q_terms = set(t.lower() for t in q.split() if len(t) > 2)
+   [1m[94m|[0m                   [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m91 |[0m         scored: list[tuple[float, dict]] = []
+[1m[94m92 |[0m         for c in candidates:
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRewrite as a set comprehension[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Iterator` imported but unused[0m
+ [1m[94m-->[0m tests/conftest.py:6:20
+  [1m[94m|[0m
+[1m[94m5 |[0m from pathlib import Path
+[1m[94m6 |[0m from typing import Iterator
+  [1m[94m|[0m                    [1m[91m^^^^^^^^[0m
+[1m[94m7 |[0m
+[1m[94m8 |[0m import pytest
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `typing.Iterator`[0m
+
+[1m[91mF841 [0m[1mLocal variable `tmp_path` is assigned to but never used[0m
+  [1m[94m-->[0m tests/conftest.py:35:45
+   [1m[94m|[0m
+[1m[94m33 |[0m         "project": {"name": "Test HB PA", "slug": "test-hb-pa"},
+[1m[94m34 |[0m         "paths": {
+[1m[94m35 |[0m             "application_support_root": str(tmp_path := Path("/tmp/fake-support")),  # will be overridden in tests
+   [1m[94m|[0m                                             [1m[91m^^^^^^^^[0m
+[1m[94m36 |[0m             "obsidian_vault": "/tmp/fake-vault",
+[1m[94m37 |[0m         },
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `tmp_path`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m tests/test_auth.py:6:1
+   [1m[94m|[0m
+[1m[94m 4 |[0m   """
+[1m[94m 5 |[0m
+[1m[94m 6 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 7 |[0m [1m[91m|[0m
+[1m[94m 8 |[0m [1m[91m|[0m import json
+[1m[94m 9 |[0m [1m[91m|[0m import tempfile
+[1m[94m10 |[0m [1m[91m|[0m from pathlib import Path
+[1m[94m11 |[0m [1m[91m|[0m from typing import Any, Dict, List
+[1m[94m12 |[0m [1m[91m|[0m from unittest.mock import MagicMock, patch
+[1m[94m13 |[0m [1m[91m|[0m
+[1m[94m14 |[0m [1m[91m|[0m import pytest
+[1m[94m15 |[0m [1m[91m|[0m
+[1m[94m16 |[0m [1m[91m|[0m from hb_assistant.auth.classifier import classify_token_claims, require_delegated, safe_redact_claims
+[1m[94m17 |[0m [1m[91m|[0m from hb_assistant.auth.exceptions import ClassificationError
+[1m[94m18 |[0m [1m[91m|[0m from hb_assistant.auth.providers import AppOnlyAuthProvider, DelegatedAuthProvider
+[1m[94m19 |[0m [1m[91m|[0m from hb_assistant.auth.token_cache_manager import TokenCacheManager
+[1m[94m20 |[0m [1m[91m|[0m from hb_assistant.config.models import AppConfig
+[1m[94m21 |[0m [1m[91m|[0m from hb_assistant.config.path_policy import PathPolicy
+[1m[94m22 |[0m [1m[91m|[0m from hb_assistant.graph.http_client import GraphHttpClient
+   [1m[94m|[0m [1m[91m|__________________________________________________________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Any` imported but unused[0m
+  [1m[94m-->[0m tests/test_auth.py:11:20
+   [1m[94m|[0m
+[1m[94m 9 |[0m import tempfile
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Dict, List
+   [1m[94m|[0m                    [1m[91m^^^[0m
+[1m[94m12 |[0m from unittest.mock import MagicMock, patch
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Dict` imported but unused[0m
+  [1m[94m-->[0m tests/test_auth.py:11:25
+   [1m[94m|[0m
+[1m[94m 9 |[0m import tempfile
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Dict, List
+   [1m[94m|[0m                         [1m[91m^^^^[0m
+[1m[94m12 |[0m from unittest.mock import MagicMock, patch
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.List` imported but unused[0m
+  [1m[94m-->[0m tests/test_auth.py:11:31
+   [1m[94m|[0m
+[1m[94m 9 |[0m import tempfile
+[1m[94m10 |[0m from pathlib import Path
+[1m[94m11 |[0m from typing import Any, Dict, List
+   [1m[94m|[0m                               [1m[91m^^^^[0m
+[1m[94m12 |[0m from unittest.mock import MagicMock, patch
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`hb_assistant.graph.http_client.GraphHttpClient` imported but unused[0m
+  [1m[94m-->[0m tests/test_auth.py:22:44
+   [1m[94m|[0m
+[1m[94m20 |[0m from hb_assistant.config.models import AppConfig
+[1m[94m21 |[0m from hb_assistant.config.path_policy import PathPolicy
+[1m[94m22 |[0m from hb_assistant.graph.http_client import GraphHttpClient
+   [1m[94m|[0m                                            [1m[91m^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `hb_assistant.graph.http_client.GraphHttpClient`[0m
+
+[1m[91mF811 [0m[[1m[96m*[0m] [1mRedefinition of unused `GraphHttpClient` from line 22[0m
+   [1m[94m-->[0m tests/test_auth.py:149:48
+    [1m[94m|[0m
+[1m[94m147 |[0m @patch("hb_assistant.graph.http_client.requests")
+[1m[94m148 |[0m def test_graph_client_paging_and_retry(mock_requests: MagicMock) -> None:
+[1m[94m149 |[0m     from hb_assistant.graph.http_client import GraphHttpClient
+    [1m[94m|[0m                                                [1m[91m^^^^^^^^^^^^^^^[0m [1m[91m`GraphHttpClient` redefined here[0m
+[1m[94m150 |[0m
+[1m[94m151 |[0m     # Fake token getter
+    [1m[94m|[0m
+   [1m[94m:::[0m tests/test_auth.py:22:44
+    [1m[94m|[0m
+[1m[94m 20 |[0m from hb_assistant.config.models import AppConfig
+[1m[94m 21 |[0m from hb_assistant.config.path_policy import PathPolicy
+[1m[94m 22 |[0m from hb_assistant.graph.http_client import GraphHttpClient
+    [1m[94m|[0m                                            [1m[33m---------------[0m [1m[33mprevious definition of `GraphHttpClient` here[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove definition: `GraphHttpClient`[0m
+
+[1m[91mF811 [0m[[1m[96m*[0m] [1mRedefinition of unused `GraphHttpClient` from line 22[0m
+   [1m[94m-->[0m tests/test_auth.py:185:48
+    [1m[94m|[0m
+[1m[94m183 |[0m @patch("hb_assistant.graph.http_client.requests")
+[1m[94m184 |[0m def test_graph_client_get_all_pages_respects_max_items(mock_requests: MagicMock) -> None:
+[1m[94m185 |[0m     from hb_assistant.graph.http_client import GraphHttpClient
+    [1m[94m|[0m                                                [1m[91m^^^^^^^^^^^^^^^[0m [1m[91m`GraphHttpClient` redefined here[0m
+[1m[94m186 |[0m
+[1m[94m187 |[0m     def fake_token(scopes=None):
+    [1m[94m|[0m
+   [1m[94m:::[0m tests/test_auth.py:22:44
+    [1m[94m|[0m
+[1m[94m 20 |[0m from hb_assistant.config.models import AppConfig
+[1m[94m 21 |[0m from hb_assistant.config.path_policy import PathPolicy
+[1m[94m 22 |[0m from hb_assistant.graph.http_client import GraphHttpClient
+    [1m[94m|[0m                                            [1m[33m---------------[0m [1m[33mprevious definition of `GraphHttpClient` here[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove definition: `GraphHttpClient`[0m
+
+[1m[91mF811 [0m[[1m[96m*[0m] [1mRedefinition of unused `GraphHttpClient` from line 22[0m
+   [1m[94m-->[0m tests/test_auth.py:205:48
+    [1m[94m|[0m
+[1m[94m203 |[0m @patch("hb_assistant.graph.http_client.requests")
+[1m[94m204 |[0m def test_graph_client_get_all_pages_respects_max_pages(mock_requests: MagicMock) -> None:
+[1m[94m205 |[0m     from hb_assistant.graph.http_client import GraphHttpClient
+    [1m[94m|[0m                                                [1m[91m^^^^^^^^^^^^^^^[0m [1m[91m`GraphHttpClient` redefined here[0m
+[1m[94m206 |[0m
+[1m[94m207 |[0m     def fake_token(scopes=None):
+    [1m[94m|[0m
+   [1m[94m:::[0m tests/test_auth.py:22:44
+    [1m[94m|[0m
+[1m[94m 20 |[0m from hb_assistant.config.models import AppConfig
+[1m[94m 21 |[0m from hb_assistant.config.path_policy import PathPolicy
+[1m[94m 22 |[0m from hb_assistant.graph.http_client import GraphHttpClient
+    [1m[94m|[0m                                            [1m[33m---------------[0m [1m[33mprevious definition of `GraphHttpClient` here[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove definition: `GraphHttpClient`[0m
+
+[1m[91mF841 [0m[1mLocal variable `graph_stages` is assigned to but never used[0m
+   [1m[94m-->[0m tests/test_automation.py:199:5
+    [1m[94m|[0m
+[1m[94m197 |[0m     assert len(stages) >= 5  # at least the core local + graph_auth
+[1m[94m198 |[0m     # Graph stages should be skipped or ok; local stages should succeed
+[1m[94m199 |[0m     graph_stages = [s for s in stages if "graph" in s.get("stage", "")]
+    [1m[94m|[0m     [1m[91m^^^^^^^^^^^^[0m
+[1m[94m200 |[0m     local_stages = [s for s in stages if "action" in s.get("stage", "") or "brief" in s.get("stage", "") or "obsidian" in s.get("stag[1m[94m…[0m
+[1m[94m201 |[0m     assert all(s.get("status") in ("ok", "skipped", "completed_dry_run") for s in stages)
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `graph_stages`[0m
+
+[1m[91mF841 [0m[1mLocal variable `local_stages` is assigned to but never used[0m
+   [1m[94m-->[0m tests/test_automation.py:200:5
+    [1m[94m|[0m
+[1m[94m198 |[0m     # Graph stages should be skipped or ok; local stages should succeed
+[1m[94m199 |[0m     graph_stages = [s for s in stages if "graph" in s.get("stage", "")]
+[1m[94m200 |[0m     local_stages = [s for s in stages if "action" in s.get("stage", "") or "brief" in s.get("stage", "") or "obsidian" in s.get("stag[1m[94m…[0m
+    [1m[94m|[0m     [1m[91m^^^^^^^^^^^^[0m
+[1m[94m201 |[0m     assert all(s.get("status") in ("ok", "skipped", "completed_dry_run") for s in stages)
+[1m[94m202 |[0m     assert any("brief" in s.get("stage", "") for s in stages)
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `local_stages`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m tests/test_body_mentions.py:10:1
+   [1m[94m|[0m
+[1m[94m 8 |[0m   """
+[1m[94m 9 |[0m
+[1m[94m10 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m11 |[0m [1m[91m|[0m
+[1m[94m12 |[0m [1m[91m|[0m import tempfile
+[1m[94m13 |[0m [1m[91m|[0m from pathlib import Path
+[1m[94m14 |[0m [1m[91m|[0m from unittest.mock import patch
+[1m[94m15 |[0m [1m[91m|[0m
+[1m[94m16 |[0m [1m[91m|[0m import pytest
+[1m[94m17 |[0m [1m[91m|[0m
+[1m[94m18 |[0m [1m[91m|[0m from hb_assistant.classification import (
+[1m[94m19 |[0m [1m[91m|[0m     BodyInspector,
+[1m[94m20 |[0m [1m[91m|[0m     EmailClassifier,
+[1m[94m21 |[0m [1m[91m|[0m     ClassificationResult,
+[1m[94m22 |[0m [1m[91m|[0m )
+[1m[94m23 |[0m [1m[91m|[0m from hb_assistant.classification.body_inspector import _SafeTextExtractor
+[1m[94m24 |[0m [1m[91m|[0m from hb_assistant.normalize.email import Email
+[1m[94m25 |[0m [1m[91m|[0m from hb_assistant.store.repositories import Store
+   [1m[94m|[0m [1m[91m|_________________________________________________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`unittest.mock.patch` imported but unused[0m
+  [1m[94m-->[0m tests/test_body_mentions.py:14:27
+   [1m[94m|[0m
+[1m[94m12 |[0m import tempfile
+[1m[94m13 |[0m from pathlib import Path
+[1m[94m14 |[0m from unittest.mock import patch
+   [1m[94m|[0m                           [1m[91m^^^^^[0m
+[1m[94m15 |[0m
+[1m[94m16 |[0m import pytest
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `unittest.mock.patch`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`hb_assistant.classification.EmailClassifier` imported but unused[0m
+  [1m[94m-->[0m tests/test_body_mentions.py:20:5
+   [1m[94m|[0m
+[1m[94m18 |[0m from hb_assistant.classification import (
+[1m[94m19 |[0m     BodyInspector,
+[1m[94m20 |[0m     EmailClassifier,
+   [1m[94m|[0m     [1m[91m^^^^^^^^^^^^^^^[0m
+[1m[94m21 |[0m     ClassificationResult,
+[1m[94m22 |[0m )
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `hb_assistant.classification.EmailClassifier`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`hb_assistant.store.repositories.Store` imported but unused[0m
+  [1m[94m-->[0m tests/test_body_mentions.py:25:45
+   [1m[94m|[0m
+[1m[94m23 |[0m from hb_assistant.classification.body_inspector import _SafeTextExtractor
+[1m[94m24 |[0m from hb_assistant.normalize.email import Email
+[1m[94m25 |[0m from hb_assistant.store.repositories import Store
+   [1m[94m|[0m                                             [1m[91m^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `hb_assistant.store.repositories.Store`[0m
+
+[1m[91mSIM105 [0m[1mUse `contextlib.suppress(FileNotFoundError)` instead of `try`-`except`-`pass`[0m
+  [1m[94m-->[0m tests/test_body_mentions.py:33:5
+   [1m[94m|[0m
+[1m[94m31 |[0m           path = Path(f.name)
+[1m[94m32 |[0m       yield path
+[1m[94m33 |[0m [1m[91m/[0m     try:
+[1m[94m34 |[0m [1m[91m|[0m         path.unlink()
+[1m[94m35 |[0m [1m[91m|[0m     except FileNotFoundError:
+[1m[94m36 |[0m [1m[91m|[0m         pass
+   [1m[94m|[0m [1m[91m|____________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace `try`-`except`-`pass` with `with contextlib.suppress(FileNotFoundError): ...`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m tests/test_classification.py:7:1
+   [1m[94m|[0m
+[1m[94m 5 |[0m   """
+[1m[94m 6 |[0m
+[1m[94m 7 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 8 |[0m [1m[91m|[0m
+[1m[94m 9 |[0m [1m[91m|[0m import tempfile
+[1m[94m10 |[0m [1m[91m|[0m from datetime import datetime, timezone
+[1m[94m11 |[0m [1m[91m|[0m from pathlib import Path
+[1m[94m12 |[0m [1m[91m|[0m
+[1m[94m13 |[0m [1m[91m|[0m import pytest
+[1m[94m14 |[0m [1m[91m|[0m
+[1m[94m15 |[0m [1m[91m|[0m from hb_assistant.classification import AliasResolver, BodyMentionDetector, EmailClassifier, ClassificationResult
+[1m[94m16 |[0m [1m[91m|[0m from hb_assistant.normalize.email import Email
+[1m[94m17 |[0m [1m[91m|[0m from hb_assistant.store.repositories import Store
+   [1m[94m|[0m [1m[91m|_________________________________________________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mSIM105 [0m[1mUse `contextlib.suppress(FileNotFoundError)` instead of `try`-`except`-`pass`[0m
+  [1m[94m-->[0m tests/test_classification.py:25:5
+   [1m[94m|[0m
+[1m[94m23 |[0m           path = Path(f.name)
+[1m[94m24 |[0m       yield path
+[1m[94m25 |[0m [1m[91m/[0m     try:
+[1m[94m26 |[0m [1m[91m|[0m         path.unlink()
+[1m[94m27 |[0m [1m[91m|[0m     except FileNotFoundError:
+[1m[94m28 |[0m [1m[91m|[0m         pass
+   [1m[94m|[0m [1m[91m|____________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace `try`-`except`-`pass` with `with contextlib.suppress(FileNotFoundError): ...`[0m
+
+[1m[91mE741 [0m[1mAmbiguous variable name: `l`[0m
+  [1m[94m-->[0m tests/test_classification.py:91:33
+   [1m[94m|[0m
+[1m[94m89 |[0m     # Links created (mentions + waiting_on)
+[1m[94m90 |[0m     links = clf.registry.get_links(sid)
+[1m[94m91 |[0m     types = {l["link_type"] for l in links}
+   [1m[94m|[0m                                 [1m[91m^[0m
+[1m[94m92 |[0m     assert "mentions" in types
+[1m[94m93 |[0m     assert "waiting_on" in types
+   [1m[94m|[0m
+
+[1m[91mSIM222 [0m[1mUse `True` instead of `... or True`[0m
+  [1m[94m-->[0m tests/test_classification.py:98:12
+   [1m[94m|[0m
+[1m[94m96 |[0m     result_str = str(result.model_dump())
+[1m[94m97 |[0m     assert "Bobby" not in result_str  # redacted in subject/preview already; no raw name in output
+[1m[94m98 |[0m     assert "Q3" not in result_str or True  # content is ok as long as no PII patterns, but preview was redacted anyway
+   [1m[94m|[0m            [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `True`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m tests/test_cli_canonical.py:6:1
+   [1m[94m|[0m
+[1m[94m 4 |[0m   """
+[1m[94m 5 |[0m
+[1m[94m 6 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 7 |[0m [1m[91m|[0m
+[1m[94m 8 |[0m [1m[91m|[0m from pathlib import Path
+[1m[94m 9 |[0m [1m[91m|[0m
+[1m[94m10 |[0m [1m[91m|[0m from typer.testing import CliRunner
+[1m[94m11 |[0m [1m[91m|[0m
+[1m[94m12 |[0m [1m[91m|[0m from hb_assistant.automation.launchd_manager import LaunchdManager
+[1m[94m13 |[0m [1m[91m|[0m from hb_assistant.cli.main import app
+   [1m[94m|[0m [1m[91m|_____________________________________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`json` imported but unused[0m
+ [1m[94m-->[0m tests/test_config.py:5:8
+  [1m[94m|[0m
+[1m[94m3 |[0m from __future__ import annotations
+[1m[94m4 |[0m
+[1m[94m5 |[0m import json
+  [1m[94m|[0m        [1m[91m^^^^[0m
+[1m[94m6 |[0m import stat
+[1m[94m7 |[0m from pathlib import Path
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `json`[0m
+
+[1m[91mSIM117 [0m[1mUse a single `with` statement with multiple contexts instead of nested `with` statements[0m
+  [1m[94m-->[0m tests/test_config.py:69:5
+   [1m[94m|[0m
+[1m[94m67 |[0m           orig_chmod(self, mode)
+[1m[94m68 |[0m
+[1m[94m69 |[0m [1m[91m/[0m     with patch("os.chmod", side_effect=lambda p, m: _chmod(Path(p), m)):
+[1m[94m70 |[0m [1m[91m|[0m         with pytest.raises(PermissionError):
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[94m71 |[0m               path_policy.ensure_dirs(strict_sensitive=True)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mCombine `with` statements[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`json` imported but unused[0m
+  [1m[94m-->[0m tests/test_file_ingestion.py:10:8
+   [1m[94m|[0m
+[1m[94m 8 |[0m from __future__ import annotations
+[1m[94m 9 |[0m
+[1m[94m10 |[0m import json
+   [1m[94m|[0m        [1m[91m^^^^[0m
+[1m[94m11 |[0m import tempfile
+[1m[94m12 |[0m import zipfile
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `json`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`tempfile` imported but unused[0m
+  [1m[94m-->[0m tests/test_file_ingestion.py:11:8
+   [1m[94m|[0m
+[1m[94m10 |[0m import json
+[1m[94m11 |[0m import tempfile
+   [1m[94m|[0m        [1m[91m^^^^^^^^[0m
+[1m[94m12 |[0m import zipfile
+[1m[94m13 |[0m from pathlib import Path
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `tempfile`[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`pytest` imported but unused[0m
+  [1m[94m-->[0m tests/test_file_ingestion.py:16:8
+   [1m[94m|[0m
+[1m[94m14 |[0m from unittest.mock import MagicMock, patch
+[1m[94m15 |[0m
+[1m[94m16 |[0m import pytest
+   [1m[94m|[0m        [1m[91m^^^^^^[0m
+[1m[94m17 |[0m
+[1m[94m18 |[0m from hb_assistant.files.eligibility import ApprovalGate, EligibilityGate
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `pytest`[0m
+
+[1m[91mE741 [0m[1mAmbiguous variable name: `l`[0m
+   [1m[94m-->[0m tests/test_file_ingestion.py:168:60
+    [1m[94m|[0m
+[1m[94m166 |[0m         assert "bounded excerpt" in outs[0]["text_excerpt"]
+[1m[94m167 |[0m         links = store.get_links_for_source(sid1)
+[1m[94m168 |[0m         assert any(l.get("link_type") == "parsed_from" for l in links)
+    [1m[94m|[0m                                                            [1m[91m^[0m
+    [1m[94m|[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+ [1m[94m-->[0m tests/test_files_cli.py:1:1
+  [1m[94m|[0m
+[1m[94m1 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m2 |[0m [1m[91m|[0m
+[1m[94m3 |[0m [1m[91m|[0m from pathlib import Path
+[1m[94m4 |[0m [1m[91m|[0m from unittest.mock import patch
+[1m[94m5 |[0m [1m[91m|[0m
+[1m[94m6 |[0m [1m[91m|[0m from typer.testing import CliRunner
+[1m[94m7 |[0m [1m[91m|[0m
+[1m[94m8 |[0m [1m[91m|[0m from hb_assistant.cli.main import app
+[1m[94m9 |[0m [1m[91m|[0m from hb_assistant.store.errors import StoreReadinessError
+  [1m[94m|[0m [1m[91m|_________________________________________________________^[0m
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m tests/test_graph_clients.py:7:1
+   [1m[94m|[0m
+[1m[94m 5 |[0m   """
+[1m[94m 6 |[0m
+[1m[94m 7 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 8 |[0m [1m[91m|[0m
+[1m[94m 9 |[0m [1m[91m|[0m from unittest.mock import MagicMock
+[1m[94m10 |[0m [1m[91m|[0m
+[1m[94m11 |[0m [1m[91m|[0m from hb_assistant.config.loader import load_config
+[1m[94m12 |[0m [1m[91m|[0m from hb_assistant.graph.mail_client import MailClient
+[1m[94m13 |[0m [1m[91m|[0m from hb_assistant.graph.calendar_client import CalendarClient
+[1m[94m14 |[0m [1m[91m|[0m from hb_assistant.graph.drive_item_client import DriveItemClient
+[1m[94m15 |[0m [1m[91m|[0m from hb_assistant.normalize.email import Email
+[1m[94m16 |[0m [1m[91m|[0m from hb_assistant.normalize.calendar_event import CalendarEvent
+   [1m[94m|[0m [1m[91m|_______________________________________________________________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+ [1m[94m-->[0m tests/test_graph_proof.py:3:1
+  [1m[94m|[0m
+[1m[94m1 |[0m   """Tests for current runtime delegated graph proof runner and CLI wiring."""
+[1m[94m2 |[0m
+[1m[94m3 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m4 |[0m [1m[91m|[0m
+[1m[94m5 |[0m [1m[91m|[0m from typer.testing import CliRunner
+[1m[94m6 |[0m [1m[91m|[0m
+[1m[94m7 |[0m [1m[91m|[0m from hb_assistant.cli.main import app
+[1m[94m8 |[0m [1m[91m|[0m from hb_assistant.graph.proof_runner import _classify_delegated_claims, run_delegated_graph_proof
+  [1m[94m|[0m [1m[91m|_________________________________________________________________________________________________^[0m
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mF841 [0m[1mLocal variable `conn` is assigned to but never used[0m
+  [1m[94m-->[0m tests/test_obsidian_writer.py:87:9
+   [1m[94m|[0m
+[1m[94m85 |[0m         store.upsert_source_record(source_type="test", source_key="t1", source_system="test")
+[1m[94m86 |[0m         # Direct insert for demo (in real code the extraction phase would have done this)
+[1m[94m87 |[0m         conn = store._get_conn_for_test() if hasattr(store, "_get_conn_for_test") else None
+   [1m[94m|[0m         [1m[91m^^^^[0m
+[1m[94m88 |[0m         # Use the public helper we added
+[1m[94m89 |[0m         # For the test we just call the generator; it will gracefully produce fallback content
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove assignment to unused variable `conn`[0m
+
+[1m[91mSIM222 [0m[1mUse `True` instead of `... or True`[0m
+   [1m[94m-->[0m tests/test_obsidian_writer.py:117:12
+    [1m[94m|[0m
+[1m[94m115 |[0m     # In practice the BriefGenerator already redacts; here we just confirm no raw secrets escape the pipeline in test data.
+[1m[94m116 |[0m     # Final binary scan on any temp files created by the test harness (none in this case).
+[1m[94m117 |[0m     assert "password123" not in result or True  # defensive
+    [1m[94m|[0m            [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace with `True`[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+ [1m[94m-->[0m tests/test_sensitive_scan_cli.py:1:1
+  [1m[94m|[0m
+[1m[94m1 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m2 |[0m [1m[91m|[0m
+[1m[94m3 |[0m [1m[91m|[0m from pathlib import Path
+[1m[94m4 |[0m [1m[91m|[0m
+[1m[94m5 |[0m [1m[91m|[0m from typer.testing import CliRunner
+[1m[94m6 |[0m [1m[91m|[0m
+[1m[94m7 |[0m [1m[91m|[0m from hb_assistant.cli.main import app
+  [1m[94m|[0m [1m[91m|_____________________________________^[0m
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mSIM117 [0m[1mUse a single `with` statement with multiple contexts instead of nested `with` statements[0m
+  [1m[94m-->[0m tests/test_store.py:49:5
+   [1m[94m|[0m
+[1m[94m47 |[0m       db_path = pp.get_db_path()
+[1m[94m48 |[0m
+[1m[94m49 |[0m [1m[91m/[0m     with patch("sqlite3.connect", side_effect=sqlite3.OperationalError("unable to open database file")):
+[1m[94m50 |[0m [1m[91m|[0m         with pytest.raises(StoreReadinessError) as ex:
+   [1m[94m|[0m [1m[91m|______________________________________________________^[0m
+[1m[94m51 |[0m               get_connection(db_path)
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mCombine `with` statements[0m
+
+[1m[91mI001 [0m[[1m[96m*[0m] [1mImport block is un-sorted or un-formatted[0m
+  [1m[94m-->[0m tests/test_store_links.py:7:1
+   [1m[94m|[0m
+[1m[94m 5 |[0m   """
+[1m[94m 6 |[0m
+[1m[94m 7 |[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 8 |[0m [1m[91m|[0m
+[1m[94m 9 |[0m [1m[91m|[0m import tempfile
+[1m[94m10 |[0m [1m[91m|[0m from datetime import datetime, timezone
+[1m[94m11 |[0m [1m[91m|[0m from pathlib import Path
+[1m[94m12 |[0m [1m[91m|[0m
+[1m[94m13 |[0m [1m[91m|[0m import pytest
+[1m[94m14 |[0m [1m[91m|[0m
+[1m[94m15 |[0m [1m[91m|[0m from hb_assistant.links.registry import SourceLinkRegistry, ALLOWED_LINK_TYPES
+[1m[94m16 |[0m [1m[91m|[0m from hb_assistant.store import get_connection, transaction
+[1m[94m17 |[0m [1m[91m|[0m from hb_assistant.normalize.email import Email
+[1m[94m18 |[0m [1m[91m|[0m from hb_assistant.normalize.calendar_event import CalendarEvent
+[1m[94m19 |[0m [1m[91m|[0m from hb_assistant.normalize.attachment import Attachment
+[1m[94m20 |[0m [1m[91m|[0m from hb_assistant.store.migrator import SQLiteMigrator
+[1m[94m21 |[0m [1m[91m|[0m from hb_assistant.store.repositories import Store
+   [1m[94m|[0m [1m[91m|_________________________________________________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mOrganize imports[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`hb_assistant.store.get_connection` imported but unused[0m
+  [1m[94m-->[0m tests/test_store_links.py:16:32
+   [1m[94m|[0m
+[1m[94m15 |[0m from hb_assistant.links.registry import SourceLinkRegistry, ALLOWED_LINK_TYPES
+[1m[94m16 |[0m from hb_assistant.store import get_connection, transaction
+   [1m[94m|[0m                                [1m[91m^^^^^^^^^^^^^^[0m
+[1m[94m17 |[0m from hb_assistant.normalize.email import Email
+[1m[94m18 |[0m from hb_assistant.normalize.calendar_event import CalendarEvent
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`hb_assistant.store.transaction` imported but unused[0m
+  [1m[94m-->[0m tests/test_store_links.py:16:48
+   [1m[94m|[0m
+[1m[94m15 |[0m from hb_assistant.links.registry import SourceLinkRegistry, ALLOWED_LINK_TYPES
+[1m[94m16 |[0m from hb_assistant.store import get_connection, transaction
+   [1m[94m|[0m                                                [1m[91m^^^^^^^^^^^[0m
+[1m[94m17 |[0m from hb_assistant.normalize.email import Email
+[1m[94m18 |[0m from hb_assistant.normalize.calendar_event import CalendarEvent
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import[0m
+
+[1m[91mSIM105 [0m[1mUse `contextlib.suppress(FileNotFoundError)` instead of `try`-`except`-`pass`[0m
+  [1m[94m-->[0m tests/test_store_links.py:30:5
+   [1m[94m|[0m
+[1m[94m28 |[0m           path = Path(f.name)
+[1m[94m29 |[0m       yield path
+[1m[94m30 |[0m [1m[91m/[0m     try:
+[1m[94m31 |[0m [1m[91m|[0m         path.unlink()
+[1m[94m32 |[0m [1m[91m|[0m     except FileNotFoundError:
+[1m[94m33 |[0m [1m[91m|[0m         pass
+   [1m[94m|[0m [1m[91m|____________^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: [1mReplace `try`-`except`-`pass` with `with contextlib.suppress(FileNotFoundError): ...`[0m
+
+[1m[91mE741 [0m[1mAmbiguous variable name: `l`[0m
+   [1m[94m-->[0m tests/test_store_links.py:101:49
+    [1m[94m|[0m
+[1m[94m100 |[0m     links = reg.get_links(sid_att)
+[1m[94m101 |[0m     assert any(l["link_type"] == "attaches" for l in links)
+    [1m[94m|[0m                                                 [1m[91m^[0m
+    [1m[94m|[0m
+
+[1m[91mE741 [0m[1mAmbiguous variable name: `l`[0m
+   [1m[94m-->[0m tests/test_store_links.py:196:27
+    [1m[94m|[0m
+[1m[94m195 |[0m     # Verify only one link row
+[1m[94m196 |[0m     action_links = [l for l in store.get_links_for_source(sid) if l.get("action_item_id") == aid]
+    [1m[94m|[0m                           [1m[91m^[0m
+[1m[94m197 |[0m     assert len(action_links) == 1
+    [1m[94m|[0m
+
+Found 51 errors.
+[[36m*[0m] 27 fixable with the `--fix` option (13 hidden fixes can be enabled with the `--unsafe-fixes` option).

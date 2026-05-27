@@ -1,0 +1,1 @@
+Mypy final post-P05-edit (captured from execution): 3 errors in 3 files (mostly target scope after tighten): obsidian/writer.py (yaml stub), automation/orchestrator.py (action_item_ids), cli/run.py (no-redef). Full details in session logs.
