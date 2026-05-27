@@ -9,7 +9,7 @@
 - [ ] `upsert_action_item()` preserves completed status.
 - [ ] `link_action()` is idempotent.
 - [x] `written_to_note` is allowed and tested.
-- [ ] `WorkstreamContextBuilder.mentions` is populated.
+- [x] `WorkstreamContextBuilder.mentions` is populated.
 - [ ] `run morning` classifies Graph blocker correctly.
 - [ ] `run morning` local stages continue despite missing Graph consent.
 

@@ -84,3 +84,5 @@ flowchart TD
 - Prompt 06 objective
 
 This phase makes the durable source-linked emails from Phase 5 "aware" of mentions and simple action signals without ever crossing the full-body safety boundary. Ready for Prompt 07 (Action Extraction And Schema Validation).
+
+**Phase 15 Prompt 04 note**: Body mentions are now also exposed as first-class `mentions` on `WorkstreamContext` (via the builder calling the existing bounded store helper). Consumers (briefs etc.) receive the redacted list directly. No full body content ever leaves the detection/classification boundary.

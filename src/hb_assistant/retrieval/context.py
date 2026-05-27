@@ -61,9 +61,7 @@ class WorkstreamContextBuilder:
             except Exception:
                 pass
 
-        mentions: list[dict] = []
-        # Could query source_links of type 'mentions' recent, but keep light
-        # for v1.1: empty or sample via store if helper; omitted for brevity
+        mentions = self.store.list_recent_body_mentions(limit=limit_per) or []
 
         return WorkstreamContext(
             target_date="today",

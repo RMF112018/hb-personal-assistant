@@ -19,6 +19,7 @@ All outputs redacted/bounded, carry SourceLink provenance, dry-run/mock friendly
 - `src/hb_assistant/retrieval/embedder.py`: OllamaEmbedder (requests to localhost:11434/api/embeddings, graceful fallback to hash-based pseudo-vec for demo/offline) + DeterministicEmbedder for tests/CI.
 - `src/hb_assistant/retrieval/retriever.py`: Retriever — loads candidates from parser_outputs (via new Store helper), scores with keyword overlap (det), optional blend with cosine on embedded query vs candidate vecs. Returns RetrievalHit with excerpt (bounded), score, links.
 - `src/hb_assistant/retrieval/context.py`: WorkstreamContext + Builder — assembles retrieved hits + recent actions + (future mentions) into redacted bundle for a target date/focus. Used by future orchestration / brief enhancement.
+  - Phase 15 Prompt 04: `mentions` is now first-class (populated from `store.list_recent_body_mentions` in `build_for_today()`; redacted metadata only; existing consumers receive the data directly on the context object).
 - Store extensions (repositories.py + migrator.py): list_recent_parser_outputs, content_embeddings table (for persisted vecs in future), migration safe additive.
 - CLI: `hb-assistant search "query" --json` (top-level, wired; thin safe redacted results). Removed search from stub list.
 - Exports: hb_assistant.retrieval
