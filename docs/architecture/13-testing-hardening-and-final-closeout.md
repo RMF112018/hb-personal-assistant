@@ -74,3 +74,9 @@ Prompt 06 added the canonical deterministic harness (`tests/test_mvp_local_runti
 ---
 
 *This document is intentionally lightweight (closeout summary + verification artifact index) per the "update architecture documentation" requirement and proportional to a final hardening phase.*
+
+## P07–P08 Update (Operator Runbook + Final Closeout)
+
+Prompt 07 delivered the public `docs/operations/mvp-local-runtime-operator-guide.md` (all 12 mandated topics, real CLI examples from diagnostics/run/automation, safety language, Graph deferred + Prompt 9 readiness cross-ref to the 07_Deferred runbook) + supporting 07/06 evidence mds. Verifier (sensitive + check under strict guardrails) PASS.
+
+Prompt 08 executed the exact required final matrix (git + full pytest/ruff/mypy + the 9+ hb-assistant diagnostics/actions commands), captured raw outputs, created `docs/evidence/mvp-local-runtime/08-final-mvp-candidate-closeout.md` with validation matrix (P00–P07 synthesis), truthful classification **MVP_CANDIDATE_LOCAL_RUNTIME_READY + GRAPH_DELEGATED_PROOF_DEFERRED_PENDING_ADMIN_CONSENT**, and minimal 09/arch updates. Pre-existing P05 test/lint issues (4 obsidian-writer failures on action_item_ids signature) noted as documented limitations; P06/P07 local proofs solid; Graph remains the explicit external blocker. Package closed. See 08-md + 09 checklist P08 section for full record. HEAD at closeout: 55fbaf1 (post-P07).

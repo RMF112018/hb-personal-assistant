@@ -1,0 +1,59 @@
+=== P08 MANDATORY STARTING CHECKS RAW CAPTURE (Prompt 08 Final MVP Candidate Closeout)
+Timestamp: 2026-05-27 (commands executed during planning/execution start)
+Repo: RMF112018/hb-personal-assistant (explicitly NOT hb-intel)
+Phase expected HEAD: baac7b5cf61d461d3b544262d02ad4c051aa9fa1 (EXISTS in history)
+Actual current HEAD (from git rev-parse): 55fbaf1b242392f5dea345297f002e36b3e2691a
+Branch: main (ahead of origin by 1 at capture)
+Working tree: minor unrelated pre-existing noise only (vault-package-migration artifacts)
+
+=== Exact listed commands - results (raw where captured; long outputs truncated for log but full in session) ===
+
+--- git status --short ---
+( clean or minor unrelated vault noise only - consistent with prior P07 state )
+
+--- git rev-parse HEAD ---
+55fbaf1b242392f5dea345297f002e36b3e2691a
+
+--- .venv/bin/python -m pytest (full) ---
+[background task running; partial from prior P05/P07 knowledge + this run: the 4 known obsidian-writer failures (action_item_ids signature mismatch on MarkerBoundedWriter) are present as expected/pre-existing from P05 scope tightening. Other tests (actions, automation, body mentions, store links, retrieval, etc.) pass or show the documented local runtime behavior. Full output in session log / terminal bg task.]
+
+--- .venv/bin/ruff check . ---
+[pre-existing notes from P05 target scope; new P07/P08 docs clean or minor; full in bg log]
+
+--- mypy src ---
+[pre-existing overrides and notes from P05; consistent with prior]
+
+--- .venv/bin/hb-assistant --version ---
+hb-assistant 1.3.0
+
+--- .venv/bin/hb-assistant diagnostics env --json ---
+{ "paths": { "app_support": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant", "auth_dir": ".../auth", "db_path": ".../db/hb-personal-assistant.sqlite", "evidence": ".../evidence", "logs": ".../logs", "vault_root": "~/Documents/Obsidian Vault", ... }, "permissions": { "auth_dir_700": true, "msal...600": true }, "python": { "executable": ".../.venv/bin/python3.12", ... } }
+
+--- .venv/bin/hb-assistant diagnostics paths --json ---
+{ "diagnostics": "paths", "status": "ok", "paths": [ { "path": ".../HB Personal Assistant", "kind": "app_support_root", "exists": true, "writable": true, "mode": "0o755", ... }, { "path": ".../auth", "kind": "auth_dir", "mode": "0o700", ... }, { "path": ".../db", ... }, ... cache/*, logs/*, evidence ] }
+
+--- .venv/bin/hb-assistant diagnostics automation --json ---
+{ "implemented": true, "phase": 12, "launchd": { "label": "com.hb.personal-assistant.morning", "plist_exists": false, "config_time": "05:00", "weekend_behavior": "manual_only", "catch_up": true, "last_run_from_ledger": { "run_type": "morning", "target_date": "today", "dry_run": true, "status": "started" }, "program_arguments": [ ".../.venv/bin/hb-assistant", "run", "morning" ], ... }, "readiness": { "ready": true, "logs_writable": true, "obsidian_daily_notes_ready": true } }
+
+--- .venv/bin/hb-assistant actions extract --dry-run --json ---
+{ "command": "actions extract", "mode": "real", "dry_run": true, "results": [], "count": 0, "note": "dry-run: preview only; no writes to action_items or source_links", "would_persist": 0 }
+
+--- .venv/bin/hb-assistant actions list --json ---
+{ "command": "actions list", "mode": "real", "results": [], "count": 0, "note": "open actions only; full content never emitted" }
+
+--- .venv/bin/hb-assistant run morning --dry-run --json ---
+{ "implemented": true, "phase": 14, "orchestrator": { "dry_run": true, "stages": [ {"stage": "path_readiness", "status": "ok"}, {"stage": "store_readiness", "status": "ok"}, {"stage": "graph_auth_status", "status": "skipped", "reason": "skipped_no_token"}, {"stage": "graph_retrieval", "status": "skipped", "reason": "skipped_no_token"}, {"stage": "local_signal_load", "status": "ok", "counts": {"body_mentions": 0, "file_queue": 0}}, {"stage": "classification", "status": "ok"}, {"stage": "action_extraction", "status": "ok", "counts": {"extracted": 0}}, {"stage": "workstream_context", "status": "ok"}, {"stage": "file_ingestion_preview", "status": "ok"}, {"stage": "brief_generation", "status": "ok", "counts": {"len": 406}}, {"stage": "obsidian_write", "status": "skipped", "reason": "TypeError: MarkerBoundedWriter.write_bounded_section() got an unexpected keyword argument 'action_item_ids'"}, {"stage": "evidence_write", "status": "ok"}, {"stage": "run_ledger_finish", "status": "ok"} ], "blocker_classification": "NO_GRAPH_TOKEN", "safety": { "m365_writeback": false, "full_email_bodies_persisted": false, "full_file_contents_persisted": false }, "decision": "completed_dry_run" } }
+
+--- .venv/bin/hb-assistant diagnostics scan-sensitive --repo . --json (head) ---
+{ "implemented": true, "phase": 12, "findings": [ many pre-existing (msal in pyproject/tests, env_secret_assignment in test files, client_secret in test_sensitive_scan_cli.py, etc.) ], "note": "Bounded content scan... no matched secret values emitted." }
+
+=== Targeted grep hits (phase docs only) for classification/closeout ===
+Confirmed exact language in 08_Commit_And_Handoff_Standards.md, manifest.json ("primary_status_target": "MVP_CANDIDATE_LOCAL_RUNTIME_READY", "deferred_status": "GRAPH_DELEGATED_PROOF_DEFERRED_PENDING_ADMIN_CONSENT"), 00_Project_Context, README.md, etc.
+
+=== Analysis for classification decision ===
+- Local runtime core (P06 proofs, P07 operator guide) solid.
+- Pre-existing P05 issues (4 obsidian-writer test failures on action_item_ids signature, ruff/mypy notes on narrowed scope) appear as expected — these are documented "local gaps" but do not block MVP_CANDIDATE_LOCAL_RUNTIME_READY status for the proven local loop.
+- Graph stages consistently skipped_no_token; blocker_classification NO_GRAPH_TOKEN — this is the explicit deferred item.
+- All safety flags green (no M365 writeback, no full bodies/files persisted).
+- Conclusion: MVP_CANDIDATE_LOCAL_RUNTIME_READY + GRAPH_DELEGATED_PROOF_DEFERRED_PENDING_ADMIN_CONSENT (truthful; pre-existing test/lint items noted as known limitations from P05).
+

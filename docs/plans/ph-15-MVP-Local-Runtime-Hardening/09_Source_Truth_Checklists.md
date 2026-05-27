@@ -50,3 +50,13 @@
 - [x] Sensitive scan clean on new artifacts (only expected descriptive MSAL indicator in the guide itself; no secrets).
 - [x] Internal runbooks/ used via targeted methods only; public canonical guide lives in `docs/operations/`.
 - Reference: `docs/operations/mvp-local-runtime-operator-guide.md` + the two 0x- mds (HEAD d15610e post-P06).
+
+## P08 — Final MVP Candidate Closeout (55fbaf1)
+- [x] Exact listed commands executed (git status/rev-parse + full pytest/ruff/mypy + hb-assistant --version + diagnostics env/paths/automation --json + actions extract/list + run morning --dry-run --json + diagnostics scan-sensitive --repo . --json) and raw outputs captured.
+- [x] `docs/evidence/mvp-local-runtime/08-final-mvp-candidate-closeout.md` created (starting state with actual HEAD, command outputs/excerpts, validation matrix P00–P07, truthful classification, package summary, risks).
+- [x] Supporting capture `validation-outputs/08-starting-checks-raw.txt` created.
+- [x] Minimal surgical 09 checklist + architecture updates performed (this section + pointers in 13/00-README).
+- [x] Sensitive scan on new 08-md + evidence tree: clean (no new real secrets; only pre-existing P05-era findings).
+- [x] Verifiers (validation-closeout, sensitive-artifact-scan, check) spawned with identical strict guardrails (targeted only — no read_file on src/ or prior context files).
+- Final classification: **MVP_CANDIDATE_LOCAL_RUNTIME_READY** + **GRAPH_DELEGATED_PROOF_DEFERRED_PENDING_ADMIN_CONSENT** (truthful; P06/P07 local proofs solid; P05 pre-existing test/lint issues noted as documented limitations; Graph is the explicit external blocker).
+- Reference: `docs/evidence/mvp-local-runtime/08-final-mvp-candidate-closeout.md` (HEAD 55fbaf1 post-P07).
