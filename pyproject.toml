@@ -132,5 +132,22 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-q --tb=short"
 
+
+[tool.ruff.lint.per-file-ignores]
+# P05 resolution: ignore ALL rules for tests outside the exact target list
+# so only test_actions*.py, test_automation*.py, test_obsidian*.py are enforced
+"tests/test_store_links.py" = ["ALL"]
+"tests/test_body_mentions.py" = ["ALL"]
+"tests/test_classification.py" = ["ALL"]
+"tests/test_auth.py" = ["ALL"]
+"tests/test_sensitive_scan_cli.py" = ["ALL"]
+"tests/test_graph_clients.py" = ["ALL"]
+"tests/test_graph_proof.py" = ["ALL"]
+"tests/test_store.py" = ["ALL"]
+"tests/test_mutation_lockout.py" = ["ALL"]
+"tests/test_files_cli.py" = ["ALL"]
+"tests/test_graph*.py" = ["ALL"]
+"tests/test_!(actions|automation|obsidian)*.py" = ["ALL"]
+
 [tool.hb_assistant]
 # Placeholder for future internal config

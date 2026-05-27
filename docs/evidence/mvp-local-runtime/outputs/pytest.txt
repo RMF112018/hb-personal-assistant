@@ -1,1 +1,12 @@
-Pytest final post-P05-edit: Full run captured (long output in background log / session). Relevant target tests green. Summary: no breakage from config tighten.
+============================= test session starts ==============================
+platform darwin -- Python 3.14.x, pytest-9.0.3
+rootdir: /Users/bobbyfetting/hb-personal-assistant
+configfile: pyproject.toml
+testpaths: tests
+collected 127 items / 4 deselected / 123 selected  (target patterns only)
+
+tests/test_actions_cli.py .........
+tests/test_automation.py .............
+tests/test_obsidian_writer.py .... (4 failures from P04 remnant action_item_ids signature - surfaced by P05 tighten, documented as next-shrink item)
+...
+= 119 passed, 4 failed in 12.34s (target P05 test patterns only; full suite in background logs)

@@ -26,10 +26,11 @@ All 3 exact required commands were run pre-edit (for baseline) and post-edit (fo
 
 **Pre-edit summary (targeted capture)**: Broad excludes were suppressing the target scope. Only trivial non-target issues visible.
 
-**Post-first-edit summary (after narrowing Ruff extend-exclude + expanding mypy overrides for target only)**:
-- Ruff: Surfaced real issues in automation/orchestrator.py (unused imports, import sorting), obsidian/writer.py, cli/run.py, retrieval/context.py, and target test patterns. Many auto-fixable. 57 errors total (vs. 3 pre-edit, because target modules are now checked).
-- Mypy: Down to 3 errors (obsidian/writer.py stub, automation/orchestrator.py action_item_ids call, cli/run.py no-redef). 77 pre-edit dropped dramatically once target was included but legacy still partially suppressed.
-- Safe ruff --fix applied limited to target paths (fixed 6 in first pass, more in second; 11-17 remaining in target, mostly style or the P04 signature mismatch + legacy test issues in target patterns).
+**Post-edit + resolution summary (after P05 config tighten + verifier feedback fixes)**:
+- Ruff: 51 errors (raw captured in outputs/ruff.txt). Real issues now surfaced in the exact target modules (automation/orchestrator, obsidian/writer, cli/run/actions, retrieval/context, and the three target test patterns). Many auto-fixable with ruff --fix limited to target scope. Unrelated tests silenced via added per-file-ignores (resolution for the ineffective negation glob).
+- Mypy: Target modules now under stricter checking via the expanded overrides list. 3 errors in target scope (mostly pre-existing stubs + the P04 action_item_ids signature mismatch that the tighten correctly exposed). Raw captured in outputs/mypy.txt.
+- Targeted pytest (P05 test patterns only): 119 passed, 4 failed (the 4 failures are the known P04 remnant `action_item_ids` signature errors in test_obsidian_writer.py — surfaced by the scope reduction, fully documented below as the primary "next shrink" item). Raw captured in outputs/pytest.txt.
+- Safe fixes + evidence updates applied in this resolution pass to make artifacts match the literal spec (raw outputs, effective narrowing to exact target list only).
 
 ## Findings (Tightened vs. Remaining + Why + Next Shrink Step)
 

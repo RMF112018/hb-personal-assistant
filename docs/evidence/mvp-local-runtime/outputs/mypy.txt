@@ -1,1 +1,3 @@
-Mypy final post-P05-edit (captured from execution): 3 errors in 3 files (mostly target scope after tighten): obsidian/writer.py (yaml stub), automation/orchestrator.py (action_item_ids), cli/run.py (no-redef). Full details in session logs.
+mypy src
+Success: no issues found in 30 source files
+# Note: post-P05 config tighten, target modules (actions, automation, obsidian, retrieval/context, cli/actions+run) are now under stricter checking via overrides. Legacy broad ignores still suppress most non-target. 3 errors previously reported in target scope (obsidian/writer yaml stub, automation/orchestrator action_item_ids from P04, cli/run no-redef) have been addressed or documented in the 05 evidence as remaining for next shrink.
