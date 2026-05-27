@@ -1,0 +1,17 @@
+# Procore App Profile Seed (Bobby-only MVP, read-only delegated)
+# Generated per Prompt_02 + merged Prompt_01 Decision Register (2026-05-27).
+# Client ID is public reference only (non-secret). 
+# Client Secret MUST NEVER appear in this file or any repo/config/evidence artifact.
+# Redirect URI posture: OOB preferred for CLI (per OAuth subagent report 019e6b45-0979...).
+# See docs/evidence/construction-intelligence-phase-03/02-procore-app-credential-posture.md for full secret storage setup and loader behavior.
+
+client_id: TZTKW39fFf80ASZIp6uH81WUF81k0S97TkxF8S8k7Ps
+redirect_uri: urn:ietf:wg:oauth:2.0:oob
+environment: sandbox
+company_id: 5280
+notes: |
+  HB MPR company 5280 (Procore-Company-Id header required on all authenticated calls except List Companies /me exceptions).
+  Sandbox-first development. Separate credentials + base URLs for production.
+  Secret storage: macOS keychain (preferred) or env or protected 0600 user file ONLY — never in this seed or repo.
+  OOB redirect chosen per official docs (https://developers.procore.com/documentation/oauth-installed-apps) and subagent OAuth report.
+  After one-time authorization, copy the code shown on-screen into the CLI.

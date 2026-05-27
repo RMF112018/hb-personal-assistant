@@ -1,0 +1,36 @@
+# Procore Environments (sandbox vs production separation)
+# Per merged Prompt_01 subagent reports (OAuth 019e6b45-0979..., REST 019e6b45-1c11..., 2026-05-27) + official docs.
+# Separate OAuth credentials + base URLs required. Tokens do not cross environments.
+# Procore-Company-Id: 5280 header mandatory for HB on (nearly) all authenticated REST calls.
+
+sandbox:
+  name: "Sandbox (Developer / On-Demand)"
+  oauth_base: "https://login-sandbox.procore.com"
+  api_base: "https://sandbox.procore.com"
+  notes: |
+    Use dedicated sandbox Client ID/Secret (immediate in Developer Portal).
+    Data isolated; monthly sandboxes refresh first working day.
+    Always pair with Procore-Company-Id: 5280 header for HB routing (MPR/MPZ).
+    Start all development and dry-run verification here.
+
+production:
+  name: "Production"
+  oauth_base: "https://login.procore.com"
+  api_base: "https://api.procore.com"
+  notes: |
+    Production credentials require app promotion/manifest steps in Developer Portal.
+    NEVER mix sandbox/prod Client ID/Secret/tokens/URLs.
+    Same Procore-Company-Id: 5280 header requirement for HB (5280).
+    Promote only after full sandbox validation + controller policy sign-off.
+    All live calls must have explicit dry-run/apply behavior.
+
+header_requirements:
+  procore_company_id: 5280
+  mandatory_for: "All authenticated REST calls except documented exceptions (List Companies, certain /me without company/project params)"
+  source: "https://developers.procore.com/reference/rest/docs/tutorial-mpz + oauth-client-credentials + error-reference (subagent REST report)"
+
+# Secret handling note (see 02-procore-app-credential-posture.md):
+# Client secret for the active environment is NEVER read from this file or any yaml.
+# It is supplied at runtime exclusively via the secure local storage selector
+# (macOS keychain preferred → PROCORE_CLIENT_SECRET env → protected 0600 user file).
+# The loader (procore/config.py) hard-rejects any attempt to embed secrets in config.

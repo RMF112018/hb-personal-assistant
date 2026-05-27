@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hb-personal-assistant.local/schemas/procore_app_profile.schema.json",
+  "title": "Procore App Profile (Bobby-only MVP)",
+  "description": "Minimal app profile for delegated read-only Procore access. Client ID is public reference only. Client secret MUST NEVER appear in this file or any repo artifact. Redirect URI must be OOB (preferred for CLI) or an explicitly approved localhost URI. Loaded at runtime with secret injected via secure local storage only.",
+  "type": "object",
+  "required": ["client_id", "redirect_uri", "environment", "company_id"],
+  "additionalProperties": false,
+  "properties": {
+    "client_id": {
+      "type": "string",
+      "description": "Public OAuth Client ID from Procore Developer Portal (non-secret).",
+      "pattern": "^[A-Za-z0-9_-]{20,}$"
+    },
+    "redirect_uri": {
+      "type": "string",
+      "description": "OAuth redirect URI. Must be urn:ietf:wg:oauth:2.0:oob (preferred for Bobby-only CLI) or an approved http://localhost:... URI. Exact match required in Developer Portal and all token requests.",
+      "enum": [
+        "urn:ietf:wg:oauth:2.0:oob",
+        "http://localhost",
+        "http://localhost:8080",
+        "http://127.0.0.1",
+        "http://127.0.0.1:8080"
+      ]
+    },
+    "environment": {
+      "type": "string",
+      "enum": ["sandbox", "production"],
+      "description": "Target Procore environment. Separate credentials required per environment per official docs."
+    },
+    "company_id": {
+      "type": "integer",
+      "description": "HB company identifier (5280) for Procore-Company-Id header on all authenticated calls (except documented exceptions).",
+      "minimum": 1
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional human notes (e.g. 'Bobby-only read-only CLI; see 02-procore-app-credential-posture.md for secret storage setup')."
+    }
+  }
+}
