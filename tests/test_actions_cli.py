@@ -12,13 +12,10 @@ from __future__ import annotations
 
 import json
 
-import pytest
 from typer.testing import CliRunner
 
 from hb_assistant.cli.main import app as cli_app
 from hb_assistant.store import get_connection, transaction
-from hb_assistant.store.errors import StoreReadinessError
-
 
 runner = CliRunner()
 
@@ -244,7 +241,6 @@ def test_actions_extract_signal_integration_from_bounded_store_signals():
     ]
 
     from hb_assistant.actions.extractor import extract_candidates
-    from hb_assistant.actions.service import ActionService
 
     # Direct extractor call with manual signals (exercises P04 mapping + redaction)
     cands = extract_candidates(signals=manual_signals, store=None, limit=20)

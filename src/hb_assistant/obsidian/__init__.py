@@ -5,8 +5,8 @@ Preserves 100% of user content outside markers. Dry-run supported.
 Integrates with Store + SourceLinkRegistry for action_items, classified signals, and links.
 """
 
-from .writer import MarkerBoundedWriter
 from .brief import DailyBriefGenerator
+from .writer import MarkerBoundedWriter
 
 __all__ = [
     "MarkerBoundedWriter",

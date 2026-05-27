@@ -10,13 +10,14 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+from typer.testing import CliRunner
+
 from hb_assistant.automation import LaunchdManager, MorningRunOrchestrator
 from hb_assistant.cli.automation import app
 from hb_assistant.cli.main import app as main_app
 from hb_assistant.config.models import MorningRunConfig
 from hb_assistant.store.errors import StoreReadinessError
 from hb_assistant.store.repositories import Store
-from typer.testing import CliRunner
 
 
 def test_launchd_manager_render_and_preview(tmp_path):

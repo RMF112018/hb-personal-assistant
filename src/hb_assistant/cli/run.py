@@ -23,8 +23,8 @@ def morning_cmd(
 ) -> None:
     """Execute morning workflow via orchestrator (Phase 12)."""
     try:
-        from hb_assistant.links.registry import SourceLinkRegistry
         from hb_assistant.automation.orchestrator import MorningRunOrchestrator
+        from hb_assistant.links.registry import SourceLinkRegistry
 
         reg = SourceLinkRegistry()
         run_id = reg.record_run(

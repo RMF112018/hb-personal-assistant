@@ -18,7 +18,7 @@ import json
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from hb_assistant.config.loader import load_config
 from hb_assistant.config.models import MorningRunConfig
@@ -201,6 +201,7 @@ class MorningRunOrchestrator:
                         stage_result["counts"] = {"candidates": len(discovered)}
                     elif stage_name == "brief_generation":
                         from datetime import date
+
                         from hb_assistant.obsidian.brief import DailyBriefGenerator
                         gen = DailyBriefGenerator()
                         content, _fm = gen.generate_for_date(date.today())
@@ -208,6 +209,7 @@ class MorningRunOrchestrator:
                         stage_result["counts"] = {"generated": bool(content), "len": len(content) if content else 0}
                     elif stage_name == "obsidian_write":
                         from datetime import date
+
                         from hb_assistant.obsidian import DailyBriefGenerator, MarkerBoundedWriter
                         gen = DailyBriefGenerator()
                         inner, fm = gen.generate_for_date(date.today())

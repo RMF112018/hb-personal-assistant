@@ -15,10 +15,9 @@ Designed for Daily Notes/YYYY-MM-DD.md (embedded section) and optional companion
 from __future__ import annotations
 
 import re
-import tempfile
 from datetime import date
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import yaml
 
