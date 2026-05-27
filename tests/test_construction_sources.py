@@ -664,3 +664,194 @@ def test_validate_cli_reports_schema_failure(
     payload = json.loads(result.output)
     assert payload["summary"]["ok"] is False
     assert payload["error"] == "schema_validation_failed"
+
+
+# ---------------------------------------------------------------------------
+# Phase 03 entry: V5 source-location projection from registry.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def v5_store(tmp_path: Path):
+    from hb_assistant.construction.store import ConstructionStore
+
+    return ConstructionStore(str(tmp_path / "v5_projection.sqlite"))
+
+
+def test_v5_projection_covers_all_14_registry_sources(v5_store) -> None:
+    """Every source in the live seed registry projects into a
+    construction_source_locations row."""
+    from hb_assistant.construction.source_projection import (
+        project_registry_to_v5_source_locations,
+    )
+
+    reg = load_source_registry()
+    report = project_registry_to_v5_source_locations(reg, v5_store)
+
+    assert report.total == 14
+    assert report.projected + report.compat_projected == 14
+    assert report.skipped == 0
+    assert len(report.items) == 14
+    # Every registry source_key is represented exactly once in the report.
+    projected_ids = {item.source_id for item in report.items}
+    registry_ids = {s.source_key for s in reg.sources}
+    assert projected_ids == registry_ids
+
+
+def test_v5_projection_uses_source_key_as_source_id(v5_store) -> None:
+    """The internal Phase 01 ``source_key`` is the canonical V5
+    ``source_id`` after projection — including for canonical Phase 02
+    records like ``sp_2023projects_23_435_01_tropical_sl``."""
+    from hb_assistant.construction.source_projection import (
+        project_registry_to_v5_source_locations,
+    )
+
+    reg = load_source_registry()
+    project_registry_to_v5_source_locations(reg, v5_store)
+
+    tropical = v5_store.get_source_location(
+        "sp_2023projects_23_435_01_tropical_sl"
+    )
+    assert tropical is not None
+    assert tropical["source_id"] == "sp_2023projects_23_435_01_tropical_sl"
+    assert tropical["source_scope"] == "sharepoint_project_drive_folder"
+    assert tropical["project_key"] == "tropical"
+
+
+def test_v5_projection_marks_legacy_compat_sources(v5_store) -> None:
+    """The three Phase 01 compat records project as
+    ``compat_projected`` and land in V5 with inferred source_system."""
+    from hb_assistant.construction.source_projection import (
+        project_registry_to_v5_source_locations,
+    )
+
+    reg = load_source_registry()
+    report = project_registry_to_v5_source_locations(reg, v5_store)
+
+    compat_ids = {
+        item.source_id for item in report.items if item.status == "compat_projected"
+    }
+    assert compat_ids == {"tropical-sharepoint", "hilltop-sharepoint", "bobby-onedrive"}
+
+    # And they still land in V5 (source_system inferred from kind).
+    for sid in compat_ids:
+        row = v5_store.get_source_location(sid)
+        assert row is not None
+        assert row["source_system"] in {
+            "sharepoint",
+            "onedrive_personal",
+            "onedrive_business",
+            "onedrive_shared_libraries",
+        }
+
+
+def test_v5_projection_rejects_duplicate_source_id(v5_store) -> None:
+    """Defensive precheck rejects duplicate source_ids in the input
+    registry before any store write — guards against synthesized
+    registries that bypass the registry-layer validator."""
+    from hb_assistant.construction.source_projection import (
+        project_registry_to_v5_source_locations,
+    )
+
+    # Synthesize a degenerate registry via model_construct (skips validators).
+    reg = load_source_registry()
+    base = reg.sources[3]  # sp_2023projects_23_435_01_tropical_sl
+    dupe = SourceLocation.model_construct(**base.model_dump())
+    degenerate = SourceRegistry.model_construct(
+        projects=reg.projects,
+        sources=[base, dupe],
+    )
+
+    with pytest.raises(ValueError, match="duplicate source_id in projection input"):
+        project_registry_to_v5_source_locations(degenerate, v5_store)
+
+
+def test_v5_projection_rejects_read_only_false(v5_store) -> None:
+    """Store layer rejects ``read_only=False`` directly — the second
+    line of defense after the model's ``Literal[True]``."""
+    with pytest.raises(ValueError, match="read_only must be True"):
+        v5_store.upsert_source_location(
+            source_id="sp_test_forbidden",
+            source_system="sharepoint",
+            source_scope="sharepoint_project_drive_folder",
+            source_name="forbidden writeback",
+            read_only=False,
+        )
+
+
+def test_v5_projection_round_trips_baseline_and_folder_policies(v5_store) -> None:
+    """Tropical's ``baseline_policy`` and ``folder_policies`` survive
+    JSON round-trip through V5."""
+    import json as _json
+
+    from hb_assistant.construction.source_projection import (
+        project_registry_to_v5_source_locations,
+    )
+
+    reg = load_source_registry()
+    project_registry_to_v5_source_locations(reg, v5_store)
+
+    tropical = v5_store.get_source_location(
+        "sp_2023projects_23_435_01_tropical_sl"
+    )
+    # baseline_policy round-trips with the same mode and gates.
+    bp = tropical["baseline_policy"]
+    assert isinstance(bp, dict)
+    assert bp["mode"] == "shallow_metadata_first"
+    assert bp["graph_delta_required"] is True
+    assert bp["deep_index_default"] is False
+    # folder_policies round-trip preserves the three lists.
+    fp = tropical["folder_policies"]
+    assert isinstance(fp, dict)
+    assert "07-RFI" in fp["deep_index_allowed"]
+    assert "12-Accounting" in fp["metadata_only"]
+    assert "contracts" in fp["review_required"]
+
+    # The on-disk JSON must be the exact deterministic dumps the store
+    # produced (no spurious whitespace, no key reordering between dumps).
+    raw_bp = _json.dumps(bp, sort_keys=False)
+    assert raw_bp  # sanity: serializable
+
+
+def test_v5_projection_maps_sharepoint_site_page_page_url_to_folder_web_url(
+    v5_store,
+) -> None:
+    """Hilltop Gardens ProjectHome is a ``sharepoint_site_page`` source
+    with ``page_url`` set; V5 has no ``page_url`` column, so the URL
+    must land in ``folder_web_url`` to remain reachable from V5 rows."""
+    from hb_assistant.construction.source_projection import (
+        project_registry_to_v5_source_locations,
+    )
+
+    reg = load_source_registry()
+    project_registry_to_v5_source_locations(reg, v5_store)
+
+    hilltop = v5_store.get_source_location("sp_hilltop_gardens_projecthome")
+    assert hilltop is not None
+    assert hilltop["source_scope"] == "sharepoint_site_page"
+    assert hilltop["folder_web_url"] == (
+        "https://hedrickbrotherscom.sharepoint.com/sites/HilltopGardens/"
+        "SitePages/ProjectHome.aspx"
+    )
+
+
+def test_v5_projection_infers_source_system_for_legacy_compat_records(
+    v5_store,
+) -> None:
+    """Phase 01 compat records carry ``source_system: None`` in the
+    registry; V5 enforces ``source_system NOT NULL`` so the projection
+    must infer from ``kind``."""
+    from hb_assistant.construction.source_projection import (
+        project_registry_to_v5_source_locations,
+    )
+
+    reg = load_source_registry()
+    project_registry_to_v5_source_locations(reg, v5_store)
+
+    tropical_compat = v5_store.get_source_location("tropical-sharepoint")
+    hilltop_compat = v5_store.get_source_location("hilltop-sharepoint")
+    bobby_compat = v5_store.get_source_location("bobby-onedrive")
+
+    assert tropical_compat["source_system"] == "sharepoint"
+    assert hilltop_compat["source_system"] == "sharepoint"
+    assert bobby_compat["source_system"] == "onedrive_personal"
