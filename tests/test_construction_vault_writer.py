@@ -293,8 +293,12 @@ def test_project_card_aggregates_totals(populated_store: ConstructionStore) -> N
     svc = ManifestService(populated_store)
     card = svc.build_project_card(reg, "tropical")
     assert card.totals == {"active": 1}
+    # The tropical project now has both the Phase 01 legacy source
+    # (tropical-sharepoint) and the Phase 02 canonical source
+    # (sp_2023projects_23_435_01_tropical_sl) attached.
     assert "tropical-sharepoint" in card.source_keys
-    assert card.source_count == 1
+    assert "sp_2023projects_23_435_01_tropical_sl" in card.source_keys
+    assert card.source_count == 2
 
 
 def test_registry_overview_lists_unresolved(populated_store: ConstructionStore) -> None:

@@ -1,43 +1,307 @@
 # Construction-agent source registry seed.
 #
-# All sources are read-only and start with resolution_status: pending.
-# Real site_url / site_id / drive_id values land via a subsequent prompt once
-# the SharePoint developer brief is attached and a delegated /me/drive
-# round-trip has been performed.
+# Phase 02 compatibility bridge:
+# - Phase 01 records (tropical-sharepoint, hilltop-sharepoint, bobby-onedrive)
+#   stay in place verbatim because downstream code (graph resolver, manifests,
+#   vault writer, classifier, CLI, fixtures) still references those source_keys.
+# - Phase 02 canonical records use the new field names (source_id, source_scope,
+#   source_name, folder_path) via Pydantic field aliases. Internal field names
+#   on the Python side remain on Phase 01 spelling.
+# - Compatibility aliases will be removed only after every downstream reference
+#   is migrated to the canonical names.
 #
 # Guardrails (do not relax in overrides):
 # - read_only must remain true (enforced by SourceLocation model).
+# - default_policies.copy_originals_to_vault must remain false.
+# - default_policies.store_full_text_in_vault_notes must remain false.
 # - Add new sources rather than mutating identifiers in-place once resolved.
 
+default_policies:
+  read_only: true
+  copy_originals_to_vault: false
+  store_full_text_in_vault_notes: false
+  store_extracted_text_in_sqlite: selective
+  store_embeddings: selective
+  require_review_for_sensitive: true
+  sync_mode: graph_delta
+
 projects:
+  # --- Phase 01 compatibility records --------------------------------------
+  # Enriched with Phase 02 canonical identifiers (project_number,
+  # procore_project_id, project_name_normalized) but display_name retained for
+  # downstream code that hardcodes "Tropical".
   - project_key: tropical
     display_name: "Tropical"
     status: active
     primary_company: HB Construction
+    project_number: 23-435-01
+    procore_project_id: "2525840"
+    project_name_normalized: tropical_s_l
+    notes: "Phase 01 compat record enriched with Phase 02 canonical identifiers."
+
   - project_key: hilltop
     display_name: "Hilltop"
     status: active
     primary_company: HB Construction
+    notes: "Phase 01 compatibility record — distinct from canonical hilltop-gardens."
+
+  # --- Phase 02 canonical projects -----------------------------------------
+  - project_key: pga-modern-garage
+    display_name: "PGA The Modern & Garage"
+    status: active
+    primary_company: HB Construction
+    project_number: 22-112-01
+    procore_project_id: "2091445"
+    project_name_normalized: pga_the_modern_garage
+
+  - project_key: alton-hilltop-pbg
+    display_name: "Alton Hilltop at PBG"
+    status: active
+    primary_company: HB Construction
+    project_number: 24-606-01
+    procore_project_id: "2982068"
+    project_name_normalized: alton_hilltop_at_pbg
+
+  - project_key: the-wellington
+    display_name: "The Wellington"
+    status: active
+    primary_company: HB Construction
+    project_number: 25-244-01
+    procore_project_id: "3215931"
+    project_name_normalized: the_wellington
+
+  - project_key: hilltop-gardens
+    display_name: "Hilltop Gardens"
+    status: active
+    primary_company: HB Construction
+    procore_project_id: ""
+    project_name_normalized: hilltop_gardens
+    notes: "SharePoint ProjectHome source; Procore mapping pending."
 
 sources:
+  # --- Phase 01 compatibility records (placeholders) -----------------------
+  # Kept verbatim so downstream code keyed on these source_keys keeps loading.
+  # Phase 02 canonical equivalents below carry the resolved identifiers.
   - source_key: tropical-sharepoint
     project_key: tropical
     kind: sharepoint_site
     display_name: "Tropical SharePoint Site"
     read_only: true
     resolution_status: pending
-    notes: "site_url + site_id to be resolved from SharePoint developer brief"
+    notes: "Phase 01 compat record. See sp_2023projects_23_435_01_tropical_sl for resolved Phase 02 entry."
+
   - source_key: hilltop-sharepoint
     project_key: hilltop
     kind: sharepoint_site
     display_name: "Hilltop SharePoint Site"
     read_only: true
     resolution_status: pending
-    notes: "site_url + site_id to be resolved from SharePoint developer brief"
+    notes: "Phase 01 compat record. See sp_hilltop_gardens_projecthome for canonical Phase 02 entry."
+
   - source_key: bobby-onedrive
     project_key: null
     kind: onedrive_personal
     display_name: "Bobby OneDrive (delegated, personal scope)"
     read_only: true
     resolution_status: pending
-    notes: "drive_id to be resolved via /me/drive once delegated auth is exercised"
+    notes: "Phase 01 compat record. See od_personal_bobby for canonical Phase 02 entry."
+
+  # --- Phase 02 canonical sources ------------------------------------------
+  - source_id: sp_2023projects_23_435_01_tropical_sl
+    source_system: sharepoint
+    source_scope: sharepoint_project_drive_folder
+    source_name: "23-435-01 Tropical - S L"
+    project_key: tropical
+    project_number: 23-435-01
+    project_name: "Tropical - S L"
+    tenant_id: 0e834bd7-628b-42c8-b9ec-ecebc9719be4
+    site_url: https://hedrickbrotherscom.sharepoint.com/sites/2023Projects
+    site_id: b1abbdda-da3b-4fd1-a038-c4aeb13ba951
+    drive_id: b!2r2rsTva0U-gOMSusTupUT0Ecgn6KG9CrTXQO7ex9-wjlyM1iYsETbs3ktNIMr0B
+    folder_item_id: 01KUIR4CV3RKZL4MURNRKY6DWASR3B7EGM
+    folder_path: "/23-435-01Tropical -S L"
+    folder_web_url: https://hedrickbrotherscom.sharepoint.com/sites/2023Projects/Shared%20Documents/23-435-01Tropical%20-S%20L
+    library_name: Shared Documents
+    list_id: 35239723-8b89-4d04-bb37-92d34832bd01
+    sync_mode: graph_delta
+    sync_frequency_minutes: 30
+    resolution_status: graph_delta_ready
+    enabled: true
+    baseline:
+      baseline_status: complete
+      baseline_unique_item_count: 8921
+      baseline_file_count: 7208
+      baseline_folder_count: 1713
+      baseline_file_size_gb: 39.78
+    baseline_policy:
+      mode: shallow_metadata_first
+      deep_index_default: false
+      graph_delta_required: true
+    folder_policies:
+      deep_index_allowed:
+        - 07-RFI
+        - 15-Submittal
+        - 06-Meeting
+        - 09-DailyReport
+        - 21-Potential Delays
+      metadata_only:
+        - 00-Est
+        - 12-Accounting
+        - 13-ChangeOrder
+        - 19-Monthly Forecast
+        - 16-DrawSpecPic
+        - 22-Aerials
+        - 14-Subcontractor
+      review_required:
+        - 00-Est
+        - 12-Accounting
+        - 13-ChangeOrder
+        - 19-Monthly Forecast
+        - contracts
+        - change orders
+        - financial reports
+
+  - source_id: sp_2025projects_25_264_01_atlantic_fields_club_core
+    source_system: sharepoint
+    source_scope: sharepoint_project_drive_folder
+    source_name: "25-264-01 Atlantic Fields Club Core"
+    project_number: 25-264-01
+    project_name: "Atlantic Fields Club Core"
+    tenant_id: 0e834bd7-628b-42c8-b9ec-ecebc9719be4
+    site_url: https://hedrickbrotherscom.sharepoint.com/sites/2025Projects
+    drive_id: b!PoWZ1btVa0q6gdgXXl09T0nH_b9M_v9KoSS7SYEUpssJor0yF_vTT77_-ytmZgKa
+    folder_item_id: 01HK25RQB6ORV4KVXCJND26MC5WXPLDL3C
+    match_status: matched
+    match_confidence: high
+    enabled: true
+
+  - source_id: sp_2022projects_22_112_01_pga_the_modern_garage
+    source_system: sharepoint
+    source_scope: sharepoint_project_drive_folder
+    source_name: "22-112-01 PGA The Modern & Garage"
+    project_key: pga-modern-garage
+    project_number: 22-112-01
+    project_name: "PGA The Modern & Garage"
+    site_url: https://hedrickbrotherscom.sharepoint.com/sites/2022Projects
+    drive_id: b!WezRI5twD0CG0vsUuXc45D0Ecgn6KG9CrTXQO7ex9-wjlyM1iYsETbs3ktNIMr0B
+    folder_item_id: 0152UZS2P34ZQV3W6XRZPYPLRL5M7D7GAV
+    match_status: matched
+    match_confidence: high
+    enabled: true
+
+  - source_id: sp_2024projects_24_606_01_alton_hilltop_pbg
+    source_system: sharepoint
+    source_scope: sharepoint_project_drive_folder
+    source_name: "24-606-01 Alton Hilltop at PBG"
+    project_key: alton-hilltop-pbg
+    project_number: 24-606-01
+    project_name: "Alton Hilltop at PBG"
+    site_url: https://hedrickbrotherscom.sharepoint.com/sites/2024Projects
+    drive_id: b!MIrSJIZTSU-QyMXpEMvd-M5OwgeXo75Pg5eVFcP7kOBtJHkTbxyhQ6_Rf1qr0PaY
+    folder_item_id: 01GH6UUKXSCOYESOFXQVAL2GMD3XBF4L5V
+    match_status: matched
+    match_confidence: high
+    enabled: true
+
+  - source_id: sp_2025projects_25_244_01_the_wellington
+    source_system: sharepoint
+    source_scope: sharepoint_project_drive_folder
+    source_name: "25-244-01 The Wellington"
+    project_key: the-wellington
+    project_number: 25-244-01
+    project_name: "The Wellington"
+    site_url: https://hedrickbrotherscom.sharepoint.com/sites/2025Projects
+    drive_id: b!PoWZ1btVa0q6gdgXXl09T0nH_b9M_v9KoSS7SYEUpssJor0yF_vTT77_-ytmZgKa
+    folder_item_id: 01HK25RQFQU63CYCBIENG3AUTOJMAYYL6U
+    match_status: matched
+    match_confidence: high
+    enabled: true
+
+  - source_id: sp_2026projects_26_727_01_wellington_marketplace_condo_hotel
+    source_system: sharepoint
+    source_scope: sharepoint_project_drive_folder
+    source_name: "26-727-01 The Wellington Marketplace Condo & Hotel"
+    project_number: 26-727-01
+    project_name: "The Wellington Marketplace Condo & Hotel"
+    site_url: https://hedrickbrotherscom.sharepoint.com/sites/2026Projects
+    drive_id: b!B_fU9Mv1JE28V6_9eETtfOtvOAXQD2ZHuOl6lfOKKvApJuOEX6gbRITjCmcAnV8S
+    folder_item_id: 01UG5Y5EPP2HIDJ6P7A5AY6QGC2O6LMIV5
+    match_status: unmatched
+    match_confidence: none
+    enabled: true
+    review_required: true
+
+  - source_id: sp_2026projects_26_898_01_wellington_townhomes
+    source_system: sharepoint
+    source_scope: sharepoint_project_drive_folder
+    source_name: "26-898-01 The Wellington Townhomes"
+    project_number: 26-898-01
+    project_name: "The Wellington Townhomes"
+    site_url: https://hedrickbrotherscom.sharepoint.com/sites/2026Projects
+    drive_id: b!B_fU9Mv1JE28V6_9eETtfOtvOAXQD2ZHuOl6lfOKKvApJuOEX6gbRITjCmcAnV8S
+    folder_item_id: 01UG5Y5EIDQPR6F7CWNZC3QVWDJBJCOJFZ
+    match_status: unmatched
+    match_confidence: none
+    enabled: true
+    review_required: true
+
+  - source_id: sp_hilltop_gardens_projecthome
+    source_system: sharepoint
+    source_scope: sharepoint_site_page
+    source_name: "Hilltop Gardens ProjectHome"
+    project_key: hilltop-gardens
+    site_url: https://hedrickbrotherscom.sharepoint.com/sites/HilltopGardens
+    page_url: https://hedrickbrotherscom.sharepoint.com/sites/HilltopGardens/SitePages/ProjectHome.aspx
+    crawl_mode: page_plus_linked_site_resources
+    indexing_depth: metadata_summary_links
+    sync_mode: graph_site_page_plus_discovered_drives
+    sync_frequency_minutes: 60
+    resolution_status: pending_graph_resolution
+    enabled: true
+
+  - source_id: od_business_bobby_hedrickbrothers
+    source_system: onedrive_business
+    source_scope: onedrive_business_root
+    source_name: "Bobby - Hedrick Brothers OneDrive"
+    local_sync_path: /Users/bobbyfetting/Library/CloudStorage/OneDrive-HedrickBrothersConstruction
+    sync_mode: graph_delta
+    sync_frequency_minutes: 30
+    resolution_status: pending_drive_resolution
+    enabled: true
+    baseline_policy:
+      mode: inventory_first
+      deep_index_default: false
+      classify_project_matches: true
+      graph_delta_required: true
+      local_folder_watcher: secondary_signal_only
+      require_review_for_sensitive: true
+
+  - source_id: od_personal_bobby
+    source_system: onedrive_personal
+    source_scope: onedrive_personal_root
+    source_name: "Bobby - Personal OneDrive"
+    local_sync_path: /Users/bobbyfetting/Library/CloudStorage/OneDrive-Personal
+    sync_mode: graph_delta_or_local_inventory
+    sync_frequency_minutes: 120
+    resolution_status: pending_drive_resolution
+    enabled: true
+    baseline_policy:
+      mode: inventory_first
+      deep_index_default: false
+      classify_project_matches: false
+      require_review_for_sensitive: true
+
+  - source_id: od_shared_libraries_cloudtemp
+    source_system: onedrive_shared_libraries
+    source_scope: onedrive_shared_library
+    source_name: "OneDrive Shared Libraries CloudTemp"
+    local_sync_path: /Users/bobbyfetting/Library/CloudStorage/OneDrive-SharedLibraries-OneDriveCloudTemp
+    sync_mode: graph_delta_pending_resolution
+    sync_frequency_minutes: 60
+    resolution_status: pending_source_resolution
+    enabled: true
+    baseline_policy:
+      mode: inventory_first
+      deep_index_default: false
+      classify_project_matches: true
+      require_review_for_sensitive: true

@@ -1,12 +1,207 @@
 {
-  "additionalProperties": false,
-  "description": "A single read-only source endpoint (SharePoint site, OneDrive scope, etc.).",
-  "properties": {
-    "source_key": {
-      "title": "Source Key",
-      "type": "string"
+  "$defs": {
+    "BaselinePolicy": {
+      "additionalProperties": false,
+      "description": "Per-source crawl-strategy policy.",
+      "properties": {
+        "classify_project_matches": {
+          "default": false,
+          "title": "Classify Project Matches",
+          "type": "boolean"
+        },
+        "deep_index_default": {
+          "default": false,
+          "title": "Deep Index Default",
+          "type": "boolean"
+        },
+        "graph_delta_required": {
+          "default": false,
+          "title": "Graph Delta Required",
+          "type": "boolean"
+        },
+        "local_folder_watcher": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Local Folder Watcher"
+        },
+        "mode": {
+          "enum": [
+            "inventory_first",
+            "shallow_metadata_first",
+            "metadata_only",
+            "deep_index"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "policy_tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Policy Tags",
+          "type": "array"
+        },
+        "require_review_for_sensitive": {
+          "default": false,
+          "title": "Require Review For Sensitive",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "BaselinePolicy",
+      "type": "object"
     },
-    "project_key": {
+    "BaselineSnapshot": {
+      "additionalProperties": false,
+      "description": "Inventory snapshot recorded for a resolved source.",
+      "properties": {
+        "baseline_file_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline File Count"
+        },
+        "baseline_file_size_gb": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline File Size Gb"
+        },
+        "baseline_folder_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline Folder Count"
+        },
+        "baseline_status": {
+          "anyOf": [
+            {
+              "enum": [
+                "pending",
+                "in_progress",
+                "complete",
+                "failed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline Status"
+        },
+        "baseline_unique_item_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline Unique Item Count"
+        }
+      },
+      "title": "BaselineSnapshot",
+      "type": "object"
+    },
+    "FolderPolicies": {
+      "additionalProperties": false,
+      "description": "Per-source folder routing \u2014 three category lists keyed off folder name.",
+      "properties": {
+        "deep_index_allowed": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Deep Index Allowed",
+          "type": "array"
+        },
+        "metadata_only": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Metadata Only",
+          "type": "array"
+        },
+        "review_required": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Review Required",
+          "type": "array"
+        }
+      },
+      "title": "FolderPolicies",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A single read-only source endpoint (SharePoint site, OneDrive scope, etc.).\n\nAccepts both Phase 01 field names (``source_key``, ``kind``, ``display_name``,\n``root_path``) and Phase 02 canonical names (``source_id``, ``source_scope``,\n``source_name``, ``folder_path``) via validation aliases. Internal field\nnames stay on the Phase 01 spelling.",
+  "properties": {
+    "baseline": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BaselineSnapshot"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "baseline_policy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BaselinePolicy"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "crawl_mode": {
       "anyOf": [
         {
           "type": "string"
@@ -16,45 +211,11 @@
         }
       ],
       "default": null,
-      "title": "Project Key"
-    },
-    "kind": {
-      "enum": [
-        "sharepoint_site",
-        "sharepoint_library",
-        "onedrive_personal",
-        "onedrive_shared"
-      ],
-      "title": "Kind",
-      "type": "string"
+      "title": "Crawl Mode"
     },
     "display_name": {
       "title": "Display Name",
       "type": "string"
-    },
-    "site_url": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Site Url"
-    },
-    "site_id": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Site Id"
     },
     "drive_id": {
       "anyOf": [
@@ -68,7 +229,12 @@
       "default": null,
       "title": "Drive Id"
     },
-    "root_path": {
+    "enabled": {
+      "default": true,
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "folder_item_id": {
       "anyOf": [
         {
           "type": "string"
@@ -78,23 +244,135 @@
         }
       ],
       "default": null,
-      "title": "Root Path"
+      "title": "Folder Item Id"
     },
-    "read_only": {
-      "const": true,
-      "default": true,
-      "title": "Read Only",
-      "type": "boolean"
-    },
-    "resolution_status": {
-      "default": "pending",
-      "enum": [
-        "pending",
-        "resolved",
-        "deprecated"
+    "folder_policies": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FolderPolicies"
+        },
+        {
+          "type": "null"
+        }
       ],
-      "title": "Resolution Status",
+      "default": null
+    },
+    "folder_web_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Folder Web Url"
+    },
+    "indexing_depth": {
+      "anyOf": [
+        {
+          "enum": [
+            "metadata_only",
+            "metadata_summary_links",
+            "selective_extraction",
+            "deep_index"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Indexing Depth"
+    },
+    "kind": {
+      "enum": [
+        "sharepoint_site",
+        "sharepoint_library",
+        "onedrive_personal",
+        "onedrive_shared",
+        "sharepoint_project_drive_folder",
+        "sharepoint_site_page",
+        "onedrive_business_root",
+        "onedrive_personal_root",
+        "onedrive_shared_library",
+        "procore_project",
+        "mailbox_deferred"
+      ],
+      "title": "Kind",
       "type": "string"
+    },
+    "library_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Library Name"
+    },
+    "list_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "List Id"
+    },
+    "local_sync_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Local Sync Path"
+    },
+    "match_confidence": {
+      "anyOf": [
+        {
+          "enum": [
+            "high",
+            "medium",
+            "low",
+            "none"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Match Confidence"
+    },
+    "match_status": {
+      "anyOf": [
+        {
+          "enum": [
+            "matched",
+            "unmatched"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Match Status"
     },
     "notes": {
       "anyOf": [
@@ -107,6 +385,175 @@
       ],
       "default": null,
       "title": "Notes"
+    },
+    "page_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Page Url"
+    },
+    "project_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Key"
+    },
+    "project_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Name"
+    },
+    "project_number": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Number"
+    },
+    "read_only": {
+      "const": true,
+      "default": true,
+      "title": "Read Only",
+      "type": "boolean"
+    },
+    "resolution_status": {
+      "default": "pending",
+      "enum": [
+        "pending",
+        "resolved",
+        "deprecated",
+        "graph_delta_ready",
+        "pending_graph_resolution",
+        "pending_drive_resolution",
+        "pending_source_resolution"
+      ],
+      "title": "Resolution Status",
+      "type": "string"
+    },
+    "review_required": {
+      "default": false,
+      "title": "Review Required",
+      "type": "boolean"
+    },
+    "root_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Root Path"
+    },
+    "site_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Site Id"
+    },
+    "site_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Site Url"
+    },
+    "source_key": {
+      "title": "Source Key",
+      "type": "string"
+    },
+    "source_system": {
+      "anyOf": [
+        {
+          "enum": [
+            "sharepoint",
+            "onedrive_business",
+            "onedrive_personal",
+            "onedrive_shared_libraries",
+            "procore",
+            "outlook"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source System"
+    },
+    "sync_frequency_minutes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sync Frequency Minutes"
+    },
+    "sync_mode": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sync Mode"
+    },
+    "tenant_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tenant Id"
     }
   },
   "required": [
