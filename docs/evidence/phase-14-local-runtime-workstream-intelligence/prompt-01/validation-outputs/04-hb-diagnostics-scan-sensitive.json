@@ -1410,6 +1410,14 @@
     },
     {
       "category": "msal_cache_content",
+      "path": "docs/evidence/phase-14-local-runtime-workstream-intelligence/prompt-01/validation-outputs/06-git-state.txt",
+      "line": 11,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
       "path": "docs/evidence/remediation-addendum/defect-reserved-scope-auth/summary.md",
       "line": 1,
       "severity": "medium",
@@ -18116,6 +18124,7 @@
       "docs/evidence/phase-6-validation-outputs/02-ruff.txt",
       "docs/evidence/phase-5-validation-outputs/02-ruff.txt",
       "docs/evidence/phase-8-validation-outputs/02-ruff.txt",
+      "docs/evidence/phase-14-local-runtime-workstream-intelligence/prompt-01/validation-outputs/06-git-state.txt",
       "docs/evidence/remediation-addendum/defect-reserved-scope-auth/summary.md",
       "docs/evidence/remediation-addendum/final-closeout/final-addendum-closeout-proof.json",
       "docs/evidence/remediation-addendum/final-closeout/final-addendum-validation-summary.md",
@@ -18180,12 +18189,12 @@
     ]
   },
   "stats": {
-    "files_considered": 19283,
-    "files_scanned": 822,
+    "files_considered": 19315,
+    "files_scanned": 826,
     "files_binary_skipped": 21,
     "files_oversize_skipped": 2,
     "files_read_errors": 0,
-    "files_excluded": 18438
+    "files_excluded": 18466
   },
   "note": "Bounded content scan with redacted output fields only; no matched secret values emitted."
 }

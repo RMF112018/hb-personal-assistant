@@ -46,3 +46,18 @@ Create real `actions/` module + Typer CLI group with dry-run extraction (source-
 `feat(actions): add source-linked action extraction`
 
 **Prompt 02 foundation complete. Source-linked action extraction + safe dry-run CLI now real and wired.**
+
+## Final Commit & Verification Results
+- Commit: 6776b2d feat(actions): add source-linked action extraction (exact message)
+- 10 files (new actions/ package + cli/actions.py + test + evidence/prompt-02/ + 1 surgical line in main.py)
+- Live verification:
+  - New tests: 4/4 green (including provable dry-run no-mutation via before/after counts on action_items + source_links)
+  - `hb-assistant actions extract --dry-run --json`: exit 0, clean redacted JSON with "would_persist", safety note (captured)
+  - `hb-assistant actions list --json`: works (redacted)
+  - ruff + mypy on new code: clean (0 issues)
+  - Sensitive scan: clean (exit 0, indicator-only as expected)
+  - Full suite still green
+- No full bodies/content in any output or artifact.
+- All Global Operating Rules + plan followed. Evidence package complete.
+
+**Prompt 02 complete. Source-linked action extraction + safe dry-run CLI foundation delivered.**

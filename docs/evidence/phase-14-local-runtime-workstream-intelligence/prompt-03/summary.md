@@ -45,3 +45,14 @@ Move raw action persist from P02 service into proper store helpers for idempoten
 `feat(store): add idempotent action persistence`
 
 **Prompt 03 complete. Idempotent action upsert (completed preserved) + proper source linking via registry delivered.**
+
+## Final Commit & Verification Results
+- Commit: 78bae9a feat(store): add idempotent action persistence (exact message)
+- 12 files (core store/registry/service changes + 2 new tests + new architecture note + full prompt-03 evidence package)
+- Focused P03 tests (idempotent upsert + completed preservation + link_action exactly once): green (2/2)
+- Quick verification (ruff/mypy on touched files + required hb commands): all clean (0 issues, exit 0)
+- Sensitive scan: clean (exit 0, indicator-only as expected)
+- Full suite elements satisfied per plan
+- All Global Operating Rules + approved plan followed. Evidence package complete with real outputs.
+
+**Prompt 03 complete. Idempotent action persistence + proper source linking delivered.**
