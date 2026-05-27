@@ -1,0 +1,92 @@
+{
+  "additionalProperties": false,
+  "description": "Deterministic output of evaluating one rule against one inventory item.",
+  "properties": {
+    "rule_id": {
+      "title": "Rule Id",
+      "type": "string"
+    },
+    "item_id": {
+      "title": "Item Id",
+      "type": "string"
+    },
+    "source_key": {
+      "title": "Source Key",
+      "type": "string"
+    },
+    "project_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Key"
+    },
+    "name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Name"
+    },
+    "parent_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parent Path"
+    },
+    "sensitivity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "classification_label": {
+      "title": "Classification Label",
+      "type": "string"
+    },
+    "reason": {
+      "title": "Reason",
+      "type": "string"
+    },
+    "suggested_action": {
+      "title": "Suggested Action",
+      "type": "string"
+    },
+    "confidence": {
+      "default": 1.0,
+      "title": "Confidence",
+      "type": "number"
+    }
+  },
+  "required": [
+    "rule_id",
+    "item_id",
+    "source_key",
+    "sensitivity",
+    "classification_label",
+    "reason",
+    "suggested_action"
+  ],
+  "title": "RuleMatch",
+  "type": "object"
+}

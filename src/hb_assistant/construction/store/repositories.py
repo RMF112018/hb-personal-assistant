@@ -196,6 +196,29 @@ class ConstructionStore:
         )
         return dict(cur.fetchall())
 
+    def list_inventory_for_source(
+        self, source_key: str, *, include_deleted: bool = False, limit: int = 5000,
+    ) -> list[dict[str, Any]]:
+        """List inventory rows for a source (active only by default)."""
+        conn = get_connection(self._db_path)
+        sql = """
+            SELECT source_key, drive_id, item_id, name, web_url, parent_path,
+                   size_bytes, is_folder, last_modified, etag, status,
+                   first_seen_at, last_seen_at
+            FROM construction_drive_item_inventory
+            WHERE source_key = ?
+        """
+        params: tuple[Any, ...] = (source_key,)
+        if not include_deleted:
+            sql += " AND status = 'active'"
+        sql += " ORDER BY item_id LIMIT ?"
+        params = (*params, limit)
+        cur = conn.execute(sql, params)
+        keys = ("source_key", "drive_id", "item_id", "name", "web_url", "parent_path",
+                "size_bytes", "is_folder", "last_modified", "etag", "status",
+                "first_seen_at", "last_seen_at")
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
     def list_inventory_changed_since(
         self,
         source_key: str,
@@ -258,6 +281,79 @@ class ConstructionStore:
                 ),
             )
             return int(cur.lastrowid)
+
+    # --- review queue (V3) --------------------------------------------------
+
+    def enqueue_review_item(self, match: Any) -> bool:
+        """Insert a review-queue row from a :class:`RuleMatch`.
+
+        Idempotent on ``(source_key, item_id, rule_id)``. Returns True if a new
+        row was inserted, False if the unique constraint already had it.
+        """
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                INSERT OR IGNORE INTO construction_review_queue
+                    (source_key, project_key, item_id, name, parent_path,
+                     rule_id, classification_label, sensitivity, reason,
+                     suggested_action, confidence, status, routed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)
+                """,
+                (
+                    match.source_key, match.project_key, match.item_id,
+                    match.name, match.parent_path, match.rule_id,
+                    match.classification_label, match.sensitivity, match.reason,
+                    match.suggested_action, match.confidence, _utc_now(),
+                ),
+            )
+            return cur.rowcount > 0
+
+    def list_review_queue(
+        self,
+        *,
+        source_key: str | None = None,
+        status: str | None = "open",
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """List review-queue rows. ``status=None`` returns every status."""
+        conn = get_connection(self._db_path)
+        sql = """
+            SELECT id, source_key, project_key, item_id, name, parent_path,
+                   rule_id, classification_label, sensitivity, reason,
+                   suggested_action, confidence, status, routed_at, resolved_at
+            FROM construction_review_queue
+            WHERE 1=1
+        """
+        params: list[Any] = []
+        if source_key is not None:
+            sql += " AND source_key = ?"
+            params.append(source_key)
+        if status is not None:
+            sql += " AND status = ?"
+            params.append(status)
+        sql += " ORDER BY routed_at DESC, id DESC LIMIT ?"
+        params.append(limit)
+        cur = conn.execute(sql, tuple(params))
+        keys = ("id", "source_key", "project_key", "item_id", "name", "parent_path",
+                "rule_id", "classification_label", "sensitivity", "reason",
+                "suggested_action", "confidence", "status", "routed_at", "resolved_at")
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    def count_review_queue(
+        self, *, source_key: str | None = None, status: str | None = "open",
+    ) -> int:
+        conn = get_connection(self._db_path)
+        sql = "SELECT COUNT(*) FROM construction_review_queue WHERE 1=1"
+        params: list[Any] = []
+        if source_key is not None:
+            sql += " AND source_key = ?"
+            params.append(source_key)
+        if status is not None:
+            sql += " AND status = ?"
+            params.append(status)
+        row = conn.execute(sql, tuple(params)).fetchone()
+        return int(row[0]) if row else 0
 
     def list_recent_receipts(self, source_key: str, limit: int = 5) -> list[dict[str, Any]]:
         conn = get_connection(self._db_path)

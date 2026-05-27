@@ -235,6 +235,38 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v3 = construction-agent review queue (metadata only; one row per rule match)
+    V3_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS construction_review_queue (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          source_key TEXT NOT NULL,
+          project_key TEXT,
+          item_id TEXT NOT NULL,
+          name TEXT,
+          parent_path TEXT,
+          rule_id TEXT NOT NULL,
+          classification_label TEXT NOT NULL,
+          sensitivity TEXT NOT NULL,
+          reason TEXT NOT NULL,
+          suggested_action TEXT NOT NULL,
+          confidence REAL NOT NULL DEFAULT 1.0,
+          status TEXT NOT NULL DEFAULT 'open',
+          routed_at TEXT NOT NULL,
+          resolved_at TEXT,
+          UNIQUE(source_key, item_id, rule_id)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_review_queue_status
+          ON construction_review_queue(status);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_review_queue_source
+          ON construction_review_queue(source_key);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -264,6 +296,17 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (2, 'v2_construction_delta', ?)",
+                    (now,),
+                )
+
+            # v3 construction-agent review queue (additive, metadata only)
+            for stmt in self.V3_STATEMENTS:
+                conn.execute(stmt)
+
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 3")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (3, 'v3_construction_review_queue', ?)",
                     (now,),
                 )
 

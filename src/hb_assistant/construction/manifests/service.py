@@ -228,9 +228,32 @@ class ManifestService:
         self,
         items: Iterable[ReviewRequiredItem] | None = None,
     ) -> ReviewRequiredNote:
+        """Build a review-required note.
+
+        When ``items`` is ``None``, defaults to pulling every open row from the
+        review queue in the bound :class:`ConstructionStore` (V3 schema) and
+        projecting them to :class:`ReviewRequiredItem`. Pass an explicit
+        ``items`` iterable (including ``[]``) to bypass the store pull.
+        """
+
+        if items is None:
+            rows = self._store.list_review_queue(status="open")
+            items = [
+                ReviewRequiredItem(
+                    item_id=row["item_id"],
+                    source_key=row["source_key"],
+                    project_key=row.get("project_key"),
+                    name=row.get("name"),
+                    reason=row["reason"],
+                    suggested_action=row.get("suggested_action"),
+                    classification_label=row.get("classification_label"),
+                    sensitivity=row.get("sensitivity"),
+                )
+                for row in rows
+            ]
         return ReviewRequiredNote(
             generated_at=_utc_now(),
-            items=list(items) if items is not None else [],
+            items=list(items),
             guardrails=dict(GUARDRAILS_DEFAULT),
         )
 

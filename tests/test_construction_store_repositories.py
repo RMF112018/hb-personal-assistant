@@ -18,7 +18,9 @@ def db_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
 
 def test_store_init_applies_v2_migration(db_path: str) -> None:
     ConstructionStore(db_path)
-    assert SQLiteMigrator(db_path).current_version() == 2
+    # Construction store requires at least V2 (its own tables). Later schema
+    # versions stack on top and remain backwards-compatible.
+    assert SQLiteMigrator(db_path).current_version() >= 2
 
 
 def test_upsert_and_get_resolution(db_path: str) -> None:

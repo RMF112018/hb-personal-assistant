@@ -45,6 +45,12 @@ from hb_assistant.construction.manifests import (
     ManifestService,
     VaultRootNotConfigured,
 )
+from hb_assistant.construction.policy import (
+    ReviewPolicyEvaluator,
+    ReviewQueueRouter,
+    ReviewRulesError,
+    load_review_rules,
+)
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient
 
@@ -53,10 +59,12 @@ sources_app = typer.Typer(help="Source registry inspection.")
 graph_app = typer.Typer(help="Read-only Microsoft Graph crawler.")
 graph_sources_app = typer.Typer(help="Graph source resolution.")
 vault_app = typer.Typer(help="Construction vault preview and bootstrap.")
+review_app = typer.Typer(help="Review-queue policy evaluation and inspection.")
 app.add_typer(sources_app, name="sources")
 app.add_typer(graph_app, name="graph")
 graph_app.add_typer(graph_sources_app, name="sources")
 app.add_typer(vault_app, name="vault")
+app.add_typer(review_app, name="review")
 
 
 def _build_report(registry: SourceRegistry) -> dict[str, Any]:
@@ -686,6 +694,135 @@ def vault_preview(
             "atomic_writes": True,
             "document_card_policy": "opt_in_only",
         },
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+# ---------------------------------------------------------------------------
+# Review queue (Phase 01 Step 7 / Prompt 06)
+# ---------------------------------------------------------------------------
+
+
+_REVIEW_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": True,
+    "model_decisioning": False,
+    "controller_policy_authoritative": True,
+    "deterministic_rules_only": True,
+}
+
+
+@review_app.command("evaluate")
+def review_evaluate(
+    source: Optional[str] = typer.Option(
+        None, "--source", help="Run only this source_key (default: all registered sources).",
+    ),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply",
+        help="Default dry-run; --apply persists matches to construction_review_queue.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Apply the review-required policy across inventory and (optionally) enqueue matches."""
+
+    try:
+        rules = load_review_rules()
+    except ReviewRulesError as e:
+        payload = {
+            "command": "construction-agent review evaluate",
+            "status": "rules_unavailable",
+            "error": str(e),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+    registry = load_source_registry()
+    if source is not None and not any(s.source_key == source for s in registry.sources):
+        payload = {
+            "command": "construction-agent review evaluate",
+            "status": "not_found",
+            "requested": source,
+            "available": [s.source_key for s in registry.sources],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    store = ConstructionStore()
+    evaluator = ReviewPolicyEvaluator(rules)
+    router = ReviewQueueRouter(store, evaluator)
+    results = router.evaluate_registry(
+        registry=registry, only_source_key=source, apply=not dry_run,
+    )
+
+    summary = {
+        "sources_evaluated": len(results),
+        "items_seen": sum(r.items_seen for r in results),
+        "matches_found": sum(r.matches_found for r in results),
+        "enqueued": sum(r.enqueued for r in results),
+        "skipped_already_open": sum(r.skipped_already_open for r in results),
+    }
+
+    payload = {
+        "command": "construction-agent review evaluate",
+        "mode": "dry_run" if dry_run else "apply",
+        "rules": {
+            "version": rules.version,
+            "rule_count": len(rules.rules),
+            "low_confidence_threshold": rules.low_confidence_threshold,
+        },
+        "summary": summary,
+        "results": [r.model_dump() for r in results],
+        "guardrails": _REVIEW_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@review_app.command("list")
+def review_list(
+    source: Optional[str] = typer.Option(
+        None, "--source", help="Filter to one source_key (default: all sources).",
+    ),
+    status: str = typer.Option(
+        "open", "--status",
+        help="Filter by status: open | resolved | deferred | all (default: open).",
+    ),
+    limit: int = typer.Option(1000, "--limit"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List rows in the construction review queue (read-only)."""
+
+    allowed = {"open", "resolved", "deferred", "all"}
+    if status not in allowed:
+        payload = {
+            "command": "construction-agent review list",
+            "status": "invalid_status_filter",
+            "requested": status,
+            "allowed": sorted(allowed),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    store = ConstructionStore()
+    rows = store.list_review_queue(
+        source_key=source,
+        status=None if status == "all" else status,
+        limit=limit,
+    )
+    counts_by_status = {
+        s: store.count_review_queue(source_key=source, status=s)
+        for s in ("open", "resolved", "deferred")
+    }
+
+    payload = {
+        "command": "construction-agent review list",
+        "filter": {"source": source, "status": status, "limit": limit},
+        "counts_by_status": counts_by_status,
+        "total": len(rows),
+        "items": rows,
+        "guardrails": _REVIEW_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)

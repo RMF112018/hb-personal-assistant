@@ -1,0 +1,126 @@
+# Construction-agent review queue — controller policy.
+#
+# Authoritative. The Python evaluator only applies these rules; it never
+# invents categories, never adjusts confidence, never overrides classification.
+# Edit this file (or an override under config/review_required_rules.yml) to
+# tune routing. Pydantic schema lives in
+# src/hb_assistant/construction/policy/models.py.
+#
+# Rule kinds:
+#   - folder_path     pattern is a regex matched (case-insensitive) against parent_path
+#   - document_name   pattern is a regex matched (case-insensitive) against name
+#   - risk_term       pattern is a comma-separated list of substrings matched against name
+#
+# Sensitivity is one of: low | medium | high | critical.
+#
+# Every protected category (contract, financial, legal, incident, injury,
+# personnel) MUST have at least one rule with a matching classification_label
+# value — otherwise model loading fails with a ValidationError. This is
+# enforced by ReviewRules._check_consistency.
+
+version: 1
+low_confidence_threshold: 0.7
+
+rules:
+  # ---- folder_path rules ------------------------------------------------
+  - rule_id: folder-contracts
+    kind: folder_path
+    pattern: "(^|/)contracts?(/|$)"
+    sensitivity: high
+    classification_label: contract
+    reason: "item lives under a contracts folder"
+    suggested_action: controller_review
+
+  - rule_id: folder-financials
+    kind: folder_path
+    pattern: "(^|/)(financials?|finance|accounting|budgets?)(/|$)"
+    sensitivity: high
+    classification_label: financial
+    reason: "item lives under a financials folder"
+    suggested_action: controller_review
+
+  - rule_id: folder-legal
+    kind: folder_path
+    pattern: "(^|/)(legal|counsel)(/|$)"
+    sensitivity: high
+    classification_label: legal
+    reason: "item lives under a legal folder"
+    suggested_action: controller_review
+
+  - rule_id: folder-incidents
+    kind: folder_path
+    pattern: "(^|/)(incidents?|safety|osha)(/|$)"
+    sensitivity: critical
+    classification_label: incident
+    reason: "item lives under an incidents or safety folder"
+    suggested_action: controller_review
+
+  - rule_id: folder-personnel
+    kind: folder_path
+    pattern: "(^|/)(hr|personnel|payroll|employees?)(/|$)"
+    sensitivity: high
+    classification_label: personnel
+    reason: "item lives under a personnel/HR folder"
+    suggested_action: controller_review
+
+  # ---- document_name rules ---------------------------------------------
+  - rule_id: doc-change-order
+    kind: document_name
+    pattern: "change[\\s_\\-]*order"
+    sensitivity: high
+    classification_label: contract
+    reason: "document name indicates a change order"
+    suggested_action: controller_review
+
+  - rule_id: doc-invoice
+    kind: document_name
+    pattern: "invoice|pay\\s*app|payment\\s*application"
+    sensitivity: high
+    classification_label: financial
+    reason: "document name indicates an invoice or pay application"
+    suggested_action: controller_review
+
+  - rule_id: doc-purchase-order
+    kind: document_name
+    pattern: "purchase[\\s_\\-]*order|(^|[\\s_\\-])po[\\s_\\-]*\\d"
+    sensitivity: medium
+    classification_label: financial
+    reason: "document name indicates a purchase order"
+    suggested_action: controller_review
+
+  # ---- risk_term rules -------------------------------------------------
+  - rule_id: term-injury
+    kind: risk_term
+    pattern: "injury,injured,osha"
+    sensitivity: critical
+    classification_label: injury
+    reason: "document name contains an injury-related term"
+    suggested_action: controller_review
+
+  - rule_id: term-incident
+    kind: risk_term
+    pattern: "incident,near-miss,near miss"
+    sensitivity: critical
+    classification_label: incident
+    reason: "document name contains an incident-related term"
+    suggested_action: controller_review
+
+  - rule_id: term-confidential
+    kind: risk_term
+    pattern: "confidential,privileged,attorney-client"
+    sensitivity: high
+    classification_label: legal
+    reason: "document name contains a confidentiality marker"
+    suggested_action: controller_review
+
+  # ---- low-confidence rule ---------------------------------------------
+  # Fires on ambiguous budget references. Confidence < threshold so a
+  # controller knows this routing is a hint rather than a hard call.
+  - rule_id: term-budget-ambiguous
+    kind: risk_term
+    pattern: "budget,estimate,forecast"
+    sensitivity: medium
+    classification_label: financial
+    reason: "document name contains an ambiguous budget/estimate term"
+    suggested_action: controller_review
+    confidence: 0.5
