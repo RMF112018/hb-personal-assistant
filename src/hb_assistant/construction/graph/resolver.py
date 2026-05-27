@@ -28,16 +28,43 @@ Phase 02 scope-aware dispatch:
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Literal, Optional
 from urllib.parse import unquote, urlparse
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from hb_assistant.construction.config import SourceLocation
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
 
 GRAPH_SCOPES = ["Sites.Read.All", "Files.Read.All", "User.Read"]
+
+
+class LinkedSourceCandidate(BaseModel):
+    """A linked-library candidate discovered during site-page resolution.
+
+    Candidates are surfaced by ``/sites/{site_id}/drives`` enumeration during
+    sharepoint_site_page resolution. They carry metadata only — the resolver
+    never fetches drive contents, and ``deep_index_allowed`` is locked to
+    ``False`` at the type level so the candidate object itself cannot grant
+    permission to deep-index. Operator triage decides whether each candidate
+    becomes its own ``SourceLocation`` record in a later prompt.
+    """
+
+    drive_id: str
+    drive_name: Optional[str] = None
+    web_url: Optional[str] = None
+    drive_type: Optional[str] = None
+    library_kind: Optional[str] = None
+    discovery_method: Literal[
+        "site_drives_enumeration",
+        "page_webpart_reference",
+    ]
+    deep_index_allowed: Literal[False] = False
+    item_count_hint: Optional[int] = None
+    note: Optional[str] = None
+
+    model_config = {"extra": "forbid"}
 
 
 class ResolutionResult(BaseModel):
@@ -53,8 +80,14 @@ class ResolutionResult(BaseModel):
     note: Optional[str] = None
     pre_resolved: bool = False
     error_redacted: Optional[str] = None
+    linked_sources_discovered: list[LinkedSourceCandidate] = Field(default_factory=list)
 
     model_config = {"extra": "forbid"}
+
+
+def _canonicalize_url(url: str) -> str:
+    """Lower-case + strip trailing slash for tolerant URL equality checks."""
+    return unquote(url).rstrip("/").lower()
 
 
 def _parse_sharepoint_url(site_url: str) -> tuple[str, str]:
@@ -303,18 +336,96 @@ class ConstructionGraphResolver:
             site_id = site_data.get("id")
             web_url = site_data.get("webUrl") or source.site_url
 
-        # page_id resolution is intentionally deferred to a dedicated
-        # page crawler (separate prompt). We carry the site_id so that
-        # downstream page crawl can resume without re-resolving.
+        page_id: Optional[str] = None
+        page_note: Optional[str] = None
+        if site_id is not None:
+            page_id, page_note = self._resolve_site_page_id(site_id, source.page_url)
+
+        linked_sources: list[LinkedSourceCandidate] = []
+        discovery_note: Optional[str] = None
+        if site_id is not None:
+            linked_sources, discovery_note = self._discover_linked_sources(site_id)
+
+        status = "resolved" if site_id and page_id else "pending"
+
+        combined_note: Optional[str] = None
+        notes_parts = [n for n in (page_note, discovery_note) if n]
+        if notes_parts:
+            combined_note = "; ".join(notes_parts)
+
         return ResolutionResult(
             source_key=source.source_key,
             kind=source.kind,
             scope=source.kind,
-            status="pending",
+            status=status,
             site_id=site_id,
+            page_id=page_id,
             web_url=web_url,
-            note="page_id_resolution_deferred_to_page_crawler",
+            note=combined_note,
+            linked_sources_discovered=linked_sources,
         )
+
+    def _resolve_site_page_id(
+        self, site_id: str, page_url: Optional[str]
+    ) -> tuple[Optional[str], Optional[str]]:
+        """Look up a sitePage entity matching ``page_url`` and return ``(page_id, note)``.
+
+        Read-only enumeration via ``/sites/{site_id}/pages``. Never fetches
+        page contents or webparts; only the identity metadata is needed.
+        """
+        if not page_url:
+            return None, "page_id_resolution_skipped_no_page_url"
+
+        try:
+            page_data = self._http.get(
+                f"/sites/{site_id}/pages",
+                params={"$select": "id,name,webUrl", "$top": "50"},
+                scopes=GRAPH_SCOPES,
+            )
+        except GraphHttpError as e:
+            return None, f"page_id_resolution_failed: graph_{e.status}"
+
+        target = _canonicalize_url(page_url)
+        for entry in page_data.get("value", []) or []:
+            entry_url = entry.get("webUrl")
+            if entry_url and _canonicalize_url(entry_url) == target:
+                return entry.get("id"), None
+        return None, "page_id_not_found_on_site"
+
+    def _discover_linked_sources(
+        self, site_id: str
+    ) -> tuple[list[LinkedSourceCandidate], Optional[str]]:
+        """Enumerate document libraries on the site as linked-source candidates.
+
+        Read-only via ``/sites/{site_id}/drives``. The resolver never calls
+        ``/drives/{id}/items`` or any other content endpoint — candidates
+        carry metadata only.
+        """
+        try:
+            data = self._http.get(
+                f"/sites/{site_id}/drives",
+                params={"$select": "id,name,webUrl,driveType"},
+                scopes=GRAPH_SCOPES,
+            )
+        except GraphHttpError as e:
+            return [], f"linked_source_discovery_failed: graph_{e.status}"
+
+        candidates: list[LinkedSourceCandidate] = []
+        for entry in data.get("value", []) or []:
+            drive_id = entry.get("id")
+            if not drive_id:
+                continue
+            candidates.append(
+                LinkedSourceCandidate(
+                    drive_id=drive_id,
+                    drive_name=entry.get("name"),
+                    web_url=entry.get("webUrl"),
+                    drive_type=entry.get("driveType"),
+                    library_kind=entry.get("driveType"),
+                    discovery_method="site_drives_enumeration",
+                )
+            )
+        return candidates, None
 
     # ------------------------------------------------------------------
     # OneDrive scopes.

@@ -216,9 +216,14 @@ def test_resolve_project_drive_folder_pending_when_site_url_missing() -> None:
     http.get.assert_not_called()
 
 
-def test_resolve_site_page_resolves_site_id_only() -> None:
+def test_resolve_site_page_when_pages_endpoint_returns_no_match() -> None:
+    """When /sites/{id}/pages contains no entry matching page_url, status stays pending."""
     http = MagicMock()
-    http.get.return_value = {"id": "site-hilltop", "webUrl": "https://example/site"}
+    http.get.side_effect = [
+        {"id": "site-hilltop", "webUrl": "https://example/site"},
+        {"value": [{"id": "other-page", "name": "Home.aspx", "webUrl": "https://example/site/SitePages/Home.aspx"}]},
+        {"value": []},  # /sites/.../drives → no candidates
+    ]
     resolver = ConstructionGraphResolver(http)
     source = SourceLocation(
         source_key="sp_hilltop_gardens_projecthome",
@@ -230,8 +235,10 @@ def test_resolve_site_page_resolves_site_id_only() -> None:
     result = resolver.resolve(source)
     assert result.status == "pending"
     assert result.site_id == "site-hilltop"
-    assert result.note == "page_id_resolution_deferred_to_page_crawler"
+    assert result.page_id is None
+    assert result.note is not None and "page_id_not_found_on_site" in result.note
     assert result.scope == "sharepoint_site_page"
+    assert result.linked_sources_discovered == []
 
 
 def test_resolve_onedrive_business_root_records_drive_type() -> None:
@@ -340,3 +347,211 @@ def test_pre_resolved_status_normalizes_to_resolved_in_store(tmp_path: Path) -> 
     assert row["site_id"] == source.site_id
     assert row["drive_id"] == source.drive_id
     http.get.assert_not_called()
+
+
+# =====================================================================
+# Hilltop ProjectHome page resolution + linked-source discovery
+# (Phase 02 Prompt 05).
+# =====================================================================
+
+
+def _make_hilltop_projecthome(**overrides) -> SourceLocation:
+    defaults = dict(
+        source_key="sp_hilltop_gardens_projecthome",
+        kind="sharepoint_site_page",
+        display_name="Hilltop Gardens ProjectHome",
+        site_url="https://hedrickbrotherscom.sharepoint.com/sites/HilltopGardens",
+        page_url=(
+            "https://hedrickbrotherscom.sharepoint.com/sites/"
+            "HilltopGardens/SitePages/ProjectHome.aspx"
+        ),
+        project_key="hilltop-gardens",
+    )
+    defaults.update(overrides)
+    return SourceLocation(**defaults)  # type: ignore[arg-type]
+
+
+def test_resolve_site_page_resolves_page_id_and_discovers_linked_sources() -> None:
+    http = MagicMock()
+    http.get.side_effect = [
+        # /sites/{host}:{path}
+        {"id": "site-hilltop", "webUrl": "https://example/site"},
+        # /sites/{site_id}/pages
+        {
+            "value": [
+                {
+                    "id": "page-projecthome",
+                    "name": "ProjectHome.aspx",
+                    "webUrl": (
+                        "https://hedrickbrotherscom.sharepoint.com/sites/"
+                        "HilltopGardens/SitePages/ProjectHome.aspx"
+                    ),
+                },
+                {
+                    "id": "page-other",
+                    "name": "About.aspx",
+                    "webUrl": "https://example/site/SitePages/About.aspx",
+                },
+            ]
+        },
+        # /sites/{site_id}/drives
+        {
+            "value": [
+                {
+                    "id": "drv-docs",
+                    "name": "Documents",
+                    "webUrl": "https://example/site/Documents",
+                    "driveType": "documentLibrary",
+                },
+                {
+                    "id": "drv-rfis",
+                    "name": "RFIs",
+                    "webUrl": "https://example/site/RFIs",
+                    "driveType": "documentLibrary",
+                },
+            ]
+        },
+    ]
+    resolver = ConstructionGraphResolver(http)
+    source = _make_hilltop_projecthome()
+    result = resolver.resolve(source)
+
+    assert result.status == "resolved"
+    assert result.site_id == "site-hilltop"
+    assert result.page_id == "page-projecthome"
+    assert len(result.linked_sources_discovered) == 2
+    drive_ids = [c.drive_id for c in result.linked_sources_discovered]
+    assert "drv-docs" in drive_ids
+    assert "drv-rfis" in drive_ids
+    for cand in result.linked_sources_discovered:
+        assert cand.deep_index_allowed is False
+        assert cand.discovery_method == "site_drives_enumeration"
+
+
+def test_resolve_site_page_url_match_is_case_and_trailing_slash_tolerant() -> None:
+    http = MagicMock()
+    http.get.side_effect = [
+        {"id": "site-1", "webUrl": "https://example/site"},
+        {
+            "value": [
+                {
+                    "id": "page-x",
+                    "name": "ProjectHome.aspx",
+                    # Different casing + trailing slash
+                    "webUrl": (
+                        "https://HEDRICKBROTHERSCOM.sharepoint.com/sites/"
+                        "HilltopGardens/SitePages/ProjectHome.aspx/"
+                    ),
+                }
+            ]
+        },
+        {"value": []},
+    ]
+    resolver = ConstructionGraphResolver(http)
+    source = _make_hilltop_projecthome()
+    result = resolver.resolve(source)
+    assert result.page_id == "page-x"
+    assert result.status == "resolved"
+
+
+def test_resolve_site_page_without_page_url_records_skip_note() -> None:
+    http = MagicMock()
+    http.get.side_effect = [
+        {"id": "site-1", "webUrl": "https://example/site"},
+        {"value": []},  # /sites/.../drives
+    ]
+    resolver = ConstructionGraphResolver(http)
+    source = _make_hilltop_projecthome(page_url=None)
+    result = resolver.resolve(source)
+    assert result.status == "pending"
+    assert result.page_id is None
+    assert "page_id_resolution_skipped_no_page_url" in (result.note or "")
+
+
+def test_resolve_site_page_never_fetches_drive_contents() -> None:
+    """Guardrail: discovery must not touch /drives/{id}/items or /root/delta."""
+    http = MagicMock()
+    http.get.side_effect = [
+        {"id": "site-1", "webUrl": "https://example/site"},
+        {
+            "value": [
+                {
+                    "id": "page-x",
+                    "name": "ProjectHome.aspx",
+                    "webUrl": (
+                        "https://hedrickbrotherscom.sharepoint.com/sites/"
+                        "HilltopGardens/SitePages/ProjectHome.aspx"
+                    ),
+                }
+            ]
+        },
+        {
+            "value": [
+                {
+                    "id": "drv-docs",
+                    "name": "Documents",
+                    "driveType": "documentLibrary",
+                }
+            ]
+        },
+    ]
+    resolver = ConstructionGraphResolver(http)
+    source = _make_hilltop_projecthome()
+    resolver.resolve(source)
+
+    called_paths = [call.args[0] for call in http.get.call_args_list]
+    for path in called_paths:
+        assert "/items" not in path, f"forbidden /items call: {path}"
+        assert "/root/children" not in path, f"forbidden /root/children call: {path}"
+        assert "/root/delta" not in path, f"forbidden /root/delta call: {path}"
+        assert "/drives/" not in path or path.startswith("/sites/"), (
+            f"forbidden direct /drives/.../* call (not via /sites/.../drives): {path}"
+        )
+
+
+def test_resolve_site_page_discovery_failure_degrades_to_empty_list() -> None:
+    """If /sites/.../drives errors, page resolution still succeeds; candidates are empty."""
+    from hb_assistant.graph.http_client import GraphHttpError
+
+    http = MagicMock()
+
+    def _side_effect(path, **kwargs):
+        if "/sites/" in path and path.endswith("/drives"):
+            raise GraphHttpError("GET", path, 503, "service unavailable")
+        if path.startswith("/sites/") and ":" in path:
+            return {"id": "site-1", "webUrl": "https://example/site"}
+        if "/sites/" in path and path.endswith("/pages"):
+            return {
+                "value": [
+                    {
+                        "id": "page-x",
+                        "name": "ProjectHome.aspx",
+                        "webUrl": (
+                            "https://hedrickbrotherscom.sharepoint.com/sites/"
+                            "HilltopGardens/SitePages/ProjectHome.aspx"
+                        ),
+                    }
+                ]
+            }
+        raise AssertionError(f"unexpected call: {path}")
+
+    http.get.side_effect = _side_effect
+    resolver = ConstructionGraphResolver(http)
+    source = _make_hilltop_projecthome()
+    result = resolver.resolve(source)
+    assert result.status == "resolved"
+    assert result.page_id == "page-x"
+    assert result.linked_sources_discovered == []
+    assert "linked_source_discovery_failed" in (result.note or "")
+
+
+def test_linked_source_candidate_cannot_grant_deep_index_at_type_level() -> None:
+    from hb_assistant.construction.graph.resolver import LinkedSourceCandidate
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        LinkedSourceCandidate(
+            drive_id="drv",
+            discovery_method="site_drives_enumeration",
+            deep_index_allowed=True,  # type: ignore[arg-type]
+        )
