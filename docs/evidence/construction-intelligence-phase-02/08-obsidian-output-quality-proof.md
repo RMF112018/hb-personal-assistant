@@ -15,8 +15,8 @@ Per user direction, enforcement of guardrails lives where it's cheapest:
 
 ## Repo HEAD
 
-- Before: `bd72570b4f...` (Phase 02 Prompt 07 closeout)
-- After: `<filled in by commit step>`
+- Before: `bd72570` (Phase 02 Prompt 07 closeout)
+- After: `6e386f204c5d17159ec1543e0260c7055cdb33b6`
 
 ## Files changed
 
