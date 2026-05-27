@@ -6,10 +6,11 @@ Bobby-only local-first MVP for Microsoft 365 delegated access, source-linked ret
 
 ## Repository Status
 
-- Latest implemented manifest in this repository: `v1.3.0`
-- Remediation status: **Addendum (Prompts 01–06) complete.**
-- Closeout status (addendum): **CONDITIONALLY_ACCEPTED_WITH_EXTERNAL_ADMIN_CONSENT_BLOCKER** (see `docs/evidence/remediation-addendum/final-closeout/` and `docs/evidence/remediation-addendum/prompt-06/`; DNS language from that era corrected as misattribution in Phase 14 Prompt 01 — see `docs/evidence/phase-14-local-runtime-workstream-intelligence/prompt-01/`).
-- The active external blocker is tenant/admin consent pending for delegated Microsoft Graph permissions (auth flow reaches Microsoft; no current command evidence of DNS failure). Local path + code gates (P01–P05) passed. Prompt 06 matrix executed; truthful evidence bundle regenerated. Blocker taxonomy corrected in Phase 14 Prompt 01.
+**Phase 01 (scaffold completion).** Construction-intelligence scaffold landed across Phase 01 Prompts 00–11 ending at SHA `34728c1`: Pydantic source registry + YAML loaders; V1–V4 additive SQLite schema (`construction_source_resolutions`, `construction_drive_item_inventory`, review queue, model decisions); Graph delta crawler with redacted error envelopes; Obsidian manifest / receipt / projection layer with the delta-link-fingerprint never-leaks invariant; deterministic review-queue policy with controller-overrides-model router; Ollama classification with `--mock-output` offline mode; Procore endpoint contract + auth-status stub; full operator CLI surface; baseline 240 passing tests. See `docs/evidence/construction-intelligence-phase-01/`.
+
+**Phase 02 (corrective alignment).** Phase 02 Prompts 00–10 landed at HEAD `9564ee2`: source registry expanded from 3 sources / 2 projects to 14 sources / 6 projects via a Pydantic alias bridge (Phase 01 records preserved verbatim); V5 canonical SQLite schema with 10 additive tables + hard `CHECK` constraints on `read_only` / `mailbox_writeback_allowed` / `persist_full_body` invariants; folder-scoped Graph delta resolution + Hilltop ProjectHome linked-source discovery (no deep-index escape); Tropical baseline-comparison primitive against the canonical 8921-item / 39.78 GB inventory; OneDrive inventory-first policy + 4 PII review rules (12 → 16); Procore mapping corrected (`tropical: 23-435-01` → `2525840`) with `^\d{2}-\d{3}-\d{2}$` HB-number-shape validator and seed expanded 2 → 6 projects; Obsidian output hardening (`raw_delta_link_redacted` attestation, canonical `source_id` frontmatter alias, 7-output guardrail fence covering body-text / delta-link / token-shaped-secret); Ollama live-readiness probe via new `construction-agent ollama status` (offline-CI-safe, no live inference); email-intelligence deferred-foundation policy with Pydantic `Literal[False]` / `Literal[True]` guards and mailbox-mutation lockout static scans; closeout test count 413, ruff clean. See `docs/evidence/construction-intelligence-phase-02/`.
+
+**Remaining external validation.** The following live validations were not exercised in any Phase 02 prompt and remain explicitly blocked or stubbed: live MSAL-backed Graph delta crawl against Tropical (requires interactive shell); live Procore OAuth + `/vapid/projects` round-trip (Procore HTTP client intentionally absent — `test_procore_module_imports_no_http_client` enforces this); live Ollama daemon presence (the readiness probe is exercised via mocked `requests.get` plus one offline `ollama status` invocation reporting `daemon_unreachable`); live mailbox metadata fetch — mailbox stays read-only at four layers (YAML policy, MSAL scope, Python adapter, SQLite CHECK), and although `Mail.ReadWrite.All` is granted at the tenant level, `IdentityConfig.delegated_scopes` continues to request only `Mail.Read`. The 4 pre-existing `test_obsidian_writer.py` failures noted in the Phase 01 final-closeout summary persist; they predate Phase 02 and are out of scope.
 
 ## Quickstart (after clone)
 
@@ -41,6 +42,14 @@ See `docs/architecture/` for implementation and remediation records, and `docs/p
 - Dry-run before writes.
 - Every output carries source traceability.
 
+## Construction Intelligence Phase 02 Status
+
+Phase 01 closed as a construction-intelligence scaffold / foundation. Phase 02 Prompts 00–10 landed corrective alignment across the source registry, the canonical V5 SQLite schema, folder-scoped Graph resolution + Hilltop linked-source discovery, the Tropical baseline-comparison primitive, the OneDrive inventory-first policy + PII review rules, the Procore project mapping (HB-number-shape rejected), the Obsidian output projection layer (redaction proof + `source_id` alias + 7-output guardrail fence), Ollama live-readiness, and the email-intelligence deferred-foundation policy.
+
+- Phase 02 evidence: `docs/evidence/construction-intelligence-phase-02/` (12 files at closeout: Prompts 00–10 + this closeout).
+- Local validation: 413 pytest passing; ruff clean across `src/hb_assistant/construction/`, `src/hb_assistant/procore/`, and the construction + procore CLI modules; `construction-agent validate --json` reports `ok` across schema / source_registry / review_rules / model_routing.
+- Live external validation status: live Graph delta crawl, live Procore OAuth, live Ollama daemon probe, and live mailbox metadata fetch all remain pending — see *Remaining external validation* in the Repository Status block above. The granted-but-suppressed mailbox posture (Mail.ReadWrite.All consented at tenant level; `Mail.Read` is the runtime-requested scope) is documented at `docs/evidence/construction-intelligence-phase-02/10-email-intelligence-deferred-foundation.md`.
+
 ## Email Intelligence (Deferred)
 
 `Mail.ReadWrite.All` has been granted at the tenant level but is intentionally suppressed for Phase 02. Mailbox writeback and full-body persistence are locked at four layers:
@@ -54,8 +63,17 @@ Full email-intelligence activation is deferred to a future phase.
 
 ## Validation & Evidence
 
-Remediation baseline evidence is tracked at:
+Authoritative construction-intelligence evidence lives in two directories:
 
-- `docs/evidence/remediation/remediation-baseline.md`
+- `docs/evidence/construction-intelligence-phase-01/` — 12 files including session handoff and final closeout summary (Phase 01 scaffold).
+- `docs/evidence/construction-intelligence-phase-02/` — 12 files at closeout (Phase 02 Prompts 00–10 + truthfulness closeout).
 
-Historical evidence remains under `docs/evidence/`, including prior Phase 13 closeout artifacts (superseded pending remediation validation).
+Each Phase 02 prompt has a dedicated evidence artifact (e.g. `07-procore-mapping-correction-and-audit-readiness.md`, `08-obsidian-output-quality-proof.md`, `09-review-policy-and-ollama-live-readiness.md`, `10-email-intelligence-deferred-foundation.md`); per-prompt narratives live there rather than in this README.
+
+## Historical Evidence
+
+Earlier remediation-addendum and Phase 14 evidence remains in-tree at its original paths for audit continuity. Those records are historical and are superseded for current construction-intelligence work by the Phase 01 and Phase 02 evidence directories.
+
+- `docs/evidence/remediation-addendum/`
+- `docs/evidence/phase-14-local-runtime-workstream-intelligence/`
+- `docs/evidence/remediation/remediation-baseline.md` (prior remediation baseline)
