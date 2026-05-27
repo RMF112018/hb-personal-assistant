@@ -6,25 +6,36 @@ byte-identical output for identical inputs.
 """
 
 from .models import (
+    DocumentCard,
     ProcessingReceipt,
+    ProjectCard,
+    RegistryOverview,
+    ReviewRequiredItem,
+    ReviewRequiredNote,
     SourceManifest,
     SourceManifestEntry,
     SyncReceipt,
 )
 from .renderer import ManifestRenderer
-from .service import ManifestService
+from .service import DocumentCardPolicyError, ManifestService
 from .vault_writer import (
     ConstructionVaultWriter,
     VaultRootNotConfigured,
 )
 
 __all__ = [
+    "DocumentCard",
     "ProcessingReceipt",
+    "ProjectCard",
+    "RegistryOverview",
+    "ReviewRequiredItem",
+    "ReviewRequiredNote",
     "SourceManifest",
     "SourceManifestEntry",
     "SyncReceipt",
     "ManifestRenderer",
     "ManifestService",
+    "DocumentCardPolicyError",
     "ConstructionVaultWriter",
     "VaultRootNotConfigured",
 ]

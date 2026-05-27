@@ -75,3 +75,69 @@ class ProcessingReceipt(BaseModel):
     guardrails: dict[str, str] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
+
+
+class RegistryOverview(BaseModel):
+    generated_at: str
+    project_count: int
+    source_count: int
+    projects: list[dict] = Field(default_factory=list)
+    sources_by_project: dict[str, list[str]] = Field(default_factory=dict)
+    unresolved_sources: list[str] = Field(default_factory=list)
+    guardrails: dict[str, str] = Field(default_factory=dict)
+
+    model_config = {"extra": "forbid"}
+
+
+class ProjectCard(BaseModel):
+    project_key: str
+    display_name: str
+    status: str = "active"
+    primary_company: Optional[str] = None
+    source_count: int = 0
+    source_keys: list[str] = Field(default_factory=list)
+    totals: dict[str, int] = Field(default_factory=dict)
+    last_sync_at: Optional[str] = None
+    generated_at: str
+    guardrails: dict[str, str] = Field(default_factory=dict)
+
+    model_config = {"extra": "forbid"}
+
+
+class ReviewRequiredItem(BaseModel):
+    item_id: str
+    source_key: str
+    project_key: Optional[str] = None
+    name: Optional[str] = None
+    reason: str
+    suggested_action: Optional[str] = None
+    classification_label: Optional[str] = None
+    sensitivity: Optional[str] = None
+
+    model_config = {"extra": "forbid"}
+
+
+class ReviewRequiredNote(BaseModel):
+    generated_at: str
+    items: list[ReviewRequiredItem] = Field(default_factory=list)
+    guardrails: dict[str, str] = Field(default_factory=dict)
+
+    model_config = {"extra": "forbid"}
+
+
+class DocumentCard(BaseModel):
+    source_key: str
+    project_key: Optional[str] = None
+    item_id: str
+    name: Optional[str] = None
+    web_url: Optional[str] = None
+    parent_path: Optional[str] = None
+    size_bytes: Optional[int] = None
+    is_folder: bool = False
+    last_modified: Optional[str] = None
+    status: str = "active"
+    policy_reason: str
+    generated_at: str
+    guardrails: dict[str, str] = Field(default_factory=dict)
+
+    model_config = {"extra": "forbid"}

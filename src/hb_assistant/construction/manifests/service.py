@@ -4,18 +4,27 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Iterable, Optional
 
-from hb_assistant.construction.config import SourceLocation
+from hb_assistant.construction.config import SourceLocation, SourceRegistry
 from hb_assistant.construction.graph.delta_crawler import CrawlReceipt
 from hb_assistant.construction.store import ConstructionStore
 
 from .models import (
+    DocumentCard,
     ProcessingReceipt,
+    ProjectCard,
+    RegistryOverview,
+    ReviewRequiredItem,
+    ReviewRequiredNote,
     SourceManifest,
     SourceManifestEntry,
     SyncReceipt,
 )
+
+
+class DocumentCardPolicyError(ValueError):
+    """Raised when a document card is requested without an explicit policy_reason."""
 
 GUARDRAILS_DEFAULT: dict[str, str] = {
     "external_systems": "read_only",
@@ -154,6 +163,112 @@ class ManifestService:
             items_deleted=latest["items_deleted"],
             delta_link_recorded=bool(latest["delta_link_recorded"]),
             error_redacted=latest.get("error_redacted"),
+            guardrails=dict(GUARDRAILS_DEFAULT),
+        )
+
+    def build_registry_overview(self, registry: SourceRegistry) -> RegistryOverview:
+        projects = [
+            {
+                "project_key": p.project_key,
+                "display_name": p.display_name,
+                "status": p.status,
+                "primary_company": p.primary_company,
+            }
+            for p in registry.projects
+        ]
+        sources_by_project: dict[str, list[str]] = {p.project_key: [] for p in registry.projects}
+        unresolved: list[str] = []
+        for src in registry.sources:
+            key = src.project_key or "_unassigned_"
+            sources_by_project.setdefault(key, []).append(src.source_key)
+            resolution = self._store.get_resolution(src.source_key) or {}
+            if resolution.get("resolution_status", src.resolution_status) != "resolved":
+                unresolved.append(src.source_key)
+        return RegistryOverview(
+            generated_at=_utc_now(),
+            project_count=len(registry.projects),
+            source_count=len(registry.sources),
+            projects=projects,
+            sources_by_project=sources_by_project,
+            unresolved_sources=sorted(unresolved),
+            guardrails=dict(GUARDRAILS_DEFAULT),
+        )
+
+    def build_project_card(
+        self, registry: SourceRegistry, project_key: str,
+    ) -> ProjectCard:
+        project = next((p for p in registry.projects if p.project_key == project_key), None)
+        if project is None:
+            raise ValueError(f"unknown project_key: {project_key!r}")
+        project_sources = [s for s in registry.sources if s.project_key == project_key]
+        totals: dict[str, int] = {}
+        last_sync_at: str | None = None
+        for src in project_sources:
+            counts = self._store.count_inventory(src.source_key)
+            for status, n in counts.items():
+                totals[status] = totals.get(status, 0) + n
+            token = self._store.get_delta_token(src.source_key) or {}
+            ts = token.get("last_sync_at")
+            if ts and (last_sync_at is None or ts > last_sync_at):
+                last_sync_at = ts
+        return ProjectCard(
+            project_key=project.project_key,
+            display_name=project.display_name,
+            status=project.status,
+            primary_company=project.primary_company,
+            source_count=len(project_sources),
+            source_keys=[s.source_key for s in project_sources],
+            totals=totals,
+            last_sync_at=last_sync_at,
+            generated_at=_utc_now(),
+            guardrails=dict(GUARDRAILS_DEFAULT),
+        )
+
+    def build_review_required_note(
+        self,
+        items: Iterable[ReviewRequiredItem] | None = None,
+    ) -> ReviewRequiredNote:
+        return ReviewRequiredNote(
+            generated_at=_utc_now(),
+            items=list(items) if items is not None else [],
+            guardrails=dict(GUARDRAILS_DEFAULT),
+        )
+
+    def build_document_card(
+        self,
+        *,
+        source: SourceLocation,
+        item_id: str,
+        policy_reason: str,
+    ) -> DocumentCard:
+        """Emit a single per-document card. Requires a non-empty policy_reason."""
+
+        if not policy_reason or not policy_reason.strip():
+            raise DocumentCardPolicyError(
+                "DocumentCard requires an explicit non-empty policy_reason "
+                "(per-document cards are not auto-generated)."
+            )
+        rows = self._store.list_inventory_changed_since(
+            source.source_key, since_iso="1970-01-01T00:00:00+00:00", limit=1000,
+        )
+        match = next((r for r in rows if r.get("item_id") == item_id), None)
+        if match is None:
+            raise ValueError(
+                f"item_id {item_id!r} not found in inventory for source {source.source_key!r}"
+            )
+        return DocumentCard(
+            source_key=source.source_key,
+            project_key=source.project_key,
+            item_id=item_id,
+            name=match.get("name"),
+            web_url=match.get("web_url"),
+            parent_path=match.get("parent_path"),
+            size_bytes=match.get("size_bytes"),
+            is_folder=bool(match.get("is_folder")),
+            last_modified=match.get("last_modified"),
+            status=match.get("status", "active"),
+            policy_reason=policy_reason.strip(),
+            generated_at=_utc_now(),
             guardrails=dict(GUARDRAILS_DEFAULT),
         )
 

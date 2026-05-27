@@ -12,12 +12,24 @@ from pathlib import Path
 
 from hb_assistant.config.path_policy import PathPolicy
 
-from .models import ProcessingReceipt, SourceManifest, SyncReceipt
+from .models import (
+    DocumentCard,
+    ProcessingReceipt,
+    ProjectCard,
+    RegistryOverview,
+    ReviewRequiredNote,
+    SourceManifest,
+    SyncReceipt,
+)
 
 _TEMPLATE_NAMES = {
     "source_manifest": "source_manifest.template.md",
     "sync_receipt": "sync_receipt.template.md",
     "processing_receipt": "processing_receipt.template.md",
+    "registry_overview": "registry_overview.template.md",
+    "project_card": "project_card.template.md",
+    "review_required": "review_required.template.md",
+    "document_card": "document_card.template.md",
 }
 
 
@@ -86,6 +98,56 @@ def _format_error_summary(errors: list[str]) -> str:
     return "\n".join(f"- `{e}`" for e in errors)
 
 
+def _format_projects_block(projects: list[dict]) -> str:
+    if not projects:
+        return "_no projects registered_"
+    rows = ["| project_key | display_name | status | primary_company |",
+            "| --- | --- | --- | --- |"]
+    for p in projects:
+        rows.append(
+            f"| `{p.get('project_key', '')}` | {_kv(p.get('display_name'))} "
+            f"| `{p.get('status', 'active')}` | {_kv(p.get('primary_company'))} |"
+        )
+    return "\n".join(rows)
+
+
+def _format_sources_by_project(mapping: dict[str, list[str]]) -> str:
+    if not mapping:
+        return "_no sources mapped to projects_"
+    lines: list[str] = []
+    for project_key in sorted(mapping):
+        keys = mapping[project_key]
+        joined = ", ".join(f"`{k}`" for k in sorted(keys)) if keys else "_none_"
+        label = project_key if project_key else "_unassigned_"
+        lines.append(f"- **{label}**: {joined}")
+    return "\n".join(lines)
+
+
+def _format_unresolved(sources: list[str]) -> str:
+    if not sources:
+        return "_all registered sources are resolved_"
+    return "\n".join(f"- `{s}`" for s in sorted(sources))
+
+
+def _format_source_keys(keys: list[str]) -> str:
+    if not keys:
+        return "_no sources registered for this project_"
+    return "\n".join(f"- `{k}`" for k in sorted(keys))
+
+
+def _format_review_items(items: list) -> str:
+    if not items:
+        return "_no items currently flagged for review_"
+    rows = ["| item_id | source_key | project_key | reason | suggested_action | classification |",
+            "| --- | --- | --- | --- | --- | --- |"]
+    for it in items:
+        rows.append(
+            f"| `{it.item_id}` | `{it.source_key}` | `{_kv(it.project_key)}` "
+            f"| {_kv(it.reason)} | {_kv(it.suggested_action)} | {_kv(it.classification_label)} |"
+        )
+    return "\n".join(rows)
+
+
 class ManifestRenderer:
     """Pure renderers for construction-agent projections."""
 
@@ -128,6 +190,64 @@ class ManifestRenderer:
             delta_link_recorded=str(r.delta_link_recorded).lower(),
             error_block=_format_error_block(r.error_redacted),
             guardrails_block=_format_guardrails(r.guardrails),
+        )
+
+    @staticmethod
+    def render_registry_overview(o: RegistryOverview) -> str:
+        tpl = _load_template("registry_overview")
+        return tpl.format(
+            generated_at=o.generated_at,
+            project_count=o.project_count,
+            source_count=o.source_count,
+            projects_block=_format_projects_block(o.projects),
+            sources_by_project_block=_format_sources_by_project(o.sources_by_project),
+            unresolved_block=_format_unresolved(o.unresolved_sources),
+            guardrails_block=_format_guardrails(o.guardrails),
+        )
+
+    @staticmethod
+    def render_project_card(c: ProjectCard) -> str:
+        tpl = _load_template("project_card")
+        return tpl.format(
+            project_key=c.project_key,
+            display_name=c.display_name,
+            status=c.status,
+            primary_company=_kv(c.primary_company),
+            source_count=c.source_count,
+            last_sync_at=_kv(c.last_sync_at),
+            generated_at=c.generated_at,
+            source_keys_block=_format_source_keys(c.source_keys),
+            totals_block=_format_counts(c.totals),
+            guardrails_block=_format_guardrails(c.guardrails),
+        )
+
+    @staticmethod
+    def render_review_required(n: ReviewRequiredNote) -> str:
+        tpl = _load_template("review_required")
+        return tpl.format(
+            generated_at=n.generated_at,
+            item_count=len(n.items),
+            items_block=_format_review_items(n.items),
+            guardrails_block=_format_guardrails(n.guardrails),
+        )
+
+    @staticmethod
+    def render_document_card(d: DocumentCard) -> str:
+        tpl = _load_template("document_card")
+        return tpl.format(
+            source_key=d.source_key,
+            project_key=_kv(d.project_key),
+            item_id=d.item_id,
+            name=_kv(d.name),
+            web_url=_kv(d.web_url),
+            parent_path=_kv(d.parent_path),
+            size_bytes=_kv(d.size_bytes),
+            is_folder=str(d.is_folder).lower(),
+            last_modified=_kv(d.last_modified),
+            status=d.status,
+            policy_reason=d.policy_reason,
+            generated_at=d.generated_at,
+            guardrails_block=_format_guardrails(d.guardrails),
         )
 
     @staticmethod

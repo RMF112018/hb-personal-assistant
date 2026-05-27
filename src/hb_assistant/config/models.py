@@ -36,6 +36,7 @@ class PathsConfig(BaseModel):
     daily_notes_folder: str = "Daily Notes"
     ai_outputs_folder: str = "AI Outputs"
     reference_root: str = "Work/References"
+    construction_vault_root: str | None = None
 
 
 class MailConfig(BaseModel):

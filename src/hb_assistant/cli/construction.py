@@ -40,6 +40,7 @@ from hb_assistant.construction.graph import (
 )
 from hb_assistant.construction.manifests import (
     ConstructionVaultWriter,
+    DocumentCardPolicyError,
     ManifestRenderer,
     ManifestService,
     VaultRootNotConfigured,
@@ -51,9 +52,11 @@ app = typer.Typer(help="Construction-management intelligence layer (read-only)."
 sources_app = typer.Typer(help="Source registry inspection.")
 graph_app = typer.Typer(help="Read-only Microsoft Graph crawler.")
 graph_sources_app = typer.Typer(help="Graph source resolution.")
+vault_app = typer.Typer(help="Construction vault preview and bootstrap.")
 app.add_typer(sources_app, name="sources")
 app.add_typer(graph_app, name="graph")
 graph_app.add_typer(graph_sources_app, name="sources")
+app.add_typer(vault_app, name="vault")
 
 
 def _build_report(registry: SourceRegistry) -> dict[str, Any]:
@@ -472,5 +475,217 @@ def sync_cmd(
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
         raise typer.Exit(1)
 
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+# ---------------------------------------------------------------------------
+# Vault bootstrap + preview (Phase 01 Step 6 / Prompt 05)
+# ---------------------------------------------------------------------------
+
+
+@vault_app.command("bootstrap")
+def vault_bootstrap(
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply",
+        help="Default dry-run; --apply creates the construction-vault subdirectories.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Create (or plan) the 7 canonical construction-vault subdirectories."""
+
+    writer = ConstructionVaultWriter()
+    if not writer.configured:
+        payload = {
+            "command": "construction-agent vault bootstrap",
+            "mode": "dry_run" if dry_run else "apply",
+            "status": "vault_root_not_configured",
+            "planned_subdirs": [s for _, s in writer.planned_subdirs()],
+            "hint": (
+                "Set HB_CONSTRUCTION_VAULT_ROOT or AppConfig.paths.construction_vault_root "
+                "to enable apply writes."
+            ),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0 if dry_run else 1)
+
+    try:
+        results = writer.bootstrap_folders(dry_run=dry_run)
+    except VaultRootNotConfigured as e:
+        payload = {
+            "command": "construction-agent vault bootstrap",
+            "status": "vault_root_not_configured",
+            "error": str(e),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+    payload = {
+        "command": "construction-agent vault bootstrap",
+        "mode": "dry_run" if dry_run else "apply",
+        "vault_root": str(writer.root),
+        "subdirs": [
+            {
+                "subdir": r.subdir,
+                "path": str(r.path),
+                "existed_before": r.existed_before,
+                "created": r.created,
+            }
+            for r in results
+        ],
+        "guardrails": {
+            "external_systems": "read_only",
+            "writeback": "none",
+            "atomic_writes": True,
+        },
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@vault_app.command("preview")
+def vault_preview(
+    project: Optional[str] = typer.Option(None, "--project", help="Render only this project_key."),
+    source: Optional[str] = typer.Option(None, "--source", help="Filter cards/manifests to this source_key."),
+    include_review_required: bool = typer.Option(
+        True, "--include-review-required/--no-include-review-required",
+        help="Render the review-required note (empty placeholder until step 7).",
+    ),
+    include_document_cards: bool = typer.Option(
+        False, "--include-document-cards",
+        help="Opt-in to render document cards. Requires --document-item and --policy-reason.",
+    ),
+    document_item: Optional[str] = typer.Option(
+        None, "--document-item", help="Specific item_id to render a document card for.",
+    ),
+    policy_reason: Optional[str] = typer.Option(
+        None, "--policy-reason", help="Non-empty justification for emitting the document card.",
+    ),
+    apply: bool = typer.Option(False, "--apply", help="Write rendered Markdown to the vault."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Render (or write) registry overview + project cards + review note + opt-in document card."""
+
+    registry = load_source_registry()
+    store = ConstructionStore()
+    svc = ManifestService(store)
+
+    overview = svc.build_registry_overview(registry)
+    rendered_overview = ManifestRenderer.render_registry_overview(overview)
+
+    target_projects = (
+        [p for p in registry.projects if p.project_key == project]
+        if project else list(registry.projects)
+    )
+    project_cards = [svc.build_project_card(registry, p.project_key) for p in target_projects]
+    rendered_project_cards = {
+        c.project_key: ManifestRenderer.render_project_card(c) for c in project_cards
+    }
+
+    rendered_review = None
+    review_note = None
+    if include_review_required:
+        review_note = svc.build_review_required_note()
+        rendered_review = ManifestRenderer.render_review_required(review_note)
+
+    document_card = None
+    rendered_document_card = None
+    if include_document_cards:
+        if not document_item or not policy_reason:
+            payload = {
+                "command": "construction-agent vault preview",
+                "status": "document_card_requires_item_and_policy",
+                "hint": "Pass --document-item ITEM_ID --policy-reason REASON when using --include-document-cards.",
+            }
+            typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+            raise typer.Exit(1)
+        if not source:
+            payload = {
+                "command": "construction-agent vault preview",
+                "status": "document_card_requires_source",
+                "hint": "Pass --source KEY to scope the document card to a registered source.",
+            }
+            typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+            raise typer.Exit(1)
+        src_match = next((s for s in registry.sources if s.source_key == source), None)
+        if src_match is None:
+            payload = {
+                "command": "construction-agent vault preview",
+                "status": "source_not_found",
+                "requested": source,
+                "available": [s.source_key for s in registry.sources],
+            }
+            typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+            raise typer.Exit(1)
+        try:
+            document_card = svc.build_document_card(
+                source=src_match, item_id=document_item, policy_reason=policy_reason,
+            )
+        except (DocumentCardPolicyError, ValueError) as e:
+            payload = {
+                "command": "construction-agent vault preview",
+                "status": "document_card_rejected",
+                "error": str(e),
+            }
+            typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+            raise typer.Exit(1) from None
+        rendered_document_card = ManifestRenderer.render_document_card(document_card)
+
+    written: list[dict[str, Any]] = []
+    if apply:
+        try:
+            writer = ConstructionVaultWriter()
+            writer.bootstrap_folders(dry_run=False)
+            wr = writer.write_registry_overview(rendered=rendered_overview)
+            written.append({"kind": wr.kind, "path": str(wr.path), "bytes": wr.bytes_written})
+            for pk, rendered in rendered_project_cards.items():
+                wr = writer.write_project_card(project_key=pk, rendered=rendered)
+                written.append({"kind": wr.kind, "path": str(wr.path), "bytes": wr.bytes_written})
+            if review_note is not None and rendered_review is not None:
+                wr = writer.write_review_required_note(
+                    generated_at=review_note.generated_at, rendered=rendered_review,
+                )
+                written.append({"kind": wr.kind, "path": str(wr.path), "bytes": wr.bytes_written})
+            if document_card is not None and rendered_document_card is not None:
+                wr = writer.write_document_card(
+                    source_key=document_card.source_key,
+                    item_id=document_card.item_id,
+                    rendered=rendered_document_card,
+                )
+                written.append({"kind": wr.kind, "path": str(wr.path), "bytes": wr.bytes_written})
+        except VaultRootNotConfigured as e:
+            payload = {
+                "command": "construction-agent vault preview",
+                "mode": "apply",
+                "status": "vault_root_not_configured",
+                "error": str(e),
+                "hint": "Set HB_CONSTRUCTION_VAULT_ROOT or AppConfig.paths.construction_vault_root.",
+            }
+            typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+            raise typer.Exit(1) from None
+
+    payload: dict[str, Any] = {
+        "command": "construction-agent vault preview",
+        "mode": "apply" if apply else "dry_run",
+        "registry_overview": overview.model_dump(),
+        "project_cards": {c.project_key: c.model_dump() for c in project_cards},
+        "review_required": review_note.model_dump() if review_note else None,
+        "document_card": document_card.model_dump() if document_card else None,
+        "rendered": {
+            "registry_overview_md": rendered_overview,
+            "project_cards_md": rendered_project_cards,
+            "review_required_md": rendered_review,
+            "document_card_md": rendered_document_card,
+        },
+        "written": written,
+        "guardrails": {
+            "external_systems": "read_only",
+            "writeback": "none",
+            "metadata_only": True,
+            "markdown_role": "projection_only",
+            "atomic_writes": True,
+            "document_card_policy": "opt_in_only",
+        },
+    }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
