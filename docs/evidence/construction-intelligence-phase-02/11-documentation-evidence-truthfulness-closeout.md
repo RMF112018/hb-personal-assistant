@@ -9,7 +9,7 @@ No code, no tests, no CLI changes. README delta: +25 / -7 lines net.
 ## Repo HEAD
 
 - Before: `9564ee2` (Phase 02 Prompt 10 closeout)
-- After: `<filled in by commit step>`
+- After: `961783db6110a997108adad05c50384d7f57e352`
 
 ## Files changed
 
