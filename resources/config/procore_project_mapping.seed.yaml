@@ -1,0 +1,53 @@
+# Procore pilot project mapping seed (HB Construction Intelligence Phase 03 Prompt_06).
+#
+# Canonical mapping of HB project_keys (shared with SharePoint/OneDrive sources)
+# to Procore project IDs under primary company 5280.
+#
+# Guardrails:
+# - HB project numbers / internal keys (e.g. patterns like 23-435-01, HB-*, HT-*) live only in hb_project_key / hb_project_number.
+# - Procore IDs are always numeric strings (or empty for pending).
+# - procore_project_id MUST NOT match HB number pattern (enforced by schema + models).
+# - Pending mappings (hilltop, hilltop-gardens) are explicitly auditable only; no Procore ID, skipped for live resolution.
+# - 5280 is the Procore-Company-Id header value for all HB scoped calls (from procore_environments + app profile).
+# - No secrets, no tokens, read-only surface.
+
+version: 1
+company_id: "5280"
+company_display_name: "Hedrick Brothers Construction"
+
+mappings:
+  - hb_project_key: tropical
+    hb_project_number: null
+    project_name: "Tropical - S L"
+    procore_project_id: "2525840"
+    status: pilot
+
+  - hb_project_key: pga-modern-garage
+    hb_project_number: null
+    project_name: "PGA The Modern & Garage"
+    procore_project_id: "2091445"
+    status: pilot
+
+  - hb_project_key: alton-hilltop-pbg
+    hb_project_number: null
+    project_name: "Alton Hilltop at PBG"
+    procore_project_id: "2982068"
+    status: pilot
+
+  - hb_project_key: the-wellington
+    hb_project_number: null
+    project_name: "The Wellington"
+    procore_project_id: "3215931"
+    status: pilot
+
+  - hb_project_key: hilltop
+    hb_project_number: null
+    project_name: null
+    procore_project_id: ""
+    status: pending
+
+  - hb_project_key: hilltop-gardens
+    hb_project_number: null
+    project_name: null
+    procore_project_id: ""
+    status: pending

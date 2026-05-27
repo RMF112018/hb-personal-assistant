@@ -9,6 +9,9 @@ Commands:
 - ``hb-assistant procore tools list [--json]``
 - ``hb-assistant procore tools audit --project KEY [--json]``
 - ``hb-assistant procore mapping validate [--json]``
+- ``hb-assistant procore mapping list [--json]``
+- ``hb-assistant procore projects list [--json]``
+- ``hb-assistant procore companies list [--json]``
 """
 
 from __future__ import annotations
@@ -32,9 +35,13 @@ app = typer.Typer(help="Procore foundation: read-only endpoint audit (dry-run on
 auth_app = typer.Typer(help="Procore auth status (no live call).")
 tools_app = typer.Typer(help="Procore endpoint catalog + dry-run audit.")
 mapping_app = typer.Typer(help="Procore project mapping validation.")
+projects_app = typer.Typer(help="Procore projects registry (read-only).")
+companies_app = typer.Typer(help="Procore company context (read-only).")
 app.add_typer(auth_app, name="auth")
 app.add_typer(tools_app, name="tools")
 app.add_typer(mapping_app, name="mapping")
+app.add_typer(projects_app, name="projects")
+app.add_typer(companies_app, name="companies")
 
 
 _GUARDRAILS = {
@@ -179,7 +186,7 @@ def tools_audit(
 def mapping_validate(
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
-    """Validate the Procore project mapping registry (informational)."""
+    """Validate the Procore project mapping registry (informational; covers primary company context and pending pilots)."""
 
     contract = _load_contract_or_emit(json_out)
     projects = _load_projects_or_emit(json_out)
@@ -188,10 +195,69 @@ def mapping_validate(
     report = auditor.validate_mapping()
     payload = {
         "command": "hb-assistant procore mapping validate",
+        "company_id": contract.company_id,
+        "company_display_name": contract.company_display_name,
         "report": report.model_dump(),
         "guardrails": _GUARDRAILS,
     }
     # Exit 0 if every project is either a pilot-with-id or deprecated; exit
-    # 1 (informational, not blocking) when pending rows remain — so CI /
+    # 1 (informational, not blocking) when pending rows (including pending pilots) remain — so CI /
     # health checks can choose to alert on incomplete mapping.
     _emit(payload, json_out=json_out, exit_code=0 if report.ok else 1)
+
+
+@mapping_app.command("list")
+def mapping_list(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List Procore project mappings (read-only; status coverage)."""
+
+    contract = _load_contract_or_emit(json_out)
+    projects = _load_projects_or_emit(json_out)
+
+    auditor = EndpointAuditor(contract, projects)
+    report = auditor.validate_mapping()
+    payload = {
+        "command": "hb-assistant procore mapping list",
+        "company_id": contract.company_id,
+        "report": report.model_dump(),
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@projects_app.command("list")
+def projects_list(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List projects from Procore projects registry (read-only; status coverage)."""
+
+    projects = _load_projects_or_emit(json_out)
+    rows = [p.model_dump() for p in projects.projects]
+    payload = {
+        "command": "hb-assistant procore projects list",
+        "project_count": len(rows),
+        "projects": rows,
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@companies_app.command("list")
+def companies_list(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List company context from endpoint contract (read-only)."""
+
+    contract = _load_contract_or_emit(json_out)
+    payload = {
+        "command": "hb-assistant procore companies list",
+        "companies": [
+            {
+                "company_id": contract.company_id,
+                "display_name": contract.company_display_name,
+            }
+        ],
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)

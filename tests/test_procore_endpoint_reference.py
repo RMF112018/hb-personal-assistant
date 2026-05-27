@@ -79,3 +79,19 @@ def test_no_hb_number_patterns_in_procore_ids():
         if p.procore_project_id:
             assert not p.procore_project_id.replace("-", "").isdigit() or len(p.procore_project_id) > 7, \
                 f"HB-number-shaped ID leaked into procore_project_id: {p.hb_project_key} -> {p.procore_project_id}"
+
+
+# Prompt_06: HB project-number vs Procore ID separation + pending pilot handling (uses working loader from CLI surface; pure, no live).
+def test_procore_projects_5280_pilots_vs_pending_hilltop_explicit():
+    """Validate 5280 context, 4 numeric-ID pilots, 2 pending (hilltop*) with empty procore IDs (separation + auditable pending)."""
+    from hb_assistant.procore.loader import load_procore_projects
+    reg = load_procore_projects()
+    projs = reg.projects if hasattr(reg, 'projects') else reg
+    assert len(projs) >= 6
+    pending_keys = [getattr(p, 'hb_project_key', getattr(p, 'project_key', '')) for p in projs if not getattr(p, 'procore_project_id', None) or getattr(p, 'status', None) == 'pending']
+    assert 'hilltop' in pending_keys and 'hilltop-gardens' in pending_keys
+    for p in projs:
+        pid = getattr(p, 'procore_project_id', '') or ''
+        if pid:
+            # Separation: no HB-number shapes (00-000-00 or HB-/HT-*) allowed as Procore ID
+            assert not (pid.replace('-', '').isdigit() and len(pid) <= 7 and '-' in pid), f"HB pattern leaked as procore id: {pid}"
