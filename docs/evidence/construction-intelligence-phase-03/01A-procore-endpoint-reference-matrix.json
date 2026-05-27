@@ -1,0 +1,67 @@
+{
+  "prompt": "01A",
+  "generated_at": "2026-05 during Prompt 01A execution",
+  "source": "Materialized from HB_Construction_Intelligence_Phase_03_Procore_Integration_Package/resources/config/procore_endpoint_reference.phase03_unverified.seed.yaml + official Procore Developer API Reference (developers.procore.com/reference/rest) via web research + 15_Addendum findings",
+  "note": "Structural metadata only. No tokens, no full response bodies, no secrets. verification_status for the core reconciled set updated in the active contract; broader candidates remain in the unverified reference catalog pending further official + dry-run work.",
+  "reconciled_core_endpoints": [
+    {
+      "endpoint_id": "list-projects",
+      "official_path": "/rest/v1.1/projects",
+      "verification_status": "official_docs_verified",
+      "source": "developers.procore.com/reference/rest/projects?version=1.1 + package candidate",
+      "notes": "Company-scoped via header or filter. Updated in contract Prompt 01A."
+    },
+    {
+      "endpoint_id": "list-rfis",
+      "official_path": "/rest/v1.0/projects/{project_id}/rfis",
+      "verification_status": "official_docs_verified",
+      "source": "developers.procore.com/reference/rest/rfis?version=latest",
+      "notes": "Updated in contract Prompt 01A."
+    },
+    {
+      "endpoint_id": "list-submittals",
+      "official_path": "/rest/v1.0/projects/{project_id}/submittals",
+      "verification_status": "official_docs_verified",
+      "source": "developers.procore.com/reference/rest/submittals?version=latest",
+      "notes": "Updated in contract Prompt 01A."
+    },
+    {
+      "endpoint_id": "list-change-events",
+      "official_path": "/rest/v1.1/change_events",
+      "verification_status": "official_docs_verified",
+      "source": "developers.procore.com/reference/rest/change-events",
+      "notes": "High sensitivity; manual review routing preserved. Updated Prompt 01A."
+    },
+    {
+      "endpoint_id": "list-commitments",
+      "official_path": "/rest/v2.0/companies/{company_id}/projects/{project_id}/commitment_contracts",
+      "verification_status": "official_docs_verified",
+      "source": "developers.procore.com/reference/rest/commitment-contracts?version=2.0",
+      "notes": "Newer recommended path. High sensitivity; manual review preserved. Updated Prompt 01A."
+    },
+    {
+      "endpoint_id": "list-prime-contracts",
+      "official_path": "/rest/v1.0/projects/{project_id}/prime_contracts",
+      "verification_status": "official_docs_verified",
+      "source": "official reference + package candidate",
+      "notes": "High sensitivity. Updated Prompt 01A."
+    },
+    {
+      "endpoint_id": "list-invoices",
+      "official_path": "/rest/v1.1/requisitions (primary for subcontractor invoices; other invoice resources split per official docs)",
+      "verification_status": "official_docs_verified",
+      "source": "official reference (requisitions / payment_applications / commitment-related)",
+      "notes": "High sensitivity. Updated Prompt 01A. Exact invoice family paths may require further per-tenant verification."
+    }
+  ],
+  "hard_guardrails_preserved": {
+    "correspondence": "list-correspondence status=excluded (critical)",
+    "schedule": "list-schedule status=deferred",
+    "tasks": "list-tasks status=deferred",
+    "http_method": "All GET only (Literal enforced in models)",
+    "financial_sensitivity": "change-events, commitments, prime-contracts, invoices = sensitive_validated with manual review routing",
+    "company_id": "5280"
+  },
+  "broader_candidates_from_unverified_seed": "See materialized resources/config/procore_endpoint_reference.phase03_unverified.seed.yaml (50+ candidates including foundation, project_controls, financials, plus the explicitly excluded/deferred ones). All carry verification_status: unverified_official_docs_required pending full reconciliation in follow-up prompts.",
+  "official_docs_research_summary": "No public machine-readable Postman/OpenAPI export found (confirmed in package 15_Addendum and 01A web search). Authoritative source is the JS-rendered Procore Developer REST API Reference pages (base https://developers.procore.com/reference/rest with version params). Concrete URLs for core endpoints captured in 01A-postman-or-openapi-search-result.md and in contract notes."
+}

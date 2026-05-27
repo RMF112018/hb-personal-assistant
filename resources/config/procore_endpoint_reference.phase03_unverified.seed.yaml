@@ -1,0 +1,1076 @@
+version: 1
+generated_for: HB Construction Intelligence Phase 03 Procore Integration
+generated_at_utc: '2026-05-27T20:24:38Z'
+source_status: candidate_unverified; official Procore API Reference and live GET dry-run
+  required
+default_company_id: '5280'
+default_http_method_allowlist:
+- GET
+default_http_method_blocklist:
+- POST
+- PUT
+- PATCH
+- DELETE
+base_url_candidates:
+- environment: production
+  candidate: https://api.procore.com/rest/v1.0
+  verification_status: verify_official_docs
+- environment: sandbox
+  candidate: https://api-sandbox.procore.com/rest/v1.0
+  verification_status: verify_official_docs
+call_envelope:
+  headers:
+  - 'Authorization: Bearer <redacted>'
+  - 'Accept: application/json'
+  - 'User-Agent: hb-personal-assistant/<version>'
+  body_allowed: false
+  company_context: Use company_id as path or query param only where official docs
+    require it.
+endpoints:
+- endpoint_id: company-list
+  category: foundation
+  official_title_candidate: List companies accessible to delegated user
+  http_method: GET
+  candidate_path_template_rest_v1_0: /companies
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params: []
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: company-detail
+  category: foundation
+  official_title_candidate: Get company detail
+  http_method: GET
+  candidate_path_template_rest_v1_0: /companies/{company_id}
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - company_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: projects-list
+  category: foundation
+  official_title_candidate: List projects for company
+  http_method: GET
+  candidate_path_template_rest_v1_0: /companies/{company_id}/projects
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - company_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: project-detail
+  category: foundation
+  official_title_candidate: Get project detail
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: project-users-list
+  category: foundation
+  official_title_candidate: List project users
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/users
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: company-vendors-list
+  category: foundation
+  official_title_candidate: List company vendors/companies directory
+  http_method: GET
+  candidate_path_template_rest_v1_0: /companies/{company_id}/vendors
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - company_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: project-vendors-list
+  category: foundation
+  official_title_candidate: List project vendors/companies directory if scoped at
+    project
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/vendors
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: project-cost-codes-list
+  category: foundation
+  official_title_candidate: List project cost codes
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/cost_codes
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: project-wbs-list
+  category: foundation
+  official_title_candidate: List project WBS/cost-code structure
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/work_breakdown_structure
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: project-sub-jobs-list
+  category: foundation
+  official_title_candidate: List project sub jobs
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/sub_jobs
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: project-tools-list
+  category: foundation
+  official_title_candidate: List project tool availability if official endpoint exists
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/tools
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: rfis-list
+  category: project_controls
+  official_title_candidate: List RFIs
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/rfis
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: rfi-responses-list
+  category: project_controls
+  official_title_candidate: List RFI responses
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/rfis/{rfi_id}/responses
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  - rfi_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: submittals-list
+  category: project_controls
+  official_title_candidate: List submittals
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/submittals
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: submittal-responses-list
+  category: project_controls
+  official_title_candidate: List submittal responses
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/submittals/{submittal_id}/responses
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  - submittal_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: submittal-packages-list
+  category: project_controls
+  official_title_candidate: List submittal packages
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/submittal_packages
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: observations-list
+  category: project_controls
+  official_title_candidate: List observations
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/observations
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: meetings-list
+  category: project_controls
+  official_title_candidate: List meetings
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/meetings
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: meeting-topics-list
+  category: project_controls
+  official_title_candidate: List meeting topics
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/meetings/{meeting_id}/topics
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  - meeting_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: daily-logs-list
+  category: project_controls
+  official_title_candidate: List daily logs
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/daily_logs
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: daily-log-weather-list
+  category: project_controls
+  official_title_candidate: List daily log weather entries
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/daily_logs/weather
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: daily-log-manpower-list
+  category: project_controls
+  official_title_candidate: List daily log manpower entries
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/daily_logs/manpower
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: daily-log-notes-list
+  category: project_controls
+  official_title_candidate: List daily log notes
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/daily_logs/notes
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: daily-log-delays-list
+  category: project_controls
+  official_title_candidate: List daily log delays
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/daily_logs/delays
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: daily-log-deliveries-list
+  category: project_controls
+  official_title_candidate: List daily log deliveries
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/daily_logs/deliveries
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: drawings-list
+  category: project_controls
+  official_title_candidate: List drawings
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/drawings
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: drawing-revisions-list
+  category: project_controls
+  official_title_candidate: List drawing revisions
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/drawings/{drawing_id}/revisions
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  - drawing_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: specifications-list
+  category: project_controls
+  official_title_candidate: List specifications/spec sections
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/specification_sections
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: documents-list
+  category: project_controls
+  official_title_candidate: List document metadata if official endpoint exists
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/documents
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: low
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: budget-views-list
+  category: financials
+  official_title_candidate: List budget views
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/budget/views
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: budget-view-rows-list
+  category: financials
+  official_title_candidate: List budget rows for a view
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/budget/views/{view_id}/rows
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  - view_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: budget-snapshots-list
+  category: financials
+  official_title_candidate: List budget snapshots if available
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/budget/snapshots
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: budget-modifications-list
+  category: financials
+  official_title_candidate: List budget modifications
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/budget_modifications
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: budget-changes-list
+  category: financials
+  official_title_candidate: List budget changes
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/budget_changes
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: change-events-list
+  category: financials
+  official_title_candidate: List change events
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/change_events
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: potential-change-orders-list
+  category: financials
+  official_title_candidate: List potential change orders
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/potential_change_orders
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: commitments-list
+  category: financials
+  official_title_candidate: List commitments
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/commitments
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: commitment-line-items-list
+  category: financials
+  official_title_candidate: List commitment line items
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/commitments/{commitment_id}/line_items
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  - commitment_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: commitment-change-orders-list
+  category: financials
+  official_title_candidate: List commitment change orders
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/commitment_change_orders
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: prime-contracts-list
+  category: financials
+  official_title_candidate: List prime contracts
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/prime_contracts
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: prime-contract-change-orders-list
+  category: financials
+  official_title_candidate: List prime contract change orders
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/prime_contract_change_orders
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: direct-costs-list
+  category: financials
+  official_title_candidate: List direct costs
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/direct_costs
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: subcontractor-invoices-list
+  category: financials
+  official_title_candidate: List subcontractor invoices
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/invoices
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: requisitions-list
+  category: financials
+  official_title_candidate: List requisitions
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/requisitions
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: owner-invoices-list
+  category: financials
+  official_title_candidate: List owner invoices/payment applications
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/owner_invoices
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates:
+  - page
+  - per_page
+  - updated_at
+  - sort
+  request_body_allowed: false
+  sensitivity: high
+  mvp_status: candidate_unverified
+  included_in_phase_03_candidate: true
+  verification_status: unverified_official_docs_required
+  verification_required_before_implementation: true
+  notes: Candidate only. Local agent must reconcile with official Procore API Reference
+    and live redacted GET dry-run before marking verified.
+- endpoint_id: correspondence-list
+  category: excluded_deferred
+  official_title_candidate: Correspondence is excluded from MVP
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/correspondence
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates: []
+  request_body_allowed: false
+  sensitivity: critical
+  mvp_status: excluded
+  included_in_phase_03_candidate: false
+  verification_status: excluded
+  verification_required_before_implementation: false
+  notes: 'Hard guardrail: excluded/deferred for MVP.'
+- endpoint_id: schedule-list
+  category: excluded_deferred
+  official_title_candidate: Schedule is deferred
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/schedule
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates: []
+  request_body_allowed: false
+  sensitivity: medium
+  mvp_status: deferred
+  included_in_phase_03_candidate: false
+  verification_status: deferred
+  verification_required_before_implementation: false
+  notes: 'Hard guardrail: excluded/deferred for MVP.'
+- endpoint_id: tasks-list
+  category: excluded_deferred
+  official_title_candidate: Tasks are deferred
+  http_method: GET
+  candidate_path_template_rest_v1_0: /projects/{project_id}/tasks
+  current_repo_seed_vapid_equivalent: ''
+  required_path_params:
+  - project_id
+  required_query_params: []
+  optional_query_params_common_candidates: []
+  request_body_allowed: false
+  sensitivity: medium
+  mvp_status: deferred
+  included_in_phase_03_candidate: false
+  verification_status: deferred
+  verification_required_before_implementation: false
+  notes: 'Hard guardrail: excluded/deferred for MVP.'
