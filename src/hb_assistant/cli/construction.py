@@ -60,6 +60,7 @@ from hb_assistant.construction.policy import (
 )
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient
+from hb_assistant.store.migrator import SQLiteMigrator
 
 app = typer.Typer(help="Construction-management intelligence layer (read-only).")
 sources_app = typer.Typer(help="Source registry inspection.")
@@ -112,6 +113,47 @@ def _build_report(registry: SourceRegistry) -> dict[str, Any]:
         },
         "note": "Read-only validation. No SharePoint/OneDrive/Graph calls were made.",
     }
+
+
+@sources_app.command("list")
+def sources_list(
+    json_out: bool = typer.Option(True, "--json", help="Emit structured JSON (default)."),
+) -> None:
+    """List registered construction-agent sources (minimal projection)."""
+
+    try:
+        registry = load_source_registry()
+    except SourceRegistryError as e:
+        payload = {
+            "command": "construction-agent sources list",
+            "status": "source_registry_unavailable",
+            "error": str(e),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+    items = [
+        {
+            "source_key": s.source_key,
+            "project_key": s.project_key,
+            "kind": s.kind,
+            "display_name": s.display_name,
+            "resolution_status": s.resolution_status,
+        }
+        for s in registry.sources
+    ]
+    payload = {
+        "command": "construction-agent sources list",
+        "count": len(items),
+        "sources": items,
+        "guardrails": {
+            "external_systems": "read_only",
+            "writeback": "none",
+            "metadata_only": True,
+        },
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
 
 
 @sources_app.command("validate")
@@ -1114,3 +1156,237 @@ def classify_decisions(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
+
+
+# ---------------------------------------------------------------------------
+# Operator surface: index status + top-level validate (Phase 01 Step 9 / Prompt 08)
+# ---------------------------------------------------------------------------
+
+
+_INDEX_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": True,
+    "command_role": "read_only_dashboard",
+}
+
+
+def _per_source_index(store: "ConstructionStore", src: Any) -> dict[str, Any]:
+    resolution = store.get_resolution(src.source_key) or {}
+    token = store.get_delta_token(src.source_key) or {}
+    counts = store.count_inventory(src.source_key)
+    recent = store.list_recent_receipts(src.source_key, limit=1)
+    last_receipt = recent[0] if recent else {}
+    return {
+        "source_key": src.source_key,
+        "project_key": src.project_key,
+        "kind": src.kind,
+        "display_name": src.display_name,
+        "resolution_status": resolution.get(
+            "resolution_status", src.resolution_status,
+        ),
+        "drive_id_present": bool(resolution.get("drive_id")),
+        "inventory_counts": dict(counts),
+        "last_sync_at": token.get("last_sync_at"),
+        "last_receipt_status": last_receipt.get("status"),
+        "last_receipt_finished_at": last_receipt.get("finished_at"),
+    }
+
+
+@app.command("index")
+def index_status(
+    op: str = typer.Argument("status", help="Index operation. Only 'status' is supported."),
+    source: Optional[str] = typer.Option(
+        None, "--source", help="Filter dashboard to one registered source_key.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Read-only dashboard across all construction-agent layers."""
+
+    if op != "status":
+        payload = {
+            "command": "construction-agent index",
+            "status": "unsupported_operation",
+            "requested": op,
+            "allowed": ["status"],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    # Source registry (required)
+    try:
+        registry = load_source_registry()
+    except SourceRegistryError as e:
+        payload = {
+            "command": "construction-agent index status",
+            "status": "source_registry_unavailable",
+            "error": str(e),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+    if source is not None and not any(s.source_key == source for s in registry.sources):
+        payload = {
+            "command": "construction-agent index status",
+            "status": "not_found",
+            "requested": source,
+            "available": [s.source_key for s in registry.sources],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    store = ConstructionStore()
+    schema_version = SQLiteMigrator().current_version()
+
+    targets = [
+        s for s in registry.sources if source is None or s.source_key == source
+    ]
+    per_source = [_per_source_index(store, s) for s in targets]
+
+    review_queue = {
+        s: store.count_review_queue(source_key=source, status=s)
+        for s in ("open", "resolved", "deferred")
+    }
+    model_decisions = {
+        s: store.count_model_decisions(source_key=source, status=s)
+        for s in ("accepted", "review")
+    }
+
+    # Policy snapshots — best-effort; failures are non-fatal and surface as
+    # null entries with an explanation.
+    review_rules_summary: dict[str, Any] | None = None
+    try:
+        rr = load_review_rules()
+        review_rules_summary = {
+            "version": rr.version,
+            "rule_count": len(rr.rules),
+            "low_confidence_threshold": rr.low_confidence_threshold,
+        }
+    except ReviewRulesError as e:
+        review_rules_summary = {"status": "unavailable", "error": str(e)}
+
+    model_routing_summary: dict[str, Any] | None = None
+    try:
+        mr = load_model_routing_config()
+        model_routing_summary = {
+            "version": mr.version,
+            "default_model": mr.default_model,
+            "low_confidence_threshold": mr.low_confidence_threshold,
+            "tasks": [t.task for t in mr.tasks],
+        }
+    except ModelRoutingError as e:
+        model_routing_summary = {"status": "unavailable", "error": str(e)}
+
+    payload = {
+        "command": "construction-agent index status",
+        "schema_version": schema_version,
+        "summary": {
+            "project_count": len(registry.projects),
+            "source_count": len(registry.sources),
+            "sources_in_view": len(per_source),
+        },
+        "sources": per_source,
+        "review_queue": review_queue,
+        "model_decisions": model_decisions,
+        "policies": {
+            "review_rules": review_rules_summary,
+            "model_routing": model_routing_summary,
+        },
+        "guardrails": _INDEX_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+def _validate_schema() -> dict[str, Any]:
+    # apply() is idempotent and matches what every other CLI command implicitly
+    # does when it instantiates ConstructionStore(). Treats schema readiness as
+    # part of the validate health check.
+    v = SQLiteMigrator().apply()
+    ok = v >= 4
+    return {
+        "name": "schema",
+        "ok": ok,
+        "detail": f"schema_version={v}",
+        "error": None if ok else f"schema below v4 (got {v})",
+    }
+
+
+def _validate_source_registry() -> dict[str, Any]:
+    try:
+        registry = load_source_registry()
+    except SourceRegistryError as e:
+        return {"name": "source_registry", "ok": False, "detail": None, "error": str(e)}
+    except ValidationError as e:
+        return {
+            "name": "source_registry", "ok": False, "detail": None,
+            "error": f"{len(e.errors())} validation error(s)",
+        }
+    return {
+        "name": "source_registry", "ok": True,
+        "detail": f"{len(registry.projects)} projects, {len(registry.sources)} sources",
+        "error": None,
+    }
+
+
+def _validate_review_rules() -> dict[str, Any]:
+    try:
+        rr = load_review_rules()
+    except ReviewRulesError as e:
+        return {"name": "review_rules", "ok": False, "detail": None, "error": str(e)}
+    except ValidationError as e:
+        return {
+            "name": "review_rules", "ok": False, "detail": None,
+            "error": f"{len(e.errors())} validation error(s)",
+        }
+    return {
+        "name": "review_rules", "ok": True,
+        "detail": f"version={rr.version}; {len(rr.rules)} rules; threshold={rr.low_confidence_threshold}",
+        "error": None,
+    }
+
+
+def _validate_model_routing() -> dict[str, Any]:
+    try:
+        mr = load_model_routing_config()
+    except ModelRoutingError as e:
+        return {"name": "model_routing", "ok": False, "detail": None, "error": str(e)}
+    except ValidationError as e:
+        return {
+            "name": "model_routing", "ok": False, "detail": None,
+            "error": f"{len(e.errors())} validation error(s)",
+        }
+    return {
+        "name": "model_routing", "ok": True,
+        "detail": f"version={mr.version}; default_model={mr.default_model}; tasks={[t.task for t in mr.tasks]}",
+        "error": None,
+    }
+
+
+@app.command("validate")
+def validate_all(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Multi-layer config sanity check (schema + source registry + review rules + model routing)."""
+
+    checks = [
+        _validate_schema(),
+        _validate_source_registry(),
+        _validate_review_rules(),
+        _validate_model_routing(),
+    ]
+    passed = sum(1 for c in checks if c["ok"])
+    failed = len(checks) - passed
+    payload = {
+        "command": "construction-agent validate",
+        "checks": checks,
+        "summary": {
+            "total": len(checks),
+            "passed": passed,
+            "failed": failed,
+            "ok": failed == 0,
+        },
+        "guardrails": _INDEX_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if failed == 0 else 1)

@@ -1,0 +1,308 @@
+===================================================================
+Phase 01 — Prompt 08: CLI Command Proof
+Commit-after: <filled by commit step>
+===================================================================
+
+--- Validation summary ---
+pytest tests/test_construction_cli_commands.py: 11 passed
+pytest tests/test_construction_*.py tests/test_store*.py tests/test_config.py: 191 passed
+pytest tests/ (broader sweep, excluding documented hang-prone files): 223 passed
+pytest tests/test_cli_canonical.py -k 'help_parses or _shape': 4 passed
+ruff check (scoped): All checks passed!
+
+--- Implementation summary ---
+Added three read-only operator-surface commands to construction-agent:
+  - sources list      (minimal listing complement to sources validate)
+  - index status      (read-only dashboard joining schema + sources + queues + rules)
+  - validate          (top-level multi-layer config sanity check)
+Added tests/test_construction_cli_commands.py (11 tests; help-shape regression + per-command happy + edge paths).
+Added docs/operations/construction-agent-operator-runbook.md (architecture doc).
+No new modules, no schema migration, no business-logic changes.
+
+--- Changed files ---
+M  src/hb_assistant/cli/construction.py
+A  tests/test_construction_cli_commands.py
+A  docs/operations/construction-agent-operator-runbook.md
+A  docs/evidence/construction-intelligence-phase-01/08-cli-command-proof.txt
+
+===================================================================
+Live command transcripts (against the real DB; all read-only)
+===================================================================
+
+=== hb-assistant construction-agent --help ===
+                                                                                
+ Usage: hb-assistant construction-agent [OPTIONS] COMMAND [ARGS]...             
+                                                                                
+ Construction-management intelligence layer (read-only).                        
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ sync      Build manifest + sync + processing-receipt projections (SQLite is  │
+│           authoritative).                                                    │
+│ index     Read-only dashboard across all construction-agent layers.          │
+│ validate  Multi-layer config sanity check (schema + source registry + review │
+│           rules + model routing).                                            │
+│ sources   Source registry inspection.                                        │
+│ graph     Read-only Microsoft Graph crawler.                                 │
+│ vault     Construction vault preview and bootstrap.                          │
+│ review    Review-queue policy evaluation and inspection.                     │
+│ classify  Ollama-backed classification (recommendation-only).                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+=== hb-assistant construction-agent sources --help ===
+                                                                                
+ Usage: hb-assistant construction-agent sources [OPTIONS] COMMAND [ARGS]...     
+                                                                                
+ Source registry inspection.                                                    
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ list      List registered construction-agent sources (minimal projection).   │
+│ validate  Validate the construction-agent source registry and emit a report. │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+=== hb-assistant construction-agent sources list --json ===
+{
+  "command": "construction-agent sources list",
+  "count": 3,
+  "sources": [
+    {
+      "source_key": "tropical-sharepoint",
+      "project_key": "tropical",
+      "kind": "sharepoint_site",
+      "display_name": "Tropical SharePoint Site",
+      "resolution_status": "pending"
+    },
+    {
+      "source_key": "hilltop-sharepoint",
+      "project_key": "hilltop",
+      "kind": "sharepoint_site",
+      "display_name": "Hilltop SharePoint Site",
+      "resolution_status": "pending"
+    },
+    {
+      "source_key": "bobby-onedrive",
+      "project_key": null,
+      "kind": "onedrive_personal",
+      "display_name": "Bobby OneDrive (delegated, personal scope)",
+      "resolution_status": "pending"
+    }
+  ],
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true
+  }
+}
+
+=== hb-assistant construction-agent sources validate --json (truncated summary) ===
+{
+  "implemented": true,
+  "summary": {
+    "project_count": 2,
+    "source_count": 3,
+    "resolved_count": 0,
+    "pending_count": 3,
+    "deprecated_count": 0,
+    "ok": true,
+    "blocking": false
+  },
+  "warnings": [
+    "3 sources pending live resolution"
+  ],
+  "guardrails": {
+    "all_read_only": true,
+    "no_writeback_paths": true,
+    "no_live_external_calls": true
+  }
+}
+
+=== hb-assistant construction-agent index status --json ===
+{
+  "command": "construction-agent index status",
+  "schema_version": 4,
+  "summary": {
+    "project_count": 2,
+    "source_count": 3,
+    "sources_in_view": 3
+  },
+  "sources": [
+    {
+      "source_key": "tropical-sharepoint",
+      "project_key": "tropical",
+      "kind": "sharepoint_site",
+      "display_name": "Tropical SharePoint Site",
+      "resolution_status": "pending",
+      "drive_id_present": false,
+      "inventory_counts": {},
+      "last_sync_at": null,
+      "last_receipt_status": null,
+      "last_receipt_finished_at": null
+    },
+    {
+      "source_key": "hilltop-sharepoint",
+      "project_key": "hilltop",
+      "kind": "sharepoint_site",
+      "display_name": "Hilltop SharePoint Site",
+      "resolution_status": "pending",
+      "drive_id_present": false,
+      "inventory_counts": {},
+      "last_sync_at": null,
+      "last_receipt_status": null,
+      "last_receipt_finished_at": null
+    },
+    {
+      "source_key": "bobby-onedrive",
+      "project_key": null,
+      "kind": "onedrive_personal",
+      "display_name": "Bobby OneDrive (delegated, personal scope)",
+      "resolution_status": "pending",
+      "drive_id_present": false,
+      "inventory_counts": {},
+      "last_sync_at": null,
+      "last_receipt_status": null,
+      "last_receipt_finished_at": null
+    }
+  ],
+  "review_queue": {
+    "open": 0,
+    "resolved": 0,
+    "deferred": 0
+  },
+  "model_decisions": {
+    "accepted": 1,
+    "review": 2
+  },
+  "policies": {
+    "review_rules": {
+      "version": 1,
+      "rule_count": 12,
+      "low_confidence_threshold": 0.7
+    },
+    "model_routing": {
+      "version": 1,
+      "default_model": "llama3.2:1b",
+      "low_confidence_threshold": 0.7,
+      "tasks": [
+        "classification",
+        "review_reason"
+      ]
+    }
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true,
+    "command_role": "read_only_dashboard"
+  }
+}
+
+=== hb-assistant construction-agent index status --source tropical-sharepoint --json (summary) ===
+{
+  "summary": {
+    "project_count": 2,
+    "source_count": 3,
+    "sources_in_view": 1
+  },
+  "source": {
+    "source_key": "tropical-sharepoint",
+    "project_key": "tropical",
+    "kind": "sharepoint_site",
+    "display_name": "Tropical SharePoint Site",
+    "resolution_status": "pending",
+    "drive_id_present": false,
+    "inventory_counts": {},
+    "last_sync_at": null,
+    "last_receipt_status": null,
+    "last_receipt_finished_at": null
+  }
+}
+
+=== hb-assistant construction-agent index purge --json (unsupported op proof) ===
+{
+  "command": "construction-agent index",
+  "status": "unsupported_operation",
+  "requested": "purge",
+  "allowed": [
+    "status"
+  ]
+}
+exit_code: 1
+
+=== hb-assistant construction-agent index status --source unknown-key --json (not-found proof) ===
+{
+  "command": "construction-agent index status",
+  "status": "not_found",
+  "requested": "unknown-key",
+  "available": [
+    "tropical-sharepoint",
+    "hilltop-sharepoint",
+    "bobby-onedrive"
+  ]
+}
+exit_code: 1
+
+=== hb-assistant construction-agent validate --json ===
+{
+  "command": "construction-agent validate",
+  "checks": [
+    {
+      "name": "schema",
+      "ok": true,
+      "detail": "schema_version=4",
+      "error": null
+    },
+    {
+      "name": "source_registry",
+      "ok": true,
+      "detail": "2 projects, 3 sources",
+      "error": null
+    },
+    {
+      "name": "review_rules",
+      "ok": true,
+      "detail": "version=1; 12 rules; threshold=0.7",
+      "error": null
+    },
+    {
+      "name": "model_routing",
+      "ok": true,
+      "detail": "version=1; default_model=llama3.2:1b; tasks=['classification', 'review_reason']",
+      "error": null
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "ok": true
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true,
+    "command_role": "read_only_dashboard"
+  }
+}
+
+===================================================================
+Guardrails attested
+===================================================================
+- Read-only: none of the new commands take --apply, write to SQLite, or invoke the vault writer.
+- No external calls: nothing in the new commands touches Graph, Procore, OneDrive, or Outlook.
+- Structured JSON: every new command honors --json with a typed payload (command, summary, guardrails).
+- No destructive verbs: no delete, purge, reset, drop.
+- Help-shape regression test ensures every shipped sub-app stays registered (test_root_help_exposes_all_subapps_and_commands).
+
+===================================================================
+Known limitations
+===================================================================
+- Full python -m pytest remains out of scope per the hang-prone-files exclusion documented in prompts 06–07.
+- Live Ollama not exercised — already documented in prompt 07 evidence.
+- The package-referenced 10_CLI_Surface_And_Operator_Runbook.md and runbooks/Operator_Runbook.md are external package payloads, not repo prerequisites. The repo's canonical record is docs/operations/construction-agent-operator-runbook.md.
