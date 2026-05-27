@@ -1,10 +1,10 @@
 {
   "proof": "delegated-graph",
   "safe": true,
-  "timestamp": "2026-05-26T11:47:03.237492+00:00",
+  "timestamp": "2026-05-27T08:12:41.234797+00:00",
   "steps": [],
   "status": "blocked_no_token",
   "reason": "delegated_token_unavailable",
   "remediation": "Run hb-assistant auth login --json and retry proof.",
-  "error": "no token"
+  "error": "No delegated account in cache. Run `hb-assistant auth login` first."
 }
