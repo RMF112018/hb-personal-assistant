@@ -188,6 +188,7 @@ class ManifestRenderer:
             items_updated=r.items_updated,
             items_deleted=r.items_deleted,
             delta_link_recorded=str(r.delta_link_recorded).lower(),
+            raw_delta_link_redacted=str(r.raw_delta_link_redacted).lower(),
             error_block=_format_error_block(r.error_redacted),
             guardrails_block=_format_guardrails(r.guardrails),
         )
@@ -259,6 +260,7 @@ class ManifestRenderer:
             started_at=p.started_at,
             finished_at=_kv(p.finished_at),
             source_count=p.source_count,
+            raw_delta_link_redacted=str(p.raw_delta_link_redacted).lower(),
             totals_block=_format_counts(p.totals),
             per_source_block=_format_per_source(p.per_source),
             error_summary_block=_format_error_summary(p.error_summary),

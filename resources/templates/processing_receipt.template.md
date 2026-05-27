@@ -6,6 +6,7 @@
 - started_at: `{started_at}`
 - finished_at: `{finished_at}`
 - source_count: {source_count}
+- raw_delta_link_redacted: {raw_delta_link_redacted}
 
 ## Totals
 

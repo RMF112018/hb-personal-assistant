@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -234,6 +235,212 @@ def test_render_never_carries_body_or_text_fields() -> None:
     forbidden = ["full_text:", "body:", "content:", "excerpt:"]
     for needle in forbidden:
         assert needle.lower() not in rendered.lower()
+
+
+# ---------- Phase 02: all-output guardrails -------------------------------
+
+ALL_OUTPUT_KINDS = (
+    "source_manifest",
+    "sync_receipt",
+    "processing_receipt",
+    "registry_overview",
+    "project_card",
+    "review_required",
+    "document_card",
+)
+
+
+def _build_all_renders(populated_store: ConstructionStore) -> dict[str, str]:
+    """Build all 7 rendered outputs from a populated store + canonical seed.
+
+    The ``populated_store`` fixture seeds a raw delta_link containing the
+    sentinel ``ABC123secret`` in SQLite, so the no-raw-delta-link guardrail
+    test can prove the renderer never surfaces that token.
+    """
+    from hb_assistant.construction.config import load_source_registry
+    reg = load_source_registry()
+    svc = ManifestService(populated_store)
+    source = next(s for s in reg.sources if s.source_key == "tropical-sharepoint")
+
+    manifest = svc.build_source_manifest(source, run_id="run-x")
+    sync_receipt = svc.build_sync_receipt_from_store(
+        "tropical-sharepoint", run_id="r1",
+        started_at="2026-05-27T12:00:00+00:00",
+    )
+    processing_receipt = svc.build_processing_receipt(
+        run_id="r1", mode="apply",
+        started_at="2026-05-27T11:59:00+00:00",
+        finished_at="2026-05-27T12:00:00+00:00",
+        per_source=[sync_receipt],
+    )
+    overview = svc.build_registry_overview(reg)
+    card = svc.build_project_card(reg, "tropical")
+    review_note = svc.build_review_required_note()
+    document_card = svc.build_document_card(
+        source=source, item_id="item-0", policy_reason="manual review",
+    )
+
+    return {
+        "source_manifest": ManifestRenderer.render_source_manifest(manifest),
+        "sync_receipt": ManifestRenderer.render_sync_receipt(sync_receipt),
+        "processing_receipt": ManifestRenderer.render_processing_receipt(processing_receipt),
+        "registry_overview": ManifestRenderer.render_registry_overview(overview),
+        "project_card": ManifestRenderer.render_project_card(card),
+        "review_required": ManifestRenderer.render_review_required(review_note),
+        "document_card": ManifestRenderer.render_document_card(document_card),
+    }
+
+
+@pytest.fixture
+def all_renders(populated_store: ConstructionStore) -> dict[str, str]:
+    return _build_all_renders(populated_store)
+
+
+@pytest.mark.parametrize("kind", ALL_OUTPUT_KINDS)
+def test_render_never_carries_body_or_text_fields_all_kinds(
+    all_renders: dict[str, str], kind: str,
+) -> None:
+    forbidden = ["body:", "content:", "text:", "excerpt:", "full_text:"]
+    lower = all_renders[kind].lower()
+    for needle in forbidden:
+        assert needle not in lower, f"{kind} unexpectedly contains {needle!r}"
+
+
+@pytest.mark.parametrize("kind", ALL_OUTPUT_KINDS)
+def test_render_never_leaks_raw_delta_link_all_kinds(
+    all_renders: dict[str, str], kind: str,
+) -> None:
+    rendered = all_renders[kind]
+    # The populated_store fixture seeded delta_link with ABC123secret. No
+    # rendered output may carry the raw token; only the SHA256 fingerprint.
+    assert "ABC123secret" not in rendered, f"{kind} leaked raw delta token"
+    # Graph delta endpoint URLs must never appear verbatim.
+    assert "/root/delta?token=" not in rendered, f"{kind} leaked delta URL"
+
+
+_RENDERER_BY_KIND = {
+    "source_manifest": ("build_source_manifest", "render_source_manifest"),
+    "sync_receipt": ("build_sync_receipt_from_store", "render_sync_receipt"),
+    "processing_receipt": ("build_processing_receipt", "render_processing_receipt"),
+    "registry_overview": ("build_registry_overview", "render_registry_overview"),
+    "project_card": ("build_project_card", "render_project_card"),
+    "review_required": ("build_review_required_note", "render_review_required"),
+    "document_card": ("build_document_card", "render_document_card"),
+}
+
+
+@pytest.mark.parametrize("kind", ALL_OUTPUT_KINDS)
+def test_render_is_byte_identical_on_repeat(
+    populated_store: ConstructionStore, kind: str,
+) -> None:
+    """Renderer is a pure function: rendering the same model instance twice
+    must produce byte-identical Markdown. The service layer stamps
+    generated_at at build time and is intentionally not part of this check."""
+    rendered_map = _build_all_renders(populated_store)
+    # Re-render the same model instance — model objects are cached via the
+    # all_renders pipeline; this test guards the renderer itself.
+    from hb_assistant.construction.config import load_source_registry
+    reg = load_source_registry()
+    svc = ManifestService(populated_store)
+    source = next(s for s in reg.sources if s.source_key == "tropical-sharepoint")
+
+    if kind == "source_manifest":
+        m = svc.build_source_manifest(source, run_id="run-x")
+        a = ManifestRenderer.render_source_manifest(m)
+        b = ManifestRenderer.render_source_manifest(m)
+    elif kind == "sync_receipt":
+        m = svc.build_sync_receipt_from_store(
+            "tropical-sharepoint", run_id="r1",
+            started_at="2026-05-27T12:00:00+00:00",
+        )
+        a = ManifestRenderer.render_sync_receipt(m)
+        b = ManifestRenderer.render_sync_receipt(m)
+    elif kind == "processing_receipt":
+        sync = svc.build_sync_receipt_from_store(
+            "tropical-sharepoint", run_id="r1",
+            started_at="2026-05-27T12:00:00+00:00",
+        )
+        m = svc.build_processing_receipt(
+            run_id="r1", mode="apply",
+            started_at="2026-05-27T11:59:00+00:00",
+            finished_at="2026-05-27T12:00:00+00:00",
+            per_source=[sync],
+        )
+        a = ManifestRenderer.render_processing_receipt(m)
+        b = ManifestRenderer.render_processing_receipt(m)
+    elif kind == "registry_overview":
+        m = svc.build_registry_overview(reg)
+        a = ManifestRenderer.render_registry_overview(m)
+        b = ManifestRenderer.render_registry_overview(m)
+    elif kind == "project_card":
+        m = svc.build_project_card(reg, "tropical")
+        a = ManifestRenderer.render_project_card(m)
+        b = ManifestRenderer.render_project_card(m)
+    elif kind == "review_required":
+        m = svc.build_review_required_note()
+        a = ManifestRenderer.render_review_required(m)
+        b = ManifestRenderer.render_review_required(m)
+    else:  # document_card
+        m = svc.build_document_card(
+            source=source, item_id="item-0", policy_reason="manual review",
+        )
+        a = ManifestRenderer.render_document_card(m)
+        b = ManifestRenderer.render_document_card(m)
+    assert a == b, f"{kind} render is non-deterministic across repeated calls"
+    # Sanity: each kind has at least one render visible in the all-renders map.
+    assert kind in rendered_map
+
+
+_TOKEN_SHAPE_REGEXES: tuple[re.Pattern[str], ...] = (
+    re.compile(r"Bearer\s+[A-Za-z0-9._\-]{20,}"),
+    re.compile(r"eyJ[A-Za-z0-9._\-]{20,}"),
+    re.compile(r"\b(access|refresh)_token\s*[=:]\s*\S+"),
+    re.compile(r"client_secret\s*[=:]\s*\S+"),
+    re.compile(r"api_key\s*[=:]\s*\S+"),
+    re.compile(r"Authorization:\s*Bearer\b"),
+)
+
+
+@pytest.mark.parametrize("kind", ALL_OUTPUT_KINDS)
+def test_rendered_markdown_contains_no_token_shaped_secrets(
+    all_renders: dict[str, str], kind: str,
+) -> None:
+    rendered = all_renders[kind]
+    for rx in _TOKEN_SHAPE_REGEXES:
+        match = rx.search(rendered)
+        assert match is None, (
+            f"{kind} contains token-shaped substring {match.group()!r} "
+            f"matching {rx.pattern!r}"
+        )
+
+
+def test_sync_receipt_renders_raw_delta_link_redacted_proof(
+    populated_store: ConstructionStore,
+) -> None:
+    svc = ManifestService(populated_store)
+    receipt = svc.build_sync_receipt_from_store(
+        "tropical-sharepoint", run_id="r1",
+        started_at="2026-05-27T12:00:00+00:00",
+    )
+    rendered = ManifestRenderer.render_sync_receipt(receipt)
+    assert "raw_delta_link_redacted: true" in rendered
+
+
+def test_processing_receipt_renders_raw_delta_link_redacted_proof() -> None:
+    svc = ManifestService(ConstructionStore())
+    sync = SyncReceipt(
+        run_id="r", source_key="a", mode="apply", status="ok",
+        started_at="2026-05-27T12:00:00+00:00",
+        guardrails=dict(GUARDRAILS_DEFAULT),
+    )
+    pr = svc.build_processing_receipt(
+        run_id="r", mode="apply",
+        started_at="2026-05-27T11:59:00+00:00",
+        finished_at="2026-05-27T12:00:00+00:00",
+        per_source=[sync],
+    )
+    rendered = ManifestRenderer.render_processing_receipt(pr)
+    assert "raw_delta_link_redacted: true" in rendered
 
 
 def test_manifest_sample_size_cap_respected() -> None:

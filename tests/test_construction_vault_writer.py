@@ -194,6 +194,25 @@ def test_registry_overview_frontmatter_is_valid(populated_store: ConstructionSto
     assert isinstance(fm["tags"], list)
 
 
+def test_document_card_frontmatter_exposes_source_id_alongside_source_key(
+    populated_store: ConstructionStore,
+) -> None:
+    """Phase 02 canonical alias: document card frontmatter must carry both
+    source_key (legacy) and source_id (canonical) with identical values."""
+    from hb_assistant.construction.config import load_source_registry
+    reg = load_source_registry()
+    src = next(s for s in reg.sources if s.source_key == "tropical-sharepoint")
+    svc = ManifestService(populated_store)
+    card = svc.build_document_card(
+        source=src, item_id="item-1", policy_reason="manual review",
+    )
+    rendered = ManifestRenderer.render_document_card(card)
+    fm = _split_frontmatter(rendered)
+    assert fm["source_key"] == "tropical-sharepoint"
+    assert fm["source_id"] == "tropical-sharepoint"
+    assert fm["source_key"] == fm["source_id"]
+
+
 def test_project_card_frontmatter_is_valid(populated_store: ConstructionStore) -> None:
     from hb_assistant.construction.config import load_source_registry
     reg = load_source_registry()

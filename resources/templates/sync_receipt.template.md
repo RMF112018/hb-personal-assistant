@@ -16,6 +16,7 @@
 - items_updated: {items_updated}
 - items_deleted: {items_deleted}
 - delta_link_recorded: {delta_link_recorded}
+- raw_delta_link_redacted: {raw_delta_link_redacted}
 
 ## Error Summary
 

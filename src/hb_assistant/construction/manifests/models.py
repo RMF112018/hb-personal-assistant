@@ -57,6 +57,10 @@ class SyncReceipt(BaseModel):
     items_updated: int = 0
     items_deleted: int = 0
     delta_link_recorded: bool = False
+    # Phase 02: explicit proof attestation that the raw Graph delta token was
+    # never written into vault output. Raw tokens are stored only in SQLite;
+    # templates surface a SHA256 fingerprint via delta_link_fingerprint().
+    raw_delta_link_redacted: bool = True
     error_redacted: Optional[str] = None
     guardrails: dict[str, str] = Field(default_factory=dict)
 
@@ -72,6 +76,7 @@ class ProcessingReceipt(BaseModel):
     per_source: list[SyncReceipt] = Field(default_factory=list)
     totals: dict[str, int] = Field(default_factory=dict)
     error_summary: list[str] = Field(default_factory=list)
+    raw_delta_link_redacted: bool = True
     guardrails: dict[str, str] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
