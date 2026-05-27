@@ -78,3 +78,5 @@ Refs: 02 (row 10 + expected layout), 11_CLI (automation commands + launchd secti
 Prompt 13 (Testing, Hardening, Final Closeout) — uses the automation + orchestrator + diagnostics + full evidence/sensitive scans for closure checklist and mutation lockout verification.
 
 Ready for scheduled, reliable, auditable morning runs on macOS.
+
+**P07 operator guidance**: Full non-code instructions for install/uninstall, dry-run usage, error inspection, and weekend manual behavior are in the public `docs/operations/mvp-local-runtime-operator-guide.md` (sections 3, 9, and 10). The 07- and 06-known-limitations evidence mds capture the process and any new operational limitations.

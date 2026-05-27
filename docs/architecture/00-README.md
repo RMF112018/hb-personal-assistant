@@ -27,3 +27,5 @@ This directory contains living architecture and decision records for the HB Pers
 Remediation context: implementation reached `v1.3.0`, but acceptance is gated on remediation validation; prior closeout claims are superseded pending green remediation evidence.
 
 For the full phased plan and research, see `docs/plans/my-pa-phase-0/`.
+
+**P07 addition**: Public operator-facing documentation for the local MVP (no code reading required) lives at `docs/operations/mvp-local-runtime-operator-guide.md` + supporting evidence at `docs/evidence/mvp-local-runtime/07-operator-runbook-and-limitations.md` and `06-known-limitations.md`. Covers venv, diagnostics, morning dry-run, launchd management, what gets written vs never, Graph deferred / Prompt 9 readiness, and all operational paths.

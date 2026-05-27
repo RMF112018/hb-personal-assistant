@@ -41,3 +41,12 @@
 - [x] Exact outputs written: `docs/evidence/mvp-local-runtime/06-local-runtime-evidence-harness.md` + 5 named JSONs in outputs/.
 - [x] No Graph calls; local-only Store + writer + extractor paths only.
 - Reference: `docs/evidence/mvp-local-runtime/06-local-runtime-evidence-harness.md` (HEAD 840bc1b post-P05).
+
+## P07 — MVP Operator Runbook and Known Limitations (d15610e)
+- [x] `docs/operations/mvp-local-runtime-operator-guide.md` created and covers all 12 mandated topics (venv, diagnostics, morning dry-run, apply/write, what gets written, what never, logs/evidence paths, SQLite/auth/cache locations, disable launchd, inspect errors, Graph/admin blocked items, Prompt 9 post-consent readiness).
+- [x] `docs/evidence/mvp-local-runtime/07-operator-runbook-and-limitations.md` (process + 12-topic coverage matrix + starting state) created.
+- [x] `docs/evidence/mvp-local-runtime/06-known-limitations.md` (dedicated extractable limitations including Graph deferred + new operational ones) created.
+- [x] All examples validated via safe re-runs of documented commands (`diagnostics env/paths/automation`, `run morning --dry-run`, `automation uninstall-launchd --dry-run`).
+- [x] Sensitive scan clean on new artifacts (only expected descriptive MSAL indicator in the guide itself; no secrets).
+- [x] Internal runbooks/ used via targeted methods only; public canonical guide lives in `docs/operations/`.
+- Reference: `docs/operations/mvp-local-runtime-operator-guide.md` + the two 0x- mds (HEAD d15610e post-P06).

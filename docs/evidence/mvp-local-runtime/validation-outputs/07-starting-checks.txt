@@ -1,0 +1,58 @@
+=== P07 MANDATORY STARTING CHECKS CAPTURE (Prompt 07 - MVP Operator Runbook)
+Timestamp (UTC): $(date -u +%Y-%m-%dT%H:%M:%SZ)
+Repo: RMF112018/hb-personal-assistant (explicitly NOT hb-intel)
+Phase expected HEAD: baac7b5cf61d461d3b544262d02ad4c051aa9fa1 (EXISTS in history)
+Actual current HEAD: d15610e0e2566ea42fb6be719804beb44202344f
+Branch: main
+Working tree: minor unrelated noise only (vault-package-migration untracked artifacts from prior evidence work; no P07 changes yet)
+Recent history top (post-P06):
+  d15610e docs(evidence): add migration summary and P06 validation output captures
+  a7f7a2c test(mvp-runtime): add deterministic local runtime evidence harness   <--- P06 commit
+  840bc1b chore(workspace): add CLAUDE.md ...
+P05/P06 commits visible; large cumulative deviation from baac7b5 documented per precedent.
+
+=== docs/operations existence ===
+NO docs/operations/ DIRECTORY (will create)
+
+=== Evidence tree (mvp-local-runtime) post-P06 ===
+Full P06 artifacts present:
+- 00- through 06-*.md (including 06-local-runtime-evidence-harness.md)
+- outputs/ with all required P06 JSONs + harness success marker + validation outputs from P06 verifiers
+- validation-outputs/ from P06
+
+=== Internal phase runbooks/ (targeted ls) ===
+MVP_Local_Runtime_Operator_Runbook.md (and 07_Deferred_Graph_Consent_Closeout_Runbook.md confirmed via prior targeted grep)
+
+=== Key real paths (from diagnostics env --json + paths) ===
+app_support: /Users/bobbyfetting/Library/Application Support/HB Personal Assistant
+db_path: .../db/hb-personal-assistant.sqlite
+auth_dir: .../auth (700)
+logs: .../logs (run-logs, error-logs)
+evidence: .../evidence
+vault: ~/Documents/Obsidian Vault (Daily Notes, AI Outputs)
+venv python: /Users/bobbyfetting/hb-personal-assistant/.venv/bin/python
+Obsidian daily notes dir ready: true
+
+=== CLI surface (safe discovery) ===
+Top commands: vault, sync, brief, auth, diagnostics (rich sub: env, paths, auth, automation, scan-sensitive, proof, store, ...), files, actions, search, run (morning), automation (install/uninstall/kickstart launchd)
+diagnostics automation: label com.hb.personal-assistant.morning, 05:00 America/New_York, catch_up true, weekend_behavior manual_only, no plist yet, readiness true (executable in .venv, logs writable, daily notes ready)
+run morning --dry-run: Graph stages skipped_no_token (expected), local stages (path_readiness, store, local_signal_load, classification, action_extraction, workstream_context, brief_draft?, obsidian_write_dry) succeed.
+automation uninstall-launchd --dry-run: exact commands = launchctl unload -w + rm -f ~/Library/LaunchAgents/com.hb.personal-assistant.morning.plist
+
+=== Targeted grep hits (phase docs + runbooks + evidence only) for 12 topics ===
+- venv/activate: present in internal runbooks/MVP_Local_Runtime_Operator_Runbook.md ("source .venv/bin/activate")
+- launchd / automation: heavy coverage in 03_Hardening, 01_Target_Arch, diagnostics automation output, internal runbook
+- dry-run semantics + what gets written / never: strong in 03_Hardening_Implementation_Plan.md (dry-run never mutates M365/Obsidian/action_items/source_links/...; ledger/evidence only when documented)
+- Graph consent / Prompt 9 deferred: explicit in 00_Project_Context, README, 07_Deferred_Graph_Consent_Closeout_Runbook.md (post-consent command chain: clear-cache, login, status, diagnostics graph/proof, scan-sensitive), 08_Commit_Standards (GRAPH_DELEGATED_PROOF_DEFERRED_PENDING_ADMIN_CONSENT), 09 checklist
+- known limitations / operator runbook: internal runbook draft + 07_Deferred... + 09 checklist (P06 flips for local stages continuing, proofs captured)
+- 09 checklist already has several P06 items marked; Graph deferred language present
+
+=== Analysis / Human Decision for next todo ===
+- Actual state: d15610e (post-P06 evidence migration). Deviation from baac7b5 fully documented.
+- Unrelated noise (vault-migration untracked): ignore for P07 (pre-existing evidence work).
+- Internal runbooks/ exist and contain accurate draft content for venv, commands, Graph deferred — will be used via targeted reference only to ensure the public docs/operations/ guide is truthful and complete.
+- No docs/operations/ yet → create + polished public guide.
+- All 12 topics have precedent language or CLI output available via safe means.
+- Prompt 9 / Graph: zero workarounds; explicit cross-ref to 07_Deferred_Graph_Consent_Closeout_Runbook.md in the guide.
+- Proceeding to residual-noise-decision (quick) then creation of the three required files.
+
