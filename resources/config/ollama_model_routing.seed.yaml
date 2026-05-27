@@ -1,0 +1,56 @@
+# Construction-agent Ollama routing — controller policy.
+#
+# Authoritative. Edit this file (or an override at
+# config/ollama_model_routing.yml) to retune model selection or system prompts
+# without touching code.
+#
+# Guardrails enforced by Pydantic ModelRoutingConfig:
+#   - protected_categories MUST contain every canonical category
+#     (contract, financial, legal, incident, injury, personnel).
+#   - low_confidence_threshold MUST be in [0.0, 1.0].
+#   - timeout_seconds > 0.
+#   - max_output_chars > 0.
+#   - tasks entries are unique by `task`.
+#
+# The model proposes; the router decides. Status `accepted` is awarded only
+# when the proposed_label is NOT in protected_categories, confidence is at or
+# above low_confidence_threshold, AND the deterministic controller policy
+# (resources/config/review_required_rules.seed.yaml) did not also flag the
+# item. Otherwise the decision routes to `review` for controller validation.
+
+version: 1
+default_model: llama3.2:1b
+low_confidence_threshold: 0.7
+timeout_seconds: 15.0
+max_output_chars: 4000
+
+protected_categories:
+  - contract
+  - financial
+  - legal
+  - incident
+  - injury
+  - personnel
+
+tasks:
+  - task: classification
+    model: llama3.2:1b
+    system_prompt: >-
+      You are a construction-document metadata classifier. You will receive
+      only the document name and parent folder path — never the document body.
+      Respond with a single JSON object containing exactly these keys:
+      item_id (echo back the input item_id), proposed_label (one of:
+      contract, financial, legal, incident, injury, personnel, operational,
+      other), confidence (float in [0,1]), rationale (one short sentence),
+      risk_terms (array of strings observed in name/path, may be empty).
+      Do not classify based on inference about document contents.
+
+  - task: review_reason
+    model: llama3.2:1b
+    system_prompt: >-
+      You are a construction-document triage assistant. The controller has
+      already flagged this item for review. Propose a short reason a human
+      reviewer should examine it, based only on the name and parent folder
+      path. Respond with the same JSON object shape (item_id, proposed_label,
+      confidence, rationale, risk_terms). The proposed_label should reflect
+      the suspected category; the rationale should be one short sentence.

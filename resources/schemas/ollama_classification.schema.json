@@ -1,0 +1,47 @@
+{
+  "additionalProperties": false,
+  "description": "The validated JSON payload the model is expected to produce.",
+  "properties": {
+    "item_id": {
+      "title": "Item Id",
+      "type": "string"
+    },
+    "proposed_label": {
+      "enum": [
+        "contract",
+        "financial",
+        "legal",
+        "incident",
+        "injury",
+        "personnel",
+        "operational",
+        "other"
+      ],
+      "title": "Proposed Label",
+      "type": "string"
+    },
+    "confidence": {
+      "title": "Confidence",
+      "type": "number"
+    },
+    "rationale": {
+      "title": "Rationale",
+      "type": "string"
+    },
+    "risk_terms": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Risk Terms",
+      "type": "array"
+    }
+  },
+  "required": [
+    "item_id",
+    "proposed_label",
+    "confidence",
+    "rationale"
+  ],
+  "title": "ModelClassification",
+  "type": "object"
+}

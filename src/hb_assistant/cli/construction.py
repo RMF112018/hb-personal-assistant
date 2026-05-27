@@ -27,6 +27,13 @@ from pydantic import ValidationError
 from hb_assistant.auth.providers import DelegatedAuthProvider
 from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
+from hb_assistant.construction.classification import (
+    ClassificationRouter,
+    ClassificationService,
+    InvalidModelOutputError,
+    ModelRoutingError,
+    load_model_routing_config,
+)
 from hb_assistant.construction.config import (
     SourceRegistry,
     load_source_registry,
@@ -60,11 +67,13 @@ graph_app = typer.Typer(help="Read-only Microsoft Graph crawler.")
 graph_sources_app = typer.Typer(help="Graph source resolution.")
 vault_app = typer.Typer(help="Construction vault preview and bootstrap.")
 review_app = typer.Typer(help="Review-queue policy evaluation and inspection.")
+classify_app = typer.Typer(help="Ollama-backed classification (recommendation-only).")
 app.add_typer(sources_app, name="sources")
 app.add_typer(graph_app, name="graph")
 graph_app.add_typer(graph_sources_app, name="sources")
 app.add_typer(vault_app, name="vault")
 app.add_typer(review_app, name="review")
+app.add_typer(classify_app, name="classify")
 
 
 def _build_report(registry: SourceRegistry) -> dict[str, Any]:
@@ -823,6 +832,285 @@ def review_list(
         "total": len(rows),
         "items": rows,
         "guardrails": _REVIEW_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+# ---------------------------------------------------------------------------
+# Ollama classification (Phase 01 Step 8 / Prompt 07)
+# ---------------------------------------------------------------------------
+
+
+_CLASSIFY_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": True,
+    "model_role": "recommendation_only",
+    "controller_policy_authoritative": True,
+    "invalid_json_rejected": True,
+    "low_confidence_routes_to_review": True,
+    "no_protected_category_auto_accept": True,
+    "no_source_document_body_read": True,
+}
+
+
+# Built-in fixture set for offline demonstration. Pairs an inventory shape
+# (name + parent_path) with a raw model output for the same item_id.
+_FIXTURES: dict[str, list[dict[str, Any]]] = {
+    "sample": [
+        {
+            "item_id": "fixture-photos",
+            "inventory": {
+                "item_id": "fixture-photos",
+                "name": "Site Photos 2026-04-12.zip",
+                "parent_path": "/Tropical/General",
+            },
+            "raw_output": (
+                '{"item_id":"fixture-photos","proposed_label":"operational",'
+                '"confidence":0.92,"rationale":"daily photo upload",'
+                '"risk_terms":[]}'
+            ),
+        },
+        {
+            "item_id": "fixture-contract",
+            "inventory": {
+                "item_id": "fixture-contract",
+                "name": "Master Agreement v3.pdf",
+                "parent_path": "/Tropical/Contracts/Vendors",
+            },
+            "raw_output": (
+                '{"item_id":"fixture-contract","proposed_label":"contract",'
+                '"confidence":0.95,"rationale":"contract document",'
+                '"risk_terms":["agreement"]}'
+            ),
+        },
+        {
+            "item_id": "fixture-lowconf",
+            "inventory": {
+                "item_id": "fixture-lowconf",
+                "name": "Draft Notes.docx",
+                "parent_path": "/Tropical/General",
+            },
+            "raw_output": (
+                '{"item_id":"fixture-lowconf","proposed_label":"other",'
+                '"confidence":0.35,"rationale":"ambiguous draft",'
+                '"risk_terms":[]}'
+            ),
+        },
+    ],
+}
+
+
+@classify_app.command("run")
+def classify_run(
+    source: Optional[str] = typer.Option(
+        None, "--source", help="Source key (required unless --fixture is set).",
+    ),
+    item: Optional[str] = typer.Option(
+        None, "--item", help="Inventory item_id (required unless --fixture is set).",
+    ),
+    fixture: Optional[str] = typer.Option(
+        None, "--fixture", help="Run an offline built-in fixture set by name (e.g. 'sample').",
+    ),
+    task: str = typer.Option(
+        "classification", "--task",
+        help="Model task: classification | review_reason.",
+    ),
+    mock_output: Optional[str] = typer.Option(
+        None, "--mock-output",
+        help="Raw model output to feed in offline (bypasses Ollama). For testing / proof.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Run the classifier. With --fixture: offline demo. With --source/--item: live or mocked."""
+
+    if task not in ("classification", "review_reason"):
+        payload = {
+            "command": "construction-agent classify run",
+            "status": "invalid_task",
+            "requested": task,
+            "allowed": ["classification", "review_reason"],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    try:
+        config = load_model_routing_config()
+    except ModelRoutingError as e:
+        payload = {
+            "command": "construction-agent classify run",
+            "status": "routing_config_unavailable",
+            "error": str(e),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+    try:
+        rules = load_review_rules()
+        policy_evaluator = ReviewPolicyEvaluator(rules)
+    except ReviewRulesError:
+        policy_evaluator = None  # router still works; controller check is skipped
+
+    store = ConstructionStore()
+    router = ClassificationRouter(config, policy_evaluator=policy_evaluator)
+    service = ClassificationService(config=config, router=router, store=store)
+    task_routing = config.task_for(task)  # type: ignore[arg-type]
+
+    if fixture is not None:
+        if fixture not in _FIXTURES:
+            payload = {
+                "command": "construction-agent classify run",
+                "status": "unknown_fixture",
+                "requested": fixture,
+                "available": sorted(_FIXTURES.keys()),
+            }
+            typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+            raise typer.Exit(1)
+        decisions: list[dict[str, Any]] = []
+        rejected: list[dict[str, Any]] = []
+        for entry in _FIXTURES[fixture]:
+            try:
+                decision = service.classify_with_raw(
+                    raw_output=entry["raw_output"],
+                    source_key="fixture",
+                    item_id=entry["item_id"],
+                    project_key=None,
+                    model_task=task,  # type: ignore[arg-type]
+                    model_name=task_routing.model,
+                    inventory_item=entry["inventory"],
+                )
+                decisions.append(decision.model_dump())
+            except InvalidModelOutputError as e:
+                rejected.append({
+                    "item_id": entry["item_id"], "code": e.code, "detail": e.detail,
+                })
+        payload = {
+            "command": "construction-agent classify run",
+            "mode": "fixture",
+            "fixture": fixture,
+            "decisions": decisions,
+            "rejected": rejected,
+            "summary": {
+                "total": len(_FIXTURES[fixture]),
+                "accepted": sum(1 for d in decisions if d["status"] == "accepted"),
+                "review": sum(1 for d in decisions if d["status"] == "review"),
+                "rejected": len(rejected),
+            },
+            "guardrails": _CLASSIFY_GUARDRAILS,
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+
+    # Live or mocked single-item path
+    if source is None or item is None:
+        payload = {
+            "command": "construction-agent classify run",
+            "status": "missing_required_args",
+            "hint": "Either pass --fixture NAME, or pass both --source KEY and --item ITEM_ID.",
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    inventory_rows = store.list_inventory_for_source(source)
+    inventory_item = next((r for r in inventory_rows if r.get("item_id") == item), None)
+    if inventory_item is None:
+        payload = {
+            "command": "construction-agent classify run",
+            "status": "item_not_found",
+            "source": source,
+            "item": item,
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    if mock_output is None:
+        payload = {
+            "command": "construction-agent classify run",
+            "status": "live_call_disabled",
+            "hint": (
+                "Live Ollama calls are not wired into the CLI in this prompt. "
+                "Pass --mock-output '<raw json>' to exercise the validator + router + store."
+            ),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    registry = load_source_registry()
+    src_entry = next((s for s in registry.sources if s.source_key == source), None)
+    project_key = src_entry.project_key if src_entry is not None else None
+
+    try:
+        decision = service.classify_with_raw(
+            raw_output=mock_output,
+            source_key=source,
+            item_id=item,
+            project_key=project_key,
+            model_task=task,  # type: ignore[arg-type]
+            model_name=task_routing.model,
+            inventory_item=inventory_item,
+        )
+    except InvalidModelOutputError as e:
+        payload = {
+            "command": "construction-agent classify run",
+            "status": "invalid_model_output",
+            "code": e.code,
+            "detail": e.detail,
+            "snippet": e.snippet,
+            "guardrails": _CLASSIFY_GUARDRAILS,
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+    payload = {
+        "command": "construction-agent classify run",
+        "mode": "mock_output",
+        "decision": decision.model_dump(),
+        "guardrails": _CLASSIFY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@classify_app.command("decisions")
+def classify_decisions(
+    source: Optional[str] = typer.Option(None, "--source"),
+    status: str = typer.Option(
+        "all", "--status", help="Filter by status: accepted | review | all (default: all).",
+    ),
+    limit: int = typer.Option(1000, "--limit"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List the construction model-decisions audit table (read-only)."""
+
+    allowed = {"accepted", "review", "all"}
+    if status not in allowed:
+        payload = {
+            "command": "construction-agent classify decisions",
+            "status": "invalid_status_filter",
+            "requested": status,
+            "allowed": sorted(allowed),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    store = ConstructionStore()
+    rows = store.list_model_decisions(
+        source_key=source,
+        status=None if status == "all" else status,
+        limit=limit,
+    )
+    counts = {
+        s: store.count_model_decisions(source_key=source, status=s)
+        for s in ("accepted", "review")
+    }
+    payload = {
+        "command": "construction-agent classify decisions",
+        "filter": {"source": source, "status": status, "limit": limit},
+        "counts_by_status": counts,
+        "total": len(rows),
+        "items": rows,
+        "guardrails": _CLASSIFY_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)

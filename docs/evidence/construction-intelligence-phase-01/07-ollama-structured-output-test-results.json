@@ -1,0 +1,209 @@
+{
+  "prompt": "07",
+  "phase": 1,
+  "step": "8-ollama-structured-output",
+  "title": "Ollama Classification & Structured Output",
+  "commit_after": "<filled by commit step>",
+  "implementation_summary": {
+    "module": "src/hb_assistant/construction/classification/",
+    "approach": "Ollama-backed classifier as a recommendation-only layer. Pydantic-strict JSON validation; deterministic router decides accepted vs review; controller policy from prompt 06 always wins. Every decision persisted to new V4 audit table construction_model_decisions.",
+    "components": [
+      "models.py — Pydantic ModelClassification, ModelRoutingConfig, ModelTaskRouting, ClassificationDecision (extra=forbid, Literal-typed labels, range validators).",
+      "loader.py — load_model_routing_config() with seed → repo override → explicit path → HB_CONSTRUCTION_MODEL_ROUTING env precedence (mirrors construction/policy/loader.py).",
+      "validator.py — parse_and_validate(): rejects empty / non-JSON / non-object / missing-field / extra-field / out-of-range output with truncated-snippet error.",
+      "client.py — OllamaChatClient.generate_json() POSTs /api/generate with format: 'json'; raises sanitized OllamaUnavailable on any network/non-200/envelope failure (no URL/host in exception).",
+      "router.py — ClassificationRouter.decide() applies in order: protected_category → review; low_confidence → review; controller-policy-flagged → review (model cannot override controller); else accepted.",
+      "service.py — ClassificationService classify_with_raw (offline) and classify_item (live) entry points; persists every decision; forces 'review' when model echoes back wrong item_id.",
+      "Seed YAML resources/config/ollama_model_routing.seed.yaml (default_model llama3.2:1b, threshold 0.7, full protected list, classification + review_reason tasks).",
+      "Schema artifact resources/schemas/ollama_classification.schema.json (generated from ModelClassification Pydantic).",
+      "V4 SQLite migration adds construction_model_decisions + 2 indexes; additive, idempotent.",
+      "ConstructionStore extended with record_model_decision / list_model_decisions / count_model_decisions.",
+      "CLI sub-app construction-agent classify {run, decisions} with offline --fixture and --mock-output paths."
+    ]
+  },
+  "changed_files": {
+    "added": [
+      "src/hb_assistant/construction/classification/__init__.py",
+      "src/hb_assistant/construction/classification/client.py",
+      "src/hb_assistant/construction/classification/loader.py",
+      "src/hb_assistant/construction/classification/models.py",
+      "src/hb_assistant/construction/classification/router.py",
+      "src/hb_assistant/construction/classification/service.py",
+      "src/hb_assistant/construction/classification/validator.py",
+      "resources/config/ollama_model_routing.seed.yaml",
+      "resources/schemas/ollama_classification.schema.json",
+      "tests/test_construction_ollama_classification.py",
+      "docs/evidence/construction-intelligence-phase-01/07-ollama-structured-output-test-results.json"
+    ],
+    "modified": [
+      "src/hb_assistant/cli/construction.py",
+      "src/hb_assistant/construction/store/repositories.py",
+      "src/hb_assistant/store/migrator.py"
+    ],
+    "deleted": []
+  },
+  "validation": {
+    "pytest_classification_suite": {
+      "command": "python -m pytest tests/test_construction_ollama_classification.py",
+      "passed": 39,
+      "failed": 0,
+      "duration_seconds_approx": 0.27
+    },
+    "pytest_regression_sweep": {
+      "command": "python -m pytest tests/test_construction_*.py tests/test_store.py tests/test_store_links.py tests/test_config.py",
+      "passed": 180,
+      "failed": 0,
+      "duration_seconds_approx": 1.43
+    },
+    "pytest_broader_sweep": {
+      "command": "python -m pytest tests/ (excluding documented hang-prone files and the 4 pre-existing test_obsidian_writer baseline failures; -k 'not test_graph')",
+      "passed": 212,
+      "deselected": 11,
+      "failed": 0,
+      "duration_seconds_approx": 1.75
+    },
+    "pytest_cli_canonical_help_subset": {
+      "command": "python -m pytest tests/test_cli_canonical.py -k 'help_parses or _shape' -q",
+      "passed": 4,
+      "failed": 0
+    },
+    "ruff": {
+      "command": "ruff check src/hb_assistant/construction/classification/ src/hb_assistant/cli/construction.py src/hb_assistant/store/migrator.py src/hb_assistant/construction/store/repositories.py tests/test_construction_ollama_classification.py",
+      "result": "All checks passed!"
+    },
+    "schema_migration": {
+      "command": "python -c 'from hb_assistant.store.migrator import SQLiteMigrator; m=SQLiteMigrator(); print(m.apply(), m.apply())'",
+      "first_apply_returns": 4,
+      "second_apply_returns": 4,
+      "idempotent": true,
+      "construction_tables_after_v4": [
+        "construction_crawl_receipts",
+        "construction_delta_tokens",
+        "construction_drive_item_inventory",
+        "construction_model_decisions",
+        "construction_review_queue",
+        "construction_source_resolutions"
+      ]
+    }
+  },
+  "cli_smoke": {
+    "_notes": "All transcripts captured against an isolated tmp SQLite via the same monkeypatch pattern used by the test suite. Live Ollama not contacted.",
+    "fixture_run": {
+      "command": "construction-agent classify run --fixture sample --json",
+      "exit_code": 0,
+      "summary": {"total": 3, "accepted": 1, "review": 2, "rejected": 0},
+      "decisions": [
+        {
+          "item_id": "fixture-photos",
+          "proposed_label": "operational",
+          "confidence": 0.92,
+          "status": "accepted",
+          "routing_reason": "model_accepted"
+        },
+        {
+          "item_id": "fixture-contract",
+          "proposed_label": "contract",
+          "confidence": 0.95,
+          "status": "review",
+          "routing_reason": "protected_category:contract;controller_policy_flagged:folder-contracts",
+          "_note": "Demonstrates layered defense — protected-category check AND controller policy both fire."
+        },
+        {
+          "item_id": "fixture-lowconf",
+          "proposed_label": "other",
+          "confidence": 0.35,
+          "status": "review",
+          "routing_reason": "low_confidence:0.350"
+        }
+      ]
+    },
+    "mock_valid": {
+      "command": "construction-agent classify run --source tropical-sharepoint --item it1 --mock-output '<valid-json>' --json",
+      "exit_code": 0,
+      "decision": {
+        "proposed_label": "operational",
+        "confidence": 0.9,
+        "status": "accepted",
+        "routing_reason": "model_accepted",
+        "project_key": "tropical"
+      }
+    },
+    "mock_invalid": {
+      "command": "construction-agent classify run --source tropical-sharepoint --item it1 --mock-output 'not-json' --json",
+      "exit_code": 1,
+      "payload": {
+        "status": "invalid_model_output",
+        "code": "json_parse_failed",
+        "snippet": "not-json"
+      },
+      "_note": "Nothing persisted on rejection — confirmed by decisions count remaining unchanged."
+    },
+    "decisions_list": {
+      "command": "construction-agent classify decisions --json",
+      "exit_code": 0,
+      "counts_by_status": {"accepted": 2, "review": 2},
+      "total": 4
+    }
+  },
+  "guardrails_attested": {
+    "ollama_is_recommendation_only": {
+      "evidence": "test_router_accepts_high_confidence_non_protected (positive path) plus the three review-routing tests below establish that 'accepted' is the only positive verdict and it requires non-protected label + above-threshold confidence + no controller-policy flag.",
+      "tests": [
+        "test_router_accepts_high_confidence_non_protected",
+        "test_router_routes_protected_category_to_review",
+        "test_router_routes_low_confidence_to_review",
+        "test_router_controller_policy_overrides_model_high_confidence"
+      ]
+    },
+    "invalid_json_is_rejected": {
+      "evidence": "Six validator-rejection tests plus CLI mock_invalid exit-1 path. Nothing is persisted on rejection.",
+      "tests": [
+        "test_validator_rejects_empty_string",
+        "test_validator_rejects_malformed_json",
+        "test_validator_rejects_json_array",
+        "test_validator_rejects_missing_required_field",
+        "test_validator_rejects_extra_fields",
+        "test_validator_rejects_unknown_proposed_label",
+        "test_validator_rejects_out_of_range_confidence",
+        "test_validator_rejects_empty_rationale",
+        "test_validator_truncates_snippet_in_exception_message",
+        "test_service_raises_invalid_for_bad_json_and_persists_nothing",
+        "test_cli_classify_run_mock_output_invalid"
+      ]
+    },
+    "models_never_execute_file_operations": {
+      "evidence": "Classification module imports only ConstructionStore (SQLite-only) plus Pydantic/requests. No filesystem, subprocess, or vault writer is reachable from the classifier surface."
+    },
+    "models_never_override_controller_validation": {
+      "evidence": "Router consults ReviewPolicyEvaluator (controller policy from prompt 06) and forces status='review' on any match, regardless of model confidence. test_router_controller_policy_overrides_model_high_confidence asserts this at confidence 1.0."
+    },
+    "low_confidence_routes_to_review": {
+      "evidence": "test_router_routes_low_confidence_to_review confirms confidence < threshold → 'review' with routing_reason 'low_confidence:<value>'."
+    },
+    "no_protected_category_auto_accept": {
+      "evidence": "test_router_routes_protected_category_to_review asserts even confidence 1.0 on a contract label routes to review."
+    },
+    "no_source_document_body_text_read": {
+      "evidence": "Service._build_prompt reads only inventory_item['name'] and inventory_item['parent_path']. test_decision_record_never_carries_body_text seeds a contaminating body sentinel into the inventory dict and asserts it never appears in the persisted decision JSON."
+    },
+    "raw_output_truncated_in_storage": {
+      "evidence": "test_router_truncates_raw_output asserts raw_output_truncated length ≤ max_output_chars (default 4000)."
+    },
+    "no_external_writeback": {
+      "evidence": "Module imports never touch graph, procore, onedrive, outlook surfaces. CLI live-call path is explicitly disabled (status='live_call_disabled') — exercise requires --mock-output."
+    },
+    "controller_policy_parity_with_prompt_06": {
+      "evidence": "test_protected_categories_match_review_queue_seed asserts PROTECTED_CATEGORIES in the classification module is a superset of the review-queue policy's PROTECTED_CATEGORIES — they cannot drift apart."
+    }
+  },
+  "known_limitations": [
+    "Live Ollama call is not exercised in CI — only mocked. The CLI 'live' code path is intentionally disabled (returns status='live_call_disabled'); use --mock-output to exercise the validator + router + store. Wiring an interactive live mode is intentionally deferred to a later prompt.",
+    "Full `python -m pytest` remains out of scope — the same hang-prone exclusion list documented in prompt 06 evidence still applies (test_cli_canonical non-help subset, test_auth, test_automation, test_actions_cli, test_files_cli, test_graph_*, test_mutation_lockout, test_sensitive_scan_cli, test_mvp_local_runtime_evidence).",
+    "Four pre-existing test_obsidian_writer failures (action_item_ids API drift) are baseline and unrelated to this work.",
+    "Controller policy from prompt 06 remains authoritative for the review-required vault note. Model decisions live in a separate audit table by design — the rule-based review queue is unchanged."
+  ],
+  "commit_plan": {
+    "title": "feat(construction-agent): add ollama structured classification",
+    "co_authored_by": "Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+  }
+}

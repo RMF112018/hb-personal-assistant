@@ -267,6 +267,36 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v4 = construction-agent Ollama model-decisions audit (metadata only;
+    # recommendation-only, controller policy remains authoritative)
+    V4_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS construction_model_decisions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          source_key TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          project_key TEXT,
+          model_name TEXT NOT NULL,
+          model_task TEXT NOT NULL,
+          proposed_label TEXT NOT NULL,
+          confidence REAL NOT NULL,
+          rationale_truncated TEXT,
+          raw_output_truncated TEXT,
+          status TEXT NOT NULL,
+          routing_reason TEXT NOT NULL,
+          routed_at TEXT NOT NULL
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_model_decisions_status
+          ON construction_model_decisions(status);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_model_decisions_item
+          ON construction_model_decisions(source_key, item_id);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -307,6 +337,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (3, 'v3_construction_review_queue', ?)",
+                    (now,),
+                )
+
+            # v4 construction-agent Ollama model-decisions audit (additive,
+            # metadata only; recommendation-only)
+            for stmt in self.V4_STATEMENTS:
+                conn.execute(stmt)
+
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 4")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (4, 'v4_construction_model_decisions', ?)",
                     (now,),
                 )
 

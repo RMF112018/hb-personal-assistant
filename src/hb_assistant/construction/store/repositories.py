@@ -355,6 +355,83 @@ class ConstructionStore:
         row = conn.execute(sql, tuple(params)).fetchone()
         return int(row[0]) if row else 0
 
+    # --- model decisions (V4) -----------------------------------------------
+
+    def record_model_decision(self, decision: Any) -> int:
+        """Insert a :class:`ClassificationDecision` row. Returns lastrowid."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                INSERT INTO construction_model_decisions
+                    (source_key, item_id, project_key, model_name, model_task,
+                     proposed_label, confidence, rationale_truncated,
+                     raw_output_truncated, status, routing_reason, routed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    decision.source_key, decision.item_id, decision.project_key,
+                    decision.model_name, decision.model_task,
+                    decision.proposed_label, decision.confidence,
+                    decision.rationale_truncated, decision.raw_output_truncated,
+                    decision.status, decision.routing_reason, decision.routed_at,
+                ),
+            )
+            return int(cur.lastrowid)
+
+    def list_model_decisions(
+        self,
+        *,
+        source_key: str | None = None,
+        status: str | None = None,
+        item_id: str | None = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """List model-decisions rows. ``status=None`` returns every status."""
+        conn = get_connection(self._db_path)
+        sql = """
+            SELECT id, source_key, item_id, project_key, model_name, model_task,
+                   proposed_label, confidence, rationale_truncated,
+                   raw_output_truncated, status, routing_reason, routed_at
+            FROM construction_model_decisions
+            WHERE 1=1
+        """
+        params: list[Any] = []
+        if source_key is not None:
+            sql += " AND source_key = ?"
+            params.append(source_key)
+        if status is not None:
+            sql += " AND status = ?"
+            params.append(status)
+        if item_id is not None:
+            sql += " AND item_id = ?"
+            params.append(item_id)
+        sql += " ORDER BY id DESC LIMIT ?"
+        params.append(limit)
+        cur = conn.execute(sql, tuple(params))
+        keys = ("id", "source_key", "item_id", "project_key", "model_name", "model_task",
+                "proposed_label", "confidence", "rationale_truncated",
+                "raw_output_truncated", "status", "routing_reason", "routed_at")
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    def count_model_decisions(
+        self,
+        *,
+        source_key: str | None = None,
+        status: str | None = None,
+    ) -> int:
+        conn = get_connection(self._db_path)
+        sql = "SELECT COUNT(*) FROM construction_model_decisions WHERE 1=1"
+        params: list[Any] = []
+        if source_key is not None:
+            sql += " AND source_key = ?"
+            params.append(source_key)
+        if status is not None:
+            sql += " AND status = ?"
+            params.append(status)
+        row = conn.execute(sql, tuple(params)).fetchone()
+        return int(row[0]) if row else 0
+
     def list_recent_receipts(self, source_key: str, limit: int = 5) -> list[dict[str, Any]]:
         conn = get_connection(self._db_path)
         cur = conn.execute(
