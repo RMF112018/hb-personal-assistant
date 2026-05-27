@@ -1,0 +1,177 @@
+{
+  "phase": "02",
+  "prompt": "04",
+  "title": "Tropical Baseline Delta and Receipt Proof",
+  "summary": "Introduces a baseline-comparison primitive (src/hb_assistant/construction/baseline.py) that reads the historic counts on a canonical source's baseline block, reads the live counts from V2 construction_drive_item_inventory, computes per-metric drift, and classifies the result (matches / within_tolerance / drift_detected / never_crawled / no_baseline_recorded). The delta crawler embeds the BaselineComparison on every successful CrawlReceipt when the source carries baseline metadata, and in apply mode also persists a row to the V5 construction_processing_receipts table with operation='baseline_comparison'. Dry-run computes the comparison without persisting. No CLI changes, no schema changes, no Graph round-trip, no source-document copies.",
+  "head_before": "df9dacd2aabe55616270669d8eb0d7d8285e9159",
+  "head_after": "(recorded after commit)",
+  "branch": "main",
+  "working_tree_before": "clean",
+  "files_changed": {
+    "modified": [
+      "src/hb_assistant/construction/graph/delta_crawler.py",
+      "src/hb_assistant/construction/manifests/service.py",
+      "src/hb_assistant/construction/store/repositories.py",
+      "tests/test_construction_graph_delta.py",
+      "tests/test_construction_manifests.py"
+    ],
+    "created": [
+      "src/hb_assistant/construction/baseline.py",
+      "docs/evidence/construction-intelligence-phase-02/04-tropical-baseline-delta-and-receipt-proof.json"
+    ],
+    "deleted": [],
+    "diff_stat": "5 files changed (modified) + 1 created module + 1 evidence file; +442/-0 in pre-commit diff"
+  },
+  "validation": {
+    "pytest": {
+      "command": "python -m pytest tests/test_construction_*.py tests/test_procore_*.py",
+      "result": "319 passed in 3.11s",
+      "passed": 319,
+      "failed": 0,
+      "delta_vs_prompt_03": "+11 (308 → 319): +6 manifests baseline tests + 4 delta integration tests + 1 manifest service KeyError test"
+    },
+    "ruff": {
+      "command": "ruff check src/hb_assistant/construction/ src/hb_assistant/procore/ src/hb_assistant/cli/construction.py src/hb_assistant/cli/procore.py",
+      "result": "All checks passed!"
+    },
+    "construction_agent_validate": {
+      "command": "hb-assistant construction-agent validate --json",
+      "result": "ok=True, 4/4 passed (schema_version=5, 6 projects 14 sources)"
+    },
+    "sources_validate": {
+      "command": "hb-assistant construction-agent sources validate --json",
+      "result": {
+        "project_count": 6,
+        "source_count": 14,
+        "resolved_count": 0,
+        "pending_count": 9,
+        "deprecated_count": 0,
+        "ok": true,
+        "blocking": false
+      }
+    },
+    "index_status": {
+      "command": "hb-assistant construction-agent index status --json",
+      "result": "schema_version=5, sources_in_view=14"
+    },
+    "graph_auth_status": {
+      "command": "hb-assistant construction-agent graph auth status --json",
+      "result": "token_type=none (non-interactive shell; no MSAL token cached)"
+    },
+    "graph_sources_resolve": {
+      "command": "hb-assistant construction-agent graph sources resolve --json",
+      "result": "status=auth_required, targets=14 (3 legacy + 11 canonical), mode=dry_run, exit=0"
+    },
+    "procore_mapping_validate": {
+      "command": "hb-assistant procore mapping validate --json",
+      "result": "ok=False (exit 1 by design; hilltop pending in separate procore_projects seed)"
+    }
+  },
+  "tropical_baseline_snapshot": {
+    "command": "python -c 'from hb_assistant.construction.config import load_source_registry; from hb_assistant.construction.store import ConstructionStore; from hb_assistant.construction.baseline import compute_baseline_comparison; ...'",
+    "comparison_for_canonical_tropical": {
+      "source_key": "sp_2023projects_23_435_01_tropical_sl",
+      "project_key": "tropical",
+      "scope": "sharepoint_project_drive_folder",
+      "status": "never_crawled",
+      "historic": {
+        "unique_item_count": 8921.0,
+        "file_count": 7208.0,
+        "folder_count": 1713.0,
+        "file_size_gb": 39.78
+      },
+      "current": {
+        "unique_item_count": 0.0,
+        "file_count": 0.0,
+        "folder_count": 0.0,
+        "file_size_gb": 0.0
+      },
+      "drift": {
+        "unique_item_count": -8921.0,
+        "file_count": -7208.0,
+        "folder_count": -1713.0,
+        "file_size_gb": -39.78
+      },
+      "drift_pct": {
+        "unique_item_count": -100.0,
+        "file_count": -100.0,
+        "folder_count": -100.0,
+        "file_size_gb": -100.0
+      },
+      "tolerance_pct": 5.0,
+      "generated_at": "<runtime-utc-iso8601>",
+      "guardrails": {
+        "external_systems": "read_only",
+        "writeback": "none",
+        "metadata_only": true,
+        "compares_counts_only": true,
+        "source_documents_copied": false
+      }
+    },
+    "interpretation": "The Tropical canonical source carries the seed historic baseline (8921 unique items / 7208 files / 1713 folders / 39.78 GB). The live SQLite inventory is empty (no Graph crawl has been authorized in this non-interactive shell), so the comparison correctly classifies as 'never_crawled' with the full historic surfaced for visibility and drift fully populated. After an authorized live crawl populates construction_drive_item_inventory, the same primitive will reclassify to matches / within_tolerance / drift_detected based on observed counts."
+  },
+  "receipt_payloads": {
+    "dry_run_crawl_receipt": {
+      "shape": "CrawlReceipt now includes baseline_comparison as an optional field. In dry-run mode the comparison is computed from current store state and embedded in the returned receipt; no row is written to construction_processing_receipts.",
+      "example_fields_added": [
+        "scope='sharepoint_project_drive_folder'",
+        "endpoint_kind='folder_scoped'",
+        "folder_item_id='folder-1'",
+        "baseline_comparison.status='never_crawled' (dry-run cannot persist inventory)"
+      ]
+    },
+    "apply_crawl_receipt": {
+      "shape": "Apply mode also calls store.insert_processing_receipt with receipt_id='{run_id}:baseline_comparison', operation='baseline_comparison', status=<comparison.status>, detail=<full comparison json>.",
+      "v5_table_used": "construction_processing_receipts (landed in Phase 02 Prompt 02)",
+      "duplicate_safety": "receipt_id is namespaced by run_id, so multiple crawls of the same source never collide on the V5 primary key"
+    }
+  },
+  "test_coverage": {
+    "tests_construction_manifests": [
+      "test_compute_baseline_comparison_never_crawled",
+      "test_compute_baseline_comparison_no_baseline_recorded",
+      "test_compute_baseline_comparison_matches_when_current_equals_historic",
+      "test_compute_baseline_comparison_within_tolerance",
+      "test_compute_baseline_comparison_drift_detected",
+      "test_manifest_service_build_baseline_comparison_uses_registry",
+      "test_manifest_service_build_baseline_comparison_unknown_source_raises"
+    ],
+    "tests_construction_graph_delta": [
+      "test_crawl_dry_run_populates_baseline_comparison_when_source_has_baseline",
+      "test_crawl_apply_persists_baseline_processing_receipt",
+      "test_crawl_without_baseline_does_not_populate_comparison",
+      "test_failed_crawl_does_not_populate_baseline_comparison"
+    ],
+    "store_helper_tests": "count_inventory_by_kind is exercised indirectly via every BaselineComparison test"
+  },
+  "guardrails": {
+    "external_systems": "read_only (comparison is pure SQL count math + registry read)",
+    "source_documents_copied": false,
+    "full_document_text_in_vault_notes": "blocked (BaselineComparison carries only counts and metric drift)",
+    "source_file_mutation": "none",
+    "mailbox_mutation_path": "none introduced",
+    "live_graph_round_trip": "not exercised (delta crawler tests use mocked GraphHttpClient; canonical comparison runs purely against local SQLite)",
+    "no_cli_surface_change": "verified — sources validate, index status, graph sources resolve, procore mapping validate all return identical shapes",
+    "no_schema_change": "verified — schema_version stays at 5 (V5 from Prompt 02)",
+    "tolerance_default": "±5% configurable per-call but defaults match the workstream document"
+  },
+  "blocked_live_validation": {
+    "graph_live_crawl": "Not exercised; non-interactive shell has no MSAL token. Once live login is performed via `hb-assistant auth login`, running `graph delta --source sp_2023projects_23_435_01_tropical_sl --apply` will populate inventory and the next baseline comparison will reflect actual drive contents.",
+    "procore": "Unchanged this prompt; OAuth still stubbed."
+  },
+  "phase_02_acceptance_progress": {
+    "tropical_baseline_comparison_primitive": "closed",
+    "baseline_processing_receipt_persistence": "closed (V5 construction_processing_receipts)",
+    "baseline_vault_note_rendering": "deferred (data is structured-only this prompt)",
+    "dedicated_baseline_cli_command": "deferred (comparison flows through existing graph delta output and Python API)",
+    "hilltop_onedrive_baselines": "blocked — those sources have baseline=None in the canonical seed; comparison correctly returns no_baseline_recorded"
+  },
+  "next_prompt_readiness": {
+    "repo_head_at_expected_baseline": true,
+    "working_tree_clean_after_commit": "pending commit",
+    "scoped_tests_passing": "319/319",
+    "ruff_clean": true,
+    "guardrails_intact": true,
+    "status": "ready for Phase 02 — Prompt 05"
+  }
+}

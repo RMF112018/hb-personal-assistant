@@ -6,6 +6,10 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Iterable, Optional
 
+from hb_assistant.construction.baseline import (
+    BaselineComparison,
+    compute_baseline_comparison,
+)
 from hb_assistant.construction.config import SourceLocation, SourceRegistry
 from hb_assistant.construction.graph.delta_crawler import CrawlReceipt
 from hb_assistant.construction.store import ConstructionStore
@@ -58,6 +62,27 @@ class ManifestService:
 
     def __init__(self, store: ConstructionStore) -> None:
         self._store = store
+
+    def build_baseline_comparison(
+        self,
+        registry: SourceRegistry,
+        source_key: str,
+        *,
+        tolerance_pct: float = 5.0,
+    ) -> BaselineComparison:
+        """Look up ``source_key`` in the registry and compare historic vs current counts."""
+        source = next(
+            (s for s in registry.sources if s.source_key == source_key),
+            None,
+        )
+        if source is None:
+            raise KeyError(
+                f"source_key {source_key!r} not present in registry; "
+                "cannot build baseline comparison"
+            )
+        return compute_baseline_comparison(
+            source, self._store, tolerance_pct=tolerance_pct
+        )
 
     def build_source_manifest(
         self,

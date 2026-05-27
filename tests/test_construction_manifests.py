@@ -385,3 +385,200 @@ def test_cli_sync_changed_only_skips_unchanged(
         "tropical-sharepoint", "hilltop-sharepoint", "bobby-onedrive"
     }
     assert payload["processing_receipt"]["source_count"] == 0
+
+
+# =====================================================================
+# Baseline comparison tests (Phase 02 Prompt 04).
+# =====================================================================
+
+
+def _make_tropical_canonical(**overrides) -> SourceLocation:
+    from hb_assistant.construction.config import BaselineSnapshot
+
+    defaults = dict(
+        source_key="sp_2023projects_23_435_01_tropical_sl",
+        project_key="tropical",
+        kind="sharepoint_project_drive_folder",
+        display_name="Tropical canonical",
+        baseline=BaselineSnapshot(
+            baseline_status="complete",
+            baseline_unique_item_count=8921,
+            baseline_file_count=7208,
+            baseline_folder_count=1713,
+            baseline_file_size_gb=39.78,
+        ),
+    )
+    defaults.update(overrides)
+    return SourceLocation(**defaults)  # type: ignore[arg-type]
+
+
+def _seed_inventory(
+    store: ConstructionStore,
+    source_key: str,
+    *,
+    file_count: int,
+    folder_count: int,
+    bytes_per_file: int = 1_000_000,
+) -> None:
+    """Helper: write N file + M folder rows to construction_drive_item_inventory."""
+    for i in range(file_count):
+        store.upsert_inventory_item(
+            source_key=source_key,
+            drive_id="drv-test",
+            item_id=f"file-{i}",
+            name=f"file-{i}.txt",
+            web_url=None,
+            parent_path="/Test",
+            size_bytes=bytes_per_file,
+            is_folder=False,
+            last_modified=None,
+            etag=None,
+        )
+    for i in range(folder_count):
+        store.upsert_inventory_item(
+            source_key=source_key,
+            drive_id="drv-test",
+            item_id=f"folder-{i}",
+            name=f"folder-{i}",
+            web_url=None,
+            parent_path="/Test",
+            size_bytes=None,
+            is_folder=True,
+            last_modified=None,
+            etag=None,
+        )
+
+
+def test_compute_baseline_comparison_never_crawled(tmp_path: Path) -> None:
+    from hb_assistant.construction.baseline import compute_baseline_comparison
+
+    store = ConstructionStore(str(tmp_path / "c.sqlite"))
+    src = _make_tropical_canonical()
+    cmp = compute_baseline_comparison(src, store)
+
+    assert cmp.status == "never_crawled"
+    assert cmp.historic["unique_item_count"] == 8921
+    assert cmp.historic["file_count"] == 7208
+    assert cmp.historic["folder_count"] == 1713
+    assert cmp.historic["file_size_gb"] == 39.78
+    assert cmp.current["unique_item_count"] == 0
+    assert cmp.current["file_count"] == 0
+    assert cmp.current["folder_count"] == 0
+    assert cmp.current["file_size_gb"] == 0
+    assert cmp.drift["unique_item_count"] == -8921
+    assert cmp.drift_pct["unique_item_count"] == -100.0
+    assert cmp.guardrails["source_documents_copied"] is False
+
+
+def test_compute_baseline_comparison_no_baseline_recorded(tmp_path: Path) -> None:
+    from hb_assistant.construction.baseline import compute_baseline_comparison
+
+    store = ConstructionStore(str(tmp_path / "c.sqlite"))
+    src = SourceLocation(
+        source_key="legacy-no-baseline",
+        kind="sharepoint_site",  # type: ignore[arg-type]
+        display_name="Legacy",
+    )
+    cmp = compute_baseline_comparison(src, store)
+    assert cmp.status == "no_baseline_recorded"
+    assert all(v is None for v in cmp.historic.values())
+    assert all(v is None for v in cmp.drift.values())
+
+
+def test_compute_baseline_comparison_matches_when_current_equals_historic(
+    tmp_path: Path,
+) -> None:
+    from hb_assistant.construction.baseline import compute_baseline_comparison
+
+    store = ConstructionStore(str(tmp_path / "c.sqlite"))
+    from hb_assistant.construction.config import BaselineSnapshot
+
+    src = _make_tropical_canonical(
+        baseline=BaselineSnapshot(
+            baseline_status="complete",
+            baseline_unique_item_count=4,  # 3 files + 1 folder
+            baseline_file_count=3,
+            baseline_folder_count=1,
+            baseline_file_size_gb=0.3,  # 3 files × 100MB = 300MB = 0.3 GB
+        )
+    )
+    _seed_inventory(
+        store, src.source_key, file_count=3, folder_count=1, bytes_per_file=100_000_000
+    )
+    cmp = compute_baseline_comparison(src, store)
+    assert cmp.status == "matches", cmp.model_dump()
+    assert cmp.current["file_count"] == 3
+    assert cmp.current["folder_count"] == 1
+
+
+def test_compute_baseline_comparison_within_tolerance(tmp_path: Path) -> None:
+    from hb_assistant.construction.baseline import compute_baseline_comparison
+    from hb_assistant.construction.config import BaselineSnapshot
+
+    store = ConstructionStore(str(tmp_path / "c.sqlite"))
+    # Historic 100/100/0/0.1; seed 102 files + 0 folders → 2% drift on files,
+    # but unique_item_count drift will be (102 - 100)/100 = 2% too.
+    src = _make_tropical_canonical(
+        baseline=BaselineSnapshot(
+            baseline_status="complete",
+            baseline_unique_item_count=100,
+            baseline_file_count=100,
+            baseline_folder_count=0,
+            baseline_file_size_gb=0.1,
+        )
+    )
+    _seed_inventory(store, src.source_key, file_count=102, folder_count=0)
+    cmp = compute_baseline_comparison(src, store)
+    assert cmp.status == "within_tolerance", cmp.model_dump()
+    assert abs(cmp.drift_pct["unique_item_count"]) <= 5.0
+
+
+def test_compute_baseline_comparison_drift_detected(tmp_path: Path) -> None:
+    from hb_assistant.construction.baseline import compute_baseline_comparison
+    from hb_assistant.construction.config import BaselineSnapshot
+
+    store = ConstructionStore(str(tmp_path / "c.sqlite"))
+    src = _make_tropical_canonical(
+        baseline=BaselineSnapshot(
+            baseline_status="complete",
+            baseline_unique_item_count=100,
+            baseline_file_count=100,
+            baseline_folder_count=0,
+            baseline_file_size_gb=0.1,
+        )
+    )
+    # Seed only 50 files — 50% drift on the file metric.
+    _seed_inventory(store, src.source_key, file_count=50, folder_count=0)
+    cmp = compute_baseline_comparison(src, store)
+    assert cmp.status == "drift_detected"
+    assert cmp.drift_pct["file_count"] == -50.0
+
+
+def test_manifest_service_build_baseline_comparison_uses_registry(
+    tmp_path: Path,
+) -> None:
+    from hb_assistant.construction.config import ProjectIdentity, SourceRegistry
+
+    store = ConstructionStore(str(tmp_path / "c.sqlite"))
+    src = _make_tropical_canonical()
+    registry = SourceRegistry(
+        projects=[ProjectIdentity(project_key="tropical", display_name="Tropical")],
+        sources=[src],
+    )
+
+    svc = ManifestService(store)
+    cmp = svc.build_baseline_comparison(registry, src.source_key)
+    assert cmp.status == "never_crawled"
+    assert cmp.historic["unique_item_count"] == 8921
+
+
+def test_manifest_service_build_baseline_comparison_unknown_source_raises(
+    tmp_path: Path,
+) -> None:
+    from hb_assistant.construction.config import SourceRegistry
+
+    store = ConstructionStore(str(tmp_path / "c.sqlite"))
+    svc = ManifestService(store)
+    registry = SourceRegistry(projects=[], sources=[])
+    with pytest.raises(KeyError):
+        svc.build_baseline_comparison(registry, "nope")

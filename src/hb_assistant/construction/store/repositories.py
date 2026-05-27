@@ -201,6 +201,35 @@ class ConstructionStore:
         )
         return dict(cur.fetchall())
 
+    def count_inventory_by_kind(self, source_key: str) -> dict[str, int]:
+        """Return ``{file_count, folder_count, total_size_bytes}`` for active rows.
+
+        Used by the baseline-comparison primitive to compare live counts against
+        the historic counts carried on the source registry's ``baseline`` block.
+        Only ``status='active'`` rows are counted.
+        """
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT
+              SUM(CASE WHEN is_folder = 0 THEN 1 ELSE 0 END) AS file_count,
+              SUM(CASE WHEN is_folder = 1 THEN 1 ELSE 0 END) AS folder_count,
+              COALESCE(SUM(CASE WHEN is_folder = 0 THEN size_bytes ELSE 0 END), 0)
+                AS total_size_bytes
+            FROM construction_drive_item_inventory
+            WHERE source_key = ? AND status = 'active'
+            """,
+            (source_key,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return {"file_count": 0, "folder_count": 0, "total_size_bytes": 0}
+        return {
+            "file_count": int(row[0] or 0),
+            "folder_count": int(row[1] or 0),
+            "total_size_bytes": int(row[2] or 0),
+        }
+
     def list_inventory_for_source(
         self, source_key: str, *, include_deleted: bool = False, limit: int = 5000,
     ) -> list[dict[str, Any]]:

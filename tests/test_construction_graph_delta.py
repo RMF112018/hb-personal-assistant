@@ -393,3 +393,157 @@ def test_receipt_carries_scope_and_endpoint_kind(
     assert receipt.scope == "sharepoint_site"
     assert receipt.endpoint_kind == "drive_root"
     assert receipt.drive_id == "drive-1"
+
+
+# =====================================================================
+# Baseline comparison integration tests (Phase 02 Prompt 04).
+# =====================================================================
+
+
+def _tropical_canonical_registry_yaml(tmp_path: Path):
+    """Write a registry override carrying the canonical Tropical source."""
+    import yaml as _yaml
+
+    yaml_path = tmp_path / "registry.yml"
+    yaml_path.write_text(
+        _yaml.safe_dump(
+            {
+                "projects": [
+                    {"project_key": "tropical", "display_name": "Tropical"}
+                ],
+                "sources": [
+                    {
+                        "source_key": "sp_2023projects_23_435_01_tropical_sl",
+                        "project_key": "tropical",
+                        "kind": "sharepoint_project_drive_folder",
+                        "display_name": "Tropical canonical",
+                        "site_id": "site-1",
+                        "drive_id": "drive-1",
+                        "folder_item_id": "folder-1",
+                        "baseline": {
+                            "baseline_status": "complete",
+                            "baseline_unique_item_count": 8921,
+                            "baseline_file_count": 7208,
+                            "baseline_folder_count": 1713,
+                            "baseline_file_size_gb": 39.78,
+                        },
+                    }
+                ],
+            }
+        )
+    )
+    return yaml_path
+
+
+def _with_canonical_registry(tmp_path: Path):
+    """Context-manager helper: set HB_CONSTRUCTION_SOURCES to a temp registry."""
+    import contextlib
+    import os
+
+    @contextlib.contextmanager
+    def _ctx():
+        yaml_path = _tropical_canonical_registry_yaml(tmp_path)
+        prior = os.environ.get("HB_CONSTRUCTION_SOURCES")
+        os.environ["HB_CONSTRUCTION_SOURCES"] = str(yaml_path)
+        try:
+            yield
+        finally:
+            if prior is None:
+                del os.environ["HB_CONSTRUCTION_SOURCES"]
+            else:
+                os.environ["HB_CONSTRUCTION_SOURCES"] = prior
+
+    return _ctx()
+
+
+def test_crawl_dry_run_populates_baseline_comparison_when_source_has_baseline(
+    tmp_path: Path,
+) -> None:
+    db = str(tmp_path / "c.sqlite")
+    store = ConstructionStore(db)
+    http = MagicMock()
+    http.get.return_value = _page(
+        [_item("a")],
+        delta_link="https://graph/drives/drive-1/items/folder-1/delta?token=t",
+    )
+    with _with_canonical_registry(tmp_path):
+        crawler = ConstructionDeltaCrawler(http, store)
+        receipt = crawler.crawl(
+            source_key="sp_2023projects_23_435_01_tropical_sl", dry_run=True
+        )
+
+    assert receipt.status == "ok"
+    assert receipt.endpoint_kind == "folder_scoped"
+    assert receipt.baseline_comparison is not None
+    # Dry-run never persists inventory, so the comparison reads an empty
+    # store and classifies as "never_crawled" — historic counts are still
+    # surfaced verbatim from the registry seed for operator visibility.
+    assert receipt.baseline_comparison.status == "never_crawled"
+    assert receipt.baseline_comparison.historic["unique_item_count"] == 8921
+    # Dry-run also does not persist the comparison receipt.
+    assert store.list_processing_receipts(
+        source_id="sp_2023projects_23_435_01_tropical_sl"
+    ) == []
+
+
+def test_crawl_apply_persists_baseline_processing_receipt(tmp_path: Path) -> None:
+    db = str(tmp_path / "c.sqlite")
+    store = ConstructionStore(db)
+    http = MagicMock()
+    http.get.return_value = _page(
+        [_item("a")],
+        delta_link="https://graph/drives/drive-1/items/folder-1/delta?token=t",
+    )
+    with _with_canonical_registry(tmp_path):
+        crawler = ConstructionDeltaCrawler(http, store)
+        receipt = crawler.crawl(
+            source_key="sp_2023projects_23_435_01_tropical_sl", dry_run=False
+        )
+
+    assert receipt.status == "ok"
+    assert receipt.baseline_comparison is not None
+
+    rows = store.list_processing_receipts(
+        source_id="sp_2023projects_23_435_01_tropical_sl"
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["operation"] == "baseline_comparison"
+    assert row["status"] == receipt.baseline_comparison.status
+    assert row["receipt_id"] == f"{receipt.run_id}:baseline_comparison"
+    assert row["detail"]["historic"]["unique_item_count"] == 8921
+
+
+def test_crawl_without_baseline_does_not_populate_comparison(
+    store: ConstructionStore,
+) -> None:
+    """Legacy tropical-sharepoint has no baseline block; comparison stays None."""
+    http = MagicMock()
+    http.get.return_value = _page(
+        [_item("a")],
+        delta_link="https://graph/drives/drive-1/root/delta?token=t",
+    )
+    crawler = ConstructionDeltaCrawler(http, store)
+    receipt = crawler.crawl(source_key="tropical-sharepoint", dry_run=True)
+    assert receipt.status == "ok"
+    assert receipt.baseline_comparison is None
+
+
+def test_failed_crawl_does_not_populate_baseline_comparison(tmp_path: Path) -> None:
+    db = str(tmp_path / "c.sqlite")
+    store = ConstructionStore(db)
+    http = MagicMock()
+    http.get.side_effect = GraphHttpError(
+        "GET", "/drives/drive-1/items/folder-1/delta", 503, "service unavailable"
+    )
+    with _with_canonical_registry(tmp_path):
+        crawler = ConstructionDeltaCrawler(http, store)
+        receipt = crawler.crawl(
+            source_key="sp_2023projects_23_435_01_tropical_sl", dry_run=False
+        )
+
+    assert receipt.status == "failed"
+    assert receipt.baseline_comparison is None
+    assert store.list_processing_receipts(
+        source_id="sp_2023projects_23_435_01_tropical_sl"
+    ) == []

@@ -39,6 +39,10 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from hb_assistant.construction.baseline import (
+    BaselineComparison,
+    compute_baseline_comparison,
+)
 from hb_assistant.construction.config import SourceLocation, load_source_registry
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
@@ -65,6 +69,7 @@ class CrawlReceipt(BaseModel):
     scope: Optional[str] = None
     endpoint_kind: Optional[str] = None
     folder_item_id: Optional[str] = None
+    baseline_comparison: Optional[BaselineComparison] = None
 
     model_config = {"extra": "forbid"}
 
@@ -298,6 +303,16 @@ class ConstructionDeltaCrawler:
             )
             delta_link_recorded = True
 
+        baseline_comparison: Optional[BaselineComparison] = None
+        if source is not None and source.baseline is not None:
+            baseline_comparison = compute_baseline_comparison(source, self._store)
+            if not dry_run:
+                self._persist_baseline_processing_receipt(
+                    source_key=source_key,
+                    run_id=run_id,
+                    comparison=baseline_comparison,
+                )
+
         receipt = CrawlReceipt(
             run_id=run_id,
             source_key=source_key,
@@ -316,10 +331,32 @@ class ConstructionDeltaCrawler:
             scope=scope,
             endpoint_kind=endpoint_kind,
             folder_item_id=folder_item_id_used,
+            baseline_comparison=baseline_comparison,
         )
         if not dry_run:
             self._persist_receipt(receipt)
         return receipt
+
+    def _persist_baseline_processing_receipt(
+        self,
+        *,
+        source_key: str,
+        run_id: str,
+        comparison: BaselineComparison,
+    ) -> None:
+        """Persist a baseline-comparison row to construction_processing_receipts.
+
+        Receipt id is ``{run_id}:baseline_comparison`` so multiple comparisons
+        from distinct crawl runs do not collide on the receipt primary key.
+        ``detail`` carries the full :class:`BaselineComparison` JSON.
+        """
+        self._store.insert_processing_receipt(
+            receipt_id=f"{run_id}:baseline_comparison",
+            source_id=source_key,
+            operation="baseline_comparison",
+            status=comparison.status,
+            detail=comparison.model_dump(mode="json"),
+        )
 
     def _apply_item(
         self,
