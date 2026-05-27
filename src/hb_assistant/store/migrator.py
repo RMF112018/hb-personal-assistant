@@ -174,6 +174,67 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v2 = construction-agent delta crawler tables (metadata only; no body/content)
+    V2_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS construction_source_resolutions (
+          source_key TEXT PRIMARY KEY,
+          kind TEXT NOT NULL,
+          site_id TEXT,
+          drive_id TEXT,
+          web_url TEXT,
+          resolution_status TEXT NOT NULL DEFAULT 'pending',
+          resolved_at TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_delta_tokens (
+          source_key TEXT PRIMARY KEY,
+          drive_id TEXT NOT NULL,
+          delta_link TEXT,
+          page_count INTEGER NOT NULL DEFAULT 0,
+          last_status TEXT,
+          last_sync_at TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_drive_item_inventory (
+          source_key TEXT NOT NULL,
+          drive_id TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          name TEXT,
+          web_url TEXT,
+          parent_path TEXT,
+          size_bytes INTEGER,
+          is_folder INTEGER NOT NULL DEFAULT 0,
+          last_modified TEXT,
+          etag TEXT,
+          status TEXT NOT NULL DEFAULT 'active',
+          first_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (source_key, item_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_crawl_receipts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          run_id TEXT NOT NULL,
+          source_key TEXT NOT NULL,
+          mode TEXT NOT NULL,
+          started_at TEXT NOT NULL,
+          finished_at TEXT,
+          pages_seen INTEGER NOT NULL DEFAULT 0,
+          items_seen INTEGER NOT NULL DEFAULT 0,
+          items_new INTEGER NOT NULL DEFAULT 0,
+          items_updated INTEGER NOT NULL DEFAULT 0,
+          items_deleted INTEGER NOT NULL DEFAULT 0,
+          delta_link_recorded INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL,
+          error_redacted TEXT
+        );
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -185,12 +246,24 @@ class SQLiteMigrator:
             for stmt in self.V1_STATEMENTS:
                 conn.execute(stmt)
 
+            now = datetime.now(timezone.utc).isoformat()
+
             # Record v1 if not present
             cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 1")
             if cur.fetchone() is None:
-                now = datetime.now(timezone.utc).isoformat()
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (1, 'v1_initial_schema', ?)",
+                    (now,),
+                )
+
+            # v2 construction-agent delta crawler tables (additive, metadata only)
+            for stmt in self.V2_STATEMENTS:
+                conn.execute(stmt)
+
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 2")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (2, 'v2_construction_delta', ?)",
                     (now,),
                 )
 

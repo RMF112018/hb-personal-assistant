@@ -1,0 +1,146 @@
+{
+  "phase": "01",
+  "step": "4-graph-delta-crawler",
+  "prompt_id": "03",
+  "date": "2026-05-27",
+  "branch": "main",
+  "head_pre_change": "f8310b3bc405bd3eef80ed3005eb1082d845e17c",
+  "repo_root": "/Users/bobbyfetting/hb-personal-assistant",
+  "source_package": "/Users/bobbyfetting/Downloads/HB_Construction_Intelligence_Phase_01_Implementation_Package/",
+  "implementation_summary": {
+    "additive_schema_v2": {
+      "version_recorded": 2,
+      "tables_added": [
+        "construction_source_resolutions",
+        "construction_delta_tokens",
+        "construction_drive_item_inventory",
+        "construction_crawl_receipts"
+      ],
+      "constraints": [
+        "metadata-only (no body/text/excerpt columns)",
+        "additive only (V1 schema untouched)",
+        "idempotent: repeated migrator.apply() preserves version 2"
+      ]
+    },
+    "new_modules": [
+      "src/hb_assistant/construction/store/{__init__,repositories}.py",
+      "src/hb_assistant/construction/graph/{__init__,resolver,delta_crawler}.py"
+    ],
+    "extended_modules": [
+      "src/hb_assistant/store/migrator.py (added V2_STATEMENTS and v2 apply step)",
+      "src/hb_assistant/cli/construction.py (added 'graph auth status', 'graph sources resolve', 'graph delta')"
+    ],
+    "tests_added": [
+      "tests/test_construction_store_repositories.py (8 tests)",
+      "tests/test_construction_graph_resolver.py (10 tests)",
+      "tests/test_construction_graph_delta.py (9 tests)"
+    ],
+    "tests_modified": [
+      "tests/test_store_links.py::test_migration_is_idempotent (relaxed from hard-coded v1 to current-version invariant)"
+    ]
+  },
+  "validation_results": {
+    "new_tests": {
+      "command": "pytest tests/test_construction_graph_resolver.py tests/test_construction_graph_delta.py tests/test_construction_store_repositories.py -v",
+      "passed": 27,
+      "failed": 0,
+      "exit_code": 0
+    },
+    "fast_regression_subset": {
+      "command": "pytest tests/test_construction_sources.py tests/test_construction_graph_* tests/test_construction_store_* tests/test_config.py tests/test_store.py tests/test_store_links.py tests/test_classification.py tests/test_obsidian_writer.py tests/test_retrieval.py tests/test_body_mentions.py tests/test_brief_content.py tests/test_sensitive_scan.py tests/test_file_ingestion.py --tb=line -q",
+      "passed": 184,
+      "failed": 4,
+      "failures": [
+        "tests/test_obsidian_writer.py::test_dry_run_no_write_no_link (pre-existing baseline; action_item_ids drift between writer.py and writer tests)",
+        "tests/test_obsidian_writer.py::test_apply_writes_and_creates_written_to_note_links (pre-existing baseline)",
+        "tests/test_obsidian_writer.py::test_idempotent_repeat_write_no_duplicate_links (pre-existing baseline)",
+        "tests/test_obsidian_writer.py::test_marker_bound_and_user_content_preservation_with_links (pre-existing baseline)"
+      ],
+      "delta_vs_step_2": "Identical baseline. No new failures introduced by step 4. test_store_links.py::test_migration_is_idempotent had to be relaxed (was asserting hard-coded v1) — now asserts current-version invariant, still tests the original idempotency intent."
+    },
+    "cli_canonical_help_subset": {
+      "command": "pytest tests/test_cli_canonical.py -k 'help_parses or _shape' -q",
+      "passed": 4,
+      "failed": 0,
+      "exit_code": 0,
+      "purpose": "Confirms new construction-agent graph subcommand wiring does not break root or auth/run help parsing."
+    },
+    "ruff_scoped": {
+      "command": "ruff check src/hb_assistant/construction/ src/hb_assistant/store/migrator.py src/hb_assistant/cli/construction.py tests/test_construction_graph_*.py tests/test_construction_store_*.py tests/test_store_links.py",
+      "result": "All checks passed!",
+      "exit_code": 0
+    },
+    "migration_smoke": {
+      "command": "python -c 'from hb_assistant.store.migrator import SQLiteMigrator; ...; print(m.apply())'",
+      "first_apply_version": 2,
+      "second_apply_version": 2,
+      "construction_tables_present": [
+        "construction_crawl_receipts",
+        "construction_delta_tokens",
+        "construction_drive_item_inventory",
+        "construction_source_resolutions"
+      ]
+    },
+    "cli_smoke": {
+      "graph_auth_status": {
+        "command": "hb-assistant construction-agent graph auth status --json",
+        "exit_code": 0,
+        "payload_top_keys": ["command", "required_scopes", "delegated", "note"],
+        "required_scopes": ["Sites.Read.All", "Files.Read.All", "User.Read"],
+        "delegated_token_type": "none",
+        "note": "No live Graph call; report is from local MSAL cache only."
+      },
+      "graph_sources_resolve": {
+        "command": "hb-assistant construction-agent graph sources resolve --json",
+        "exit_code": 0,
+        "status": "auth_required",
+        "graceful_degradation": "Returns structured auth_required payload (no hang, no interactive prompt) when MSAL cache is empty.",
+        "targets": ["tropical-sharepoint", "hilltop-sharepoint", "bobby-onedrive"]
+      },
+      "graph_delta_dry_run": {
+        "command": "hb-assistant construction-agent graph delta --source tropical-sharepoint --dry-run --json",
+        "exit_code": 0,
+        "status": "auth_required",
+        "graceful_degradation": "Same auth_required posture; no live Graph attempt without a cached token."
+      }
+    }
+  },
+  "guardrails_reaffirmed": {
+    "external_systems": "read_only",
+    "writeback": "none (SharePoint, OneDrive, Procore, Outlook all unwritten)",
+    "source_document_copies_into_obsidian": "none",
+    "full_document_text_in_vault": "none",
+    "full_archive_crawl": "none (max_pages cap defaults to 50; deltaLink-based incremental after baseline)",
+    "delta_link_storage": "sqlite (construction_delta_tokens table)",
+    "inventory_columns": "metadata only — verified by test_no_body_or_text_columns_in_inventory",
+    "sample_items": "metadata only — verified by test_sample_items_carry_only_metadata",
+    "auth_in_non_interactive_env": "structured auth_required payload, never an interactive prompt",
+    "graph_error_handling": "GraphHttpError sanitized to graph_<status>: <message[:120]>; full body/headers/tokens never logged",
+    "models_executing_file_operations": "none — no model calls in this step",
+    "controller_validates_model_output": "n/a — this step has no model output",
+    "delegated_scopes_default": "unchanged in IdentityConfig; Sites.Read.All passed per-call only"
+  },
+  "known_limitations": [
+    "Live Graph round-trip not exercised: delegated MSAL flows hang in this non-interactive sandbox (same diagnosis as Phase-01 Step 2). The implementation is verified via deterministic JSON fixtures and the CLI commands emit a structured auth_required status (exit 0) rather than hanging. To exercise live: run `hb-assistant auth login --json` in an interactive shell, then re-run the graph commands.",
+    "All three seeded sources still carry resolution_status: pending and have no site_url/site_id set; `graph sources resolve` will report 'pending' for tropical-sharepoint and hilltop-sharepoint until the SharePoint developer brief is attached to the seed.",
+    "resources/checklists/graph_delta_validation_checklist.md is referenced by the prompt's required-context list but does not exist in repo. No checklist was fabricated.",
+    "source_key naming: the prompt's example validation invocation uses `--source sp_2023projects_23_435_01_tropical_sl`, but the seed registered in Step 2 uses `tropical-sharepoint`. The CLI accepts whatever source_key is registered; the package's prefix-numeric format presumably comes from the missing developer brief and can be adopted via a future seed-config update without code changes.",
+    "Unsupported kinds (`sharepoint_library`, `onedrive_shared`) return ResolutionResult.status=unsupported rather than raising — extension to these kinds is deferred.",
+    "Step 3 of the build sequence (full SQLite schema and migrations work) was not executed as a standalone prompt. This step added only the four V2 tables it requires for apply-mode persistence; broader manifest/receipt tables remain for a future step-3 backfill."
+  ],
+  "changed_files": [
+    {"path": "src/hb_assistant/store/migrator.py", "action": "modified", "lines_added": 67},
+    {"path": "src/hb_assistant/construction/store/__init__.py", "action": "created"},
+    {"path": "src/hb_assistant/construction/store/repositories.py", "action": "created"},
+    {"path": "src/hb_assistant/construction/graph/__init__.py", "action": "created"},
+    {"path": "src/hb_assistant/construction/graph/resolver.py", "action": "created"},
+    {"path": "src/hb_assistant/construction/graph/delta_crawler.py", "action": "created"},
+    {"path": "src/hb_assistant/cli/construction.py", "action": "modified", "summary": "added graph auth status, graph sources resolve, graph delta commands"},
+    {"path": "tests/test_construction_store_repositories.py", "action": "created"},
+    {"path": "tests/test_construction_graph_resolver.py", "action": "created"},
+    {"path": "tests/test_construction_graph_delta.py", "action": "created"},
+    {"path": "tests/test_store_links.py", "action": "modified", "summary": "test_migration_is_idempotent now uses current-version invariant"},
+    {"path": "docs/evidence/construction-intelligence-phase-01/03-graph-delta-crawler-dry-run.json", "action": "created"}
+  ],
+  "next_prompt": "Build-sequence step 5 — source manifests and sync receipts (will likely extend construction_crawl_receipts and add a per-source manifest table to construction store)."
+}

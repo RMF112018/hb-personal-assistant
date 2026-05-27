@@ -35,11 +35,11 @@ def temp_db_path() -> Path:
 
 def test_migration_is_idempotent(temp_db_path: Path):
     m = SQLiteMigrator(db_path=str(temp_db_path))
-    v1 = m.apply()
-    v2 = m.apply()
-    assert v1 == 1
-    assert v2 == 1
-    assert m.current_version() == 1
+    v_first = m.apply()
+    v_second = m.apply()
+    # Whatever the current latest version is, repeated apply() must be a no-op.
+    assert v_first == v_second
+    assert m.current_version() == v_first
 
 
 def test_source_upsert_idempotent_and_last_seen_bumps(temp_db_path: Path):
