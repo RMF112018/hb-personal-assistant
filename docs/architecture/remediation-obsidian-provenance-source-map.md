@@ -46,3 +46,5 @@ All changes surgical, redacted, dry-run-first, following P02–P04 patterns exac
 - P02–P04 evidence (actions with stable_keys, idempotent persistence, signal integration, link_action helper)
 
 **Status**: Obsidian generated notes are now source-traceable and provenance-safe. Generated content is user-preserved and dry-run auditable. Ready for Prompt 07+ (morning orchestration upgrades that will exercise the full apply path).
+
+**Phase 15 Prompt 03 update**: Deterministic tests added for dry-run (no write/no link) vs apply (write + `written_to_note` rows for action_item_ids). Orchestrator wired to pass ids from `get_recent_action_items` on the apply path. Action-only links (daily notes ≠ source_records) use best-effort once-per-run semantics; registry guard covers src-linked cases (proven in test_store_links). Preservation + redaction unchanged. Architecture claims now aligned with test reality.

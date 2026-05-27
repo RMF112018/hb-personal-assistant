@@ -81,6 +81,7 @@ Generated frontmatter is a strict subset of the documented contract (`type`, `do
 
 - **Input**: Phase 7 `action_items` + source_links (via Store + Registry), Phase 6 signals (body_mention_detected, waiting signals).
 - **Output**: Markdown files in the user's configured vault (Daily Notes + AI Outputs) + "written_to_note" + other provenance links recorded in the registry.
+- **P03 provenance proof**: Action-centric `written_to_note` links (via action_item_id on apply path, dry-run never) now covered by deterministic tests + DB verification. Daily notes use best-effort (notes not modeled as source_records); full chain via action's prior source_links. Wired in orchestrator for morning run.
 - **PathPolicy**: Full reuse (already provided `get_daily_notes_dir`, `get_ai_outputs_dir`, `get_vault_root`, `reference_root` since Phase 1).
 - **Redaction**: Every string that reaches the vault has already passed through the central redaction pipeline of prior phases.
 

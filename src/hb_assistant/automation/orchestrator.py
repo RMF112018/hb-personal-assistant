@@ -212,7 +212,9 @@ class MorningRunOrchestrator:
                         gen = DailyBriefGenerator()
                         inner, fm = gen.generate_for_date(date.today())
                         writer = MarkerBoundedWriter()
-                        would = writer.write_bounded_section(date.today(), inner, frontmatter_updates=fm, dry_run=dry_run, record_link=not dry_run)
+                        recent = self.store.get_recent_action_items(limit=20)
+                        aids = [int(a["id"]) for a in recent if a.get("id") is not None]
+                        would = writer.write_bounded_section(date.today(), inner, frontmatter_updates=fm, dry_run=dry_run, record_link=not dry_run, action_item_ids=aids or None)
                         stage_result["status"] = "ok" if not dry_run else "completed_dry_run"
                         stage_result["counts"] = {"wrote": not dry_run}
                     elif stage_name == "evidence_write":
