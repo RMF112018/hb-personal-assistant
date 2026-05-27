@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HB Assistant Morning Run MVP Contract",
+  "type": "object",
+  "required": [
+    "implemented",
+    "phase",
+    "run_id",
+    "orchestrator"
+  ],
+  "properties": {
+    "implemented": {
+      "type": "boolean"
+    },
+    "phase": {
+      "type": [
+        "integer",
+        "number"
+      ]
+    },
+    "run_id": {
+      "type": [
+        "integer",
+        "number",
+        "string"
+      ]
+    },
+    "orchestrator": {
+      "type": "object",
+      "required": [
+        "stages",
+        "blocker_classification",
+        "outputs",
+        "safety"
+      ],
+      "properties": {
+        "stages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "stage",
+              "status"
+            ],
+            "properties": {
+              "stage": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "counts": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "blocker_classification": {
+          "type": "string"
+        },
+        "outputs": {
+          "type": "object"
+        },
+        "safety": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}
