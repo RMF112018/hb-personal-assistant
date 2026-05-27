@@ -124,3 +124,41 @@ rules:
     reason: "document name contains an ambiguous budget/estimate term"
     suggested_action: controller_review
     confidence: 0.5
+
+  # ---- Phase 02 PII rules ----------------------------------------------
+  # Added to cover the OneDrive personal + shared-library scopes where
+  # PII document leakage risk is higher than on project-scoped SharePoint
+  # libraries. Match on document name only; no content inspection. Every
+  # match routes to controller_review per inventory-first policy.
+
+  - rule_id: pii-tax-document
+    kind: document_name
+    pattern: "1099|w-?2|w-?9|tax\\s*return|form\\s*1040"
+    sensitivity: high
+    classification_label: pii_tax
+    reason: "document name indicates a tax record"
+    suggested_action: controller_review
+
+  - rule_id: pii-government-id
+    kind: document_name
+    pattern: "(passport|driver'?s?\\s*license|social\\s*security|ssn|state\\s*id)"
+    sensitivity: critical
+    classification_label: pii_government_id
+    reason: "document name indicates a government identifier"
+    suggested_action: controller_review
+
+  - rule_id: pii-health-record
+    kind: document_name
+    pattern: "(medical|health|phi|hipaa|prescription|insurance\\s*claim)"
+    sensitivity: critical
+    classification_label: pii_health
+    reason: "document name indicates a health record"
+    suggested_action: controller_review
+
+  - rule_id: pii-personal-financial
+    kind: risk_term
+    pattern: "bank statement,brokerage,401k,ira statement,credit report"
+    sensitivity: high
+    classification_label: pii_personal_financial
+    reason: "document name contains a personal-financial marker"
+    suggested_action: controller_review

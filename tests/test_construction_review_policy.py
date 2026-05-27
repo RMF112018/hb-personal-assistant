@@ -641,3 +641,287 @@ def test_source_location_constructs_for_test_fixtures() -> None:
         read_only=True,
         resolution_status="pending",
     )
+
+
+# =====================================================================
+# Phase 02 Prompt 06 — Inventory-first policy + PII review rules.
+# =====================================================================
+
+
+def _make_onedrive_business(**overrides) -> SourceLocation:
+    from hb_assistant.construction.config import BaselinePolicy
+
+    defaults = dict(
+        source_key="od_business_bobby_hedrickbrothers",
+        kind="onedrive_business_root",
+        display_name="Bobby business OneDrive",
+        baseline_policy=BaselinePolicy(
+            mode="inventory_first",
+            classify_project_matches=True,
+            graph_delta_required=True,
+            local_folder_watcher="secondary_signal_only",
+            require_review_for_sensitive=True,
+        ),
+    )
+    defaults.update(overrides)
+    return SourceLocation(**defaults)  # type: ignore[arg-type]
+
+
+def _make_onedrive_personal(**overrides) -> SourceLocation:
+    from hb_assistant.construction.config import BaselinePolicy
+
+    defaults = dict(
+        source_key="od_personal_bobby",
+        kind="onedrive_personal_root",
+        display_name="Bobby personal OneDrive",
+        baseline_policy=BaselinePolicy(
+            mode="inventory_first",
+            classify_project_matches=False,
+            require_review_for_sensitive=True,
+        ),
+    )
+    defaults.update(overrides)
+    return SourceLocation(**defaults)  # type: ignore[arg-type]
+
+
+def _make_onedrive_shared_library(**overrides) -> SourceLocation:
+    from hb_assistant.construction.config import BaselinePolicy
+
+    defaults = dict(
+        source_key="od_shared_libraries_cloudtemp",
+        kind="onedrive_shared_library",
+        display_name="CloudTemp shared library",
+        baseline_policy=BaselinePolicy(
+            mode="inventory_first",
+            classify_project_matches=True,
+            require_review_for_sensitive=True,
+        ),
+    )
+    defaults.update(overrides)
+    return SourceLocation(**defaults)  # type: ignore[arg-type]
+
+
+def test_inventory_first_applies_to_onedrive_business_root() -> None:
+    from hb_assistant.construction.policy import applies_to
+
+    assert applies_to(_make_onedrive_business()) is True
+
+
+def test_inventory_first_applies_to_onedrive_personal_root() -> None:
+    from hb_assistant.construction.policy import applies_to
+
+    assert applies_to(_make_onedrive_personal()) is True
+
+
+def test_inventory_first_applies_to_onedrive_shared_library() -> None:
+    from hb_assistant.construction.policy import applies_to
+
+    assert applies_to(_make_onedrive_shared_library()) is True
+
+
+def test_inventory_first_does_not_apply_to_sharepoint_sources() -> None:
+    from hb_assistant.construction.policy import applies_to
+
+    legacy = SourceLocation(
+        source_key="tropical-sharepoint",
+        kind="sharepoint_site",  # type: ignore[arg-type]
+        display_name="Tropical site",
+    )
+    canonical = SourceLocation(
+        source_key="sp_2023projects_23_435_01_tropical_sl",
+        kind="sharepoint_project_drive_folder",  # type: ignore[arg-type]
+        display_name="Tropical canonical",
+    )
+    assert applies_to(legacy) is False
+    assert applies_to(canonical) is False
+
+
+def test_inventory_first_does_not_apply_when_baseline_policy_missing() -> None:
+    from hb_assistant.construction.policy import applies_to
+
+    src = SourceLocation(
+        source_key="od_no_policy",
+        kind="onedrive_business_root",  # type: ignore[arg-type]
+        display_name="OD no policy",
+        baseline_policy=None,
+    )
+    assert applies_to(src) is False
+
+
+def test_inventory_first_does_not_apply_when_mode_is_not_inventory_first() -> None:
+    from hb_assistant.construction.config import BaselinePolicy
+    from hb_assistant.construction.policy import applies_to
+
+    src = SourceLocation(
+        source_key="od_metadata_mode",
+        kind="onedrive_business_root",  # type: ignore[arg-type]
+        display_name="OD metadata-only",
+        baseline_policy=BaselinePolicy(mode="metadata_only"),
+    )
+    assert applies_to(src) is False
+
+
+def test_build_inventory_first_policy_carries_baseline_policy_fields() -> None:
+    from hb_assistant.construction.policy import build_policy
+
+    policy = build_policy(_make_onedrive_business())
+    assert policy is not None
+    assert policy.source_key == "od_business_bobby_hedrickbrothers"
+    assert policy.scope == "onedrive_business_root"
+    assert policy.mode == "inventory_first"
+    assert policy.classify_project_matches is True
+    assert policy.graph_delta_required is True
+    assert policy.local_folder_watcher == "secondary_signal_only"
+    assert policy.require_review_for_sensitive is True
+    assert policy.bulk_document_cards_forbidden is True
+    assert policy.full_text_extraction_forbidden is True
+    assert policy.source_document_copy_forbidden is True
+    assert policy.guardrails["external_systems"] == "read_only"
+    assert policy.guardrails["bulk_document_cards"] == "forbidden"
+
+
+def test_build_inventory_first_policy_returns_none_for_non_onedrive() -> None:
+    from hb_assistant.construction.policy import build_policy
+
+    src = SourceLocation(
+        source_key="tropical-sharepoint",
+        kind="sharepoint_site",  # type: ignore[arg-type]
+        display_name="Tropical",
+    )
+    assert build_policy(src) is None
+
+
+def test_inventory_first_policy_guardrails_are_literal_true_locked() -> None:
+    from hb_assistant.construction.policy import InventoryFirstPolicy
+
+    with pytest.raises(ValidationError):
+        InventoryFirstPolicy(
+            source_key="x",
+            scope="onedrive_business_root",
+            mode="inventory_first",
+            classify_project_matches=False,
+            graph_delta_required=False,
+            require_review_for_sensitive=False,
+            bulk_document_cards_forbidden=False,  # type: ignore[arg-type]
+        )
+
+    with pytest.raises(ValidationError):
+        InventoryFirstPolicy(
+            source_key="x",
+            scope="onedrive_business_root",
+            mode="inventory_first",
+            classify_project_matches=False,
+            graph_delta_required=False,
+            require_review_for_sensitive=False,
+            full_text_extraction_forbidden=False,  # type: ignore[arg-type]
+        )
+
+    with pytest.raises(ValidationError):
+        InventoryFirstPolicy(
+            source_key="x",
+            scope="onedrive_business_root",
+            mode="inventory_first",
+            classify_project_matches=False,
+            graph_delta_required=False,
+            require_review_for_sensitive=False,
+            source_document_copy_forbidden=False,  # type: ignore[arg-type]
+        )
+
+
+def test_assert_no_bulk_document_cards_raises_when_count_gt_one() -> None:
+    from hb_assistant.construction.policy import (
+        InventoryFirstViolation,
+        assert_no_bulk_document_cards,
+    )
+
+    # Single card or zero allowed
+    assert_no_bulk_document_cards(
+        source_key="od_personal_bobby",
+        scope="onedrive_personal_root",
+        intended_card_count=0,
+    )
+    assert_no_bulk_document_cards(
+        source_key="od_personal_bobby",
+        scope="onedrive_personal_root",
+        intended_card_count=1,
+    )
+
+    with pytest.raises(InventoryFirstViolation, match="bulk DocumentCard"):
+        assert_no_bulk_document_cards(
+            source_key="od_personal_bobby",
+            scope="onedrive_personal_root",
+            intended_card_count=5,
+        )
+
+
+def test_assert_no_bulk_document_cards_ignores_non_onedrive_scope() -> None:
+    from hb_assistant.construction.policy import assert_no_bulk_document_cards
+
+    # Non-OneDrive scopes are unaffected by the bulk-card guardrail.
+    assert_no_bulk_document_cards(
+        source_key="tropical-sharepoint",
+        scope="sharepoint_site",
+        intended_card_count=10,
+    )
+
+
+def test_assert_no_full_text_extraction_raises_on_forbidden_keys() -> None:
+    from hb_assistant.construction.policy import (
+        InventoryFirstViolation,
+        assert_no_full_text_extraction,
+    )
+
+    # Clean items pass
+    assert_no_full_text_extraction(
+        [
+            {"id": "a", "name": "file.pdf", "size": 100},
+            {"id": "b", "name": "x.docx", "is_folder": False},
+        ]
+    )
+
+    forbidden_payloads = [
+        [{"id": "a", "content": "leak"}],
+        [{"id": "a", "body": "leak"}],
+        [{"id": "a", "text": "leak"}],
+        [{"id": "a", "excerpt": "leak"}],
+        [{"id": "a", "preview": "leak"}],
+        [{"id": "a", "full_text": "leak"}],
+        [{"id": "a", "text_excerpt": "leak"}],
+    ]
+    for payload in forbidden_payloads:
+        with pytest.raises(InventoryFirstViolation, match="forbidden keys"):
+            assert_no_full_text_extraction(payload)
+
+
+def test_new_pii_rules_route_personal_onedrive_files_to_review(
+    evaluator: ReviewPolicyEvaluator,
+) -> None:
+    cases = [
+        ("1099-2025.pdf", "pii_tax", "high"),
+        ("passport_scan_jane.pdf", "pii_government_id", "critical"),
+        ("medical_records_2024.pdf", "pii_health", "critical"),
+        ("Bank Statement Jan 2026.pdf", "pii_personal_financial", "high"),
+    ]
+    for name, expected_label, expected_sensitivity in cases:
+        matches = evaluator.evaluate(
+            source_key="od_personal_bobby",
+            project_key=None,
+            item={"item_id": name, "name": name, "parent_path": "/Documents"},
+        )
+        labels = {m.classification_label for m in matches}
+        sensitivities = {m.sensitivity for m in matches}
+        assert expected_label in labels, (
+            f"name {name!r} did not produce label {expected_label!r}; got {labels}"
+        )
+        assert expected_sensitivity in sensitivities
+
+
+def test_seed_rule_count_includes_pii_additions(seed_rules: ReviewRules) -> None:
+    pii_ids = [r.rule_id for r in seed_rules.rules if r.rule_id.startswith("pii-")]
+    assert sorted(pii_ids) == [
+        "pii-government-id",
+        "pii-health-record",
+        "pii-personal-financial",
+        "pii-tax-document",
+    ]
+    assert len(seed_rules.rules) >= 16

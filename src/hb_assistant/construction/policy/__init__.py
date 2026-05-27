@@ -4,9 +4,21 @@ Controller policy (``resources/config/review_required_rules.seed.yaml``) is the
 authority. No model decisioning is permitted for contract / financial / legal /
 incident / injury / personnel material — every routing decision traces back to
 a ``rule_id`` in the YAML rule file.
+
+Phase 02 additions: :class:`InventoryFirstPolicy` exposes the per-source
+operational policy for OneDrive sources running in inventory-first mode.
 """
 
 from .evaluator import ReviewPolicyEvaluator
+from .inventory_first import (
+    ONEDRIVE_INVENTORY_FIRST_SCOPES,
+    InventoryFirstPolicy,
+    InventoryFirstViolation,
+    applies_to,
+    assert_no_bulk_document_cards,
+    assert_no_full_text_extraction,
+    build_policy,
+)
 from .loader import ReviewRulesError, load_review_rules
 from .models import ReviewRule, ReviewRules, RuleKind, RuleMatch, Sensitivity
 from .router import ReviewQueueRouter, RouterResult
@@ -22,4 +34,12 @@ __all__ = [
     "RuleMatch",
     "Sensitivity",
     "load_review_rules",
+    # Phase 02 inventory-first policy
+    "InventoryFirstPolicy",
+    "InventoryFirstViolation",
+    "ONEDRIVE_INVENTORY_FIRST_SCOPES",
+    "applies_to",
+    "assert_no_bulk_document_cards",
+    "assert_no_full_text_extraction",
+    "build_policy",
 ]

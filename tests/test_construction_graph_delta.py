@@ -547,3 +547,160 @@ def test_failed_crawl_does_not_populate_baseline_comparison(tmp_path: Path) -> N
     assert store.list_processing_receipts(
         source_id="sp_2023projects_23_435_01_tropical_sl"
     ) == []
+
+
+# =====================================================================
+# Phase 02 Prompt 06 — OneDrive inventory-first crawl-side guardrails.
+# =====================================================================
+
+
+def _onedrive_canonical_registry_yaml(tmp_path: Path):
+    import yaml as _yaml
+
+    yaml_path = tmp_path / "onedrive_registry.yml"
+    yaml_path.write_text(
+        _yaml.safe_dump(
+            {
+                "projects": [],
+                "sources": [
+                    {
+                        "source_key": "od_business_bobby_hedrickbrothers",
+                        "kind": "onedrive_business_root",
+                        "display_name": "Bobby - Hedrick Brothers OneDrive",
+                        "drive_id": "drv-business",
+                        "baseline_policy": {
+                            "mode": "inventory_first",
+                            "classify_project_matches": True,
+                            "graph_delta_required": True,
+                            "local_folder_watcher": "secondary_signal_only",
+                            "require_review_for_sensitive": True,
+                        },
+                    },
+                    {
+                        "source_key": "od_personal_bobby",
+                        "kind": "onedrive_personal_root",
+                        "display_name": "Bobby - Personal OneDrive",
+                        "drive_id": "drv-personal",
+                        "baseline_policy": {
+                            "mode": "inventory_first",
+                            "classify_project_matches": False,
+                            "require_review_for_sensitive": True,
+                        },
+                    },
+                    {
+                        "source_key": "od_shared_libraries_cloudtemp",
+                        "kind": "onedrive_shared_library",
+                        "display_name": "CloudTemp shared library",
+                        "drive_id": "drv-shared",
+                        "baseline_policy": {
+                            "mode": "inventory_first",
+                            "classify_project_matches": True,
+                            "require_review_for_sensitive": True,
+                        },
+                    },
+                ],
+            }
+        )
+    )
+    return yaml_path
+
+
+def _with_onedrive_registry(tmp_path: Path):
+    import contextlib
+    import os
+
+    @contextlib.contextmanager
+    def _ctx():
+        yaml_path = _onedrive_canonical_registry_yaml(tmp_path)
+        prior = os.environ.get("HB_CONSTRUCTION_SOURCES")
+        os.environ["HB_CONSTRUCTION_SOURCES"] = str(yaml_path)
+        try:
+            yield
+        finally:
+            if prior is None:
+                del os.environ["HB_CONSTRUCTION_SOURCES"]
+            else:
+                os.environ["HB_CONSTRUCTION_SOURCES"] = prior
+
+    return _ctx()
+
+
+ONEDRIVE_SOURCE_KEYS = (
+    "od_business_bobby_hedrickbrothers",
+    "od_personal_bobby",
+    "od_shared_libraries_cloudtemp",
+)
+
+
+def test_onedrive_crawl_receipt_carries_no_forbidden_keys(tmp_path: Path) -> None:
+    from hb_assistant.construction.policy import assert_no_full_text_extraction
+
+    for source_key in ONEDRIVE_SOURCE_KEYS:
+        db = str(tmp_path / f"{source_key}.sqlite")
+        store = ConstructionStore(db)
+        http = MagicMock()
+        http.get.return_value = _page(
+            [_item("a")],
+            delta_link=f"https://graph/drives/.../delta?token={source_key}",
+        )
+        with _with_onedrive_registry(tmp_path):
+            crawler = ConstructionDeltaCrawler(http, store)
+            receipt = crawler.crawl(source_key=source_key, dry_run=True)
+
+        assert receipt.status == "ok", f"{source_key}: {receipt.error_redacted}"
+        # Defense-in-depth: sample_items must not carry any forbidden body/text key.
+        assert_no_full_text_extraction(receipt.sample_items)
+
+
+def test_onedrive_crawl_does_not_produce_document_cards(tmp_path: Path) -> None:
+    import sqlite3
+
+    for source_key in ONEDRIVE_SOURCE_KEYS:
+        db = str(tmp_path / f"{source_key}_cards.sqlite")
+        store = ConstructionStore(db)
+        http = MagicMock()
+        http.get.return_value = _page(
+            [_item("a"), _item("b")],
+            delta_link=f"https://graph/drives/.../delta?t={source_key}",
+        )
+        with _with_onedrive_registry(tmp_path):
+            crawler = ConstructionDeltaCrawler(http, store)
+            crawler.crawl(source_key=source_key, dry_run=False)
+
+        conn = sqlite3.connect(db)
+        rows = conn.execute(
+            "SELECT card_id FROM construction_document_cards"
+        ).fetchall()
+        assert rows == [], (
+            f"OneDrive crawl for {source_key} unexpectedly created document cards: {rows}"
+        )
+
+
+def test_onedrive_crawl_records_metadata_only_per_inventory_first_policy(
+    tmp_path: Path,
+) -> None:
+    """Apply-mode crawl writes only metadata columns — no body/text/excerpt fields."""
+    import sqlite3
+
+    source_key = "od_business_bobby_hedrickbrothers"
+    db = str(tmp_path / "od_metadata.sqlite")
+    store = ConstructionStore(db)
+    http = MagicMock()
+    http.get.return_value = _page(
+        [_item("a"), _item("b", folder={"childCount": 0})],
+        delta_link="https://graph/drives/.../delta?t=metadata-only",
+    )
+    with _with_onedrive_registry(tmp_path):
+        crawler = ConstructionDeltaCrawler(http, store)
+        receipt = crawler.crawl(source_key=source_key, dry_run=False)
+
+    assert receipt.status == "ok"
+    assert receipt.items_new == 2
+
+    # Inspect the actual inventory schema columns; no body/text/excerpt etc.
+    conn = sqlite3.connect(db)
+    cur = conn.execute("PRAGMA table_info(construction_drive_item_inventory)")
+    columns = {row[1] for row in cur.fetchall()}
+    forbidden = {"body", "content", "text", "excerpt", "preview", "full_text", "text_excerpt"}
+    leaks = columns & forbidden
+    assert not leaks, f"OneDrive inventory schema leaks: {leaks}"
