@@ -1,0 +1,140 @@
+# Procore endpoint contract — controller policy.
+#
+# Authoritative. Pydantic enforces:
+#   - http_method must be GET (read-only by construction).
+#   - status is one of: validated | sensitive_validated | excluded | deferred.
+#   - sensitivity is one of: low | medium | high | critical.
+#   - endpoint_id values are unique.
+#   - Every required category (rfis, submittals, drawings, daily-logs,
+#     punch-items, change-events, commitments, prime-contracts, invoices,
+#     correspondence, schedule, tasks) MUST have at least one endpoint —
+#     missing a category fails load.
+#   - The 'correspondence' category MUST carry status='excluded' (hard
+#     guardrail; load fails otherwise).
+#   - The 'schedule' and 'tasks' categories MUST carry status='deferred'
+#     (hard guardrail; load fails otherwise).
+#
+# This file is the source of truth for the dry-run audit. Edit (or override
+# at config/procore_endpoint_contract.yml) to extend coverage without code
+# changes.
+
+version: 1
+company_id: "5280"
+company_display_name: "HB Construction"
+
+endpoints:
+  # ---- validated (low / medium sensitivity) -------------------------
+  - endpoint_id: list-projects
+    http_method: GET
+    path_template: /vapid/projects
+    category: rfis  # company-level metadata; safe baseline
+    status: validated
+    sensitivity: low
+    included_in_phase_01: true
+    notes: company-scoped project listing; required for project resolution
+
+  - endpoint_id: list-rfis
+    http_method: GET
+    path_template: /vapid/projects/{project_id}/rfis
+    category: rfis
+    status: validated
+    sensitivity: low
+    included_in_phase_01: true
+
+  - endpoint_id: list-submittals
+    http_method: GET
+    path_template: /vapid/projects/{project_id}/submittals
+    category: submittals
+    status: validated
+    sensitivity: low
+    included_in_phase_01: true
+
+  - endpoint_id: list-drawings
+    http_method: GET
+    path_template: /vapid/projects/{project_id}/drawings
+    category: drawings
+    status: validated
+    sensitivity: low
+    included_in_phase_01: true
+
+  - endpoint_id: list-daily-logs
+    http_method: GET
+    path_template: /vapid/projects/{project_id}/daily_logs
+    category: daily-logs
+    status: validated
+    sensitivity: medium
+    included_in_phase_01: true
+
+  - endpoint_id: list-punch-items
+    http_method: GET
+    path_template: /vapid/projects/{project_id}/punch_items
+    category: punch-items
+    status: validated
+    sensitivity: low
+    included_in_phase_01: true
+
+  # ---- sensitive_validated (high sensitivity — financial / contractual)
+  - endpoint_id: list-change-events
+    http_method: GET
+    path_template: /vapid/projects/{project_id}/change_events
+    category: change-events
+    status: sensitive_validated
+    sensitivity: high
+    included_in_phase_01: true
+    notes: routes to manual review per controller policy
+
+  - endpoint_id: list-commitments
+    http_method: GET
+    path_template: /vapid/projects/{project_id}/commitments
+    category: commitments
+    status: sensitive_validated
+    sensitivity: high
+    included_in_phase_01: true
+    notes: routes to manual review per controller policy
+
+  - endpoint_id: list-prime-contracts
+    http_method: GET
+    path_template: /vapid/projects/{project_id}/prime_contracts
+    category: prime-contracts
+    status: sensitive_validated
+    sensitivity: high
+    included_in_phase_01: true
+    notes: routes to manual review per controller policy
+
+  - endpoint_id: list-invoices
+    http_method: GET
+    path_template: /vapid/projects/{project_id}/invoices
+    category: invoices
+    status: sensitive_validated
+    sensitivity: high
+    included_in_phase_01: true
+    notes: routes to manual review per controller policy
+
+  # ---- excluded (hard guardrail — correspondence is not in scope) ---
+  - endpoint_id: list-correspondence
+    http_method: GET
+    path_template: /vapid/projects/{project_id}/correspondences
+    category: correspondence
+    status: excluded
+    sensitivity: critical
+    included_in_phase_01: false
+    notes: excluded by hard guardrail; never auditable in Phase 01
+
+  # ---- deferred (hard guardrail — schedule / tasks deferred) --------
+  - endpoint_id: list-schedule
+    http_method: GET
+    path_template: /vapid/projects/{project_id}/schedule
+    category: schedule
+    status: deferred
+    sensitivity: medium
+    included_in_phase_01: false
+    notes: schedule integration deferred to a future phase
+
+  - endpoint_id: list-tasks
+    http_method: GET
+    path_template: /vapid/projects/{project_id}/tasks
+    category: tasks
+    status: deferred
+    sensitivity: medium
+    included_in_phase_01: false
+    notes: task tracking deferred to a future phase

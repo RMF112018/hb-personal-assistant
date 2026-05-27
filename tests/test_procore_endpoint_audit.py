@@ -1,0 +1,502 @@
+"""Tests for the Procore foundation + endpoint audit (Phase 01 Step 10).
+
+Covers:
+- Pydantic models: read-only-by-construction (http_method literal), category
+  invariants, kebab-case keys, duplicate detection, hard-guardrail status
+  enforcement (correspondence excluded / schedule + tasks deferred).
+- Loader override precedence (seed → repo override → env).
+- Auth status: env-absent / env-partial / env-present scenarios; never
+  reads env values into the returned report; never opens the token file.
+- Auditor: per-project access matrix; unmapped project handling;
+  unknown-project KeyError; mapping validation OK vs pending.
+- CLI: auth status, tools list, tools audit (happy + unknown project),
+  mapping validate (exit 1 on pending), help-shape regression at root.
+- Guardrail string-scans: writeback never advertised; live_calls_disabled
+  always true; no HTTP/network import in the procore module surface.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+import yaml
+from pydantic import ValidationError
+from typer.testing import CliRunner
+
+from hb_assistant.cli import main as main_cli
+from hb_assistant.cli import procore as procore_cli
+from hb_assistant.procore import (
+    EndpointAuditor,
+    ProcoreEndpoint,
+    ProcoreEndpointContract,
+    ProcoreProjectsRegistry,
+    check_auth_status,
+    load_endpoint_contract,
+    load_procore_projects,
+)
+from hb_assistant.procore.auth import REQUIRED_ENV_KEYS
+from hb_assistant.procore.loader import (
+    CONTRACT_ENV_VAR,
+    PROJECTS_ENV_VAR,
+    EndpointContractError,
+    ProcoreProjectsError,
+)
+from hb_assistant.procore.models import REQUIRED_CATEGORIES
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def runner() -> CliRunner:
+    return CliRunner()
+
+
+def _minimal_valid_contract_dict() -> dict:
+    """Smallest contract dict that satisfies every required-category + hard guardrail."""
+    base_endpoints = []
+    for cat in REQUIRED_CATEGORIES:
+        if cat == "correspondence":
+            status = "excluded"
+            sens = "critical"
+        elif cat in ("schedule", "tasks"):
+            status = "deferred"
+            sens = "medium"
+        else:
+            status = "validated"
+            sens = "low"
+        base_endpoints.append({
+            "endpoint_id": f"ep-{cat}",
+            "http_method": "GET",
+            "path_template": f"/vapid/projects/{{project_id}}/{cat.replace('-', '_')}",
+            "category": cat,
+            "status": status,
+            "sensitivity": sens,
+            "included_in_phase_01": status not in ("excluded", "deferred"),
+        })
+    return {
+        "version": 1,
+        "company_id": "5280",
+        "company_display_name": "HB Construction",
+        "endpoints": base_endpoints,
+    }
+
+
+def _make_unenforced_auditor() -> EndpointAuditor:
+    return EndpointAuditor(
+        load_endpoint_contract(),
+        load_procore_projects(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Pydantic models — read-only by construction
+# ---------------------------------------------------------------------------
+
+
+def test_endpoint_rejects_non_get_method() -> None:
+    with pytest.raises(ValidationError):
+        ProcoreEndpoint(
+            endpoint_id="x",
+            http_method="POST",  # type: ignore[arg-type]
+            path_template="/x",
+            category="rfis",
+            status="validated",
+            sensitivity="low",
+        )
+
+
+def test_endpoint_rejects_extra_fields() -> None:
+    with pytest.raises(ValidationError):
+        ProcoreEndpoint(
+            endpoint_id="x", http_method="GET", path_template="/x",
+            category="rfis", status="validated", sensitivity="low",
+            stowaway="leak",  # type: ignore[call-arg]
+        )
+
+
+def test_endpoint_rejects_non_kebab_id() -> None:
+    with pytest.raises(ValidationError):
+        ProcoreEndpoint(
+            endpoint_id="Bad ID", http_method="GET", path_template="/x",
+            category="rfis", status="validated", sensitivity="low",
+        )
+
+
+def test_endpoint_rejects_invalid_status() -> None:
+    with pytest.raises(ValidationError):
+        ProcoreEndpoint(
+            endpoint_id="x", http_method="GET", path_template="/x",
+            category="rfis", status="auto-accept",  # type: ignore[arg-type]
+            sensitivity="low",
+        )
+
+
+def test_endpoint_rejects_relative_path_template() -> None:
+    with pytest.raises(ValidationError):
+        ProcoreEndpoint(
+            endpoint_id="x", http_method="GET", path_template="no-slash",
+            category="rfis", status="validated", sensitivity="low",
+        )
+
+
+def test_contract_requires_every_category() -> None:
+    bad = _minimal_valid_contract_dict()
+    bad["endpoints"] = [e for e in bad["endpoints"] if e["category"] != "rfis"]
+    with pytest.raises(ValidationError):
+        ProcoreEndpointContract.model_validate(bad)
+
+
+def test_contract_rejects_correspondence_not_excluded() -> None:
+    bad = _minimal_valid_contract_dict()
+    for e in bad["endpoints"]:
+        if e["category"] == "correspondence":
+            e["status"] = "validated"  # hard guardrail violation
+    with pytest.raises(ValidationError):
+        ProcoreEndpointContract.model_validate(bad)
+
+
+def test_contract_rejects_schedule_not_deferred() -> None:
+    bad = _minimal_valid_contract_dict()
+    for e in bad["endpoints"]:
+        if e["category"] == "schedule":
+            e["status"] = "validated"
+    with pytest.raises(ValidationError):
+        ProcoreEndpointContract.model_validate(bad)
+
+
+def test_contract_rejects_duplicate_endpoint_id() -> None:
+    bad = _minimal_valid_contract_dict()
+    bad["endpoints"].append(dict(bad["endpoints"][0]))  # duplicate ep-rfis
+    with pytest.raises(ValidationError):
+        ProcoreEndpointContract.model_validate(bad)
+
+
+def test_projects_registry_rejects_duplicate_keys() -> None:
+    with pytest.raises(ValidationError):
+        ProcoreProjectsRegistry.model_validate({
+            "company_id": "5280",
+            "projects": [
+                {"hb_project_key": "tropical", "procore_project_id": "1", "procore_project_name": "T", "status": "pilot"},
+                {"hb_project_key": "tropical", "procore_project_id": "2", "procore_project_name": "T2", "status": "pilot"},
+            ],
+        })
+
+
+def test_projects_registry_rejects_duplicate_procore_id() -> None:
+    with pytest.raises(ValidationError):
+        ProcoreProjectsRegistry.model_validate({
+            "company_id": "5280",
+            "projects": [
+                {"hb_project_key": "a", "procore_project_id": "same", "procore_project_name": "A", "status": "pilot"},
+                {"hb_project_key": "b", "procore_project_id": "same", "procore_project_name": "B", "status": "pilot"},
+            ],
+        })
+
+
+def test_projects_registry_allows_empty_procore_id_for_pending() -> None:
+    reg = ProcoreProjectsRegistry.model_validate({
+        "company_id": "5280",
+        "projects": [
+            {"hb_project_key": "x", "procore_project_id": "", "procore_project_name": "", "status": "pending"},
+            {"hb_project_key": "y", "procore_project_id": "", "procore_project_name": "", "status": "pending"},
+        ],
+    })
+    assert len(reg.projects) == 2
+
+
+# ---------------------------------------------------------------------------
+# Seed loaders
+# ---------------------------------------------------------------------------
+
+
+def test_seed_endpoint_contract_loads_and_covers_required_categories() -> None:
+    contract = load_endpoint_contract()
+    assert contract.company_id == "5280"
+    cats = {e.category for e in contract.endpoints}
+    for required in REQUIRED_CATEGORIES:
+        assert required in cats
+    # Hard guardrails baked into seed
+    for e in contract.endpoints:
+        if e.category == "correspondence":
+            assert e.status == "excluded"
+        if e.category in ("schedule", "tasks"):
+            assert e.status == "deferred"
+        assert e.http_method == "GET"
+
+
+def test_seed_projects_includes_tropical_pilot() -> None:
+    projects = load_procore_projects()
+    tropical = projects.get("tropical")
+    assert tropical is not None
+    assert tropical.status == "pilot"
+    assert tropical.procore_project_id == "23-435-01"
+
+
+def test_loader_env_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    override = tmp_path / "contract.yml"
+    override.write_text(
+        yaml.safe_dump({
+            **_minimal_valid_contract_dict(),
+            "company_id": "9999",
+            "company_display_name": "Override Co",
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(CONTRACT_ENV_VAR, str(override))
+    c = load_endpoint_contract()
+    assert c.company_id == "9999"
+    assert c.company_display_name == "Override Co"
+
+
+def test_projects_loader_env_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    override = tmp_path / "projects.yml"
+    override.write_text(
+        yaml.safe_dump({
+            "company_id": "5280",
+            "projects": [
+                {"hb_project_key": "alpha", "procore_project_id": "A-1", "procore_project_name": "Alpha", "status": "pilot"},
+            ],
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(PROJECTS_ENV_VAR, str(override))
+    p = load_procore_projects()
+    assert [pp.hb_project_key for pp in p.projects] == ["alpha"]
+
+
+def test_missing_seed_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from hb_assistant.procore import loader as loader_mod
+    monkeypatch.setattr(loader_mod, "_resolve", lambda relative: tmp_path / relative.name)
+    monkeypatch.delenv(CONTRACT_ENV_VAR, raising=False)
+    monkeypatch.delenv(PROJECTS_ENV_VAR, raising=False)
+    with pytest.raises(EndpointContractError):
+        load_endpoint_contract()
+    with pytest.raises(ProcoreProjectsError):
+        load_procore_projects()
+
+
+# ---------------------------------------------------------------------------
+# Auth status
+# ---------------------------------------------------------------------------
+
+
+def test_auth_status_env_absent(monkeypatch: pytest.MonkeyPatch) -> None:
+    for k in REQUIRED_ENV_KEYS:
+        monkeypatch.delenv(k, raising=False)
+    r = check_auth_status()
+    assert r.status == "env_absent"
+    assert r.ready_for_live_calls is False
+    assert r.env_keys_present == []
+    # Hint never echoes credential values back
+    assert "PROCORE_CLIENT_SECRET=" not in r.hint
+
+
+def test_auth_status_env_partial(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PROCORE_CLIENT_ID", "id")
+    monkeypatch.delenv("PROCORE_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("PROCORE_REFRESH_TOKEN", raising=False)
+    r = check_auth_status()
+    assert r.status == "env_partial"
+    assert "PROCORE_CLIENT_ID" in r.env_keys_present
+    assert r.ready_for_live_calls is False
+
+
+def test_auth_status_env_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    for k in REQUIRED_ENV_KEYS:
+        monkeypatch.setenv(k, "x")
+    r = check_auth_status()
+    assert r.status == "env_present"
+    # Live calls remain explicitly disabled regardless of env completeness
+    assert r.ready_for_live_calls is False
+
+
+def test_auth_status_never_leaks_env_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    SENTINEL = "SECRET_VALUE_SHOULD_NEVER_APPEAR_IN_REPORT_XYZ"
+    monkeypatch.setenv("PROCORE_CLIENT_ID", SENTINEL)
+    r = check_auth_status()
+    blob = json.dumps(r.model_dump())
+    assert SENTINEL not in blob
+
+
+# ---------------------------------------------------------------------------
+# Auditor
+# ---------------------------------------------------------------------------
+
+
+def test_auditor_classifies_tropical_correctly() -> None:
+    a = _make_unenforced_auditor()
+    r = a.audit_project("tropical")
+    assert r.procore_project_id == "23-435-01"
+    assert r.summary.get("would_audit", 0) > 0
+    assert r.summary.get("sensitive_review_required", 0) >= 4  # 4 financial
+    assert r.summary.get("excluded") == 1
+    assert r.summary.get("deferred") == 2
+    assert r.summary.get("project_not_mapped", 0) == 0
+
+
+def test_auditor_marks_unmapped_project_endpoints_not_mapped() -> None:
+    a = _make_unenforced_auditor()
+    r = a.audit_project("hilltop")
+    assert r.procore_project_id == ""
+    assert r.summary.get("project_not_mapped", 0) > 0
+    # Excluded + deferred verdicts are independent of mapping status
+    assert r.summary.get("excluded") == 1
+    assert r.summary.get("deferred") == 2
+
+
+def test_auditor_unknown_project_raises() -> None:
+    a = _make_unenforced_auditor()
+    with pytest.raises(KeyError):
+        a.audit_project("nonexistent-key")
+
+
+def test_mapping_validation_reports_pending_as_not_ok() -> None:
+    a = _make_unenforced_auditor()
+    r = a.validate_mapping()
+    assert r.total == 2
+    assert r.by_status.get("pilot") == 1
+    assert r.by_status.get("pending") == 1
+    assert r.ok is False
+
+
+def test_mapping_validation_passes_when_only_pilots_and_deprecated() -> None:
+    contract = load_endpoint_contract()
+    fully_mapped = ProcoreProjectsRegistry.model_validate({
+        "company_id": "5280",
+        "projects": [
+            {"hb_project_key": "tropical", "procore_project_id": "23-435-01",
+             "procore_project_name": "Tropical", "status": "pilot"},
+            {"hb_project_key": "old-thing", "procore_project_id": "",
+             "procore_project_name": "", "status": "deprecated"},
+        ],
+    })
+    a = EndpointAuditor(contract, fully_mapped)
+    r = a.validate_mapping()
+    assert r.ok is True
+
+
+def test_auditor_never_advertises_writeback_in_any_row() -> None:
+    a = _make_unenforced_auditor()
+    r = a.audit_project("tropical")
+    for row in r.endpoints:
+        assert row["http_method"] == "GET"
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def test_root_help_exposes_procore_command(runner: CliRunner) -> None:
+    r = runner.invoke(main_cli.app, ["--help"])
+    assert r.exit_code == 0
+    assert "procore" in r.output
+
+
+def test_cli_procore_help(runner: CliRunner) -> None:
+    r = runner.invoke(procore_cli.app, ["--help"])
+    assert r.exit_code == 0
+    for name in ("auth", "tools", "mapping"):
+        assert name in r.output
+
+
+def test_cli_auth_status(runner: CliRunner, monkeypatch: pytest.MonkeyPatch) -> None:
+    for k in REQUIRED_ENV_KEYS:
+        monkeypatch.delenv(k, raising=False)
+    r = runner.invoke(procore_cli.app, ["auth", "status", "--json"])
+    assert r.exit_code == 0
+    p = json.loads(r.output)
+    assert p["report"]["status"] == "env_absent"
+    assert p["report"]["ready_for_live_calls"] is False
+    assert p["guardrails"]["live_calls_disabled"] is True
+
+
+def test_cli_tools_list(runner: CliRunner) -> None:
+    r = runner.invoke(procore_cli.app, ["tools", "list", "--json"])
+    assert r.exit_code == 0
+    p = json.loads(r.output)
+    assert p["company_id"] == "5280"
+    assert p["endpoint_count"] == len(p["endpoints"])
+    # Every loaded endpoint is GET (read-only)
+    for e in p["endpoints"]:
+        assert e["http_method"] == "GET"
+    # by_status surfaces the four buckets
+    assert "excluded" in p["by_status"]
+    assert "deferred" in p["by_status"]
+
+
+def test_cli_tools_audit_tropical(runner: CliRunner) -> None:
+    r = runner.invoke(
+        procore_cli.app, ["tools", "audit", "--project", "tropical", "--json"],
+    )
+    assert r.exit_code == 0
+    p = json.loads(r.output)
+    assert p["mode"] == "dry_run"
+    assert p["report"]["procore_project_id"] == "23-435-01"
+    assert p["report"]["summary"].get("would_audit", 0) > 0
+    assert p["report"]["summary"].get("excluded") == 1
+
+
+def test_cli_tools_audit_unknown_project_exit_1(runner: CliRunner) -> None:
+    r = runner.invoke(
+        procore_cli.app, ["tools", "audit", "--project", "no-such-key", "--json"],
+    )
+    assert r.exit_code == 1
+    p = json.loads(r.output)
+    assert p["status"] == "not_found"
+    assert "no-such-key" in p["requested"]
+
+
+def test_cli_mapping_validate_pending_yields_exit_1(runner: CliRunner) -> None:
+    r = runner.invoke(procore_cli.app, ["mapping", "validate", "--json"])
+    assert r.exit_code == 1  # because seed contains a pending hilltop row
+    p = json.loads(r.output)
+    assert p["report"]["ok"] is False
+    assert p["report"]["by_status"].get("pending") == 1
+
+
+# ---------------------------------------------------------------------------
+# Guardrail string-scans
+# ---------------------------------------------------------------------------
+
+
+def test_procore_module_imports_no_http_client() -> None:
+    """The audit path must not pull in requests / urllib3 — live access is
+    deferred. We verify by inspecting module-level imports of every shipped
+    procore source file."""
+    import importlib
+    import inspect
+    import pkgutil
+
+    import hb_assistant.procore as pkg
+
+    banned = {"requests", "httpx", "urllib3", "aiohttp"}
+    for _, name, ispkg in pkgutil.walk_packages(pkg.__path__, prefix="hb_assistant.procore."):
+        if ispkg:
+            continue
+        mod = importlib.import_module(name)
+        src = inspect.getsource(mod)
+        for ban in banned:
+            assert f"import {ban}" not in src, f"{name} unexpectedly imports {ban}"
+            assert f"from {ban}" not in src, f"{name} unexpectedly imports from {ban}"
+
+
+def test_every_cli_payload_advertises_no_writeback(runner: CliRunner) -> None:
+    for argv in (
+        ["auth", "status", "--json"],
+        ["tools", "list", "--json"],
+        ["tools", "audit", "--project", "tropical", "--json"],
+        ["mapping", "validate", "--json"],
+    ):
+        r = runner.invoke(procore_cli.app, argv)
+        # mapping validate exits 1 on a clean seed (pending row) but still
+        # emits a JSON payload — both 0 and 1 are acceptable here.
+        assert r.exit_code in (0, 1), f"{argv}: unexpected exit {r.exit_code}: {r.output}"
+        p = json.loads(r.output)
+        assert p["guardrails"]["writeback"] == "none", argv
+        assert p["guardrails"]["external_systems"] == "read_only", argv
+        assert p["guardrails"]["live_calls_disabled"] is True, argv

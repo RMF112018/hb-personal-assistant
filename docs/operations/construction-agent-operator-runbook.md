@@ -129,6 +129,51 @@ HB_CONSTRUCTION_VAULT_ROOT="$VAULT" hb-assistant construction-agent vault previe
 - External systems are never written to. There is no `--apply` path that
   reaches SharePoint, OneDrive, Procore, or Outlook.
 
+## Procore foundation (read-only, dry-run only)
+
+The `procore` top-level CLI is a sibling to `construction-agent`. Every
+command is read-only. **No live Procore API call is wired in this phase**
+— `auth status` is a documented stub that reports credential presence
+without ever issuing an HTTP request.
+
+```bash
+# Documented stub: reports presence/absence of PROCORE_CLIENT_ID,
+# PROCORE_CLIENT_SECRET, PROCORE_REFRESH_TOKEN, and the local token cache.
+# Never reads env values into the returned report.
+hb-assistant procore auth status --json
+
+# List the loaded endpoint contract (categories, sensitivity, status).
+hb-assistant procore tools list --json
+
+# Dry-run access matrix for one HB project (matches a key from
+# resources/config/procore_projects.seed.yaml). Verdicts:
+#   - would_audit              endpoint is in scope and project is mapped
+#   - sensitive_review_required  endpoint is in scope but flagged sensitive
+#   - excluded                 hard guardrail (correspondence)
+#   - deferred                 hard guardrail (schedule, tasks)
+#   - project_not_mapped       HB project has no procore_project_id yet
+hb-assistant procore tools audit --project tropical --json
+
+# Mapping validation. Exits 1 (informational, not blocking) when any
+# project is still status='pending'.
+hb-assistant procore mapping validate --json
+```
+
+| Env var (Procore) | Purpose |
+| --- | --- |
+| `HB_PROCORE_ENDPOINT_CONTRACT` | Override path to the endpoint contract YAML |
+| `HB_PROCORE_PROJECTS` | Override path to the projects-registry YAML |
+| `PROCORE_CLIENT_ID` / `PROCORE_CLIENT_SECRET` / `PROCORE_REFRESH_TOKEN` | Future live OAuth — presence only checked by `auth status`; values never read |
+
+The Procore endpoint contract enforces by Pydantic schema: every endpoint
+is `http_method: GET` (writeback un-constructable), correspondence MUST
+carry `status="excluded"`, and schedule/tasks MUST carry
+`status="deferred"`. The seeded contract covers RFIs, submittals,
+drawings, daily logs, punch items (validated, low–medium sensitivity);
+change events, commitments, prime contracts, invoices (validated but
+sensitivity=high — routed for controller review when live access is
+eventually wired).
+
 ## Recovery
 
 - If schema is stale, any `construction-agent` command will idempotently

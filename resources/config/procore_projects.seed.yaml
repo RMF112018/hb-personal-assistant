@@ -1,0 +1,25 @@
+# Procore HB project mapping.
+#
+# Pairs HB project_keys (the same keys the SharePoint/OneDrive source
+# registry uses) to Procore project IDs under HB company 5280.
+#
+# Pydantic enforces unique hb_project_key and unique non-empty
+# procore_project_id. status must be one of pilot | pending | deprecated.
+#
+# Pending rows are intentionally empty — they document that an HB project
+# exists but has not yet been mapped to its Procore counterpart. Live
+# audits skip pending mappings with verdict 'project_not_mapped'.
+
+version: 1
+company_id: "5280"
+
+projects:
+  - hb_project_key: tropical
+    procore_project_id: "23-435-01"
+    procore_project_name: "Tropical"
+    status: pilot
+
+  - hb_project_key: hilltop
+    procore_project_id: ""
+    procore_project_name: ""
+    status: pending

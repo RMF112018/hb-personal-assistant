@@ -1,0 +1,102 @@
+{
+  "$defs": {
+    "ProcoreEndpoint": {
+      "additionalProperties": false,
+      "properties": {
+        "endpoint_id": {
+          "title": "Endpoint Id",
+          "type": "string"
+        },
+        "http_method": {
+          "const": "GET",
+          "title": "Http Method",
+          "type": "string"
+        },
+        "path_template": {
+          "title": "Path Template",
+          "type": "string"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "validated",
+            "sensitive_validated",
+            "excluded",
+            "deferred"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "sensitivity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Sensitivity",
+          "type": "string"
+        },
+        "included_in_phase_01": {
+          "default": true,
+          "title": "Included In Phase 01",
+          "type": "boolean"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "endpoint_id",
+        "http_method",
+        "path_template",
+        "category",
+        "status",
+        "sensitivity"
+      ],
+      "title": "ProcoreEndpoint",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "default": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "company_id": {
+      "title": "Company Id",
+      "type": "string"
+    },
+    "company_display_name": {
+      "title": "Company Display Name",
+      "type": "string"
+    },
+    "endpoints": {
+      "items": {
+        "$ref": "#/$defs/ProcoreEndpoint"
+      },
+      "title": "Endpoints",
+      "type": "array"
+    }
+  },
+  "required": [
+    "company_id",
+    "company_display_name"
+  ],
+  "title": "ProcoreEndpointContract",
+  "type": "object"
+}
