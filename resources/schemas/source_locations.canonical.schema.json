@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canonical Source Location",
+  "type": "object",
+  "required": [
+    "source_id",
+    "source_system",
+    "source_scope",
+    "source_name",
+    "enabled",
+    "read_only"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string"
+    },
+    "source_system": {
+      "enum": [
+        "sharepoint",
+        "onedrive_business",
+        "onedrive_personal",
+        "onedrive_shared_libraries",
+        "procore",
+        "outlook"
+      ]
+    },
+    "source_scope": {
+      "enum": [
+        "sharepoint_project_drive_folder",
+        "sharepoint_site_page",
+        "onedrive_business_root",
+        "onedrive_personal_root",
+        "onedrive_shared_library",
+        "procore_project",
+        "mailbox_deferred"
+      ]
+    },
+    "source_name": {
+      "type": "string"
+    },
+    "project_number": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "project_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tenant_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "site_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "site_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "drive_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "folder_item_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "folder_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "folder_web_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "library_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "list_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "local_sync_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sync_mode": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sync_frequency_minutes": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "baseline_policy": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "folder_policies": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "read_only": {
+      "const": true
+    },
+    "enabled": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}

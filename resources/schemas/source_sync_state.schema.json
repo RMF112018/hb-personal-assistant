@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Source Sync State",
+  "type": "object",
+  "required": [
+    "source_id",
+    "sync_status"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string"
+    },
+    "drive_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "folder_item_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "delta_link_fingerprint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "last_successful_sync_utc": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "last_attempted_sync_utc": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "last_baseline_item_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "last_change_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "sync_status": {
+      "type": "string"
+    },
+    "error_message_redacted": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

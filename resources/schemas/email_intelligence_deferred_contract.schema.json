@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Email Intelligence Deferred Contract",
+  "type": "object",
+  "required": [
+    "mail_read_all_granted",
+    "mail_readwrite_all_granted",
+    "mailbox_writeback_allowed"
+  ],
+  "properties": {
+    "mail_read_all_granted": {
+      "type": "boolean"
+    },
+    "mail_readwrite_all_granted": {
+      "type": "boolean"
+    },
+    "mailbox_writeback_allowed": {
+      "const": false
+    },
+    "future_phase": {
+      "type": "string"
+    },
+    "persist_full_body": {
+      "const": false
+    },
+    "review_required_for_sensitive": {
+      "const": true
+    }
+  },
+  "additionalProperties": false
+}

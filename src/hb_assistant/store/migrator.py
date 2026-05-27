@@ -267,6 +267,198 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v5 = Phase 02 canonical construction-index alignment (additive only;
+    # source: Phase 02 implementation package
+    # resources/sql/phase_02_construction_index_schema_alignment.sql).
+    # Ten new tables modeling the canonical source location / sync state /
+    # drive item / project identity / document card / processing receipt /
+    # sync error / email-intelligence-deferred-state shape. Phase 01
+    # V2/V3/V4 tables remain untouched. SQL CHECKs enforce read-only +
+    # no-mailbox-writeback + no-full-body hard guardrails at the schema
+    # level (defense-in-depth alongside model + adapter guards).
+    V5_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS construction_source_locations (
+          source_id TEXT PRIMARY KEY,
+          source_system TEXT NOT NULL,
+          source_scope TEXT NOT NULL,
+          source_name TEXT NOT NULL,
+          project_key TEXT,
+          project_number TEXT,
+          project_name TEXT,
+          tenant_id TEXT,
+          site_url TEXT,
+          site_id TEXT,
+          drive_id TEXT,
+          folder_item_id TEXT,
+          folder_path TEXT,
+          folder_web_url TEXT,
+          library_name TEXT,
+          list_id TEXT,
+          local_sync_path TEXT,
+          sync_mode TEXT,
+          sync_frequency_minutes INTEGER,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          read_only INTEGER NOT NULL DEFAULT 1 CHECK(read_only = 1),
+          baseline_policy_json TEXT,
+          folder_policies_json TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_source_sync_state (
+          source_id TEXT PRIMARY KEY REFERENCES construction_source_locations(source_id),
+          drive_id TEXT,
+          folder_item_id TEXT,
+          delta_link TEXT,
+          delta_link_fingerprint TEXT,
+          last_successful_sync_utc TEXT,
+          last_attempted_sync_utc TEXT,
+          last_baseline_item_count INTEGER,
+          last_change_count INTEGER,
+          sync_status TEXT NOT NULL DEFAULT 'pending',
+          error_message_redacted TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_source_crawl_runs (
+          run_id TEXT PRIMARY KEY,
+          source_id TEXT NOT NULL REFERENCES construction_source_locations(source_id),
+          source_scope TEXT NOT NULL,
+          mode TEXT NOT NULL,
+          started_at TEXT NOT NULL,
+          completed_at TEXT,
+          pages_seen INTEGER NOT NULL DEFAULT 0,
+          items_seen INTEGER NOT NULL DEFAULT 0,
+          items_in_scope INTEGER NOT NULL DEFAULT 0,
+          items_out_of_scope_filtered INTEGER NOT NULL DEFAULT 0,
+          delta_link_recorded INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL,
+          error_redacted TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_drive_items (
+          source_id TEXT NOT NULL REFERENCES construction_source_locations(source_id),
+          drive_id TEXT NOT NULL,
+          drive_item_id TEXT NOT NULL,
+          parent_drive_item_id TEXT,
+          site_id TEXT,
+          list_id TEXT,
+          list_item_id TEXT,
+          name TEXT,
+          path TEXT,
+          web_url TEXT,
+          is_folder INTEGER NOT NULL DEFAULT 0,
+          is_file INTEGER NOT NULL DEFAULT 0,
+          file_extension TEXT,
+          mime_type TEXT,
+          size_bytes INTEGER,
+          last_modified_datetime TEXT,
+          deleted INTEGER NOT NULL DEFAULT 0,
+          quick_xor_hash TEXT,
+          project_number_detected TEXT,
+          document_type_detected TEXT,
+          indexing_policy TEXT,
+          classification_status TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (source_id, drive_item_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_project_identity (
+          project_key TEXT PRIMARY KEY,
+          hb_project_number TEXT,
+          project_name_raw TEXT,
+          project_name_normalized TEXT,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          procore_project_id TEXT,
+          project_stage TEXT,
+          last_seen_utc TEXT,
+          last_validated_utc TEXT,
+          match_status TEXT,
+          match_confidence TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_project_source_matches (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_key TEXT REFERENCES construction_project_identity(project_key),
+          source_id TEXT REFERENCES construction_source_locations(source_id),
+          match_method TEXT NOT NULL,
+          match_confidence TEXT NOT NULL,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(project_key, source_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_document_cards (
+          card_id TEXT PRIMARY KEY,
+          source_id TEXT NOT NULL,
+          drive_item_id TEXT,
+          project_key TEXT,
+          document_type TEXT,
+          status TEXT NOT NULL DEFAULT 'candidate',
+          confidence REAL,
+          needs_review INTEGER NOT NULL DEFAULT 1,
+          card_path TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_processing_receipts (
+          receipt_id TEXT PRIMARY KEY,
+          source_id TEXT NOT NULL,
+          operation TEXT NOT NULL,
+          status TEXT NOT NULL,
+          generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          detail_json TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_sync_errors (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          source_id TEXT,
+          operation TEXT NOT NULL,
+          error_class TEXT NOT NULL,
+          error_redacted TEXT,
+          occurred_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          resolved_utc TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_email_intelligence_deferred_state (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          mail_read_all_granted INTEGER NOT NULL,
+          mail_readwrite_all_granted INTEGER NOT NULL,
+          mailbox_writeback_allowed INTEGER NOT NULL DEFAULT 0 CHECK(mailbox_writeback_allowed = 0),
+          persist_full_body INTEGER NOT NULL DEFAULT 0 CHECK(persist_full_body = 0),
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        # Helpful indexes for hot paths.
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_source_locations_project
+          ON construction_source_locations(project_key);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_drive_items_project
+          ON construction_drive_items(project_number_detected);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_drive_items_source_modified
+          ON construction_drive_items(source_id, last_modified_datetime);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_project_source_matches_review
+          ON construction_project_source_matches(review_required);
+        """,
+    ]
+
     # v4 = construction-agent Ollama model-decisions audit (metadata only;
     # recommendation-only, controller policy remains authoritative)
     V4_STATEMENTS: list[str] = [
@@ -349,6 +541,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (4, 'v4_construction_model_decisions', ?)",
+                    (now,),
+                )
+
+            # v5 Phase 02 canonical construction-index schema alignment
+            # (additive only; V1-V4 tables untouched).
+            for stmt in self.V5_STATEMENTS:
+                conn.execute(stmt)
+
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 5")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (5, 'v5_construction_canonical_alignment', ?)",
                     (now,),
                 )
 

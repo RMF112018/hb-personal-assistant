@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canonical Drive Item",
+  "type": "object",
+  "required": [
+    "source_id",
+    "drive_item_id",
+    "drive_id"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string"
+    },
+    "drive_id": {
+      "type": "string"
+    },
+    "drive_item_id": {
+      "type": "string"
+    },
+    "parent_drive_item_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "site_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "list_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "list_item_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "web_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "is_folder": {
+      "type": "boolean"
+    },
+    "is_file": {
+      "type": "boolean"
+    },
+    "file_extension": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "mime_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "size_bytes": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "last_modified_datetime": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "deleted": {
+      "type": "boolean"
+    },
+    "quick_xor_hash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "project_number_detected": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "document_type_detected": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "indexing_policy": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "classification_status": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

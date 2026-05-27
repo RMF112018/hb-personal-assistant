@@ -1,0 +1,307 @@
+================================================================================
+Phase 02 — Prompt 02 — Canonical SQLite Schema and Adapters
+================================================================================
+
+1. Summary
+----------
+
+Lands the Phase 02 canonical construction-index SQLite schema as a single V5
+migration (additive only — V1-V4 tables remain untouched) plus a matching
+Python adapter layer on `ConstructionStore`. The compatibility bridge installed
+by Prompt 01 at the model layer now extends into SQLite: callers can write
+canonical source_id-keyed records into the new tables while the legacy
+source_key plumbing in V2-V4 keeps serving the unmigrated downstream code.
+
+Ten new tables:
+
+  - construction_source_locations              (canonical replacement for V2
+                                                construction_source_resolutions)
+  - construction_source_sync_state             (canonical replacement for V2
+                                                construction_delta_tokens)
+  - construction_source_crawl_runs             (canonical replacement for V2
+                                                construction_crawl_receipts)
+  - construction_drive_items                   (canonical replacement for V2
+                                                construction_drive_item_inventory,
+                                                enriched with project_number_detected,
+                                                document_type_detected,
+                                                indexing_policy, classification_status)
+  - construction_project_identity              (new — project master)
+  - construction_project_source_matches        (new — n:n project↔source binding)
+  - construction_document_cards                (new — document discovery workflow)
+  - construction_processing_receipts           (new — operation audit log,
+                                                distinct from crawl receipts)
+  - construction_sync_errors                   (new — error history)
+  - construction_email_intelligence_deferred_state
+                                               (new — singleton permissions guard;
+                                                hard CHECKs lock mailbox writeback
+                                                and full-body persistence to 0)
+
+Four supporting indexes on hot paths (project_key, project_number_detected,
+(source_id, last_modified_datetime), review_required).
+
+Adapter coverage on `ConstructionStore` (defense-in-depth alongside SQL CHECKs):
+
+  - upsert_source_location raises if read_only is anything but True.
+  - set_email_intelligence_deferred_state raises if mailbox_writeback_allowed
+    or persist_full_body is True.
+  - All boolean fields normalized 1/0 ↔ True/False at the adapter boundary.
+  - JSON columns (baseline_policy_json, folder_policies_json, detail_json)
+    accept dicts in / return dicts out via json.dumps/loads with sort_keys=True.
+
+No CLI surface change. No data migration from V2 inventory rows into the
+canonical drive_items table — that lands in a later prompt once downstream
+callers (graph resolver, manifests, classifier, fixtures) move off Phase 01
+source_key plumbing.
+
+2. Repo HEAD — Before / After
+------------------------------
+
+Branch:                main
+HEAD before:           6fc77e43b5f4fd602a98646b630cf2f9316e6c43
+                       ("feat(construction-agent): align source registry
+                         with phase 02 canonical schema")
+HEAD after:            (recorded after commit)
+Working tree before:   clean
+
+3. Files Changed
+----------------
+
+Modified (3):
+
+  - src/hb_assistant/store/migrator.py
+        +204 lines. New V5_STATEMENTS list (10 CREATE TABLE IF NOT EXISTS +
+        4 CREATE INDEX IF NOT EXISTS), V5 apply() block matching the V2/V3/V4
+        pattern, idempotent via INSERT OR IGNORE INTO schema_migrations.
+  - src/hb_assistant/construction/store/repositories.py
+        +793 / -6 lines. Added `json` import and 22 adapter methods on
+        ConstructionStore. Pattern: upsert + getter (+ optional list) per
+        resource-style table; insert + list per append-only table; singleton
+        getter/setter for email_intelligence_deferred_state.
+  - tests/test_construction_store_repositories.py
+        +457 / -5 lines. 8 → 30 tests. New coverage for V5 migration
+        idempotency, additivity vs V2-V4, all 10 canonical tables, CRUD
+        round-trips, JSON column parsing, SQL CHECK enforcement for read_only,
+        mailbox_writeback_allowed, persist_full_body, and singleton id=1.
+
+Created (7):
+
+  - docs/evidence/construction-intelligence-phase-02/02-canonical-sqlite-schema-and-adapters.txt
+        (this file)
+  - resources/schemas/drive_items.canonical.schema.json
+  - resources/schemas/email_intelligence_deferred_contract.schema.json
+  - resources/schemas/procore_project_mapping.schema.json
+  - resources/schemas/source_locations.canonical.schema.json
+  - resources/schemas/source_sync_state.schema.json
+  - resources/schemas/sync_receipt.phase02.schema.json
+
+Six canonical JSON schemas mirrored verbatim from
+`/Downloads/HB_Construction_Intelligence_Phase_02_Implementation_Package/resources/schemas/`.
+Documentation artifacts only; no code reads them at runtime. The Pydantic-
+generated `source_locations.schema.json` from Prompt 01 was NOT overwritten;
+the canonical mirror lives alongside under the `.canonical.` filename suffix.
+
+4. Governance Attestation
+-------------------------
+
+  - CLAUDE.md §5 (Obsidian Vault Planning and Implementation Package
+    Governance): read and honored. Package SQL consulted as guidance only;
+    no payloads copied under docs/plans/**.
+  - .grok/skills/vault-package-governance/SKILL.md: honored.
+  - Phase 01 evidence carried forward as authoritative context.
+  - Phase 02 package files (Prompt_02 spec,
+    phase_02_construction_index_schema_alignment.sql, JSON schemas): read.
+  - docs/evidence/** remains evidence-only.
+
+5. Validation Commands and Outputs
+-----------------------------------
+
+All commands executed from /Users/bobbyfetting/hb-personal-assistant on
+2026-05-27.
+
+5.1 git status --short (before commit)
+
+   M src/hb_assistant/construction/store/repositories.py
+   M src/hb_assistant/store/migrator.py
+   M tests/test_construction_store_repositories.py
+  ?? resources/schemas/drive_items.canonical.schema.json
+  ?? resources/schemas/email_intelligence_deferred_contract.schema.json
+  ?? resources/schemas/procore_project_mapping.schema.json
+  ?? resources/schemas/source_locations.canonical.schema.json
+  ?? resources/schemas/source_sync_state.schema.json
+  ?? resources/schemas/sync_receipt.phase02.schema.json
+
+5.2 git diff --stat
+
+  src/hb_assistant/construction/store/repositories.py | 799 ++++++++++++++++++-
+  src/hb_assistant/store/migrator.py                  | 204 +++++
+  tests/test_construction_store_repositories.py       | 462 ++++++++++-
+  3 files changed, 1459 insertions(+), 6 deletions(-)
+
+5.3 python -m pytest tests/test_construction_*.py tests/test_procore_*.py tests/test_store_links.py
+
+  299 passed in 4.54s
+
+  (268 prior from Prompt 01 + 22 new repository tests + 9 test_store_links
+   tests that always ran — net +31 vs Prompt 01 baseline.)
+
+5.4 ruff check src/hb_assistant/construction/ src/hb_assistant/procore/
+                src/hb_assistant/cli/construction.py src/hb_assistant/cli/procore.py
+                src/hb_assistant/store/migrator.py
+
+  All checks passed!
+
+5.5 python -c "from hb_assistant.store.migrator import SQLiteMigrator;
+                m=SQLiteMigrator(); print(m.apply(), m.apply())"
+
+  5 5
+
+5.6 hb-assistant construction-agent validate --json
+
+  {
+    "checks": [
+      {"name": "schema",          "ok": true, "detail": "schema_version=5"},
+      {"name": "source_registry", "ok": true, "detail": "6 projects, 14 sources"},
+      {"name": "review_rules",    "ok": true, "detail": "version=1; 12 rules; threshold=0.7"},
+      {"name": "model_routing",   "ok": true, "detail": "version=1; default_model=llama3.2:1b"}
+    ],
+    "summary": {"total": 4, "passed": 4, "failed": 0, "ok": true}
+  }
+
+5.7 hb-assistant construction-agent sources validate --json (summary)
+
+  {"project_count": 6, "source_count": 14, "resolved_count": 0,
+   "pending_count": 9, "deprecated_count": 0, "ok": true, "blocking": false}
+
+5.8 hb-assistant construction-agent index status --json (summary)
+
+  schema_version: 5
+  project_count: 6
+  source_count: 14
+
+5.9 hb-assistant procore mapping validate --json (unchanged)
+
+  ok: False
+  by_status: {'pilot': 1, 'pending': 1}
+  exit=1 (by design — hilltop pending in separate procore seed)
+
+5.10 hb-assistant construction-agent graph auth status --json
+
+  token_type: none
+  (non-interactive shell; no MSAL token cached)
+
+5.11 hb-assistant construction-agent graph sources resolve --json
+
+  status: auth_required
+  targets: 14
+  exit: 0 (structured payload; no MSAL hang)
+
+6. Adapter Coverage Matrix
+--------------------------
+
+  Table                                          Methods                                          Tests
+  ----------------------------------------------------------------------------------------------------
+  construction_source_locations                  upsert_source_location                          test_upsert_source_location_roundtrip
+                                                 get_source_location                             test_upsert_source_location_rejects_read_only_false
+                                                 list_source_locations                           test_source_location_read_only_check_constraint_at_sql_level
+                                                                                                 test_upsert_source_location_is_idempotent_and_updates_in_place
+  construction_source_sync_state                 upsert_source_sync_state                        test_upsert_source_sync_state_roundtrip
+                                                 get_source_sync_state
+  construction_source_crawl_runs                 insert_source_crawl_run                         test_insert_and_list_source_crawl_runs
+                                                 list_source_crawl_runs
+  construction_drive_items                       upsert_drive_item                               test_upsert_drive_item_roundtrip_and_soft_delete
+                                                 get_drive_item                                  test_no_body_or_text_columns_in_drive_items
+  construction_project_identity                  upsert_project_identity                         test_upsert_project_identity_roundtrip
+                                                 get_project_identity
+  construction_project_source_matches            upsert_project_source_match                     test_upsert_project_source_match_unique_constraint
+                                                 list_project_source_matches
+  construction_document_cards                    upsert_document_card                            test_upsert_document_card_roundtrip
+                                                 get_document_card
+  construction_processing_receipts               insert_processing_receipt                       test_insert_and_list_processing_receipts
+                                                 list_processing_receipts
+  construction_sync_errors                       insert_sync_error                               test_insert_sync_error_and_resolve
+                                                 resolve_sync_error
+                                                 list_sync_errors
+  construction_email_intelligence_deferred_state set_email_intelligence_deferred_state           test_email_intelligence_deferred_state_singleton_constraint
+                                                 get_email_intelligence_deferred_state           test_email_intelligence_deferred_state_rejects_mailbox_writeback_true
+                                                                                                 test_email_intelligence_deferred_state_rejects_persist_full_body_true
+                                                                                                 test_email_intelligence_deferred_state_sql_level_rejects_mailbox_writeback
+                                                                                                 test_email_intelligence_deferred_state_sql_level_rejects_persist_full_body
+  (migration-level)                              (none)                                          test_store_init_applies_v5_migration
+                                                                                                 test_v5_migration_creates_all_canonical_tables
+                                                                                                 test_v5_migration_is_additive_v2_v3_v4_intact
+                                                                                                 test_v5_migration_is_idempotent
+
+7. Guardrail Attestation
+------------------------
+
+  - External systems remain read-only. The new
+    construction_source_locations.read_only column is CHECK(read_only = 1) at
+    the schema level, blocked at the adapter level, and was never relaxed
+    from Prompt 01's `SourceLocation.read_only: Literal[True]`.
+  - No source-document copies into Obsidian. The canonical
+    construction_drive_items table has no body / content / text / excerpt /
+    full_text columns — verified by test_no_body_or_text_columns_in_drive_items.
+  - No full-document text in vault notes. The
+    construction_email_intelligence_deferred_state.persist_full_body column
+    is CHECK = 0 and rejected by the adapter.
+  - No deletion / movement / overwrite / rename of source files. All adapters
+    insert or upsert; the only delete operation is the soft-delete deleted=1
+    toggle on construction_drive_items, which mutates the index row, not the
+    source file.
+  - No production webhooks.
+  - No company-wide rollout.
+  - Sensitive records route to review. The
+    construction_project_source_matches.review_required boolean and the
+    construction_document_cards.needs_review boolean (default 1) carry the
+    routing signal.
+  - Models execute no file operations and never override controller
+    validation. The canonical schema offers no path for either.
+  - Mail.ReadWrite.All read-only enforcement: the
+    construction_email_intelligence_deferred_state.mailbox_writeback_allowed
+    column is CHECK = 0 and rejected by the adapter. Adapter-level error
+    message: "mailbox_writeback_allowed must be False — Phase 02 mailbox
+    stays read-only even when Mail.ReadWrite.All is granted".
+
+  Stop conditions honored:
+    - No column collisions with V1-V4 tables (all new table names).
+    - No external-system writeback path introduced.
+    - No mailbox mutation path.
+
+8. Blocked Live / External Validation
+-------------------------------------
+
+  - Graph: graph auth status returns token_type=none; graph sources resolve
+    returns structured auth_required with no MSAL hang in the non-interactive
+    shell. No live SharePoint or OneDrive contact.
+  - Procore: still OAuth-stubbed; mapping validate runs against the separate
+    procore_projects.seed.yaml (hilltop still pending; exit 1 by design).
+  - Ollama: not touched this prompt.
+
+9. Phase 02 Acceptance Progress
+-------------------------------
+
+  The Phase 02 canonical schema is now landed. Per the package's operating
+  model (rebaseline → correct source registry → align SQLite tables → ...),
+  this prompt closes the "align SQLite" step. Downstream code migration
+  still pending:
+
+    - Phase 01 source_key plumbing in graph resolver, delta crawler,
+      manifests, vault writer, classifier, CLI, fixtures — still active.
+    - Data migration from V2 construction_drive_item_inventory into V5
+      construction_drive_items — not attempted (no caller wires that yet).
+    - Auto-populate construction_source_locations from the source registry
+      seed at startup — not attempted; later prompt.
+    - Procore mapping rewrite onto construction_project_identity — separate
+      prompt.
+
+10. Next Prompt Readiness
+-------------------------
+
+  - Repo at expected baseline (HEAD 6fc77e4).
+  - Working tree changes captured in §3.
+  - 299/299 scoped tests pass; ruff clean; migrator idempotent at v5.
+  - All Phase 02 hard guardrails enforced at SQL CHECK + adapter level.
+  - Canonical schema documented under resources/schemas/.
+  - CLI surface unchanged; schema_version reads 5 automatically.
+
+  Status: ready for Phase 02 — Prompt 03.

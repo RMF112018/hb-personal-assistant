@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Procore Project Mapping",
+  "type": "object",
+  "required": [
+    "hb_project_key",
+    "company_id",
+    "status"
+  ],
+  "properties": {
+    "hb_project_key": {
+      "type": "string"
+    },
+    "hb_project_number": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "project_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "company_id": {
+      "type": "string"
+    },
+    "procore_project_id": {
+      "type": "string",
+      "not": {
+        "pattern": "^[0-9]{2}-[0-9]{3}-[0-9]{2}$"
+      }
+    },
+    "status": {
+      "enum": [
+        "pilot",
+        "pilot_candidate",
+        "pending",
+        "deprecated"
+      ]
+    }
+  },
+  "additionalProperties": false
+}
