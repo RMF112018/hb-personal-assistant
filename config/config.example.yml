@@ -4,7 +4,7 @@ project:
 identity:
   tenant_id: "0e834bd7-628b-42c8-b9ec-ecebc9719be4"
   client_id: "08c399eb-a394-4087-b859-659d493f8dc7"
-  delegated_scopes: ["User.Read", "Mail.Read", "Calendars.Read", "Files.Read.All", "offline_access"]
+  delegated_scopes: ["User.Read", "Mail.Read", "Calendars.ReadWrite.Shared", "Files.ReadWrite.All", "offline_access"]
 paths:
   application_support_root: "~/Library/Application Support/HB Personal Assistant"
   obsidian_vault: "/Users/bobbyfetting/Documents/Obsidian Vault"

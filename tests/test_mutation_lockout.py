@@ -197,6 +197,51 @@ def test_identity_default_scopes_do_not_request_mailbox_write_scopes() -> None:
     assert "Mail.Read" in identity.delegated_scopes
 
 
+def test_identity_default_scopes_match_granted_app_registration_scopes() -> None:
+    """Pin the runtime delegated scope set to exactly what the HB SharePoint
+    Creator app registration has admin-consented in Azure AD.
+
+    Calendars.ReadWrite.Shared and Files.ReadWrite.All replace the original
+    Calendars.Read / Files.Read.All requests, which blocked device-code login
+    because neither read-only scope was admin-consented in the target tenant
+    (0e834bd7-628b-42c8-b9ec-ecebc9719be4). The broader scopes are requested
+    but controller guardrails still prohibit any source-system mutation."""
+    from hb_assistant.config.models import IdentityConfig
+
+    identity = IdentityConfig()
+    expected = [
+        "User.Read",
+        "Mail.Read",
+        "Calendars.ReadWrite.Shared",
+        "Files.ReadWrite.All",
+        "offline_access",
+    ]
+    for scope in expected:
+        assert scope in identity.delegated_scopes, (
+            f"IdentityConfig.delegated_scopes default missing required "
+            f"{scope!r}; expected runtime set: {expected!r}"
+        )
+
+    # Old read-only scope strings must NOT reappear: they trigger the
+    # admin-approval blocker because the tenant only admin-consented the
+    # ReadWrite variants.
+    forbidden_old_read_scopes = ("Calendars.Read", "Files.Read.All")
+    for scope in forbidden_old_read_scopes:
+        assert scope not in identity.delegated_scopes, (
+            f"IdentityConfig.delegated_scopes default unexpectedly contains "
+            f"the previously-blocking read-only scope {scope!r}"
+        )
+
+    # `.default` must never appear in the delegated runtime scope list. The
+    # AppOnlyAuthProvider (cert flow) uses '.default' separately; the
+    # delegated path must request named scopes only.
+    for scope in identity.delegated_scopes:
+        assert ".default" not in scope, (
+            f"IdentityConfig.delegated_scopes default unexpectedly contains "
+            f"'.default' literal in {scope!r}"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Phase 02 Prompt 10: mailbox-mutation-endpoint static scan
 # ---------------------------------------------------------------------------

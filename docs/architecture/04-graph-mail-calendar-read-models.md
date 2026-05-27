@@ -49,7 +49,7 @@ flowchart TD
 
 ## Scope Requirements
 
-Full success requires the delegated scopes from Phase 3 proof (User.Read, Mail.Read, Calendars.Read, Files.Read.All, offline_access). 403 paths are handled gracefully with clear notes referencing the "granted during dev" assumption.
+Full success requires the delegated scopes from Phase 3 proof (User.Read, Mail.Read, Calendars.ReadWrite.Shared, Files.ReadWrite.All, offline_access). Broader Calendars/Files write scopes are requested to match the app registration's admin-consented permissions; mailbox writeback and source-system mutation remain prohibited by controller policy. 403 paths are handled gracefully with clear notes referencing the "granted during dev" assumption.
 
 ## Integration Points
 

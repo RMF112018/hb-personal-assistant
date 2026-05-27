@@ -23,8 +23,8 @@ class IdentityConfig(BaseModel):
         default_factory=lambda: [
             "User.Read",
             "Mail.Read",
-            "Calendars.Read",
-            "Files.Read.All",
+            "Calendars.ReadWrite.Shared",
+            "Files.ReadWrite.All",
             "offline_access",
         ]
     )

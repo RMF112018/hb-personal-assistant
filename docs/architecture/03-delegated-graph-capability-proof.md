@@ -45,8 +45,8 @@ The following delegated scopes are required on the app registration for a comple
 
 - `User.Read`
 - `Mail.Read`
-- `Calendars.Read`
-- `Files.Read.All`
+- `Calendars.ReadWrite.Shared`
+- `Files.ReadWrite.All`
 - `offline_access`
 
 (See `src/hb_assistant/config/models.py` defaults and the proof script's `REQUIRED_DELEGATED_SCOPES`.)

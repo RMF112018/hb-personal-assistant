@@ -344,7 +344,7 @@ def calendar_sample(
     prov = DelegatedAuthProvider(cfg.identity.tenant_id, cfg.identity.client_id, cfg.identity.delegated_scopes, path_policy=pp)
 
     def token_getter(scopes=None):
-        return prov.get_token(scopes or ["Calendars.Read", "User.Read"])
+        return prov.get_token(scopes or ["Calendars.ReadWrite.Shared", "User.Read"])
 
     client = GraphHttpClient(token_getter)
     cal = CalendarClient(client, cfg)

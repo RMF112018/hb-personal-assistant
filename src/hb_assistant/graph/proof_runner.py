@@ -164,7 +164,7 @@ def run_delegated_graph_proof(*, safe: bool = True, repo: str = ".") -> dict[str
         items = cal.get("value", [])
         add_step("calendar_view", "/me/calendarView", "pass", {"count": len(items)})
     except GraphHttpError as exc:
-        add_step("calendar_view", "/me/calendarView", "gap", {"graph_status": exc.status, "error": exc.message, "remediation": "Verify Calendars.Read delegated permission."})
+        add_step("calendar_view", "/me/calendarView", "gap", {"graph_status": exc.status, "error": exc.message, "remediation": "Verify Calendars.ReadWrite.Shared delegated permission."})
 
     # 6 attachment metadata
     if attachment_message_id:
@@ -186,7 +186,7 @@ def run_delegated_graph_proof(*, safe: bool = True, repo: str = ".") -> dict[str
             drive_item_id = items[0].get("id")
         add_step("drive_metadata", "/me/drive/root,/me/drive/recent", "pass", {"root_id_present": bool(root.get("id")), "recent_count": len(items)})
     except GraphHttpError as exc:
-        add_step("drive_metadata", "/me/drive/root,/me/drive/recent", "gap", {"graph_status": exc.status, "error": exc.message, "remediation": "Verify Files.Read.All delegated permission."})
+        add_step("drive_metadata", "/me/drive/root,/me/drive/recent", "gap", {"graph_status": exc.status, "error": exc.message, "remediation": "Verify Files.ReadWrite.All delegated permission."})
 
     # 8 controlled small-file download proof
     if drive_item_id:
