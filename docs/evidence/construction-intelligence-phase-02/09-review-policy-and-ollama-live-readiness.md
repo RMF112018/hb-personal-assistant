@@ -13,7 +13,7 @@ The readiness module is statically guarded: a parametrized scan asserts the sour
 ## Repo HEAD
 
 - Before: `6bf4bc5` (Phase 02 Prompt 08 closeout)
-- After: `<filled in by commit step>`
+- After: `a72a728197d95971d4a1027160381491cbc9c738`
 
 ## Files changed
 
