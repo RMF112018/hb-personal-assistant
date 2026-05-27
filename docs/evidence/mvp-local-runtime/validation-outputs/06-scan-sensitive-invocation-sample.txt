@@ -1,0 +1,684 @@
+=== P06 Sensitive Scan Invocation (covering evidence dir via --repo) ===
+Wed May 27 04:53:39 EDT 2026
+Command: hb-assistant diagnostics scan-sensitive --repo /Users/bobbyfetting/hb-personal-assistant --json (output sampled)
+
+{
+  "implemented": true,
+  "phase": 12,
+  "repo": "/Users/bobbyfetting/hb-personal-assistant",
+  "scanned_paths": [
+    "~/hb-personal-assistant",
+    "~/Library/Application Support/HB Personal Assistant",
+    "~/Library/Application Support/HB Personal Assistant/evidence"
+  ],
+  "findings": [
+    {
+      "category": "msal_cache_content",
+      "path": "pyproject.toml",
+      "line": 33,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "env_secret_assignment",
+      "path": "tests/test_obsidian_writer.py",
+      "line": 153,
+      "severity": "high",
+      "rule_id": "SEC-ENV-001",
+      "hint": ".env-style secret assignment"
+    },
+    {
+      "category": "env_secret_assignment",
+      "path": "tests/test_retrieval.py",
+      "line": 98,
+      "severity": "high",
+      "rule_id": "SEC-ENV-001",
+      "hint": ".env-style secret assignment"
+    },
+    {
+      "category": "client_secret_assignment",
+      "path": "tests/test_sensitive_scan_cli.py",
+      "line": 21,
+      "severity": "critical",
+      "rule_id": "SEC-TOK-003",
+      "hint": "Client secret assignment"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "tests/test_auth.py",
+      "line": 54,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "tests/test_auth.py",
+      "line": 56,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "tests/test_auth.py",
+      "line": 76,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "tests/test_auth.py",
+      "line": 87,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "tests/test_auth.py",
+      "line": 98,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "tests/test_auth.py",
+      "line": 134,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "tests/test_auth.py",
+      "line": 153,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "tests/test_auth.py",
+      "line": 188,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "tests/test_auth.py",
+      "line": 208,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "env_secret_assignment",
+      "path": "tests/test_body_mentions.py",
+      "line": 98,
+      "severity": "high",
+      "rule_id": "SEC-ENV-001",
+      "hint": ".env-style secret assignment"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "tests/test_automation.py",
+      "line": 164,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "client_secret_assignment",
+      "path": "tests/test_sensitive_scan.py",
+      "line": 24,
+      "severity": "critical",
+      "rule_id": "SEC-TOK-003",
+      "hint": "Client secret assignment"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "tests/test_mutation_lockout.py",
+      "line": 76,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "env_secret_assignment",
+      "path": "tests/test_file_ingestion.py",
+      "line": 227,
+      "severity": "high",
+      "rule_id": "SEC-ENV-001",
+      "hint": ".env-style secret assignment"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/prompt-execution-log.md",
+      "line": 125,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-cli-status-schema.json",
+      "line": 11,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-cli-status-schema.json",
+      "line": 12,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-cli-status-schema.json",
+      "line": 20,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-3-commit-message.txt",
+      "line": 8,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-auth-facts.json",
+      "line": 5,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-auth-facts.json",
+      "line": 8,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-auth-facts.json",
+      "line": 9,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-0-auth-readiness.json",
+      "line": 27,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-0-sensitive-scan.json",
+      "line": 7,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-0-sensitive-scan.json",
+      "line": 17,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-sensitive-scan.json",
+      "line": 5,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-sensitive-scan.json",
+      "line": 8,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-0-env-facts.json",
+      "line": 10,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-0-env-facts.json",
+      "line": 40,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-0-env-facts.json",
+      "line": 42,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-13-closure-proof.json",
+      "line": 96,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-13-closure-proof.json",
+      "line": 147,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-commit-message.txt",
+      "line": 3,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-commit-message.txt",
+      "line": 4,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/decisions/D-P14-011-Blocker-Taxonomy.md",
+      "line": 24,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/architecture/02-auth-provider-and-token-cache.md",
+      "line": 8,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/architecture/02-auth-provider-and-token-cache.md",
+      "line": 20,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/architecture/02-auth-provider-and-token-cache.md",
+      "line": 22,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/architecture/02-auth-provider-and-token-cache.md",
+      "line": 23,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/architecture/02-auth-provider-and-token-cache.md",
+      "line": 74,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/architecture/02-auth-provider-and-token-cache.md",
+      "line": 80,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/architecture/02-auth-provider-and-token-cache.md",
+      "line": 84,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/architecture/01-scaffold-overview.md",
+      "line": 55,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/architecture/remediation-bounded-content-sensitive-scan.md",
+      "line": 23,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 219,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 231,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 242,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 253,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 283,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 295,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 309,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 312,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 441,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 444,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 563,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 574,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 580,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-4-validation-outputs/02-ruff.txt",
+      "line": 656,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/mvp-local-runtime/06-local-runtime-evidence-harness.md",
+      "line": 97,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/mvp-local-runtime/00-repo-truth.md",
+      "line": 36,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/05-smoke.txt",
+      "line": 5,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/01-pytest.txt",
+      "line": 5,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/01-pytest.txt",
+      "line": 7,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/01-pytest.txt",
+      "line": 22,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/01-pytest.txt",
+      "line": 23,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/01-pytest.txt",
+      "line": 25,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/01-pytest.txt",
+      "line": 27,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/02-ruff.txt",
+      "line": 39,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/02-ruff.txt",
+      "line": 51,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/02-ruff.txt",
+      "line": 62,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/02-ruff.txt",
+      "line": 73,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/02-ruff.txt",
+      "line": 103,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/02-ruff.txt",
+      "line": 115,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/02-ruff.txt",
+      "line": 129,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/02-ruff.txt",
+      "line": 132,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/02-ruff.txt",
+      "line": 261,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/02-ruff.txt",
+      "line": 264,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/02-ruff.txt",
+      "line": 383,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-outputs/02-ruff.txt",
+      "line": 394,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "docs/evidence/phase-2-validation-o
+
+=== (truncated sample; full harness run output captured in outputs/scan-sensitive.json) ===
+=== End scan invocation sample ===

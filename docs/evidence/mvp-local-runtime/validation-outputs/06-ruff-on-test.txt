@@ -1,0 +1,7 @@
+=== P06 Ruff hygiene on NEW test file ONLY ===
+Wed May 27 04:54:37 EDT 2026
+File: /Users/bobbyfetting/hb-personal-assistant/tests/test_mvp_local_runtime_evidence.py
+
+[1;32mAll checks passed![0m
+
+=== ruff exit code: 0 (0 = clean) ===

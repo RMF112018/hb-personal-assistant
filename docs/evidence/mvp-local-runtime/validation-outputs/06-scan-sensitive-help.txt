@@ -1,0 +1,15 @@
+=== hb-assistant diagnostics scan-sensitive --help (full) ===
+Wed May 27 04:52:29 EDT 2026
+                                                                                
+ Usage: hb-assistant diagnostics scan-sensitive [OPTIONS]                       
+                                                                                
+ Bounded sensitive scan (Phase 12), content-aware and redacted.                 
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --repo        TEXT  [default: .]                                             │
+│ --json                                                                       │
+│ --help              Show this message and exit.                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+=== End help ===

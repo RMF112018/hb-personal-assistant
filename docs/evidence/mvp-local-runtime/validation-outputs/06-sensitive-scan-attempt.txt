@@ -1,0 +1,58 @@
+=== P06 Sensitive Scan CLI Discovery & Run Attempt (evidence dir ONLY) ===
+Wed May 27 04:52:20 EDT 2026
+Target evidence dir: /Users/bobbyfetting/hb-personal-assistant/docs/evidence/mvp-local-runtime
+
+=== Python entry points for hb* console_scripts ===
+  hb-assistant -> hb_assistant.cli.main:cli
+--- done entry points ---
+
+=== hb-assistant --help (first 40 lines) ===
+                                                                                
+ Usage: hb-assistant [OPTIONS] COMMAND [ARGS]...                                
+                                                                                
+ HB Personal Assistant + Work Product Intelligence System (local-first MVP)     
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --version             -V        Show version and exit.                       │
+│ --install-completion            Install completion for the current shell.    │
+│ --show-completion               Show completion for the current shell, to    │
+│                                 copy it or customize the installation.       │
+│ --help                          Show this message and exit.                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ vault                                                                        │
+│ sync                                                                         │
+│ brief                                                                        │
+│ auth         Authentication commands (delegated default; app-only            │
+│              proof/admin flow).                                              │
+│ diagnostics  Safe diagnostics and proof commands (read-only).                │
+│ files        Selective file/attachment ingestion (relevance, eligibility,    │
+│              approval, bounded parse). Dry-run safe.                         │
+│ actions      Action intelligence (local deterministic extraction +           │
+│              source-linked provenance). Dry-run safe by design.              │
+│ search       Retrieval & search (deterministic + gated semantic over         │
+│              redacted excerpts). Dry-run safe.                               │
+│ run          Run workflows (morning orchestrator and related runtime         │
+│              commands).                                                      │
+│ automation   Launchd automation (install/uninstall/kickstart user            │
+│              LaunchAgent for morning run). Dry-run safe.                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+=== hb --help (first 40 lines) ===
+zsh:23: command not found: hb
+
+=== python -m hb_assistant --help (first 30) ===
+/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python: No module named hb_assistant.__main__; 'hb_assistant' is a package and cannot be directly executed
+
+=== Attempt: hb-assistant diagnostics scan-sensitive on evidence dir (limited output) ===
+Usage: hb-assistant diagnostics scan-sensitive [OPTIONS]
+Try 'hb-assistant diagnostics scan-sensitive --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such option '--path'.                                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+=== Attempt: hb diagnostics scan-sensitive (alt) ===
+zsh:32: command not found: hb
+
+=== End discovery/attempt ===

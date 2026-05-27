@@ -1,0 +1,50 @@
+=== P06 Verification Git State Capture ===
+Wed May 27 04:51:49 EDT 2026
+Workspace: /Users/bobbyfetting/hb-personal-assistant
+
+=== git remote -v ===
+origin	https://github.com/RMF112018/hb-personal-assistant.git (fetch)
+origin	https://github.com/RMF112018/hb-personal-assistant.git (push)
+
+=== git branch --show-current ===
+main
+
+=== git rev-parse HEAD ===
+840bc1bed2dc7643214f256673c904ff678c0a99
+
+=== git log --oneline -20 ===
+840bc1b chore(workspace): add CLAUDE.md behavioral guidelines for coding agents
+b4f7ab9 docs(evidence): refresh delegated graph proof blocked summary
+f6bcffc docs(evidence): vault package migration Prompt 00 repo-truth and classification
+f9f7b72 chore(validation): apply and commit safe ruff fixes from P05 target scope tightening (post-verifier resolution)
+7a726ea chore(validation): resolve P05 verifier feedback - raw outputs + effective target test narrowing
+2ac09bb chore(validation): tighten MVP runtime lint and type scope
+feb4e3a docs(plans): add Phase 15 MVP local runtime hardening package for hb-personal-assistant v1.3.0
+7ba06a1 feat(context): include body mentions in workstream context
+a818dad feat(obsidian): prove written-to-note provenance on apply
+05eb4fe docs(runtime): clarify and prove dry-run mutation policy
+318d55f fix(mvp-runtime): ensure morning run invokes action extraction service
+48eba1d docs(evidence): Phase 15 Prompt 00 repo-truth revalidation
+9e0f352 docs(evidence): consolidate phase-14 remediation and prompt evidence updates
+baac7b5 feat(run): orchestrate full local morning workflow
+ed21a36 feat(actions): derive work items from bounded source signals
+78bae9a feat(store): add idempotent action persistence
+6776b2d feat(actions): add source-linked action extraction
+9a08fa4 docs(evidence): correct delegated proof blocker taxonomy
+6f2a3dd docs(plans): add Phase 14 workstream intelligence package for hb-personal-assistant v1.3.0
+7b36a94 chore(evidence): update to external tenant/admin-consent blocker after scope fix
+
+=== git status --short ===
+ M docs/plans/ph-15-MVP-Local-Runtime-Hardening/09_Source_Truth_Checklists.md
+?? docs/evidence/mvp-local-runtime/06-local-runtime-evidence-harness.md
+?? docs/evidence/mvp-local-runtime/outputs/06-harness-success.marker
+?? docs/evidence/mvp-local-runtime/outputs/actions-extract-dry-run.json
+?? docs/evidence/mvp-local-runtime/outputs/actions-list.json
+?? docs/evidence/mvp-local-runtime/outputs/idempotency-proof.json
+?? docs/evidence/mvp-local-runtime/outputs/obsidian-marker-proof.json
+?? docs/evidence/mvp-local-runtime/outputs/run-morning-dry-run.json
+?? docs/evidence/mvp-local-runtime/outputs/scan-sensitive.json
+?? docs/evidence/mvp-local-runtime/validation-outputs/
+?? tests/test_mvp_local_runtime_evidence.py
+
+=== End Capture ===
