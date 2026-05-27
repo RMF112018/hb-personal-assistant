@@ -63,3 +63,19 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+## 5. Obsidian Vault Planning and Implementation Package Governance
+
+- Vault root: `/Users/bobbyfetting/Documents/Obsidian Vault/Work/HB Personal Assistant/`
+- Repo root: `/Users/bobbyfetting/hb-personal-assistant`
+- Source-of-truth rule: Repository code, tests, runtime behavior, and repo evidence are authoritative over planning notes.
+- Package lifecycle states: `Active`, `Closed`, `Deferred`, `Superseded`.
+- Preflight rule: Before modifying or removing package sources, verify migration prerequisites, manifest status, and registry coverage.
+- Migration verification rule: Package migration is valid only when manifest coverage, payload counts, and pre-metadata hash verification pass; post-metadata changes must be declared.
+- Closure-note rule: Any `Closed` package must have `CLOSURE_NOTE.md` or be explicitly marked pending closeout.
+- Registry update rule: Lifecycle changes must be reflected in `09_Implementation_Packages/Package Registry.md` and related migration manifests.
+- Deferred scope rule: Deferred external blockers may be documented without reclassifying evidence bundles as lifecycle packages.
+- Conflict rule: If vault package instructions conflict with repo truth, stop and report conflict before patching.
+- Evidence rule: `docs/evidence/**` stays in repo and is referenced; evidence bundles are not lifecycle-classified implementation packages.
+- No-secret rule: Never copy credentials, tokens, or sensitive runtime material into governance notes.
+- No-plugin rule: Governance instructions must remain usable without Obsidian plugin dependencies.

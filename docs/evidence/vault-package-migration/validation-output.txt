@@ -1,0 +1,50 @@
+Prompt 07 Validation Output
+Date: 2026-05-27
+
+[Pre-validation git status]
+ M CLAUDE.md
+?? .grok/
+?? docs/evidence/vault-package-migration/agent-rule-update-summary.md
+?? docs/evidence/vault-package-migration/validation-output.txt
+
+PASS: CLAUDE.md exists and contains Section 5
+PASS: .grok governance skill exists
+PASS: SKILL_INDEX references governance skill
+PASS: evidence exists docs/evidence/vault-package-migration/repo-truth-audit-summary.md
+PASS: evidence exists docs/evidence/vault-package-migration/package-classification-summary.md
+PASS: evidence exists docs/evidence/vault-package-migration/migration-summary.md
+PASS: evidence exists docs/evidence/vault-package-migration/migration-manifest-summary.json
+PASS: evidence exists docs/evidence/vault-package-migration/metadata-verification-summary.md
+PASS: evidence exists docs/evidence/vault-package-migration/registry-verification-summary.md
+PASS: evidence exists docs/evidence/vault-package-migration/repo-cleanup-summary.md
+PASS: evidence exists docs/evidence/vault-package-migration/agent-rule-update-summary.md
+PASS: Prompt 00-06 evidence set exists
+PASS: repo pointer exists
+PASS: manifest exists /Users/bobbyfetting/Documents/Obsidian Vault/Work/HB Personal Assistant/09_Implementation_Packages/Active/PH_15_MVP_Local_Runtime_Hardening/MIGRATION_MANIFEST.json
+PASS: manifest exists /Users/bobbyfetting/Documents/Obsidian Vault/Work/HB Personal Assistant/09_Implementation_Packages/Closed/2026-05-27__Phase_00__My_PA_Phase_0_Gap_Closure_Add_On/MIGRATION_MANIFEST.json
+PASS: manifest exists /Users/bobbyfetting/Documents/Obsidian Vault/Work/HB Personal Assistant/09_Implementation_Packages/Superseded/My_PA_Phase_0/MIGRATION_MANIFEST.json
+PASS: manifest exists /Users/bobbyfetting/Documents/Obsidian Vault/Work/HB Personal Assistant/09_Implementation_Packages/Superseded/My_PA_Phase_0_Gap_Closure/MIGRATION_MANIFEST.json
+PASS: manifest exists /Users/bobbyfetting/Documents/Obsidian Vault/Work/HB Personal Assistant/09_Implementation_Packages/Superseded/PH_14_Workstream_Intelligence/MIGRATION_MANIFEST.json
+PASS: All migrated package manifests exist
+PASS: docs/evidence/** intact
+PASS: docs/plans/my-pa-phase-0 has no payload files
+PASS: docs/plans/ph-14-workstream-Intelligence absent
+PASS: docs/plans/ph-15-MVP-Local-Runtime-Hardening absent
+
+[Command: python -m ruff check]
+python -m ruff check .
+RESULT: FAIL
+/bin/bash: line 82: python: command not found
+
+[Command: python -m ruff format --check]
+python -m ruff format --check .
+RESULT: FAIL
+/bin/bash: line 82: python: command not found
+
+[Command: pytest]
+pytest
+RESULT: FAIL
+ImportError while loading conftest '/Users/bobbyfetting/hb-personal-assistant/tests/conftest.py'.
+tests/conftest.py:11: in <module>
+    from hb_assistant.config.models import AppConfig
+E   ModuleNotFoundError: No module named 'hb_assistant'
