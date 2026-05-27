@@ -309,6 +309,11 @@ def graph_sources_resolve(
     resolver = ConstructionGraphResolver(client, store=store)
     results = [resolver.resolve(s, apply=apply) for s in targets]
 
+    by_scope: dict[str, int] = {}
+    for r in results:
+        scope = r.scope or r.kind
+        by_scope[scope] = by_scope.get(scope, 0) + 1
+
     payload = {
         "command": "construction-agent graph sources resolve",
         "mode": "apply" if apply else "dry_run",
@@ -316,9 +321,11 @@ def graph_sources_resolve(
         "summary": {
             "total": len(results),
             "resolved": sum(1 for r in results if r.status == "resolved"),
+            "pre_resolved": sum(1 for r in results if r.status == "pre_resolved"),
             "pending": sum(1 for r in results if r.status == "pending"),
             "unsupported": sum(1 for r in results if r.status == "unsupported"),
             "error": sum(1 for r in results if r.status == "error"),
+            "by_scope": by_scope,
         },
         "guardrails": {
             "external_systems": "read_only",

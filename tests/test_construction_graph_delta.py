@@ -7,7 +7,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from hb_assistant.construction.graph.delta_crawler import ConstructionDeltaCrawler
+from hb_assistant.construction.config import SourceLocation
+from hb_assistant.construction.graph.delta_crawler import (
+    ConstructionDeltaCrawler,
+    _select_delta_endpoint,
+)
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpError
 
@@ -215,3 +219,177 @@ def test_sample_items_carry_only_metadata(store: ConstructionStore) -> None:
     forbidden = {"content", "body", "text", "excerpt"}
     leaks = forbidden & set(sample.keys())
     assert not leaks, f"sample leaked forbidden fields: {leaks}"
+
+
+# =====================================================================
+# Phase 02 scope-aware endpoint selection tests.
+# =====================================================================
+
+
+def _src(**overrides) -> SourceLocation:
+    defaults = dict(
+        source_key="sp_test",
+        kind="sharepoint_project_drive_folder",
+        display_name="Test",
+    )
+    defaults.update(overrides)
+    return SourceLocation(**defaults)  # type: ignore[arg-type]
+
+
+def test_select_endpoint_folder_scoped_for_project_drive_folder() -> None:
+    src = _src(
+        source_key="sp_2023projects_23_435_01_tropical_sl",
+        kind="sharepoint_project_drive_folder",
+        drive_id="drv-1",
+        folder_item_id="folder-1",
+    )
+    endpoint, kind, drive, folder = _select_delta_endpoint(src)
+    assert endpoint == "/drives/drv-1/items/folder-1/delta"
+    assert kind == "folder_scoped"
+    assert drive == "drv-1"
+    assert folder == "folder-1"
+
+
+def test_select_endpoint_drive_root_fallback_when_folder_item_id_missing() -> None:
+    src = _src(
+        source_key="sp_no_folder",
+        kind="sharepoint_project_drive_folder",
+        drive_id="drv-1",
+    )
+    endpoint, kind, drive, folder = _select_delta_endpoint(src)
+    assert endpoint == "/drives/drv-1/root/delta"
+    assert kind == "drive_root_fallback"
+    assert folder is None
+
+
+def test_select_endpoint_me_drive_for_onedrive_personal_root() -> None:
+    src = _src(source_key="od_p", kind="onedrive_personal_root")
+    endpoint, kind, drive, folder = _select_delta_endpoint(src)
+    assert endpoint == "/me/drive/root/delta"
+    assert kind == "me_drive_delta"
+
+
+def test_select_endpoint_me_drive_for_onedrive_business_root() -> None:
+    src = _src(source_key="od_b", kind="onedrive_business_root")
+    endpoint, kind, drive, folder = _select_delta_endpoint(src)
+    assert endpoint == "/me/drive/root/delta"
+    assert kind == "me_drive_delta"
+
+
+def test_select_endpoint_drive_root_for_shared_library_with_drive_id() -> None:
+    src = _src(
+        source_key="od_shared",
+        kind="onedrive_shared_library",
+        drive_id="drv-shared",
+    )
+    endpoint, kind, drive, folder = _select_delta_endpoint(src)
+    assert endpoint == "/drives/drv-shared/root/delta"
+    assert kind == "drive_root"
+
+
+def test_select_endpoint_site_page_returns_none_with_unsupported_kind() -> None:
+    src = _src(
+        source_key="sp_page",
+        kind="sharepoint_site_page",
+        site_url="https://example.sharepoint.com/sites/Home",
+    )
+    endpoint, kind, drive, folder = _select_delta_endpoint(src)
+    assert endpoint is None
+    assert kind == "site_page_unsupported"
+
+
+def test_site_page_scope_emits_skipped_receipt(tmp_path: Path) -> None:
+    """When the registry has a site_page source, crawl returns a clean skipped receipt."""
+    import tempfile
+    import yaml as _yaml
+
+    # Construct a temp registry override containing a site_page source the
+    # registry loader will pick up via HB_CONSTRUCTION_SOURCES.
+    tmp_yaml = tmp_path / "registry.yml"
+    tmp_yaml.write_text(
+        _yaml.safe_dump(
+            {
+                "projects": [{"project_key": "hilltop-gardens", "display_name": "HG"}],
+                "sources": [
+                    {
+                        "source_key": "sp_hilltop_gardens_projecthome",
+                        "project_key": "hilltop-gardens",
+                        "kind": "sharepoint_site_page",
+                        "display_name": "Hilltop Gardens ProjectHome",
+                        "site_url": "https://example.sharepoint.com/sites/HilltopGardens",
+                    }
+                ],
+            }
+        )
+    )
+
+    import os
+    prior = os.environ.get("HB_CONSTRUCTION_SOURCES")
+    os.environ["HB_CONSTRUCTION_SOURCES"] = str(tmp_yaml)
+    try:
+        db = str(tmp_path / "c.sqlite")
+        s = ConstructionStore(db)
+        http = MagicMock()
+        crawler = ConstructionDeltaCrawler(http, s)
+        receipt = crawler.crawl(
+            source_key="sp_hilltop_gardens_projecthome", dry_run=True
+        )
+    finally:
+        if prior is None:
+            del os.environ["HB_CONSTRUCTION_SOURCES"]
+        else:
+            os.environ["HB_CONSTRUCTION_SOURCES"] = prior
+
+    assert receipt.status == "skipped_unsupported_scope"
+    assert receipt.scope == "sharepoint_site_page"
+    assert receipt.endpoint_kind == "site_page_unsupported"
+    assert receipt.drive_id is None
+    assert receipt.error_redacted is not None
+    assert "page crawler" in receipt.error_redacted
+    http.get.assert_not_called()
+
+
+def test_receipt_carries_scope_and_endpoint_kind(
+    tmp_path: Path, store: ConstructionStore
+) -> None:
+    """A successful crawl populates scope + endpoint_kind on the receipt."""
+    import os
+    import tempfile
+    import yaml as _yaml
+
+    tmp_yaml = tmp_path / "registry.yml"
+    tmp_yaml.write_text(
+        _yaml.safe_dump(
+            {
+                "projects": [{"project_key": "tropical", "display_name": "Tropical"}],
+                "sources": [
+                    {
+                        "source_key": "tropical-sharepoint",
+                        "project_key": "tropical",
+                        "kind": "sharepoint_site",
+                        "display_name": "Tropical site",
+                    }
+                ],
+            }
+        )
+    )
+
+    prior = os.environ.get("HB_CONSTRUCTION_SOURCES")
+    os.environ["HB_CONSTRUCTION_SOURCES"] = str(tmp_yaml)
+    try:
+        http = MagicMock()
+        http.get.return_value = _page(
+            [_item("a")], delta_link="https://graph/drives/drive-1/root/delta?t=x"
+        )
+        crawler = ConstructionDeltaCrawler(http, store)
+        receipt = crawler.crawl(source_key="tropical-sharepoint", dry_run=True)
+    finally:
+        if prior is None:
+            del os.environ["HB_CONSTRUCTION_SOURCES"]
+        else:
+            os.environ["HB_CONSTRUCTION_SOURCES"] = prior
+
+    assert receipt.status == "ok"
+    assert receipt.scope == "sharepoint_site"
+    assert receipt.endpoint_kind == "drive_root"
+    assert receipt.drive_id == "drive-1"

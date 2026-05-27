@@ -1,0 +1,208 @@
+{
+  "phase": "02",
+  "prompt": "03",
+  "title": "Graph Folder-Scoped Source Resolution",
+  "summary": "Extends ConstructionGraphResolver to dispatch all five Phase 02 canonical scopes (sharepoint_project_drive_folder, sharepoint_site_page, onedrive_business_root, onedrive_personal_root, onedrive_shared_library) plus the two legacy scopes that map onto the new handlers (sharepoint_library, onedrive_shared). Adds folder-scoped delta endpoint selection (_select_delta_endpoint) so sharepoint_project_drive_folder sources crawl /drives/{drive_id}/items/{folder_item_id}/delta when folder_item_id is present, with documented fallback to drive-root + filter when only drive_id is available. Site-page sources cleanly exit with status='skipped_unsupported_scope' (delta is not the right primitive for page traversal). CrawlReceipt gains scope, endpoint_kind, folder_item_id; ResolutionResult gains folder_item_id, page_id, scope, note, pre_resolved. Canonical pre-populated identifiers fast-path to pre_resolved without any Graph HTTP call. CLI graph sources resolve summary now includes by_scope counter and pre_resolved bucket. No live Graph round-trip; no V5 store writes; no CLI breaking changes.",
+  "head_before": "a311d50d1a6a4ffa63e55a7c417eb88632260340",
+  "head_after": "(recorded after commit)",
+  "branch": "main",
+  "working_tree_before": "clean",
+  "files_changed": {
+    "modified": [
+      "src/hb_assistant/construction/graph/resolver.py",
+      "src/hb_assistant/construction/graph/delta_crawler.py",
+      "src/hb_assistant/cli/construction.py",
+      "tests/test_construction_graph_resolver.py",
+      "tests/test_construction_graph_delta.py"
+    ],
+    "created": [
+      "docs/evidence/construction-intelligence-phase-02/03-graph-folder-scoped-resolution-proof.json"
+    ],
+    "deleted": [],
+    "diff_stat": "5 files changed, 783 insertions(+), 26 deletions(-)"
+  },
+  "validation": {
+    "pytest": {
+      "command": "python -m pytest tests/test_construction_*.py tests/test_procore_*.py",
+      "result": "308 passed in 2.83s",
+      "passed": 308,
+      "failed": 0,
+      "delta_vs_prompt_02": "+9 (299 → 308): +10 resolver, +8 delta, -9 net adjustments from removing one unreachable assertion"
+    },
+    "ruff": {
+      "command": "ruff check src/hb_assistant/construction/ src/hb_assistant/procore/ src/hb_assistant/cli/construction.py src/hb_assistant/cli/procore.py",
+      "result": "All checks passed!"
+    },
+    "construction_agent_validate": {
+      "command": "hb-assistant construction-agent validate --json",
+      "result": "ok=true, passed=4/4 (schema_version=5, 6 projects 14 sources, 12 review rules, llama3.2:1b routing)"
+    },
+    "sources_validate": {
+      "command": "hb-assistant construction-agent sources validate --json",
+      "result": {
+        "project_count": 6,
+        "source_count": 14,
+        "resolved_count": 0,
+        "pending_count": 9,
+        "deprecated_count": 0,
+        "ok": true,
+        "blocking": false
+      }
+    },
+    "index_status": {
+      "command": "hb-assistant construction-agent index status --json",
+      "result": "schema_version=5, project_count=6, source_count=14"
+    },
+    "graph_auth_status": {
+      "command": "hb-assistant construction-agent graph auth status --json",
+      "result": "token_type=none (non-interactive shell; no MSAL token cached)"
+    },
+    "graph_sources_resolve": {
+      "command": "hb-assistant construction-agent graph sources resolve --json",
+      "result": "status=auth_required, targets=14, mode=dry_run, exit=0 (structured payload; no MSAL hang)"
+    },
+    "procore_mapping_validate": {
+      "command": "hb-assistant procore mapping validate --json",
+      "result": "ok=false (exit 1 by design; hilltop pending in separate procore_projects seed)"
+    }
+  },
+  "dispatch_matrix": [
+    {
+      "scope": "sharepoint_project_drive_folder",
+      "resolver_method": "_resolve_sharepoint_project_drive_folder",
+      "resolver_behavior": "pre_resolved when site_id+drive_id+folder_item_id present; otherwise /sites/{host}:{path} → /sites/{site_id}/drive → /drives/{drive_id}/root:{folder_path}",
+      "delta_endpoint_kind_primary": "folder_scoped",
+      "delta_endpoint_path": "/drives/{drive_id}/items/{folder_item_id}/delta",
+      "delta_endpoint_kind_fallback": "drive_root_fallback",
+      "tests": [
+        "test_resolve_project_drive_folder_pre_resolved",
+        "test_resolve_project_drive_folder_resolves_folder_item_id_when_missing",
+        "test_resolve_project_drive_folder_pending_when_site_url_missing",
+        "test_select_endpoint_folder_scoped_for_project_drive_folder",
+        "test_select_endpoint_drive_root_fallback_when_folder_item_id_missing",
+        "test_pre_resolved_status_normalizes_to_resolved_in_store"
+      ]
+    },
+    {
+      "scope": "sharepoint_site_page",
+      "resolver_method": "_resolve_sharepoint_site_page",
+      "resolver_behavior": "Resolve site_id only; status=pending with note='page_id_resolution_deferred_to_page_crawler'. Page traversal lives in a separate future surface.",
+      "delta_endpoint_kind_primary": "site_page_unsupported",
+      "delta_endpoint_path": null,
+      "delta_behavior": "Crawler emits status='skipped_unsupported_scope' with no HTTP call",
+      "tests": [
+        "test_resolve_site_page_resolves_site_id_only",
+        "test_select_endpoint_site_page_returns_none_with_unsupported_kind",
+        "test_site_page_scope_emits_skipped_receipt"
+      ]
+    },
+    {
+      "scope": "onedrive_business_root",
+      "resolver_method": "_resolve_onedrive_business_root → _resolve_me_drive(expected_drive_type='business')",
+      "resolver_behavior": "/me/drive with $select=id,webUrl,driveType; driveType surfaced on result.note for operator visibility",
+      "delta_endpoint_kind_primary": "me_drive_delta",
+      "delta_endpoint_path": "/me/drive/root/delta",
+      "tests": [
+        "test_resolve_onedrive_business_root_records_drive_type",
+        "test_select_endpoint_me_drive_for_onedrive_business_root"
+      ]
+    },
+    {
+      "scope": "onedrive_personal_root",
+      "resolver_method": "_resolve_onedrive_personal_root → _resolve_me_drive(expected_drive_type='personal')",
+      "resolver_behavior": "/me/drive with $select=id,webUrl,driveType",
+      "delta_endpoint_kind_primary": "me_drive_delta",
+      "delta_endpoint_path": "/me/drive/root/delta",
+      "tests": [
+        "test_resolve_onedrive_personal_root_records_drive_type",
+        "test_select_endpoint_me_drive_for_onedrive_personal_root"
+      ]
+    },
+    {
+      "scope": "onedrive_shared_library",
+      "resolver_method": "_resolve_onedrive_shared_library",
+      "resolver_behavior": "pre_resolved when drive_id present; otherwise status=pending with note='drive_id_resolution_requires_share_url_or_remote_item_lookup'",
+      "delta_endpoint_kind_primary": "drive_root",
+      "delta_endpoint_path": "/drives/{drive_id}/root/delta",
+      "tests": [
+        "test_resolve_onedrive_shared_library_pre_resolved_when_drive_id_present",
+        "test_resolve_onedrive_shared_library_pending_when_drive_id_missing",
+        "test_select_endpoint_drive_root_for_shared_library_with_drive_id"
+      ]
+    },
+    {
+      "scope": "sharepoint_site (legacy)",
+      "resolver_method": "_resolve_sharepoint_site (unchanged Phase 01 chain)",
+      "delta_endpoint_kind_primary": "drive_root",
+      "delta_endpoint_path": "/drives/{drive_id}/root/delta",
+      "tests": [
+        "test_resolve_sharepoint_site_happy_path",
+        "test_receipt_carries_scope_and_endpoint_kind"
+      ]
+    },
+    {
+      "scope": "onedrive_personal (legacy)",
+      "resolver_method": "_resolve_onedrive_personal_root (legacy kind dispatches to the same handler)",
+      "delta_endpoint_kind_primary": "drive_root or me_drive_delta",
+      "delta_endpoint_path": "/drives/{drive_id}/root/delta when drive_id known, else /me/drive/root/delta",
+      "tests": [
+        "test_resolve_onedrive_personal_happy_path",
+        "test_legacy_kinds_still_dispatch_correctly (covered by test_resolver_dispatcher_covers_all_canonical_kinds)"
+      ]
+    },
+    {
+      "scope": "onedrive_shared (legacy)",
+      "resolver_method": "_resolve_onedrive_shared_library (legacy kind dispatches to the same handler)",
+      "behavior_change_from_phase_01": "Previously returned status='unsupported'; now returns pending (or pre_resolved if drive_id present) without any HTTP call",
+      "tests": [
+        "test_legacy_onedrive_shared_now_dispatches_to_shared_library_handler"
+      ]
+    }
+  ],
+  "resolver_result_schema_additions": [
+    {"field": "folder_item_id", "type": "Optional[str]", "purpose": "Surface folder-scoped delta seed for canonical project-drive sources"},
+    {"field": "page_id", "type": "Optional[str]", "purpose": "Carry resolved page id once the page crawler lands"},
+    {"field": "scope", "type": "Optional[str]", "purpose": "Mirror source.kind for downstream summary aggregation"},
+    {"field": "note", "type": "Optional[str]", "purpose": "Human-readable explanation of pending/pre_resolved decisions"},
+    {"field": "pre_resolved", "type": "bool (default False)", "purpose": "True when canonical identifiers short-circuited the Graph chain"}
+  ],
+  "crawl_receipt_schema_additions": [
+    {"field": "scope", "type": "Optional[str]", "purpose": "Source scope at receipt time"},
+    {"field": "endpoint_kind", "type": "Optional[str]", "purpose": "Which dispatch branch the crawler took: folder_scoped, drive_root_fallback, drive_root, me_drive_delta, site_page_unsupported"},
+    {"field": "folder_item_id", "type": "Optional[str]", "purpose": "Echoes folder_item_id when folder_scoped path was used"}
+  ],
+  "status_value_additions": [
+    {"context": "ResolutionResult.status", "value": "pre_resolved", "meaning": "Canonical IDs pre-populated; no Graph HTTP call needed. Treated as resolved by store writes (normalized to 'resolved' on persistence so V2 schema's resolution_status enum stays unchanged)."},
+    {"context": "CrawlReceipt.status", "value": "skipped_unsupported_scope", "meaning": "Source scope (e.g., sharepoint_site_page) has no delta primitive; receipt records the skip and crawler emits no HTTP call."}
+  ],
+  "guardrails": {
+    "external_systems": "read_only (no SharePoint/OneDrive/Outlook/Procore writeback added)",
+    "source_document_copies_into_obsidian": "blocked (CrawlReceipt.sample_items still goes through _redact_item_preview which strips body/text/excerpt)",
+    "full_document_text_in_vault_notes": "blocked",
+    "source_file_mutation": "blocked (delta crawler only reads; soft-delete only mutates the local index row, not source file)",
+    "mailbox_mutation_path": "none introduced",
+    "live_graph_round_trip": "not exercised (non-interactive shell; structured auth_required surfaced)",
+    "v5_store_writes": "deferred to a later prompt; resolver still writes V2 construction_source_resolutions only"
+  },
+  "blocked_live_validation": {
+    "graph_auth_login": "Interactive MSAL not available in this shell; graph auth status returns token_type=none.",
+    "graph_sources_resolve_live": "Returns structured auth_required for all 14 targets (3 legacy + 11 canonical) without contacting Microsoft.",
+    "graph_delta_live": "Not exercised; crawler tests use MagicMock GraphHttpClient.",
+    "procore": "OAuth still stubbed; mapping validate runs against separate procore_projects seed (hilltop still pending; exit 1 by design)."
+  },
+  "phase_02_acceptance_progress": {
+    "graph_folder_scoped_delta": "closed",
+    "site_page_resolver": "site_id-only resolution landed; full page crawl deferred",
+    "onedrive_business_personal_shared_resolvers": "closed",
+    "v5_drive_items_writes": "deferred (later prompt; gated on downstream caller migration)",
+    "downstream_callers_off_source_key": "still pending; tropical-sharepoint/hilltop-sharepoint/bobby-onedrive legacy plumbing intact"
+  },
+  "next_prompt_readiness": {
+    "repo_head_at_expected_baseline": true,
+    "working_tree_clean_after_commit": "pending commit",
+    "scoped_tests_passing": "308/308",
+    "ruff_clean": true,
+    "guardrails_intact": true,
+    "status": "ready for Phase 02 — Prompt 04"
+  }
+}

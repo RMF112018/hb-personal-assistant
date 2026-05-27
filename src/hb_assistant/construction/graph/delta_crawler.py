@@ -1,14 +1,34 @@
 """Read-only Microsoft Graph delta crawler for construction-agent sources.
 
-Iterates `/drives/{driveId}/root/delta` with `@odata.nextLink` pagination,
-records the final `@odata.deltaLink`, and (in apply mode) persists
-**metadata-only** drive-item snapshots plus a crawl receipt to SQLite.
+Selects the right delta endpoint based on the source's canonical scope:
+
+- ``sharepoint_project_drive_folder`` + ``folder_item_id``
+                                                    → ``/drives/{drive_id}/items/{folder_item_id}/delta``
+                                                    (folder-scoped delta, ``endpoint_kind="folder_scoped"``).
+- ``sharepoint_project_drive_folder`` without folder_item_id but with drive_id
+                                                    → ``/drives/{drive_id}/root/delta``
+                                                    (``endpoint_kind="drive_root_fallback"``).
+- ``sharepoint_site``, ``sharepoint_library`` (legacy)
+                                                    → ``/drives/{drive_id}/root/delta``
+                                                    (``endpoint_kind="drive_root"``).
+- ``onedrive_personal`` (legacy), ``onedrive_personal_root``
+                                                    → ``/drives/{drive_id}/root/delta`` if a
+                                                    drive_id was resolved, else
+                                                    ``/me/drive/root/delta``
+                                                    (``endpoint_kind="me_drive_delta"``).
+- ``onedrive_business_root``                        → ``/me/drive/root/delta`` (delegated
+                                                    business token resolves to /me/drive on
+                                                    Graph).
+- ``onedrive_shared`` (legacy), ``onedrive_shared_library`` + drive_id
+                                                    → ``/drives/{drive_id}/root/delta``.
+- ``sharepoint_site_page``                          → no delta endpoint; receipt exits
+                                                    ``status="skipped_unsupported_scope"``.
 
 Guardrails:
 - No source-document body, text, or excerpt is ever read or stored.
 - Dry-run never writes to SQLite.
 - Apply writes inventory + token + receipt in a single transaction per call.
-- Items with a `deleted` field are marked status='deleted' in inventory.
+- Items with a ``deleted`` field are marked status='deleted' in inventory.
 """
 
 from __future__ import annotations
@@ -19,6 +39,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from hb_assistant.construction.config import SourceLocation, load_source_registry
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
 
@@ -30,7 +51,7 @@ class CrawlReceipt(BaseModel):
     source_key: str
     drive_id: Optional[str]
     mode: str  # "dry_run" | "apply"
-    status: str  # "ok" | "auth_required" | "unresolved" | "failed" | "skipped"
+    status: str  # "ok" | "auth_required" | "unresolved" | "failed" | "skipped" | "skipped_unsupported_scope"
     started_at: str
     finished_at: Optional[str] = None
     pages_seen: int = 0
@@ -41,12 +62,76 @@ class CrawlReceipt(BaseModel):
     delta_link_recorded: bool = False
     sample_items: list[dict[str, Any]] = []
     error_redacted: Optional[str] = None
+    scope: Optional[str] = None
+    endpoint_kind: Optional[str] = None
+    folder_item_id: Optional[str] = None
 
     model_config = {"extra": "forbid"}
 
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _select_delta_endpoint(
+    source: SourceLocation,
+) -> tuple[Optional[str], str, Optional[str], Optional[str]]:
+    """Return ``(endpoint_path, endpoint_kind, drive_id_used, folder_item_id_used)``.
+
+    ``endpoint_path`` is ``None`` for scopes that don't support delta
+    (``sharepoint_site_page``); the caller emits a skipped-receipt in that
+    case. ``drive_id_used`` may be ``None`` when the crawler must look up a
+    resolved drive_id via the store (e.g., legacy ``sharepoint_site``).
+    """
+    kind = source.kind
+    drive_id = source.drive_id
+    folder_item_id = source.folder_item_id
+
+    if kind == "sharepoint_site_page":
+        return (None, "site_page_unsupported", None, None)
+
+    if kind == "sharepoint_project_drive_folder":
+        if drive_id and folder_item_id:
+            return (
+                f"/drives/{drive_id}/items/{folder_item_id}/delta",
+                "folder_scoped",
+                drive_id,
+                folder_item_id,
+            )
+        if drive_id:
+            return (
+                f"/drives/{drive_id}/root/delta",
+                "drive_root_fallback",
+                drive_id,
+                None,
+            )
+        # No drive_id yet — caller will detect unresolved.
+        return (None, "drive_root_fallback", None, None)
+
+    if kind in ("sharepoint_site", "sharepoint_library"):
+        if drive_id:
+            return (f"/drives/{drive_id}/root/delta", "drive_root", drive_id, None)
+        return (None, "drive_root", None, None)
+
+    if kind in ("onedrive_personal", "onedrive_personal_root"):
+        if drive_id:
+            return (
+                f"/drives/{drive_id}/root/delta",
+                "drive_root",
+                drive_id,
+                None,
+            )
+        return ("/me/drive/root/delta", "me_drive_delta", None, None)
+
+    if kind == "onedrive_business_root":
+        return ("/me/drive/root/delta", "me_drive_delta", drive_id, None)
+
+    if kind in ("onedrive_shared", "onedrive_shared_library"):
+        if drive_id:
+            return (f"/drives/{drive_id}/root/delta", "drive_root", drive_id, None)
+        return (None, "drive_root", None, None)
+
+    return (None, "unknown_scope", None, None)
 
 
 class ConstructionDeltaCrawler:
@@ -60,6 +145,16 @@ class ConstructionDeltaCrawler:
         self._http = http_client
         self._store = store
 
+    def _lookup_source(self, source_key: str) -> Optional[SourceLocation]:
+        try:
+            registry = load_source_registry()
+        except Exception:  # noqa: BLE001
+            return None
+        for src in registry.sources:
+            if src.source_key == source_key:
+                return src
+        return None
+
     def crawl(
         self,
         *,
@@ -72,11 +167,53 @@ class ConstructionDeltaCrawler:
         mode = "dry_run" if dry_run else "apply"
         started_at = _utc_now()
 
-        if drive_id is None:
+        source = self._lookup_source(source_key)
+
+        # Site-page scope: no delta crawl available; short-circuit cleanly.
+        if source is not None and source.kind == "sharepoint_site_page":
+            receipt = CrawlReceipt(
+                run_id=run_id,
+                source_key=source_key,
+                drive_id=None,
+                mode=mode,
+                status="skipped_unsupported_scope",
+                started_at=started_at,
+                finished_at=_utc_now(),
+                scope=source.kind,
+                endpoint_kind="site_page_unsupported",
+                error_redacted=(
+                    "sharepoint_site_page sources are not delta-crawled; "
+                    "a dedicated page crawler is required"
+                ),
+            )
+            if not dry_run:
+                self._persist_receipt(receipt)
+            return receipt
+
+        endpoint_path: Optional[str] = None
+        endpoint_kind: str = "drive_root"
+        folder_item_id_used: Optional[str] = None
+        scope: Optional[str] = source.kind if source else None
+
+        if source is not None:
+            (
+                endpoint_path,
+                endpoint_kind,
+                resolved_drive_id,
+                folder_item_id_used,
+            ) = _select_delta_endpoint(source)
+            if drive_id is None and resolved_drive_id is not None:
+                drive_id = resolved_drive_id
+
+        # Fall back to V2 store resolution if we still don't have a drive_id.
+        if drive_id is None and endpoint_path is None:
             resolution = self._store.get_resolution(source_key)
             drive_id = (resolution or {}).get("drive_id")
+            if drive_id:
+                endpoint_path = f"/drives/{drive_id}/root/delta"
+                endpoint_kind = "drive_root"
 
-        if not drive_id:
+        if not endpoint_path:
             receipt = CrawlReceipt(
                 run_id=run_id,
                 source_key=source_key,
@@ -85,6 +222,8 @@ class ConstructionDeltaCrawler:
                 status="unresolved",
                 started_at=started_at,
                 finished_at=_utc_now(),
+                scope=scope,
+                endpoint_kind=endpoint_kind,
                 error_redacted="no drive_id resolved; run `graph sources resolve --apply` first",
             )
             if not dry_run:
@@ -94,7 +233,7 @@ class ConstructionDeltaCrawler:
         existing_token = self._store.get_delta_token(source_key) if not dry_run else None
         prior_delta_link = (existing_token or {}).get("delta_link")
 
-        first_path = prior_delta_link or f"/drives/{drive_id}/root/delta"
+        first_path = prior_delta_link or endpoint_path
 
         pages_seen = 0
         items_seen = 0
@@ -140,6 +279,9 @@ class ConstructionDeltaCrawler:
                 delta_link_recorded=False,
                 sample_items=sample_items,
                 error_redacted=f"graph_{e.status}: {e.message[:120]}",
+                scope=scope,
+                endpoint_kind=endpoint_kind,
+                folder_item_id=folder_item_id_used,
             )
             if not dry_run:
                 self._persist_receipt(receipt)
@@ -171,6 +313,9 @@ class ConstructionDeltaCrawler:
             items_deleted=items_deleted,
             delta_link_recorded=delta_link_recorded,
             sample_items=sample_items,
+            scope=scope,
+            endpoint_kind=endpoint_kind,
+            folder_item_id=folder_item_id_used,
         )
         if not dry_run:
             self._persist_receipt(receipt)
