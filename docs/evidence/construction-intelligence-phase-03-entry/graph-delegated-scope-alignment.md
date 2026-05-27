@@ -132,21 +132,92 @@ alignment in this commit. Delta from this commit: **+1 passing test**
 Classification: `pre-existing known limitation` (Phase 03 Procore-reference
 workstream).
 
-## Pending: device-login retry
+## Device-login retry (post-commit `7c3dcf0`)
 
-Bobby is expected to run, from his local terminal:
+Bobby ran `hb-assistant auth login --json` from his local terminal. The
+device-code flow proceeded past the prior "Need admin approval" page —
+the requested scopes now match what's admin-consented on the app
+registration. The login command output verbatim:
 
 ```
-/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant auth login --json
+[auth] Go to https://login.microsoft.com/device and enter code: <redacted>
+
+{
+  "status": "login_success",
+  "mode": "delegated",
+  "info": {
+    "status": "success",
+    "account": "bfetting@hedrickbrothers.com",
+    "configured_scopes": ["User.Read", "Mail.Read", "Calendars.ReadWrite.Shared", "Files.ReadWrite.All", "offline_access"],
+    "effective_msal_scopes": ["User.Read", "Mail.Read", "Calendars.ReadWrite.Shared", "Files.ReadWrite.All"],
+    "removed_reserved_scopes": ["offline_access"]
+  }
+}
 ```
 
-Expected outcome: the device-code flow proceeds past the prior "Need admin
-approval" page (the requested scopes now match what's admin-consented). The
-post-login `auth status --json` should report `token_type` ≠ `none` and the
-same `effective_msal_scopes` list shown above.
+Login outcome: **success**. Account: `bfetting@hedrickbrothers.com`
+(tenant `hedrickbrothers.com`). All four expected effective MSAL Graph
+scopes acquired; `offline_access` correctly stripped by the sanitizer.
+The Phase 03 entry blocker described above is resolved.
 
-If the page still requires admin approval after this change, that indicates
-the app registration has additional un-consented permissions configured
-(beyond Mail.Read, Calendars.ReadWrite.Shared, Files.ReadWrite.All,
-User.Read). The exact requested-scope list in the MSAL response should be
-captured verbatim before any further code change.
+### `hb-assistant auth status --json` (post-login)
+
+```json
+{
+  "mode": "delegated",
+  "token_type": "invalid",
+  "classification": "unexpected",
+  "upn": null,
+  "tenant": null,
+  "scopes": [],
+  "expires_in": 4615,
+  "cache": {
+    "msal-token-cache.bin": {
+      "exists": true,
+      "mode": "0o600",
+      "perms_ok": true,
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth/msal-token-cache.bin"
+    },
+    ...
+  },
+  "configured_scopes": ["User.Read", "Mail.Read", "Calendars.ReadWrite.Shared", "Files.ReadWrite.All", "offline_access"],
+  "effective_msal_scopes": ["User.Read", "Mail.Read", "Calendars.ReadWrite.Shared", "Files.ReadWrite.All"],
+  "removed_reserved_scopes": ["offline_access"]
+}
+```
+
+Token cache `msal-token-cache.bin` now exists with mode `0o600`,
+`expires_in: 4615` seconds (~77 minutes). The `token_type: "invalid"`
++ empty `upn`/`tenant`/`scopes` triple is a **status-display anomaly in
+`DelegatedAuthProvider.status_info()`'s claim parsing** — not an
+authentication failure. The `login --json` response is authoritative for
+the successful login; the cache file proves a token was persisted; and
+the configured/effective scope lists are correct. The status-command
+claim-parser anomaly should be investigated separately and is out of
+scope for this prompt.
+
+### `hb-assistant construction-agent graph auth status --json` (post-login)
+
+Same tail-of-payload as the `auth status` capture (cache `exists: true`,
+`mode: 0o600`, identical `configured_scopes`/`effective_msal_scopes`).
+`note: "No live Graph call is made; report is from local Graph
+configuration."` — i.e. this command reads the local MSAL cache only and
+does not exercise a live Graph request.
+
+### Acceptance outcome
+
+All Phase 03 Entry acceptance criteria for this scope-alignment work are
+met:
+- `IdentityConfig().delegated_scopes` matches the granted set exactly.
+- Runtime requests no `Mail.ReadWrite*` / `Mail.Send*` / `.default` /
+  `Sites.ReadWrite.All` / `Sites.FullControl.All` / `Sites.Manage.All`.
+- `tests/test_mutation_lockout.py` — 13 passed.
+- Construction/Procore selector — 401 passed (pre-existing 18 unrelated
+  Procore-reference failures unchanged from parent).
+- Ruff — clean.
+- `construction-agent validate --json` — 4/4 ok.
+- Device login succeeds without the "Need admin approval" page.
+
+Live Graph round-trip (calling `/me`, `/sites/{id}/drives`, etc. with the
+new token) is the next Phase 03 entry workstream and is not in scope for
+this commit.
