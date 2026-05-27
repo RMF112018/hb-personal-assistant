@@ -201,6 +201,43 @@ class ConstructionStore:
         )
         return dict(cur.fetchall())
 
+    def list_inventory(
+        self,
+        *,
+        source_key: str,
+        limit: Optional[int] = None,
+    ) -> list[dict[str, Any]]:
+        """Iterate V2 ``construction_drive_item_inventory`` rows for a source.
+
+        Used by the V2↔V5 drive-item bridge to enumerate legacy inventory
+        without creating a write path. ``limit`` is optional; callers
+        handling bridge sweeps should pass a row-count cap to avoid
+        unbounded reads.
+        """
+        sql = (
+            "SELECT source_key, drive_id, item_id, name, web_url, parent_path, "
+            "size_bytes, is_folder, last_modified, etag, status, "
+            "first_seen_at, last_seen_at "
+            "FROM construction_drive_item_inventory WHERE source_key = ? "
+            "ORDER BY item_id"
+        )
+        params: tuple[Any, ...] = (source_key,)
+        if limit is not None:
+            sql += " LIMIT ?"
+            params = (source_key, int(limit))
+        conn = get_connection(self._db_path)
+        keys = (
+            "source_key", "drive_id", "item_id", "name", "web_url", "parent_path",
+            "size_bytes", "is_folder", "last_modified", "etag", "status",
+            "first_seen_at", "last_seen_at",
+        )
+        out: list[dict[str, Any]] = []
+        for row in conn.execute(sql, params).fetchall():
+            record = dict(zip(keys, row, strict=True))
+            record["is_folder"] = bool(record["is_folder"])
+            out.append(record)
+        return out
+
     def count_inventory_by_kind(self, source_key: str) -> dict[str, int]:
         """Return ``{file_count, folder_count, total_size_bytes}`` for active rows.
 
@@ -891,6 +928,51 @@ class ConstructionStore:
         for bool_field in ("is_folder", "is_file", "deleted"):
             record[bool_field] = bool(record[bool_field])
         return record
+
+    def list_drive_items(
+        self,
+        *,
+        source_id: str,
+        limit: Optional[int] = None,
+    ) -> list[dict[str, Any]]:
+        """Iterate canonical V5 ``construction_drive_items`` rows for a source.
+
+        Used by the V2↔V5 drive-item bridge to enumerate V5 rows without
+        creating a write path. ``limit`` is optional; callers handling
+        bridge sweeps should pass a row-count cap to avoid unbounded reads.
+        """
+        sql = (
+            "SELECT source_id, drive_id, drive_item_id, parent_drive_item_id, "
+            "site_id, list_id, list_item_id, name, path, web_url, "
+            "is_folder, is_file, file_extension, mime_type, size_bytes, "
+            "last_modified_datetime, deleted, quick_xor_hash, "
+            "project_number_detected, document_type_detected, "
+            "indexing_policy, classification_status, "
+            "created_utc, updated_utc "
+            "FROM construction_drive_items WHERE source_id = ? "
+            "ORDER BY drive_item_id"
+        )
+        params: tuple[Any, ...] = (source_id,)
+        if limit is not None:
+            sql += " LIMIT ?"
+            params = (source_id, int(limit))
+        conn = get_connection(self._db_path)
+        keys = (
+            "source_id", "drive_id", "drive_item_id", "parent_drive_item_id",
+            "site_id", "list_id", "list_item_id", "name", "path", "web_url",
+            "is_folder", "is_file", "file_extension", "mime_type", "size_bytes",
+            "last_modified_datetime", "deleted", "quick_xor_hash",
+            "project_number_detected", "document_type_detected",
+            "indexing_policy", "classification_status",
+            "created_utc", "updated_utc",
+        )
+        out: list[dict[str, Any]] = []
+        for row in conn.execute(sql, params).fetchall():
+            record = dict(zip(keys, row, strict=True))
+            for bool_field in ("is_folder", "is_file", "deleted"):
+                record[bool_field] = bool(record[bool_field])
+            out.append(record)
+        return out
 
     # --- canonical project identity (V5) ------------------------------------
 

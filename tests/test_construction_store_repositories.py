@@ -627,3 +627,212 @@ def test_email_intelligence_deferred_state_sql_level_rejects_persist_full_body(
             VALUES (1, 1, 1, 1)
             """,
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase 03 entry: V2 ↔ V5 drive-item bridge / read model.
+# ---------------------------------------------------------------------------
+
+
+def _v2_inventory_row_fixture(**overrides) -> dict:
+    """Synthesize a V2 inventory row matching the live schema."""
+    base = {
+        "source_key": "sp_test_source",
+        "drive_id": "b!test-drive",
+        "item_id": "01ITEM",
+        "name": "test.pdf",
+        "web_url": "https://example.sharepoint.com/.../test.pdf",
+        "parent_path": "/folder/sub",
+        "size_bytes": 12345,
+        "is_folder": False,
+        "last_modified": "2026-01-15T10:30:00Z",
+        "etag": '"abc123,1"',
+        "status": "active",
+        "first_seen_at": "2026-01-15T10:30:00Z",
+        "last_seen_at": "2026-01-15T10:30:00Z",
+    }
+    base.update(overrides)
+    return base
+
+
+def test_v5_drive_item_bridge_v2_row_to_v5_shape() -> None:
+    """Projection produces a V5DriveItem with all expected fields and
+    rejects accidental body/content/text/excerpt leakage via extra=forbid."""
+    from pydantic import ValidationError
+
+    from hb_assistant.construction.drive_item_bridge import V5DriveItem, v2_row_to_v5
+
+    item = v2_row_to_v5(_v2_inventory_row_fixture())
+
+    # Identity-preserving fields.
+    assert item.source_id == "sp_test_source"
+    assert item.drive_item_id == "01ITEM"
+    assert item.drive_id == "b!test-drive"
+    assert item.name == "test.pdf"
+    assert item.web_url == "https://example.sharepoint.com/.../test.pdf"
+    assert item.path == "/folder/sub"
+    assert item.size_bytes == 12345
+    assert item.last_modified_datetime == "2026-01-15T10:30:00Z"
+
+    # Soft-delete + folder/file flags.
+    assert item.deleted is False
+    assert item.is_folder is False
+    assert item.is_file is True
+
+    # V5-only fields stay None (V2 doesn't carry them).
+    assert item.parent_drive_item_id is None
+    assert item.site_id is None
+    assert item.list_id is None
+    assert item.file_extension is None
+    assert item.mime_type is None
+    assert item.quick_xor_hash is None
+    assert item.project_number_detected is None
+    assert item.indexing_policy is None
+    assert item.classification_status is None
+    assert item.created_utc is None
+    assert item.updated_utc is None
+
+    # extra=forbid guards the shape against body/content/text leakage.
+    forbidden_keys = ("body", "content", "text", "excerpt", "preview", "full_text")
+    for key in forbidden_keys:
+        with pytest.raises(ValidationError):
+            V5DriveItem(
+                source_id="x", drive_id="y", drive_item_id="z",
+                **{key: "leak"},
+            )
+
+
+def test_v5_drive_item_bridge_source_key_to_source_id_mapping_deterministic() -> None:
+    """Same V2 row → same V5DriveItem across runs (no time/random calls)."""
+    from hb_assistant.construction.drive_item_bridge import v2_row_to_v5
+
+    row = _v2_inventory_row_fixture(
+        source_key="sp_2023projects_23_435_01_tropical_sl",
+        item_id="01KUIR4CV3RKZL4MURNRKY6DWASR3B7EGM",
+    )
+    first = v2_row_to_v5(row)
+    second = v2_row_to_v5(row)
+    assert first == second
+    assert first.source_id == "sp_2023projects_23_435_01_tropical_sl"
+    assert first.drive_item_id == "01KUIR4CV3RKZL4MURNRKY6DWASR3B7EGM"
+
+
+def test_v5_drive_item_bridge_status_active_maps_deleted_false() -> None:
+    from hb_assistant.construction.drive_item_bridge import v2_row_to_v5
+
+    assert v2_row_to_v5(_v2_inventory_row_fixture(status="active")).deleted is False
+
+
+def test_v5_drive_item_bridge_status_deleted_maps_deleted_true() -> None:
+    from hb_assistant.construction.drive_item_bridge import v2_row_to_v5
+
+    assert v2_row_to_v5(_v2_inventory_row_fixture(status="deleted")).deleted is True
+
+
+def test_v5_drive_item_bridge_is_file_inferred_from_is_folder() -> None:
+    from hb_assistant.construction.drive_item_bridge import v2_row_to_v5
+
+    folder = v2_row_to_v5(_v2_inventory_row_fixture(is_folder=True))
+    file_ = v2_row_to_v5(_v2_inventory_row_fixture(is_folder=False))
+    assert folder.is_folder is True and folder.is_file is False
+    assert file_.is_folder is False and file_.is_file is True
+
+
+def test_v5_drive_item_bridge_lossy_fields_recorded_in_report(db_path: str) -> None:
+    """``etag``, ``first_seen_at``, ``last_seen_at`` aren't representable in
+    V5; the bridge report names them so future auditors know what was
+    dropped."""
+    from hb_assistant.construction.drive_item_bridge import summarize_bridge
+
+    store = ConstructionStore(db_path)
+    store.upsert_source_location(
+        source_id="sp_bridge_lossy", source_system="sharepoint",
+        source_scope="sharepoint_project_drive_folder", source_name="Bridge lossy",
+    )
+    store.upsert_inventory_item(
+        source_key="sp_bridge_lossy", drive_id="d1", item_id="i1",
+        name="x", web_url=None, parent_path="/", size_bytes=1, is_folder=False,
+        last_modified="2026-01-01T00:00:00Z", etag="e1",
+    )
+    reports = summarize_bridge(store, ["sp_bridge_lossy"])
+
+    assert "etag" in reports["sp_bridge_lossy"].lossy_v2_fields
+    assert "first_seen_at" in reports["sp_bridge_lossy"].lossy_v2_fields
+    assert "last_seen_at" in reports["sp_bridge_lossy"].lossy_v2_fields
+
+
+def test_v5_drive_item_bridge_unified_read_v5_wins_on_collision(db_path: str) -> None:
+    """When both V2 inventory and V5 drive_items have the same
+    ``(source_id, drive_item_id)``, the V5 row wins so callers
+    transparently switch to V5-canonical data as Phase 03 ramps."""
+    from hb_assistant.construction.drive_item_bridge import read_drive_items_unified
+
+    store = ConstructionStore(db_path)
+    # FK requires source_location for V5 writes.
+    store.upsert_source_location(
+        source_id="sp_collision", source_system="sharepoint",
+        source_scope="sharepoint_project_drive_folder", source_name="Collision",
+    )
+    # V2 inventory: name "v2-name"
+    store.upsert_inventory_item(
+        source_key="sp_collision", drive_id="d1", item_id="i1",
+        name="v2-name", web_url=None, parent_path="/", size_bytes=10,
+        is_folder=False, last_modified="2026-01-01T00:00:00Z", etag="v2",
+    )
+    # V5 drive_items: name "v5-name", richer classification_status set.
+    store.upsert_drive_item(
+        source_id="sp_collision", drive_id="d1", drive_item_id="i1",
+        name="v5-name", size_bytes=20, is_folder=False, is_file=True,
+        classification_status="reviewed",
+    )
+
+    items = read_drive_items_unified(store, source_id="sp_collision")
+
+    assert len(items) == 1
+    assert items[0].name == "v5-name"
+    assert items[0].size_bytes == 20
+    assert items[0].classification_status == "reviewed"
+
+
+def test_v5_drive_item_bridge_unified_read_unions_disjoint_sets(db_path: str) -> None:
+    """Items present only in V2 OR only in V5 both appear in the unified
+    read."""
+    from hb_assistant.construction.drive_item_bridge import read_drive_items_unified
+
+    store = ConstructionStore(db_path)
+    store.upsert_source_location(
+        source_id="sp_disjoint", source_system="sharepoint",
+        source_scope="sharepoint_project_drive_folder", source_name="Disjoint",
+    )
+    store.upsert_inventory_item(
+        source_key="sp_disjoint", drive_id="d1", item_id="v2_only_item",
+        name="v2only", web_url=None, parent_path="/", size_bytes=1,
+        is_folder=False, last_modified="2026-01-01T00:00:00Z", etag="v2",
+    )
+    store.upsert_drive_item(
+        source_id="sp_disjoint", drive_id="d1", drive_item_id="v5_only_item",
+        name="v5only", size_bytes=2, is_folder=False, is_file=True,
+    )
+
+    items = read_drive_items_unified(store, source_id="sp_disjoint")
+    ids = {i.drive_item_id for i in items}
+    assert ids == {"v2_only_item", "v5_only_item"}
+
+
+def test_v5_drive_item_bridge_module_has_no_writeback_paths() -> None:
+    """Static guard: the bridge module must not import filesystem-write,
+    HTTP-write, or shell-mutation surfaces. A soft-deleted item flowing
+    through the bridge must never mutate the source file."""
+    import inspect
+
+    from hb_assistant.construction import drive_item_bridge
+
+    src = inspect.getsource(drive_item_bridge)
+    forbidden = (
+        "requests.post", "requests.put", "requests.patch", "requests.delete",
+        "client.post", "client.put", "client.patch", "client.delete",
+        "subprocess", "os.remove", "os.unlink", "os.rmdir", "shutil.rmtree",
+        "Path.unlink", "Path.write", "Path.rmdir", ".write_text", ".write_bytes",
+    )
+    leaks = [tok for tok in forbidden if tok in src]
+    assert not leaks, f"drive_item_bridge.py imports writeback surfaces: {leaks}"
