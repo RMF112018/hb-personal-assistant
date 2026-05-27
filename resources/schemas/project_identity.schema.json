@@ -1,0 +1,66 @@
+{
+  "additionalProperties": false,
+  "description": "Construction project identity referenced by source locations.",
+  "properties": {
+    "project_key": {
+      "title": "Project Key",
+      "type": "string"
+    },
+    "display_name": {
+      "title": "Display Name",
+      "type": "string"
+    },
+    "status": {
+      "default": "active",
+      "enum": [
+        "active",
+        "paused",
+        "closed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "primary_company": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Primary Company"
+    },
+    "procore_company_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Procore Company Id"
+    },
+    "notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "project_key",
+    "display_name"
+  ],
+  "title": "ProjectIdentity",
+  "type": "object"
+}

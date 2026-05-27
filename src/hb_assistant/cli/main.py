@@ -17,13 +17,14 @@ import typer
 
 from hb_assistant import __version__
 
+from . import actions as actions_mod
 from . import auth as auth_mod
 from . import automation as auto_mod
+from . import construction as construction_mod
 from . import diagnostics as diag_mod
 from . import files as files_mod
 from . import run as run_mod
 from . import search as search_mod
-from . import actions as actions_mod
 
 app = typer.Typer(
     name="hb-assistant",
@@ -61,6 +62,7 @@ app.add_typer(actions_mod.app, name="actions")
 app.add_typer(search_mod.app, name="search")
 app.add_typer(run_mod.app, name="run")
 app.add_typer(auto_mod.app, name="automation")
+app.add_typer(construction_mod.app, name="construction-agent")
 
 
 # Explicit thin stubs for remaining command groups

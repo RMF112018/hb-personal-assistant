@@ -1,0 +1,43 @@
+# Construction-agent source registry seed.
+#
+# All sources are read-only and start with resolution_status: pending.
+# Real site_url / site_id / drive_id values land via a subsequent prompt once
+# the SharePoint developer brief is attached and a delegated /me/drive
+# round-trip has been performed.
+#
+# Guardrails (do not relax in overrides):
+# - read_only must remain true (enforced by SourceLocation model).
+# - Add new sources rather than mutating identifiers in-place once resolved.
+
+projects:
+  - project_key: tropical
+    display_name: "Tropical"
+    status: active
+    primary_company: HB Construction
+  - project_key: hilltop
+    display_name: "Hilltop"
+    status: active
+    primary_company: HB Construction
+
+sources:
+  - source_key: tropical-sharepoint
+    project_key: tropical
+    kind: sharepoint_site
+    display_name: "Tropical SharePoint Site"
+    read_only: true
+    resolution_status: pending
+    notes: "site_url + site_id to be resolved from SharePoint developer brief"
+  - source_key: hilltop-sharepoint
+    project_key: hilltop
+    kind: sharepoint_site
+    display_name: "Hilltop SharePoint Site"
+    read_only: true
+    resolution_status: pending
+    notes: "site_url + site_id to be resolved from SharePoint developer brief"
+  - source_key: bobby-onedrive
+    project_key: null
+    kind: onedrive_personal
+    display_name: "Bobby OneDrive (delegated, personal scope)"
+    read_only: true
+    resolution_status: pending
+    notes: "drive_id to be resolved via /me/drive once delegated auth is exercised"

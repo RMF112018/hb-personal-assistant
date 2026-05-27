@@ -1,0 +1,119 @@
+{
+  "additionalProperties": false,
+  "description": "A single read-only source endpoint (SharePoint site, OneDrive scope, etc.).",
+  "properties": {
+    "source_key": {
+      "title": "Source Key",
+      "type": "string"
+    },
+    "project_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Key"
+    },
+    "kind": {
+      "enum": [
+        "sharepoint_site",
+        "sharepoint_library",
+        "onedrive_personal",
+        "onedrive_shared"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "display_name": {
+      "title": "Display Name",
+      "type": "string"
+    },
+    "site_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Site Url"
+    },
+    "site_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Site Id"
+    },
+    "drive_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Drive Id"
+    },
+    "root_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Root Path"
+    },
+    "read_only": {
+      "const": true,
+      "default": true,
+      "title": "Read Only",
+      "type": "boolean"
+    },
+    "resolution_status": {
+      "default": "pending",
+      "enum": [
+        "pending",
+        "resolved",
+        "deprecated"
+      ],
+      "title": "Resolution Status",
+      "type": "string"
+    },
+    "notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "source_key",
+    "kind",
+    "display_name"
+  ],
+  "title": "SourceLocation",
+  "type": "object"
+}
