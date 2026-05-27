@@ -925,3 +925,55 @@ def test_seed_rule_count_includes_pii_additions(seed_rules: ReviewRules) -> None
         "pii-tax-document",
     ]
     assert len(seed_rules.rules) >= 16
+
+
+# ---------------------------------------------------------------------------
+# Phase 02 Prompt 09: deterministic-routing regression guards
+# ---------------------------------------------------------------------------
+
+
+def test_loader_preserves_yaml_declaration_order(seed_rules: ReviewRules) -> None:
+    """Phase 02 review routing is order-dependent: rule evaluation iterates
+    the list in seed order, and that order is what controllers see when
+    multiple rules match a single item. This test pins the loader against
+    accidental alphabetisation, hashing, or dict-key reordering."""
+    seed_path = (
+        Path(__file__).resolve().parents[1]
+        / "resources"
+        / "config"
+        / "review_required_rules.seed.yaml"
+    )
+    raw = yaml.safe_load(seed_path.read_text(encoding="utf-8"))
+    yaml_ids = [r["rule_id"] for r in raw["rules"]]
+    loaded_ids = [r.rule_id for r in seed_rules.rules]
+    assert loaded_ids == yaml_ids, (
+        "load_review_rules() reordered the seed; controllers rely on "
+        "declared order for deterministic routing"
+    )
+
+
+def test_evaluator_emits_matches_in_declared_rule_order(
+    evaluator: ReviewPolicyEvaluator, seed_rules: ReviewRules,
+) -> None:
+    """When multiple rules match the same item, the evaluator must yield
+    them in the rule-declaration order (rather than match-discovery,
+    alphabetical, or hash order). Controllers see provenance in that
+    sequence; reordering would silently change the audit trail."""
+    item = {
+        "item_id": "audit-trail.pdf",
+        "name": "Site Incident Change Order Report.pdf",
+        "parent_path": "/Tropical/Contracts/Incidents",
+    }
+    matches = evaluator.evaluate(source_key="src", project_key="p", item=item)
+    declared_index = {r.rule_id: i for i, r in enumerate(seed_rules.rules)}
+    match_positions = [declared_index[m.rule_id] for m in matches]
+    assert match_positions == sorted(match_positions), (
+        "evaluator emitted matches out of seed declaration order; "
+        f"got rule_ids={[m.rule_id for m in matches]}"
+    )
+    # Sanity: we should see at least the contract + incident + change-order
+    # rules fire on this construction-shaped item.
+    rule_ids = [m.rule_id for m in matches]
+    assert "folder-contracts" in rule_ids
+    assert "folder-incidents" in rule_ids
+    assert "doc-change-order" in rule_ids

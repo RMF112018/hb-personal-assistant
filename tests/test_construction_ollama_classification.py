@@ -26,6 +26,8 @@ from typer.testing import CliRunner
 
 from hb_assistant.cli import construction as construction_cli
 from hb_assistant.construction.classification import (
+    DEFAULT_OLLAMA_ENDPOINT,
+    OLLAMA_HOST_ENV_VAR,
     ClassificationRouter,
     ClassificationService,
     InvalidModelOutputError,
@@ -34,9 +36,12 @@ from hb_assistant.construction.classification import (
     ModelRoutingError,
     OllamaChatClient,
     OllamaUnavailable,
+    ReadinessReport,
+    check_readiness,
     load_model_routing_config,
     parse_and_validate,
 )
+from hb_assistant.construction.classification import readiness as readiness_mod
 from hb_assistant.construction.classification.loader import ENV_VAR
 from hb_assistant.construction.policy import (
     ReviewPolicyEvaluator,
@@ -626,3 +631,305 @@ def test_protected_categories_match_review_queue_seed() -> None:
     cfg = load_model_routing_config()
     for cat in POLICY_CATS:
         assert cat in cfg.protected_categories
+
+
+# ---------------------------------------------------------------------------
+# Phase 02 Prompt 09: Ollama live-readiness — schema, endpoint, probe, CLI
+# ---------------------------------------------------------------------------
+
+
+def _routing_cfg_dict(**overrides: Any) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "version": 1,
+        "default_model": "llama3.2:1b",
+        "low_confidence_threshold": 0.7,
+        "timeout_seconds": 15.0,
+        "max_output_chars": 4000,
+        "protected_categories": [
+            "contract", "financial", "legal", "incident", "injury", "personnel",
+        ],
+        "tasks": [
+            {"task": "classification", "model": "llama3.2:1b", "system_prompt": "x"},
+            {"task": "review_reason", "model": "llama3.2:1b", "system_prompt": "y"},
+        ],
+    }
+    base.update(overrides)
+    return base
+
+
+def _mock_get(status_code: int = 200, body: Any = None) -> MagicMock:
+    response = MagicMock()
+    response.status_code = status_code
+    response.json = MagicMock(return_value=body if body is not None else {"models": []})
+    return MagicMock(return_value=response)
+
+
+# ---- Schema -----------------------------------------------------------------
+
+
+def test_routing_config_default_endpoint_url() -> None:
+    cfg = load_model_routing_config()
+    assert cfg.endpoint_url == DEFAULT_OLLAMA_ENDPOINT
+
+
+def test_routing_config_rejects_endpoint_url_without_scheme() -> None:
+    with pytest.raises(ValidationError):
+        ModelRoutingConfig.model_validate(_routing_cfg_dict(endpoint_url="localhost:11434"))
+
+
+def test_routing_config_rejects_endpoint_url_with_trailing_slash() -> None:
+    with pytest.raises(ValidationError):
+        ModelRoutingConfig.model_validate(
+            _routing_cfg_dict(endpoint_url="http://localhost:11434/"),
+        )
+
+
+def test_routing_config_derives_expected_models_when_omitted() -> None:
+    cfg = ModelRoutingConfig.model_validate(
+        _routing_cfg_dict(
+            default_model="llama3.2:1b",
+            tasks=[
+                {"task": "classification", "model": "llama3.2:1b", "system_prompt": "x"},
+                {"task": "review_reason", "model": "llama3.2:3b", "system_prompt": "y"},
+            ],
+        ),
+    )
+    # Default model first, then task models in declaration order, deduped.
+    assert cfg.resolved_expected_models() == ["llama3.2:1b", "llama3.2:3b"]
+
+
+def test_routing_config_rejects_duplicate_expected_models() -> None:
+    with pytest.raises(ValidationError):
+        ModelRoutingConfig.model_validate(
+            _routing_cfg_dict(expected_models=["llama3.2:1b", "llama3.2:1b"]),
+        )
+
+
+def test_routing_config_rejects_explicit_expected_models_missing_default_model() -> None:
+    with pytest.raises(ValidationError):
+        ModelRoutingConfig.model_validate(
+            _routing_cfg_dict(expected_models=["nomic-embed:latest"]),
+        )
+
+
+def test_routing_config_rejects_explicit_expected_models_missing_task_model() -> None:
+    cfg_dict = _routing_cfg_dict(
+        default_model="llama3.2:1b",
+        tasks=[
+            {"task": "classification", "model": "llama3.2:3b", "system_prompt": "x"},
+            {"task": "review_reason", "model": "llama3.2:1b", "system_prompt": "y"},
+        ],
+        # explicitly leaves out llama3.2:3b (task model)
+        expected_models=["llama3.2:1b"],
+    )
+    with pytest.raises(ValidationError):
+        ModelRoutingConfig.model_validate(cfg_dict)
+
+
+# ---- Endpoint resolution ----------------------------------------------------
+
+
+def test_endpoint_source_env_when_ollama_host_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(OLLAMA_HOST_ENV_VAR, "http://probe.local:9999/")
+    cfg = load_model_routing_config()
+    endpoint, source = readiness_mod._resolve_endpoint(cfg)
+    assert source == "env"
+    assert endpoint == "http://probe.local:9999"  # trailing slash stripped
+
+
+def test_endpoint_source_config_when_seed_overrides_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
+    cfg = ModelRoutingConfig.model_validate(
+        _routing_cfg_dict(endpoint_url="http://configured.test:11434"),
+    )
+    endpoint, source = readiness_mod._resolve_endpoint(cfg)
+    assert source == "config"
+    assert endpoint == "http://configured.test:11434"
+
+
+def test_endpoint_source_default_when_neither_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
+    cfg = load_model_routing_config()
+    endpoint, source = readiness_mod._resolve_endpoint(cfg)
+    assert source == "default"
+    assert endpoint == DEFAULT_OLLAMA_ENDPOINT
+
+
+# ---- Readiness probe (mocked HTTP) -----------------------------------------
+
+
+def test_readiness_ok_when_daemon_returns_all_expected_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
+    cfg = load_model_routing_config()
+    body = {"models": [{"name": m} for m in cfg.resolved_expected_models()]}
+    report = check_readiness(cfg, requests_get=_mock_get(200, body))
+    assert report.ok is True
+    assert report.status == "ready"
+    assert report.daemon_reachable is True
+    assert report.missing_models == []
+    assert report.suggested_pull_commands == []
+    assert report.error_redacted is None
+
+
+def test_readiness_models_missing_when_some_absent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
+    cfg = load_model_routing_config()
+    # Return an unrelated model only — every expected model is missing.
+    body = {"models": [{"name": "some-other-model:latest"}]}
+    report = check_readiness(cfg, requests_get=_mock_get(200, body))
+    assert report.ok is False
+    assert report.status == "models_missing"
+    assert report.daemon_reachable is True
+    assert set(report.missing_models) == set(cfg.resolved_expected_models())
+    assert all(
+        cmd.startswith("ollama pull ") for cmd in report.suggested_pull_commands
+    )
+
+
+def test_readiness_daemon_unreachable_on_connection_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
+    cfg = load_model_routing_config()
+    import requests as _requests
+
+    def raise_conn(*a: Any, **kw: Any) -> None:
+        raise _requests.ConnectionError("nope")
+
+    report = check_readiness(cfg, requests_get=raise_conn)
+    assert report.ok is False
+    assert report.status == "daemon_unreachable"
+    assert report.daemon_reachable is False
+    assert report.error_redacted == "ollama_request_failed"
+    # Error must not leak URL / hostname
+    blob = json.dumps(report.model_dump())
+    assert "localhost" not in (report.error_redacted or "")
+    assert "11434" not in (report.error_redacted or "")
+    assert "nope" not in blob
+
+
+def test_readiness_daemon_unreachable_on_non_200(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
+    cfg = load_model_routing_config()
+    report = check_readiness(cfg, requests_get=_mock_get(503, {"models": []}))
+    assert report.ok is False
+    assert report.status == "daemon_unreachable"
+    assert report.error_redacted == "ollama_status_503"
+
+
+def test_readiness_daemon_unreachable_on_malformed_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
+    cfg = load_model_routing_config()
+    report = check_readiness(cfg, requests_get=_mock_get(200, {"oops": True}))
+    assert report.ok is False
+    assert report.status == "daemon_unreachable"
+    assert report.error_redacted == "ollama_missing_models_field"
+
+
+# ---- Static-scan guardrail --------------------------------------------------
+
+
+def test_readiness_module_does_not_reference_generate_endpoint() -> None:
+    """Readiness must never call /api/generate. The path string itself
+    should not appear anywhere in the module source."""
+    import inspect
+
+    src = inspect.getsource(readiness_mod)
+    assert "/api/generate" not in src, (
+        "readiness.py unexpectedly references /api/generate"
+    )
+
+
+# ---- CLI --------------------------------------------------------------------
+
+
+def _invoke_ollama_status() -> Any:
+    runner = CliRunner()
+    return runner.invoke(construction_cli.app, ["ollama", "status", "--json"])
+
+
+def test_cli_ollama_status_ready_when_daemon_returns_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
+    cfg = load_model_routing_config()
+    body = {"models": [{"name": m} for m in cfg.resolved_expected_models()]}
+    with patch.object(
+        readiness_mod.requests, "get",
+        return_value=MagicMock(status_code=200, json=MagicMock(return_value=body)),
+    ):
+        result = _invoke_ollama_status()
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["command"] == "construction-agent ollama status"
+    assert payload["report"]["ok"] is True
+    assert payload["report"]["status"] == "ready"
+    assert payload["report"]["endpoint_source"] == "default"
+    assert payload["guardrails"]["live_inference"] == "false"
+    assert payload["guardrails"]["endpoint_path"] == "/api/tags"
+
+
+def test_cli_ollama_status_daemon_unreachable_still_exits_0(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
+    import requests as _requests
+
+    with patch.object(
+        readiness_mod.requests, "get",
+        side_effect=_requests.ConnectionError("nope"),
+    ):
+        result = _invoke_ollama_status()
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["report"]["ok"] is False
+    assert payload["report"]["status"] == "daemon_unreachable"
+    assert payload["report"]["error_redacted"] == "ollama_request_failed"
+
+
+def test_cli_ollama_status_respects_ollama_host_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(OLLAMA_HOST_ENV_VAR, "http://probe.local:9999")
+    import requests as _requests
+
+    with patch.object(
+        readiness_mod.requests, "get",
+        side_effect=_requests.ConnectionError("nope"),
+    ):
+        result = _invoke_ollama_status()
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["report"]["endpoint_source"] == "env"
+    assert payload["report"]["endpoint_url"] == "http://probe.local:9999"
+
+
+def test_cli_ollama_status_models_missing_shows_pull_commands(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
+    body = {"models": [{"name": "some-other-model:latest"}]}
+    with patch.object(
+        readiness_mod.requests, "get",
+        return_value=MagicMock(status_code=200, json=MagicMock(return_value=body)),
+    ):
+        result = _invoke_ollama_status()
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["report"]["status"] == "models_missing"
+    assert any(
+        cmd.startswith("ollama pull llama3.2:1b")
+        for cmd in payload["report"]["suggested_pull_commands"]
+    )

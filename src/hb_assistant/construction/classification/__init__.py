@@ -9,6 +9,7 @@ manual review. The model never overrides controller validation.
 from .client import OllamaChatClient, OllamaUnavailable
 from .loader import ModelRoutingError, load_model_routing_config
 from .models import (
+    DEFAULT_OLLAMA_ENDPOINT,
     PROTECTED_CATEGORIES,
     ClassificationDecision,
     ModelClassification,
@@ -16,11 +17,18 @@ from .models import (
     ModelTaskRouting,
     ProposedLabel,
 )
+from .readiness import (
+    OLLAMA_HOST_ENV_VAR,
+    ReadinessReport,
+    check_readiness,
+)
 from .router import ClassificationRouter
 from .service import ClassificationService
 from .validator import InvalidModelOutputError, parse_and_validate
 
 __all__ = [
+    "DEFAULT_OLLAMA_ENDPOINT",
+    "OLLAMA_HOST_ENV_VAR",
     "PROTECTED_CATEGORIES",
     "ClassificationDecision",
     "ClassificationRouter",
@@ -33,6 +41,8 @@ __all__ = [
     "OllamaChatClient",
     "OllamaUnavailable",
     "ProposedLabel",
+    "ReadinessReport",
+    "check_readiness",
     "load_model_routing_config",
     "parse_and_validate",
 ]

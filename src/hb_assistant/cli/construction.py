@@ -32,6 +32,8 @@ from hb_assistant.construction.classification import (
     ClassificationService,
     InvalidModelOutputError,
     ModelRoutingError,
+    ReadinessReport,
+    check_readiness,
     load_model_routing_config,
 )
 from hb_assistant.construction.config import (
@@ -75,6 +77,7 @@ graph_sources_app = typer.Typer(help="Graph source resolution.")
 vault_app = typer.Typer(help="Construction vault preview and bootstrap.")
 review_app = typer.Typer(help="Review-queue policy evaluation and inspection.")
 classify_app = typer.Typer(help="Ollama-backed classification (recommendation-only).")
+ollama_app = typer.Typer(help="Ollama daemon readiness (read-only; no inference).")
 fixtures_app = typer.Typer(help="Canonical fixture inventory + validation harness (read-only).")
 app.add_typer(sources_app, name="sources")
 app.add_typer(graph_app, name="graph")
@@ -82,6 +85,7 @@ graph_app.add_typer(graph_sources_app, name="sources")
 app.add_typer(vault_app, name="vault")
 app.add_typer(review_app, name="review")
 app.add_typer(classify_app, name="classify")
+app.add_typer(ollama_app, name="ollama")
 app.add_typer(fixtures_app, name="fixtures")
 
 
@@ -1206,6 +1210,59 @@ def _per_source_index(store: "ConstructionStore", src: Any) -> dict[str, Any]:
         "last_receipt_status": last_receipt.get("status"),
         "last_receipt_finished_at": last_receipt.get("finished_at"),
     }
+
+
+@ollama_app.command("status")
+def ollama_status(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report local Ollama daemon readiness without running inference.
+
+    Probes ``/api/tags`` only — never ``/api/generate``. Always exits 0;
+    callers consume the ``report.ok`` and ``report.status`` fields. Designed
+    so CI / offline contexts can call this command without a live daemon.
+    """
+    try:
+        config = load_model_routing_config()
+    except ModelRoutingError as e:
+        payload = {
+            "command": "construction-agent ollama status",
+            "report": {
+                "endpoint_url": "",
+                "endpoint_source": "default",
+                "daemon_reachable": False,
+                "expected_models": [],
+                "present_models": [],
+                "missing_models": [],
+                "suggested_pull_commands": [],
+                "status": "config_invalid",
+                "ok": False,
+                "error_redacted": "model_routing_config_invalid",
+            },
+            "guardrails": {
+                "external_systems": "read_only",
+                "writeback": "none",
+                "live_inference": "false",
+                "endpoint_path": "/api/tags",
+            },
+            "note": str(e),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0) from None
+
+    report: ReadinessReport = check_readiness(config)
+    payload = {
+        "command": "construction-agent ollama status",
+        "report": report.model_dump(),
+        "guardrails": {
+            "external_systems": "read_only",
+            "writeback": "none",
+            "live_inference": "false",
+            "endpoint_path": "/api/tags",
+        },
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
 
 
 @app.command("index")

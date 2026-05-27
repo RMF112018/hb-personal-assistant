@@ -89,6 +89,9 @@ class ModelTaskRouting(BaseModel):
         return v
 
 
+DEFAULT_OLLAMA_ENDPOINT = "http://localhost:11434"
+
+
 class ModelRoutingConfig(BaseModel):
     """Top-level Ollama routing config (loaded from YAML)."""
 
@@ -100,9 +103,24 @@ class ModelRoutingConfig(BaseModel):
     )
     timeout_seconds: float = 15.0
     max_output_chars: int = 4000
+    endpoint_url: str = DEFAULT_OLLAMA_ENDPOINT
+    expected_models: list[str] = Field(default_factory=list)
     tasks: list[ModelTaskRouting] = Field(default_factory=list)
 
     model_config = {"extra": "forbid"}
+
+    @field_validator("endpoint_url")
+    @classmethod
+    def _endpoint_url_shape(cls, v: str) -> str:
+        if not (v.startswith("http://") or v.startswith("https://")):
+            raise ValueError(
+                f"endpoint_url must start with 'http://' or 'https://'; got {v!r}"
+            )
+        if v.endswith("/"):
+            raise ValueError(
+                f"endpoint_url must not end with a trailing slash; got {v!r}"
+            )
+        return v
 
     @field_validator("low_confidence_threshold")
     @classmethod
@@ -139,6 +157,27 @@ class ModelRoutingConfig(BaseModel):
         if len(task_keys) != len(set(task_keys)):
             dupes = sorted({k for k in task_keys if task_keys.count(k) > 1})
             raise ValueError(f"duplicate task entries: {dupes}")
+
+        # If expected_models is explicit, it must be unique and cover
+        # default_model + every per-task model so an operator cannot ship a
+        # readiness expectation that disagrees with the routing config itself.
+        if self.expected_models:
+            if len(self.expected_models) != len(set(self.expected_models)):
+                dupes = sorted(
+                    {m for m in self.expected_models if self.expected_models.count(m) > 1}
+                )
+                raise ValueError(f"duplicate expected_models entries: {dupes}")
+            if self.default_model not in self.expected_models:
+                raise ValueError(
+                    f"expected_models must include default_model "
+                    f"{self.default_model!r}; got {self.expected_models}"
+                )
+            for t in self.tasks:
+                if t.model not in self.expected_models:
+                    raise ValueError(
+                        f"expected_models must include every task model; missing "
+                        f"{t.model!r} for task {t.task!r}"
+                    )
         return self
 
     def task_for(self, task: ModelTask) -> ModelTaskRouting:
@@ -146,6 +185,22 @@ class ModelRoutingConfig(BaseModel):
             if t.task == task:
                 return t
         raise KeyError(f"no routing entry for task {task!r}")
+
+    def resolved_expected_models(self) -> list[str]:
+        """Return the effective list of models the Ollama daemon must serve.
+
+        When ``expected_models`` is explicit, return it as-is (already
+        validated to include default_model + every task model). When omitted,
+        derive from ``default_model`` plus every per-task model, deduped and
+        order-preserved.
+        """
+        if self.expected_models:
+            return list(self.expected_models)
+        seen: dict[str, None] = {}
+        seen[self.default_model] = None
+        for t in self.tasks:
+            seen.setdefault(t.model, None)
+        return list(seen.keys())
 
 
 class ClassificationDecision(BaseModel):

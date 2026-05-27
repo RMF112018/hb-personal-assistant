@@ -24,6 +24,12 @@ low_confidence_threshold: 0.7
 timeout_seconds: 15.0
 max_output_chars: 4000
 
+# Ollama HTTP endpoint for both classification (POST /api/generate) and the
+# readiness probe (GET /api/tags). Override with OLLAMA_HOST env var or by
+# editing this field. expected_models is intentionally omitted — at runtime
+# it derives to [default_model] + [task model for task in tasks] deduped.
+endpoint_url: "http://localhost:11434"
+
 protected_categories:
   - contract
   - financial
