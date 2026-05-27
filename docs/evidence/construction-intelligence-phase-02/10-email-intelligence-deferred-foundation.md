@@ -9,7 +9,7 @@ The central assertion is **grant-but-suppress**: the tenant has consented to `Ma
 ## Repo HEAD
 
 - Before: `f21f15e` (Phase 02 Prompt 09 closeout)
-- After: `<filled in by commit step>`
+- After: `d590735bd72c3df0c968b1dc71c5b06c7b81efb9`
 
 ## Files changed
 
