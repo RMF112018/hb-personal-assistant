@@ -13,12 +13,19 @@ and the MorningRunOrchestrator / LaunchdManager only ever perform read operation
 or local filesystem writes (cache, evidence, logs, plist files).
 
 Config default: microsoft_365_writeback_enabled = False (defense in depth).
+
+Phase 02 Prompt 10 additions (below): email-intelligence deferred-foundation
+policy regression tests + mailbox-mutation-endpoint static scans.
 """
 
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
+
+import pytest
+from pydantic import ValidationError
 
 
 def test_no_m365_write_apis_in_graph_clients():
@@ -79,3 +86,164 @@ def test_mutation_lockout_redaction_in_test_artifacts():
         # If >1, there is a real secret elsewhere in the file.
         count = test_file.count(bad)
         assert count <= 1, f"Redaction violation: {bad} appears {count} times (should be only in the forbidden list)"
+
+
+# ---------------------------------------------------------------------------
+# Phase 02 Prompt 10: email-intelligence deferred-foundation policy
+# ---------------------------------------------------------------------------
+
+
+def _valid_policy_dict() -> dict:
+    return {
+        "mail_read_all_granted": True,
+        "mail_readwrite_all_granted": True,
+        "mailbox_writeback_allowed": False,
+        "persist_full_body": False,
+        "review_required_for_sensitive": True,
+        "future_phase": "phase_03",
+    }
+
+
+def test_email_intelligence_deferred_policy_yaml_loads_and_locks_writeback() -> None:
+    from hb_assistant.construction.policy import load_email_intelligence_deferred_policy
+
+    policy = load_email_intelligence_deferred_policy()
+    assert policy.mailbox_writeback_allowed is False
+    assert policy.persist_full_body is False
+    assert policy.review_required_for_sensitive is True
+    # Tenant grants are operator truth; they do not loosen the lockout.
+    assert policy.mail_read_all_granted is True
+    assert policy.mail_readwrite_all_granted is True
+
+
+def test_email_intelligence_deferred_policy_rejects_mailbox_writeback_allowed_true() -> None:
+    from hb_assistant.construction.policy import EmailIntelligenceDeferredPolicy
+
+    data = _valid_policy_dict()
+    data["mailbox_writeback_allowed"] = True
+    with pytest.raises(ValidationError):
+        EmailIntelligenceDeferredPolicy.model_validate(data)
+
+
+def test_email_intelligence_deferred_policy_rejects_persist_full_body_true() -> None:
+    from hb_assistant.construction.policy import EmailIntelligenceDeferredPolicy
+
+    data = _valid_policy_dict()
+    data["persist_full_body"] = True
+    with pytest.raises(ValidationError):
+        EmailIntelligenceDeferredPolicy.model_validate(data)
+
+
+def test_email_intelligence_deferred_policy_rejects_review_required_for_sensitive_false() -> None:
+    from hb_assistant.construction.policy import EmailIntelligenceDeferredPolicy
+
+    data = _valid_policy_dict()
+    data["review_required_for_sensitive"] = False
+    with pytest.raises(ValidationError):
+        EmailIntelligenceDeferredPolicy.model_validate(data)
+
+
+def test_email_intelligence_deferred_policy_rejects_unknown_fields() -> None:
+    from hb_assistant.construction.policy import EmailIntelligenceDeferredPolicy
+
+    data = _valid_policy_dict()
+    data["secret_writeback_override"] = True
+    with pytest.raises(ValidationError):
+        EmailIntelligenceDeferredPolicy.model_validate(data)
+
+
+def test_email_intelligence_deferred_policy_allows_mail_readwrite_all_granted_true_without_loosening_lockout() -> None:
+    """The central grant-but-suppress assertion: tenant may grant
+    Mail.ReadWrite.All, but the three locked guardrails stay locked."""
+    from hb_assistant.construction.policy import EmailIntelligenceDeferredPolicy
+
+    policy = EmailIntelligenceDeferredPolicy.model_validate(_valid_policy_dict())
+    assert policy.mail_readwrite_all_granted is True
+    # All three locked guardrails remain at their required values:
+    assert policy.mailbox_writeback_allowed is False
+    assert policy.persist_full_body is False
+    assert policy.review_required_for_sensitive is True
+
+
+# ---------------------------------------------------------------------------
+# Phase 02 Prompt 10: runtime delegated-scope defense
+# ---------------------------------------------------------------------------
+
+
+_FORBIDDEN_MAIL_SCOPES = (
+    "Mail.ReadWrite.All",
+    "Mail.ReadWrite",
+    "Mail.ReadWrite.Shared",
+    "Mail.Send",
+    "Mail.Send.Shared",
+)
+
+
+def test_identity_default_scopes_do_not_request_mailbox_write_scopes() -> None:
+    """Despite tenant-level Mail.ReadWrite.All consent, the application's
+    MSAL scope request must continue to ask only for Mail.Read at runtime.
+
+    The default IdentityConfig is the single source of truth for delegated
+    scopes; this test pins it against accidental broadening."""
+    from hb_assistant.config.models import IdentityConfig
+
+    identity = IdentityConfig()
+    for scope in _FORBIDDEN_MAIL_SCOPES:
+        assert scope not in identity.delegated_scopes, (
+            f"IdentityConfig.delegated_scopes default unexpectedly contains "
+            f"{scope!r}; Phase 02 must request only 'Mail.Read'"
+        )
+    # Sanity: Mail.Read should remain present so the read paths still work.
+    assert "Mail.Read" in identity.delegated_scopes
+
+
+# ---------------------------------------------------------------------------
+# Phase 02 Prompt 10: mailbox-mutation-endpoint static scan
+# ---------------------------------------------------------------------------
+
+
+_MAILBOX_PATH_RE = re.compile(r"/me/(messages|mailFolders)")
+_WRITE_VERB_CALL_RE = re.compile(r"\.(post|patch|delete)\s*\(")
+_MAILBOX_ACTION_ENDPOINT_RE = re.compile(
+    r"/(sendMail|reply|replyAll|forward"
+    r"|microsoft\.graph\.move|microsoft\.graph\.copy"
+    r"|microsoft\.graph\.sendMail|microsoft\.graph\.reply"
+    r"|microsoft\.graph\.replyAll|microsoft\.graph\.forward)"
+)
+
+
+def test_graph_clients_do_not_contain_mailbox_mutation_endpoints() -> None:
+    """Static scan over src/hb_assistant/graph/**.py for:
+
+    1. write-verb HTTP calls (.post/.patch/.delete) on lines that also
+       reference /me/messages or /me/mailFolders;
+    2. literal mailbox-action endpoints (/sendMail, /reply, /replyAll,
+       /forward, microsoft.graph.move|copy on messages).
+
+    Defense-in-depth alongside the broader
+    test_no_m365_write_apis_in_graph_clients which forbids any write verb
+    anywhere in the graph module tree."""
+    root = Path(__file__).resolve().parents[1]
+    graph_dir = root / "src" / "hb_assistant" / "graph"
+    violations: list[str] = []
+
+    for py_file in sorted(graph_dir.rglob("*.py")):
+        for line_no, line in enumerate(
+            py_file.read_text(encoding="utf-8").splitlines(), start=1,
+        ):
+            if _WRITE_VERB_CALL_RE.search(line) and _MAILBOX_PATH_RE.search(line):
+                violations.append(
+                    f"{py_file.relative_to(root)}:{line_no}: write verb against "
+                    f"mailbox endpoint: {line.strip()!r}"
+                )
+            if _MAILBOX_ACTION_ENDPOINT_RE.search(line):
+                violations.append(
+                    f"{py_file.relative_to(root)}:{line_no}: mailbox action "
+                    f"endpoint: {line.strip()!r}"
+                )
+
+    assert not violations, (
+        "Mailbox mutation endpoints / write verbs detected in Graph client "
+        "source — Phase 02 requires mailbox read-only behavior:\n"
+        + "\n".join(violations)
+    )

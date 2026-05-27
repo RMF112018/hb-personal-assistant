@@ -1,0 +1,32 @@
+# Email intelligence deferred-foundation policy.
+#
+# Records the tenant-level Microsoft Graph mail-permission grants and locks
+# the read-only / no-body-persistence / sensitive-review guardrails that
+# Phase 02 enforces in three layers:
+#
+#   1. This policy file (Pydantic Literal[False] / Literal[True] guards).
+#   2. ConstructionStore.set_email_intelligence_deferred_state Python guards.
+#   3. SQLite V5 table `construction_email_intelligence_deferred_state`
+#      CHECK constraints (mailbox_writeback_allowed = 0,
+#      persist_full_body = 0, singleton id = 1).
+#
+# The *_granted flags reflect what the tenant has consented to (operator
+# truth). The three locked flags below mirror the const-shaped constraints
+# in `resources/schemas/email_intelligence_deferred_contract.schema.json`
+# and cannot be edited to loosen mailbox protection without a model change.
+#
+# Despite `Mail.ReadWrite.All` being granted at the tenant level, the
+# application's `IdentityConfig.delegated_scopes` requests only `Mail.Read`
+# at MSAL token acquisition. The broader scope is NOT used at runtime; it
+# exists only as future-readiness. Email-intelligence activation is deferred
+# to a later phase.
+
+mail_read_all_granted: true
+mail_readwrite_all_granted: true
+
+# Hard guardrails — locked at Literal[False] / Literal[True] in the loader.
+mailbox_writeback_allowed: false
+persist_full_body: false
+review_required_for_sensitive: true
+
+future_phase: phase_03

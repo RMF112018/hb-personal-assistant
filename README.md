@@ -41,6 +41,17 @@ See `docs/architecture/` for implementation and remediation records, and `docs/p
 - Dry-run before writes.
 - Every output carries source traceability.
 
+## Email Intelligence (Deferred)
+
+`Mail.ReadWrite.All` has been granted at the tenant level but is intentionally suppressed for Phase 02. Mailbox writeback and full-body persistence are locked at four layers:
+
+- **Pydantic policy** — `resources/config/email_intelligence_deferred_policy.yaml`, loaded via `hb_assistant.construction.policy.load_email_intelligence_deferred_policy()`, enforces `mailbox_writeback_allowed: false`, `persist_full_body: false`, and `review_required_for_sensitive: true` via `Literal[False]` / `Literal[True]` fields.
+- **MSAL scope request** — `IdentityConfig.delegated_scopes` requests only `Mail.Read` at token acquisition. `Mail.ReadWrite.All` and `Mail.Send` are never asked for at runtime, even though the tenant has consented to the broader scope.
+- **Python adapter** — `ConstructionStore.set_email_intelligence_deferred_state` raises if either locked flag is set to `True`.
+- **SQLite** — V5 table `construction_email_intelligence_deferred_state` carries SQL `CHECK` constraints on the locked-false fields and a singleton `id = 1` row.
+
+Full email-intelligence activation is deferred to a future phase.
+
 ## Validation & Evidence
 
 Remediation baseline evidence is tracked at:

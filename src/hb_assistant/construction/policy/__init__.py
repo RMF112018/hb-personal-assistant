@@ -9,6 +9,11 @@ Phase 02 additions: :class:`InventoryFirstPolicy` exposes the per-source
 operational policy for OneDrive sources running in inventory-first mode.
 """
 
+from .email_deferred import (
+    EmailIntelligenceDeferredPolicy,
+    EmailIntelligenceDeferredPolicyError,
+    load_email_intelligence_deferred_policy,
+)
 from .evaluator import ReviewPolicyEvaluator
 from .inventory_first import (
     ONEDRIVE_INVENTORY_FIRST_SCOPES,
@@ -42,4 +47,8 @@ __all__ = [
     "assert_no_bulk_document_cards",
     "assert_no_full_text_extraction",
     "build_policy",
+    # Phase 02 email-intelligence deferred policy
+    "EmailIntelligenceDeferredPolicy",
+    "EmailIntelligenceDeferredPolicyError",
+    "load_email_intelligence_deferred_policy",
 ]
