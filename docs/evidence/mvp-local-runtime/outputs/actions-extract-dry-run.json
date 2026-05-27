@@ -1,0 +1,40 @@
+{
+  "command": "actions extract --dry-run --json",
+  "dry_run": true,
+  "count": 3,
+  "candidates": [
+    {
+      "title": "Parsed content",
+      "type": null,
+      "confidence": 0.45,
+      "source": null
+    },
+    {
+      "title": "Parsed content",
+      "type": null,
+      "confidence": 0.45,
+      "source": null
+    },
+    {
+      "title": "Meeting prep / calendar item",
+      "type": null,
+      "confidence": 0.65,
+      "source": null
+    }
+  ],
+  "seeds": {
+    "base_date": "2026-05-27",
+    "body_mention": {
+      "source_record_id": "sr-body-001",
+      "excerpt": "[redacted-body-mention-window]..."
+    },
+    "parser_excerpts": [
+      "sr-parser-010",
+      "sr-parser-011"
+    ],
+    "waiting_on": "aid-wait-001",
+    "upcoming_calendar": "sr-cal-042",
+    "pre_links": 1
+  },
+  "note": "Equivalent payload to `hb-assistant actions extract --dry-run --json` (local-only, redacted)"
+}

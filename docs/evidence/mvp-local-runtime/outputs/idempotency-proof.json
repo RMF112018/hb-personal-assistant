@@ -1,0 +1,13 @@
+{
+  "command": "idempotency over two identical runs",
+  "run1": {
+    "links": 0
+  },
+  "run2": {
+    "links": 0
+  },
+  "identical_outputs": true,
+  "outside_markers_unchanged": true,
+  "no_duplicate_links_or_sections": true,
+  "guarantee": "write_bounded_section (marker-bounded, preserves outside content) + record_link (only on !dry_run) is idempotent across repeated applies"
+}

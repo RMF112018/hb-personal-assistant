@@ -1,0 +1,32 @@
+{
+  "command": "run morning --dry-run --json",
+  "dry_run": true,
+  "local_signals": {
+    "body_mentions": 0,
+    "upcoming_calendar": 1,
+    "action_candidates": 3,
+    "waiting_on": 1,
+    "file_review": 1
+  },
+  "stages": [
+    "context",
+    "extract",
+    "brief_draft",
+    "obsidian_write_dry"
+  ],
+  "note": "Local-first morning run (Graph stages skipped; no consent). Equivalent to `hb-assistant run morning --dry-run --json`",
+  "seeds": {
+    "base_date": "2026-05-27",
+    "body_mention": {
+      "source_record_id": "sr-body-001",
+      "excerpt": "[redacted-body-mention-window]..."
+    },
+    "parser_excerpts": [
+      "sr-parser-010",
+      "sr-parser-011"
+    ],
+    "waiting_on": "aid-wait-001",
+    "upcoming_calendar": "sr-cal-042",
+    "pre_links": 1
+  }
+}

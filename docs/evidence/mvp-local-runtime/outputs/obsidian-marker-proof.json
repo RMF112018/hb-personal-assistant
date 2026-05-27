@@ -1,0 +1,15 @@
+{
+  "marker_bound_proof": {
+    "dry_run_no_write": true,
+    "dry_run_no_link": true,
+    "apply_wrote_inside_markers": true,
+    "outside_content_preserved": true,
+    "idempotent_repeat_no_dupe_section": true,
+    "note": "Full written_to_note link recording exercised in orchestrator path (P03); marker + preservation + idempotency proven here on current writer signature"
+  },
+  "original_note_excerpt": "# Personal Log\n\n- Remember to water plants\n- Call mom this weekend\n\n<!-- HB-DAILY-BRIEF:START -->\n<!-- HB-DAILY-BRIEF:END -->\n\n\n## Private thoughts\nThis text must survive every bounded write.\n",
+  "final_note_excerpt": "---\ntype: brief\ndomain: work\nstatus: active\ntags:\n- work\n- daily-brief\nsource:\n  kind: graph-derived\nowner: Bobby Fetting\ncreated: '2026-05-27'\nupdated: '2026-05-27'\nlast_reviewed: '2026-05-27'\n---\n# Personal Log\n\n- Remember to water plants\n- Call mom this weekend\n\n<!-- HB-DAILY-BRIEF:START -->\n- [ ] [ ] Review Q3 deck (from body mention + parser)\n- [ ] [ ] Prep for calendar sync\n\n<!-- HB-DAILY-BR",
+  "links_before": 0,
+  "links_after_dry": 0,
+  "links_after_apply": 0
+}

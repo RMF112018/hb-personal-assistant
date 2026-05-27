@@ -67,6 +67,10 @@ flowchart TD
 
 **MVP Status**: Hardened and closed. All objectives met. No open items in the 15-item checklist. Future work is explicitly out of scope for this plan.
 
+## P06 Update (MVP Local Runtime Evidence Harness)
+
+Prompt 06 added the canonical deterministic harness (`tests/test_mvp_local_runtime_evidence.py`) + `06-local-runtime-evidence-harness.md` + the 5 exact JSON proofs (actions extract/list dry-run, run morning dry-run, Obsidian marker-bound + preservation + idempotency, sensitive scan). All 7 required seeds (redacted body mention through outside-marker note content) + all 6 proofs executed locally with zero Graph. HEAD at addition: 840bc1b (post-P05). See `docs/evidence/mvp-local-runtime/06-*.md` and the Source Truth Checklist (plans/ph-15/09_...) for the flipped items. This is the reference proof that the full local-first loop (context, extract, brief, Obsidian bounded write, provenance) works without delegated Graph consent.
+
 ---
 
 *This document is intentionally lightweight (closeout summary + verification artifact index) per the "update architecture documentation" requirement and proportional to a final hardening phase.*

@@ -1,0 +1,12 @@
+{
+  "command": "actions list --json",
+  "count": 1,
+  "items": [
+    {
+      "id": "aid-wait-001",
+      "type": "waiting_on",
+      "title": "Waiting on legal review of deck"
+    }
+  ],
+  "note": "Equivalent to `hb-assistant actions list --json`"
+}

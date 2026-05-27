@@ -11,18 +11,18 @@
 - [x] `written_to_note` is allowed and tested.
 - [x] `WorkstreamContextBuilder.mentions` is populated.
 - [ ] `run morning` classifies Graph blocker correctly.
-- [ ] `run morning` local stages continue despite missing Graph consent.
+- [x] `run morning` local stages continue despite missing Graph consent.  # P06 harness (840bc1b)
 
 ## Evidence Checklist
 
 - [ ] Repo-truth evidence captured.
 - [ ] Validation output captured.
 - [ ] Action extraction proof captured.
-- [ ] Morning dry-run proof captured.
-- [ ] Obsidian provenance proof captured.
-- [ ] Idempotency proof captured.
-- [ ] Sensitive scan proof captured.
-- [ ] Known limitations documented.
+- [x] Morning dry-run proof captured.  # P06
+- [x] Obsidian provenance proof captured.  # P06 marker-bound harness
+- [x] Idempotency proof captured.  # P06
+- [x] Sensitive scan proof captured.  # P06
+- [x] Known limitations documented.  # P06 (Graph deferred)
 
 ## Safety Checklist
 
@@ -33,3 +33,11 @@
 - [ ] No secrets.
 - [ ] No private Obsidian content.
 - [ ] No raw Graph payloads in evidence.
+
+## P06 — MVP Local Runtime Evidence Harness (840bc1b)
+- [x] Deterministic harness (`tests/test_mvp_local_runtime_evidence.py`) created and passing.
+- [x] All 7 required fixtures seeded (redacted body mention, waiting-on, action candidate, parser excerpt, file review, upcoming calendar, source links, outside-marker note content).
+- [x] 6 proofs executed: actions extract/list dry-run, run morning dry-run, Obsidian marker-bound (dry/apply/preservation/idempotent), full idempotency, sensitive scan.
+- [x] Exact outputs written: `docs/evidence/mvp-local-runtime/06-local-runtime-evidence-harness.md` + 5 named JSONs in outputs/.
+- [x] No Graph calls; local-only Store + writer + extractor paths only.
+- Reference: `docs/evidence/mvp-local-runtime/06-local-runtime-evidence-harness.md` (HEAD 840bc1b post-P05).
