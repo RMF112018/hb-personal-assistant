@@ -47,7 +47,7 @@ from hb_assistant.construction.config import SourceLocation, load_source_registr
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
 
-from .resolver import GRAPH_SCOPES, _redact_item_preview
+from .resolver import GRAPH_SCOPES_DRIVE, _redact_item_preview
 
 
 class CrawlReceipt(BaseModel):
@@ -251,7 +251,7 @@ class ConstructionDeltaCrawler:
 
         try:
             while pages_seen < max_pages:
-                page = self._http.get(path, scopes=GRAPH_SCOPES)
+                page = self._http.get(path, scopes=GRAPH_SCOPES_DRIVE)
                 pages_seen += 1
                 for item in page.get("value", []):
                     items_seen += 1

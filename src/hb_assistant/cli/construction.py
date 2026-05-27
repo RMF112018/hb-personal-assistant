@@ -52,6 +52,7 @@ from hb_assistant.construction.graph import (
     ConstructionDeltaCrawler,
     ConstructionGraphResolver,
     ResolutionResult,
+    scopes_for_source_kind,
 )
 from hb_assistant.construction.manifests import (
     ConstructionVaultWriter,
@@ -217,20 +218,32 @@ def _build_auth_provider() -> DelegatedAuthProvider:
 
 def _build_graph_client_or_auth_payload(
     provider: DelegatedAuthProvider,
+    *,
+    scopes: Optional[list[str]] = None,
 ) -> tuple[Optional[GraphHttpClient], Optional[dict[str, Any]]]:
     """Return (client, auth_required_payload).
 
     The CLI never triggers an interactive login. If no cached token exists
     for the required scopes, we return a structured ``auth_required`` payload
     so non-interactive callers (CI, sandboxes) can interpret the result.
+
+    ``scopes`` defaults to the broadest construction-agent scope set
+    (:data:`GRAPH_SCOPES`) so callers that don't know the source kind in
+    advance preserve their existing behavior. Callers that know they're
+    operating on a single source kind (e.g. ``graph delta`` on a
+    drive-folder source) should pass the narrower set returned by
+    :func:`scopes_for_source_kind` so MSAL silent acquisition succeeds
+    when only the narrower subset is admin-consented.
     """
 
+    effective_scopes = scopes if scopes is not None else GRAPH_SCOPES
+
     try:
-        token = provider.get_token(GRAPH_SCOPES)
+        token = provider.get_token(effective_scopes)
     except Exception as e:  # noqa: BLE001 — surface as structured payload
         return None, {
             "status": "auth_required",
-            "scopes": GRAPH_SCOPES,
+            "scopes": effective_scopes,
             "detail": str(e)[:200],
             "hint": "Run `hb-assistant auth login --json` interactively to obtain a delegated token.",
         }
@@ -238,13 +251,13 @@ def _build_graph_client_or_auth_payload(
     if "access_token" not in token:
         return None, {
             "status": "auth_required",
-            "scopes": GRAPH_SCOPES,
+            "scopes": effective_scopes,
             "detail": token.get("error_description") or token.get("error") or "no_access_token_in_cache",
             "hint": "Run `hb-assistant auth login --json` interactively to obtain a delegated token.",
         }
 
     def token_getter(scopes: Optional[list[str]] = None) -> dict[str, Any]:
-        return provider.get_token(scopes or GRAPH_SCOPES)
+        return provider.get_token(scopes or effective_scopes)
 
     return GraphHttpClient(token_getter), None
 
@@ -362,7 +375,10 @@ def graph_delta(
         raise typer.Exit(1)
 
     provider = _build_auth_provider()
-    client, auth_payload = _build_graph_client_or_auth_payload(provider)
+    source_scopes = scopes_for_source_kind(matching[0].kind)
+    client, auth_payload = _build_graph_client_or_auth_payload(
+        provider, scopes=source_scopes
+    )
     if client is None:
         payload = {
             "command": "construction-agent graph delta",

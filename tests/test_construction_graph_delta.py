@@ -704,3 +704,55 @@ def test_onedrive_crawl_records_metadata_only_per_inventory_first_policy(
     forbidden = {"body", "content", "text", "excerpt", "preview", "full_text", "text_excerpt"}
     leaks = columns & forbidden
     assert not leaks, f"OneDrive inventory schema leaks: {leaks}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 03 entry: per-source-kind delegated scope selection.
+# ---------------------------------------------------------------------------
+
+
+def test_scopes_for_source_kind_drive_folder_excludes_sites_read_all() -> None:
+    """Drive/folder sources should NOT request Sites.Read.All — that scope is
+    needed only for SharePoint site-page resolution. Including it would block
+    MSAL silent token acquisition in tenants that haven't admin-consented it.
+    """
+    from hb_assistant.construction.graph import (
+        GRAPH_SCOPES_DRIVE,
+        scopes_for_source_kind,
+    )
+
+    for kind in (
+        "sharepoint_project_drive_folder",
+        "sharepoint_site",
+        "sharepoint_library",
+        "onedrive_business_root",
+        "onedrive_personal_root",
+        "onedrive_shared_library",
+        "onedrive_personal",
+        "onedrive_shared",
+    ):
+        scopes = scopes_for_source_kind(kind)
+        assert "Sites.Read.All" not in scopes, (
+            f"kind={kind!r}: drive-/folder-scoped delta endpoints don't need "
+            f"Sites.Read.All; including it blocks login in tenants that haven't "
+            f"admin-consented it. Got scopes: {scopes!r}"
+        )
+        assert "Files.ReadWrite.All" in scopes
+        assert "User.Read" in scopes
+        assert scopes == list(GRAPH_SCOPES_DRIVE)
+
+
+def test_scopes_for_source_kind_site_page_includes_sites_read_all() -> None:
+    """Site-page sources (Hilltop Gardens ProjectHome) DO need Sites.Read.All
+    to enumerate the page and discover linked libraries.
+    """
+    from hb_assistant.construction.graph import (
+        GRAPH_SCOPES_SITE_PAGE,
+        scopes_for_source_kind,
+    )
+
+    scopes = scopes_for_source_kind("sharepoint_site_page")
+    assert "Sites.Read.All" in scopes
+    assert "Files.ReadWrite.All" in scopes
+    assert "User.Read" in scopes
+    assert scopes == list(GRAPH_SCOPES_SITE_PAGE)

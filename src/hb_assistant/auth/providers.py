@@ -19,6 +19,77 @@ from .scope_policy import get_scope_diagnostics, sanitize_delegated_scopes
 from .token_cache_manager import TokenCacheManager
 
 
+def _decode_jwt_payload_unverified(token: str) -> Dict[str, Any]:
+    """Decode a JWT's payload segment without verifying the signature.
+
+    Used solely to backfill claim fields (scp, upn, tid, oid) that MSAL's
+    ``acquire_token_silent`` strips. The token's authenticity has already
+    been established by MSAL acquiring it from the IdP; this helper does
+    not re-validate it, it only inspects it. Returns an empty dict on any
+    parse failure (fail-closed downstream when the classifier sees no
+    ``scp``/``roles``).
+    """
+    import base64
+    import json
+
+    try:
+        parts = token.split(".")
+        if len(parts) < 2:
+            return {}
+        payload_b64 = parts[1]
+        padded = payload_b64 + "=" * (-len(payload_b64) % 4)
+        decoded = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
+        claims = json.loads(decoded)
+        return claims if isinstance(claims, dict) else {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _ensure_delegated_id_token_claims(result: Dict[str, Any], account: Dict[str, Any]) -> Dict[str, Any]:
+    """Backfill `id_token_claims` on a silent-acquisition result.
+
+    MSAL's ``acquire_token_silent`` returns the cached access token but only
+    re-issues ``id_token_claims`` on the original login flow. Downstream
+    code (`require_delegated`, `classify_token_claims`) relies on the
+    presence of ``scp`` in the claims dict to confirm the token is
+    delegated; without it, the request path raises ClassificationError
+    even though the access token itself is valid.
+
+    Strategy: decode the access-token JWT payload (delegated Graph tokens
+    are JWTs and carry their own ``scp``/``upn``/``tid``/``oid``). Fall
+    back to the cached account record's ``username`` and the tenant id
+    extracted from ``home_account_id`` only for the few fields the JWT
+    might omit. This preserves the fail-closed posture: if neither the
+    JWT nor the account yield ``scp``/``roles``, the classifier still
+    rejects as ``invalid``.
+    """
+    existing = result.get("id_token_claims") or {}
+    if existing.get("scp") or existing.get("roles"):
+        return result
+
+    synthesized: Dict[str, Any] = dict(existing)
+
+    access_token = result.get("access_token")
+    if isinstance(access_token, str):
+        jwt_claims = _decode_jwt_payload_unverified(access_token)
+        for key in ("scp", "roles", "upn", "preferred_username", "tid", "oid", "appid", "azp", "aud", "iss", "exp", "iat", "name"):
+            if key in jwt_claims and key not in synthesized:
+                synthesized[key] = jwt_claims[key]
+
+    username = account.get("username") if account else None
+    if username and "upn" not in synthesized:
+        synthesized["upn"] = username
+        synthesized.setdefault("preferred_username", username)
+
+    home_account_id = account.get("home_account_id") if account else None
+    if isinstance(home_account_id, str) and "." in home_account_id and "tid" not in synthesized:
+        synthesized["tid"] = home_account_id.split(".", 1)[1]
+
+    if synthesized:
+        result = {**result, "id_token_claims": synthesized}
+    return result
+
+
 class _BaseProvider:
     def __init__(self, path_policy: Optional[PathPolicy] = None) -> None:
         self._pp = path_policy or PathPolicy()
@@ -94,6 +165,7 @@ class DelegatedAuthProvider(_BaseProvider):
         if not result or "access_token" not in result:
             raise NoTokenError("Failed to acquire delegated token (expired or revoked). Re-login required.")
 
+        result = _ensure_delegated_id_token_claims(result, accounts[0])
         self._cache_mgr.save_cache(app.token_cache, app_only=False)
         return {**result, **get_scope_diagnostics(raw_scopes)}
 

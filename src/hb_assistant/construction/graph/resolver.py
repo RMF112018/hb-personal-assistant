@@ -38,6 +38,9 @@ from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
 
 GRAPH_SCOPES = ["Sites.Read.All", "Files.ReadWrite.All", "User.Read"]
+# Per-source-kind subset; see :func:`scopes_for_source_kind` in the package
+# ``__init__``. Drive-/folder-scoped sources don't need ``Sites.Read.All``.
+GRAPH_SCOPES_DRIVE = ["Files.ReadWrite.All", "User.Read"]
 
 
 class LinkedSourceCandidate(BaseModel):

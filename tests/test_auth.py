@@ -218,3 +218,110 @@ def test_graph_client_get_all_pages_respects_max_pages(mock_requests: MagicMock)
     items = list(client.get_all_pages("/me/messages", max_pages=1))
     assert [item["id"] for item in items] == ["1"]
     assert mock_requests.Session.return_value.request.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Phase 03 entry: silent-acquisition claims backfill so the runtime
+# classifier sees the cached delegated token as "delegated" (MSAL doesn't
+# re-issue id_token_claims on silent acquisition).
+# ---------------------------------------------------------------------------
+
+
+def _build_test_jwt(payload: dict) -> str:
+    """Build an unsigned JWT with the given payload. Signature segment is
+    deliberately bogus — we never validate signatures in the synthesis path."""
+    import base64
+    import json
+
+    def _b64(obj: dict) -> str:
+        raw = json.dumps(obj, separators=(",", ":")).encode("utf-8")
+        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+    header = _b64({"alg": "none", "typ": "JWT"})
+    body = _b64(payload)
+    return f"{header}.{body}.bogus-signature-not-validated"
+
+
+def test_ensure_delegated_id_token_claims_decodes_jwt_for_scp_and_upn() -> None:
+    """MSAL silent acquisition strips id_token_claims; decode the access
+    token's own JWT payload to recover scp/upn/tid for the classifier."""
+    from hb_assistant.auth.providers import _ensure_delegated_id_token_claims
+
+    access_token = _build_test_jwt({
+        "scp": "User.Read Files.ReadWrite.All",
+        "upn": "bfetting@hedrickbrothers.com",
+        "tid": "0e834bd7-628b-42c8-b9ec-ecebc9719be4",
+        "oid": "0026a9f0-8ed0-45ca-8bc4-8e1593fcc37b",
+        "aud": "https://graph.microsoft.com",
+    })
+    msal_silent_result = {
+        "access_token": access_token,
+        "expires_in": 3600,
+        "token_source": "cache",
+        "token_type": "Bearer",
+    }
+    account = {
+        "username": "bfetting@hedrickbrothers.com",
+        "home_account_id": "0026a9f0-8ed0-45ca-8bc4-8e1593fcc37b.0e834bd7-628b-42c8-b9ec-ecebc9719be4",
+    }
+
+    enriched = _ensure_delegated_id_token_claims(msal_silent_result, account)
+    claims = enriched["id_token_claims"]
+
+    assert classify_token_claims(claims) == "delegated"
+    assert claims["scp"] == "User.Read Files.ReadWrite.All"
+    assert claims["upn"] == "bfetting@hedrickbrothers.com"
+    assert claims["tid"] == "0e834bd7-628b-42c8-b9ec-ecebc9719be4"
+    assert claims["oid"] == "0026a9f0-8ed0-45ca-8bc4-8e1593fcc37b"
+
+
+def test_ensure_delegated_id_token_claims_falls_back_to_account_when_jwt_lacks_upn() -> None:
+    """If the access token's JWT lacks UPN/tenant, fall back to the cached
+    account record."""
+    from hb_assistant.auth.providers import _ensure_delegated_id_token_claims
+
+    access_token = _build_test_jwt({"scp": "User.Read"})  # minimal JWT
+    msal_silent_result = {
+        "access_token": access_token,
+        "expires_in": 3600,
+    }
+    account = {
+        "username": "bfetting@hedrickbrothers.com",
+        "home_account_id": "abc.0e834bd7-628b-42c8-b9ec-ecebc9719be4",
+    }
+
+    enriched = _ensure_delegated_id_token_claims(msal_silent_result, account)
+    claims = enriched["id_token_claims"]
+
+    assert classify_token_claims(claims) == "delegated"
+    assert claims["scp"] == "User.Read"
+    assert claims["upn"] == "bfetting@hedrickbrothers.com"
+    assert claims["tid"] == "0e834bd7-628b-42c8-b9ec-ecebc9719be4"
+
+
+def test_ensure_delegated_id_token_claims_does_not_override_real_claims() -> None:
+    from hb_assistant.auth.providers import _ensure_delegated_id_token_claims
+
+    real = {
+        "access_token": "redacted",
+        "scope": "fallback.Read",
+        "id_token_claims": {"scp": "User.Read Mail.Read", "tid": "real-tenant", "upn": "real@user"},
+    }
+    out = _ensure_delegated_id_token_claims(real, {"username": "other@user"})
+
+    assert out["id_token_claims"]["scp"] == "User.Read Mail.Read"
+    assert out["id_token_claims"]["upn"] == "real@user"
+    assert out["id_token_claims"]["tid"] == "real-tenant"
+
+
+def test_ensure_delegated_id_token_claims_preserves_fail_closed_when_no_evidence() -> None:
+    """If MSAL returns an undecodable token and no account info, no
+    synthetic scp is injected; the classifier still rejects as invalid
+    (fail-closed)."""
+    from hb_assistant.auth.providers import _ensure_delegated_id_token_claims
+
+    bare = {"access_token": "not-a-jwt", "expires_in": 3600}
+    out = _ensure_delegated_id_token_claims(bare, {})
+
+    claims = out.get("id_token_claims") or {}
+    assert classify_token_claims(claims) == "invalid"
