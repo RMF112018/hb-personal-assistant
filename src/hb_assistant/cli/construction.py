@@ -39,6 +39,12 @@ from hb_assistant.construction.config import (
     load_source_registry,
 )
 from hb_assistant.construction.config.loader import SourceRegistryError
+from hb_assistant.construction.fixtures import (
+    KIND_ALIASES as FIXTURE_KIND_ALIASES,
+)
+from hb_assistant.construction.fixtures import (
+    FixtureHarness,
+)
 from hb_assistant.construction.graph import (
     GRAPH_SCOPES,
     ConstructionDeltaCrawler,
@@ -69,12 +75,14 @@ graph_sources_app = typer.Typer(help="Graph source resolution.")
 vault_app = typer.Typer(help="Construction vault preview and bootstrap.")
 review_app = typer.Typer(help="Review-queue policy evaluation and inspection.")
 classify_app = typer.Typer(help="Ollama-backed classification (recommendation-only).")
+fixtures_app = typer.Typer(help="Canonical fixture inventory + validation harness (read-only).")
 app.add_typer(sources_app, name="sources")
 app.add_typer(graph_app, name="graph")
 graph_app.add_typer(graph_sources_app, name="sources")
 app.add_typer(vault_app, name="vault")
 app.add_typer(review_app, name="review")
 app.add_typer(classify_app, name="classify")
+app.add_typer(fixtures_app, name="fixtures")
 
 
 def _build_report(registry: SourceRegistry) -> dict[str, Any]:
@@ -1390,3 +1398,52 @@ def validate_all(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if failed == 0 else 1)
+
+
+# ---------------------------------------------------------------------------
+# Fixture validation harness (Phase 01 Step 11 / Prompt 10)
+# ---------------------------------------------------------------------------
+
+
+_FIXTURES_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": True,
+    "live_calls_disabled": True,
+    "no_secrets_in_fixtures": True,
+    "no_source_document_body": True,
+}
+
+
+@fixtures_app.command("validate")
+def fixtures_validate(
+    kind: Optional[str] = typer.Option(
+        None, "--kind",
+        help=(
+            "Filter to one fixture kind: "
+            "graph_delta | source_registry | review_policy | model_output | procore."
+        ),
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Walk the canonical fixture inventory and validate every fixture."""
+
+    if kind is not None and kind not in FIXTURE_KIND_ALIASES:
+        payload = {
+            "command": "construction-agent fixtures validate",
+            "status": "invalid_kind_filter",
+            "requested": kind,
+            "allowed": sorted(FIXTURE_KIND_ALIASES),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    report = FixtureHarness().validate_all(kind=kind)
+    payload = {
+        "command": "construction-agent fixtures validate",
+        "filter": {"kind": kind},
+        "report": report.model_dump(),
+        "guardrails": _FIXTURES_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.ok else 1)

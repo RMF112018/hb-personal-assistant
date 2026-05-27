@@ -1,0 +1,213 @@
+===================================================================
+Phase 01 — Prompt 10: Test Fixtures & Validation Harness — Proof
+Commit-after: <filled by commit step>
+===================================================================
+
+--- Validation summary ---
+pytest tests/test_construction_fixtures.py: 33 passed
+pytest tests/test_construction_*.py tests/test_procore_*.py tests/test_store*.py tests/test_config.py: 260 passed
+pytest tests/ (broader sweep, excluding documented hang-prone files): 291 passed
+pytest tests/test_cli_canonical.py -k 'help_parses or _shape': 4 passed
+ruff check (scoped): All checks passed!
+
+--- Implementation summary ---
+Centralized 29 fixtures across 5 kinds under src/hb_assistant/construction/fixtures/.
+Each fixture is in-memory, metadata-only, no body text, no real credentials.
+New FixtureHarness validates every fixture against its target schema or service.
+New CLI: 'construction-agent fixtures validate [--kind K] --json' (read-only, exit 1 if any fixture fails).
+Two guardrail string-scan tests enforce 'no body text in graph-delta' and 'no secrets in inventory'.
+Existing tests are not migrated — the new package is parallel infrastructure.
+
+--- Changed files ---
+A  src/hb_assistant/construction/fixtures/__init__.py
+A  src/hb_assistant/construction/fixtures/graph_delta.py
+A  src/hb_assistant/construction/fixtures/source_registry.py
+A  src/hb_assistant/construction/fixtures/review_policy.py
+A  src/hb_assistant/construction/fixtures/model_output.py
+A  src/hb_assistant/construction/fixtures/procore.py
+A  src/hb_assistant/construction/fixtures/harness.py
+A  tests/test_construction_fixtures.py
+A  docs/evidence/construction-intelligence-phase-01/10-test-fixture-validation-output.txt
+M  src/hb_assistant/cli/construction.py
+M  docs/operations/construction-agent-operator-runbook.md
+
+===================================================================
+Live CLI transcripts (all read-only; all in-memory)
+===================================================================
+
+=== hb-assistant construction-agent fixtures validate --json (summary) ===
+{
+  "command": "construction-agent fixtures validate",
+  "filter": {
+    "kind": null
+  },
+  "summary": {
+    "total": 29,
+    "passed": 29,
+    "failed": 0,
+    "ok": true
+  },
+  "by_kind": {
+    "graph_delta": {
+      "passed": 4,
+      "failed": 0
+    },
+    "source_registry": {
+      "passed": 3,
+      "failed": 0
+    },
+    "review_policy": {
+      "passed": 6,
+      "failed": 0
+    },
+    "model_output_valid": {
+      "passed": 4,
+      "failed": 0
+    },
+    "model_output_invalid": {
+      "passed": 9,
+      "failed": 0
+    },
+    "procore_contract": {
+      "passed": 1,
+      "failed": 0
+    },
+    "procore_projects": {
+      "passed": 2,
+      "failed": 0
+    }
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true,
+    "live_calls_disabled": true,
+    "no_secrets_in_fixtures": true,
+    "no_source_document_body": true
+  }
+}
+exit_code: 
+
+=== hb-assistant construction-agent fixtures validate --kind model_output --json (summary) ===
+{
+  "filter": {
+    "kind": "model_output"
+  },
+  "summary": {
+    "total": 13,
+    "ok": true
+  },
+  "by_kind": {
+    "model_output_valid": {
+      "passed": 4,
+      "failed": 0
+    },
+    "model_output_invalid": {
+      "passed": 9,
+      "failed": 0
+    }
+  },
+  "fixtures_validated": [
+    "model_output_valid:accepted_operational",
+    "model_output_valid:review_protected_contract",
+    "model_output_valid:review_low_confidence",
+    "model_output_valid:review_item_id_mismatch",
+    "model_output_invalid:empty",
+    "model_output_invalid:whitespace_only",
+    "model_output_invalid:not_json",
+    "model_output_invalid:array_not_object",
+    "model_output_invalid:missing_required_field",
+    "model_output_invalid:extra_field",
+    "model_output_invalid:unknown_label",
+    "model_output_invalid:out_of_range_confidence",
+    "model_output_invalid:empty_rationale"
+  ]
+}
+exit_code: 
+
+=== hb-assistant construction-agent fixtures validate --kind unknown --json (error path) ===
+{
+  "command": "construction-agent fixtures validate",
+  "status": "invalid_kind_filter",
+  "requested": "unknown",
+  "allowed": [
+    "graph_delta",
+    "model_output",
+    "procore",
+    "review_policy",
+    "source_registry"
+  ]
+}
+exit_code: 1
+
+=== hb-assistant construction-agent validate --json (top-level health check still green) ===
+{
+  "summary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "ok": true
+  }
+}
+exit_code: 
+
+===================================================================
+Fixture inventory (29 total)
+===================================================================
+  graph_delta (4):
+    - graph_delta:single_page
+    - graph_delta:paginated_page_1
+    - graph_delta:paginated_page_2
+    - graph_delta:with_deletions
+  model_output_invalid (9):
+    - model_output_invalid:empty
+    - model_output_invalid:whitespace_only
+    - model_output_invalid:not_json
+    - model_output_invalid:array_not_object
+    - model_output_invalid:missing_required_field
+    - model_output_invalid:extra_field
+    - model_output_invalid:unknown_label
+    - model_output_invalid:out_of_range_confidence
+    - model_output_invalid:empty_rationale
+  model_output_valid (4):
+    - model_output_valid:accepted_operational
+    - model_output_valid:review_protected_contract
+    - model_output_valid:review_low_confidence
+    - model_output_valid:review_item_id_mismatch
+  procore_contract (1):
+    - procore_contract:minimal_valid_contract
+  procore_projects (2):
+    - procore_projects:pilot_only_projects
+    - procore_projects:all_pending_projects
+  review_policy (6):
+    - review_policy:contract_folder_hit
+    - review_policy:change_order_doc_name_hit
+    - review_policy:injury_term_hit
+    - review_policy:multi_rule_incident
+    - review_policy:low_confidence_budget
+    - review_policy:clean_miss
+  source_registry (3):
+    - source_registry:minimal_one_project
+    - source_registry:multi_project_multi_kind
+    - source_registry:pending_only
+
+===================================================================
+Guardrails attested
+===================================================================
+- No body text in graph-delta fixtures (test_graph_delta_fixtures_have_no_body_text)
+- No common secret patterns anywhere in the inventory (test_fixture_inventory_carries_no_secrets)
+  Patterns scanned: AKIA, Bearer , PRIVATE KEY, -----BEGIN, password=, secret=, api_key=, x-api-key:
+- No HTTP-client imports in the fixture or harness modules (test_fixture_module_imports_no_http_client)
+  Banned: requests, httpx, urllib3, aiohttp
+- Read-only CLI: 'fixtures validate' takes no --apply, never writes to SQLite or the vault
+- INVALID model-output fixtures each raise with the declared error code
+  (parametrized test_invalid_model_fixture_raises_declared_code covers all 9)
+- Review-policy fixtures fire the declared rule_ids set
+  (parametrized test_review_policy_fixture_fires_expected covers all 6)
+
+===================================================================
+Known limitations
+===================================================================
+- Full python -m pytest remains out of scope per the hang-prone exclusion list documented across prompts 06–09.
+- 4 pre-existing test_obsidian_writer baseline failures remain unrelated.
+- The package-referenced resources/checklists/*.md and 11_Validation_And_Evidence_Plan.md are external package payloads; the repo's authoritative artifact is this evidence file + the harness + the inventory documented in the operator runbook.

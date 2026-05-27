@@ -129,6 +129,37 @@ HB_CONSTRUCTION_VAULT_ROOT="$VAULT" hb-assistant construction-agent vault previe
 - External systems are never written to. There is no `--apply` path that
   reaches SharePoint, OneDrive, Procore, or Outlook.
 
+## Fixtures & validation harness (read-only)
+
+The construction-agent ships a canonical fixture inventory under
+`src/hb_assistant/construction/fixtures/` covering five kinds of
+synthetic, metadata-only test data. Walk the inventory with one command:
+
+```bash
+# Validate every fixture against its target schema or service.
+hb-assistant construction-agent fixtures validate --json
+
+# Filter to one kind: graph_delta | source_registry | review_policy |
+# model_output | procore.
+hb-assistant construction-agent fixtures validate --kind model_output --json
+```
+
+Inventory shape (one module each):
+
+| Kind | What it covers |
+| --- | --- |
+| `graph_delta` | Synthetic Microsoft Graph `/delta` response pages (single + paginated + tombstones) |
+| `source_registry` | Alternate `SourceRegistry` payloads beyond the seed |
+| `review_policy` | Inventory rows paired with the rule_ids the seeded controller policy must fire |
+| `model_output` | Valid + invalid raw Ollama classification outputs (each invalid entry carries the expected `InvalidModelOutputError.code`) |
+| `procore` | Alternate `ProcoreEndpointContract` + `ProcoreProjectsRegistry` payloads |
+
+Hard guardrails enforced at the test level: no body/text/content fields
+in graph-delta entries; no common secret patterns (`AKIA`, `Bearer `,
+`PRIVATE KEY`, `password=`, `secret=`, `api_key=`, `x-api-key:`)
+anywhere in the inventory; no HTTP-client imports in the fixture or
+harness modules.
+
 ## Procore foundation (read-only, dry-run only)
 
 The `procore` top-level CLI is a sibling to `construction-agent`. Every
