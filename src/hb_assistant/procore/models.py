@@ -253,3 +253,65 @@ class MappingValidationReport(BaseModel):
     ok: bool
 
     model_config = {"extra": "forbid"}
+
+
+# Prompt_07: Endpoint audit dry-run + optional manual live (GET-only, redacted by default)
+# Verdicts for per-endpoint audit outcomes (dry-run construction or explicit live).
+AuditVerdict = Literal[
+    "available",          # 2xx + valid shape, ready
+    "unauthorized",       # 401
+    "forbidden",          # 403 (incl. sensitive_review_required cases)
+    "not_found",          # 404
+    "deferred",           # per Prompt_05 contract (schedule/tasks etc.)
+    "excluded",           # per Prompt_05 contract (correspondence)
+    "error",              # network/parse/redaction/other
+]
+
+class DryRunRequestEnvelope(BaseModel):
+    """Dry-run (no network) constructed GET request. Auth redacted by default."""
+    method: Literal["GET"] = "GET"
+    url: str
+    headers_redacted: dict[str, str] = Field(default_factory=dict)  # e.g. Authorization: [REDACTED]
+    params: dict[str, Any] | None = None
+    correlation_id: str
+    company_id: str | None = None
+
+    model_config = {"extra": "forbid"}
+
+
+class EndpointAuditReceipt(BaseModel):
+    """Structured receipt for one endpoint audit (dry-run or manual live). Bodies redacted by default."""
+    endpoint_id: str
+    verdict: AuditVerdict
+    request: DryRunRequestEnvelope
+    redacted_response_summary: dict[str, Any] | None = None  # structural only (keys/counts/hash); never full body
+    http_status: int | None = None
+    category: str | None = None
+    sensitivity: str | None = None
+    notes_redacted: str | None = None
+    redaction_applied: bool = True
+    mode: Literal["dry_run", "live_manual"] = "dry_run"
+
+    model_config = {"extra": "forbid"}
+
+
+class EndpointAuditRunReceipt(BaseModel):
+    """Top-level receipt for a full audit run (the 06- evidence JSON shape)."""
+    receipt_type: str = "procore_endpoint_audit"
+    audit_id: str
+    mode: Literal["dry_run", "live_manual"]
+    contract_version: str | None = None
+    company_id: str
+    started_at: str
+    completed_at: str
+    status: Literal["completed", "partial", "blocked_schema_not_ready"] = "completed"
+    endpoints_audited: int
+    breakdown: dict[str, Any] = Field(default_factory=dict)  # by_status, by_sensitivity, review_required etc.
+    receipts: list[EndpointAuditReceipt] = Field(default_factory=list)
+    persisted_to_sqlite: bool = False
+    schema_version_at_audit: int | None = None
+    redaction_applied: bool = True
+    guardrails: dict[str, Any] = Field(default_factory=dict)
+    error_redacted: dict[str, Any] | None = None
+
+    model_config = {"extra": "forbid"}

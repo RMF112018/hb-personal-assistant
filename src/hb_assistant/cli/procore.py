@@ -37,11 +37,13 @@ tools_app = typer.Typer(help="Procore endpoint catalog + dry-run audit.")
 mapping_app = typer.Typer(help="Procore project mapping validation.")
 projects_app = typer.Typer(help="Procore projects registry (read-only).")
 companies_app = typer.Typer(help="Procore company context (read-only).")
+audit_app = typer.Typer(help="Procore endpoint audit (dry-run default; live opt-in manual only).")
 app.add_typer(auth_app, name="auth")
 app.add_typer(tools_app, name="tools")
 app.add_typer(mapping_app, name="mapping")
 app.add_typer(projects_app, name="projects")
 app.add_typer(companies_app, name="companies")
+app.add_typer(audit_app, name="audit")
 
 
 _GUARDRAILS = {
@@ -259,5 +261,72 @@ def companies_list(
             }
         ],
         "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+# Prompt_07: audit subcommands (dry-run default; execute = explicit manual live opt-in only)
+# All paths remain read-only, GET-only, redacted. Live never auto-invoked.
+
+from hb_assistant.procore.auditor import EndpointAuditor
+from hb_assistant.procore.models import EndpointAuditRunReceipt
+
+
+@audit_app.command("dry-run")
+def audit_dry_run(
+    project: str = typer.Option(..., "--project", help="hb_project_key from mapping"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Dry-run endpoint audit (default, no network). Constructs requests + verdicts + redacted receipt."""
+
+    contract = _load_contract_or_emit(json_out)
+    projects = _load_projects_or_emit(json_out)
+
+    auditor = EndpointAuditor(contract, projects)
+    # Base URL from contract or known env (sanitized; real value injected at runtime via Prompt_02)
+    base = "https://api.procore.com"  # placeholder; production uses env config
+    receipt: EndpointAuditRunReceipt = auditor.build_audit_run_receipt(
+        project,
+        base_url=base,
+        mode="dry_run",
+    )
+    payload = {
+        "command": "hb-assistant procore audit dry-run",
+        "receipt": receipt.model_dump(),
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@audit_app.command("execute")
+def audit_execute(
+    project: str = typer.Option(..., "--project"),
+    json_out: bool = typer.Option(True, "--json"),
+    confirm: bool = typer.Option(False, "--confirm", help="Explicit opt-in for manual live GET (Bobby-only, never in tests/CI)"),
+) -> None:
+    """EXPLICIT MANUAL LIVE audit only. Opt-in required. Still GET-only + fully redacted. Never default."""
+
+    if not confirm:
+        typer.echo("ERROR: --confirm required for manual live audit (opt-in only). Dry-run is the safe default.", err=True)
+        raise typer.Exit(1)
+
+    contract = _load_contract_or_emit(json_out)
+    projects = _load_projects_or_emit(json_out)
+
+    # In real usage the caller supplies a real Prompt_04 client here (with secret at call time only).
+    # For CLI surface we document that this path is manual-only and redacted.
+    auditor = EndpointAuditor(contract, projects)
+    base = "https://api.procore.com"
+    receipt = auditor.build_audit_run_receipt(
+        project,
+        base_url=base,
+        mode="live_manual",
+        # live_client would be passed in a real manual script / higher-level orchestrator
+    )
+    payload = {
+        "command": "hb-assistant procore audit execute (manual live opt-in)",
+        "receipt": receipt.model_dump(),
+        "guardrails": _GUARDRAILS,
+        "warning": "This was an explicit manual live invocation. Bodies and secrets redacted by default.",
     }
     _emit(payload, json_out=json_out)

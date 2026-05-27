@@ -592,3 +592,68 @@ def test_every_cli_payload_advertises_no_writeback(runner: CliRunner) -> None:
         assert p["guardrails"]["writeback"] == "none", argv
         assert p["guardrails"]["external_systems"] == "read_only", argv
         assert p["guardrails"]["live_calls_disabled"] is True, argv
+
+
+# Prompt_07: mocked dry-run audit matrix + redaction + live isolation (no real calls ever in these tests)
+import pytest
+from unittest.mock import MagicMock
+
+from hb_assistant.procore.auditor import EndpointAuditor
+from hb_assistant.procore.models import (
+    EndpointAuditRunReceipt,
+    AuditVerdict,
+)
+
+
+def test_procore_endpoint_audit_dry_run_with_injected_mock_produces_receipt_no_network():
+    """Dry-run construction only; injected transport (P04 pattern); no real calls; bodies redacted."""
+    # Minimal mock contract + projects (use real loaders if fixtures allow; here pure unit)
+    contract = MagicMock()
+    contract.company_id = "5280"
+    contract.endpoints = []  # in real test would load from seed; here structural
+    projects = MagicMock()
+    projects.company_id = "5280"
+    projects.projects = []
+    projects.get.return_value = MagicMock(procore_project_id="2525840", procore_project_name="Tropical")
+
+    auditor = EndpointAuditor(contract, projects)  # type: ignore[arg-type]
+    # Exercise the new dry-run path (base_url placeholder)
+    receipt: EndpointAuditRunReceipt = auditor.build_audit_run_receipt(
+        "tropical",
+        base_url="https://api.procore.com",
+        mode="dry_run",
+    )
+    assert receipt.mode == "dry_run"
+    assert receipt.guardrails["read_only"] is True
+    assert receipt.guardrails["body_redaction"] == "default"
+    assert receipt.redaction_applied is True
+    # No transport side effects (dry-run by construction)
+    assert "receipts" in receipt.model_dump()
+
+
+@pytest.mark.parametrize("bad_mode", ["live_manual"])
+def test_procore_endpoint_audit_live_requires_explicit_opt_in_guard(bad_mode):
+    """Live/manual path is opt-in only; calling without live_client/confirm raises (never auto)."""
+    contract = MagicMock()
+    contract.company_id = "5280"
+    contract.endpoints = []
+    projects = MagicMock()
+    projects.company_id = "5280"
+    projects.projects = []
+    projects.get.return_value = MagicMock(procore_project_id="2525840")
+
+    auditor = EndpointAuditor(contract, projects)  # type: ignore[arg-type]
+    with pytest.raises((ValueError, TypeError)):
+        auditor.build_audit_run_receipt("tropical", base_url="https://api.procore.com", mode=bad_mode)
+
+
+def test_audit_dry_run_cli_json_has_mode_dry_run_and_guardrails(runner: CliRunner):
+    """CLI dry-run surface advertises dry-run + read-only + redaction (no live)."""
+    r = runner.invoke(procore_cli.app, ["audit", "dry-run", "--project", "tropical", "--json"])
+    # May exit non-zero on incomplete mapping (pending rows) but must still emit guardrails
+    assert r.exit_code in (0, 1)
+    p = json.loads(r.output)
+    assert "receipt" in p
+    assert p["receipt"]["mode"] == "dry_run"
+    assert p["guardrails"]["writeback"] == "none"
+    assert p["guardrails"]["live_calls"] == "opt_in_manual_only"
