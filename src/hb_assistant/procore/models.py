@@ -2,7 +2,11 @@
 
 Every model is read-only by construction:
 
-- :class:`ProcoreEndpoint.http_method` is ``Literal["GET"]`` — a writeback
+- :class:`ProcoreEndpoint.http_method` is ``Literal["GET"]`` — a writeback (hard GET-only enforced per Prompt_05; any non-GET is rejected at model load)
+
+# Prompt_05: Financials must force review routing
+    if category == Category.FINANCIALS and (not review_required or not sensitive):
+        raise ValueError("Financials category requires review_required=True and sensitive=True")
   endpoint cannot be constructed.
 - :class:`ProcoreEndpoint.status` is a closed ``Literal`` that includes
   ``"excluded"`` (correspondence; hard guardrail) and ``"deferred"``
@@ -13,6 +17,15 @@ Every model is read-only by construction:
 """
 
 from __future__ import annotations
+
+# Prompt_05 addition: Explicit Category enum
+from enum import Enum as _Enum  # avoid collision if Enum already imported
+
+class Category(str, _Enum):
+    """Prompt_05 categories per Decision Register."""
+    FOUNDATION = "foundation"
+    PROJECT_CONTROLS = "project_controls"
+    FINANCIALS = "financials"
 
 import re
 from typing import Any, Literal
