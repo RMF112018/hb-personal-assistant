@@ -44,6 +44,13 @@ REQUIRED_CATEGORIES: tuple[str, ...] = (
 
 _ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
+# Procore project IDs in the Procore API are integers (e.g. 2525840). HB
+# internal project numbers follow the pattern YY-NNN-VV (e.g. 23-435-01) and
+# MUST NEVER be stored in procore_project_id — they identify a different
+# system and would cause live audits to query the wrong project.
+_HB_NUMBER_PATTERN = re.compile(r"^\d{2}-\d{3}-\d{2}$")
+_NUMERIC_PROCORE_ID_PATTERN = re.compile(r"^\d+$")
+
 
 def _kebab(value: str, field_name: str) -> str:
     if not _ID_RE.match(value):
@@ -141,6 +148,39 @@ class ProcoreProjectMapping(BaseModel):
     @classmethod
     def _key_kebab(cls, v: str) -> str:
         return _kebab(v, "hb_project_key")
+
+    @model_validator(mode="after")
+    def _check_procore_project_id_shape(self) -> "ProcoreProjectMapping":
+        value = self.procore_project_id
+        if self.status == "pending":
+            if value:
+                raise ValueError(
+                    f"procore_project_id={value!r} must be empty when status='pending' "
+                    f"(hb_project_key={self.hb_project_key!r}); pending rows document "
+                    "that a Procore mapping has not yet been established"
+                )
+            return self
+        # status in ("pilot", "deprecated") — must carry a valid numeric Procore ID.
+        if not value:
+            raise ValueError(
+                f"procore_project_id must be non-empty when status={self.status!r} "
+                f"(hb_project_key={self.hb_project_key!r}); only 'pending' mappings "
+                "may have an empty procore_project_id"
+            )
+        if _HB_NUMBER_PATTERN.match(value):
+            raise ValueError(
+                f"procore_project_id={value!r} matches forbidden HB project-number "
+                r"pattern ^\d{2}-\d{3}-\d{2}$; Procore project IDs are integers "
+                f"(hb_project_key={self.hb_project_key!r}) — use the numeric Procore "
+                "ID instead"
+            )
+        if not _NUMERIC_PROCORE_ID_PATTERN.match(value):
+            raise ValueError(
+                f"procore_project_id={value!r} must be a numeric string matching "
+                r"^\d+$ (Procore project IDs are integers); "
+                f"hb_project_key={self.hb_project_key!r}"
+            )
+        return self
 
 
 class ProcoreProjectsRegistry(BaseModel):

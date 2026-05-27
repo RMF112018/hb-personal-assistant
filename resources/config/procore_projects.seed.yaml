@@ -3,23 +3,52 @@
 # Pairs HB project_keys (the same keys the SharePoint/OneDrive source
 # registry uses) to Procore project IDs under HB company 5280.
 #
-# Pydantic enforces unique hb_project_key and unique non-empty
-# procore_project_id. status must be one of pilot | pending | deprecated.
+# Pydantic enforces:
+#   * unique hb_project_key and unique non-empty procore_project_id;
+#   * status one of pilot | pending | deprecated;
+#   * for pilot / deprecated: procore_project_id must be a numeric string
+#     (e.g. "2525840") and must NOT match the HB project-number pattern
+#     ^\d{2}-\d{3}-\d{2}$ (e.g. "23-435-01") — those identify a different
+#     system and would route live audits to the wrong project;
+#   * for pending: procore_project_id must be empty (the row documents that
+#     an HB project exists but has not yet been mapped to its Procore
+#     counterpart; live audits skip pending mappings with verdict
+#     'project_not_mapped').
 #
-# Pending rows are intentionally empty — they document that an HB project
-# exists but has not yet been mapped to its Procore counterpart. Live
-# audits skip pending mappings with verdict 'project_not_mapped'.
+# Project keys mirror the canonical construction source registry
+# (resources/config/sharepoint_onedrive_sources.seed.yaml). Every project_key
+# present there must appear here.
 
 version: 1
 company_id: "5280"
 
 projects:
   - hb_project_key: tropical
-    procore_project_id: "23-435-01"
-    procore_project_name: "Tropical"
+    procore_project_id: "2525840"
+    procore_project_name: "Tropical - S L"
+    status: pilot
+
+  - hb_project_key: pga-modern-garage
+    procore_project_id: "2091445"
+    procore_project_name: "PGA The Modern & Garage"
+    status: pilot
+
+  - hb_project_key: alton-hilltop-pbg
+    procore_project_id: "2982068"
+    procore_project_name: "Alton Hilltop at PBG"
+    status: pilot
+
+  - hb_project_key: the-wellington
+    procore_project_id: "3215931"
+    procore_project_name: "The Wellington"
     status: pilot
 
   - hb_project_key: hilltop
+    procore_project_id: ""
+    procore_project_name: ""
+    status: pending
+
+  - hb_project_key: hilltop-gardens
     procore_project_id: ""
     procore_project_name: ""
     status: pending

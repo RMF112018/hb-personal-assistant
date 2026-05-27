@@ -191,8 +191,8 @@ def test_projects_registry_rejects_duplicate_procore_id() -> None:
         ProcoreProjectsRegistry.model_validate({
             "company_id": "5280",
             "projects": [
-                {"hb_project_key": "a", "procore_project_id": "same", "procore_project_name": "A", "status": "pilot"},
-                {"hb_project_key": "b", "procore_project_id": "same", "procore_project_name": "B", "status": "pilot"},
+                {"hb_project_key": "a", "procore_project_id": "12345", "procore_project_name": "A", "status": "pilot"},
+                {"hb_project_key": "b", "procore_project_id": "12345", "procore_project_name": "B", "status": "pilot"},
             ],
         })
 
@@ -206,6 +206,73 @@ def test_projects_registry_allows_empty_procore_id_for_pending() -> None:
         ],
     })
     assert len(reg.projects) == 2
+
+
+# ---------------------------------------------------------------------------
+# Procore project ID shape — HB-number rejection + numeric requirement
+# ---------------------------------------------------------------------------
+
+
+def _make_mapping(**overrides: object) -> dict[str, object]:
+    base: dict[str, object] = {
+        "hb_project_key": "tropical",
+        "procore_project_id": "2525840",
+        "procore_project_name": "Tropical - S L",
+        "status": "pilot",
+    }
+    base.update(overrides)
+    return base
+
+
+def test_procore_project_mapping_rejects_hb_number_shape() -> None:
+    with pytest.raises(ValidationError) as exc:
+        ProcoreProjectsRegistry.model_validate({
+            "company_id": "5280",
+            "projects": [_make_mapping(procore_project_id="23-435-01")],
+        })
+    blob = str(exc.value)
+    assert "23-435-01" in blob
+    assert r"^\d{2}-\d{3}-\d{2}$" in blob
+
+
+def test_procore_project_mapping_rejects_non_numeric_when_not_pending() -> None:
+    with pytest.raises(ValidationError) as exc:
+        ProcoreProjectsRegistry.model_validate({
+            "company_id": "5280",
+            "projects": [_make_mapping(procore_project_id="abc-123")],
+        })
+    blob = str(exc.value)
+    assert "abc-123" in blob
+    assert r"^\d+$" in blob
+
+
+def test_procore_project_mapping_rejects_blank_when_not_pending() -> None:
+    with pytest.raises(ValidationError) as exc:
+        ProcoreProjectsRegistry.model_validate({
+            "company_id": "5280",
+            "projects": [_make_mapping(procore_project_id="")],
+        })
+    assert "must be non-empty" in str(exc.value)
+
+
+def test_procore_project_mapping_rejects_non_empty_id_for_pending() -> None:
+    with pytest.raises(ValidationError) as exc:
+        ProcoreProjectsRegistry.model_validate({
+            "company_id": "5280",
+            "projects": [_make_mapping(procore_project_id="2525840", status="pending")],
+        })
+    assert "must be empty when status='pending'" in str(exc.value)
+
+
+def test_procore_project_mapping_accepts_numeric_id_when_not_pending() -> None:
+    reg = ProcoreProjectsRegistry.model_validate({
+        "company_id": "5280",
+        "projects": [
+            _make_mapping(procore_project_id="2525840", status="pilot"),
+            _make_mapping(hb_project_key="legacy", procore_project_id="9999999", status="deprecated"),
+        ],
+    })
+    assert {p.hb_project_key for p in reg.projects} == {"tropical", "legacy"}
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +300,32 @@ def test_seed_projects_includes_tropical_pilot() -> None:
     tropical = projects.get("tropical")
     assert tropical is not None
     assert tropical.status == "pilot"
-    assert tropical.procore_project_id == "23-435-01"
+    assert tropical.procore_project_id == "2525840"
+    assert tropical.procore_project_name == "Tropical - S L"
+
+
+def test_seed_projects_covers_canonical_construction_registry_keys() -> None:
+    """Every project_key in sharepoint_onedrive_sources.seed.yaml must have a
+    corresponding row in procore_projects.seed.yaml (mapped or pending) so the
+    two registries cannot silently drift."""
+    canonical_seed = (
+        Path(__file__).resolve().parents[1]
+        / "resources"
+        / "config"
+        / "sharepoint_onedrive_sources.seed.yaml"
+    )
+    canonical = yaml.safe_load(canonical_seed.read_text(encoding="utf-8"))
+    canonical_keys = {
+        p["project_key"]
+        for p in canonical.get("projects", [])
+        if p.get("project_key")
+    }
+    procore_keys = {p.hb_project_key for p in load_procore_projects().projects}
+    missing = canonical_keys - procore_keys
+    assert not missing, (
+        "procore_projects.seed.yaml is missing rows for canonical "
+        f"project_keys: {sorted(missing)}"
+    )
 
 
 def test_loader_env_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -258,7 +350,7 @@ def test_projects_loader_env_override(tmp_path: Path, monkeypatch: pytest.Monkey
         yaml.safe_dump({
             "company_id": "5280",
             "projects": [
-                {"hb_project_key": "alpha", "procore_project_id": "A-1", "procore_project_name": "Alpha", "status": "pilot"},
+                {"hb_project_key": "alpha", "procore_project_id": "1234567", "procore_project_name": "Alpha", "status": "pilot"},
             ],
         }),
         encoding="utf-8",
@@ -330,7 +422,7 @@ def test_auth_status_never_leaks_env_values(monkeypatch: pytest.MonkeyPatch) -> 
 def test_auditor_classifies_tropical_correctly() -> None:
     a = _make_unenforced_auditor()
     r = a.audit_project("tropical")
-    assert r.procore_project_id == "23-435-01"
+    assert r.procore_project_id == "2525840"
     assert r.summary.get("would_audit", 0) > 0
     assert r.summary.get("sensitive_review_required", 0) >= 4  # 4 financial
     assert r.summary.get("excluded") == 1
@@ -357,9 +449,9 @@ def test_auditor_unknown_project_raises() -> None:
 def test_mapping_validation_reports_pending_as_not_ok() -> None:
     a = _make_unenforced_auditor()
     r = a.validate_mapping()
-    assert r.total == 2
-    assert r.by_status.get("pilot") == 1
-    assert r.by_status.get("pending") == 1
+    assert r.total == 6
+    assert r.by_status.get("pilot") == 4
+    assert r.by_status.get("pending") == 2
     assert r.ok is False
 
 
@@ -368,10 +460,10 @@ def test_mapping_validation_passes_when_only_pilots_and_deprecated() -> None:
     fully_mapped = ProcoreProjectsRegistry.model_validate({
         "company_id": "5280",
         "projects": [
-            {"hb_project_key": "tropical", "procore_project_id": "23-435-01",
-             "procore_project_name": "Tropical", "status": "pilot"},
-            {"hb_project_key": "old-thing", "procore_project_id": "",
-             "procore_project_name": "", "status": "deprecated"},
+            {"hb_project_key": "tropical", "procore_project_id": "2525840",
+             "procore_project_name": "Tropical - S L", "status": "pilot"},
+            {"hb_project_key": "old-thing", "procore_project_id": "9999999",
+             "procore_project_name": "Legacy", "status": "deprecated"},
         ],
     })
     a = EndpointAuditor(contract, fully_mapped)
@@ -436,7 +528,7 @@ def test_cli_tools_audit_tropical(runner: CliRunner) -> None:
     assert r.exit_code == 0
     p = json.loads(r.output)
     assert p["mode"] == "dry_run"
-    assert p["report"]["procore_project_id"] == "23-435-01"
+    assert p["report"]["procore_project_id"] == "2525840"
     assert p["report"]["summary"].get("would_audit", 0) > 0
     assert p["report"]["summary"].get("excluded") == 1
 
@@ -453,10 +545,10 @@ def test_cli_tools_audit_unknown_project_exit_1(runner: CliRunner) -> None:
 
 def test_cli_mapping_validate_pending_yields_exit_1(runner: CliRunner) -> None:
     r = runner.invoke(procore_cli.app, ["mapping", "validate", "--json"])
-    assert r.exit_code == 1  # because seed contains a pending hilltop row
+    assert r.exit_code == 1  # because seed contains pending rows (hilltop, hilltop-gardens)
     p = json.loads(r.output)
     assert p["report"]["ok"] is False
-    assert p["report"]["by_status"].get("pending") == 1
+    assert p["report"]["by_status"].get("pending") == 2
 
 
 # ---------------------------------------------------------------------------

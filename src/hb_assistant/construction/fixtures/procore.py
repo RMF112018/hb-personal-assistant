@@ -50,13 +50,13 @@ PILOT_ONLY_PROJECTS: dict[str, Any] = {
     "projects": [
         {
             "hb_project_key": "alpha",
-            "procore_project_id": "A-100",
+            "procore_project_id": "1000100",
             "procore_project_name": "Alpha",
             "status": "pilot",
         },
         {
             "hb_project_key": "beta",
-            "procore_project_id": "B-200",
+            "procore_project_id": "2000200",
             "procore_project_name": "Beta",
             "status": "pilot",
         },
