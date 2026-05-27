@@ -43,7 +43,7 @@ Date: 2026-05-27
 - None
 
 ## Registry Status
-- Registry updates still needed: yes
+- Registry updates completed (Prompt 04): see `registry-verification-summary.md`
 
 ## Repo Cleanup Safety
-- Safe for cleanup now: no (repo_cleanup_performed=false in manifests)
+- Repo cleanup performed (Prompt 05, 2026-05-27): see `repo-cleanup-summary.md`
