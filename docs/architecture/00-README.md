@@ -23,6 +23,7 @@ This directory contains living architecture and decision records for the HB Pers
 - `remediation-morning-run-orchestration-upgrade.md` — Phase 14 Prompt 07: full 05 stage model in orchestrator with Graph consent blocker classification (skipped_* for Graph while local stages continue), P02-P06 integration (actions, context, brief+obsidian provenance), explicit failure isolation, and exact 05 JSON contract (blocker_classification + stages array).
 - `docs/decisions/` — Closed technical decisions (D-CLI-001 etc.)
 
+- Prompt 02: Dry-Run Semantics and Run Ledger Policy — explicit documentation of allowed ledger/evidence writes vs forbidden business object mutations (action_items, source_links, Obsidian notes); CLI notes aligned; tests proving zero mutations in dry-run (before/after row counts); evidence at `docs/evidence/mvp-local-runtime/02-dry-run-policy-proof.md`.
 Remediation context: implementation reached `v1.3.0`, but acceptance is gated on remediation validation; prior closeout claims are superseded pending green remediation evidence.
 
 For the full phased plan and research, see `docs/plans/my-pa-phase-0/`.

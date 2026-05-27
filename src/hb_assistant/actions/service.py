@@ -28,8 +28,12 @@ class ActionService:
     def extract(self, dry_run: bool = True) -> list[ActionItem]:
         """Return candidate ActionItems (always preview).
 
-        If not dry_run: persist new ones + source_links using discovered low-level + ledger.
-        Dry-run is provably safe (no DB writes in that path).
+        Per Phase 15 Prompt 02 policy:
+        - Dry-run never mutates action_items, source_links, or any business objects.
+        - record_run / finish_run (ledger) and evidence writes are intentionally performed
+          even in dry-run for auditability; these are the only side effects.
+        - If not dry_run: persist new ones + source_links using discovered low-level + ledger.
+        Dry-run is provably safe for business state (no DB writes to action_items or source_links).
         """
         run_id = self.registry.record_run(
             run_type="actions:extract",

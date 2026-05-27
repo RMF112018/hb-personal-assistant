@@ -42,6 +42,9 @@ class MorningRunOrchestrator:
         return datetime.now(timezone.utc).isoformat()
 
     def _record_run(self, run_type: str, dry_run: bool, status: str = "started") -> int:
+        # Per Phase 15 Prompt 02 policy: dry-run intentionally writes ledger records
+        # (via record_run/finish_run) for auditability. Business objects (action_items,
+        # source_links, Obsidian notes, etc.) are never mutated in dry-run paths.
         return self.registry.record_run(
             run_type=run_type,
             target_date="today",

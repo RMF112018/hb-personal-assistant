@@ -231,8 +231,11 @@ def test_dry_run_05_outputs_no_mutation(tmp_path):
     store = Store(db_path=str(dbp))
     orch = MorningRunOrchestrator(store=store)
     before = store.get_summary().get("action_items", 0) if hasattr(store, "get_summary") else 0
+    before_links = store.get_summary().get("source_links", 0) if hasattr(store, "get_summary") else 0
     res = orch.run(dry_run=True)
     after = store.get_summary().get("action_items", 0) if hasattr(store, "get_summary") else 0
-    assert before == after  # no mutation
+    after_links = store.get_summary().get("source_links", 0) if hasattr(store, "get_summary") else 0
+    assert before == after          # Phase 15 Prompt 02: no action_items mutation in dry-run
+    assert before_links == after_links  # no source_links mutation in dry-run
     assert "outputs" in res
     assert res.get("outputs", {}).get("obsidian_write_mode") in ("dry_run", "apply")
