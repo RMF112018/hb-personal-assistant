@@ -1,7 +1,7 @@
 {
   "proof": "delegated-graph",
   "safe": true,
-  "timestamp": "2026-05-27T08:12:41.234797+00:00",
+  "timestamp": "2026-05-27T09:27:49.900370+00:00",
   "steps": [],
   "status": "blocked_no_token",
   "reason": "delegated_token_unavailable",
