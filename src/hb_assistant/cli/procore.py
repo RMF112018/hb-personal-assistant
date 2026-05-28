@@ -17,7 +17,8 @@ Commands:
 from __future__ import annotations
 
 import json
-from typing import Any
+import sys
+from typing import Any, Optional
 
 import typer
 from pydantic import ValidationError
@@ -30,6 +31,7 @@ from hb_assistant.procore import (
     load_endpoint_contract,
     load_procore_projects,
 )
+from hb_assistant.procore.models import EndpointAuditRunReceipt
 
 app = typer.Typer(help="Procore foundation: read-only endpoint audit (dry-run only).")
 auth_app = typer.Typer(help="Procore auth status (no live call).")
@@ -38,12 +40,14 @@ mapping_app = typer.Typer(help="Procore project mapping validation.")
 projects_app = typer.Typer(help="Procore projects registry (read-only).")
 companies_app = typer.Typer(help="Procore company context (read-only).")
 audit_app = typer.Typer(help="Procore endpoint audit (dry-run default; live opt-in manual only).")
+obsidian_app = typer.Typer(help="Procore Obsidian deterministic output (Prompt 10). Dry-run default. --apply explicit gate only. Hybrid procore-*.md in 01_Projects/. No secrets/LLM.")
 app.add_typer(auth_app, name="auth")
 app.add_typer(tools_app, name="tools")
 app.add_typer(mapping_app, name="mapping")
 app.add_typer(projects_app, name="projects")
 app.add_typer(companies_app, name="companies")
 app.add_typer(audit_app, name="audit")
+app.add_typer(obsidian_app, name="obsidian", help="Procore Obsidian preview (Prompt 10) — deterministic; see procore obsidian preview --help")
 
 
 _GUARDRAILS = {
@@ -268,9 +272,6 @@ def companies_list(
 # Prompt_07: audit subcommands (dry-run default; execute = explicit manual live opt-in only)
 # All paths remain read-only, GET-only, redacted. Live never auto-invoked.
 
-from hb_assistant.procore.auditor import EndpointAuditor
-from hb_assistant.procore.models import EndpointAuditRunReceipt
-
 
 @audit_app.command("dry-run")
 def audit_dry_run(
@@ -336,9 +337,6 @@ def audit_execute(
 # Prompt_09: procore sync (dry-run default + explicit --apply to local SQLite only)
 # =============================================================================
 
-import sys
-from typing import Optional
-
 sync_app = typer.Typer(help="Pilot project dry-run sync pipeline (Prompt_09). Dry-run default. --apply is explicit opt-in, local SQLite only, audit-gated.")
 
 @sync_app.command("run")
@@ -359,11 +357,9 @@ def sync_run(
         typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
         raise typer.Exit(1)
 
-    if apply and not confirm:
-        # TTY prompt for safety (human decision in plan)
-        if not typer.confirm("CONFIRM: --apply will write to local SQLite only (no Procore mutation). Continue?", default=False):
-            typer.echo("Aborted.")
-            raise typer.Exit(1)
+    if apply and not confirm and not typer.confirm("CONFIRM: --apply will write to local SQLite only (no Procore mutation). Continue?", default=False):
+        typer.echo("Aborted.")
+        raise typer.Exit(1)
 
     from hb_assistant.procore.sync import run_sync  # lazy, after guard checks
 
@@ -379,3 +375,53 @@ def sync_run(
 
 # Register the new sub-app (additive; existing surfaces untouched)
 app.add_typer(sync_app, name="sync", help="Pilot project dry-run sync (Prompt_09) — audit-gated, local SQLite only")
+
+# =============================================================================
+# Prompt_10: procore obsidian output preview (dry-run default; explicit --apply)
+# =============================================================================
+
+@obsidian_app.command("preview")
+def obsidian_preview(
+    project: str = typer.Argument(..., help="HB project key (pilot/mapped from procore_projects.seed.yaml)"),
+    dry_run: bool = typer.Option(True, "--dry-run", help="Default: paths + rendered Markdown (redacted samples), zero side effects"),
+    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in only. Writes hybrid procore-*.md to 01_Projects/ + review note (local vault)."),
+    json_out: bool = typer.Option(False, "--json"),
+    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts"),
+) -> None:
+    """Procore Obsidian preview/apply (Prompt 10).
+
+    Deterministic (non-LLM) Markdown from SQLite post-sync rows. Redaction + sensitive routing always on.
+    Hybrid layout: procore-*.md files alongside legacy in 01_Projects/. Guardrails: no secrets ever.
+    Default dry-run. --apply requires TTY confirm or --confirm (reuses sync/audit gate style).
+    """
+    if apply and not confirm and not sys.stdin.isatty():
+        typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
+        raise typer.Exit(1)
+    if apply and not confirm and not typer.confirm(
+        "CONFIRM: --apply will write procore-*.md (hybrid in 01_Projects/) + review note to local vault only (no Procore mutation). Continue?",
+        default=False,
+    ):
+        typer.echo("Aborted.")
+        raise typer.Exit(1)
+
+    from hb_assistant.procore.obsidian import procore_obsidian_preview  # lazy import (per plan)
+
+    result = procore_obsidian_preview(
+        project_key=project,
+        dry_run=dry_run and not apply,
+        apply=apply,
+        json_out=json_out,
+    )
+
+    # Structure per spec for CLI surface (command name, review_count, rendered_keys, redacted_errors)
+    if isinstance(result, dict):
+        result = dict(result)
+        result["command"] = "procore obsidian preview"
+        if "review_items" in result:
+            result["review_count"] = len(result["review_items"])
+        if "rendered" in result and isinstance(result["rendered"], dict):
+            result["rendered_keys"] = list(result["rendered"])
+        if "error" in result:
+            result["redacted_errors"] = result["error"]
+
+    _emit(result, json_out=json_out)

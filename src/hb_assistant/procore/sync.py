@@ -46,11 +46,7 @@ def redact_for_evidence(obj: Any) -> Any:
 
 def _looks_like_secret(k: str) -> bool:
     return any(x in k.lower() for x in ("secret", "token", "auth", "bearer", "key"))
-from hb_assistant.store.repositories import (  # type: ignore
-    get_procore_sync_watermark,
-    set_procore_sync_watermark,
-    upsert_procore_synced_entity,
-)
+
 
 Mode = Literal["dry_run", "apply"]
 Policy = Literal["auto", "incremental", "full"]
@@ -231,6 +227,13 @@ class ProcoreSyncCoordinator:
         """Explicit opt-in apply. Re-evaluates audit gate. Writes ONLY to local SQLite (db_path or default).
         Never external. Never non-GET.
         """
+        # Local import to avoid potential cycles (pattern used elsewhere e.g. vault_writer)
+        from hb_assistant.store.repositories import (  # type: ignore
+            get_procore_sync_watermark,
+            set_procore_sync_watermark,
+            upsert_procore_synced_entity,
+        )
+
         started = datetime.now(timezone.utc).isoformat()
         receipt = SyncReceipt(
             sync_id=str(uuid.uuid4()),

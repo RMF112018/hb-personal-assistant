@@ -70,6 +70,36 @@ _MARKERS: dict[str, tuple[str, str]] = {
         "<!-- HB-CONSTRUCTION-DOC-CARD:START -->",
         "<!-- HB-CONSTRUCTION-DOC-CARD:END -->",
     ),
+    # Procore hybrid artifact markers (for .procore-*.md files in 01_Projects/ under hybrid layout).
+    # Enables write_procore_artifact to reuse _write + atomic + marker logic.
+    "procore_project_card": (
+        "<!-- HB-PROCORE-PROJECT-CARD:START -->",
+        "<!-- HB-PROCORE-PROJECT-CARD:END -->",
+    ),
+    "procore_rfi_register": (
+        "<!-- HB-PROCORE-RFI-REGISTER:START -->",
+        "<!-- HB-PROCORE-RFI-REGISTER:END -->",
+    ),
+    "procore_submittal_register": (
+        "<!-- HB-PROCORE-SUBMITTAL-REGISTER:START -->",
+        "<!-- HB-PROCORE-SUBMITTAL-REGISTER:END -->",
+    ),
+    "procore_daily_log_index": (
+        "<!-- HB-PROCORE-DAILY-LOG:START -->",
+        "<!-- HB-PROCORE-DAILY-LOG:END -->",
+    ),
+    "procore_financial_snapshot": (
+        "<!-- HB-PROCORE-FINANCIAL-SNAPSHOT:START -->",
+        "<!-- HB-PROCORE-FINANCIAL-SNAPSHOT:END -->",
+    ),
+    "procore_sync_receipt": (
+        "<!-- HB-PROCORE-SYNC-RECEIPT:START -->",
+        "<!-- HB-PROCORE-SYNC-RECEIPT:END -->",
+    ),
+    "procore_endpoint_audit": (
+        "<!-- HB-PROCORE-ENDPOINT-AUDIT:START -->",
+        "<!-- HB-PROCORE-ENDPOINT-AUDIT:END -->",
+    ),
 }
 
 _SAFE_ITEM_ID = re.compile(r"[^A-Za-z0-9_.-]+")
@@ -260,6 +290,22 @@ class ConstructionVaultWriter:
             / f"{source_key}__{_safe_item_id(item_id)}.doc.md"
         )
 
+    # --- procore hybrid paths (additive; for Prompt 10 obsidian artifacts in 01_Projects/) ---
+
+    def procore_project_artifact_path(self, project_key: str, kind: str) -> Path:
+        """Return path under 01_Projects/ using hybrid filename: {project_key}.procore-{kind}.md
+
+        kind examples: 'project-card', 'rfi-register', 'submittal-register', 'financial-snapshot' etc.
+        Reuses _SUBDIRS['project_card'] and _safe_item_id.
+        """
+        safe_key = _safe_item_id(project_key)
+        fn_kind = kind.replace("_", "-")
+        return self._root_or_raise() / _SUBDIRS["project_card"] / f"{safe_key}.procore-{fn_kind}.md"
+
+    def procore_review_required_path(self, *, generated_at: str | None) -> Path:
+        """Procore review path delegate (reuses existing review_required_path for now)."""
+        return self.review_required_path(generated_at=generated_at)
+
     # --- write methods ----------------------------------------------------
 
     def write_source_manifest(self, *, source_key: str, rendered: str) -> WriteResult:
@@ -322,6 +368,25 @@ class ConstructionVaultWriter:
             self.document_card_path(source_key=source_key, item_id=item_id),
             rendered,
         )
+
+    # --- procore write methods (additive; delegate to _write for hybrid + reuse atomic/markers) ---
+
+    def write_procore_artifact(
+        self, *, project_key: str, kind: str, rendered: str
+    ) -> WriteResult:
+        """Marker-bounded write for procore-* hybrid artifact in 01_Projects/.
+
+        Maps kind -> procore_{kind} marker entry + calls _write (reuses atomic, ensure, replace).
+        """
+        marker_key = f"procore_{kind.replace('-', '_')}"
+        target = self.procore_project_artifact_path(project_key, kind)
+        return self._write(marker_key, target, rendered)
+
+    def write_procore_review_required_note(
+        self, *, generated_at: str | None, rendered: str
+    ) -> WriteResult:
+        """Delegate to existing review write (for procore review notes routed to 02_Review_Queue)."""
+        return self.write_review_required_note(generated_at=generated_at, rendered=rendered)
 
     # --- private ----------------------------------------------------------
 

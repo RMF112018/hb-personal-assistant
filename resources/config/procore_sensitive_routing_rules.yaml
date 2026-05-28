@@ -1,0 +1,21 @@
+# Source: HB Construction Intelligence Phase 03 package (resources/config/). Package manifest sha: 15584bfd9d673b9216fc785d21317d80b2d4e9d8f78b99408884714e15700c2b. Copied for deterministic rendering. DO NOT EDIT MANUALLY.
+
+version: 1
+rules:
+  - rule_id: procore-financial-summary
+    categories: [budget, commitments, invoices, requisitions, direct_costs, prime_contracts, change_events]
+    sensitivity: high
+    route: review_required
+    note: "Financial summaries may be shown but must be marked review-sensitive."
+  - rule_id: procore-contractual-records
+    categories: [commitments, commitment_change_orders, prime_contracts, prime_contract_change_orders, potential_change_orders]
+    sensitivity: critical
+    route: review_required
+  - rule_id: procore-incident-injury-personnel
+    keywords: [incident, injury, personnel, claim, notice]
+    sensitivity: critical
+    route: review_required
+  - rule_id: procore-daily-log-delays
+    categories: [daily_log_delays]
+    sensitivity: high
+    route: review_required
