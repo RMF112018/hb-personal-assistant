@@ -228,16 +228,24 @@ def test_live_env_and_live_enabled_still_require_confirm_live_get(
     assert "confirm_live_get_required" in res.output
 
 
-def test_live_sync_fail_closed_when_all_gates_present(
+def test_live_sync_unverified_endpoint_fails_closed_without_transport(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class _AuthStub:
-        ready_for_live_calls = True
-        status = "ready"
-
-    monkeypatch.setattr("hb_assistant.cli.procore.check_auth_status", lambda: _AuthStub())
+    """Unverified canonical endpoints must return not_live_verified without
+    touching the live transport, even when every other gate is satisfied."""
     monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
     monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
+    called = {"hit": False}
+
+    def _boom(*args: object, **kwargs: object) -> object:  # noqa: ARG001
+        called["hit"] = True
+        raise AssertionError("transport must not be invoked for unverified endpoint")
+
+    monkeypatch.setattr(
+        "hb_assistant.procore.http_client.ProcoreHTTPClient._default_live_transport",
+        _boom,
+    )
+
     runner = CliRunner()
     res = runner.invoke(
         app,
@@ -248,23 +256,28 @@ def test_live_sync_fail_closed_when_all_gates_present(
             "--project",
             "tropical",
             "--endpoint",
-            "rfis",
+            "rfi-responses",
             "--apply",
             "--sqlite-only",
             "--max-pages",
-            "3",
+            "1",
             "--max-items",
-            "100",
+            "10",
             "--confirm-live-get",
             "--json",
         ],
         catch_exceptions=False,
     )
+    assert called["hit"] is False
     assert res.exit_code == 2
-    assert "endpoint_sync_not_implemented" in res.output
+    payload = json.loads(res.output)
+    assert payload["state"] == "not_live_verified"
+    assert payload["no_live_call_performed"] is True
+    assert payload["request_count"] == 0
+    assert "endpoint_unverified_for_live" in payload["reason_codes"]
 
 
-def test_live_endpoints_list_exposes_state_and_reason_codes() -> None:
+def test_live_endpoints_list_emits_canonical_phase04a_rows() -> None:
     runner = CliRunner()
     res = runner.invoke(
         app,
@@ -274,54 +287,9 @@ def test_live_endpoints_list_exposes_state_and_reason_codes() -> None:
     assert res.exit_code == 0
     payload = json.loads(res.output)
     rows = payload.get("endpoints", [])
-    rfis = next(r for r in rows if r["endpoint_id"] == "list-rfis")
+    rfis = next(r for r in rows if r["endpoint_id"] == "rfis")
     assert rfis["command_endpoint"] == "rfis"
-    assert rfis["state"] in {"operational", "not_live_verified", "fail_closed_unsupported"}
-    assert isinstance(rfis["reason_codes"], list)
-
-
-def test_prompt_03a_live_sync_contract_never_invokes_transport(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    class _AuthStub:
-        ready_for_live_calls = True
-        status = "ready"
-
-    monkeypatch.setattr("hb_assistant.cli.procore.check_auth_status", lambda: _AuthStub())
-    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
-    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
-    called = {"hit": False}
-
-    def _boom(*args: object, **kwargs: object) -> object:  # noqa: ARG001
-        called["hit"] = True
-        raise AssertionError("transport must not be invoked in Prompt 03A contract mode")
-
-    monkeypatch.setattr("hb_assistant.procore.http_client.ProcoreHTTPClient._default_live_transport", _boom)
-
-    runner = CliRunner()
-    res = runner.invoke(
-        app,
-        [
-            "procore",
-            "live",
-            "sync",
-            "--project",
-            "tropical",
-            "--endpoint",
-            "rfis",
-            "--apply",
-            "--sqlite-only",
-            "--max-pages",
-            "3",
-            "--max-items",
-            "100",
-            "--confirm-live-get",
-            "--json",
-        ],
-        catch_exceptions=False,
-    )
-    assert called["hit"] is False
-    assert res.exit_code in {2, 3}
-    payload = json.loads(res.output)
-    assert payload["request_count"] == 0
-    assert payload["no_live_call_performed"] is True
+    assert rfis["legacy_endpoint_alias"] == "list-rfis"
+    assert rfis["live_verified"] is True
+    rfi_resp = next(r for r in rows if r["endpoint_id"] == "rfi-responses")
+    assert rfi_resp["live_verified"] is False

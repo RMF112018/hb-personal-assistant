@@ -96,6 +96,22 @@ def mask_pii_in_excerpt(text: str, max_len: int = 120) -> str:
     return masked[:max_len]
 
 
+def redact_source_url(url: Optional[str]) -> Optional[str]:
+    """Return the path portion of a Procore source URL (no host, no query).
+
+    Used by the Phase 04A live sync orchestrator to persist a traceable but
+    credential-free pointer in ``procore_live_records.source_url_redacted``.
+    Any embedded token-like substring in the path is masked.
+    """
+    if not isinstance(url, str) or not url.strip():
+        return None
+    path_only = url.split("?", 1)[0]
+    if "://" in path_only:
+        _, _, after = path_only.partition("://")
+        path_only = "/" + after.split("/", 1)[1] if "/" in after else "/"
+    return _TOKEN_RE.sub("[token-redacted]", path_only)
+
+
 def redact_response(status: int, headers: Dict[str, str], body: Any) -> Dict[str, Any]:
     """Redacted response summary with safe rate-limit extraction."""
     h = headers or {}

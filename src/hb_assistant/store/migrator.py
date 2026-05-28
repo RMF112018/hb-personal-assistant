@@ -459,6 +459,86 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v6 = Phase 04A Procore live sync tables. Three tables: sync run history,
+    # canonical live records (one row per Procore entity, upsert keyed by
+    # project + endpoint + parent + record), and per-endpoint watermarks.
+    # Hard CHECK constraints enforce the no-raw-body / always-redacted rules at
+    # the schema level.
+    V6_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS procore_live_sync_runs (
+          sync_run_id TEXT PRIMARY KEY,
+          endpoint_id TEXT NOT NULL,
+          command_endpoint TEXT NOT NULL,
+          legacy_endpoint_alias TEXT,
+          project_key TEXT NOT NULL,
+          procore_project_id TEXT NOT NULL,
+          company_id TEXT NOT NULL,
+          mode TEXT NOT NULL,
+          started_at_utc TEXT NOT NULL,
+          completed_at_utc TEXT,
+          request_count INTEGER NOT NULL DEFAULT 0,
+          retrieved_count INTEGER NOT NULL DEFAULT 0,
+          normalized_count INTEGER NOT NULL DEFAULT 0,
+          sqlite_upserted_count INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL,
+          state TEXT NOT NULL,
+          reason_codes_json TEXT,
+          evidence_path TEXT,
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1),
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          no_live_call_performed INTEGER NOT NULL DEFAULT 0
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_live_sync_runs_endpoint
+          ON procore_live_sync_runs(endpoint_id, project_key);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_live_records (
+          project_key TEXT NOT NULL,
+          procore_project_id TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          parent_procore_id TEXT NOT NULL DEFAULT '',
+          procore_record_id TEXT NOT NULL,
+          procore_record_number TEXT,
+          title_redacted TEXT,
+          status TEXT,
+          updated_at_utc TEXT,
+          source_url_redacted TEXT,
+          canonical_json_redacted TEXT NOT NULL,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          sensitive_reason TEXT,
+          first_seen_at_utc TEXT NOT NULL,
+          last_seen_at_utc TEXT NOT NULL,
+          last_sync_run_id TEXT NOT NULL,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          PRIMARY KEY (project_key, endpoint_id, parent_procore_id, procore_record_id),
+          FOREIGN KEY (last_sync_run_id) REFERENCES procore_live_sync_runs(sync_run_id)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_live_records_review
+          ON procore_live_records(review_required);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_live_records_endpoint
+          ON procore_live_records(endpoint_id, project_key);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_live_sync_watermarks (
+          company_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          procore_project_id TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          last_success_at_utc TEXT,
+          last_receipt_id TEXT,
+          cursor_redacted TEXT,
+          PRIMARY KEY (company_id, project_key, procore_project_id, endpoint_id)
+        );
+        """,
+    ]
+
     # v4 = construction-agent Ollama model-decisions audit (metadata only;
     # recommendation-only, controller policy remains authoritative)
     V4_STATEMENTS: list[str] = [
@@ -553,6 +633,17 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (5, 'v5_construction_canonical_alignment', ?)",
+                    (now,),
+                )
+
+            # v6 Phase 04A Procore live sync tables (additive only).
+            for stmt in self.V6_STATEMENTS:
+                conn.execute(stmt)
+
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 6")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (6, 'v6_procore_live_sync', ?)",
                     (now,),
                 )
 
