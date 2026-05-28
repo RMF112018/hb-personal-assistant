@@ -26,7 +26,10 @@ PROCORE_SRC = (
 # - config.py: the canonical implementation site.
 # - errors.py: docstring for ProcoreAuthRequired explains the hazard it guards against.
 # - redaction.py: module docstring enumerates client_secret as a redaction scope.
-ALLOWLIST_FILES = {"config.py", "errors.py", "redaction.py"}
+# - oauth.py: Phase 04 Prompt 02 acquisition remediation — the OAuth code-flow
+#   exchange and refresh path is the only legitimate consumer of the client
+#   secret. The secret is read at request time only and is never stored.
+ALLOWLIST_FILES = {"config.py", "errors.py", "redaction.py", "oauth.py"}
 
 
 def _procore_source_files() -> list[Path]:

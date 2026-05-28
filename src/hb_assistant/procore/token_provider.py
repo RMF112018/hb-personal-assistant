@@ -34,15 +34,21 @@ Hard invariants enforced here:
 
 from __future__ import annotations
 
+import contextlib
 import json
+import os
+import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional, Protocol, runtime_checkable
 
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.procore.auth import AUTH_TOKEN_FILE_NAME
 from hb_assistant.procore.config import get_procore_access_token
+
+# OAuth surfaces are imported lazily inside RefreshingOAuthTokenProvider
+# to keep import-time side effects minimal for callers that don't need them.
 
 
 @runtime_checkable
@@ -168,6 +174,183 @@ class LocalOAuthCacheTokenProvider:
 
 
 # ---------------------------------------------------------------------------
+# Cache I/O (Phase 04 Prompt 02 acquisition remediation)
+# ---------------------------------------------------------------------------
+
+
+def _resolve_cache_path(path: Optional[Path]) -> Optional[Path]:
+    if path is not None:
+        return path
+    try:
+        return PathPolicy().get_auth_dir() / AUTH_TOKEN_FILE_NAME
+    except Exception:  # noqa: BLE001 — non-critical
+        return None
+
+
+def write_token_cache(token_set: Any, path: Optional[Path] = None) -> Path:
+    """Write a token set to the local OAuth cache file.
+
+    Atomic + permission-tightening:
+
+    - Parent directory is created and forced to ``0o700``.
+    - JSON body is written to a tempfile alongside the destination, ``fchmod``'d
+      to ``0o600`` **before** ``os.replace`` to the final path.
+    - Existing cache contents are not corrupted on partial write failure.
+
+    Accepts a :class:`hb_assistant.procore.oauth.TokenSet` (any object exposing
+    ``access_token``, ``refresh_token``, ``expires_at``, ``obtained_at``).
+    """
+    resolved = _resolve_cache_path(path)
+    if resolved is None:
+        raise RuntimeError("Cannot resolve token cache path (PathPolicy unavailable)")
+    auth_dir = resolved.parent
+    auth_dir.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        auth_dir.chmod(0o700)
+
+    expires_at = getattr(token_set, "expires_at", None)
+    obtained_at = getattr(token_set, "obtained_at", None)
+    payload = {
+        "access_token": getattr(token_set, "access_token", ""),
+        "refresh_token": getattr(token_set, "refresh_token", None),
+        "expires_at": expires_at.isoformat() if isinstance(expires_at, datetime) else None,
+        "obtained_at": obtained_at.isoformat() if isinstance(obtained_at, datetime) else None,
+    }
+    serialized = json.dumps(payload, indent=2, sort_keys=True)
+
+    fd, tmp_path = tempfile.mkstemp(prefix=".procore_token_", dir=str(auth_dir))
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(serialized)
+        os.replace(tmp_path, resolved)
+        with contextlib.suppress(OSError):
+            os.chmod(resolved, 0o600)
+    except Exception:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)
+        raise
+    return resolved
+
+
+def clear_token_cache(path: Optional[Path] = None) -> bool:
+    """Remove the local OAuth cache file if it exists. Returns whether a file
+    was removed.
+    """
+    resolved = _resolve_cache_path(path)
+    if resolved is None or not resolved.exists():
+        return False
+    try:
+        resolved.unlink()
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def read_token_cache_payload(path: Optional[Path] = None) -> Optional[dict[str, Any]]:
+    """Return the full cache payload as a dict (``access_token``,
+    ``refresh_token``, ``expires_at``, ``obtained_at``) or ``None``.
+
+    Performs the same permission and shape checks as
+    :class:`LocalOAuthCacheTokenProvider` so callers see exactly what the
+    provider chain would observe.
+    """
+    resolved = _resolve_cache_path(path)
+    if resolved is None or not resolved.exists():
+        return None
+    try:
+        stat = resolved.stat()
+        if stat.st_mode & 0o077:
+            return None
+        raw = resolved.read_text(encoding="utf-8")
+        payload = json.loads(raw) if raw.strip() else {}
+    except (OSError, ValueError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return payload
+
+
+# ---------------------------------------------------------------------------
+# Refreshing provider (Phase 04 Prompt 02 acquisition remediation)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RefreshingOAuthTokenProvider:
+    """Token provider that automatically refreshes via :class:`ProcoreOAuthClient`.
+
+    Behavior:
+
+    - Load the cache payload. If absent or missing an ``access_token`` -> ``None``.
+    - If ``expires_at`` is more than ``refresh_within`` in the future, return the
+      cached access token.
+    - Otherwise, if a ``refresh_token`` is present, call
+      :meth:`ProcoreOAuthClient.refresh_access_token`, write the new token set
+      back, and return the fresh access token. Any exception during refresh
+      causes a silent ``None`` (fail closed) — never raises into the HTTP
+      client which owns the explicit ``ProcoreAuthRequired`` failure.
+    - If no ``refresh_token`` is present, returns the cached access token only
+      while it is still valid; otherwise ``None``.
+    """
+
+    cache_path: Optional[Path] = None
+    refresh_within_seconds: int = 60
+    environment: str = "sandbox"
+    kind: str = "oauth_refreshing"
+
+    def _load(self) -> Optional[dict[str, Any]]:
+        return read_token_cache_payload(self.cache_path)
+
+    def _parse_expires_at(self, raw: Any) -> Optional[datetime]:
+        if not isinstance(raw, str) or not raw:
+            return None
+        try:
+            deadline = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=timezone.utc)
+        return deadline
+
+    def get_access_token(self) -> Optional[str]:
+        payload = self._load()
+        if payload is None:
+            return None
+        access_token = payload.get("access_token")
+        if not isinstance(access_token, str) or not access_token:
+            return None
+        refresh_token = payload.get("refresh_token")
+        deadline = self._parse_expires_at(payload.get("expires_at"))
+        now = datetime.now(timezone.utc)
+        refresh_threshold = timedelta(seconds=self.refresh_within_seconds)
+
+        if deadline is None:
+            # No expiry assertion — return cached token; freshness is the operator's call.
+            return access_token
+
+        if deadline - now > refresh_threshold:
+            return access_token
+
+        if not isinstance(refresh_token, str) or not refresh_token:
+            return access_token if deadline > now else None
+
+        try:
+            from hb_assistant.procore.oauth import ProcoreOAuthClient  # lazy
+
+            client = ProcoreOAuthClient(environment=self.environment)
+            new_token = client.refresh_access_token(refresh_token)
+        except Exception:  # noqa: BLE001 — fail closed
+            return access_token if deadline > now else None
+        with contextlib.suppress(Exception):  # best-effort cache write; still return the fresh token
+            write_token_cache(new_token, self.cache_path)
+        return new_token.access_token
+
+    def __repr__(self) -> str:
+        return f"<RefreshingOAuthTokenProvider kind={self.kind} env={self.environment}>"
+
+
+# ---------------------------------------------------------------------------
 # Composed default
 # ---------------------------------------------------------------------------
 
@@ -192,11 +375,17 @@ class _ChainedTokenProvider:
 
 
 def default_procore_token_provider() -> ProcoreTokenProvider:
-    """Composed default: env/keychain → local OAuth cache → missing."""
+    """Composed default: env/keychain → refreshing OAuth cache → missing.
+
+    The middle slot is now :class:`RefreshingOAuthTokenProvider`, which reads
+    the same cache file as :class:`LocalOAuthCacheTokenProvider` but also
+    transparently refreshes near-expiry tokens via the OAuth client. The bare
+    cache provider remains exported for diagnostics + isolated tests.
+    """
     return _ChainedTokenProvider(
         providers=(
             EnvOrKeychainTokenProvider(),
-            LocalOAuthCacheTokenProvider(),
+            RefreshingOAuthTokenProvider(),
             MissingTokenProvider(),
         )
     )
@@ -243,7 +432,11 @@ __all__ = [
     "LocalOAuthCacheTokenProvider",
     "MissingTokenProvider",
     "ProcoreTokenProvider",
+    "RefreshingOAuthTokenProvider",
     "StaticTokenProvider",
     "adapt_token_source",
+    "clear_token_cache",
     "default_procore_token_provider",
+    "read_token_cache_payload",
+    "write_token_cache",
 ]

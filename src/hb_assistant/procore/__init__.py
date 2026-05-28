@@ -50,6 +50,11 @@ from .models import (
     ProcoreProjectsRegistry,
     Sensitivity,
 )
+from .oauth import (
+    ProcoreOAuthClient,
+    ProcoreOAuthError,
+    TokenSet,
+)
 from .obsidian import (
     PROCORE_GUARDRAILS,
     ProcoreObsidianRenderer,
@@ -66,7 +71,10 @@ from .token_provider import (
     LocalOAuthCacheTokenProvider,
     MissingTokenProvider,
     ProcoreTokenProvider,
+    RefreshingOAuthTokenProvider,
+    clear_token_cache,
     default_procore_token_provider,
+    write_token_cache,
 )
 
 __all__ = [
@@ -87,6 +95,8 @@ __all__ = [
     "ProcoreEndpointContract",
     "ProcoreHTTPClient",
     "ProcoreMappingUnavailable",
+    "ProcoreOAuthClient",
+    "ProcoreOAuthError",
     "ProcoreObsidianRenderer",
     "ProcorePendingProjectRejected",
     "ProcoreProjectMapping",
@@ -95,13 +105,17 @@ __all__ = [
     "ProcoreRateLimitError",
     "ProcoreSyncCoordinator",
     "ProcoreTokenProvider",
+    "RefreshingOAuthTokenProvider",
     "Sensitivity",
     "SyncReceipt",
+    "TokenSet",
     "check_auth_status",
+    "clear_token_cache",
     "default_procore_token_provider",
     "load_endpoint_contract",
     "load_procore_projects",
     "procore_obsidian_preview",
     "reset_procore_obsidian_caches",
     "run_sync",
+    "write_token_cache",
 ]

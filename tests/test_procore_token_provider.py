@@ -157,7 +157,7 @@ def test_default_chain_shape() -> None:
     chain = default_procore_token_provider()
     assert isinstance(chain, _ChainedTokenProvider)
     kinds = [p.kind for p in chain.providers]
-    assert kinds == ["env_or_keychain", "oauth_cache", "missing"]
+    assert kinds == ["env_or_keychain", "oauth_refreshing", "missing"]
 
 
 def test_default_chain_returns_none_when_all_empty(
@@ -222,3 +222,101 @@ def test_provider_repr_never_includes_token_value() -> None:
     for p in providers:
         assert SYNTHETIC_TOKEN not in repr(p)
         assert SYNTHETIC_TOKEN not in str(p)
+
+
+# --- RefreshingOAuthTokenProvider (Phase 04 Prompt 02 acquisition) -----------
+
+
+
+from hb_assistant.procore.oauth import TokenSet  # noqa: E402
+from hb_assistant.procore.token_provider import (  # noqa: E402
+    RefreshingOAuthTokenProvider,
+    write_token_cache,
+)
+
+
+def _make_token(*, access: str, refresh: str | None, expires_in: int) -> TokenSet:
+    now = datetime.now(timezone.utc)
+    return TokenSet(
+        access_token=access,
+        refresh_token=refresh,
+        expires_at=now + timedelta(seconds=expires_in),
+        obtained_at=now,
+    )
+
+
+def test_refreshing_provider_returns_cached_token_when_far_from_expiry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_auth_dir(tmp_path)  # the existing helper, used at module top
+    monkeypatch.setattr(
+        "hb_assistant.procore.token_provider.PathPolicy",
+        lambda: type("X", (), {"get_auth_dir": lambda self: tmp_path / "auth"})(),
+    )
+    write_token_cache(_make_token(access="cached-access", refresh="ref", expires_in=3600))
+
+    # OAuth client must NOT be invoked when the cached token is still fresh.
+    fake_client = type(
+        "X", (), {"refresh_access_token": lambda self, _r: pytest.fail("should not refresh")}
+    )()
+    with patch("hb_assistant.procore.oauth.ProcoreOAuthClient", return_value=fake_client):
+        token = RefreshingOAuthTokenProvider().get_access_token()
+    assert token == "cached-access"
+
+
+def test_refreshing_provider_calls_oauth_when_near_expiry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "hb_assistant.procore.token_provider.PathPolicy",
+        lambda: type("X", (), {"get_auth_dir": lambda self: tmp_path / "auth"})(),
+    )
+    write_token_cache(_make_token(access="stale-access", refresh="stale-refresh", expires_in=10))
+
+    fake_client = type(
+        "X",
+        (),
+        {
+            "refresh_access_token": lambda self, refresh: _make_token(
+                access="fresh-access", refresh="fresh-refresh", expires_in=3600
+            )
+        },
+    )()
+    with patch("hb_assistant.procore.oauth.ProcoreOAuthClient", return_value=fake_client):
+        token = RefreshingOAuthTokenProvider(refresh_within_seconds=60).get_access_token()
+    assert token == "fresh-access"
+    # The cache was rewritten with the new token set.
+    cache_file = tmp_path / "auth" / AUTH_TOKEN_FILE_NAME
+    assert cache_file.exists()
+    contents = json.loads(cache_file.read_text())
+    assert contents["access_token"] == "fresh-access"
+    assert contents["refresh_token"] == "fresh-refresh"
+
+
+def test_refreshing_provider_returns_none_on_oauth_failure_when_token_expired(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "hb_assistant.procore.token_provider.PathPolicy",
+        lambda: type("X", (), {"get_auth_dir": lambda self: tmp_path / "auth"})(),
+    )
+    write_token_cache(_make_token(access="stale-access", refresh="stale-refresh", expires_in=-10))
+
+    def _boom(self, refresh):  # noqa: ARG001
+        raise RuntimeError("simulated oauth outage")
+
+    fake_client = type("X", (), {"refresh_access_token": _boom})()
+    with patch("hb_assistant.procore.oauth.ProcoreOAuthClient", return_value=fake_client):
+        token = RefreshingOAuthTokenProvider().get_access_token()
+    assert token is None
+
+
+def test_refreshing_provider_returns_none_when_no_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "hb_assistant.procore.token_provider.PathPolicy",
+        lambda: type("X", (), {"get_auth_dir": lambda self: tmp_path / "auth"})(),
+    )
+    (tmp_path / "auth").mkdir()
+    assert RefreshingOAuthTokenProvider().get_access_token() is None

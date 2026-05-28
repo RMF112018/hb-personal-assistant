@@ -69,15 +69,210 @@ def _emit(payload: dict[str, Any], *, json_out: bool, exit_code: int = 0) -> Non
 def auth_status(
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
-    """Report Procore auth-credential presence (no live call)."""
+    """Report Procore auth-credential presence (no live call).
+
+    Phase 04 Prompt 02 extends the envelope with the local OAuth cache state
+    (presence flags + ``expires_in_seconds_if_known``) and the default
+    token-provider chain order. No token values are ever emitted.
+    """
+    from datetime import datetime, timezone
+
+    from hb_assistant.procore.token_provider import (
+        default_procore_token_provider,
+        read_token_cache_payload,
+    )
 
     report = check_auth_status()
+    cache_payload = read_token_cache_payload()
+    cache_present = cache_payload is not None
+    access_present = bool(
+        cache_payload and isinstance(cache_payload.get("access_token"), str) and cache_payload["access_token"]
+    )
+    refresh_present = bool(
+        cache_payload and isinstance(cache_payload.get("refresh_token"), str) and cache_payload["refresh_token"]
+    )
+    expires_in_seconds: int | None = None
+    if cache_payload and isinstance(cache_payload.get("expires_at"), str):
+        try:
+            deadline = datetime.fromisoformat(
+                cache_payload["expires_at"].replace("Z", "+00:00")
+            )
+            if deadline.tzinfo is None:
+                deadline = deadline.replace(tzinfo=timezone.utc)
+            expires_in_seconds = int((deadline - datetime.now(timezone.utc)).total_seconds())
+        except ValueError:
+            expires_in_seconds = None
+
+    chain = default_procore_token_provider()
+    chain_order = [getattr(p, "kind", type(p).__name__) for p in getattr(chain, "providers", ())]
+
     payload = {
         "command": "hb-assistant procore auth status",
         "report": report.model_dump(),
+        "cache_present": cache_present,
+        "access_token_present": access_present,
+        "refresh_token_present": refresh_present,
+        "expires_in_seconds_if_known": expires_in_seconds,
+        "chain_order": chain_order,
         "guardrails": _GUARDRAILS,
     }
     _emit(payload, json_out=json_out)
+
+
+def _build_oauth_client() -> Any:
+    from hb_assistant.procore.config import load_procore_app_profile
+    from hb_assistant.procore.oauth import ProcoreOAuthClient
+
+    profile = load_procore_app_profile()
+    return ProcoreOAuthClient(environment=profile.environment)
+
+
+def _redacted_oauth_envelope(
+    command: str,
+    *,
+    kind: str,
+    token_set: Any,
+) -> dict[str, Any]:
+    expires_in = None
+    try:
+        expires_in = int(token_set.expires_in_seconds())
+    except Exception:  # noqa: BLE001 — diagnostic only
+        expires_in = None
+    return {
+        "command": command,
+        "ok": True,
+        "kind": kind,
+        "access_token_cached": True,
+        "refresh_token_cached": bool(getattr(token_set, "refresh_token", None)),
+        "expires_in_seconds": expires_in,
+        "guardrails": _GUARDRAILS,
+    }
+
+
+@auth_app.command("login")
+def auth_login(
+    code: Optional[str] = typer.Option(
+        None,
+        "--code",
+        help="Authorization code from the OOB redirect (paste the value Procore displays after consent).",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """First-time OAuth login via Procore's OOB Installed-Apps flow.
+
+    Prints the authorization URL when ``--code`` is not supplied; the operator
+    opens the URL, signs in, and pastes the returned code. The exchange is
+    performed against ``<oauth_base>/oauth/token`` and the resulting access +
+    refresh tokens are written to the local cache file with ``0o600`` perms.
+    No token values are echoed.
+    """
+    from hb_assistant.procore.oauth import ProcoreOAuthError
+    from hb_assistant.procore.token_provider import write_token_cache
+
+    client = _build_oauth_client()
+    if code is None:
+        url = client.build_authorization_url()
+        typer.echo(
+            "Open the following URL in a browser, sign in, then paste the "
+            "displayed authorization code:\n  "
+            f"{url}"
+        )
+        code = typer.prompt("Authorization code", hide_input=False)
+    try:
+        token_set = client.exchange_authorization_code(code)
+        cache_path = write_token_cache(token_set)
+    except ProcoreOAuthError as exc:
+        _emit(
+            {
+                "command": "hb-assistant procore auth login",
+                "ok": False,
+                "kind": "oauth_login_failed",
+                "status": int(exc.status),
+                "correlation_id": exc.correlation_id,
+                "guardrails": _GUARDRAILS,
+            },
+            json_out=json_out,
+            exit_code=1,
+        )
+        return
+    payload = _redacted_oauth_envelope(
+        "hb-assistant procore auth login",
+        kind="oauth_login",
+        token_set=token_set,
+    )
+    payload["cache_path"] = str(cache_path)
+    _emit(payload, json_out=json_out)
+
+
+@auth_app.command("refresh")
+def auth_refresh(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Force-refresh the locally cached OAuth tokens using the stored refresh token."""
+    from hb_assistant.procore.oauth import ProcoreOAuthError
+    from hb_assistant.procore.token_provider import (
+        read_token_cache_payload,
+        write_token_cache,
+    )
+
+    payload = read_token_cache_payload()
+    if not payload or not isinstance(payload.get("refresh_token"), str) or not payload["refresh_token"]:
+        _emit(
+            {
+                "command": "hb-assistant procore auth refresh",
+                "ok": False,
+                "kind": "oauth_refresh_unavailable",
+                "reason": "no_refresh_token_in_cache",
+                "guardrails": _GUARDRAILS,
+            },
+            json_out=json_out,
+            exit_code=1,
+        )
+        return
+    client = _build_oauth_client()
+    try:
+        token_set = client.refresh_access_token(payload["refresh_token"])
+        write_token_cache(token_set)
+    except ProcoreOAuthError as exc:
+        _emit(
+            {
+                "command": "hb-assistant procore auth refresh",
+                "ok": False,
+                "kind": "oauth_refresh_failed",
+                "status": int(exc.status),
+                "correlation_id": exc.correlation_id,
+                "guardrails": _GUARDRAILS,
+            },
+            json_out=json_out,
+            exit_code=1,
+        )
+        return
+    out = _redacted_oauth_envelope(
+        "hb-assistant procore auth refresh",
+        kind="oauth_refresh",
+        token_set=token_set,
+    )
+    _emit(out, json_out=json_out)
+
+
+@auth_app.command("logout")
+def auth_logout(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Remove the local OAuth token cache (does not contact Procore)."""
+    from hb_assistant.procore.token_provider import clear_token_cache
+
+    removed = clear_token_cache()
+    _emit(
+        {
+            "command": "hb-assistant procore auth logout",
+            "ok": True,
+            "kind": "oauth_logout",
+            "removed": removed,
+            "guardrails": _GUARDRAILS,
+        },
+        json_out=json_out,
+    )
 
 
 def _load_contract_or_emit(json_out: bool) -> Any:

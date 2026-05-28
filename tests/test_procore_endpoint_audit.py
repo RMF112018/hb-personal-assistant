@@ -573,9 +573,14 @@ def test_cli_mapping_validate_pending_yields_exit_1(runner: CliRunner) -> None:
 
 
 def test_procore_module_imports_no_http_client() -> None:
-    """The audit path must not pull in requests / urllib3 — live access is
-    deferred. We verify by inspecting module-level imports of every shipped
-    procore source file."""
+    """The data-plane (GET-only) audit path must not pull in requests / urllib3.
+
+    Phase 04 Prompt 02 acquisition remediation introduces ``oauth.py`` which
+    legitimately needs a real HTTP transport for the ``/oauth/token`` POST
+    against Procore's auth endpoint. ``oauth.py`` is the sole allowlisted
+    consumer; the GET-only data plane (`http_client.py`, `sync.py`, etc.) is
+    still verified clean.
+    """
     import importlib
     import inspect
     import pkgutil
@@ -583,8 +588,9 @@ def test_procore_module_imports_no_http_client() -> None:
     import hb_assistant.procore as pkg
 
     banned = {"requests", "httpx", "urllib3", "aiohttp"}
+    allowed_modules = {"hb_assistant.procore.oauth"}
     for _, name, ispkg in pkgutil.walk_packages(pkg.__path__, prefix="hb_assistant.procore."):
-        if ispkg:
+        if ispkg or name in allowed_modules:
             continue
         mod = importlib.import_module(name)
         src = inspect.getsource(mod)

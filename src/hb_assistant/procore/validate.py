@@ -324,11 +324,29 @@ def _check_token_provider_default_chain_shape() -> dict[str, Any]:
     if not providers:
         return {"ok": False, "detail": {"reason": "no_providers"}}
     actual_kinds = [getattr(p, "kind", type(p).__name__) for p in providers]
-    expected_kinds = ["env_or_keychain", "oauth_cache", "missing"]
+    expected_kinds = ["env_or_keychain", "oauth_refreshing", "missing"]
     return {
         "ok": actual_kinds == expected_kinds,
         "detail": {"expected": expected_kinds, "actual": actual_kinds},
     }
+
+
+def _check_oauth_acquisition_path_present() -> dict[str, Any]:
+    """Phase 04 Prompt 02 remediation: the OAuth acquisition module must
+    expose the OOB exchange + refresh + authorization-URL surface, and
+    ``RefreshingOAuthTokenProvider`` must be importable.
+    """
+    from hb_assistant.procore.oauth import ProcoreOAuthClient
+    from hb_assistant.procore.token_provider import RefreshingOAuthTokenProvider
+
+    methods = {
+        "build_authorization_url": hasattr(ProcoreOAuthClient, "build_authorization_url"),
+        "exchange_authorization_code": hasattr(ProcoreOAuthClient, "exchange_authorization_code"),
+        "refresh_access_token": hasattr(ProcoreOAuthClient, "refresh_access_token"),
+        "refreshing_provider_kind": getattr(RefreshingOAuthTokenProvider(), "kind", None)
+        == "oauth_refreshing",
+    }
+    return {"ok": all(methods.values()), "detail": methods}
 
 
 def _check_procore_init_exports_complete() -> dict[str, Any]:
@@ -350,6 +368,12 @@ def _check_procore_init_exports_complete() -> dict[str, Any]:
         "EnvOrKeychainTokenProvider",
         "LocalOAuthCacheTokenProvider",
         "default_procore_token_provider",
+        "ProcoreOAuthClient",
+        "ProcoreOAuthError",
+        "TokenSet",
+        "RefreshingOAuthTokenProvider",
+        "write_token_cache",
+        "clear_token_cache",
     }
     missing = sorted(name for name in required if not hasattr(procore_pkg, name))
     return {
@@ -412,6 +436,7 @@ def run_procore_validate(
         _safe_check("sync_pagination_method_aligned", _check_sync_pagination_method_aligned),
         _safe_check("pending_projects_not_default_target", _check_pending_projects_not_default_target),
         _safe_check("token_provider_default_chain_shape", _check_token_provider_default_chain_shape),
+        _safe_check("oauth_acquisition_path_present", _check_oauth_acquisition_path_present),
         _safe_check("endpoint_verification_metadata_complete", _check_endpoint_verification_metadata_complete),
         _safe_check("live_eligibility_blocks_ineligible", _check_live_eligibility_blocks_ineligible),
         _safe_check("procore_init_exports_complete", _check_procore_init_exports_complete),

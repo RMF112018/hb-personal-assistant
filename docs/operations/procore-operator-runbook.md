@@ -197,6 +197,27 @@ export PROCORE_ACCESS_TOKEN='your-access-token'
 The existing `PROCORE_CLIENT_SECRET` env / Keychain account remains in place
 for future OAuth bootstrap but is no longer accepted as a bearer credential.
 
+### First-time OAuth login (Phase 04 Prompt 02 acquisition)
+
+1. Ensure `PROCORE_CLIENT_ID` is set in `procore_app_profile.seed.yaml` and
+   the client secret is in macOS Keychain (`security add-generic-password
+   -s 'hb-assistant-procore' -a 'client-secret' -w`) or env
+   `PROCORE_CLIENT_SECRET`.
+2. Run `hb-assistant procore auth login`. The CLI prints the Procore
+   authorization URL — open it in a browser, sign in, approve the app, and
+   copy the displayed authorization code.
+3. Paste the code at the CLI prompt (or supply it via
+   `--code <code>` if scripting). The CLI exchanges the code at
+   `<oauth_base>/oauth/token`, writes the resulting access + refresh tokens
+   to the local cache, and emits a redacted success envelope (no token
+   values).
+4. From here on, the default token-provider chain
+   (`env_or_keychain → oauth_refreshing → missing`) handles refresh
+   transparently as access tokens near expiry.
+
+Refresh manually with `hb-assistant procore auth refresh`. Remove the
+cache with `hb-assistant procore auth logout`.
+
 ### OAuth token cache (Phase 04 Prompt 02)
 
 The HTTP client also reads a local OAuth token cache (read-only) at:
