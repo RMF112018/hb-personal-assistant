@@ -19,12 +19,13 @@ Every model is read-only by construction:
 from __future__ import annotations
 
 import re
+from datetime import datetime
 
 # Prompt_05 addition: Explicit Category enum
 from enum import Enum as _Enum  # avoid collision if Enum already imported
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 
 
 class Category(str, _Enum):
@@ -38,6 +39,13 @@ EndpointStatus = Literal["validated", "sensitive_validated", "excluded", "deferr
 Sensitivity = Literal["low", "medium", "high", "critical"]
 ProjectMappingStatus = Literal["pilot", "pending", "deprecated"]
 AuthStatus = Literal["env_present", "env_partial", "env_absent"]
+VerificationStatus = Literal[
+    "official_docs_verified",
+    "candidate",
+    "unverified",
+    "excluded_by_guardrail",
+    "deferred_by_guardrail",
+]
 
 # Hard-guardrail categories the seed MUST cover so the operator-visible
 # audit always reports them, even if a config edit drops them.
@@ -83,6 +91,13 @@ class ProcoreEndpoint(BaseModel):
     sensitivity: Sensitivity
     included_in_phase_01: bool = True
     notes: str | None = None
+    # --- Phase 04 Prompt 03: structured verification metadata --------------
+    verification_status: VerificationStatus = "candidate"
+    official_reference_url: str | None = None
+    verified_at_utc: str | None = None
+    verified_by: str | None = None
+    live_dry_run_receipt_id: str | None = None
+    verification_reason: str | None = None
 
     model_config = {"extra": "forbid"}
 
@@ -102,6 +117,82 @@ class ProcoreEndpoint(BaseModel):
         if not v.strip() or not v.startswith("/"):
             raise ValueError(f"path_template must start with '/'; got {v!r}")
         return v
+
+    @field_validator("official_reference_url")
+    @classmethod
+    def _official_url_https(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not v.startswith("https://"):
+            raise ValueError(
+                f"official_reference_url must start with 'https://'; got {v!r}"
+            )
+        return v
+
+    @field_validator("verified_at_utc")
+    @classmethod
+    def _verified_at_iso8601(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        normalized = v.replace("Z", "+00:00")
+        try:
+            datetime.fromisoformat(normalized)
+        except ValueError as exc:
+            raise ValueError(
+                f"verified_at_utc must be ISO 8601; got {v!r}"
+            ) from exc
+        return v
+
+    @model_validator(mode="after")
+    def _check_verification_consistency(self) -> "ProcoreEndpoint":
+        if self.status == "excluded" and self.verification_status != "excluded_by_guardrail":
+            raise ValueError(
+                f"status='excluded' requires verification_status='excluded_by_guardrail' "
+                f"(got {self.verification_status!r} on {self.endpoint_id!r})"
+            )
+        if self.status == "deferred" and self.verification_status != "deferred_by_guardrail":
+            raise ValueError(
+                f"status='deferred' requires verification_status='deferred_by_guardrail' "
+                f"(got {self.verification_status!r} on {self.endpoint_id!r})"
+            )
+        if self.verification_status == "excluded_by_guardrail" and self.status != "excluded":
+            raise ValueError(
+                f"verification_status='excluded_by_guardrail' requires status='excluded' "
+                f"(got status={self.status!r} on {self.endpoint_id!r})"
+            )
+        if self.verification_status == "deferred_by_guardrail" and self.status != "deferred":
+            raise ValueError(
+                f"verification_status='deferred_by_guardrail' requires status='deferred' "
+                f"(got status={self.status!r} on {self.endpoint_id!r})"
+            )
+        if (
+            self.status in ("validated", "sensitive_validated")
+            and self.included_in_phase_01
+        ):
+            if self.verification_status not in ("official_docs_verified", "candidate"):
+                raise ValueError(
+                    f"included Phase-01 endpoints must declare verification_status "
+                    f"as 'official_docs_verified' or 'candidate' "
+                    f"(got {self.verification_status!r} on {self.endpoint_id!r})"
+                )
+            has_url = bool(self.official_reference_url and self.official_reference_url.strip())
+            has_reason = bool(self.verification_reason and self.verification_reason.strip())
+            if not (has_url or has_reason):
+                raise ValueError(
+                    f"included Phase-01 endpoint {self.endpoint_id!r} must provide either "
+                    "official_reference_url or verification_reason (got neither)"
+                )
+        return self
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_live_eligible(self) -> bool:
+        """True only when this endpoint may be invoked against live Procore."""
+        return (
+            self.status not in ("excluded", "deferred")
+            and self.included_in_phase_01
+            and self.verification_status == "official_docs_verified"
+        )
 
 
 class ProcoreEndpointContract(BaseModel):
@@ -148,6 +239,13 @@ class ProcoreEndpointContract(BaseModel):
                     f"(got {e.status!r} on {e.endpoint_id!r})"
                 )
         return self
+
+    def get_endpoint(self, endpoint_id: str) -> ProcoreEndpoint | None:
+        """Return the endpoint with the given id, or ``None`` if absent."""
+        return next(
+            (e for e in self.endpoints if e.endpoint_id == endpoint_id),
+            None,
+        )
 
 
 class ProcoreProjectMapping(BaseModel):

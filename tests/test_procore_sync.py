@@ -97,6 +97,38 @@ def test_cli_sync_dry_run_default_via_runner(monkeypatch):
     assert payload["mode"] == "dry_run" or "audit_prerequisite_passed" in payload
 
 
+def test_apply_skips_endpoints_that_are_not_live_eligible():
+    """Phase 04 Prompt 03: excluded/deferred/unverified endpoints must be
+    skipped by sync.apply() with a structured ``skipped_not_live_eligible``
+    receipt entry — never iterated against the live transport.
+    """
+    temp_db = _temp_db()
+    coord = ProcoreSyncCoordinator(db_path=temp_db)
+
+    with patch.object(coord, "auditor") as mock_auditor, \
+         patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls:
+
+        mock_auditor.audit_endpoints_for_pilots.return_value = {"rfi": "available"}
+        mock_client = MagicMock()
+        mock_client.paginate.return_value = [{"id": "x", "number": "X-1", "status": "open"}]
+        mock_client_cls.return_value = mock_client
+
+        receipt = coord.apply(project_key="tropical")
+
+    skipped = [
+        e for e in receipt["per_endpoint"]
+        if e.get("status") == "skipped_not_live_eligible"
+    ]
+    skipped_ids = sorted(e["endpoint_id"] for e in skipped)
+    # The three guarded endpoints in the seed are correspondence, schedule, tasks.
+    assert skipped_ids == ["list-correspondence", "list-schedule", "list-tasks"]
+    for entry in skipped:
+        assert entry["items_written"] == 0
+        assert entry["verification_status"] in (
+            "excluded_by_guardrail", "deferred_by_guardrail",
+        )
+
+
 # Additional matrix (incremental policy, error redaction, idempotency on repeat apply)
 # covered via the coordinator + repository tests in the broader suite.
 # Full selector in verification: pytest -k "procore and sync" -m "not integration"

@@ -63,12 +63,26 @@ def _minimal_valid_contract_dict() -> dict:
         if cat == "correspondence":
             status = "excluded"
             sens = "critical"
+            verif: dict = {
+                "verification_status": "excluded_by_guardrail",
+                "verification_reason": "test fixture: excluded by guardrail",
+            }
         elif cat in ("schedule", "tasks"):
             status = "deferred"
             sens = "medium"
+            verif = {
+                "verification_status": "deferred_by_guardrail",
+                "verification_reason": "test fixture: deferred by guardrail",
+            }
         else:
             status = "validated"
             sens = "low"
+            verif = {
+                "verification_status": "official_docs_verified",
+                "official_reference_url": f"https://developers.procore.com/test/{cat}",
+                "verified_at_utc": "2026-05-27T00:00:00Z",
+                "verified_by": "test-fixture",
+            }
         base_endpoints.append({
             "endpoint_id": f"ep-{cat}",
             "http_method": "GET",
@@ -77,6 +91,7 @@ def _minimal_valid_contract_dict() -> dict:
             "status": status,
             "sensitivity": sens,
             "included_in_phase_01": status not in ("excluded", "deferred"),
+            **verif,
         })
     return {
         "version": 1,

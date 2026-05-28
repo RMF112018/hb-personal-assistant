@@ -51,8 +51,12 @@ def test_core_endpoints_use_modern_rest_paths_after_01a():
         if ep.endpoint_id in modern_checks:
             assert ep.path_template.startswith(modern_checks[ep.endpoint_id]), \
                 f"{ep.endpoint_id} still uses legacy path after 01A: {ep.path_template}"
-            assert "Prompt 01A" in (ep.notes or "") or "official_docs_verified" in (ep.notes or ""), \
-                f"{ep.endpoint_id} missing Prompt 01A verification note"
+            # Phase 04 Prompt 03 lifted the freeform "Prompt 01A" / "official_docs_verified"
+            # marker from notes into the structured verification fields.
+            assert ep.verification_status == "official_docs_verified", \
+                f"{ep.endpoint_id} missing structured verification_status"
+            assert ep.verified_by == "phase-03-prompt-01a", \
+                f"{ep.endpoint_id} missing verified_by provenance"
 
 
 def test_unverified_candidate_catalog_does_not_promote_without_metadata():

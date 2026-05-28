@@ -154,6 +154,59 @@ def tools_list(
     _emit(payload, json_out=json_out)
 
 
+@tools_app.command("catalog")
+def tools_catalog(
+    json_out: bool = typer.Option(True, "--json"),
+    include_ineligible: bool = typer.Option(
+        True,
+        "--include-ineligible/--no-include-ineligible",
+        help="Include endpoints that are not live-eligible (default). Pass --no-include-ineligible to filter to live-eligible only.",
+    ),
+) -> None:
+    """Export the full Procore endpoint catalog with structured verification metadata.
+
+    100% offline. No transport. No live calls. Surfaces every endpoint with its
+    verification provenance fields (Phase 04 Prompt 03) plus the derived
+    ``is_live_eligible`` flag and aggregate counts by verification status.
+    """
+
+    contract = _load_contract_or_emit(json_out)
+    endpoints_out: list[dict[str, Any]] = []
+    by_v: dict[str, int] = {}
+    by_status: dict[str, int] = {}
+    live_count = 0
+    for ep in contract.endpoints:
+        eligible = ep.is_live_eligible
+        if not include_ineligible and not eligible:
+            continue
+        row = ep.model_dump()
+        # Pydantic computed_field is included by default in v2 model_dump; defensive.
+        row["is_live_eligible"] = eligible
+        endpoints_out.append(row)
+        by_v[ep.verification_status] = by_v.get(ep.verification_status, 0) + 1
+        by_status[ep.status] = by_status.get(ep.status, 0) + 1
+        if eligible:
+            live_count += 1
+
+    payload = {
+        "command": "hb-assistant procore tools catalog",
+        "schema_version": 1,
+        "company_id": contract.company_id,
+        "company_display_name": contract.company_display_name,
+        "version": contract.version,
+        "endpoint_count": len(endpoints_out),
+        "include_ineligible": include_ineligible,
+        "summary": {
+            "by_verification_status": by_v,
+            "by_status": by_status,
+            "live_eligible_count": live_count,
+        },
+        "endpoints": endpoints_out,
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
 @tools_app.command("audit")
 def tools_audit(
     project: str = typer.Option(..., "--project", help="hb_project_key from procore_projects.seed.yaml."),

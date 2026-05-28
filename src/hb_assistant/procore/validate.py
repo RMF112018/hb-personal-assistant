@@ -255,6 +255,63 @@ def _check_pending_projects_not_default_target() -> dict[str, Any]:
     }
 
 
+def _check_endpoint_verification_metadata_complete() -> dict[str, Any]:
+    """Phase 04 Prompt 03: every included Phase-01 endpoint must declare a
+    structured verification status of ``official_docs_verified`` or ``candidate``
+    and supply either ``official_reference_url`` or ``verification_reason``.
+    """
+    contract = load_endpoint_contract()
+    incomplete: list[str] = []
+    for ep in contract.endpoints:
+        if not ep.included_in_phase_01:
+            continue
+        if ep.status in ("excluded", "deferred"):
+            continue
+        if ep.verification_status not in ("official_docs_verified", "candidate"):
+            incomplete.append(ep.endpoint_id)
+            continue
+        has_url = bool((ep.official_reference_url or "").strip())
+        has_reason = bool((ep.verification_reason or "").strip())
+        if not (has_url or has_reason):
+            incomplete.append(ep.endpoint_id)
+    return {
+        "ok": not incomplete,
+        "detail": {
+            "total_phase_01_included": sum(
+                1 for e in contract.endpoints
+                if e.included_in_phase_01 and e.status not in ("excluded", "deferred")
+            ),
+            "incomplete": incomplete,
+        },
+    }
+
+
+def _check_live_eligibility_blocks_ineligible() -> dict[str, Any]:
+    """Phase 04 Prompt 03: ``is_live_eligible`` must be False for every
+    excluded/deferred/non-verified endpoint, and True for at least one
+    included Phase-01 endpoint (otherwise the data is malformed).
+    """
+    contract = load_endpoint_contract()
+    leaked: list[str] = []
+    eligible: list[str] = []
+    for ep in contract.endpoints:
+        if ep.is_live_eligible:
+            eligible.append(ep.endpoint_id)
+            if (
+                ep.status in ("excluded", "deferred")
+                or ep.verification_status != "official_docs_verified"
+                or not ep.included_in_phase_01
+            ):
+                leaked.append(ep.endpoint_id)
+    return {
+        "ok": not leaked and bool(eligible),
+        "detail": {
+            "live_eligible_count": len(eligible),
+            "leaked_ineligible": leaked,
+        },
+    }
+
+
 def _check_token_provider_default_chain_shape() -> dict[str, Any]:
     """Phase 04 Prompt 02: the default Procore token provider must be a
     composed chain whose providers are, in order: env_or_keychain, oauth_cache,
@@ -355,6 +412,8 @@ def run_procore_validate(
         _safe_check("sync_pagination_method_aligned", _check_sync_pagination_method_aligned),
         _safe_check("pending_projects_not_default_target", _check_pending_projects_not_default_target),
         _safe_check("token_provider_default_chain_shape", _check_token_provider_default_chain_shape),
+        _safe_check("endpoint_verification_metadata_complete", _check_endpoint_verification_metadata_complete),
+        _safe_check("live_eligibility_blocks_ineligible", _check_live_eligibility_blocks_ineligible),
         _safe_check("procore_init_exports_complete", _check_procore_init_exports_complete),
     ]
 

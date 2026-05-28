@@ -237,6 +237,9 @@ class ProcoreSyncCoordinator:
                 "review_required": ep.status == "sensitive_validated",
                 "planned_requests": planned,
                 "supports_incremental": False,
+                "live_eligible": ep.is_live_eligible,
+                "verification_status": ep.verification_status,
+                "endpoint_status": ep.status,
                 "redacted_request_envelope": {
                     "method": "GET",
                     "path_template": ep.path_template,
@@ -320,6 +323,15 @@ class ProcoreSyncCoordinator:
 
         for ep in contract.endpoints:
             if endpoints and ep.endpoint_id not in endpoints:
+                continue
+            if not ep.is_live_eligible:
+                receipt.per_endpoint.append({
+                    "endpoint_id": ep.endpoint_id,
+                    "items_written": 0,
+                    "status": "skipped_not_live_eligible",
+                    "verification_status": ep.verification_status,
+                    "endpoint_status": ep.status,
+                })
                 continue
             try:
                 # Watermark / incremental decision (simplified MVP; full in later iteration)

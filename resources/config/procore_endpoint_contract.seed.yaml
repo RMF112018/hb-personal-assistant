@@ -13,6 +13,9 @@
 #     guardrail; load fails otherwise).
 #   - The 'schedule' and 'tasks' categories MUST carry status='deferred'
 #     (hard guardrail; load fails otherwise).
+#   - Phase 04 Prompt 03: every endpoint declares verification_status; included
+#     Phase-01 endpoints must supply official_reference_url OR verification_reason;
+#     status<->verification_status guardrail-pair invariants enforced at load.
 #
 # This file is the source of truth for the dry-run audit. Edit (or override
 # at config/procore_endpoint_contract.yml) to extend coverage without code
@@ -27,11 +30,9 @@ endpoints:
   # official Procore Developer API Reference (developers.procore.com/reference/rest)
   # via web research + package candidate catalog (unverified seed materialized from
   # HB_Construction_Intelligence_Phase_03_Procore_Integration_Package/resources/config/).
-  # All paths updated to official modern forms; original /vapid/ retained in notes for
-  # historical trace. All guardrails (GET-only, excluded, deferred, sensitive review
-  # routing for financials) preserved exactly. verification_status and official_reference
-  # added to notes pending schema extension for structured fields.
-  # See docs/evidence/construction-intelligence-phase-03/01A-*.md for full matrix and reconciliation.
+  # Phase 04 Prompt 03 lifts the freeform verification_status notes into structured
+  # fields (verification_status, official_reference_url, verified_at_utc, verified_by);
+  # notes retain the historical trace.
 
   # ---- validated (low / medium sensitivity) -------------------------
   - endpoint_id: list-projects
@@ -41,12 +42,14 @@ endpoints:
     status: validated
     sensitivity: low
     included_in_phase_01: true
+    verification_status: official_docs_verified
+    official_reference_url: https://developers.procore.com/reference/rest/projects?version=1.1
+    verified_at_utc: "2026-05-27T00:00:00Z"
+    verified_by: phase-03-prompt-01a
     notes: |
       Modern path from official Procore REST API Reference (v1.1).
       Company-scoped project listing (Procore-Company-Id header or company_id filter).
       Original Phase 1/2 /vapid/projects retained for compatibility trace.
-      Reconciled in Prompt 01A against developers.procore.com/reference/rest/projects?version=1.1
-      + package unverified candidate. verification_status: official_docs_verified (2026-05).
 
   - endpoint_id: list-rfis
     http_method: GET
@@ -55,11 +58,13 @@ endpoints:
     status: validated
     sensitivity: low
     included_in_phase_01: true
+    verification_status: official_docs_verified
+    official_reference_url: https://developers.procore.com/reference/rest/rfis?version=latest
+    verified_at_utc: "2026-05-27T00:00:00Z"
+    verified_by: phase-03-prompt-01a
     notes: |
       Modern path from official Procore REST API Reference.
       Original /vapid/projects/{project_id}/rfis.
-      Reconciled Prompt 01A: developers.procore.com/reference/rest/rfis?version=latest
-      + package candidate. verification_status: official_docs_verified.
 
   - endpoint_id: list-submittals
     http_method: GET
@@ -68,9 +73,11 @@ endpoints:
     status: validated
     sensitivity: low
     included_in_phase_01: true
-    notes: |
-      Modern path. Original /vapid/... . Reconciled Prompt 01A against official reference.
-      verification_status: official_docs_verified.
+    verification_status: official_docs_verified
+    official_reference_url: https://developers.procore.com/reference/rest/submittals?version=latest
+    verified_at_utc: "2026-05-27T00:00:00Z"
+    verified_by: phase-03-prompt-01a
+    notes: "Modern path. Original /vapid/... . Reconciled Prompt 01A against official reference."
 
   - endpoint_id: list-drawings
     http_method: GET
@@ -79,7 +86,11 @@ endpoints:
     status: validated
     sensitivity: low
     included_in_phase_01: true
-    notes: "Modern path reconciled Prompt 01A. verification_status: official_docs_verified."
+    verification_status: official_docs_verified
+    official_reference_url: https://developers.procore.com/reference/rest/drawings?version=latest
+    verified_at_utc: "2026-05-27T00:00:00Z"
+    verified_by: phase-03-prompt-01a
+    notes: "Modern path reconciled Prompt 01A."
 
   - endpoint_id: list-daily-logs
     http_method: GET
@@ -88,6 +99,10 @@ endpoints:
     status: validated
     sensitivity: medium
     included_in_phase_01: true
+    verification_status: official_docs_verified
+    official_reference_url: https://developers.procore.com/reference/rest/daily-logs?version=latest
+    verified_at_utc: "2026-05-27T00:00:00Z"
+    verified_by: phase-03-prompt-01a
     notes: Modern path + sub-log types (weather, manpower, notes, delays, deliveries) in unverified candidate. Reconciled Prompt 01A.
 
   - endpoint_id: list-punch-items
@@ -97,7 +112,11 @@ endpoints:
     status: validated
     sensitivity: low
     included_in_phase_01: true
-    notes: "Modern path reconciled Prompt 01A. verification_status: official_docs_verified."
+    verification_status: official_docs_verified
+    official_reference_url: https://developers.procore.com/reference/rest/punch-items?version=latest
+    verified_at_utc: "2026-05-27T00:00:00Z"
+    verified_by: phase-03-prompt-01a
+    notes: "Modern path reconciled Prompt 01A."
 
   # ---- sensitive_validated (high sensitivity — financial / contractual)
   - endpoint_id: list-change-events
@@ -107,12 +126,14 @@ endpoints:
     status: sensitive_validated
     sensitivity: high
     included_in_phase_01: true
+    verification_status: official_docs_verified
+    official_reference_url: https://developers.procore.com/reference/rest/change-events?version=1.1
+    verified_at_utc: "2026-05-27T00:00:00Z"
+    verified_by: phase-03-prompt-01a
     notes: |
       Modern path (v1.1 /change_events, often project-filtered).
       Original /vapid/projects/{project_id}/change_events.
       High sensitivity — routes to manual review per controller policy (unchanged).
-      Reconciled Prompt 01A: developers.procore.com/reference/rest/change-events.
-      verification_status: official_docs_verified.
 
   - endpoint_id: list-commitments
     http_method: GET
@@ -121,11 +142,14 @@ endpoints:
     status: sensitive_validated
     sensitivity: high
     included_in_phase_01: true
+    verification_status: official_docs_verified
+    official_reference_url: https://developers.procore.com/reference/rest/commitment-contracts?version=2.0
+    verified_at_utc: "2026-05-27T00:00:00Z"
+    verified_by: phase-03-prompt-01a
     notes: |
       Newer recommended v2.0 path from official reference (commitment_contracts).
       Original /vapid/projects/{project_id}/commitments.
       High sensitivity — manual review required (unchanged).
-      Reconciled Prompt 01A. verification_status: official_docs_verified.
 
   - endpoint_id: list-prime-contracts
     http_method: GET
@@ -134,6 +158,10 @@ endpoints:
     status: sensitive_validated
     sensitivity: high
     included_in_phase_01: true
+    verification_status: official_docs_verified
+    official_reference_url: https://developers.procore.com/reference/rest/prime-contracts?version=latest
+    verified_at_utc: "2026-05-27T00:00:00Z"
+    verified_by: phase-03-prompt-01a
     notes: Modern path reconciled Prompt 01A. High sensitivity, manual review (unchanged).
 
   - endpoint_id: list-invoices
@@ -143,11 +171,15 @@ endpoints:
     status: sensitive_validated
     sensitivity: high
     included_in_phase_01: true
+    verification_status: official_docs_verified
+    official_reference_url: https://developers.procore.com/reference/rest/requisitions?version=1.1
+    verified_at_utc: "2026-05-27T00:00:00Z"
+    verified_by: phase-03-prompt-01a
     notes: |
       Invoices/requisitions/payment applications split across resources per official docs.
       Using requisitions as primary for subcontractor invoices (common entry point).
       Original /vapid/projects/{project_id}/invoices.
-      High sensitivity — manual review (unchanged). Reconciled Prompt 01A.
+      High sensitivity — manual review (unchanged).
 
   # ---- excluded (hard guardrail — correspondence is not in scope) ---
   - endpoint_id: list-correspondence
@@ -157,9 +189,11 @@ endpoints:
     status: excluded
     sensitivity: critical
     included_in_phase_01: false
+    verification_status: excluded_by_guardrail
+    verification_reason: "Excluded by Phase 03 Prompt 05 contract guardrail; correspondence endpoint is never auditable in this MVP."
     notes: |
       Modern path per candidate catalog. Status=excluded (hard guardrail) unchanged.
-      Never auditable in MVP per policy. verification_status: excluded_by_guardrail.
+      Never auditable in MVP per policy.
 
   # ---- deferred (hard guardrail — schedule / tasks deferred) --------
   - endpoint_id: list-schedule
@@ -169,9 +203,11 @@ endpoints:
     status: deferred
     sensitivity: medium
     included_in_phase_01: false
+    verification_status: deferred_by_guardrail
+    verification_reason: "Deferred by Phase 03 Prompt 05 contract guardrail; restored only after Phase 04 review."
     notes: |
       Modern path per candidate. Status=deferred (hard guardrail) unchanged.
-      Deferred to future phase. verification_status: deferred_by_guardrail.
+      Deferred to future phase.
 
   - endpoint_id: list-tasks
     http_method: GET
@@ -180,12 +216,14 @@ endpoints:
     status: deferred
     sensitivity: medium
     included_in_phase_01: false
+    verification_status: deferred_by_guardrail
+    verification_reason: "Deferred by Phase 03 Prompt 05 contract guardrail; restored only after Phase 04 review."
     notes: |
       Modern path per candidate. Status=deferred (hard guardrail) unchanged.
-      Deferred to future phase. verification_status: deferred_by_guardrail.
+      Deferred to future phase.
 
   # Note: Broader candidates from the materialized procore_endpoint_reference.phase03_unverified.seed.yaml
   # (company-vendors, cost-codes, WBS, observations, meetings, daily-log sub-types, drawings revisions,
   # budget views/rows/snapshots/modifications/changes, potential-change-orders, direct-costs, etc.)
   # remain in the unverified reference catalog pending full official reconciliation and dry-run in follow-up prompts.
-  # The contract above covers the original required categories with modern paths and Phase 01A verification notes.
+  # The contract above covers the original required categories with modern paths and structured verification metadata.

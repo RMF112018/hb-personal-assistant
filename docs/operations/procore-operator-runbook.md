@@ -232,6 +232,37 @@ hb-assistant procore sync run --dry-run --json
 hb-assistant procore sync run --project hilltop --allow-pending --dry-run --json
 ```
 
+## Endpoint verification (Phase 04 Prompt 03)
+
+Every Procore endpoint in `resources/config/procore_endpoint_contract.seed.yaml`
+now carries structured verification provenance:
+
+| Field | Purpose |
+|-------|---------|
+| `verification_status` | One of `official_docs_verified`, `candidate`, `unverified`, `excluded_by_guardrail`, `deferred_by_guardrail`. |
+| `official_reference_url` | HTTPS URL to the matching Procore developer reference page. Required for included Phase-01 endpoints **unless** `verification_reason` is supplied. |
+| `verified_at_utc` | ISO-8601 timestamp when the endpoint was last reconciled against official docs. |
+| `verified_by` | Free-text provenance (e.g. `phase-03-prompt-01a`). |
+| `live_dry_run_receipt_id` | UUID of the dry-run audit receipt that exercised this endpoint (populated by future prompts). |
+| `verification_reason` | Free-text reason permitting a missing URL (only valid in lieu of the URL). |
+
+**Live-eligibility rule.** A `ProcoreEndpoint.is_live_eligible` is `True` only
+when `status not in {"excluded", "deferred"}` AND `included_in_phase_01 is True`
+AND `verification_status == "official_docs_verified"`. `sync.apply()` skips any
+ineligible endpoint with a `skipped_not_live_eligible` receipt entry and never
+invokes the transport for it.
+
+Inspect the full catalog (offline, deterministic, redacted):
+
+```bash
+hb-assistant procore tools catalog --json
+# filter to live-eligible only:
+hb-assistant procore tools catalog --json --no-include-ineligible
+```
+
+The shipped snapshot is at
+`docs/evidence/construction-intelligence-phase-04/03-endpoint-catalog-validation.json`.
+
 ## Live-test mode
 
 No live Procore tests ship in this MVP. The `live` pytest marker is reserved
