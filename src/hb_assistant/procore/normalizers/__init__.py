@@ -10,6 +10,10 @@ Submittal / Observation / Meeting / Daily Log normalizers that mirror this
 contract.
 """
 
+from .daily_log import (
+    normalize_daily_log_payload_block,
+    normalize_daily_log_section_item,
+)
 from .meeting import (
     normalize_meeting,
     normalize_meeting_payload_block,
@@ -36,6 +40,8 @@ from .submittal import (
 
 __all__ = [
     "NORMALIZATION_SCHEMA_VERSION",
+    "normalize_daily_log_payload_block",
+    "normalize_daily_log_section_item",
     "normalize_meeting",
     "normalize_meeting_payload_block",
     "normalize_meeting_topic",

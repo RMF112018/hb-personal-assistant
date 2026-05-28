@@ -36,6 +36,7 @@ from hb_assistant.procore.loader import (
 from hb_assistant.procore.models import ProcoreProjectsRegistry
 from hb_assistant.procore.normalizers import (
     NORMALIZATION_SCHEMA_VERSION,
+    normalize_daily_log_payload_block,
     normalize_meeting,
     normalize_meeting_payload_block,
     normalize_meeting_topic,
@@ -53,18 +54,22 @@ from hb_assistant.procore.normalizers import (
 )
 
 # Endpoint-id keyed normalizer dispatch. Each entry maps to a normalizer block
-# function returning (parent_records, *child_records). Extended by Prompts 05–08.
+# function. Most entries return ``tuple[list[dict], ...]`` (parents + child
+# categories); ``list-daily-logs`` returns ``dict[str, list[dict]]`` keyed by
+# section category to accommodate the multi-section daily log payload.
 RFI_ENDPOINT_ID = "list-rfis"
 SUBMITTAL_ENDPOINT_ID = "list-submittals"
 OBSERVATION_ENDPOINT_ID = "list-observations"
 MEETING_ENDPOINT_ID = "list-meetings"
 MEETING_TOPIC_ENDPOINT_ID = "list-meeting-topics"
+DAILY_LOG_ENDPOINT_ID = "list-daily-logs"
 NORMALIZER_DISPATCH: Dict[str, Any] = {
     RFI_ENDPOINT_ID: normalize_rfi_payload_block,
     SUBMITTAL_ENDPOINT_ID: normalize_submittal_payload_block,
     OBSERVATION_ENDPOINT_ID: normalize_observation_payload_block,
     MEETING_ENDPOINT_ID: normalize_meeting_payload_block,
     MEETING_TOPIC_ENDPOINT_ID: normalize_meeting_topic_payload_block,
+    DAILY_LOG_ENDPOINT_ID: normalize_daily_log_payload_block,
 }
 
 
@@ -204,6 +209,7 @@ class ProcoreSyncCoordinator:
         observation_preview_payload: Optional[List[Dict[str, Any]]] = None,
         meeting_preview_payload: Optional[List[Dict[str, Any]]] = None,
         meeting_topic_preview_payload: Optional[List[Dict[str, Any]]] = None,
+        daily_log_preview_payload: Optional[List[Dict[str, Any]]] = None,
     ) -> SyncReceipt:
         """Dry-run default path. Audit gate first. Produces serializable redacted plan. Zero side effects.
 
@@ -292,6 +298,9 @@ class ProcoreSyncCoordinator:
                     SUBMITTAL_ENDPOINT_ID,
                     OBSERVATION_ENDPOINT_ID,
                 )
+                entry["would_persist_sections_separately"] = (
+                    ep.endpoint_id == DAILY_LOG_ENDPOINT_ID
+                )
             if ep.endpoint_id == RFI_ENDPOINT_ID and rfi_preview_payload is not None:
                 rfi_records, reply_records = normalize_rfi_payload_block(
                     rfi_preview_payload,
@@ -304,6 +313,42 @@ class ProcoreSyncCoordinator:
                 entry["planned_rfi_record_count"] = len(rfi_records)
                 entry["planned_reply_record_count"] = len(reply_records)
                 entry["planned_review_required_count"] = review_required_count
+            if (
+                ep.endpoint_id == DAILY_LOG_ENDPOINT_ID
+                and daily_log_preview_payload is not None
+            ):
+                from hb_assistant.procore.daily_log_selection import (
+                    load_daily_log_selection,
+                )
+
+                selection_scope = load_daily_log_selection()
+                records_by_category = normalize_daily_log_payload_block(
+                    daily_log_preview_payload,
+                    selection_scope=selection_scope,
+                    project_key=project_key or "multi",
+                    endpoint_id=ep.endpoint_id,
+                    correlation_id=self.correlation_id,
+                    fetched_at=datetime.now(timezone.utc).isoformat(),
+                )
+                planned_total = sum(len(v) for v in records_by_category.values())
+                planned_review_count = sum(
+                    1
+                    for v in records_by_category.values()
+                    for r in v
+                    if r.get("review_required")
+                )
+                planned_safety_route_count = sum(
+                    1
+                    for v in records_by_category.values()
+                    for r in v
+                    if r.get("safety_route")
+                )
+                entry["planned_records_by_category"] = {
+                    cat: len(records) for cat, records in records_by_category.items()
+                }
+                entry["planned_total_record_count"] = planned_total
+                entry["planned_review_required_count"] = planned_review_count
+                entry["planned_safety_route_count"] = planned_safety_route_count
             if (
                 ep.endpoint_id == MEETING_ENDPOINT_ID
                 and meeting_preview_payload is not None
@@ -532,6 +577,47 @@ class ProcoreSyncCoordinator:
                         "items_written": items_written,
                         "rfi_records_written": parent_written,
                         "reply_records_written": reply_written,
+                        "status": "success",
+                    }
+                elif ep.endpoint_id == DAILY_LOG_ENDPOINT_ID:
+                    from hb_assistant.procore.daily_log_selection import (
+                        load_daily_log_selection,
+                    )
+
+                    selection_scope = load_daily_log_selection()
+                    records_by_category = normalize_daily_log_payload_block(
+                        list(items),
+                        selection_scope=selection_scope,
+                        project_key=project_key or "multi",
+                        endpoint_id=ep.endpoint_id,
+                        correlation_id=self.correlation_id,
+                        fetched_at=fetched_at,
+                    )
+                    counts_by_category: Dict[str, int] = {}
+                    safety_routed = 0
+                    review_required_written = 0
+                    for category, records in records_by_category.items():
+                        for record in records:
+                            upsert_procore_synced_entity(
+                                self.db_path,
+                                record,
+                                correlation=self.correlation_id,
+                            )
+                            counts_by_category[category] = counts_by_category.get(
+                                category, 0
+                            ) + 1
+                            total_items += 1
+                            if record.get("safety_route"):
+                                safety_routed += 1
+                            if record.get("review_required"):
+                                review_required_written += 1
+                    items_written = sum(counts_by_category.values())
+                    endpoint_entry = {
+                        "endpoint_id": ep.endpoint_id,
+                        "items_written": items_written,
+                        "records_by_category": counts_by_category,
+                        "review_required_count": review_required_written,
+                        "safety_route_count": safety_routed,
                         "status": "success",
                     }
                 elif ep.endpoint_id == MEETING_ENDPOINT_ID:
@@ -768,6 +854,7 @@ def run_sync(
     observation_preview_payload: Optional[List[Dict[str, Any]]] = None,
     meeting_preview_payload: Optional[List[Dict[str, Any]]] = None,
     meeting_topic_preview_payload: Optional[List[Dict[str, Any]]] = None,
+    daily_log_preview_payload: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Entry for CLI `procore sync`. Dry-run default. --apply explicit only.
 
@@ -794,6 +881,7 @@ def run_sync(
             observation_preview_payload=observation_preview_payload,
             meeting_preview_payload=meeting_preview_payload,
             meeting_topic_preview_payload=meeting_topic_preview_payload,
+            daily_log_preview_payload=daily_log_preview_payload,
         )
         return plan  # type: ignore[return-value]
     else:

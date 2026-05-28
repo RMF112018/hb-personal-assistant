@@ -474,6 +474,36 @@ def _check_meeting_normalizer_dispatch_present() -> dict[str, Any]:
     }
 
 
+def _check_daily_log_selection_and_dispatch_present() -> dict[str, Any]:
+    """Phase 04 Prompt 08: ``list-daily-logs`` must be wired through the
+    normalizer dispatch and the section-selection seed must load with all
+    three buckets populated (selected, review_only, routed_to_review).
+    Together these enforce: selected sections persist as canonical rows;
+    notes are review-only with hash-only bodies; accident / injury / delay /
+    safety sections never enter normal rows.
+    """
+    from hb_assistant.procore.daily_log_selection import load_daily_log_selection
+    from hb_assistant.procore.normalizers import normalize_daily_log_payload_block
+    from hb_assistant.procore.sync import DAILY_LOG_ENDPOINT_ID, NORMALIZER_DISPATCH
+
+    dispatched = NORMALIZER_DISPATCH.get(DAILY_LOG_ENDPOINT_ID)
+    selection = load_daily_log_selection()
+    return {
+        "ok": dispatched is normalize_daily_log_payload_block
+        and bool(selection.selected_sections)
+        and bool(selection.review_only_sections)
+        and bool(selection.routed_to_review_sections),
+        "detail": {
+            "daily_log_endpoint_id": DAILY_LOG_ENDPOINT_ID,
+            "dispatch_present": dispatched is not None,
+            "selected_section_count": len(selection.selected_sections),
+            "review_only_section_count": len(selection.review_only_sections),
+            "routed_to_review_section_count": len(selection.routed_to_review_sections),
+            "selection_version": selection.version,
+        },
+    }
+
+
 def _check_procore_init_exports_complete() -> dict[str, Any]:
     """Phase 04: the public ``hb_assistant.procore`` API must re-export the
     sync coordinator, ``run_sync``, ``SyncReceipt``, and the new fail-closed
@@ -569,6 +599,7 @@ def run_procore_validate(
         _safe_check("submittal_normalizer_dispatch_present", _check_submittal_normalizer_dispatch_present),
         _safe_check("observation_normalizer_dispatch_present", _check_observation_normalizer_dispatch_present),
         _safe_check("meeting_normalizer_dispatch_present", _check_meeting_normalizer_dispatch_present),
+        _safe_check("daily_log_selection_and_dispatch_present", _check_daily_log_selection_and_dispatch_present),
     ]
 
     passed = sum(1 for c in checks if c.get("ok"))

@@ -1,0 +1,96 @@
+# Phase 04 Prompt 08 — Procore daily log section selection scope.
+#
+# Declares which daily log sub-collections receive which normalization
+# treatment. The loader (`hb_assistant.procore.daily_log_selection.load_daily_log_selection`)
+# validates this file via Pydantic; the normalizer
+# (`hb_assistant.procore.normalizers.daily_log.normalize_daily_log_payload_block`)
+# demultiplexes a raw Procore daily log payload into per-section canonical
+# records keyed by the categories listed below.
+#
+# Buckets:
+# - selected_sections   : persisted with canonical_fields, review_required=False.
+# - review_only_sections: persisted with review_required=True; body text reduced to SHA-256 summary.
+# - routed_to_review_sections: persisted with review_required=True + safety_route=True;
+#                              body text reduced to SHA-256 summary. accident/injury/delay/safety
+#                              text never enters normal rows by construction.
+
+version: 1
+
+selected_sections:
+  - id: counts
+    payload_key: counts
+    category: daily_log_counts
+    canonical_field_keys:
+      - id
+      - count
+      - trade
+      - work_area
+      - log_date
+      - created_at
+      - updated_at
+  - id: weather
+    payload_key: weather_logs
+    category: daily_log_weather
+    canonical_field_keys:
+      - id
+      - temperature
+      - conditions
+      - wind_speed
+      - humidity
+      - observed_at
+      - log_date
+      - created_at
+      - updated_at
+  - id: manpower
+    payload_key: manpower_logs
+    category: daily_log_manpower
+    canonical_field_keys:
+      - id
+      - company
+      - headcount
+      - hours
+      - trade
+      - log_date
+      - created_at
+      - updated_at
+  - id: dcr
+    payload_key: dcr_logs
+    category: daily_log_dcr
+    canonical_field_keys:
+      - id
+      - status
+      - log_date
+      - created_at
+      - updated_at
+      - author_id
+  - id: delivery
+    payload_key: delivery_logs
+    category: daily_log_delivery
+    canonical_field_keys:
+      - id
+      - vendor
+      - item_description
+      - quantity
+      - received_at
+      - log_date
+      - created_at
+      - updated_at
+
+review_only_sections:
+  - id: notes
+    payload_key: notes_logs
+    category: daily_log_notes
+
+routed_to_review_sections:
+  - id: accident
+    payload_key: accident_logs
+    category: daily_log_accident_review
+  - id: injury
+    payload_key: injury_logs
+    category: daily_log_injury_review
+  - id: delay
+    payload_key: delay_logs
+    category: daily_log_delay_review
+  - id: safety
+    payload_key: safety_violation_logs
+    category: daily_log_safety_review

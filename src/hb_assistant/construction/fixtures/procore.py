@@ -547,3 +547,245 @@ PROCORE_MEETING_FIXTURES: dict[str, list[dict[str, Any]]] = {
 PROCORE_MEETING_TOPIC_FIXTURES: dict[str, list[dict[str, Any]]] = {
     "meeting_topic_sample_payload": MEETING_TOPIC_SAMPLE_PAYLOAD,
 }
+
+
+# Phase 04 Prompt 08: synthetic daily-log list response.
+#
+# Two synthetic daily logs spanning all ten section types from the
+# selection scope. All identifiers prefixed ``synthetic-`` per the existing
+# sensitive-scan allowlist. The first log carries benign content across
+# selected + review-only sections; the second carries entries in the
+# routed-to-review sections (accident / injury / delay / safety) so the
+# safety_route flag fires in the apply path.
+#
+# Per-section counts (matches the proof markdown):
+#   counts:           3 items   (2 in log #1, 1 in log #2)
+#   weather_logs:     2 items   (1 + 1)
+#   manpower_logs:    3 items   (2 + 1)
+#   dcr_logs:         2 items   (1 + 1)
+#   delivery_logs:    2 items   (1 + 1)
+#   notes_logs:       2 items   (1 + 1)
+#   accident_logs:    1 item    (0 + 1)
+#   injury_logs:      1 item    (0 + 1)
+#   delay_logs:       1 item    (0 + 1)
+#   safety_violation_logs: 1 item (0 + 1)
+DAILY_LOG_SAMPLE_PAYLOAD: list[dict[str, Any]] = [
+    {
+        "id": "synthetic-dl-001",
+        "log_date": "2026-05-25",
+        "created_at": "2026-05-25T18:00:00Z",
+        "updated_at": "2026-05-25T18:00:00Z",
+        "counts": [
+            {
+                "id": "synthetic-c-001",
+                "count": 12,
+                "trade": "concrete",
+                "work_area": "deck-3",
+                "log_date": "2026-05-25",
+                "created_at": "2026-05-25T18:00:00Z",
+                "updated_at": "2026-05-25T18:00:00Z",
+            },
+            {
+                "id": "synthetic-c-002",
+                "count": 8,
+                "trade": "framing",
+                "work_area": "level-2",
+                "log_date": "2026-05-25",
+                "created_at": "2026-05-25T18:00:00Z",
+                "updated_at": "2026-05-25T18:00:00Z",
+            },
+        ],
+        "weather_logs": [
+            {
+                "id": "synthetic-w-001",
+                "temperature": 74,
+                "conditions": "clear",
+                "wind_speed": 5,
+                "humidity": 42,
+                "observed_at": "2026-05-25T13:00:00Z",
+                "log_date": "2026-05-25",
+                "created_at": "2026-05-25T18:00:00Z",
+                "updated_at": "2026-05-25T18:00:00Z",
+            },
+        ],
+        "manpower_logs": [
+            {
+                "id": "synthetic-m-001",
+                "company": "Synthetic Concrete LLC",
+                "headcount": 14,
+                "hours": 8,
+                "trade": "concrete",
+                "log_date": "2026-05-25",
+                "created_at": "2026-05-25T18:00:00Z",
+                "updated_at": "2026-05-25T18:00:00Z",
+            },
+            {
+                "id": "synthetic-m-002",
+                "company": "Synthetic Framing Co",
+                "headcount": 9,
+                "hours": 8,
+                "trade": "framing",
+                "log_date": "2026-05-25",
+                "created_at": "2026-05-25T18:00:00Z",
+                "updated_at": "2026-05-25T18:00:00Z",
+            },
+        ],
+        "dcr_logs": [
+            {
+                "id": "synthetic-d-001",
+                "status": "submitted",
+                "log_date": "2026-05-25",
+                "created_at": "2026-05-25T18:00:00Z",
+                "updated_at": "2026-05-25T18:00:00Z",
+                "author_id": "synthetic-user-17",
+                "narrative": "Slab pour on deck 3 completed; rough framing started on level 2.",
+            },
+        ],
+        "delivery_logs": [
+            {
+                "id": "synthetic-dlv-001",
+                "vendor": "Synthetic Ready Mix",
+                "item_description": "5000 psi concrete",
+                "quantity": "22 yd3",
+                "received_at": "2026-05-25T09:30:00Z",
+                "log_date": "2026-05-25",
+                "created_at": "2026-05-25T18:00:00Z",
+                "updated_at": "2026-05-25T18:00:00Z",
+            },
+        ],
+        "notes_logs": [
+            {
+                "id": "synthetic-n-001",
+                "log_date": "2026-05-25",
+                "created_at": "2026-05-25T18:00:00Z",
+                "updated_at": "2026-05-25T18:00:00Z",
+                "note": "Owner walked the site at 14:00 with the architect.",
+            },
+        ],
+    },
+    {
+        "id": "synthetic-dl-002",
+        "log_date": "2026-05-26",
+        "created_at": "2026-05-26T18:00:00Z",
+        "updated_at": "2026-05-26T18:00:00Z",
+        "counts": [
+            {
+                "id": "synthetic-c-003",
+                "count": 10,
+                "trade": "concrete",
+                "work_area": "deck-3",
+                "log_date": "2026-05-26",
+                "created_at": "2026-05-26T18:00:00Z",
+                "updated_at": "2026-05-26T18:00:00Z",
+            },
+        ],
+        "weather_logs": [
+            {
+                "id": "synthetic-w-002",
+                "temperature": 68,
+                "conditions": "rain",
+                "wind_speed": 12,
+                "humidity": 78,
+                "observed_at": "2026-05-26T13:00:00Z",
+                "log_date": "2026-05-26",
+                "created_at": "2026-05-26T18:00:00Z",
+                "updated_at": "2026-05-26T18:00:00Z",
+            },
+        ],
+        "manpower_logs": [
+            {
+                "id": "synthetic-m-003",
+                "company": "Synthetic Framing Co",
+                "headcount": 6,
+                "hours": 6,
+                "trade": "framing",
+                "log_date": "2026-05-26",
+                "created_at": "2026-05-26T18:00:00Z",
+                "updated_at": "2026-05-26T18:00:00Z",
+            },
+        ],
+        "dcr_logs": [
+            {
+                "id": "synthetic-d-002",
+                "status": "draft",
+                "log_date": "2026-05-26",
+                "created_at": "2026-05-26T18:00:00Z",
+                "updated_at": "2026-05-26T18:00:00Z",
+                "author_id": "synthetic-user-17",
+                "narrative": "Half-day due to weather; framing paused at noon.",
+            },
+        ],
+        "delivery_logs": [
+            {
+                "id": "synthetic-dlv-002",
+                "vendor": "Synthetic Lumber Yard",
+                "item_description": "2x6 stud package",
+                "quantity": "40 units",
+                "received_at": "2026-05-26T08:00:00Z",
+                "log_date": "2026-05-26",
+                "created_at": "2026-05-26T18:00:00Z",
+                "updated_at": "2026-05-26T18:00:00Z",
+            },
+        ],
+        "notes_logs": [
+            {
+                "id": "synthetic-n-002",
+                "log_date": "2026-05-26",
+                "created_at": "2026-05-26T18:00:00Z",
+                "updated_at": "2026-05-26T18:00:00Z",
+                "note": "Rain shut down work at noon; expect a half-day Friday too.",
+            },
+        ],
+        "accident_logs": [
+            {
+                "id": "synthetic-a-001",
+                "log_date": "2026-05-26",
+                "created_at": "2026-05-26T18:00:00Z",
+                "updated_at": "2026-05-26T18:00:00Z",
+                "description": (
+                    "Minor accident: slipped on wet planking; no injury reported."
+                ),
+            },
+        ],
+        "injury_logs": [
+            {
+                "id": "synthetic-inj-001",
+                "log_date": "2026-05-26",
+                "created_at": "2026-05-26T18:00:00Z",
+                "updated_at": "2026-05-26T18:00:00Z",
+                "description": (
+                    "Worker reported a finger laceration during stud handling; "
+                    "first aid administered on site."
+                ),
+            },
+        ],
+        "delay_logs": [
+            {
+                "id": "synthetic-del-001",
+                "log_date": "2026-05-26",
+                "created_at": "2026-05-26T18:00:00Z",
+                "updated_at": "2026-05-26T18:00:00Z",
+                "description": (
+                    "Half-day shutdown due to inclement weather; framing delayed 4 hours."
+                ),
+            },
+        ],
+        "safety_violation_logs": [
+            {
+                "id": "synthetic-sv-001",
+                "log_date": "2026-05-26",
+                "created_at": "2026-05-26T18:00:00Z",
+                "updated_at": "2026-05-26T18:00:00Z",
+                "description": (
+                    "PPE compliance issue identified during morning walk; corrective "
+                    "action briefing issued."
+                ),
+            },
+        ],
+    },
+]
+
+
+PROCORE_DAILY_LOG_FIXTURES: dict[str, list[dict[str, Any]]] = {
+    "daily_log_sample_payload": DAILY_LOG_SAMPLE_PAYLOAD,
+}

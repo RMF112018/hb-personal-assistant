@@ -155,6 +155,35 @@ execution will require threading the parent meeting id through the paginator
 when the endpoint is promoted; until then, the candidate posture keeps
 `apply()` short-circuiting via `skipped_not_live_eligible`.
 
+For the daily log endpoint (Phase 04 Prompt 08), `list-daily-logs` is already
+verified and live-eligible. The normalizer demultiplexes each daily log
+payload into per-section canonical rows guided by the section selection scope
+at `resources/config/procore_daily_log_selection.seed.yaml`. Three buckets:
+
+- **Selected sections** (counts, weather, manpower, DCR, delivery) persist
+  as canonical rows with a declared `canonical_field_keys` whitelist and
+  `review_required=False`.
+- **Review-only sections** (`notes`) persist with `review_required=True` and
+  a SHA-256 hash-only `body_summary` — note text is never stored raw.
+- **Routed-to-review sections** (`accident`, `injury`, `delay`,
+  `safety_violation`) persist with `review_required=True` AND
+  `safety_route=True` AND a SHA-256 hash-only `body_summary`. Accident /
+  injury / delay / safety text **never enters normal canonical rows** by
+  construction — the bucket assignment is structural, not derived from
+  content.
+
+```bash
+# Daily log dry-run plan
+hb-assistant procore sync run --project tropical --dry-run \
+  --endpoints list-daily-logs --json
+```
+
+The dry-run receipt entry surfaces `would_persist_sections_separately: true`,
+`normalization_schema_version`, and (when a `daily_log_preview_payload` is
+threaded) per-category `planned_records_by_category` counts. Override the
+selection scope locally with `HB_PROCORE_DAILY_LOG_SELECTION=/path/to/file.yml`
+or a repo-local `config/procore_daily_log_selection.yml`.
+
 ### Phase 4 — Obsidian projection
 
 ```bash
