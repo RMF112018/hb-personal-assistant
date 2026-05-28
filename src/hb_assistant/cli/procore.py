@@ -741,7 +741,12 @@ def live_sync(
 
     contract = load_endpoint_contract()
     endpoint_row = next((ep for ep in contract.endpoints if ep.endpoint_id == endpoint), None)
-    if endpoint_row and endpoint_row.is_live_eligible and endpoint_row.verification_status == "verified":
+    live_verified_statuses = {"verified", "official_docs_verified"}
+    if (
+        endpoint_row
+        and endpoint_row.is_live_eligible
+        and endpoint_row.verification_status in live_verified_statuses
+    ):
         gates["endpoint_allowed_verified"] = True
     else:
         errors.append("endpoint_not_live_verified")

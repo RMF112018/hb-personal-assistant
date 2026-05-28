@@ -225,9 +225,8 @@ class ProcoreHTTPClient:
     def _default_live_transport(
         self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]
     ) -> Any:
-        import requests
-
-        return requests.request(
+        requests_mod = __import__("requests")
+        return requests_mod.request(
             method=method,
             url=url,
             headers=headers,

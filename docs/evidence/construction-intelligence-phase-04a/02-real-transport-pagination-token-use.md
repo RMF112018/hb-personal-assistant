@@ -41,25 +41,35 @@ Result:
 
 - Found `live_sync` and required fail-closed markers, including `confirm_live_get_required`, `live_endpoint_adapter_not_ready`, and `endpoint_sync_not_implemented`.
 
-## Validation Gates
+## Validation Gates (real outputs from repo-root `.venv`)
 
-Required commands from prompt and equivalent execution notes:
+Environment setup:
+
+- `python3 -m venv .venv`
+- `source .venv/bin/activate`
+- `pip install -e ".[dev]"`
+
+Commands and results:
 
 1. `python -m pytest -q --no-header`
-   - Equivalent attempted: `python3 -m pytest -q --no-header`
-   - Result: failed in this environment (`No module named pytest`).
+   - Result: pass (`857 passed, 1 skipped`).
 2. `ruff check .`
-   - Result: command unavailable in this environment (`ruff: command not found`).
+   - Result: pass (`All checks passed!`).
 3. `mypy .`
-   - Result: fails in this environment due missing third-party stubs/deps (pre-existing environment issue).
+   - Result: pass (`Success: no issues found in 166 source files`; informational notes only).
 4. `python -m compileall src tests`
-   - Equivalent run: `python3 -m compileall src tests`
    - Result: pass.
 5. `hb-assistant procore validate --json`
+   - Result: exit `1` with `ok: false` (3 known environment/state failures):
+     - `mapping_consistent` false (`pilot: 4`, `pending: 2`)
+     - `sqlite_schema_at_expected_version` false (`StoreReadinessError`)
+     - `procore_tables_present` false (`StoreReadinessError`)
 6. `hb-assistant procore tools list --json`
+   - Result: pass (exit `0`, endpoint catalog rendered).
 7. `hb-assistant procore mapping validate --json`
-   - Equivalent attempted via module: `PYTHONPATH=src python3 -m hb_assistant.cli.main ...`
-   - Result: blocked in this environment due missing dependency (`ModuleNotFoundError: pydantic`).
+   - Result: exit `1` with `report.ok: false` due 2 pending mappings (`hilltop`, `hilltop-gardens`).
+8. `hb-assistant procore live sync --help`
+   - Result: pass (exit `0`, fail-closed live sync scaffolding help surface present with required options including `--confirm-live-get`, `--max-pages`, `--max-items`, and `--sqlite-only`).
 
 ## No-Live-Call Attestation
 
