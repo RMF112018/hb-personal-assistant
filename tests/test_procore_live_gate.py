@@ -232,7 +232,17 @@ def test_live_sync_unverified_endpoint_fails_closed_without_transport(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Unverified canonical endpoints must return not_live_verified without
-    touching the live transport, even when every other gate is satisfied."""
+    touching the live transport, even when every other gate is satisfied.
+
+    After Phase 04A closeout, all 16 canonical endpoints are verified, so the
+    test temporarily flips one adapter's live_verified flag to False to
+    exercise the fail-closed contract. This locks in the orchestrator's
+    behavior for any future unverified endpoint additions.
+    """
+    from dataclasses import replace
+
+    from hb_assistant.procore import endpoints as ep_registry
+
     monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
     monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
     called = {"hit": False}
@@ -245,6 +255,15 @@ def test_live_sync_unverified_endpoint_fails_closed_without_transport(
         "hb_assistant.procore.http_client.ProcoreHTTPClient._default_live_transport",
         _boom,
     )
+
+    base = ep_registry.get("meeting-topics")
+    assert base is not None
+    demoted = replace(base, live_verified=False)
+    monkeypatch.setitem(ep_registry._BY_ID, "meeting-topics", demoted)
+    if base.legacy_endpoint_alias:
+        monkeypatch.setitem(
+            ep_registry._BY_LEGACY, base.legacy_endpoint_alias, demoted
+        )
 
     runner = CliRunner()
     res = runner.invoke(
@@ -292,4 +311,7 @@ def test_live_endpoints_list_emits_canonical_phase04a_rows() -> None:
     assert rfis["legacy_endpoint_alias"] == "list-rfis"
     assert rfis["live_verified"] is True
     topics_row = next(r for r in rows if r["endpoint_id"] == "meeting-topics")
-    assert topics_row["live_verified"] is False
+    assert topics_row["live_verified"] is True
+    # Phase 04A closeout: all 16 canonical endpoints are now verified.
+    assert all(r["live_verified"] for r in rows)
+    assert len(rows) == 16

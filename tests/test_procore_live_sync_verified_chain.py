@@ -935,200 +935,6 @@ def _meeting_topic(topic_id: int) -> Dict[str, Any]:
     }
 
 
-def _meeting_with_topics(
-    meeting_id: int, title: str, *, topics: List[Dict[str, Any]]
-) -> Dict[str, Any]:
-    return {
-        "id": meeting_id,
-        "number": f"MTG-{meeting_id}",
-        "title": title,
-        "status": "scheduled",
-        "starts_at": "2026-03-01T15:00:00Z",
-        "ends_at": "2026-03-01T16:00:00Z",
-        "created_by_id": 91,
-        "updated_at": "2026-02-28T00:00:00Z",
-        "topics": topics,
-    }
-
-
-def test_meetings_apply_persists_parents_and_topics_inline(
-    monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
-) -> None:
-    _setup_env(monkeypatch)
-    db = _db()
-    payload = [
-        _meeting_with_topics(
-            401,
-            "Weekly OAC",
-            topics=[_meeting_topic(7001), _meeting_topic(7002), _meeting_topic(7003)],
-        ),
-        _meeting_with_topics(
-            402,
-            "Claim review",
-            topics=[_meeting_topic(7101), _meeting_topic(7102)],
-        ),
-    ]
-    transport = _FakeTransport(payload)
-
-    receipt = run_live_sync(
-        project_key="tropical",
-        endpoint="meetings",
-        apply=True,
-        sqlite_only=True,
-        confirm_live_get=True,
-        max_pages=1,
-        max_items=10,
-        db_path=db,
-        transport=transport,
-    )
-
-    assert receipt["state"] == "success"
-    assert receipt["parent_upserted_count"] == 2
-    assert receipt["child_upserted_count"] == 5
-    assert receipt["child_endpoint_id"] == "meeting-topics"
-    assert receipt["sqlite_upserted_count"] == 7
-    assert receipt["child_errors_count"] == 0
-    assert len(transport.calls) == 1
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="meetings", db_path=db
-    ) == 2
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="meeting-topics", db_path=db
-    ) == 5
-
-
-def test_meetings_apply_is_idempotent_for_parents_and_topics(
-    monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
-) -> None:
-    _setup_env(monkeypatch)
-    db = _db()
-    payload = [
-        _meeting_with_topics(
-            401,
-            "Weekly OAC",
-            topics=[_meeting_topic(7001), _meeting_topic(7002)],
-        ),
-        _meeting_with_topics(402, "Claim review", topics=[_meeting_topic(7101)]),
-    ]
-
-    def _go() -> Dict[str, Any]:
-        return run_live_sync(
-            project_key="tropical",
-            endpoint="meetings",
-            apply=True,
-            sqlite_only=True,
-            confirm_live_get=True,
-            max_pages=1,
-            max_items=10,
-            db_path=db,
-            transport=_FakeTransport(payload),
-        )
-
-    first = _go()
-    second = _go()
-    assert first["sqlite_upserted_count"] == 5
-    assert second["sqlite_upserted_count"] == 5
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="meetings", db_path=db
-    ) == 2
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="meeting-topics", db_path=db
-    ) == 3
-
-
-def test_meetings_apply_tolerates_missing_topics_field(
-    monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
-) -> None:
-    """A parent meeting without an inline ``topics`` field upserts cleanly
-    with zero topics. No additional HTTP request is issued."""
-    _setup_env(monkeypatch)
-    db = _db()
-    payload = [
-        _meeting_with_topics(
-            401, "Weekly OAC",
-            topics=[_meeting_topic(7001), _meeting_topic(7002)],
-        ),
-        {
-            "id": 402,
-            "number": "MTG-402",
-            "title": "No topics field",
-            "status": "scheduled",
-            "starts_at": "2026-03-02T15:00:00Z",
-            "ends_at": "2026-03-02T16:00:00Z",
-            "created_by_id": 92,
-            "updated_at": "2026-03-01T00:00:00Z",
-        },
-    ]
-    transport = _FakeTransport(payload)
-
-    receipt = run_live_sync(
-        project_key="tropical",
-        endpoint="meetings",
-        apply=True,
-        sqlite_only=True,
-        confirm_live_get=True,
-        max_pages=1,
-        max_items=10,
-        db_path=db,
-        transport=transport,
-    )
-
-    assert receipt["state"] == "success"
-    assert receipt["parent_upserted_count"] == 2
-    assert receipt["child_upserted_count"] == 2
-    assert receipt["child_errors_count"] == 0
-    assert len(transport.calls) == 1
-
-
-def test_meeting_topic_canonical_json_carries_no_description_body_literal(
-    monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
-) -> None:
-    _setup_env(monkeypatch)
-    db = _db()
-    secret_body_marker = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
-    topic_with_marker = {
-        "id": 8888,
-        "title": "Sensitive coordination topic",
-        "status": "open",
-        "sequence_number": 5,
-        "assignee_id": 60,
-        "due_date": "2026-04-01",
-        "description": secret_body_marker,
-        "action_items": [secret_body_marker, "another action"],
-        "created_at": "2026-03-01T00:00:00Z",
-        "updated_at": "2026-03-01T00:00:00Z",
-    }
-    payload = [
-        _meeting_with_topics(401, "OAC", topics=[topic_with_marker]),
-        _meeting_with_topics(402, "Other", topics=[]),
-    ]
-    transport = _FakeTransport(payload)
-    run_live_sync(
-        project_key="tropical",
-        endpoint="meetings",
-        apply=True,
-        sqlite_only=True,
-        confirm_live_get=True,
-        max_pages=1,
-        max_items=10,
-        db_path=db,
-        transport=transport,
-    )
-    conn = sqlite3.connect(str(db))
-    try:
-        rows = conn.execute(
-            "SELECT canonical_json_redacted, review_required, parent_procore_id, raw_body_persisted "
-            "FROM procore_live_records WHERE endpoint_id = 'meeting-topics'"
-        ).fetchall()
-    finally:
-        conn.close()
-    assert rows, "expected at least one topic row"
-    for canonical_json, review_required, parent_procore_id, raw_body_persisted in rows:
-        assert secret_body_marker not in canonical_json
-        assert review_required == 1
-        assert parent_procore_id in {"401", "402"}
-        assert raw_body_persisted == 0
-
 
 def test_meetings_apply_flattens_v1_1_grouped_payload(
     monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
@@ -1352,3 +1158,134 @@ def test_daily_log_manpower_persists_with_review_required_false(
     assert review_required == 0
     assert sensitive_reason == "manpower_structured_low_risk"
     assert raw_body_persisted == 0
+
+
+# ----------------------------------------------------------------------------
+# Phase 04A final closeout: meeting-topics + daily-log-dcrs standalone
+# ----------------------------------------------------------------------------
+
+
+def test_meeting_topics_apply_persists_as_standalone_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """meeting-topics is a top-level v1.1 endpoint (/meeting_topics root noun),
+    not a child extracted from a meetings parent payload. The orchestrator
+    fetches it directly and normalizes via normalize_meeting_topic."""
+    _setup_env(monkeypatch)
+    db = _db()
+    secret_body_marker = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
+    payload = [
+        {
+            "id": 5001,
+            "meeting_id": 8800,
+            "title": "OAC coordination topic",
+            "created_on": "2026-06-01T15:00:00Z",
+            "minutes": secret_body_marker,
+            "no_minutes": False,
+            "marked": False,
+            "meeting_position": 1,
+        },
+        {
+            "id": 5002,
+            "meeting_id": 8800,
+            "title": "Schedule update",
+            "created_on": "2026-06-01T15:30:00Z",
+            "minutes": "Schedule details that should not leak.",
+            "no_minutes": False,
+            "marked": True,
+            "meeting_position": 2,
+        },
+    ]
+    transport = _FakeTransport(payload)
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="meeting-topics",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["retrieved_count"] == 2
+    assert receipt["normalized_count"] == 2
+    assert receipt["sqlite_upserted_count"] == 2
+    assert len(transport.calls) == 1
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="meeting-topics", db_path=db
+    ) == 2
+    # The free-text `minutes` content does not appear in canonical storage.
+    conn = sqlite3.connect(str(db))
+    try:
+        rows = conn.execute(
+            "SELECT canonical_json_redacted, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='meeting-topics'"
+        ).fetchall()
+    finally:
+        conn.close()
+    for canonical_json, raw_body_persisted in rows:
+        assert secret_body_marker not in canonical_json
+        assert raw_body_persisted == 0
+
+
+def test_daily_log_dcrs_apply_persists_with_hash_only_notes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """daily-log-dcrs is a top-level v1.0 endpoint at
+    /daily_construction_report_logs. The notes field (free text) is reduced
+    to a SHA-256 hash-only summary; raw text never persisted."""
+    _setup_env(monkeypatch)
+    db = _db()
+    secret_body_marker = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
+    payload = [
+        {
+            "id": 333675,
+            "date": "2016-05-19",
+            "datetime": "2016-05-19T12:00:00Z",
+            "status": "pending",
+            "position": 53253,
+            "apprentice_hours": "5.0",
+            "foreman_hours": "5.0",
+            "journeyman_hours": "5.0",
+            "notes": secret_body_marker,
+            "vendor": {"id": 161072, "name": "SID Architecture"},
+            "trade": {"id": 999, "name": "09 - acoustical panels"},
+            "created_at": "2012-10-23T21:39:40Z",
+            "updated_at": "2012-10-24T21:39:40Z",
+        }
+    ]
+    transport = _FakeTransport(payload)
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="daily-log-dcrs",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["sqlite_upserted_count"] == 1
+    assert len(transport.calls) == 1
+    conn = sqlite3.connect(str(db))
+    try:
+        rows = conn.execute(
+            "SELECT canonical_json_redacted, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='daily-log-dcrs'"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert rows
+    for canonical_json, raw_body_persisted in rows:
+        assert secret_body_marker not in canonical_json
+        assert "notes_summary" in canonical_json  # hash summary present
+        assert "hash_prefix" in canonical_json
+        assert raw_body_persisted == 0

@@ -865,6 +865,45 @@ Remaining deferrals:
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/11-unverified-ids-resolution.md`.
 
+## Phase 04A final closeout: 16/16 endpoints verified
+
+The operator supplied exact Procore-docs path snippets for the last two
+deferred endpoints. Both promote to `live_verified=True` end-to-end
+against `tropical`.
+
+- **`daily-log-dcrs`** at `/rest/v1.0/projects/{project_id}/daily_construction_report_logs`
+  (the prior `/dcrs` 404 was the wrong path; the underscored verbose
+  resource name is correct). Schema covers labor-hour fields,
+  vendor/trade/location nested objects, and a `notes` free-text field
+  reduced to a SHA-256 `notes_summary`.
+
+- **`meeting-topics`** at `/rest/v1.1/projects/{project_id}/meeting_topics`
+  (standalone v1.1 root noun — NOT nested under
+  `/meetings/{id}/topics`). The adapter was refactored from a meetings
+  child to a standalone top-level endpoint. `minutes` free-text content
+  is reduced to a SHA-256 `minutes_summary`. **Operational caveat:**
+  Procore's server returns HTTP 500 at `per_page=100`; operators should
+  use `--max-items <= 10` for this endpoint.
+
+Final verified set: **16 of 16** canonical endpoints. `_UNVERIFIED_IDS`
+parametrized test count: 0.
+
+Operator commands:
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical --endpoint daily-log-dcrs \
+  --apply --sqlite-only --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical --endpoint meeting-topics \
+  --apply --sqlite-only --max-pages 1 --max-items 10 \
+  --confirm-live-get --json
+```
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/12-final-unverified-resolution.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

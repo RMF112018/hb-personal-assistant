@@ -14,10 +14,7 @@ from hb_assistant.store.migrator import SQLiteMigrator
 pytestmark = pytest.mark.usefixtures("isolated_hb_pa_config")
 
 
-_UNVERIFIED_IDS = (
-    "meeting-topics",
-    "daily-log-dcrs",
-)
+_UNVERIFIED_IDS: tuple[str, ...] = ()
 
 
 def _db() -> Path:

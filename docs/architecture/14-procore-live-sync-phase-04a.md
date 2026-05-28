@@ -229,21 +229,38 @@ consumers.
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/11-unverified-ids-resolution.md`.
 
+## Final closeout — 16/16 verified
+
+The last two deferred endpoints are now verified using exact Procore
+paths supplied by the operator:
+
+- `daily-log-dcrs` adopts `/rest/v1.0/projects/{project_id}/daily_construction_report_logs`
+  as a top-level endpoint. The normalizer wrapper's
+  `structured_keys` was expanded to match the real schema (labor-hour
+  fields, position, nested `vendor`/`trade`/`location`); `hash_keys`
+  changed to `("notes",)` matching the actual free-text field.
+
+- `meeting-topics` is refactored from a "child of meetings" adapter to
+  a standalone top-level v1.1 endpoint at
+  `/rest/v1.1/projects/{project_id}/meeting_topics`. The
+  `normalize_meeting_topic` function is registered in
+  `_NORMALIZER_BY_ID` for the standalone fetch path; its
+  `parent_procore_id` kwarg defaults to `None` so no signature change
+  was needed. **Operational caveat:** Procore returns HTTP 500 at
+  `per_page=100`; operators should cap `--max-items <= 10`.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/12-final-unverified-resolution.md`.
+
 ## Verified vs unverified endpoints
 
-Post unverified-ids resolution + inline-extraction architecture
-pivot, 14 of 16 endpoint IDs are `live_verified=True` and execute the
-full chain: `projects`, `rfis`, `rfi-responses`, `submittals`,
-`submittal-responses`, `submittal-packages`, `meetings`,
-`observations`, `daily-log-weather`, `daily-log-manpower`,
-`daily-log-notes`, `daily-log-deliveries`,
-`daily-log-delays-review-routed`, `daily-log-inspections`. The other 2
-(`meeting-topics`, `daily-log-dcrs`) are command-visible (`endpoints
-list`) and command-accepted, but the orchestrator returns a structured
-`state="not_live_verified"` receipt with `no_live_call_performed=true`
-and zero counts; no API call and no DB write occur. Promotion is a
-one-line flag flip in `endpoints.py` after a future docs/live smoke
-proof.
+Post Phase 04A final closeout, **all 16 of 16 canonical endpoint IDs
+are `live_verified=True`** and execute the full chain: `projects`,
+`rfis`, `rfi-responses`, `submittals`, `submittal-responses`,
+`submittal-packages`, `meetings`, `meeting-topics`, `observations`,
+`daily-log-weather`, `daily-log-manpower`, `daily-log-notes`,
+`daily-log-deliveries`, `daily-log-delays-review-routed`,
+`daily-log-inspections`, `daily-log-dcrs`. Phase 04A registry coverage
+is complete.
 
 ## Receipt shape
 

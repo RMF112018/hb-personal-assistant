@@ -54,13 +54,11 @@ def test_unknown_endpoint_resolves_to_none() -> None:
 
 def test_verified_endpoints_match_phase04a_matrix() -> None:
     verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
-    # Post unverified-ids resolution + inline-extraction architecture:
-    # 14 endpoints. rfi-responses + submittal-responses promoted because
-    # the parent list payload embeds children inline (Procore design);
-    # extracting inline avoids the N+1 GET storm that triggered rate
-    # limits. meeting-topics + daily-log-dcrs stay deferred (meetings v1.1
-    # does not embed topics; daily-log-dcrs is a top-level endpoint that
-    # still 404s at /dcrs v1.0).
+    # Post final closeout: 16/16 verified. Operator provided exact
+    # Procore docs paths for the last two deferred endpoints:
+    # meeting-topics is now a standalone v1.1 top-level surface
+    # (/meeting_topics root noun); daily-log-dcrs is at
+    # /daily_construction_report_logs (not /dcrs).
     assert verified == {
         "projects",
         "rfis",
@@ -69,6 +67,7 @@ def test_verified_endpoints_match_phase04a_matrix() -> None:
         "submittal-responses",
         "submittal-packages",
         "meetings",
+        "meeting-topics",
         "daily-log-weather",
         "observations",
         "daily-log-manpower",
@@ -76,6 +75,7 @@ def test_verified_endpoints_match_phase04a_matrix() -> None:
         "daily-log-deliveries",
         "daily-log-delays-review-routed",
         "daily-log-inspections",
+        "daily-log-dcrs",
     }
 
 

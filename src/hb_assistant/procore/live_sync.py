@@ -297,8 +297,33 @@ def _normalize_daily_log_dcr(
         correlation_id=correlation_id,
         fetched_at=fetched_at,
         category="daily_log_dcrs",
-        structured_keys=("id", "date", "status", "author_id", "updated_at"),
-        hash_keys=("summary", "comments", "description"),
+        structured_keys=(
+            "id",
+            "date",
+            "datetime",
+            "status",
+            "position",
+            "apprentice_hours",
+            "first_year_hours",
+            "foreman_hours",
+            "journeyman_hours",
+            "local_city_hours",
+            "local_county_hours",
+            "minority_hours",
+            "other_hours",
+            "veteran_hours",
+            "women_hours",
+            "number_of_apprentice_workers",
+            "number_of_foreman_workers",
+            "number_of_journeyman_workers",
+            "number_of_other_workers",
+            "vendor",
+            "trade",
+            "location",
+            "created_at",
+            "updated_at",
+        ),
+        hash_keys=("notes",),
         review_required=False,
         routing_reason="dcrs_structured_medium_risk",
     )
@@ -387,6 +412,11 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     "daily-log-delays-review-routed": _normalize_daily_log_delay,
     "daily-log-inspections": _normalize_daily_log_inspection,
     "daily-log-dcrs": _normalize_daily_log_dcr,
+    # meeting-topics is also a standalone top-level v1.1 endpoint
+    # (/meeting_topics root noun). The same normalize_meeting_topic function
+    # used in _CHILD_NORMALIZER_BY_ID handles both contexts because its
+    # parent_procore_id kwarg defaults to None.
+    "meeting-topics": normalize_meeting_topic,
     # Convenience: observations is not docs-verified in the matrix, but its
     # normalizer is already exercised in dry-run tests. Future promotion can
     # flip endpoints.live_verified=True without code changes here.
