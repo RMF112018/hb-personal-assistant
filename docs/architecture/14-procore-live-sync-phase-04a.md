@@ -49,6 +49,33 @@ adapters land. The registry's `rfi-responses` row stays `live_verified=False`
 because there is no usable direct-call surface (no `--parent-id` flag);
 child rows are populated only as a byproduct of the parent fetch.
 
+## Inline N+1 child fetch (submittals -> submittal-responses) — Prompt 05
+
+The submittal family mirrors the RFI shape. `run_live_sync` dispatches on
+`adapter.endpoint_id == "submittals"`, fetching one additional GET per
+parent at `/rest/v1.0/projects/{project_id}/submittals/{submittal_id}/responses`,
+normalizing via `normalize_submittal_response`, and upserting as
+`endpoint_id="submittal-responses"` with `parent_procore_id` set. The
+sibling endpoint `submittal-packages` is wired as a standalone top-level
+sync (no parent path) via `_normalize_submittal_package_top_level`
+registered in `_NORMALIZER_BY_ID`. Dispatch is hard-coded per-endpoint
+(`if rfis ... elif submittals ...`) — a generic adapter-driven dispatch
+keyed on `parent_record_id_field` is a deferred refactor candidate.
+
+**Contract drift observed against `tropical` (deferred).** Both
+`/rest/v1.0/projects/{project_id}/submittals/{submittal_id}/responses`
+and `/rest/v1.0/projects/{project_id}/submittals/packages` return HTTP 404.
+Parent `submittals` returns data normally. Per-fetch fail-closed
+behavior verified end-to-end: each child 404 surfaces a structured
+`child_transport_error` receipt entry and the run continues to the next
+parent. Both endpoints stay `live_verified=False` in the registry with
+HTTP-404 verification reasons; the verified set after Prompt 05 still
+contains the four parents from Prompt 03 (`projects`, `rfis`, `submittals`,
+`daily-log-weather`). Path remediation is deferred to a future prompt
+that consults current Procore REST docs.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/05-submittal-live-sync.md`.
+
 ## Verified vs unverified endpoints
 
 5 of 14 endpoint IDs are `live_verified=True` and execute the full chain:
@@ -83,5 +110,5 @@ token, never an OAuth payload.
 | `tests/test_procore_endpoint_registry.py` | Registry shape, alias resolution, verified-vs-unverified flagging. |
 | `tests/test_procore_repositories_v6.py` | V6 migration idempotency, insert/update semantics, CHECK constraint enforcement. |
 | `tests/test_procore_live_sync_unverified_fail_closed.py` | 9 unverified IDs each return `not_live_verified` with no transport call and no DB write. |
-| `tests/test_procore_live_sync_verified_chain.py` | RFI fake-transport end-to-end: GET-only, bearer-token header, idempotent upsert, no raw body persisted, review_required flag set on sensitive RFIs. |
+| `tests/test_procore_live_sync_verified_chain.py` | RFI + submittal fake-transport end-to-end: GET-only, bearer-token header, idempotent upsert, no raw body persisted, review_required flag set on sensitive parents, child fetches tolerate 404 without aborting. |
 | `tests/test_procore_live_gate.py` | Updated to assert the new canonical endpoint matrix surface. |

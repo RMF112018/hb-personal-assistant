@@ -562,6 +562,51 @@ records are populated only as a byproduct of the rfis parent fetch — direct
 CLI invocation of `procore live sync --endpoint rfi-responses` correctly
 returns `state="not_live_verified"` because no parent rfi id is supplied.
 
+## Phase 04A Prompt 05: Submittal live apply
+
+The submittal family mirrors the RFI N+1 pattern. Apply submittals (and
+their responses, when the path resolves) to local SQLite:
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical \
+  --endpoint submittals \
+  --apply --sqlite-only \
+  --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+```
+
+The orchestrator issues one GET to `/rest/v1.0/projects/{id}/submittals`
+for the parent list, then issues one GET per parent at
+`/rest/v1.0/projects/{id}/submittals/{submittal_id}/responses`. Responses
+persist as rows with `endpoint_id="submittal-responses"` and
+`parent_procore_id=<submittal_id>` set. Child fetch is capped internally
+at `max_pages=1, max_items=50` per parent. A 4xx on one child fetch
+increments `child_errors_count` and continues to the next parent — the
+run is not aborted. Receipt fields match the RFI family:
+`parent_*` and `child_*` counters plus `child_endpoint_id`.
+
+Verify persistence:
+
+```bash
+hb-assistant procore live records count --project tropical --endpoint submittals --json
+hb-assistant procore live records count --project tropical --endpoint submittal-responses --json
+hb-assistant procore live records count --project tropical --endpoint submittal-packages --json
+```
+
+Re-running the same apply does **not** duplicate rows — the upsert key
+includes `(project_key, endpoint_id, parent_procore_id, procore_record_id)`.
+
+Latest apply evidence: `docs/evidence/construction-intelligence-phase-04a/05-submittal-live-sync.md`.
+
+**Known contract drift (Prompt 05 backlog).** Against `tropical`,
+`/rest/v1.0/projects/{project_id}/submittals/{submittal_id}/responses`
+and `/rest/v1.0/projects/{project_id}/submittals/packages` both return
+HTTP 404. The orchestrator fails closed cleanly per fetch (structured
+`child_transport_error` / `transport_error` receipts; no abort). Both
+endpoints stay `live_verified=False` until a follow-up prompt verifies
+the correct Procore paths (mirrors the `meetings` 404 disposition).
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

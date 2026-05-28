@@ -36,6 +36,8 @@ from hb_assistant.procore.normalizers import (
     normalize_rfi,
     normalize_rfi_reply,
     normalize_submittal,
+    normalize_submittal_package,
+    normalize_submittal_response,
 )
 from hb_assistant.procore.redaction import redact_source_url
 from hb_assistant.procore.token_provider import default_procore_token_provider
@@ -128,12 +130,37 @@ def _normalize_daily_log_weather(
     }
 
 
+def _normalize_submittal_package_top_level(
+    raw: Dict[str, Any],
+    *,
+    project_key: str,
+    endpoint_id: str,
+    correlation_id: str,
+    fetched_at: str,
+) -> Dict[str, Any]:
+    """Standalone /submittals/packages normalizer.
+
+    Packages at this endpoint are sibling resources to submittals, not
+    children of a specific submittal — there is no parent submittal id, so
+    the synthetic parent key ``standalone`` is used.
+    """
+    return normalize_submittal_package(
+        raw,
+        parent_submittal_stable_key="standalone",
+        project_key=project_key,
+        endpoint_id=endpoint_id,
+        correlation_id=correlation_id,
+        fetched_at=fetched_at,
+    )
+
+
 # Canonical-id -> normalizer fn for the 5 live-verified endpoints. Unverified
 # endpoints intentionally have no entry: they fail closed before normalization.
 _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     "projects": _normalize_project,
     "rfis": normalize_rfi,
     "submittals": normalize_submittal,
+    "submittal-packages": _normalize_submittal_package_top_level,
     "meetings": normalize_meeting,
     "daily-log-weather": _normalize_daily_log_weather,
     # Convenience: observations is not docs-verified in the matrix, but its
@@ -564,7 +591,9 @@ def run_live_sync(
 
     # Normalize + upsert. For `rfis`, after each parent upsert, perform an
     # N+1 child GET to /rfis/{rfi_id}/replies and persist replies as
-    # endpoint_id="rfi-responses" with parent_procore_id set.
+    # endpoint_id="rfi-responses" with parent_procore_id set. The same shape
+    # applies to `submittals` -> /submittals/{submittal_id}/responses persisted
+    # as endpoint_id="submittal-responses".
     fetched_at = _now_utc()
     parent_retrieved_count = len(items)
     parent_normalized_count = 0
@@ -575,8 +604,11 @@ def run_live_sync(
     child_upserted_count = 0
     child_errors_count = 0
     fetch_rfi_replies = adapter.endpoint_id == "rfis" and will_write_db
+    fetch_submittal_responses = adapter.endpoint_id == "submittals" and will_write_db
     if fetch_rfi_replies:
         child_endpoint_id = "rfi-responses"
+    elif fetch_submittal_responses:
+        child_endpoint_id = "submittal-responses"
 
     for raw in items:
         try:
@@ -622,77 +654,154 @@ def run_live_sync(
             redacted_errors.append({"upsert_error": "sqlite_upsert_failed"})
             continue
 
-        if not fetch_rfi_replies:
+        if not (fetch_rfi_replies or fetch_submittal_responses):
             continue
 
-        # N+1: fetch this RFI's replies, normalize each, upsert as a child row.
-        reply_path = f"/rest/v1.0/projects/{procore_project_id}/rfis/{record_id}/replies"
-        try:
-            reply_items = list(
-                client.paginate(reply_path, per_page=50, max_pages=1, max_items=50)
-            )
-        except ProcoreAPIError as child_exc:
-            child_errors_count += 1
-            redacted_errors.append(
-                {
-                    "child_transport_error": child_exc.code,
-                    "status": child_exc.status,
-                    "parent_procore_id": record_id,
-                }
-            )
-            continue
-        except Exception:  # noqa: BLE001
-            child_errors_count += 1
-            redacted_errors.append(
-                {"child_transport_error": "unexpected", "parent_procore_id": record_id}
-            )
-            continue
-
-        for reply_raw in reply_items:
-            child_retrieved_count += 1
+        if fetch_rfi_replies:
+            # N+1: fetch this RFI's replies, normalize each, upsert as a child row.
+            reply_path = f"/rest/v1.0/projects/{procore_project_id}/rfis/{record_id}/replies"
             try:
-                reply_record = normalize_rfi_reply(
-                    reply_raw,
-                    parent_rfi_stable_key=str(record_id),
-                    project_key=project_key,
-                    endpoint_id="rfi-responses",
-                    correlation_id=correlation_id,
-                    fetched_at=fetched_at,
+                reply_items = list(
+                    client.paginate(reply_path, per_page=50, max_pages=1, max_items=50)
                 )
-            except (TypeError, ValueError):
+            except ProcoreAPIError as child_exc:
                 child_errors_count += 1
-                redacted_errors.append({"child_normalize_error": "invalid_reply_payload"})
-                continue
-            child_normalized_count += 1
-            normalized_count += 1
-
-            reply_id = reply_raw.get("id") if isinstance(reply_raw, dict) else None
-            if reply_id is None or reply_id == "":
-                child_errors_count += 1
-                redacted_errors.append({"child_normalize_error": "missing_reply_id"})
-                continue
-            try:
-                upsert_procore_live_record(
-                    project_key=project_key,
-                    procore_project_id=str(procore_project_id),
-                    endpoint_id="rfi-responses",
-                    procore_record_id=str(reply_id),
-                    parent_procore_id=str(record_id),
-                    normalized_fields=reply_record["canonical_fields"],
-                    review_required=True,
-                    sensitive_reason=reply_record.get("routing_reason"),
-                    source_url_redacted=redact_source_url(reply_path),
-                    last_sync_run_id=sync_run_id,
-                    now_utc=fetched_at,
-                    db_path=db_path,
+                redacted_errors.append(
+                    {
+                        "child_transport_error": child_exc.code,
+                        "status": child_exc.status,
+                        "parent_procore_id": record_id,
+                    }
                 )
-                child_upserted_count += 1
-                sqlite_upserted_count += 1
+                continue
             except Exception:  # noqa: BLE001
                 child_errors_count += 1
                 redacted_errors.append(
-                    {"child_upsert_error": "sqlite_upsert_failed", "parent_procore_id": record_id}
+                    {"child_transport_error": "unexpected", "parent_procore_id": record_id}
                 )
+                continue
+
+            for reply_raw in reply_items:
+                child_retrieved_count += 1
+                try:
+                    reply_record = normalize_rfi_reply(
+                        reply_raw,
+                        parent_rfi_stable_key=str(record_id),
+                        project_key=project_key,
+                        endpoint_id="rfi-responses",
+                        correlation_id=correlation_id,
+                        fetched_at=fetched_at,
+                    )
+                except (TypeError, ValueError):
+                    child_errors_count += 1
+                    redacted_errors.append({"child_normalize_error": "invalid_reply_payload"})
+                    continue
+                child_normalized_count += 1
+                normalized_count += 1
+
+                reply_id = reply_raw.get("id") if isinstance(reply_raw, dict) else None
+                if reply_id is None or reply_id == "":
+                    child_errors_count += 1
+                    redacted_errors.append({"child_normalize_error": "missing_reply_id"})
+                    continue
+                try:
+                    upsert_procore_live_record(
+                        project_key=project_key,
+                        procore_project_id=str(procore_project_id),
+                        endpoint_id="rfi-responses",
+                        procore_record_id=str(reply_id),
+                        parent_procore_id=str(record_id),
+                        normalized_fields=reply_record["canonical_fields"],
+                        review_required=True,
+                        sensitive_reason=reply_record.get("routing_reason"),
+                        source_url_redacted=redact_source_url(reply_path),
+                        last_sync_run_id=sync_run_id,
+                        now_utc=fetched_at,
+                        db_path=db_path,
+                    )
+                    child_upserted_count += 1
+                    sqlite_upserted_count += 1
+                except Exception:  # noqa: BLE001
+                    child_errors_count += 1
+                    redacted_errors.append(
+                        {"child_upsert_error": "sqlite_upsert_failed", "parent_procore_id": record_id}
+                    )
+        else:
+            # N+1: fetch this submittal's responses, normalize each, upsert as a child row.
+            response_path = (
+                f"/rest/v1.0/projects/{procore_project_id}/submittals/{record_id}/responses"
+            )
+            try:
+                response_items = list(
+                    client.paginate(response_path, per_page=50, max_pages=1, max_items=50)
+                )
+            except ProcoreAPIError as child_exc:
+                child_errors_count += 1
+                redacted_errors.append(
+                    {
+                        "child_transport_error": child_exc.code,
+                        "status": child_exc.status,
+                        "parent_procore_id": record_id,
+                    }
+                )
+                continue
+            except Exception:  # noqa: BLE001
+                child_errors_count += 1
+                redacted_errors.append(
+                    {"child_transport_error": "unexpected", "parent_procore_id": record_id}
+                )
+                continue
+
+            for response_raw in response_items:
+                child_retrieved_count += 1
+                try:
+                    response_record = normalize_submittal_response(
+                        response_raw,
+                        parent_submittal_stable_key=str(record_id),
+                        project_key=project_key,
+                        endpoint_id="submittal-responses",
+                        correlation_id=correlation_id,
+                        fetched_at=fetched_at,
+                    )
+                except (TypeError, ValueError):
+                    child_errors_count += 1
+                    redacted_errors.append(
+                        {"child_normalize_error": "invalid_response_payload"}
+                    )
+                    continue
+                child_normalized_count += 1
+                normalized_count += 1
+
+                response_id = response_raw.get("id") if isinstance(response_raw, dict) else None
+                if response_id is None or response_id == "":
+                    child_errors_count += 1
+                    redacted_errors.append({"child_normalize_error": "missing_response_id"})
+                    continue
+                try:
+                    upsert_procore_live_record(
+                        project_key=project_key,
+                        procore_project_id=str(procore_project_id),
+                        endpoint_id="submittal-responses",
+                        procore_record_id=str(response_id),
+                        parent_procore_id=str(record_id),
+                        normalized_fields=response_record["canonical_fields"],
+                        review_required=True,
+                        sensitive_reason=response_record.get("routing_reason"),
+                        source_url_redacted=redact_source_url(response_path),
+                        last_sync_run_id=sync_run_id,
+                        now_utc=fetched_at,
+                        db_path=db_path,
+                    )
+                    child_upserted_count += 1
+                    sqlite_upserted_count += 1
+                except Exception:  # noqa: BLE001
+                    child_errors_count += 1
+                    redacted_errors.append(
+                        {
+                            "child_upsert_error": "sqlite_upsert_failed",
+                            "parent_procore_id": record_id,
+                        }
+                    )
 
     completed_at = _now_utc()
     state = "success" if not redacted_errors else "partial_success"

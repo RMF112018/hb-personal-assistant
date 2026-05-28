@@ -464,3 +464,210 @@ def test_rfi_reply_canonical_json_carries_no_body_literal(
         assert review_required == 1
         assert parent_procore_id in {"101", "102"}
         assert raw_body_persisted == 0
+
+
+# ----------------------------------------------------------------------------
+# Phase 04A Prompt 05: submittals + responses (N+1 child fetch)
+# ----------------------------------------------------------------------------
+
+
+_SUBMITTAL_PAYLOAD = [
+    {
+        "id": 201,
+        "number": "SUB-001",
+        "title": "Door hardware schedule",
+        "status": "open",
+        "updated_at": "2026-02-01T00:00:00Z",
+        "assignee_id": 51,
+    },
+    {
+        "id": 202,
+        "number": "SUB-002",
+        "title": "Claim impact - revise & resubmit",  # triggers review_required
+        "status": "open",
+        "updated_at": "2026-02-02T00:00:00Z",
+        "assignee_id": 52,
+    },
+]
+
+
+def _submittal_response(response_id: int) -> Dict[str, Any]:
+    return {
+        "id": response_id,
+        "created_at": "2026-02-01T00:00:00Z",
+        "updated_at": "2026-02-01T00:00:00Z",
+        "author_id": 88,
+        "response_status": "approved",
+        "comment": "Response text that must never appear in canonical storage.",
+    }
+
+
+def test_submittals_apply_persists_parents_and_responses_separately(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    transport = _PathAwareFakeTransport(
+        {
+            "/rest/v1.0/projects/2525840/submittals/201/responses": [
+                _submittal_response(8001),
+                _submittal_response(8002),
+                _submittal_response(8003),
+            ],
+            "/rest/v1.0/projects/2525840/submittals/202/responses": [
+                _submittal_response(8101),
+                _submittal_response(8102),
+            ],
+            # parent path matched last because it's a prefix of the child paths
+            "/rest/v1.0/projects/2525840/submittals": _SUBMITTAL_PAYLOAD,
+        }
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="submittals",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["parent_upserted_count"] == 2
+    assert receipt["child_upserted_count"] == 5
+    assert receipt["child_endpoint_id"] == "submittal-responses"
+    assert receipt["sqlite_upserted_count"] == 7
+    assert receipt["child_errors_count"] == 0
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="submittals", db_path=db
+    ) == 2
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="submittal-responses", db_path=db
+    ) == 5
+
+
+def test_submittals_apply_is_idempotent_for_parents_and_responses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+
+    def _go() -> Dict[str, Any]:
+        return run_live_sync(
+            project_key="tropical",
+            endpoint="submittals",
+            apply=True,
+            sqlite_only=True,
+            confirm_live_get=True,
+            max_pages=1,
+            max_items=10,
+            db_path=db,
+            transport=_PathAwareFakeTransport(
+                {
+                    "/rest/v1.0/projects/2525840/submittals/201/responses": [
+                        _submittal_response(8001),
+                        _submittal_response(8002),
+                    ],
+                    "/rest/v1.0/projects/2525840/submittals/202/responses": [
+                        _submittal_response(8101),
+                    ],
+                    "/rest/v1.0/projects/2525840/submittals": _SUBMITTAL_PAYLOAD,
+                }
+            ),
+        )
+
+    first = _go()
+    second = _go()
+    assert first["sqlite_upserted_count"] == 5
+    assert second["sqlite_upserted_count"] == 5
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="submittals", db_path=db
+    ) == 2
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="submittal-responses", db_path=db
+    ) == 3
+
+
+def test_submittals_apply_tolerates_child_404_without_aborting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    transport = _PathAwareFakeTransport(
+        path_to_payload={
+            "/rest/v1.0/projects/2525840/submittals/201/responses": [
+                _submittal_response(8001),
+                _submittal_response(8002),
+            ],
+            "/rest/v1.0/projects/2525840/submittals": _SUBMITTAL_PAYLOAD,
+        },
+        error_paths={"/rest/v1.0/projects/2525840/submittals/202/responses": 404},
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="submittals",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] in {"success", "partial_success"}
+    assert receipt["parent_upserted_count"] == 2
+    assert receipt["child_upserted_count"] == 2
+    assert receipt["child_errors_count"] == 1
+
+
+def test_submittal_response_canonical_json_carries_no_body_literal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    secret_body_marker = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
+    response_with_marker = {
+        "id": 7777,
+        "created_at": "2026-02-01T00:00:00Z",
+        "updated_at": "2026-02-01T00:00:00Z",
+        "author_id": 60,
+        "response_status": "approved",
+        "comment": secret_body_marker,
+    }
+    transport = _PathAwareFakeTransport(
+        {
+            "/rest/v1.0/projects/2525840/submittals/201/responses": [response_with_marker],
+            "/rest/v1.0/projects/2525840/submittals/202/responses": [],
+            "/rest/v1.0/projects/2525840/submittals": _SUBMITTAL_PAYLOAD,
+        }
+    )
+    run_live_sync(
+        project_key="tropical",
+        endpoint="submittals",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+    conn = sqlite3.connect(str(db))
+    try:
+        rows = conn.execute(
+            "SELECT canonical_json_redacted, review_required, parent_procore_id, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id = 'submittal-responses'"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert rows, "expected at least one response row"
+    for canonical_json, review_required, parent_procore_id, raw_body_persisted in rows:
+        assert secret_body_marker not in canonical_json
+        assert review_required == 1
+        assert parent_procore_id in {"201", "202"}
+        assert raw_body_persisted == 0
