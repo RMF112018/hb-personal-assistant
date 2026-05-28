@@ -33,7 +33,7 @@ def test_live_refresh_returns_access_token() -> None:
     from hb_assistant.procore.oauth import ProcoreOAuthClient
 
     refresh_token = os.environ["PROCORE_TEST_REFRESH_TOKEN"]
-    client = ProcoreOAuthClient(environment="sandbox")
+    client = ProcoreOAuthClient(environment="production")
     token_set = client.refresh_access_token(refresh_token)
     assert token_set.access_token, "refresh did not return an access token"
     # Discard immediately. Never assert on the value, never echo it.

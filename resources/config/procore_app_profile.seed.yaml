@@ -7,11 +7,15 @@
 
 client_id: TZTKW39fFf80ASZIp6uH81WUF81k0S97TkxF8S8k7Ps
 redirect_uri: urn:ietf:wg:oauth:2.0:oob
-environment: sandbox
+environment: production
 company_id: 5280
 notes: |
   HB MPR company 5280 (Procore-Company-Id header required on all authenticated calls except List Companies /me exceptions).
-  Sandbox-first development. Separate credentials + base URLs for production.
+  Production environment — the client_id + secret pair are registered in Procore production
+  (verified against login.procore.com/oauth/token with response invalid_grant, indicating valid
+  client auth but rejected fake code, during Phase 04 Prompt 02 acquisition wire-path probe).
+  Read-only delegated only; the GET-only HTTP client enforces no writeback. Operator must
+  remain mindful that this targets real HB data, not sandbox.
   Secret storage: macOS keychain (preferred) or env or protected 0600 user file ONLY — never in this seed or repo.
   OOB redirect chosen per official docs (https://developers.procore.com/documentation/oauth-installed-apps) and subagent OAuth report.
   After one-time authorization, copy the code shown on-screen into the CLI.

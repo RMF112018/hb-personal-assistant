@@ -296,7 +296,10 @@ class RefreshingOAuthTokenProvider:
 
     cache_path: Optional[Path] = None
     refresh_within_seconds: int = 60
-    environment: str = "sandbox"
+    # ``None`` (the default) resolves at refresh time from the loaded
+    # ``ProcoreAppProfile`` so the seed YAML stays the single source of truth
+    # for environment selection. Explicit value overrides the profile.
+    environment: Optional[str] = None
     kind: str = "oauth_refreshing"
 
     def _load(self) -> Optional[dict[str, Any]]:
@@ -336,9 +339,11 @@ class RefreshingOAuthTokenProvider:
             return access_token if deadline > now else None
 
         try:
+            from hb_assistant.procore.config import load_procore_app_profile  # lazy
             from hb_assistant.procore.oauth import ProcoreOAuthClient  # lazy
 
-            client = ProcoreOAuthClient(environment=self.environment)
+            env = self.environment or load_procore_app_profile().environment
+            client = ProcoreOAuthClient(environment=env)
             new_token = client.refresh_access_token(refresh_token)
         except Exception:  # noqa: BLE001 — fail closed
             return access_token if deadline > now else None

@@ -135,16 +135,37 @@ def load_procore_app_profile_from_dict(data: dict) -> ProcoreAppProfile:
 
 
 def load_procore_app_profile() -> ProcoreAppProfile:
+    """Load the Procore app profile.
+
+    Reads ``resources/config/procore_app_profile.seed.yaml`` (via the repo
+    root resolved by :class:`PathPolicy`) when present; otherwise falls back
+    to a minimal inline default. The seed is the source of truth for the
+    runtime ``environment`` (sandbox vs production) so changing that one
+    field in the YAML propagates to the OAuth client without code edits.
     """
-    Convenience loader for the default seed.
-    In production use the real PathPolicy loader + this validator.
-    For MVP this demonstrates the contract.
-    """
-    # Minimal inline seed for bootstrap (real impl would call existing loader)
+
+    import yaml as _yaml
+
+    from hb_assistant.config.path_policy import PathPolicy
+
+    seed_path: Path = (
+        PathPolicy().resolve_repo_root()
+        / "resources"
+        / "config"
+        / "procore_app_profile.seed.yaml"
+    )
+    if seed_path.exists():
+        with seed_path.open("r", encoding="utf-8") as f:
+            data = _yaml.safe_load(f) or {}
+        if isinstance(data, dict) and data.get("client_id") and data.get("environment"):
+            return load_procore_app_profile_from_dict(data)
+
+    # Fallback for environments where the seed is not present (test fixtures
+    # without the repo tree). Documented inline default; mirrors the seed.
     seed = {
         "client_id": PROCORE_CLIENT_ID,
         "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
-        "environment": "sandbox",
+        "environment": "production",
         "company_id": HB_COMPANY_ID,
     }
     return load_procore_app_profile_from_dict(seed)
