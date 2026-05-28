@@ -178,6 +178,40 @@ exception class name only (no message text leaks).
   once in dry-run, then `--apply --confirm` — the sync coordinator
   creates the tables on demand.
 
+## Access token (Phase 04 Prompt 01)
+
+The Procore HTTP client requires an OAuth access token. It will **not** reuse
+the OAuth client secret as a bearer credential. If no access token is
+available the first request fails closed with `ProcoreAuthRequired`. OAuth
+token-exchange itself is deferred to a later prompt; until then the operator
+supplies a token directly via one of:
+
+```bash
+# Preferred (macOS Keychain — never echoed, never in repo)
+security add-generic-password -s 'hb-assistant-procore' -a 'access-token' -w
+
+# Alternative (current shell)
+export PROCORE_ACCESS_TOKEN='your-access-token'
+```
+
+The existing `PROCORE_CLIENT_SECRET` env / Keychain account remains in place
+for future OAuth bootstrap but is no longer accepted as a bearer credential.
+
+## Pending project sync targets (Phase 04 Prompt 01)
+
+`hb-assistant procore sync run` defaults to mapped pilots only. Projects with
+`status: pending` in `procore_project_mapping.seed.yaml` (e.g. `hilltop`,
+`hilltop-gardens`) are rejected with `ProcorePendingProjectRejected` unless
+the operator passes `--allow-pending` explicitly:
+
+```bash
+# Default: mapped pilots only
+hb-assistant procore sync run --dry-run --json
+
+# Explicit override for planning against a pending mapping
+hb-assistant procore sync run --project hilltop --allow-pending --dry-run --json
+```
+
 ## Live-test mode
 
 No live Procore tests ship in this MVP. The `live` pytest marker is reserved

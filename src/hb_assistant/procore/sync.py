@@ -23,8 +23,17 @@ from typing import Any, Dict, List, Literal, Optional
 from hb_assistant.procore.auditor import (
     EndpointAuditor,  # real Prompt_07 surface (extended in place)
 )
+from hb_assistant.procore.errors import (
+    ProcoreMappingUnavailable,
+    ProcorePendingProjectRejected,
+)
 from hb_assistant.procore.http_client import ProcoreHTTPClient  # type: ignore
-from hb_assistant.procore.loader import load_endpoint_contract
+from hb_assistant.procore.loader import (
+    ProcoreProjectsError,
+    load_endpoint_contract,
+    load_procore_projects,
+)
+from hb_assistant.procore.models import ProcoreProjectsRegistry
 
 
 def redact_for_evidence(obj: Any) -> Any:
@@ -113,12 +122,43 @@ class ProcoreSyncCoordinator:
         }
 
     def _resolve_pilot_projects(self, project_key: Optional[str]) -> List[str]:
-        # Reuse Prompt_06 mapping surfaces (via loader or CLI helper if exposed).
-        # For MVP: accept explicit key or default pilot set from seed (pending handled upstream).
+        """Return the project keys to sync. Default = mapped pilots only.
+
+        When no explicit key is supplied, the mapping is loaded and filtered to
+        ``status == "pilot"``. Pending mappings are never returned by default;
+        a pending key supplied explicitly is later rejected by ``_assert_no_pending``
+        unless the caller passes ``allow_pending=True``.
+        """
         if project_key:
             return [project_key]
-        # Fallback to known pilots from prior Prompt_06 (hilltop etc. kept explicit/pending).
-        return ["hilltop", "hilltop-gardens"]  # caller must validate mapping status
+        registry = self._load_project_registry()
+        return [p.hb_project_key for p in registry.projects if p.status == "pilot"]
+
+    def _load_project_registry(self) -> ProcoreProjectsRegistry:
+        """Load the real Procore projects registry. Fail closed if unavailable."""
+        try:
+            return load_procore_projects()
+        except ProcoreProjectsError as exc:
+            raise ProcoreMappingUnavailable(message=str(exc)) from exc
+
+    def _assert_no_pending(
+        self, pilots: List[str], *, allow_pending: bool
+    ) -> None:
+        """Raise ``ProcorePendingProjectRejected`` if any selected key is pending,
+        unless the caller explicitly passed ``allow_pending=True``."""
+        if allow_pending:
+            return
+        registry = self._load_project_registry()
+        pending: List[str] = []
+        for key in pilots:
+            mapping = registry.get(key)
+            if mapping is not None and mapping.status == "pending":
+                pending.append(key)
+        if pending:
+            raise ProcorePendingProjectRejected(
+                pending_keys=pending,
+                correlation_id=self.correlation_id,
+            )
 
     def plan(
         self,
@@ -126,8 +166,13 @@ class ProcoreSyncCoordinator:
         project_key: Optional[str] = None,
         endpoints: Optional[List[str]] = None,
         policy: Policy = "auto",
+        allow_pending: bool = False,
     ) -> SyncReceipt:
-        """Dry-run default path. Audit gate first. Produces serializable redacted plan. Zero side effects."""
+        """Dry-run default path. Audit gate first. Produces serializable redacted plan. Zero side effects.
+
+        Pending mappings are rejected before any audit/transport activity unless
+        the caller passes ``allow_pending=True``.
+        """
         started = datetime.now(timezone.utc).isoformat()
         receipt = SyncReceipt(
             sync_id=str(uuid.uuid4()),
@@ -140,6 +185,7 @@ class ProcoreSyncCoordinator:
         )
 
         pilots = self._resolve_pilot_projects(project_key)
+        self._assert_no_pending(pilots, allow_pending=allow_pending)
 
         # Mandatory audit prerequisite gate.
         if self.auditor is not None and hasattr(self.auditor, "audit_endpoints_for_pilots"):
@@ -151,7 +197,7 @@ class ProcoreSyncCoordinator:
             all_available = all(v == "available" for v in verdict_map.values())
         else:
             contract = load_endpoint_contract()
-            projects = self._load_projects_for_gate(pilots)
+            projects = self._load_project_registry()
             auditor = EndpointAuditor(contract, projects)
             audit_receipt = auditor.build_audit_run_receipt(
                 pilots[0] if len(pilots) == 1 else "multi",
@@ -214,9 +260,10 @@ class ProcoreSyncCoordinator:
         endpoints: Optional[List[str]] = None,
         policy: Policy = "auto",
         full_refresh: bool = False,
+        allow_pending: bool = False,
     ) -> SyncReceipt:
         """Explicit opt-in apply. Re-evaluates audit gate. Writes ONLY to local SQLite (db_path or default).
-        Never external. Never non-GET.
+        Never external. Never non-GET. Pending mappings rejected unless ``allow_pending=True``.
         """
         # Local import to avoid potential cycles (pattern used elsewhere e.g. vault_writer)
         from hb_assistant.store.repositories import (  # type: ignore
@@ -237,6 +284,7 @@ class ProcoreSyncCoordinator:
         )
 
         pilots = self._resolve_pilot_projects(project_key)
+        self._assert_no_pending(pilots, allow_pending=allow_pending)
 
         if self.auditor is not None and hasattr(self.auditor, "audit_endpoints_for_pilots"):
             verdict_map = self.auditor.audit_endpoints_for_pilots(pilots)  # type: ignore[attr-defined]
@@ -247,7 +295,7 @@ class ProcoreSyncCoordinator:
             all_available = all(v == "available" for v in verdict_map.values())
         else:
             contract = load_endpoint_contract()
-            projects = self._load_projects_for_gate(pilots)
+            projects = self._load_project_registry()
             auditor = EndpointAuditor(contract, projects)
             audit_receipt = auditor.build_audit_run_receipt(
                 pilots[0] if len(pilots) == 1 else "multi",
@@ -333,31 +381,6 @@ class ProcoreSyncCoordinator:
             "redaction_applied": True,
         }
 
-    def _load_projects_for_gate(self, pilots: list[str]) -> Any:
-        """Thin resolver for Prompt_07 EndpointAuditor (reuses Prompt_06 mapping loader pattern)."""
-        # MVP: return a minimal projects-like object the auditor accepts.
-        # In real use this would call the existing _load_projects_or_emit / mapping loader.
-        class _Project:
-            def __init__(self, key: str) -> None:
-                self.hb_project_key = key
-                self.procore_project_id = "2525840"
-                self.procore_project_name = key
-
-        class _Projects:
-            company_id = "5280"
-
-            def __init__(self, keys: list[str]) -> None:
-                self.projects = [_Project(k) for k in keys]
-
-            def get(self, hb_project_key: str) -> Any:
-                for p in self.projects:
-                    if p.hb_project_key == hb_project_key:
-                        return p
-                return None
-
-        return _Projects(pilots)
-
-
 # Convenience CLI-facing entry (thin wrapper)
 def run_sync(
     *,
@@ -367,19 +390,29 @@ def run_sync(
     full_refresh: bool = False,
     db_path: Optional[Path] = None,
     json_output: bool = True,
+    allow_pending: bool = False,
 ) -> Dict[str, Any]:
-    """Entry for CLI `procore sync`. Dry-run default. --apply explicit only."""
+    """Entry for CLI `procore sync`. Dry-run default. --apply explicit only.
+
+    ``allow_pending=True`` is required to target a project whose mapping
+    status is ``pending``; default behavior is fail-closed.
+    """
     if apply and dry_run:
         dry_run = False  # --apply wins when both present (documented guard in CLI)
 
     coord = ProcoreSyncCoordinator(db_path=db_path)
     if dry_run or not apply:
-        plan = coord.plan(project_key=project_key, policy="full" if full_refresh else "auto")
+        plan = coord.plan(
+            project_key=project_key,
+            policy="full" if full_refresh else "auto",
+            allow_pending=allow_pending,
+        )
         return plan  # type: ignore[return-value]
     else:
         receipt = coord.apply(
             project_key=project_key,
             full_refresh=full_refresh,
             policy="full" if full_refresh else "auto",
+            allow_pending=allow_pending,
         )
         return receipt  # type: ignore[return-value]

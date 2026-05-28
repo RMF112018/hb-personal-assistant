@@ -199,6 +199,84 @@ def _check_sqlite_schema_at_expected_version(db_path: Path | None) -> dict[str, 
     }
 
 
+def _check_http_client_demands_access_token() -> dict[str, Any]:
+    """Phase 04: a client built without a usable access token must fail closed
+    with :class:`ProcoreAuthRequired` and never reuse ``PROCORE_CLIENT_SECRET``.
+    """
+    from hb_assistant.procore.errors import ProcoreAuthRequired
+    from hb_assistant.procore.http_client import ProcoreHTTPClient
+
+    def _empty_provider() -> str | None:
+        return None
+
+    def _stub_transport(method: str, url: str, headers: dict, params: Any) -> Any:  # noqa: ARG001
+        raise AssertionError("transport must not be reached when no access token is available")
+
+    client = ProcoreHTTPClient(
+        environment="sandbox",
+        transport=_stub_transport,
+        access_token_provider=_empty_provider,
+    )
+    try:
+        client.get("/rest/v1.1/projects")
+    except ProcoreAuthRequired:
+        return {"ok": True, "detail": {"fail_closed": True}}
+    return {"ok": False, "detail": {"fail_closed": False}}
+
+
+def _check_sync_pagination_method_aligned() -> dict[str, Any]:
+    """Phase 04: the sync coordinator calls ``client.paginate(...)``; the HTTP
+    client must expose that name (the prior ``get_paginated`` rename hazard).
+    """
+    from hb_assistant.procore.http_client import ProcoreHTTPClient
+
+    has_paginate = hasattr(ProcoreHTTPClient, "paginate")
+    has_legacy = hasattr(ProcoreHTTPClient, "get_paginated")
+    return {
+        "ok": bool(has_paginate and not has_legacy),
+        "detail": {"paginate": has_paginate, "legacy_get_paginated": has_legacy},
+    }
+
+
+def _check_pending_projects_not_default_target() -> dict[str, Any]:
+    """Phase 04: with no explicit ``--project``, the default sync target list
+    must contain only ``status == "pilot"`` keys (never pending).
+    """
+    from hb_assistant.procore.sync import ProcoreSyncCoordinator
+
+    coord = ProcoreSyncCoordinator()
+    default_keys = coord._resolve_pilot_projects(None)  # noqa: SLF001
+    registry = load_procore_projects()
+    pending_by_key = {p.hb_project_key: (p.status == "pending") for p in registry.projects}
+    leaked = [k for k in default_keys if pending_by_key.get(k)]
+    return {
+        "ok": not leaked,
+        "detail": {"default_keys": default_keys, "leaked_pending": leaked},
+    }
+
+
+def _check_procore_init_exports_complete() -> dict[str, Any]:
+    """Phase 04: the public ``hb_assistant.procore`` API must re-export the
+    sync coordinator, ``run_sync``, ``SyncReceipt``, and the new fail-closed
+    exceptions added in this prompt.
+    """
+    import hb_assistant.procore as procore_pkg
+
+    required = {
+        "ProcoreSyncCoordinator",
+        "run_sync",
+        "SyncReceipt",
+        "ProcoreAuthRequired",
+        "ProcorePendingProjectRejected",
+        "ProcoreMappingUnavailable",
+    }
+    missing = sorted(name for name in required if not hasattr(procore_pkg, name))
+    return {
+        "ok": not missing,
+        "detail": {"required": sorted(required), "missing": missing},
+    }
+
+
 def _check_procore_tables_present(db_path: Path | None, *, strict: bool) -> dict[str, Any]:
     conn = get_connection(str(db_path) if db_path else None)
     present: dict[str, bool] = {}
@@ -249,6 +327,10 @@ def run_procore_validate(
         _safe_check("vault_root_configurable", _check_vault_root_configurable),
         _safe_check("sqlite_schema_at_expected_version", lambda: _check_sqlite_schema_at_expected_version(db_path)),
         _safe_check("procore_tables_present", lambda: _check_procore_tables_present(db_path, strict=strict)),
+        _safe_check("http_client_demands_access_token", _check_http_client_demands_access_token),
+        _safe_check("sync_pagination_method_aligned", _check_sync_pagination_method_aligned),
+        _safe_check("pending_projects_not_default_target", _check_pending_projects_not_default_target),
+        _safe_check("procore_init_exports_complete", _check_procore_init_exports_complete),
     ]
 
     passed = sum(1 for c in checks if c.get("ok"))

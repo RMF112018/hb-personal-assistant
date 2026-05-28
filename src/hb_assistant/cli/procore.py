@@ -341,16 +341,18 @@ sync_app = typer.Typer(help="Pilot project dry-run sync pipeline (Prompt_09). Dr
 
 @sync_app.command("run")
 def sync_run(
-    project: Optional[str] = typer.Option(None, "--project", help="HB pilot key or mapped project (pending keys allowed for planning)"),
+    project: Optional[str] = typer.Option(None, "--project", help="HB pilot key or mapped project (default: all mapped pilots; pending requires --allow-pending)"),
     dry_run: bool = typer.Option(True, "--dry-run", help="Default: plan only, redacted, zero side effects"),
     apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in only. Writes local SQLite normalized rows after audit gate. Never external."),
     full_refresh: bool = typer.Option(False, "--full-refresh"),
     json_out: bool = typer.Option(True, "--json"),
     confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts"),
+    allow_pending: bool = typer.Option(False, "--allow-pending", help="Explicit opt-in to target a project whose mapping status is 'pending'. Default fails closed."),
 ) -> None:
     """Dry-run (default) or apply (opt-in) for pilot projects.
 
     Audit prerequisite (Prompt_07 surfaces) is mandatory before any planning or execution.
+    Pending mappings are rejected unless ``--allow-pending`` is set.
     All writes are local SQLite only (temp DB supported for validation). GET-only. Redacted.
     """
     if apply and not confirm and not sys.stdin.isatty():
@@ -369,6 +371,7 @@ def sync_run(
         apply=apply,
         full_refresh=full_refresh,
         json_output=json_out,
+        allow_pending=allow_pending,
     )
     _emit(result, json_out=json_out)
 

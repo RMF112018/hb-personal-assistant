@@ -222,6 +222,32 @@ def get_procore_client_secret() -> str:
     )
 
 
+def get_procore_access_token() -> Optional[str]:
+    """Return a Procore OAuth access token from secure local storage, or None.
+
+    Lookup order: macOS Keychain (service ``hb-assistant-procore``,
+    account ``access-token``) → env ``PROCORE_ACCESS_TOKEN``.
+
+    This is intentionally **separate** from :func:`get_procore_client_secret`.
+    The HTTP client must never reuse the client secret as a bearer credential;
+    a real OAuth token must be supplied here. OAuth token acquisition itself
+    is deferred to a later prompt — until then, callers (operators or a
+    higher-level service) populate Keychain/env directly.
+
+    Returns ``None`` when no token is available so the caller can fail closed
+    with :class:`hb_assistant.procore.errors.ProcoreAuthRequired`.
+    """
+    keychain_token = get_macos_keychain_secret(
+        service="hb-assistant-procore", account="access-token"
+    )
+    if keychain_token:
+        return keychain_token
+    env_token = os.environ.get("PROCORE_ACCESS_TOKEN")
+    if env_token:
+        return env_token
+    return None
+
+
 def print_secret_setup_instructions() -> None:
     """Print safe, copy-pasteable one-time setup commands. Never prints or logs any secret value."""
     print(
@@ -259,6 +285,7 @@ __all__ = [
     "load_procore_app_profile",
     "load_procore_app_profile_from_dict",
     "get_procore_client_secret",
+    "get_procore_access_token",
     "print_secret_setup_instructions",
     "get_environment_config",
     "EmbeddedSecretError",

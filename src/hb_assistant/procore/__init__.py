@@ -1,9 +1,20 @@
-"""Procore foundation: endpoint contract + dry-run audit.
+"""Procore foundation: GET-only HTTP client, dry-run audit, and dry-run sync.
 
-Read-only by construction. The contract carries ``http_method: Literal["GET"]``
-on every endpoint — a writeback endpoint cannot be loaded. No HTTP client
-lives in this module; live access is deferred until a future prompt wires
-OAuth + a Procore client.
+Read-only by construction. The endpoint contract carries ``http_method:
+Literal["GET"]`` on every endpoint — a writeback endpoint cannot be loaded.
+The HTTP client (:class:`hb_assistant.procore.http_client.ProcoreHTTPClient`)
+requires an OAuth access token via an injectable provider and fails closed
+with :class:`ProcoreAuthRequired` if none is available. The client never
+consumes ``PROCORE_CLIENT_SECRET`` as a bearer credential.
+
+OAuth token-exchange itself is not implemented in this module; until it is,
+operators populate ``PROCORE_ACCESS_TOKEN`` (env) or the macOS Keychain
+account ``access-token`` under service ``hb-assistant-procore``.
+
+The sync coordinator (:class:`ProcoreSyncCoordinator`) supports a redacted
+dry-run plan (default) and an explicit ``apply`` mode that writes only to
+local SQLite. Pending project mappings are rejected unless the caller passes
+``allow_pending=True``; the prior stub-projects fallback has been removed.
 
 Hard guardrails enforced at type + data level:
 - Correspondence endpoint exists but is marked ``status="excluded"``.
@@ -14,6 +25,14 @@ Hard guardrails enforced at type + data level:
 
 from .auditor import EndpointAuditor
 from .auth import AUTH_TOKEN_FILE_NAME, check_auth_status
+from .errors import (
+    ProcoreAPIError,
+    ProcoreAuthRequired,
+    ProcoreMappingUnavailable,
+    ProcorePendingProjectRejected,
+    ProcoreRateLimitError,
+)
+from .http_client import ProcoreHTTPClient
 from .loader import (
     EndpointContractError,
     ProcoreProjectsError,
@@ -37,6 +56,11 @@ from .obsidian import (
     procore_obsidian_preview,
     reset_procore_obsidian_caches,
 )
+from .sync import (
+    ProcoreSyncCoordinator,
+    SyncReceipt,
+    run_sync,
+)
 
 __all__ = [
     "AUTH_TOKEN_FILE_NAME",
@@ -47,16 +71,25 @@ __all__ = [
     "EndpointStatus",
     "MappingValidationReport",
     "PROCORE_GUARDRAILS",
+    "ProcoreAPIError",
+    "ProcoreAuthRequired",
     "ProcoreEndpoint",
     "ProcoreEndpointContract",
+    "ProcoreHTTPClient",
+    "ProcoreMappingUnavailable",
     "ProcoreObsidianRenderer",
+    "ProcorePendingProjectRejected",
     "ProcoreProjectMapping",
     "ProcoreProjectsError",
     "ProcoreProjectsRegistry",
+    "ProcoreRateLimitError",
+    "ProcoreSyncCoordinator",
     "Sensitivity",
+    "SyncReceipt",
     "check_auth_status",
     "load_endpoint_contract",
     "load_procore_projects",
     "procore_obsidian_preview",
     "reset_procore_obsidian_caches",
+    "run_sync",
 ]

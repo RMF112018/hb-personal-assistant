@@ -45,3 +45,66 @@ class ProcoreRateLimitError(ProcoreAPIError):
     """Specialization for 429 responses (promotes rate headers)."""
 
     pass
+
+
+class ProcoreAuthRequired(ProcoreAPIError):
+    """Raised when an HTTP request would be made without a valid access token.
+
+    The Procore client must never reuse ``PROCORE_CLIENT_SECRET`` as a bearer
+    credential. If no access token is available, requests fail closed with
+    this error rather than silently sending the client secret on the wire.
+    """
+
+    def __init__(
+        self,
+        message: str = "no_access_token_available",
+        correlation_id: Optional[str] = None,
+    ) -> None:
+        super().__init__(
+            status=0,
+            code="auth_required",
+            message=message,
+            correlation_id=correlation_id,
+        )
+
+
+class ProcorePendingProjectRejected(ProcoreAPIError):
+    """Raised when a sync plan or apply targets a project whose mapping status
+    is ``pending``. Callers must pass ``allow_pending=True`` to override.
+    """
+
+    def __init__(
+        self,
+        pending_keys: list[str],
+        correlation_id: Optional[str] = None,
+    ) -> None:
+        super().__init__(
+            status=0,
+            code="pending_project_rejected",
+            message=(
+                "pending project(s) cannot be a default sync target: "
+                f"{sorted(pending_keys)}. Pass allow_pending=True to override."
+            ),
+            correlation_id=correlation_id,
+        )
+        self.pending_keys = list(pending_keys)
+
+
+class ProcoreMappingUnavailable(ProcoreAPIError):
+    """Raised when the real Procore project mapping cannot be loaded.
+
+    Replaces the prior practice of falling back to a hard-coded stub project
+    list. The sync coordinator must never fabricate project IDs.
+    """
+
+    def __init__(
+        self,
+        message: str = "procore project mapping unavailable",
+        correlation_id: Optional[str] = None,
+    ) -> None:
+        super().__init__(
+            status=0,
+            code="mapping_unavailable",
+            message=message,
+            correlation_id=correlation_id,
+        )

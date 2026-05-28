@@ -2,12 +2,14 @@
 GET-only Procore HTTP client foundation.
 
 - Strictly GET-only (runtime guard + static scan in tests).
-- Environment + secret obtained at request time only from the Prompt_02 config loader (never stored).
+- Authorization uses an OAuth **access token** (never the client secret).
+  Token is obtained at request time via an injectable provider and is never
+  stored on the client instance.
 - Injectable transport for 100% mockable unit tests (no real calls ever in tests).
 - Correlation ID on every request.
 - Aggressive redaction (no auth, tokens, or bodies in logs/exceptions/evidence).
 - Pagination + retry/backoff driven by Prompt_01 Decision Register facts.
-- Safe normalized errors.
+- Safe normalized errors. Missing access token → ``ProcoreAuthRequired``.
 
 All live calls must be explicitly dry-run/apply in consuming code.
 """
@@ -17,29 +19,37 @@ from __future__ import annotations
 import uuid
 from typing import Any, Callable, Dict, Iterator, Optional
 
-from hb_assistant.procore.errors import ProcoreAPIError, ProcoreRateLimitError
+from hb_assistant.procore.errors import (
+    ProcoreAPIError,
+    ProcoreAuthRequired,
+    ProcoreRateLimitError,
+)
 from hb_assistant.procore.pagination import ProcorePaginator
 from hb_assistant.procore.redaction import (
     redact_request,
     redact_response,
 )
 
-# Prompt_02 config interface (used at runtime only; secret never stored in this client)
+# Prompt_02 config interface (used at runtime only; token never stored in this client).
+# Note: the client deliberately does not import ``get_procore_client_secret``. Reusing
+# the client secret as a bearer credential is a Phase 04 Prompt 01 hazard that this
+# module fails closed against.
 try:
     from hb_assistant.procore.config import (
         HB_COMPANY_ID,
         get_environment_config,
-        get_procore_client_secret,
+        get_procore_access_token,
     )
 except Exception:  # pragma: no cover - graceful for tests that mock the whole layer
     def get_environment_config(env: Optional[str] = None) -> Dict[str, Any]:  # type: ignore
         return {"api_base": "https://sandbox.procore.com", "procore_company_id_header": 5280}
-    def get_procore_client_secret() -> str:  # type: ignore
-        return "TEST_SECRET_ONLY_IN_MOCKED_TESTS"
+    def get_procore_access_token() -> Optional[str]:  # type: ignore
+        return None
     HB_COMPANY_ID = 5280
 
 
 Transport = Callable[[str, str, Dict[str, str], Optional[Dict[str, Any]]], Any]
+AccessTokenProvider = Callable[[], Optional[str]]
 
 
 class ProcoreHTTPClient:
@@ -50,10 +60,14 @@ class ProcoreHTTPClient:
         *,
         environment: str = "sandbox",
         transport: Optional[Transport] = None,
+        access_token_provider: Optional[AccessTokenProvider] = None,
         user_agent: str = "HB-Personal-Assistant/1.3.0 (GET-only)",
     ):
         self.environment = environment
         self._transport = transport  # injectable for tests
+        self._access_token_provider: AccessTokenProvider = (
+            access_token_provider if access_token_provider is not None else get_procore_access_token
+        )
         self.user_agent = user_agent
         self._env_config = get_environment_config(environment)
 
@@ -67,9 +81,11 @@ class ProcoreHTTPClient:
             )
 
     def _build_headers(self, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
-        secret = get_procore_client_secret()  # obtained at the last possible moment
+        access_token = self._access_token_provider()  # obtained at the last possible moment
+        if not access_token:
+            raise ProcoreAuthRequired()
         headers = {
-            "Authorization": f"Bearer {secret}",
+            "Authorization": f"Bearer {access_token}",
             "Procore-Company-Id": str(self._env_config.get("procore_company_id_header", HB_COMPANY_ID)),
             "User-Agent": self.user_agent,
             "Accept": "application/json",
@@ -77,7 +93,7 @@ class ProcoreHTTPClient:
         }
         if extra:
             headers.update(extra)
-        # Never keep the secret in any instance state
+        # Never keep the token in any instance state
         return headers
 
     def _get_base_url(self) -> str:
@@ -144,7 +160,7 @@ class ProcoreHTTPClient:
     def get(self, path: str, params: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
         return self._request("GET", path, params=params, **kwargs)
 
-    def get_paginated(
+    def paginate(
         self, path: str, params: Optional[Dict[str, Any]] = None, *, per_page: int = 100
     ) -> Iterator[dict]:
         def fetch(p: Dict[str, Any]) -> Any:

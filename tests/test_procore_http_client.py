@@ -17,16 +17,22 @@ from typing import Any, Callable, Dict, List
 
 import pytest
 
-from hb_assistant.procore.errors import ProcoreAPIError, ProcoreRateLimitError
+from hb_assistant.procore.errors import (
+    ProcoreAPIError,
+    ProcoreAuthRequired,
+    ProcoreRateLimitError,
+)
 from hb_assistant.procore.http_client import ProcoreHTTPClient
 
+SYNTHETIC_ACCESS_TOKEN = "synthetic-test-access-token"
 
-@pytest.fixture(autouse=True)
-def _mock_procore_secret(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "hb_assistant.procore.http_client.get_procore_client_secret",
-        lambda: "TEST_SECRET",
-    )
+
+def _stub_token_provider() -> str:
+    return SYNTHETIC_ACCESS_TOKEN
+
+
+def _empty_token_provider() -> str | None:
+    return None
 
 
 # --- Minimal mock transport support -------------------------------------------------
@@ -111,7 +117,7 @@ def test_single_get_happy_path():
     transport, calls = make_recording_transport([
         FakeResponse(200, {"id": 123, "name": "Test"}, headers={"X-Request-Id": "corr-1"})
     ])
-    client = ProcoreHTTPClient(environment="sandbox", transport=transport)
+    client = ProcoreHTTPClient(environment="sandbox", transport=transport, access_token_provider=_stub_token_provider)
     resp = client.get("/rest/v1.0/projects/123")
 
     assert len(calls) == 1
@@ -126,7 +132,7 @@ def test_single_get_happy_path():
 
 def test_get_only_runtime_guard():
     transport, _ = make_recording_transport([])
-    client = ProcoreHTTPClient(environment="sandbox", transport=transport)
+    client = ProcoreHTTPClient(environment="sandbox", transport=transport, access_token_provider=_stub_token_provider)
 
     with pytest.raises(ProcoreAPIError) as exc:
         client._request("POST", "/rest/v1.0/anything")  # type: ignore[attr-defined]
@@ -138,7 +144,7 @@ def test_error_normalization_and_redaction():
     transport, _ = make_recording_transport([
         FakeResponse(403, {"message": "forbidden"}, headers={"Authorization": "Bearer SECRET"})
     ])
-    client = ProcoreHTTPClient(environment="sandbox", transport=transport)
+    client = ProcoreHTTPClient(environment="sandbox", transport=transport, access_token_provider=_stub_token_provider)
 
     with pytest.raises(ProcoreAPIError) as exc:
         client.get("/rest/v1.0/secret-stuff")
@@ -155,10 +161,51 @@ def test_429_rate_limit_error_with_retry_after():
     transport, _ = make_recording_transport([
         FakeResponse(429, {}, headers={"Retry-After": "2", "X-RateLimit-Remaining": "0"})
     ])
-    client = ProcoreHTTPClient(environment="sandbox", transport=transport)
+    client = ProcoreHTTPClient(environment="sandbox", transport=transport, access_token_provider=_stub_token_provider)
 
     with pytest.raises(ProcoreRateLimitError) as exc:
         client.get("/rest/v1.0/heavy")
 
     assert exc.value.status == 429
     assert exc.value.retry_after == 2
+
+
+# --- Phase 04 Prompt 01 hardening tests --------------------------------------
+
+def test_client_fails_closed_when_no_access_token():
+    """No access token from the provider must raise ProcoreAuthRequired
+    before any transport invocation. The client must never reuse
+    PROCORE_CLIENT_SECRET as a bearer credential.
+    """
+    def _exploding_transport(*args: Any, **kwargs: Any) -> Any:  # noqa: ARG001
+        raise AssertionError("transport must not be reached without an access token")
+
+    client = ProcoreHTTPClient(
+        environment="sandbox",
+        transport=_exploding_transport,
+        access_token_provider=_empty_token_provider,
+    )
+    with pytest.raises(ProcoreAuthRequired):
+        client.get("/rest/v1.1/projects")
+
+
+def test_authorization_header_uses_access_token_not_client_secret():
+    """The Authorization header must carry the access token from the provider,
+    not anything sourced from the client secret loader.
+    """
+    transport, calls = make_recording_transport([FakeResponse(200, {"items": []})])
+    client = ProcoreHTTPClient(
+        environment="sandbox",
+        transport=transport,
+        access_token_provider=_stub_token_provider,
+    )
+    client.get("/rest/v1.1/projects")
+    assert calls[0]["headers"]["Authorization"] == f"Bearer {SYNTHETIC_ACCESS_TOKEN}"
+
+
+def test_paginate_method_aligned_with_sync_call_site():
+    """sync.py invokes ``client.paginate(...)``. The HTTP client must expose
+    that exact name; the legacy ``get_paginated`` name must not survive.
+    """
+    assert hasattr(ProcoreHTTPClient, "paginate")
+    assert not hasattr(ProcoreHTTPClient, "get_paginated")
