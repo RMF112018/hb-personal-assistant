@@ -23,16 +23,14 @@ from hb_assistant.procore.errors import (
     ProcoreRateLimitError,
 )
 from hb_assistant.procore.http_client import ProcoreHTTPClient
+from hb_assistant.procore.token_provider import (
+    MissingTokenProvider,
+    StaticTokenProvider,
+)
 
 SYNTHETIC_ACCESS_TOKEN = "synthetic-test-access-token"
-
-
-def _stub_token_provider() -> str:
-    return SYNTHETIC_ACCESS_TOKEN
-
-
-def _empty_token_provider() -> str | None:
-    return None
+_stub_token_provider = StaticTokenProvider(SYNTHETIC_ACCESS_TOKEN)
+_empty_token_provider = MissingTokenProvider()
 
 
 # --- Minimal mock transport support -------------------------------------------------

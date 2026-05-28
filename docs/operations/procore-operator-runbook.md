@@ -197,6 +197,26 @@ export PROCORE_ACCESS_TOKEN='your-access-token'
 The existing `PROCORE_CLIENT_SECRET` env / Keychain account remains in place
 for future OAuth bootstrap but is no longer accepted as a bearer credential.
 
+### OAuth token cache (Phase 04 Prompt 02)
+
+The HTTP client also reads a local OAuth token cache (read-only) at:
+
+```
+~/Library/Application Support/HB Personal Assistant/auth/procore_token.json
+```
+
+Expected JSON shape (extra keys are tolerated):
+
+```json
+{"access_token": "<token>", "expires_at": "<ISO 8601 UTC>"}
+```
+
+The cache file must be `0600` (owner-only). The token provider lookup order is
+**env / Keychain → cache → missing**; the first source that yields a non-empty
+token wins. The cache file is consumed only — populating / refreshing it is
+**not** yet implemented (manual until a later prompt). An expired or malformed
+cache file is silently ignored.
+
 ## Pending project sync targets (Phase 04 Prompt 01)
 
 `hb-assistant procore sync run` defaults to mapped pilots only. Projects with

@@ -61,6 +61,13 @@ from .sync import (
     SyncReceipt,
     run_sync,
 )
+from .token_provider import (
+    EnvOrKeychainTokenProvider,
+    LocalOAuthCacheTokenProvider,
+    MissingTokenProvider,
+    ProcoreTokenProvider,
+    default_procore_token_provider,
+)
 
 __all__ = [
     "AUTH_TOKEN_FILE_NAME",
@@ -69,7 +76,10 @@ __all__ = [
     "EndpointAuditor",
     "EndpointContractError",
     "EndpointStatus",
+    "EnvOrKeychainTokenProvider",
+    "LocalOAuthCacheTokenProvider",
     "MappingValidationReport",
+    "MissingTokenProvider",
     "PROCORE_GUARDRAILS",
     "ProcoreAPIError",
     "ProcoreAuthRequired",
@@ -84,9 +94,11 @@ __all__ = [
     "ProcoreProjectsRegistry",
     "ProcoreRateLimitError",
     "ProcoreSyncCoordinator",
+    "ProcoreTokenProvider",
     "Sensitivity",
     "SyncReceipt",
     "check_auth_status",
+    "default_procore_token_provider",
     "load_endpoint_contract",
     "load_procore_projects",
     "procore_obsidian_preview",

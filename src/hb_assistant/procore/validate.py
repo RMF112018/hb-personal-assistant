@@ -255,6 +255,25 @@ def _check_pending_projects_not_default_target() -> dict[str, Any]:
     }
 
 
+def _check_token_provider_default_chain_shape() -> dict[str, Any]:
+    """Phase 04 Prompt 02: the default Procore token provider must be a
+    composed chain whose providers are, in order: env_or_keychain, oauth_cache,
+    missing. This is the fail-closed boundary the HTTP client relies on.
+    """
+    from hb_assistant.procore.token_provider import default_procore_token_provider
+
+    chain = default_procore_token_provider()
+    providers = getattr(chain, "providers", None)
+    if not providers:
+        return {"ok": False, "detail": {"reason": "no_providers"}}
+    actual_kinds = [getattr(p, "kind", type(p).__name__) for p in providers]
+    expected_kinds = ["env_or_keychain", "oauth_cache", "missing"]
+    return {
+        "ok": actual_kinds == expected_kinds,
+        "detail": {"expected": expected_kinds, "actual": actual_kinds},
+    }
+
+
 def _check_procore_init_exports_complete() -> dict[str, Any]:
     """Phase 04: the public ``hb_assistant.procore`` API must re-export the
     sync coordinator, ``run_sync``, ``SyncReceipt``, and the new fail-closed
@@ -269,6 +288,11 @@ def _check_procore_init_exports_complete() -> dict[str, Any]:
         "ProcoreAuthRequired",
         "ProcorePendingProjectRejected",
         "ProcoreMappingUnavailable",
+        "ProcoreTokenProvider",
+        "MissingTokenProvider",
+        "EnvOrKeychainTokenProvider",
+        "LocalOAuthCacheTokenProvider",
+        "default_procore_token_provider",
     }
     missing = sorted(name for name in required if not hasattr(procore_pkg, name))
     return {
@@ -330,6 +354,7 @@ def run_procore_validate(
         _safe_check("http_client_demands_access_token", _check_http_client_demands_access_token),
         _safe_check("sync_pagination_method_aligned", _check_sync_pagination_method_aligned),
         _safe_check("pending_projects_not_default_target", _check_pending_projects_not_default_target),
+        _safe_check("token_provider_default_chain_shape", _check_token_provider_default_chain_shape),
         _safe_check("procore_init_exports_complete", _check_procore_init_exports_complete),
     ]
 

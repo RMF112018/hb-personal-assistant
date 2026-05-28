@@ -17,7 +17,7 @@ All live calls must be explicitly dry-run/apply in consuming code.
 from __future__ import annotations
 
 import uuid
-from typing import Any, Callable, Dict, Iterator, Optional
+from typing import Any, Callable, Dict, Iterator, Optional, Union
 
 from hb_assistant.procore.errors import (
     ProcoreAPIError,
@@ -29,27 +29,30 @@ from hb_assistant.procore.redaction import (
     redact_request,
     redact_response,
 )
+from hb_assistant.procore.token_provider import (
+    ProcoreTokenProvider,
+    adapt_token_source,
+)
 
 # Prompt_02 config interface (used at runtime only; token never stored in this client).
 # Note: the client deliberately does not import ``get_procore_client_secret``. Reusing
 # the client secret as a bearer credential is a Phase 04 Prompt 01 hazard that this
-# module fails closed against.
+# module fails closed against; access tokens come exclusively from a
+# :class:`ProcoreTokenProvider` (Phase 04 Prompt 02).
 try:
     from hb_assistant.procore.config import (
         HB_COMPANY_ID,
         get_environment_config,
-        get_procore_access_token,
     )
 except Exception:  # pragma: no cover - graceful for tests that mock the whole layer
     def get_environment_config(env: Optional[str] = None) -> Dict[str, Any]:  # type: ignore
         return {"api_base": "https://sandbox.procore.com", "procore_company_id_header": 5280}
-    def get_procore_access_token() -> Optional[str]:  # type: ignore
-        return None
     HB_COMPANY_ID = 5280
 
 
 Transport = Callable[[str, str, Dict[str, str], Optional[Dict[str, Any]]], Any]
-AccessTokenProvider = Callable[[], Optional[str]]
+# Accepts a typed provider, a plain callable (back-compat), or None (default chain).
+AccessTokenProvider = Union[ProcoreTokenProvider, Callable[[], Optional[str]]]
 
 
 class ProcoreHTTPClient:
@@ -65,8 +68,8 @@ class ProcoreHTTPClient:
     ):
         self.environment = environment
         self._transport = transport  # injectable for tests
-        self._access_token_provider: AccessTokenProvider = (
-            access_token_provider if access_token_provider is not None else get_procore_access_token
+        self._access_token_provider: ProcoreTokenProvider = adapt_token_source(
+            access_token_provider
         )
         self.user_agent = user_agent
         self._env_config = get_environment_config(environment)
@@ -81,7 +84,7 @@ class ProcoreHTTPClient:
             )
 
     def _build_headers(self, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
-        access_token = self._access_token_provider()  # obtained at the last possible moment
+        access_token = self._access_token_provider.get_access_token()  # obtained at the last possible moment
         if not access_token:
             raise ProcoreAuthRequired()
         headers = {
