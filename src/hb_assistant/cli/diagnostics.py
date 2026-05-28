@@ -323,7 +323,7 @@ def mail_sample(
     client = GraphHttpClient(token_getter)
     mail = MailClient(client, cfg)
     items = mail.list_inbound(top=3)
-    payload = {"count": len(items), "samples": [i.model_dump() for i in items]}
+    payload = {"count": len(items), "samples": [i.model_dump(mode="json") for i in items]}
     typer.echo(json.dumps(payload, indent=2))
     raise typer.Exit(0)
 

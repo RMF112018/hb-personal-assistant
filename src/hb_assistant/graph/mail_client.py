@@ -28,12 +28,12 @@ class MailClient:
 
     def _inbound_window(self) -> str:
         days = self.cfg.mail.inbound_lookback_days
-        since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
         return f"receivedDateTime ge {since}"
 
     def _sent_window(self) -> str:
         days = self.cfg.mail.sent_lookback_days
-        since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
         return f"sentDateTime ge {since}"
 
     def list_inbound(self, top: int = 25) -> List[Email]:
