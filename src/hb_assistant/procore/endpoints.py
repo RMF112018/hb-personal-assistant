@@ -86,7 +86,7 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         sensitivity="medium",
         sqlite_target="procore_live_records",
         live_verified=False,
-        verification_reason="child_endpoint_pending_docs_verification",
+        verification_reason="populated_via_rfis_parent_fetch_2026-05-28",
     ),
     EndpointAdapter(
         endpoint_id="submittals",

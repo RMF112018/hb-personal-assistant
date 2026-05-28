@@ -32,6 +32,23 @@ records count --project --endpoint --json` for verification.
 | Redaction | `src/hb_assistant/procore/redaction.py` (added `redact_source_url`) | Path-only source URL; token-shape masking. |
 | SQLite layer | `src/hb_assistant/store/procore_repositories.py` (new) + V6 migration in `migrator.py` | `procore_live_sync_runs`, `procore_live_records`, `procore_live_sync_watermarks` with CHECK constraints on `raw_body_persisted=0` and `redaction_applied=1`. |
 
+## Inline N+1 child fetch (rfis -> rfi-responses)
+
+Procore's RFI list endpoint does not return replies inline, so the
+orchestrator special-cases `rfis`: after each parent RFI is upserted, it
+issues one additional GET to `/rest/v1.0/projects/{project_id}/rfis/{rfi_id}/replies`,
+normalizes each reply via `normalize_rfi_reply`, and upserts as
+`endpoint_id="rfi-responses"` with `parent_procore_id=<rfi_id>` set. The
+child fetch is capped internally at `max_pages=1, max_items=50` per parent
+and shares the same GET-only / bearer-token / redaction guarantees as the
+parent path. A 4xx on one child fetch increments `child_errors_count` in
+the receipt and continues to the next parent — the run is not aborted.
+
+This pattern is the template for other parent/child families once their
+adapters land. The registry's `rfi-responses` row stays `live_verified=False`
+because there is no usable direct-call surface (no `--parent-id` flag);
+child rows are populated only as a byproduct of the parent fetch.
+
 ## Verified vs unverified endpoints
 
 5 of 14 endpoint IDs are `live_verified=True` and execute the full chain:

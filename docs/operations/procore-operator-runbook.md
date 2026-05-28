@@ -518,6 +518,50 @@ flip `live_verified=False` and record
 
 Latest smoke evidence: `docs/evidence/construction-intelligence-phase-04a/03-live-get-smoke-and-promotion.md`.
 
+## Phase 04A Prompt 04: RFI live apply with reply children
+
+After a successful smoke, apply RFIs (and their replies) to local SQLite:
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical \
+  --endpoint rfis \
+  --apply --sqlite-only \
+  --max-pages 1 --max-items 5 \
+  --confirm-live-get --json
+```
+
+The orchestrator issues one GET to `/rest/v1.0/projects/{id}/rfis` for the
+parent list, then issues one GET per parent at
+`/rest/v1.0/projects/{id}/rfis/{rfi_id}/replies`. Replies persist as rows
+with `endpoint_id="rfi-responses"` and `parent_procore_id=<rfi_id>` set.
+Child fetch is capped internally at `max_pages=1, max_items=50` per parent.
+A 4xx on one child fetch increments `child_errors_count` and continues to
+the next parent — the run is not aborted.
+
+Receipt fields specific to this path:
+
+- `parent_retrieved_count`, `parent_normalized_count`, `parent_upserted_count`
+- `child_endpoint_id` (`"rfi-responses"`), `child_retrieved_count`,
+  `child_normalized_count`, `child_upserted_count`, `child_errors_count`
+
+Verify persistence:
+
+```bash
+hb-assistant procore live records count --project tropical --endpoint rfis --json
+hb-assistant procore live records count --project tropical --endpoint rfi-responses --json
+```
+
+Re-running the same apply does **not** duplicate rows — the upsert key
+includes `(project_key, endpoint_id, parent_procore_id, procore_record_id)`.
+
+Latest apply evidence: `docs/evidence/construction-intelligence-phase-04a/04-rfi-live-sync.md`.
+
+Note: `rfi-responses` remains `live_verified=False` in the registry. Its
+records are populated only as a byproduct of the rfis parent fetch — direct
+CLI invocation of `procore live sync --endpoint rfi-responses` correctly
+returns `state="not_live_verified"` because no parent rfi id is supplied.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

@@ -34,6 +34,7 @@ from hb_assistant.procore.normalizers import (
     normalize_meeting,
     normalize_observation,
     normalize_rfi,
+    normalize_rfi_reply,
     normalize_submittal,
 )
 from hb_assistant.procore.redaction import redact_source_url
@@ -193,6 +194,14 @@ def _build_receipt(
     completed_at: str,
     evidence_path: Optional[str],
     redacted_errors: List[Dict[str, Any]],
+    parent_retrieved_count: int = 0,
+    parent_normalized_count: int = 0,
+    parent_upserted_count: int = 0,
+    child_endpoint_id: Optional[str] = None,
+    child_retrieved_count: int = 0,
+    child_normalized_count: int = 0,
+    child_upserted_count: int = 0,
+    child_errors_count: int = 0,
 ) -> Dict[str, Any]:
     return {
         "receipt_id": receipt_id,
@@ -222,6 +231,14 @@ def _build_receipt(
         "started_at": started_at,
         "completed_at": completed_at,
         "evidence_path": evidence_path,
+        "parent_retrieved_count": parent_retrieved_count,
+        "parent_normalized_count": parent_normalized_count,
+        "parent_upserted_count": parent_upserted_count,
+        "child_endpoint_id": child_endpoint_id,
+        "child_retrieved_count": child_retrieved_count,
+        "child_normalized_count": child_normalized_count,
+        "child_upserted_count": child_upserted_count,
+        "child_errors_count": child_errors_count,
     }
 
 
@@ -545,8 +562,22 @@ def run_live_sync(
             redacted_errors=redacted_errors,
         )
 
-    # Normalize + upsert
+    # Normalize + upsert. For `rfis`, after each parent upsert, perform an
+    # N+1 child GET to /rfis/{rfi_id}/replies and persist replies as
+    # endpoint_id="rfi-responses" with parent_procore_id set.
     fetched_at = _now_utc()
+    parent_retrieved_count = len(items)
+    parent_normalized_count = 0
+    parent_upserted_count = 0
+    child_endpoint_id: Optional[str] = None
+    child_retrieved_count = 0
+    child_normalized_count = 0
+    child_upserted_count = 0
+    child_errors_count = 0
+    fetch_rfi_replies = adapter.endpoint_id == "rfis" and will_write_db
+    if fetch_rfi_replies:
+        child_endpoint_id = "rfi-responses"
+
     for raw in items:
         try:
             record = normalizer(
@@ -559,6 +590,7 @@ def run_live_sync(
         except (TypeError, ValueError) as exc:
             redacted_errors.append({"normalize_error": type(exc).__name__})
             continue
+        parent_normalized_count += 1
         normalized_count += 1
 
         if not will_write_db:
@@ -584,9 +616,83 @@ def run_live_sync(
                 now_utc=fetched_at,
                 db_path=db_path,
             )
+            parent_upserted_count += 1
             sqlite_upserted_count += 1
         except Exception:  # noqa: BLE001
             redacted_errors.append({"upsert_error": "sqlite_upsert_failed"})
+            continue
+
+        if not fetch_rfi_replies:
+            continue
+
+        # N+1: fetch this RFI's replies, normalize each, upsert as a child row.
+        reply_path = f"/rest/v1.0/projects/{procore_project_id}/rfis/{record_id}/replies"
+        try:
+            reply_items = list(
+                client.paginate(reply_path, per_page=50, max_pages=1, max_items=50)
+            )
+        except ProcoreAPIError as child_exc:
+            child_errors_count += 1
+            redacted_errors.append(
+                {
+                    "child_transport_error": child_exc.code,
+                    "status": child_exc.status,
+                    "parent_procore_id": record_id,
+                }
+            )
+            continue
+        except Exception:  # noqa: BLE001
+            child_errors_count += 1
+            redacted_errors.append(
+                {"child_transport_error": "unexpected", "parent_procore_id": record_id}
+            )
+            continue
+
+        for reply_raw in reply_items:
+            child_retrieved_count += 1
+            try:
+                reply_record = normalize_rfi_reply(
+                    reply_raw,
+                    parent_rfi_stable_key=str(record_id),
+                    project_key=project_key,
+                    endpoint_id="rfi-responses",
+                    correlation_id=correlation_id,
+                    fetched_at=fetched_at,
+                )
+            except (TypeError, ValueError):
+                child_errors_count += 1
+                redacted_errors.append({"child_normalize_error": "invalid_reply_payload"})
+                continue
+            child_normalized_count += 1
+            normalized_count += 1
+
+            reply_id = reply_raw.get("id") if isinstance(reply_raw, dict) else None
+            if reply_id is None or reply_id == "":
+                child_errors_count += 1
+                redacted_errors.append({"child_normalize_error": "missing_reply_id"})
+                continue
+            try:
+                upsert_procore_live_record(
+                    project_key=project_key,
+                    procore_project_id=str(procore_project_id),
+                    endpoint_id="rfi-responses",
+                    procore_record_id=str(reply_id),
+                    parent_procore_id=str(record_id),
+                    normalized_fields=reply_record["canonical_fields"],
+                    review_required=True,
+                    sensitive_reason=reply_record.get("routing_reason"),
+                    source_url_redacted=redact_source_url(reply_path),
+                    last_sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                )
+                child_upserted_count += 1
+                sqlite_upserted_count += 1
+            except Exception:  # noqa: BLE001
+                child_errors_count += 1
+                redacted_errors.append(
+                    {"child_upsert_error": "sqlite_upsert_failed", "parent_procore_id": record_id}
+                )
 
     completed_at = _now_utc()
     state = "success" if not redacted_errors else "partial_success"
@@ -647,6 +753,14 @@ def run_live_sync(
         completed_at=completed_at,
         evidence_path=evidence_path,
         redacted_errors=redacted_errors,
+        parent_retrieved_count=parent_retrieved_count,
+        parent_normalized_count=parent_normalized_count,
+        parent_upserted_count=parent_upserted_count,
+        child_endpoint_id=child_endpoint_id,
+        child_retrieved_count=child_retrieved_count,
+        child_normalized_count=child_normalized_count,
+        child_upserted_count=child_upserted_count,
+        child_errors_count=child_errors_count,
     )
 
 
