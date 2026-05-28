@@ -39,13 +39,19 @@ from hb_assistant.procore.normalizers import (
     normalize_rfi,
     normalize_rfi_payload_block,
     normalize_rfi_reply,
+    normalize_submittal,
+    normalize_submittal_package,
+    normalize_submittal_payload_block,
+    normalize_submittal_response,
 )
 
 # Endpoint-id keyed normalizer dispatch. Each entry maps to a normalizer block
-# function returning (parent_records, child_records). Extended by Prompts 05–08.
+# function returning (parent_records, *child_records). Extended by Prompts 05–08.
 RFI_ENDPOINT_ID = "list-rfis"
+SUBMITTAL_ENDPOINT_ID = "list-submittals"
 NORMALIZER_DISPATCH: Dict[str, Any] = {
     RFI_ENDPOINT_ID: normalize_rfi_payload_block,
+    SUBMITTAL_ENDPOINT_ID: normalize_submittal_payload_block,
 }
 
 
@@ -181,6 +187,7 @@ class ProcoreSyncCoordinator:
         policy: Policy = "auto",
         allow_pending: bool = False,
         rfi_preview_payload: Optional[List[Dict[str, Any]]] = None,
+        submittal_preview_payload: Optional[List[Dict[str, Any]]] = None,
     ) -> SyncReceipt:
         """Dry-run default path. Audit gate first. Produces serializable redacted plan. Zero side effects.
 
@@ -264,8 +271,9 @@ class ProcoreSyncCoordinator:
             }
             if ep.endpoint_id in NORMALIZER_DISPATCH:
                 entry["normalization_schema_version"] = NORMALIZATION_SCHEMA_VERSION
-                entry["would_persist_children_separately"] = (
-                    ep.endpoint_id == RFI_ENDPOINT_ID
+                entry["would_persist_children_separately"] = ep.endpoint_id in (
+                    RFI_ENDPOINT_ID,
+                    SUBMITTAL_ENDPOINT_ID,
                 )
             if ep.endpoint_id == RFI_ENDPOINT_ID and rfi_preview_payload is not None:
                 rfi_records, reply_records = normalize_rfi_payload_block(
@@ -279,6 +287,32 @@ class ProcoreSyncCoordinator:
                 entry["planned_rfi_record_count"] = len(rfi_records)
                 entry["planned_reply_record_count"] = len(reply_records)
                 entry["planned_review_required_count"] = review_required_count
+            if (
+                ep.endpoint_id == SUBMITTAL_ENDPOINT_ID
+                and submittal_preview_payload is not None
+            ):
+                (
+                    submittal_records,
+                    response_records,
+                    package_records,
+                ) = normalize_submittal_payload_block(
+                    submittal_preview_payload,
+                    project_key=project_key or "multi",
+                    endpoint_id=ep.endpoint_id,
+                    correlation_id=self.correlation_id,
+                    fetched_at=datetime.now(timezone.utc).isoformat(),
+                )
+                parent_review_count = sum(
+                    1 for r in submittal_records if r["review_required"]
+                )
+                entry["planned_submittal_record_count"] = len(submittal_records)
+                entry["planned_response_record_count"] = len(response_records)
+                entry["planned_package_record_count"] = len(package_records)
+                # All response + package records are always review_required by
+                # construction; the parent count is the meaningful signal.
+                entry["planned_review_required_count"] = (
+                    parent_review_count + len(response_records) + len(package_records)
+                )
             plan_details.append(entry)
 
         receipt.total_planned_requests = total_requests
@@ -422,6 +456,73 @@ class ProcoreSyncCoordinator:
                         "reply_records_written": reply_written,
                         "status": "success",
                     }
+                elif ep.endpoint_id == SUBMITTAL_ENDPOINT_ID:
+                    submittal_written = 0
+                    response_written = 0
+                    package_written = 0
+                    for item in items:
+                        submittal_record = normalize_submittal(
+                            item,
+                            project_key=project_key or "multi",
+                            endpoint_id=ep.endpoint_id,
+                            correlation_id=self.correlation_id,
+                            fetched_at=fetched_at,
+                        )
+                        upsert_procore_synced_entity(
+                            self.db_path,
+                            submittal_record,
+                            correlation=self.correlation_id,
+                        )
+                        submittal_written += 1
+                        total_items += 1
+                        parent_key = submittal_record["entity_stable_key"]
+                        for raw_response in item.get("responses") or []:
+                            if not isinstance(raw_response, dict):
+                                continue
+                            response_record = normalize_submittal_response(
+                                raw_response,
+                                parent_submittal_stable_key=parent_key,
+                                project_key=project_key or "multi",
+                                endpoint_id=ep.endpoint_id,
+                                correlation_id=self.correlation_id,
+                                fetched_at=fetched_at,
+                            )
+                            upsert_procore_synced_entity(
+                                self.db_path,
+                                response_record,
+                                correlation=self.correlation_id,
+                            )
+                            response_written += 1
+                            total_items += 1
+                        for raw_package in item.get("packages") or []:
+                            if not isinstance(raw_package, dict):
+                                continue
+                            package_record = normalize_submittal_package(
+                                raw_package,
+                                parent_submittal_stable_key=parent_key,
+                                project_key=project_key or "multi",
+                                endpoint_id=ep.endpoint_id,
+                                correlation_id=self.correlation_id,
+                                fetched_at=fetched_at,
+                            )
+                            upsert_procore_synced_entity(
+                                self.db_path,
+                                package_record,
+                                correlation=self.correlation_id,
+                            )
+                            package_written += 1
+                            total_items += 1
+                    items_written = (
+                        submittal_written + response_written + package_written
+                    )
+                    endpoint_entry = {
+                        "endpoint_id": ep.endpoint_id,
+                        "items_written": items_written,
+                        "submittal_records_written": submittal_written,
+                        "response_records_written": response_written,
+                        "package_records_written": package_written,
+                        "status": "success",
+                    }
                 else:
                     items_written = 0
                     for item in items:
@@ -484,6 +585,7 @@ def run_sync(
     allow_pending: bool = False,
     endpoints: Optional[List[str]] = None,
     rfi_preview_payload: Optional[List[Dict[str, Any]]] = None,
+    submittal_preview_payload: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Entry for CLI `procore sync`. Dry-run default. --apply explicit only.
 
@@ -506,6 +608,7 @@ def run_sync(
             policy="full" if full_refresh else "auto",
             allow_pending=allow_pending,
             rfi_preview_payload=rfi_preview_payload,
+            submittal_preview_payload=submittal_preview_payload,
         )
         return plan  # type: ignore[return-value]
     else:

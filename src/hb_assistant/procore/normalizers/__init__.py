@@ -16,10 +16,20 @@ from .rfi import (
     normalize_rfi_payload_block,
     normalize_rfi_reply,
 )
+from .submittal import (
+    normalize_submittal,
+    normalize_submittal_package,
+    normalize_submittal_payload_block,
+    normalize_submittal_response,
+)
 
 __all__ = [
     "NORMALIZATION_SCHEMA_VERSION",
     "normalize_rfi",
     "normalize_rfi_payload_block",
     "normalize_rfi_reply",
+    "normalize_submittal",
+    "normalize_submittal_package",
+    "normalize_submittal_payload_block",
+    "normalize_submittal_response",
 ]

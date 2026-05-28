@@ -96,6 +96,20 @@ For the RFI endpoint specifically, `--apply` persists each RFI as a
 routed for review per the prompt stop-condition). Body text is never persisted
 — reply bodies are reduced to SHA-256 hash-prefix summaries.
 
+For the submittal endpoint (Phase 04 Prompt 05), the same pattern applies with
+three target categories: parents land as `category="submittals"`, each nested
+response lands as `category="submittal_responses"` (always `review_required=True`),
+and each nested package lands as `category="submittal_packages"` (always
+`review_required=True`). Response comment bodies and package descriptions are
+never persisted — both are reduced to SHA-256 hash-prefix summaries via the
+same normalizer helper used for RFI replies.
+
+```bash
+# Submittal dry-run plan
+hb-assistant procore sync run --project tropical --dry-run \
+  --endpoints list-submittals --json
+```
+
 ### Phase 4 — Obsidian projection
 
 ```bash

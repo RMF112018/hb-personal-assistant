@@ -194,3 +194,124 @@ RFI_SAMPLE_PAYLOAD: list[dict[str, Any]] = [
 PROCORE_RFI_FIXTURES: dict[str, list[dict[str, Any]]] = {
     "rfi_sample_payload": RFI_SAMPLE_PAYLOAD,
 }
+
+
+# Phase 04 Prompt 05: synthetic submittal list response.
+#
+# Three submittals with four nested responses and two nested packages total.
+# All identifiers are synthetic (``synthetic-`` prefix) so the repo-wide
+# sensitive scan allowlist does not need extending. Submittal #3 deliberately
+# exercises the review-routing heuristics (status ``revise_and_resubmit``,
+# title contains "contract amendment", missing assignee / ball_in_court).
+SUBMITTAL_SAMPLE_PAYLOAD: list[dict[str, Any]] = [
+    {
+        "id": "synthetic-sub-001",
+        "number": "S-101",
+        "title": "Door hardware schedule",
+        "type": "Shop Drawing",
+        "specification_section": "08 71 00",
+        "status": "approved",
+        "assignee_id": "synthetic-user-21",
+        "ball_in_court_id": "synthetic-user-21",
+        "due_date": "2026-06-10",
+        "initiated_at": "2026-05-15T10:00:00Z",
+        "created_at": "2026-05-15T10:00:00Z",
+        "updated_at": "2026-05-22T11:00:00Z",
+        "html_url": "https://app.procore.example/projects/1/submittals/synthetic-sub-001",
+        "responses": [
+            {
+                "id": "synthetic-sub-001-resp-a",
+                "author_id": "synthetic-user-7",
+                "response_status": "approved_as_noted",
+                "created_at": "2026-05-21T09:00:00Z",
+                "updated_at": "2026-05-21T09:00:00Z",
+                "comment": "Hardware set H-4 confirmed; see annotated drawings.",
+            },
+        ],
+        "packages": [
+            {
+                "id": "synthetic-sub-001-pkg-a",
+                "number": "PKG-08-A",
+                "title": "Door & hardware package",
+                "status": "open",
+                "created_at": "2026-05-14T08:00:00Z",
+                "updated_at": "2026-05-22T11:00:00Z",
+            },
+        ],
+    },
+    {
+        "id": "synthetic-sub-002",
+        "number": "S-102",
+        "title": "Mechanical equipment cut sheets",
+        "type": "Product Data",
+        "specification_section": "23 00 00",
+        "status": "open",
+        "assignee_id": "synthetic-user-13",
+        "ball_in_court_id": "synthetic-user-13",
+        "due_date": "2026-06-20",
+        "initiated_at": "2026-05-18T13:00:00Z",
+        "created_at": "2026-05-18T13:00:00Z",
+        "updated_at": "2026-05-26T17:30:00Z",
+        "html_url": "https://app.procore.example/projects/1/submittals/synthetic-sub-002",
+        "responses": [
+            {
+                "id": "synthetic-sub-002-resp-a",
+                "author_id": "synthetic-user-9",
+                "response_status": "pending_review",
+                "created_at": "2026-05-24T12:00:00Z",
+                "updated_at": "2026-05-24T12:00:00Z",
+                "comment": "Reviewing chiller efficiency data.",
+            },
+            {
+                "id": "synthetic-sub-002-resp-b",
+                "author_id": "synthetic-user-13",
+                "response_status": "pending_review",
+                "created_at": "2026-05-26T17:30:00Z",
+                "updated_at": "2026-05-26T17:30:00Z",
+                "comment": "Awaiting performance curves from vendor.",
+            },
+        ],
+        "packages": [],
+    },
+    {
+        "id": "synthetic-sub-003",
+        "number": "S-103",
+        "title": "Contract amendment: partition framing scope shift",
+        "type": "Other",
+        "specification_section": "09 22 00",
+        "status": "revise_and_resubmit",
+        "assignee_id": None,
+        "ball_in_court_id": None,
+        "due_date": "2026-07-01",
+        "initiated_at": "2026-05-23T08:00:00Z",
+        "created_at": "2026-05-23T08:00:00Z",
+        "updated_at": "2026-05-27T12:00:00Z",
+        "html_url": "https://app.procore.example/projects/1/submittals/synthetic-sub-003",
+        "responses": [
+            {
+                "id": "synthetic-sub-003-resp-a",
+                "author_id": "synthetic-user-2",
+                "response_status": "revise_and_resubmit",
+                "created_at": "2026-05-27T12:00:00Z",
+                "updated_at": "2026-05-27T12:00:00Z",
+                "comment": "Resubmit with revised scope language and pricing exhibits.",
+            },
+        ],
+        "packages": [
+            {
+                "id": "synthetic-sub-003-pkg-a",
+                "number": "PKG-09-B",
+                "title": "Partition scope amendment package",
+                "status": "open",
+                "created_at": "2026-05-23T08:00:00Z",
+                "updated_at": "2026-05-27T12:00:00Z",
+                "description": "Captures the amended framing limits and ceiling height adjustments.",
+            },
+        ],
+    },
+]
+
+
+PROCORE_SUBMITTAL_FIXTURES: dict[str, list[dict[str, Any]]] = {
+    "submittal_sample_payload": SUBMITTAL_SAMPLE_PAYLOAD,
+}

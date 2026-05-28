@@ -1,0 +1,349 @@
+{
+  "document": "Phase 04 Prompt 05 \u2014 Submittal dry-run sync normalization receipt",
+  "generated_at_utc": "2026-05-28T00:00:00+00:00",
+  "fixture_source": "hb_assistant.construction.fixtures.procore.SUBMITTAL_SAMPLE_PAYLOAD",
+  "normalization_schema_version": 1,
+  "canonical_field_keys": [
+    "number",
+    "title",
+    "status",
+    "type",
+    "specification_section",
+    "assignee_id",
+    "ball_in_court_id",
+    "due_date",
+    "initiated_at",
+    "created_at",
+    "updated_at",
+    "source_url"
+  ],
+  "response_canonical_field_keys": [
+    "id",
+    "created_at",
+    "updated_at",
+    "author_id",
+    "response_status"
+  ],
+  "package_canonical_field_keys": [
+    "id",
+    "number",
+    "title",
+    "status",
+    "created_at",
+    "updated_at"
+  ],
+  "sync_plan_receipt": {
+    "sync_id": "synthetic-sync-id-submittal-dry-run",
+    "mode": "dry_run",
+    "company_id": "5280",
+    "started_at": "2026-05-28T00:00:00+00:00",
+    "completed_at": "2026-05-28T00:00:00+00:00",
+    "audit_prerequisite_passed": true,
+    "audit_verdict_summary": {
+      "available": 6,
+      "forbidden": 4,
+      "excluded": 1,
+      "deferred": 2
+    },
+    "category_counts": {
+      "submittals": 1
+    },
+    "sensitivity_counts": {},
+    "total_planned_requests": 1,
+    "total_items_normalized": 0,
+    "per_endpoint": [
+      {
+        "endpoint_id": "list-submittals",
+        "category": "submittals",
+        "review_required": false,
+        "planned_requests": 1,
+        "supports_incremental": false,
+        "live_eligible": true,
+        "verification_status": "official_docs_verified",
+        "endpoint_status": "validated",
+        "redacted_request_envelope": {
+          "method": "GET",
+          "path_template": "/rest/v1.0/projects/{project_id}/submittals",
+          "company_id": "5280",
+          "correlation": "synthetic-correlation-submittal-dry-run"
+        },
+        "normalization_schema_version": 1,
+        "would_persist_children_separately": true,
+        "planned_submittal_record_count": 3,
+        "planned_response_record_count": 4,
+        "planned_package_record_count": 2,
+        "planned_review_required_count": 7
+      }
+    ],
+    "redacted_errors": [],
+    "redaction_applied": true,
+    "persisted_to_sqlite": false,
+    "policy_used": "auto",
+    "sensitive_review_routing": "flagged per contract; no automated decisioning",
+    "guardrails": {
+      "local_first": true,
+      "bobby_only_mvp": true,
+      "read_only_external": true,
+      "no_procore_writeback": true,
+      "no_post_put_patch_delete": true,
+      "dry_run_default_explicit_apply": true,
+      "audit_prerequisite_gate": true,
+      "unit_tests_mocked_temp_sqlite_only": true,
+      "sensitive_routes_to_review": true,
+      "no_model_file_operations": true
+    }
+  },
+  "fixture_summary": {
+    "submittal_count": 3,
+    "response_count": 4,
+    "package_count": 2
+  },
+  "normalized_preview": {
+    "submittal_records": [
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-submittals",
+        "entity_stable_key": "synthetic-sub-001",
+        "category": "submittals",
+        "review_required": false,
+        "routing_reason": "default_low_risk",
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/submittals/synthetic-sub-001",
+          "number": "S-101",
+          "title": "Door hardware schedule",
+          "status": "approved",
+          "type": "Shop Drawing",
+          "specification_section": "08 71 00",
+          "assignee_id": "synthetic-user-21",
+          "ball_in_court_id": "synthetic-user-21",
+          "due_date": "2026-06-10",
+          "initiated_at": "2026-05-15T10:00:00Z",
+          "created_at": "2026-05-15T10:00:00Z",
+          "updated_at": "2026-05-22T11:00:00Z"
+        },
+        "responses_count": 1,
+        "packages_count": 1,
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-submittal-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Door hardware schedule"
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-submittals",
+        "entity_stable_key": "synthetic-sub-002",
+        "category": "submittals",
+        "review_required": false,
+        "routing_reason": "default_low_risk",
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/submittals/synthetic-sub-002",
+          "number": "S-102",
+          "title": "Mechanical equipment cut sheets",
+          "status": "open",
+          "type": "Product Data",
+          "specification_section": "23 00 00",
+          "assignee_id": "synthetic-user-13",
+          "ball_in_court_id": "synthetic-user-13",
+          "due_date": "2026-06-20",
+          "initiated_at": "2026-05-18T13:00:00Z",
+          "created_at": "2026-05-18T13:00:00Z",
+          "updated_at": "2026-05-26T17:30:00Z"
+        },
+        "responses_count": 2,
+        "packages_count": 0,
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-submittal-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Mechanical equipment cut sheets"
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-submittals",
+        "entity_stable_key": "synthetic-sub-003",
+        "category": "submittals",
+        "review_required": true,
+        "routing_reason": "status_contains:revise",
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/submittals/synthetic-sub-003",
+          "number": "S-103",
+          "title": "Contract amendment: partition framing scope shift",
+          "status": "revise_and_resubmit",
+          "type": "Other",
+          "specification_section": "09 22 00",
+          "due_date": "2026-07-01",
+          "initiated_at": "2026-05-23T08:00:00Z",
+          "created_at": "2026-05-23T08:00:00Z",
+          "updated_at": "2026-05-27T12:00:00Z"
+        },
+        "responses_count": 1,
+        "packages_count": 1,
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-submittal-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Contract amendment: partition framing scope shift"
+      }
+    ],
+    "response_records": [
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-submittals",
+        "entity_stable_key": "response-synthetic-sub-001-synthetic-sub-001-resp-a",
+        "parent_submittal_stable_key": "synthetic-sub-001",
+        "category": "submittal_responses",
+        "review_required": true,
+        "routing_reason": "submittal_response_default_review_required",
+        "canonical_fields": {
+          "id": "synthetic-sub-001-resp-a",
+          "created_at": "2026-05-21T09:00:00Z",
+          "updated_at": "2026-05-21T09:00:00Z",
+          "author_id": "synthetic-user-7",
+          "response_status": "approved_as_noted"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-submittal-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "body_summary": {
+          "type": "string",
+          "length": 51,
+          "hash_prefix": "1cf486abc2b6"
+        }
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-submittals",
+        "entity_stable_key": "response-synthetic-sub-002-synthetic-sub-002-resp-a",
+        "parent_submittal_stable_key": "synthetic-sub-002",
+        "category": "submittal_responses",
+        "review_required": true,
+        "routing_reason": "submittal_response_default_review_required",
+        "canonical_fields": {
+          "id": "synthetic-sub-002-resp-a",
+          "created_at": "2026-05-24T12:00:00Z",
+          "updated_at": "2026-05-24T12:00:00Z",
+          "author_id": "synthetic-user-9",
+          "response_status": "pending_review"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-submittal-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "body_summary": {
+          "type": "string",
+          "length": 34,
+          "hash_prefix": "aa722af6f663"
+        }
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-submittals",
+        "entity_stable_key": "response-synthetic-sub-002-synthetic-sub-002-resp-b",
+        "parent_submittal_stable_key": "synthetic-sub-002",
+        "category": "submittal_responses",
+        "review_required": true,
+        "routing_reason": "submittal_response_default_review_required",
+        "canonical_fields": {
+          "id": "synthetic-sub-002-resp-b",
+          "created_at": "2026-05-26T17:30:00Z",
+          "updated_at": "2026-05-26T17:30:00Z",
+          "author_id": "synthetic-user-13",
+          "response_status": "pending_review"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-submittal-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "body_summary": {
+          "type": "string",
+          "length": 40,
+          "hash_prefix": "a41540a0d464"
+        }
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-submittals",
+        "entity_stable_key": "response-synthetic-sub-003-synthetic-sub-003-resp-a",
+        "parent_submittal_stable_key": "synthetic-sub-003",
+        "category": "submittal_responses",
+        "review_required": true,
+        "routing_reason": "submittal_response_default_review_required",
+        "canonical_fields": {
+          "id": "synthetic-sub-003-resp-a",
+          "created_at": "2026-05-27T12:00:00Z",
+          "updated_at": "2026-05-27T12:00:00Z",
+          "author_id": "synthetic-user-2",
+          "response_status": "revise_and_resubmit"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-submittal-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "body_summary": {
+          "type": "string",
+          "length": 58,
+          "hash_prefix": "98204049aa06"
+        }
+      }
+    ],
+    "package_records": [
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-submittals",
+        "entity_stable_key": "package-synthetic-sub-001-synthetic-sub-001-pkg-a",
+        "parent_submittal_stable_key": "synthetic-sub-001",
+        "category": "submittal_packages",
+        "review_required": true,
+        "routing_reason": "submittal_package_default_review_required",
+        "canonical_fields": {
+          "id": "synthetic-sub-001-pkg-a",
+          "number": "PKG-08-A",
+          "title": "Door & hardware package",
+          "status": "open",
+          "created_at": "2026-05-14T08:00:00Z",
+          "updated_at": "2026-05-22T11:00:00Z"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-submittal-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-submittals",
+        "entity_stable_key": "package-synthetic-sub-003-synthetic-sub-003-pkg-a",
+        "parent_submittal_stable_key": "synthetic-sub-003",
+        "category": "submittal_packages",
+        "review_required": true,
+        "routing_reason": "submittal_package_default_review_required",
+        "canonical_fields": {
+          "id": "synthetic-sub-003-pkg-a",
+          "number": "PKG-09-B",
+          "title": "Partition scope amendment package",
+          "status": "open",
+          "created_at": "2026-05-23T08:00:00Z",
+          "updated_at": "2026-05-27T12:00:00Z"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-submittal-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "description_summary": {
+          "type": "string",
+          "length": 67,
+          "hash_prefix": "c1a99d4d5d16"
+        }
+      }
+    ]
+  },
+  "guardrails": {
+    "read_only": true,
+    "no_writeback": true,
+    "no_raw_body_persisted": true,
+    "responses_always_review_required": true,
+    "packages_always_review_required": true,
+    "redaction_applied": true
+  }
+}
