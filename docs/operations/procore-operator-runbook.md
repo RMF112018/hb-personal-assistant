@@ -744,6 +744,36 @@ investigation.
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/08-selected-daily-log-live-sync.md`.
 
+## Phase 04A backlog resolution: submittal-responses / submittal-packages
+
+The Prompt 05 backlog has been partially resolved:
+
+- **`submittal-packages`** — RESOLVED. The Procore path uses the
+  underscored noun: `/rest/v1.0/projects/{project_id}/submittal_packages`
+  (NOT the previously-tried `/submittals/packages`). Promoted to
+  `live_verified=True`; `verification_reason="live_smoke_passed_2026-05-28:7b9077ee"`.
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical \
+  --endpoint submittal-packages \
+  --apply --sqlite-only \
+  --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+```
+
+- **`submittal-responses`** — DEFERRED. Four candidate child paths were
+  probed against tropical (`/v1.0/responses`, `/v1.0/approvers`,
+  `/v1.0/reviews`, `/v1.1/approvers`, `/v1.1/responses`); all returned
+  HTTP 404. The adapter's `verification_reason` records the full probe
+  matrix:
+  `phase_04a_backlog_2026-05-28:probed_v1.0_responses_v1.0_approvers_v1.0_reviews_v1.1_approvers_v1.1_responses_all_404`.
+  The orchestrator's `elif fetch_submittal_responses` dispatch is
+  preserved (unit-tested) for future activation once the correct
+  Procore child surface is identified.
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/09-submittal-backlog-resolution.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

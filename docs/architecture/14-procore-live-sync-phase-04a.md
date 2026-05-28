@@ -139,13 +139,34 @@ structured-only sections (manpower, deliveries, inspections) land with
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/08-selected-daily-log-live-sync.md`.
 
+## Submittal backlog resolution
+
+The Prompt 05 submittal-responses / submittal-packages 404 backlog was
+addressed via an aggressive multi-path probe loop against `tropical`:
+
+- **`submittal-packages`** — RESOLVED. The Procore path is
+  `/rest/v1.0/projects/{project_id}/submittal_packages` (underscored
+  noun, sibling to `/submittals`), not the previously-attempted
+  `/submittals/packages` nested form. Adapter path updated; promoted.
+- **`submittal-responses`** — DEFERRED. Four candidate child paths
+  (`/v1.0/responses`, `/v1.0/approvers`, `/v1.0/reviews`,
+  `/v1.1/approvers`, `/v1.1/responses`) all returned HTTP 404. The
+  adapter's `path_template` was reverted to the documented v1.0 string;
+  the `verification_reason` records the full probe matrix. The
+  orchestrator's `elif fetch_submittal_responses` N+1 dispatch is
+  preserved (unit-tested) for future activation once Procore docs
+  identify the correct child surface.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/09-submittal-backlog-resolution.md`.
+
 ## Verified vs unverified endpoints
 
-Post-Prompt 08, 10 of 16 endpoint IDs are `live_verified=True` and
-execute the full chain: `projects`, `rfis`, `submittals`, `observations`,
+Post-Prompt 08 + submittal backlog resolution, 11 of 16 endpoint IDs
+are `live_verified=True` and execute the full chain: `projects`, `rfis`,
+`submittals`, `submittal-packages`, `observations`,
 `daily-log-weather`, `daily-log-manpower`, `daily-log-notes`,
 `daily-log-deliveries`, `daily-log-delays-review-routed`,
-`daily-log-inspections`. The other 6 are command-visible (`endpoints
+`daily-log-inspections`. The other 5 are command-visible (`endpoints
 list`) and command-accepted, but the orchestrator returns a structured
 `state="not_live_verified"` receipt with `no_live_call_performed=true`
 and zero counts; no API call and no DB write occur. Promotion is a

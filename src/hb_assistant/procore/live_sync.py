@@ -911,6 +911,10 @@ def run_live_sync(
                     )
         elif fetch_submittal_responses:
             # N+1: fetch this submittal's responses, normalize each, upsert as a child row.
+            # Note: the Phase 04A backlog probe (2026-05-28) attempted four alternate
+            # paths against tropical (/v1.0/approvers, /v1.0/reviews, /v1.1/approvers,
+            # /v1.1/responses); all returned HTTP 404. The dispatch code is preserved
+            # for future activation once the correct Procore child surface is identified.
             response_path = (
                 f"/rest/v1.0/projects/{procore_project_id}/submittals/{record_id}/responses"
             )
