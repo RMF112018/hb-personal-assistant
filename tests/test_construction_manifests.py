@@ -789,3 +789,190 @@ def test_manifest_service_build_baseline_comparison_unknown_source_raises(
     registry = SourceRegistry(projects=[], sources=[])
     with pytest.raises(KeyError):
         svc.build_baseline_comparison(registry, "nope")
+
+
+# =====================================================================
+# Phase 03 Prompt 07: canonical V5 read-model path
+# =====================================================================
+
+
+_CANONICAL_SOURCE_ID = "sp_2023projects_23_435_01_tropical_sl"
+
+
+def _seed_v5_source_with_drive_items(
+    store: ConstructionStore,
+    *,
+    source_id: str = _CANONICAL_SOURCE_ID,
+    project_key: str | None = "tropical",
+) -> None:
+    """Seed a V5 ``construction_source_locations`` row and two V5
+    ``construction_drive_items`` rows for canonical-path tests."""
+    store.upsert_source_location(
+        source_id=source_id,
+        source_system="sharepoint",
+        source_scope="sharepoint_project_drive_folder",
+        source_name="Tropical canonical",
+        project_key=project_key,
+    )
+    store.upsert_drive_item(
+        source_id=source_id,
+        drive_id="drv-canonical",
+        drive_item_id="canon-item-1",
+        name="design.pdf",
+        path="/Tropical/Design",
+        web_url="https://x/canon-1",
+        is_file=True,
+        size_bytes=4096,
+        mime_type="application/pdf",
+        last_modified_datetime="2026-05-27T10:00:00Z",
+    )
+    store.upsert_drive_item(
+        source_id=source_id,
+        drive_id="drv-canonical",
+        drive_item_id="canon-item-2",
+        name="spec.docx",
+        path="/Tropical/Design",
+        web_url="https://x/canon-2",
+        is_file=True,
+        size_bytes=1024,
+        last_modified_datetime="2026-05-27T11:00:00Z",
+    )
+
+
+def test_document_card_renders_from_canonical_v5_source_id(tmp_path: Path) -> None:
+    store = ConstructionStore(str(tmp_path / "canon.sqlite"))
+    _seed_v5_source_with_drive_items(store)
+    svc = ManifestService(store)
+    card = svc.build_document_card_from_source_id(
+        source_id=_CANONICAL_SOURCE_ID,
+        item_id="canon-item-1",
+        policy_reason="manual review",
+    )
+    rendered = ManifestRenderer.render_document_card(card)
+    assert rendered  # non-empty
+    assert "canon-item-1" in rendered
+    assert "design.pdf" in rendered
+
+
+def test_document_card_source_key_and_source_id_parity(tmp_path: Path) -> None:
+    """Canonical path: frontmatter exposes both source_key (V2 alias) and
+    source_id (V5 canonical) as distinct fields, populated from the V5
+    source_locations row."""
+    import yaml
+
+    store = ConstructionStore(str(tmp_path / "canon.sqlite"))
+    _seed_v5_source_with_drive_items(store)
+    svc = ManifestService(store)
+    card = svc.build_document_card_from_source_id(
+        source_id=_CANONICAL_SOURCE_ID,
+        item_id="canon-item-1",
+        policy_reason="manual review",
+    )
+    rendered = ManifestRenderer.render_document_card(card)
+    end = rendered.index("\n---\n", 4)
+    fm = yaml.safe_load(rendered[4:end])
+    assert fm["source_key"] == _CANONICAL_SOURCE_ID
+    assert fm["source_id"] == _CANONICAL_SOURCE_ID
+    # Both keys must be present as distinct fields, even though their
+    # current canonical values match.
+    assert "source_key" in fm and "source_id" in fm
+
+
+def test_canonical_render_carries_no_body_or_token_or_raw_delta(tmp_path: Path) -> None:
+    """Re-run the existing forbidden-substring scanners against the
+    canonical-path render output."""
+    store = ConstructionStore(str(tmp_path / "canon.sqlite"))
+    _seed_v5_source_with_drive_items(store)
+    # Seed a raw delta-link sentinel in the legacy V2 token storage to
+    # prove the canonical path doesn't accidentally surface it either.
+    store.set_delta_token(
+        source_key=_CANONICAL_SOURCE_ID,
+        drive_id="drv-canonical",
+        delta_link=(
+            "https://graph.microsoft.com/v1.0/drives/drv/root/delta?"
+            "token=CANONsecretXYZ&skiptoken=Bearer eyJabcdefghijklmnopqrstuvwxyz"
+        ),
+        page_count=1,
+        last_status="ok",
+    )
+    svc = ManifestService(store)
+    card = svc.build_document_card_from_source_id(
+        source_id=_CANONICAL_SOURCE_ID,
+        item_id="canon-item-1",
+        policy_reason="manual review",
+    )
+    rendered = ManifestRenderer.render_document_card(card)
+    forbidden_body = ["body:", "content:", "text:", "excerpt:", "full_text:"]
+    for needle in forbidden_body:
+        assert needle not in rendered.lower(), f"canonical render leaked {needle!r}"
+    # Token / delta-link forbidden substrings.
+    for forbidden in (
+        "@odata.deltaLink",
+        "@odata.nextLink",
+        "skiptoken",
+        "Bearer ",
+        "eyJ",
+        "access_token=",
+        "CANONsecretXYZ",
+        "/root/delta?token=",
+    ):
+        assert forbidden not in rendered, (
+            f"canonical render unexpectedly contains forbidden substring {forbidden!r}"
+        )
+    for rx in _TOKEN_SHAPE_REGEXES:
+        assert rx.search(rendered) is None, (
+            f"canonical render matched forbidden token shape {rx.pattern!r}"
+        )
+
+
+def test_canonical_render_is_byte_deterministic(tmp_path: Path) -> None:
+    store = ConstructionStore(str(tmp_path / "canon.sqlite"))
+    _seed_v5_source_with_drive_items(store)
+    svc = ManifestService(store)
+    card = svc.build_document_card_from_source_id(
+        source_id=_CANONICAL_SOURCE_ID,
+        item_id="canon-item-1",
+        policy_reason="manual review",
+    )
+    a = ManifestRenderer.render_document_card(card)
+    b = ManifestRenderer.render_document_card(card)
+    assert a == b
+
+
+def test_canonical_path_fails_closed_when_source_missing(tmp_path: Path) -> None:
+    from hb_assistant.construction.manifests import CanonicalSourceNotFound
+
+    store = ConstructionStore(str(tmp_path / "canon.sqlite"))
+    svc = ManifestService(store)
+    with pytest.raises(CanonicalSourceNotFound):
+        svc.build_document_card_from_source_id(
+            source_id="not-in-source-locations",
+            item_id="x",
+            policy_reason="manual review",
+        )
+
+
+def test_canonical_path_requires_non_empty_policy_reason(tmp_path: Path) -> None:
+    from hb_assistant.construction.manifests.service import DocumentCardPolicyError
+
+    store = ConstructionStore(str(tmp_path / "canon.sqlite"))
+    _seed_v5_source_with_drive_items(store)
+    svc = ManifestService(store)
+    with pytest.raises(DocumentCardPolicyError):
+        svc.build_document_card_from_source_id(
+            source_id=_CANONICAL_SOURCE_ID,
+            item_id="canon-item-1",
+            policy_reason="   ",
+        )
+
+
+def test_canonical_path_unknown_item_raises(tmp_path: Path) -> None:
+    store = ConstructionStore(str(tmp_path / "canon.sqlite"))
+    _seed_v5_source_with_drive_items(store)
+    svc = ManifestService(store)
+    with pytest.raises(ValueError):
+        svc.build_document_card_from_source_id(
+            source_id=_CANONICAL_SOURCE_ID,
+            item_id="missing-item",
+            policy_reason="manual review",
+        )

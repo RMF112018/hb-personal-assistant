@@ -434,3 +434,83 @@ def test_cli_vault_preview_apply_without_env_returns_structured_error(
     assert result.exit_code == 1
     payload = json.loads(result.output)
     assert payload["status"] == "vault_root_not_configured"
+
+
+# =====================================================================
+# Phase 03 Prompt 07: canonical V5 read-model write path
+# =====================================================================
+
+
+_CANONICAL_SOURCE_ID = "sp_2023projects_23_435_01_tropical_sl"
+
+
+def _seed_canonical_v5(store: ConstructionStore) -> None:
+    store.upsert_source_location(
+        source_id=_CANONICAL_SOURCE_ID,
+        source_system="sharepoint",
+        source_scope="sharepoint_project_drive_folder",
+        source_name="Tropical canonical",
+        project_key="tropical",
+    )
+    store.upsert_drive_item(
+        source_id=_CANONICAL_SOURCE_ID,
+        drive_id="drv-canonical",
+        drive_item_id="canon-item-1",
+        name="design.pdf",
+        path="/Tropical/Design",
+        web_url="https://x/canon-1",
+        is_file=True,
+        size_bytes=4096,
+        last_modified_datetime="2026-05-27T10:00:00Z",
+    )
+
+
+def test_canonical_vault_write_preserves_user_text(
+    tmp_path: Path, vault_root: Path,
+) -> None:
+    """End-to-end: render a document card via the canonical V5 read path,
+    write it through ``ConstructionVaultWriter`` with user prose already
+    present outside the marker block, re-render, and confirm the user
+    prose survives both writes."""
+    store = ConstructionStore(str(tmp_path / "canon.sqlite"))
+    _seed_canonical_v5(store)
+    svc = ManifestService(store)
+
+    writer = ConstructionVaultWriter(vault_root=vault_root)
+    target = writer.document_card_path(
+        source_key=_CANONICAL_SOURCE_ID, item_id="canon-item-1",
+    )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        "# My notes about this doc\n\nkeep this prose around.\n",
+        encoding="utf-8",
+    )
+
+    card_v1 = svc.build_document_card_from_source_id(
+        source_id=_CANONICAL_SOURCE_ID,
+        item_id="canon-item-1",
+        policy_reason="canonical-path v1",
+    )
+    writer.write_document_card(
+        source_key=_CANONICAL_SOURCE_ID,
+        item_id="canon-item-1",
+        rendered=ManifestRenderer.render_document_card(card_v1),
+    )
+    after_v1 = target.read_text(encoding="utf-8")
+    assert "keep this prose around." in after_v1
+    assert "canonical-path v1" in after_v1
+
+    card_v2 = svc.build_document_card_from_source_id(
+        source_id=_CANONICAL_SOURCE_ID,
+        item_id="canon-item-1",
+        policy_reason="canonical-path v2",
+    )
+    writer.write_document_card(
+        source_key=_CANONICAL_SOURCE_ID,
+        item_id="canon-item-1",
+        rendered=ManifestRenderer.render_document_card(card_v2),
+    )
+    after_v2 = target.read_text(encoding="utf-8")
+    assert "keep this prose around." in after_v2
+    assert "canonical-path v2" in after_v2
+    assert "canonical-path v1" not in after_v2

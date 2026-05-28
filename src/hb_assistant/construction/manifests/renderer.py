@@ -237,6 +237,7 @@ class ManifestRenderer:
         tpl = _load_template("document_card")
         return tpl.format(
             source_key=d.source_key,
+            source_id=d.source_id,
             project_key=_kv(d.project_key),
             item_id=d.item_id,
             name=_kv(d.name),

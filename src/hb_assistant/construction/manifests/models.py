@@ -132,6 +132,13 @@ class ReviewRequiredNote(BaseModel):
 
 class DocumentCard(BaseModel):
     source_key: str
+    # V5 canonical source identifier (``construction_source_locations.source_id``).
+    # Kept as a distinct field from ``source_key`` so the document_card
+    # frontmatter can render both lines without aliasing. Under the V5
+    # projection rules the two strings currently match for every registered
+    # source, but the structural distinction lets the canonical read path
+    # diverge later without a model migration.
+    source_id: str
     project_key: Optional[str] = None
     item_id: str
     name: Optional[str] = None

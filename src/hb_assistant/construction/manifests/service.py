@@ -14,6 +14,10 @@ from hb_assistant.construction.config import SourceLocation, SourceRegistry
 from hb_assistant.construction.graph.delta_crawler import CrawlReceipt
 from hb_assistant.construction.store import ConstructionStore
 
+from .canonical_adapter import (
+    CanonicalDocumentCardInput,
+    read_canonical_document_card_input,
+)
 from .models import (
     DocumentCard,
     ProcessingReceipt,
@@ -306,7 +310,68 @@ class ManifestService:
             )
         return DocumentCard(
             source_key=source.source_key,
+            # V5 canonical source_id is identical to the registry source_key
+            # under the current projection mapping; we still plumb it as a
+            # distinct frontmatter field so the canonical read path can
+            # diverge later without a model change.
+            source_id=source.source_key,
             project_key=source.project_key,
+            item_id=item_id,
+            name=match.get("name"),
+            web_url=match.get("web_url"),
+            parent_path=match.get("parent_path"),
+            size_bytes=match.get("size_bytes"),
+            is_folder=bool(match.get("is_folder")),
+            last_modified=match.get("last_modified"),
+            status=match.get("status", "active"),
+            policy_reason=policy_reason.strip(),
+            generated_at=_utc_now(),
+            guardrails=dict(GUARDRAILS_DEFAULT),
+        )
+
+    def build_document_card_from_source_id(
+        self,
+        *,
+        source_id: str,
+        item_id: str,
+        policy_reason: str,
+    ) -> DocumentCard:
+        """Canonical V5 read-path: emit a per-document card keyed by the
+        V5 ``construction_source_locations.source_id`` rather than a V2
+        registry :class:`SourceLocation`.
+
+        Drive items are read via
+        :func:`hb_assistant.construction.drive_item_bridge.read_drive_items_unified`
+        (V5-wins precedence) and adapted to the inventory-row dict shape
+        that the existing renderer pathway consumes — every redaction
+        and guardrail behavior inherits unchanged.
+
+        Fails closed: raises :class:`CanonicalSourceNotFound` if
+        ``source_id`` is not present in ``construction_source_locations``
+        and :class:`DocumentCardPolicyError` if ``policy_reason`` is
+        empty.
+        """
+
+        if not policy_reason or not policy_reason.strip():
+            raise DocumentCardPolicyError(
+                "DocumentCard requires an explicit non-empty policy_reason "
+                "(per-document cards are not auto-generated)."
+            )
+        bundle: CanonicalDocumentCardInput = read_canonical_document_card_input(
+            self._store, source_id=source_id,
+        )
+        match = next(
+            (r for r in bundle.rows if r.get("item_id") == item_id), None,
+        )
+        if match is None:
+            raise ValueError(
+                f"item_id {item_id!r} not found in canonical drive items "
+                f"for source_id {source_id!r}"
+            )
+        return DocumentCard(
+            source_key=bundle.ref.source_key,
+            source_id=bundle.ref.source_id,
+            project_key=bundle.ref.project_key,
             item_id=item_id,
             name=match.get("name"),
             web_url=match.get("web_url"),

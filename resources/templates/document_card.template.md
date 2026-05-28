@@ -6,7 +6,7 @@ tags: [construction, document-card, "{source_key}"]
 owner: Bobby Fetting
 generated: {generated_at}
 source_key: {source_key}
-source_id: {source_key}
+source_id: {source_id}
 item_id: {item_id}
 policy_reason: {policy_reason}
 ---

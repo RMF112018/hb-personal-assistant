@@ -5,6 +5,11 @@ recomputable projections only — re-rendering them from store state must yield
 byte-identical output for identical inputs.
 """
 
+from .canonical_adapter import (
+    CanonicalDocumentCardInput,
+    CanonicalSourceNotFound,
+    CanonicalSourceRef,
+)
 from .models import (
     DocumentCard,
     ProcessingReceipt,
@@ -24,6 +29,9 @@ from .vault_writer import (
 )
 
 __all__ = [
+    "CanonicalDocumentCardInput",
+    "CanonicalSourceNotFound",
+    "CanonicalSourceRef",
     "DocumentCard",
     "ProcessingReceipt",
     "ProjectCard",
