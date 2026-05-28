@@ -1070,6 +1070,82 @@ def test_meeting_topic_canonical_json_carries_no_description_body_literal(
         assert raw_body_persisted == 0
 
 
+def test_meetings_apply_flattens_v1_1_grouped_payload(
+    monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
+) -> None:
+    """Procore's v1.1 meetings endpoint returns grouped responses; the
+    orchestrator must flatten before normalization. This test fakes the
+    grouped wrapper and verifies one row lands per meeting (3), not per
+    group (2)."""
+    _setup_env(monkeypatch)
+    db = _db()
+    grouped_payload = [
+        {
+            "group_title": "Owner Architect Contractor",
+            "meetings": [
+                {
+                    "id": 1001,
+                    "title": "OAC weekly",
+                    "starts_at": "2026-06-01T15:00:00Z",
+                    "ends_at": "2026-06-01T16:00:00Z",
+                    "created_by_id": 50,
+                },
+                {
+                    "id": 1002,
+                    "title": "OAC special session",
+                    "starts_at": "2026-06-08T15:00:00Z",
+                    "ends_at": "2026-06-08T16:30:00Z",
+                    "created_by_id": 50,
+                },
+            ],
+        },
+        {
+            "group_title": "Subcontractor coordination",
+            "meetings": [
+                {
+                    "id": 2001,
+                    "title": "Sub coord kickoff",
+                    "starts_at": "2026-06-03T13:00:00Z",
+                    "ends_at": "2026-06-03T14:00:00Z",
+                    "created_by_id": 60,
+                }
+            ],
+        },
+    ]
+    # Only the parent path returns the grouped payload; the per-meeting
+    # topics paths return empty so no N+1 child rows confuse the assertion.
+    transport = _PathAwareFakeTransport(
+        {
+            "/rest/v1.1/projects/2525840/meetings/1001/topics": [],
+            "/rest/v1.1/projects/2525840/meetings/1002/topics": [],
+            "/rest/v1.1/projects/2525840/meetings/2001/topics": [],
+            "/rest/v1.0/projects/2525840/meetings/1001/topics": [],
+            "/rest/v1.0/projects/2525840/meetings/1002/topics": [],
+            "/rest/v1.0/projects/2525840/meetings/2001/topics": [],
+            "/rest/v1.1/projects/2525840/meetings": grouped_payload,
+        }
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="meetings",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    # 3 meetings across 2 groups -> 3 parent rows persisted
+    assert receipt["parent_upserted_count"] == 3
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="meetings", db_path=db
+    ) == 3
+
+
 # ----------------------------------------------------------------------------
 # Phase 04A Prompt 08: selected daily-log sections (manpower / notes / delays)
 # ----------------------------------------------------------------------------

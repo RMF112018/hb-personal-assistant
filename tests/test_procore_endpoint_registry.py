@@ -54,16 +54,16 @@ def test_unknown_endpoint_resolves_to_none() -> None:
 
 def test_verified_endpoints_match_phase04a_matrix() -> None:
     verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
-    # Post-Prompt 08 + backlog: 11 endpoints confirmed live. The submittal
-    # backlog probe (2026-05-28) corrected the submittal-packages path
-    # to /rest/v1.0/projects/{project_id}/submittal_packages and promoted it;
-    # submittal-responses remained 404 across all four candidate paths and
-    # stays deferred.
+    # Post-meetings-v1.1-backlog: 12 endpoints confirmed live. The meetings
+    # backlog probe (2026-05-28) extended normalize_meeting + the orchestrator
+    # to handle the v1.1 grouped payload shape; meetings promoted. meeting-topics
+    # stays deferred (v1.0 + v1.1 child paths both returned 404 / 429).
     assert verified == {
         "projects",
         "rfis",
         "submittals",
         "submittal-packages",
+        "meetings",
         "daily-log-weather",
         "observations",
         "daily-log-manpower",

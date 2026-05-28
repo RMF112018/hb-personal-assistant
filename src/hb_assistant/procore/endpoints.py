@@ -165,8 +165,8 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         review_required_default=False,
         sensitivity="medium",
         sqlite_target="procore_live_records",
-        live_verified=False,
-        verification_reason="phase_04a_prompt_07:v1.1_path_resolves_10_records_but_normalize_meeting_v1.0_schema_mismatch_pending_normalizer_update",
+        live_verified=True,
+        verification_reason="live_smoke_passed_2026-05-28:452d9421",
     ),
     EndpointAdapter(
         endpoint_id="meeting-topics",
@@ -182,7 +182,7 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         sensitivity="medium",
         sqlite_target="procore_live_records",
         live_verified=False,
-        verification_reason="child_endpoint_pending_docs_verification",
+        verification_reason="phase_04a_backlog_2026-05-28:probed_v1.0_topics_v1.1_topics_mixed_http_404_and_429_rate_limit",
     ),
     EndpointAdapter(
         endpoint_id="daily-log-weather",

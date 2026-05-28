@@ -774,6 +774,50 @@ HB_PROCORE_LIVE=1 hb-assistant procore live sync \
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/09-submittal-backlog-resolution.md`.
 
+## Phase 04A backlog resolution: meetings v1.1 normalizer
+
+The Prompt 07 meetings backlog is RESOLVED. `meetings` now executes the
+full live chain at the v1.1 path with the grouped payload correctly
+flattened to per-meeting rows.
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical \
+  --endpoint meetings \
+  --apply --sqlite-only \
+  --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+```
+
+What changed:
+
+1. **Orchestrator flatten.** Procore's v1.1 meetings endpoint returns
+   grouped responses: `[{"group_title": "...", "meetings": [...]}, ...]`.
+   `live_sync.py` now unwraps the `meetings` arrays from each group
+   before normalization, honoring `--max-items` at the meeting-row level
+   (not the group level). v1.0 (flat list) passes through unchanged.
+
+2. **Normalizer extended.** `normalize_meeting` carries both v1.0 and
+   v1.1 canonical field names — `start_time` / `starts_at`,
+   `end_time` / `ends_at`, `organizer_id` / `created_by_id`, plus the
+   new `meeting_topics_count`. The metadata-only contract is preserved:
+   `description` (free-text in v1.1) is NOT whitelisted; raw text never
+   persisted.
+
+Tropical results: live apply at caps `--max-pages 3 --max-items 100`
+returned `state=partial_success` with 96 parent meeting rows persisted;
+re-run at the same caps is idempotent (96 → 96 under the upsert PK).
+
+**Topics backlog persists.** `meeting-topics` was probed at both v1.0
+and v1.1 child paths during the parent apply. v1.0 returned HTTP 404 on
+every parent; v1.1 returned a mix of HTTP 404 and HTTP 429 (rate-limit),
+so per the stop conditions the probe was aborted. `meeting-topics` stays
+`live_verified=False` with `verification_reason="phase_04a_backlog_2026-05-28:probed_v1.0_topics_v1.1_topics_mixed_http_404_and_429_rate_limit"`.
+The orchestrator's N+1 dispatch is preserved (unit-tested) for future
+activation.
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/10-meetings-v1.1-normalizer-resolution.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

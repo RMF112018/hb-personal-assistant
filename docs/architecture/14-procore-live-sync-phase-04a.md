@@ -159,14 +159,34 @@ addressed via an aggressive multi-path probe loop against `tropical`:
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/09-submittal-backlog-resolution.md`.
 
+## Meetings v1.1 normalizer resolution
+
+The Prompt 07 meetings backlog is RESOLVED. The Procore v1.1 meetings
+endpoint returns a grouped payload (`[{"group_title": "...",
+"meetings": [...]}, ...]`); `run_live_sync` now contains a
+meetings-scoped flatten step that unwraps the `meetings` arrays before
+normalization, honoring `--max-items` at the meeting-row level. v1.0
+(flat list) passes through unchanged so the existing FakeTransport
+unit tests continue to pass. The `normalize_meeting` field whitelist
+was extended to carry v1.1 field names (`starts_at` / `ends_at` /
+`created_by_id` / `meeting_topics_count`) alongside the existing v1.0
+keys; the metadata-only contract is preserved (`description` is not
+whitelisted, so free-text never persists).
+
+`meeting-topics` stays deferred: both v1.0 and v1.1 child paths
+returned 404 / 429 mixes against tropical during the parent apply. The
+N+1 dispatch is preserved (unit-tested) for future activation.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/10-meetings-v1.1-normalizer-resolution.md`.
+
 ## Verified vs unverified endpoints
 
-Post-Prompt 08 + submittal backlog resolution, 11 of 16 endpoint IDs
-are `live_verified=True` and execute the full chain: `projects`, `rfis`,
-`submittals`, `submittal-packages`, `observations`,
+Post meetings-v1.1 backlog, 12 of 16 endpoint IDs are
+`live_verified=True` and execute the full chain: `projects`, `rfis`,
+`submittals`, `submittal-packages`, `meetings`, `observations`,
 `daily-log-weather`, `daily-log-manpower`, `daily-log-notes`,
 `daily-log-deliveries`, `daily-log-delays-review-routed`,
-`daily-log-inspections`. The other 5 are command-visible (`endpoints
+`daily-log-inspections`. The other 4 are command-visible (`endpoints
 list`) and command-accepted, but the orchestrator returns a structured
 `state="not_live_verified"` receipt with `no_live_call_performed=true`
 and zero counts; no API call and no DB write occur. Promotion is a

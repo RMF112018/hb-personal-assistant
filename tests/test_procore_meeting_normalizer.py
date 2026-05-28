@@ -236,3 +236,56 @@ def test_meeting_topic_payload_block_never_serializes_body_text() -> None:
         elif isinstance(action_items, list):
             for item in action_items:
                 assert item not in serialized
+
+
+# ----------------------------------------------------------------------------
+# Phase 04A backlog: v1.1 payload shape support
+# ----------------------------------------------------------------------------
+
+
+_V11_MEETING_RAW = {
+    "id": 901,
+    "title": "OAC weekly coordination",
+    "starts_at": "2026-06-01T15:00:00Z",
+    "ends_at": "2026-06-01T16:00:00Z",
+    "location": "Trailer B",
+    "created_by_id": 4242,
+    "meeting_topics_count": 7,
+    "created_at": "2026-05-20T00:00:00Z",
+    "updated_at": "2026-05-31T00:00:00Z",
+    # v1.1 fields that the normalizer intentionally omits from canonical
+    # storage to preserve the metadata-only contract:
+    "description": "OAC meeting body that must never appear in canonical storage.",
+    "is_private": False,
+    "mode": "in_person",
+}
+
+
+def test_normalize_meeting_accepts_v1_1_shape_and_carries_v1_1_keys() -> None:
+    record = normalize_meeting(
+        _V11_MEETING_RAW,
+        project_key="tropical",
+        endpoint_id="meetings",
+        correlation_id=_CORRELATION,
+        fetched_at=_FETCHED_AT,
+    )
+    canonical = record["canonical_fields"]
+    # v1.1 keys present
+    assert canonical.get("starts_at") == "2026-06-01T15:00:00Z"
+    assert canonical.get("ends_at") == "2026-06-01T16:00:00Z"
+    assert canonical.get("created_by_id") == 4242
+    assert canonical.get("meeting_topics_count") == 7
+    assert canonical.get("title") == "OAC weekly coordination"
+    assert canonical.get("location") == "Trailer B"
+    # v1.0 keys absent from this payload should not appear in canonical
+    assert "start_time" not in canonical
+    assert "end_time" not in canonical
+    assert "organizer_id" not in canonical
+    # Metadata-only contract: description must NOT be carried even if present
+    assert "description" not in canonical
+    description_text = _V11_MEETING_RAW["description"]
+    assert isinstance(description_text, str)
+    assert description_text not in json.dumps(record)
+    # entity_stable_key derived from id
+    assert record["entity_stable_key"] == "901"
+    assert record["category"] == "meetings"

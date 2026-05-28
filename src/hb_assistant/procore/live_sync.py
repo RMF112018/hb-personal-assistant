@@ -768,6 +768,28 @@ def run_live_sync(
             redacted_errors=redacted_errors,
         )
 
+    # Procore's v1.1 meetings endpoint returns GROUPED responses:
+    # [{"group_title": "...", "meetings": [...]}, ...]. The orchestrator's
+    # per-row upsert loop expects one canonical record per raw item, so
+    # flatten any grouped meetings before normalization. v1.0 (flat list of
+    # meeting dicts) is detected by absence of the "meetings" wrapper key
+    # and passes through unchanged. Truncation honors the operator's
+    # --max-items cap at the meeting-row level (not the group level).
+    if adapter.endpoint_id == "meetings" and items:
+        flattened: List[Dict[str, Any]] = []
+        grouped = False
+        for raw in items:
+            if isinstance(raw, dict) and isinstance(raw.get("meetings"), list):
+                grouped = True
+                for inner in raw["meetings"]:
+                    if isinstance(inner, dict):
+                        flattened.append(inner)
+            elif isinstance(raw, dict):
+                flattened.append(raw)
+        if grouped:
+            items = flattened[:max_items]
+            retrieved_count = len(items)
+
     # Normalize + upsert. For `rfis`, after each parent upsert, perform an
     # N+1 child GET to /rfis/{rfi_id}/replies and persist replies as
     # endpoint_id="rfi-responses" with parent_procore_id set. The same shape
@@ -991,6 +1013,10 @@ def run_live_sync(
                     )
         else:
             # N+1: fetch this meeting's topics, normalize each, upsert as a child row.
+            # Phase 04A backlog probe (2026-05-28): both v1.0 and v1.1 child paths
+            # returned mixed HTTP 404 / 429 against tropical (1 parent 404, 4 parents
+            # 429 rate-limited). meeting-topics stays deferred; the dispatch code is
+            # preserved (unit-tested) for future activation.
             topic_path = (
                 f"/rest/v1.0/projects/{procore_project_id}/meetings/{record_id}/topics"
             )

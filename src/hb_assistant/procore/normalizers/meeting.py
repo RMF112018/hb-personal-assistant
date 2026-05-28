@@ -27,6 +27,12 @@ _MEETING_CANONICAL_FIELD_KEYS = (
     "status",
     "start_time",
     "end_time",
+    # Procore v1.1 field names (carried alongside v1.0 keys above so the
+    # whitelist accepts either payload shape without losing fidelity).
+    "starts_at",
+    "ends_at",
+    "created_by_id",
+    "meeting_topics_count",
     "location",
     "organizer_id",
     "project_id",
