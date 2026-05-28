@@ -110,6 +110,25 @@ hb-assistant procore sync run --project tropical --dry-run \
   --endpoints list-submittals --json
 ```
 
+For the observation endpoint (Phase 04 Prompt 06), the endpoint ships as
+`verification_status: candidate` → `is_live_eligible: false`. `--apply` will
+emit `skipped_not_live_eligible` for observations until a future prompt
+promotes the verification status to `official_docs_verified` after live docs
+reconciliation. The dry-run path still surfaces the endpoint with full
+normalization metadata. The normalizer's safety routing scans the status,
+type, subtype, title, and description fields for safety / incident / injury /
+near-miss / corrective-action / unsafe / violation / PPE / personnel keywords;
+any hit sets `review_required=true` and `safety_route=true` on the canonical
+record. Descriptions are never persisted as raw text — they're reduced to
+SHA-256 hash-only summaries, and the redacted excerpt is derived from the
+title only.
+
+```bash
+# Observation dry-run plan
+hb-assistant procore sync run --project tropical --dry-run \
+  --endpoints list-observations --json
+```
+
 ### Phase 4 — Obsidian projection
 
 ```bash

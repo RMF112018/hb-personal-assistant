@@ -10,6 +10,11 @@ Submittal / Observation / Meeting / Daily Log normalizers that mirror this
 contract.
 """
 
+from .observation import (
+    normalize_observation,
+    normalize_observation_comment,
+    normalize_observation_payload_block,
+)
 from .rfi import (
     NORMALIZATION_SCHEMA_VERSION,
     normalize_rfi,
@@ -25,6 +30,9 @@ from .submittal import (
 
 __all__ = [
     "NORMALIZATION_SCHEMA_VERSION",
+    "normalize_observation",
+    "normalize_observation_comment",
+    "normalize_observation_payload_block",
     "normalize_rfi",
     "normalize_rfi_payload_block",
     "normalize_rfi_reply",

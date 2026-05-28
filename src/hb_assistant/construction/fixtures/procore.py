@@ -315,3 +315,104 @@ SUBMITTAL_SAMPLE_PAYLOAD: list[dict[str, Any]] = [
 PROCORE_SUBMITTAL_FIXTURES: dict[str, list[dict[str, Any]]] = {
     "submittal_sample_payload": SUBMITTAL_SAMPLE_PAYLOAD,
 }
+
+
+# Phase 04 Prompt 06: synthetic observation list response.
+#
+# Three observations with three nested comments. All identifiers are synthetic
+# (``synthetic-`` prefix). Observation #1 is benign (housekeeping). Observation
+# #2 carries a ``near-miss`` type (status-fragment safety trigger). Observation
+# #3 has an "injury" keyword in the description (body-fragment scan triggers
+# safety routing) and a missing assignee.
+OBSERVATION_SAMPLE_PAYLOAD: list[dict[str, Any]] = [
+    {
+        "id": "synthetic-obs-001",
+        "number": "OBS-001",
+        "title": "Housekeeping at the loading dock",
+        "type": "general",
+        "subtype": "housekeeping",
+        "status": "open",
+        "assignee_id": "synthetic-user-31",
+        "created_by_id": "synthetic-user-12",
+        "observed_at": "2026-05-20T08:30:00Z",
+        "due_date": "2026-05-25",
+        "created_at": "2026-05-20T08:30:00Z",
+        "updated_at": "2026-05-20T08:30:00Z",
+        "severity": "low",
+        "priority": "normal",
+        "html_url": "https://app.procore.example/projects/1/observations/synthetic-obs-001",
+        "description": "Reminder to keep the loading dock clear of pallets at end of shift.",
+        "comments": [
+            {
+                "id": "synthetic-obs-001-comment-a",
+                "author_id": "synthetic-user-31",
+                "created_at": "2026-05-21T09:00:00Z",
+                "updated_at": "2026-05-21T09:00:00Z",
+                "body": "Crew briefed at toolbox talk. Closed.",
+            },
+        ],
+    },
+    {
+        "id": "synthetic-obs-002",
+        "number": "OBS-002",
+        "title": "Stacked materials in walkway",
+        "type": "near-miss",
+        "subtype": "housekeeping",
+        "status": "open",
+        "assignee_id": "synthetic-user-9",
+        "created_by_id": "synthetic-user-9",
+        "observed_at": "2026-05-23T14:15:00Z",
+        "due_date": "2026-05-28",
+        "created_at": "2026-05-23T14:15:00Z",
+        "updated_at": "2026-05-26T17:00:00Z",
+        "severity": "medium",
+        "priority": "high",
+        "html_url": "https://app.procore.example/projects/1/observations/synthetic-obs-002",
+        "description": "Drywall stacked across the egress path; identified during the walk.",
+        "comments": [
+            {
+                "id": "synthetic-obs-002-comment-a",
+                "author_id": "synthetic-user-2",
+                "created_at": "2026-05-26T17:00:00Z",
+                "updated_at": "2026-05-26T17:00:00Z",
+                "body": "Materials relocated; corridor cleared and re-verified.",
+            },
+        ],
+    },
+    {
+        "id": "synthetic-obs-003",
+        "number": "OBS-003",
+        "title": "Worker reports finger laceration",
+        "type": "incident",
+        "subtype": "injury",
+        "status": "open",
+        "assignee_id": None,
+        "created_by_id": "synthetic-user-7",
+        "observed_at": "2026-05-26T11:00:00Z",
+        "due_date": "2026-05-27",
+        "created_at": "2026-05-26T11:00:00Z",
+        "updated_at": "2026-05-27T08:30:00Z",
+        "severity": "high",
+        "priority": "urgent",
+        "html_url": "https://app.procore.example/projects/1/observations/synthetic-obs-003",
+        "description": (
+            "Worker sustained a minor laceration to the index finger while "
+            "handling a metal stud; first aid administered on site; injury "
+            "reported per protocol; corrective action under review."
+        ),
+        "comments": [
+            {
+                "id": "synthetic-obs-003-comment-a",
+                "author_id": "synthetic-user-1",
+                "created_at": "2026-05-27T08:30:00Z",
+                "updated_at": "2026-05-27T08:30:00Z",
+                "body": "Routing to safety officer for follow-up and root cause review.",
+            },
+        ],
+    },
+]
+
+
+PROCORE_OBSERVATION_FIXTURES: dict[str, list[dict[str, Any]]] = {
+    "observation_sample_payload": OBSERVATION_SAMPLE_PAYLOAD,
+}

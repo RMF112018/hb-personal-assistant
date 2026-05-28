@@ -39,13 +39,15 @@ def test_catalog_envelope_shape_and_counts() -> None:
     ):
         assert key in payload, f"missing top-level key: {key}"
     assert payload["command"] == "hb-assistant procore tools catalog"
-    assert payload["endpoint_count"] == 13
+    # 13 prior endpoints + Phase 04 Prompt 06's candidate `list-observations`.
+    assert payload["endpoint_count"] == 14
     assert payload["include_ineligible"] is True
     summary = payload["summary"]
     assert summary["by_verification_status"] == {
         "official_docs_verified": 10,
         "excluded_by_guardrail": 1,
         "deferred_by_guardrail": 2,
+        "candidate": 1,
     }
     assert summary["live_eligible_count"] == 10
 

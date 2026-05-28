@@ -66,7 +66,8 @@ def _valid_deferred_payload() -> dict:
 
 def test_seed_loads_with_structured_verification_fields() -> None:
     contract = load_endpoint_contract()
-    assert len(contract.endpoints) == 13
+    # 13 prior endpoints + Phase 04 Prompt 06's candidate `list-observations`.
+    assert len(contract.endpoints) == 14
 
     by_v: dict[str, int] = {}
     for ep in contract.endpoints:
@@ -75,6 +76,7 @@ def test_seed_loads_with_structured_verification_fields() -> None:
         "official_docs_verified": 10,
         "excluded_by_guardrail": 1,
         "deferred_by_guardrail": 2,
+        "candidate": 1,
     }
 
 

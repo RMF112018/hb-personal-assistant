@@ -36,6 +36,9 @@ from hb_assistant.procore.loader import (
 from hb_assistant.procore.models import ProcoreProjectsRegistry
 from hb_assistant.procore.normalizers import (
     NORMALIZATION_SCHEMA_VERSION,
+    normalize_observation,
+    normalize_observation_comment,
+    normalize_observation_payload_block,
     normalize_rfi,
     normalize_rfi_payload_block,
     normalize_rfi_reply,
@@ -49,9 +52,11 @@ from hb_assistant.procore.normalizers import (
 # function returning (parent_records, *child_records). Extended by Prompts 05–08.
 RFI_ENDPOINT_ID = "list-rfis"
 SUBMITTAL_ENDPOINT_ID = "list-submittals"
+OBSERVATION_ENDPOINT_ID = "list-observations"
 NORMALIZER_DISPATCH: Dict[str, Any] = {
     RFI_ENDPOINT_ID: normalize_rfi_payload_block,
     SUBMITTAL_ENDPOINT_ID: normalize_submittal_payload_block,
+    OBSERVATION_ENDPOINT_ID: normalize_observation_payload_block,
 }
 
 
@@ -188,6 +193,7 @@ class ProcoreSyncCoordinator:
         allow_pending: bool = False,
         rfi_preview_payload: Optional[List[Dict[str, Any]]] = None,
         submittal_preview_payload: Optional[List[Dict[str, Any]]] = None,
+        observation_preview_payload: Optional[List[Dict[str, Any]]] = None,
     ) -> SyncReceipt:
         """Dry-run default path. Audit gate first. Produces serializable redacted plan. Zero side effects.
 
@@ -274,6 +280,7 @@ class ProcoreSyncCoordinator:
                 entry["would_persist_children_separately"] = ep.endpoint_id in (
                     RFI_ENDPOINT_ID,
                     SUBMITTAL_ENDPOINT_ID,
+                    OBSERVATION_ENDPOINT_ID,
                 )
             if ep.endpoint_id == RFI_ENDPOINT_ID and rfi_preview_payload is not None:
                 rfi_records, reply_records = normalize_rfi_payload_block(
@@ -287,6 +294,31 @@ class ProcoreSyncCoordinator:
                 entry["planned_rfi_record_count"] = len(rfi_records)
                 entry["planned_reply_record_count"] = len(reply_records)
                 entry["planned_review_required_count"] = review_required_count
+            if (
+                ep.endpoint_id == OBSERVATION_ENDPOINT_ID
+                and observation_preview_payload is not None
+            ):
+                observation_records, comment_records = normalize_observation_payload_block(
+                    observation_preview_payload,
+                    project_key=project_key or "multi",
+                    endpoint_id=ep.endpoint_id,
+                    correlation_id=self.correlation_id,
+                    fetched_at=datetime.now(timezone.utc).isoformat(),
+                )
+                parent_review_count = sum(
+                    1 for r in observation_records if r["review_required"]
+                )
+                safety_route_count = sum(
+                    1 for r in observation_records if r.get("safety_route")
+                )
+                entry["planned_observation_record_count"] = len(observation_records)
+                entry["planned_comment_record_count"] = len(comment_records)
+                # Every comment is always review-required; parents contribute
+                # per their heuristic.
+                entry["planned_review_required_count"] = (
+                    parent_review_count + len(comment_records)
+                )
+                entry["planned_safety_route_count"] = safety_route_count
             if (
                 ep.endpoint_id == SUBMITTAL_ENDPOINT_ID
                 and submittal_preview_payload is not None
@@ -456,6 +488,55 @@ class ProcoreSyncCoordinator:
                         "reply_records_written": reply_written,
                         "status": "success",
                     }
+                elif ep.endpoint_id == OBSERVATION_ENDPOINT_ID:
+                    observation_written = 0
+                    comment_written = 0
+                    safety_routed = 0
+                    for item in items:
+                        observation_record = normalize_observation(
+                            item,
+                            project_key=project_key or "multi",
+                            endpoint_id=ep.endpoint_id,
+                            correlation_id=self.correlation_id,
+                            fetched_at=fetched_at,
+                        )
+                        upsert_procore_synced_entity(
+                            self.db_path,
+                            observation_record,
+                            correlation=self.correlation_id,
+                        )
+                        observation_written += 1
+                        total_items += 1
+                        if observation_record.get("safety_route"):
+                            safety_routed += 1
+                        parent_key = observation_record["entity_stable_key"]
+                        for raw_comment in item.get("comments") or []:
+                            if not isinstance(raw_comment, dict):
+                                continue
+                            comment_record = normalize_observation_comment(
+                                raw_comment,
+                                parent_observation_stable_key=parent_key,
+                                project_key=project_key or "multi",
+                                endpoint_id=ep.endpoint_id,
+                                correlation_id=self.correlation_id,
+                                fetched_at=fetched_at,
+                            )
+                            upsert_procore_synced_entity(
+                                self.db_path,
+                                comment_record,
+                                correlation=self.correlation_id,
+                            )
+                            comment_written += 1
+                            total_items += 1
+                    items_written = observation_written + comment_written
+                    endpoint_entry = {
+                        "endpoint_id": ep.endpoint_id,
+                        "items_written": items_written,
+                        "observation_records_written": observation_written,
+                        "comment_records_written": comment_written,
+                        "safety_route_count": safety_routed,
+                        "status": "success",
+                    }
                 elif ep.endpoint_id == SUBMITTAL_ENDPOINT_ID:
                     submittal_written = 0
                     response_written = 0
@@ -586,6 +667,7 @@ def run_sync(
     endpoints: Optional[List[str]] = None,
     rfi_preview_payload: Optional[List[Dict[str, Any]]] = None,
     submittal_preview_payload: Optional[List[Dict[str, Any]]] = None,
+    observation_preview_payload: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Entry for CLI `procore sync`. Dry-run default. --apply explicit only.
 
@@ -609,6 +691,7 @@ def run_sync(
             allow_pending=allow_pending,
             rfi_preview_payload=rfi_preview_payload,
             submittal_preview_payload=submittal_preview_payload,
+            observation_preview_payload=observation_preview_payload,
         )
         return plan  # type: ignore[return-value]
     else:

@@ -1,0 +1,308 @@
+{
+  "document": "Phase 04 Prompt 06 \u2014 Observation dry-run sync normalization receipt",
+  "generated_at_utc": "2026-05-28T00:00:00+00:00",
+  "fixture_source": "hb_assistant.construction.fixtures.procore.OBSERVATION_SAMPLE_PAYLOAD",
+  "normalization_schema_version": 1,
+  "canonical_field_keys": [
+    "number",
+    "title",
+    "status",
+    "type",
+    "subtype",
+    "assignee_id",
+    "created_by_id",
+    "observed_at",
+    "due_date",
+    "closed_at",
+    "created_at",
+    "updated_at",
+    "source_url",
+    "severity",
+    "priority"
+  ],
+  "comment_canonical_field_keys": [
+    "id",
+    "created_at",
+    "updated_at",
+    "author_id"
+  ],
+  "endpoint_posture": {
+    "endpoint_id": "list-observations",
+    "verification_status": "candidate",
+    "is_live_eligible": false,
+    "apply_behavior": "skipped_not_live_eligible until verification_status is promoted to official_docs_verified"
+  },
+  "sync_plan_receipt": {
+    "sync_id": "synthetic-sync-id-observation-dry-run",
+    "mode": "dry_run",
+    "company_id": "5280",
+    "started_at": "2026-05-28T00:00:00+00:00",
+    "completed_at": "2026-05-28T00:00:00+00:00",
+    "audit_prerequisite_passed": true,
+    "audit_verdict_summary": {
+      "available": 7,
+      "forbidden": 4,
+      "excluded": 1,
+      "deferred": 2
+    },
+    "category_counts": {
+      "observations": 1
+    },
+    "sensitivity_counts": {},
+    "total_planned_requests": 1,
+    "total_items_normalized": 0,
+    "per_endpoint": [
+      {
+        "endpoint_id": "list-observations",
+        "category": "observations",
+        "review_required": false,
+        "planned_requests": 1,
+        "supports_incremental": false,
+        "live_eligible": false,
+        "verification_status": "candidate",
+        "endpoint_status": "validated",
+        "redacted_request_envelope": {
+          "method": "GET",
+          "path_template": "/rest/v1.0/projects/{project_id}/observations",
+          "company_id": "5280",
+          "correlation": "synthetic-correlation-observation-dry-run"
+        },
+        "normalization_schema_version": 1,
+        "would_persist_children_separately": true,
+        "planned_observation_record_count": 3,
+        "planned_comment_record_count": 3,
+        "planned_review_required_count": 5,
+        "planned_safety_route_count": 2
+      }
+    ],
+    "redacted_errors": [],
+    "redaction_applied": true,
+    "persisted_to_sqlite": false,
+    "policy_used": "auto",
+    "sensitive_review_routing": "flagged per contract; no automated decisioning",
+    "guardrails": {
+      "local_first": true,
+      "bobby_only_mvp": true,
+      "read_only_external": true,
+      "no_procore_writeback": true,
+      "no_post_put_patch_delete": true,
+      "dry_run_default_explicit_apply": true,
+      "audit_prerequisite_gate": true,
+      "unit_tests_mocked_temp_sqlite_only": true,
+      "sensitive_routes_to_review": true,
+      "no_model_file_operations": true
+    }
+  },
+  "fixture_summary": {
+    "observation_count": 3,
+    "comment_count": 3
+  },
+  "normalized_preview": {
+    "observation_records": [
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-observations",
+        "entity_stable_key": "synthetic-obs-001",
+        "category": "observations",
+        "review_required": false,
+        "routing_reason": "default_low_risk",
+        "safety_route": false,
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/observations/synthetic-obs-001",
+          "number": "OBS-001",
+          "title": "Housekeeping at the loading dock",
+          "status": "open",
+          "type": "general",
+          "subtype": "housekeeping",
+          "assignee_id": "synthetic-user-31",
+          "created_by_id": "synthetic-user-12",
+          "observed_at": "2026-05-20T08:30:00Z",
+          "due_date": "2026-05-25",
+          "created_at": "2026-05-20T08:30:00Z",
+          "updated_at": "2026-05-20T08:30:00Z",
+          "severity": "low",
+          "priority": "normal"
+        },
+        "comments_count": 1,
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-observation-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Housekeeping at the loading dock",
+        "description_summary": {
+          "type": "string",
+          "length": 67,
+          "hash_prefix": "fbe7c681062b"
+        }
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-observations",
+        "entity_stable_key": "synthetic-obs-002",
+        "category": "observations",
+        "review_required": true,
+        "routing_reason": "type_contains:near-miss",
+        "safety_route": true,
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/observations/synthetic-obs-002",
+          "number": "OBS-002",
+          "title": "Stacked materials in walkway",
+          "status": "open",
+          "type": "near-miss",
+          "subtype": "housekeeping",
+          "assignee_id": "synthetic-user-9",
+          "created_by_id": "synthetic-user-9",
+          "observed_at": "2026-05-23T14:15:00Z",
+          "due_date": "2026-05-28",
+          "created_at": "2026-05-23T14:15:00Z",
+          "updated_at": "2026-05-26T17:00:00Z",
+          "severity": "medium",
+          "priority": "high"
+        },
+        "comments_count": 1,
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-observation-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Stacked materials in walkway",
+        "description_summary": {
+          "type": "string",
+          "length": 67,
+          "hash_prefix": "b276ef1f5743"
+        }
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-observations",
+        "entity_stable_key": "synthetic-obs-003",
+        "category": "observations",
+        "review_required": true,
+        "routing_reason": "type_contains:incident",
+        "safety_route": true,
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/observations/synthetic-obs-003",
+          "number": "OBS-003",
+          "title": "Worker reports finger laceration",
+          "status": "open",
+          "type": "incident",
+          "subtype": "injury",
+          "created_by_id": "synthetic-user-7",
+          "observed_at": "2026-05-26T11:00:00Z",
+          "due_date": "2026-05-27",
+          "created_at": "2026-05-26T11:00:00Z",
+          "updated_at": "2026-05-27T08:30:00Z",
+          "severity": "high",
+          "priority": "urgent"
+        },
+        "comments_count": 1,
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-observation-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Worker reports finger laceration",
+        "description_summary": {
+          "type": "string",
+          "length": 178,
+          "hash_prefix": "457c6b55e3aa"
+        }
+      }
+    ],
+    "comment_records": [
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-observations",
+        "entity_stable_key": "comment-synthetic-obs-001-synthetic-obs-001-comment-a",
+        "parent_observation_stable_key": "synthetic-obs-001",
+        "category": "observation_comments",
+        "review_required": true,
+        "routing_reason": "observation_comment_default_review_required",
+        "canonical_fields": {
+          "id": "synthetic-obs-001-comment-a",
+          "created_at": "2026-05-21T09:00:00Z",
+          "updated_at": "2026-05-21T09:00:00Z",
+          "author_id": "synthetic-user-31"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-observation-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "body_summary": {
+          "type": "string",
+          "length": 37,
+          "hash_prefix": "7cac1a914752"
+        }
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-observations",
+        "entity_stable_key": "comment-synthetic-obs-002-synthetic-obs-002-comment-a",
+        "parent_observation_stable_key": "synthetic-obs-002",
+        "category": "observation_comments",
+        "review_required": true,
+        "routing_reason": "observation_comment_default_review_required",
+        "canonical_fields": {
+          "id": "synthetic-obs-002-comment-a",
+          "created_at": "2026-05-26T17:00:00Z",
+          "updated_at": "2026-05-26T17:00:00Z",
+          "author_id": "synthetic-user-2"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-observation-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "body_summary": {
+          "type": "string",
+          "length": 54,
+          "hash_prefix": "7761af913ca7"
+        }
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-observations",
+        "entity_stable_key": "comment-synthetic-obs-003-synthetic-obs-003-comment-a",
+        "parent_observation_stable_key": "synthetic-obs-003",
+        "category": "observation_comments",
+        "review_required": true,
+        "routing_reason": "observation_comment_default_review_required",
+        "canonical_fields": {
+          "id": "synthetic-obs-003-comment-a",
+          "created_at": "2026-05-27T08:30:00Z",
+          "updated_at": "2026-05-27T08:30:00Z",
+          "author_id": "synthetic-user-1"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-observation-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "body_summary": {
+          "type": "string",
+          "length": 62,
+          "hash_prefix": "6d9d48ab00cd"
+        }
+      }
+    ]
+  },
+  "safety_routing_summary": {
+    "observation_count": 3,
+    "safety_routed_count": 2,
+    "safety_routed_ids": [
+      "synthetic-obs-002",
+      "synthetic-obs-003"
+    ],
+    "routing_reason_histogram": {
+      "default_low_risk": 1,
+      "type_contains:near-miss": 1,
+      "type_contains:incident": 1
+    },
+    "destination_rule": "procore-incident-injury-personnel (in procore_sensitive_routing_rules.yaml)"
+  },
+  "guardrails": {
+    "read_only": true,
+    "no_writeback": true,
+    "no_raw_body_persisted": true,
+    "safety_keywords_route_to_review": true,
+    "comments_always_review_required": true,
+    "candidate_endpoint_blocks_live_execution": true,
+    "redaction_applied": true
+  }
+}

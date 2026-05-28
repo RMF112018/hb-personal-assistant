@@ -120,12 +120,18 @@ def test_apply_skips_endpoints_that_are_not_live_eligible():
         if e.get("status") == "skipped_not_live_eligible"
     ]
     skipped_ids = sorted(e["endpoint_id"] for e in skipped)
-    # The three guarded endpoints in the seed are correspondence, schedule, tasks.
-    assert skipped_ids == ["list-correspondence", "list-schedule", "list-tasks"]
+    # Guarded endpoints in the seed: correspondence (excluded), schedule + tasks
+    # (deferred), plus the Phase 04 Prompt 06 observation candidate.
+    assert skipped_ids == [
+        "list-correspondence",
+        "list-observations",
+        "list-schedule",
+        "list-tasks",
+    ]
     for entry in skipped:
         assert entry["items_written"] == 0
         assert entry["verification_status"] in (
-            "excluded_by_guardrail", "deferred_by_guardrail",
+            "excluded_by_guardrail", "deferred_by_guardrail", "candidate",
         )
 
 

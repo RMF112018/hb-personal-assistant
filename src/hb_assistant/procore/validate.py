@@ -406,6 +406,36 @@ def _check_submittal_normalizer_dispatch_present() -> dict[str, Any]:
     }
 
 
+def _check_observation_normalizer_dispatch_present() -> dict[str, Any]:
+    """Phase 04 Prompt 06: ``list-observations`` must be wired through the
+    endpoint-id-keyed normalizer dispatch (``sync.NORMALIZER_DISPATCH``) so
+    the apply path persists observation comments as separate canonical rows
+    with safety-aware routing. The endpoint itself ships as a
+    ``verification_status: candidate`` entry so live execution stays blocked
+    until docs reconciliation completes.
+    """
+    from hb_assistant.procore.normalizers import (
+        NORMALIZATION_SCHEMA_VERSION,
+        normalize_observation,
+        normalize_observation_comment,
+        normalize_observation_payload_block,
+    )
+    from hb_assistant.procore.sync import NORMALIZER_DISPATCH, OBSERVATION_ENDPOINT_ID
+
+    dispatched = NORMALIZER_DISPATCH.get(OBSERVATION_ENDPOINT_ID)
+    return {
+        "ok": dispatched is normalize_observation_payload_block
+        and callable(normalize_observation)
+        and callable(normalize_observation_comment)
+        and NORMALIZATION_SCHEMA_VERSION >= 1,
+        "detail": {
+            "observation_endpoint_id": OBSERVATION_ENDPOINT_ID,
+            "dispatch_present": dispatched is not None,
+            "schema_version": NORMALIZATION_SCHEMA_VERSION,
+        },
+    }
+
+
 def _check_procore_init_exports_complete() -> dict[str, Any]:
     """Phase 04: the public ``hb_assistant.procore`` API must re-export the
     sync coordinator, ``run_sync``, ``SyncReceipt``, and the new fail-closed
@@ -499,6 +529,7 @@ def run_procore_validate(
         _safe_check("procore_init_exports_complete", _check_procore_init_exports_complete),
         _safe_check("rfi_normalizer_dispatch_present", _check_rfi_normalizer_dispatch_present),
         _safe_check("submittal_normalizer_dispatch_present", _check_submittal_normalizer_dispatch_present),
+        _safe_check("observation_normalizer_dispatch_present", _check_observation_normalizer_dispatch_present),
     ]
 
     passed = sum(1 for c in checks if c.get("ok"))
