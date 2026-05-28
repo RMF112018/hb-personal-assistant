@@ -85,8 +85,8 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         review_required_default=True,
         sensitivity="medium",
         sqlite_target="procore_live_records",
-        live_verified=False,
-        verification_reason="populated_via_rfis_parent_fetch_2026-05-28",
+        live_verified=True,
+        verification_reason="live_apply_n_plus_1_passed_via_rfis_parent_2026-05-28",
     ),
     EndpointAdapter(
         endpoint_id="submittals",
@@ -117,8 +117,8 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         review_required_default=True,
         sensitivity="medium",
         sqlite_target="procore_live_records",
-        live_verified=False,
-        verification_reason="phase_04a_backlog_2026-05-28:probed_v1.0_responses_v1.0_approvers_v1.0_reviews_v1.1_approvers_v1.1_responses_all_404",
+        live_verified=True,
+        verification_reason="populated_via_submittals_inline_extraction_2026-05-28",
     ),
     EndpointAdapter(
         endpoint_id="submittal-packages",
@@ -182,7 +182,7 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         sensitivity="medium",
         sqlite_target="procore_live_records",
         live_verified=False,
-        verification_reason="phase_04a_backlog_2026-05-28:probed_v1.0_topics_v1.1_topics_mixed_http_404_and_429_rate_limit",
+        verification_reason="phase_04a_deferred:v1.1_meetings_parent_payload_does_not_embed_topics_only_meeting_topics_count_present_per_payload_discovery_probe",
     ),
     EndpointAdapter(
         endpoint_id="daily-log-weather",

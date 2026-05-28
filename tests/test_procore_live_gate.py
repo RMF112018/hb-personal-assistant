@@ -256,7 +256,7 @@ def test_live_sync_unverified_endpoint_fails_closed_without_transport(
             "--project",
             "tropical",
             "--endpoint",
-            "rfi-responses",
+            "meeting-topics",
             "--apply",
             "--sqlite-only",
             "--max-pages",
@@ -291,5 +291,5 @@ def test_live_endpoints_list_emits_canonical_phase04a_rows() -> None:
     assert rfis["command_endpoint"] == "rfis"
     assert rfis["legacy_endpoint_alias"] == "list-rfis"
     assert rfis["live_verified"] is True
-    rfi_resp = next(r for r in rows if r["endpoint_id"] == "rfi-responses")
-    assert rfi_resp["live_verified"] is False
+    topics_row = next(r for r in rows if r["endpoint_id"] == "meeting-topics")
+    assert topics_row["live_verified"] is False

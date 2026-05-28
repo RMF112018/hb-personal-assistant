@@ -50,14 +50,14 @@ def _common_kwargs() -> Dict[str, Any]:
 def _normalize_rfi(blob: str) -> Dict[str, Any]:
     raw = {"id": "r1", "body": blob}
     return normalize_rfi_reply(
-        raw, parent_rfi_stable_key="rfi-parent-1", **_common_kwargs()
+        raw, parent_procore_id="rfi-parent-1", **_common_kwargs()
     )
 
 
 def _normalize_submittal(blob: str) -> Dict[str, Any]:
     raw = {"id": "s1", "comment": blob}
     return normalize_submittal_response(
-        raw, parent_submittal_stable_key="sub-parent-1", **_common_kwargs()
+        raw, parent_procore_id="sub-parent-1", **_common_kwargs()
     )
 
 

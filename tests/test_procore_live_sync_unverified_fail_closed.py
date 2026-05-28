@@ -15,8 +15,6 @@ pytestmark = pytest.mark.usefixtures("isolated_hb_pa_config")
 
 
 _UNVERIFIED_IDS = (
-    "rfi-responses",
-    "submittal-responses",
     "meeting-topics",
     "daily-log-dcrs",
 )

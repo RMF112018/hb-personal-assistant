@@ -169,7 +169,7 @@ def normalize_rfi(
 def normalize_rfi_reply(
     raw: Dict[str, Any],
     *,
-    parent_rfi_stable_key: str,
+    parent_procore_id: str,
     project_key: str,
     endpoint_id: str,
     correlation_id: str,
@@ -181,6 +181,10 @@ def normalize_rfi_reply(
     must never be stored without review routing). The reply body is reduced
     through :func:`redact_body` to a structural hash; the canonical record
     never carries reply text.
+
+    ``parent_procore_id`` is the parent RFI's Procore id (str). The data-key
+    name ``parent_rfi_stable_key`` is preserved in the canonical_fields
+    output for backward compatibility with downstream consumers.
     """
 
     if not isinstance(raw, dict):
@@ -199,8 +203,8 @@ def normalize_rfi_reply(
     record: Dict[str, Any] = {
         "source_project_key": project_key,
         "endpoint_id": endpoint_id,
-        "entity_stable_key": f"reply-{parent_rfi_stable_key}-{raw['id']}",
-        "parent_rfi_stable_key": parent_rfi_stable_key,
+        "entity_stable_key": f"reply-{parent_procore_id}-{raw['id']}",
+        "parent_rfi_stable_key": parent_procore_id,
         "category": "rfi_replies",
         "review_required": True,
         "routing_reason": "rfi_reply_default_review_required",
@@ -242,7 +246,7 @@ def normalize_rfi_payload_block(
             replies.append(
                 normalize_rfi_reply(
                     raw_reply,
-                    parent_rfi_stable_key=rfi_record["entity_stable_key"],
+                    parent_procore_id=rfi_record["entity_stable_key"],
                     project_key=project_key,
                     endpoint_id=endpoint_id,
                     correlation_id=correlation_id,

@@ -558,7 +558,7 @@ class ProcoreSyncCoordinator:
                                 continue
                             reply_record = normalize_rfi_reply(
                                 raw_reply,
-                                parent_rfi_stable_key=rfi_record["entity_stable_key"],
+                                parent_procore_id=rfi_record["entity_stable_key"],
                                 project_key=project_key or "multi",
                                 endpoint_id=ep.endpoint_id,
                                 correlation_id=self.correlation_id,
@@ -746,7 +746,7 @@ class ProcoreSyncCoordinator:
                                 continue
                             response_record = normalize_submittal_response(
                                 raw_response,
-                                parent_submittal_stable_key=parent_key,
+                                parent_procore_id=parent_key,
                                 project_key=project_key or "multi",
                                 endpoint_id=ep.endpoint_id,
                                 correlation_id=self.correlation_id,
@@ -764,7 +764,7 @@ class ProcoreSyncCoordinator:
                                 continue
                             package_record = normalize_submittal_package(
                                 raw_package,
-                                parent_submittal_stable_key=parent_key,
+                                parent_procore_id=parent_key,
                                 project_key=project_key or "multi",
                                 endpoint_id=ep.endpoint_id,
                                 correlation_id=self.correlation_id,

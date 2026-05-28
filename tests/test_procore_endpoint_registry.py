@@ -54,14 +54,19 @@ def test_unknown_endpoint_resolves_to_none() -> None:
 
 def test_verified_endpoints_match_phase04a_matrix() -> None:
     verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
-    # Post-meetings-v1.1-backlog: 12 endpoints confirmed live. The meetings
-    # backlog probe (2026-05-28) extended normalize_meeting + the orchestrator
-    # to handle the v1.1 grouped payload shape; meetings promoted. meeting-topics
-    # stays deferred (v1.0 + v1.1 child paths both returned 404 / 429).
+    # Post unverified-ids resolution + inline-extraction architecture:
+    # 14 endpoints. rfi-responses + submittal-responses promoted because
+    # the parent list payload embeds children inline (Procore design);
+    # extracting inline avoids the N+1 GET storm that triggered rate
+    # limits. meeting-topics + daily-log-dcrs stay deferred (meetings v1.1
+    # does not embed topics; daily-log-dcrs is a top-level endpoint that
+    # still 404s at /dcrs v1.0).
     assert verified == {
         "projects",
         "rfis",
+        "rfi-responses",
         "submittals",
+        "submittal-responses",
         "submittal-packages",
         "meetings",
         "daily-log-weather",

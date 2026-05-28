@@ -273,7 +273,7 @@ def normalize_meeting_topic(
     endpoint_id: str,
     correlation_id: str,
     fetched_at: str,
-    parent_meeting_id: Optional[str] = None,
+    parent_procore_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Return a canonical meeting-topic record.
 
@@ -296,14 +296,16 @@ def normalize_meeting_topic(
             continue
         if key in raw and raw[key] is not None:
             canonical_fields[key] = raw[key]
-    # Defensive: if the caller supplied a parent_meeting_id and the raw payload
-    # didn't carry one, surface it in canonical_fields so the apply row links
-    # back to the parent meeting.
+    # Defensive: if the caller supplied a parent_procore_id and the raw payload
+    # didn't carry a parent_meeting_id field, surface it in canonical_fields so
+    # the apply row links back to the parent meeting. The data-key name
+    # "parent_meeting_id" is preserved for backward compatibility with downstream
+    # consumers (Obsidian renderer, etc.).
     if (
-        parent_meeting_id is not None
+        parent_procore_id is not None
         and canonical_fields.get("parent_meeting_id") is None
     ):
-        canonical_fields["parent_meeting_id"] = parent_meeting_id
+        canonical_fields["parent_meeting_id"] = parent_procore_id
 
     review_required, routing_reason, safety_route = _topic_review_decision(raw)
     excerpt = _title_excerpt(raw.get("title") or raw.get("subject"))
@@ -373,7 +375,7 @@ def normalize_meeting_topic_payload_block(
     endpoint_id: str,
     correlation_id: str,
     fetched_at: str,
-    parent_meeting_id: Optional[str] = None,
+    parent_procore_id: Optional[str] = None,
 ) -> Tuple[List[Dict[str, Any]]]:
     """Normalize an entire meeting-topic list response into a one-tuple of topic records."""
 
@@ -386,7 +388,7 @@ def normalize_meeting_topic_payload_block(
                 endpoint_id=endpoint_id,
                 correlation_id=correlation_id,
                 fetched_at=fetched_at,
-                parent_meeting_id=parent_meeting_id,
+                parent_procore_id=parent_procore_id,
             )
         )
     return (topics,)

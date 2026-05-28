@@ -95,7 +95,7 @@ def test_normalize_rfi_reply_always_review_required() -> None:
     raw_reply = RFI_SAMPLE_PAYLOAD[0]["replies"][0]
     record = normalize_rfi_reply(
         raw_reply,
-        parent_rfi_stable_key="synthetic-rfi-001",
+        parent_procore_id="synthetic-rfi-001",
         project_key="tropical",
         endpoint_id="list-rfis",
         correlation_id=_CORRELATION,

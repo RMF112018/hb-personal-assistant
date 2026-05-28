@@ -309,19 +309,28 @@ def _reply(reply_id: int) -> Dict[str, Any]:
     }
 
 
-def test_rfis_apply_persists_parents_and_replies_separately(
+def _rfi_with_replies(rfi_id: int, subject: str, *, replies: List[Dict[str, Any]]) -> Dict[str, Any]:
+    return {
+        "id": rfi_id,
+        "number": f"RFI-{rfi_id}",
+        "subject": subject,
+        "status": "open",
+        "updated_at": "2026-01-01T00:00:00Z",
+        "assignee_id": 42,
+        "replies": replies,
+    }
+
+
+def test_rfis_apply_persists_parents_and_replies_inline(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _setup_env(monkeypatch)
     db = _db()
-    transport = _PathAwareFakeTransport(
-        {
-            "/rest/v1.0/projects/2525840/rfis/101/replies": [_reply(9001), _reply(9002), _reply(9003)],
-            "/rest/v1.0/projects/2525840/rfis/102/replies": [_reply(9101), _reply(9102)],
-            # parent path matched last because it's a prefix of the child paths
-            "/rest/v1.0/projects/2525840/rfis": _RFI_PAYLOAD,
-        }
-    )
+    payload = [
+        _rfi_with_replies(101, "Door schedule", replies=[_reply(9001), _reply(9002), _reply(9003)]),
+        _rfi_with_replies(102, "Claim impact - delay review", replies=[_reply(9101), _reply(9102)]),
+    ]
+    transport = _FakeTransport(payload)
 
     receipt = run_live_sync(
         project_key="tropical",
@@ -341,6 +350,8 @@ def test_rfis_apply_persists_parents_and_replies_separately(
     assert receipt["child_endpoint_id"] == "rfi-responses"
     assert receipt["sqlite_upserted_count"] == 7
     assert receipt["child_errors_count"] == 0
+    # Only ONE HTTP call: the parent list. Children come inline (no N+1).
+    assert len(transport.calls) == 1
     assert count_procore_live_records(
         project_key="tropical", endpoint_id="rfis", db_path=db
     ) == 2
@@ -354,6 +365,10 @@ def test_rfis_apply_is_idempotent_for_parents_and_replies(
 ) -> None:
     _setup_env(monkeypatch)
     db = _db()
+    payload = [
+        _rfi_with_replies(101, "Door schedule", replies=[_reply(9001), _reply(9002)]),
+        _rfi_with_replies(102, "Claim impact - delay review", replies=[_reply(9101)]),
+    ]
 
     def _go() -> Dict[str, Any]:
         return run_live_sync(
@@ -365,13 +380,7 @@ def test_rfis_apply_is_idempotent_for_parents_and_replies(
             max_pages=1,
             max_items=10,
             db_path=db,
-            transport=_PathAwareFakeTransport(
-                {
-                    "/rest/v1.0/projects/2525840/rfis/101/replies": [_reply(9001), _reply(9002)],
-                    "/rest/v1.0/projects/2525840/rfis/102/replies": [_reply(9101)],
-                    "/rest/v1.0/projects/2525840/rfis": _RFI_PAYLOAD,
-                }
-            ),
+            transport=_FakeTransport(payload),
         )
 
     first = _go()
@@ -386,18 +395,26 @@ def test_rfis_apply_is_idempotent_for_parents_and_replies(
     ) == 3
 
 
-def test_rfis_apply_tolerates_child_404_without_aborting(
+def test_rfis_apply_tolerates_missing_replies_field(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """A parent RFI without an inline ``replies`` field upserts cleanly with
+    zero children. The orchestrator does not issue any additional GET."""
     _setup_env(monkeypatch)
     db = _db()
-    transport = _PathAwareFakeTransport(
-        path_to_payload={
-            "/rest/v1.0/projects/2525840/rfis/101/replies": [_reply(9001), _reply(9002)],
-            "/rest/v1.0/projects/2525840/rfis": _RFI_PAYLOAD,
+    payload = [
+        _rfi_with_replies(101, "Door schedule", replies=[_reply(9001), _reply(9002)]),
+        {
+            "id": 102,
+            "number": "RFI-102",
+            "subject": "No replies field",
+            "status": "open",
+            "updated_at": "2026-01-01T00:00:00Z",
+            "assignee_id": 43,
+            # no "replies" key
         },
-        error_paths={"/rest/v1.0/projects/2525840/rfis/102/replies": 404},
-    )
+    ]
+    transport = _FakeTransport(payload)
 
     receipt = run_live_sync(
         project_key="tropical",
@@ -411,12 +428,12 @@ def test_rfis_apply_tolerates_child_404_without_aborting(
         transport=transport,
     )
 
-    # Both parents land; only parent 101's two replies land. Parent 102's
-    # child fetch surfaces a 404 -> child_errors_count=1, state="partial_success".
-    assert receipt["state"] in {"success", "partial_success"}
+    assert receipt["state"] == "success"
     assert receipt["parent_upserted_count"] == 2
-    assert receipt["child_upserted_count"] == 2
-    assert receipt["child_errors_count"] == 1
+    assert receipt["child_upserted_count"] == 2  # only RFI 101's replies
+    assert receipt["child_errors_count"] == 0
+    # Still only one HTTP call.
+    assert len(transport.calls) == 1
 
 
 def test_rfi_reply_canonical_json_carries_no_body_literal(
@@ -432,13 +449,11 @@ def test_rfi_reply_canonical_json_carries_no_body_literal(
         "author_id": 50,
         "body": secret_body_marker,
     }
-    transport = _PathAwareFakeTransport(
-        {
-            "/rest/v1.0/projects/2525840/rfis/101/replies": [reply_with_marker],
-            "/rest/v1.0/projects/2525840/rfis/102/replies": [],
-            "/rest/v1.0/projects/2525840/rfis": _RFI_PAYLOAD,
-        }
-    )
+    payload = [
+        _rfi_with_replies(101, "Door schedule", replies=[reply_with_marker]),
+        _rfi_with_replies(102, "Other", replies=[]),
+    ]
+    transport = _FakeTransport(payload)
     run_live_sync(
         project_key="tropical",
         endpoint="rfis",
@@ -502,26 +517,42 @@ def _submittal_response(response_id: int) -> Dict[str, Any]:
     }
 
 
-def test_submittals_apply_persists_parents_and_responses_separately(
+def _submittal_with_responses(
+    submittal_id: int, title: str, *, responses: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    return {
+        "id": submittal_id,
+        "number": f"SUB-{submittal_id}",
+        "title": title,
+        "status": "open",
+        "updated_at": "2026-02-01T00:00:00Z",
+        "assignee_id": 51,
+        "responses": responses,
+    }
+
+
+def test_submittals_apply_persists_parents_and_responses_inline(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _setup_env(monkeypatch)
     db = _db()
-    transport = _PathAwareFakeTransport(
-        {
-            "/rest/v1.0/projects/2525840/submittals/201/responses": [
+    payload = [
+        _submittal_with_responses(
+            201,
+            "Door hardware",
+            responses=[
                 _submittal_response(8001),
                 _submittal_response(8002),
                 _submittal_response(8003),
             ],
-            "/rest/v1.0/projects/2525840/submittals/202/responses": [
-                _submittal_response(8101),
-                _submittal_response(8102),
-            ],
-            # parent path matched last because it's a prefix of the child paths
-            "/rest/v1.0/projects/2525840/submittals": _SUBMITTAL_PAYLOAD,
-        }
-    )
+        ),
+        _submittal_with_responses(
+            202,
+            "Claim impact - revise & resubmit",
+            responses=[_submittal_response(8101), _submittal_response(8102)],
+        ),
+    ]
+    transport = _FakeTransport(payload)
 
     receipt = run_live_sync(
         project_key="tropical",
@@ -541,6 +572,7 @@ def test_submittals_apply_persists_parents_and_responses_separately(
     assert receipt["child_endpoint_id"] == "submittal-responses"
     assert receipt["sqlite_upserted_count"] == 7
     assert receipt["child_errors_count"] == 0
+    assert len(transport.calls) == 1
     assert count_procore_live_records(
         project_key="tropical", endpoint_id="submittals", db_path=db
     ) == 2
@@ -554,6 +586,16 @@ def test_submittals_apply_is_idempotent_for_parents_and_responses(
 ) -> None:
     _setup_env(monkeypatch)
     db = _db()
+    payload = [
+        _submittal_with_responses(
+            201,
+            "Door hardware",
+            responses=[_submittal_response(8001), _submittal_response(8002)],
+        ),
+        _submittal_with_responses(
+            202, "Claim impact", responses=[_submittal_response(8101)]
+        ),
+    ]
 
     def _go() -> Dict[str, Any]:
         return run_live_sync(
@@ -565,18 +607,7 @@ def test_submittals_apply_is_idempotent_for_parents_and_responses(
             max_pages=1,
             max_items=10,
             db_path=db,
-            transport=_PathAwareFakeTransport(
-                {
-                    "/rest/v1.0/projects/2525840/submittals/201/responses": [
-                        _submittal_response(8001),
-                        _submittal_response(8002),
-                    ],
-                    "/rest/v1.0/projects/2525840/submittals/202/responses": [
-                        _submittal_response(8101),
-                    ],
-                    "/rest/v1.0/projects/2525840/submittals": _SUBMITTAL_PAYLOAD,
-                }
-            ),
+            transport=_FakeTransport(payload),
         )
 
     first = _go()
@@ -591,21 +622,29 @@ def test_submittals_apply_is_idempotent_for_parents_and_responses(
     ) == 3
 
 
-def test_submittals_apply_tolerates_child_404_without_aborting(
+def test_submittals_apply_tolerates_missing_responses_field(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """A parent submittal without an inline ``responses`` field upserts cleanly
+    with zero children. No additional HTTP request is issued."""
     _setup_env(monkeypatch)
     db = _db()
-    transport = _PathAwareFakeTransport(
-        path_to_payload={
-            "/rest/v1.0/projects/2525840/submittals/201/responses": [
-                _submittal_response(8001),
-                _submittal_response(8002),
-            ],
-            "/rest/v1.0/projects/2525840/submittals": _SUBMITTAL_PAYLOAD,
+    payload = [
+        _submittal_with_responses(
+            201,
+            "Door hardware",
+            responses=[_submittal_response(8001), _submittal_response(8002)],
+        ),
+        {
+            "id": 202,
+            "number": "SUB-202",
+            "title": "No responses field",
+            "status": "open",
+            "updated_at": "2026-02-02T00:00:00Z",
+            "assignee_id": 52,
         },
-        error_paths={"/rest/v1.0/projects/2525840/submittals/202/responses": 404},
-    )
+    ]
+    transport = _FakeTransport(payload)
 
     receipt = run_live_sync(
         project_key="tropical",
@@ -619,10 +658,11 @@ def test_submittals_apply_tolerates_child_404_without_aborting(
         transport=transport,
     )
 
-    assert receipt["state"] in {"success", "partial_success"}
+    assert receipt["state"] == "success"
     assert receipt["parent_upserted_count"] == 2
     assert receipt["child_upserted_count"] == 2
-    assert receipt["child_errors_count"] == 1
+    assert receipt["child_errors_count"] == 0
+    assert len(transport.calls) == 1
 
 
 def test_submittal_response_canonical_json_carries_no_body_literal(
@@ -639,13 +679,13 @@ def test_submittal_response_canonical_json_carries_no_body_literal(
         "response_status": "approved",
         "comment": secret_body_marker,
     }
-    transport = _PathAwareFakeTransport(
-        {
-            "/rest/v1.0/projects/2525840/submittals/201/responses": [response_with_marker],
-            "/rest/v1.0/projects/2525840/submittals/202/responses": [],
-            "/rest/v1.0/projects/2525840/submittals": _SUBMITTAL_PAYLOAD,
-        }
-    )
+    payload = [
+        _submittal_with_responses(
+            201, "Door hardware", responses=[response_with_marker]
+        ),
+        _submittal_with_responses(202, "Other", responses=[]),
+    ]
+    transport = _FakeTransport(payload)
     run_live_sync(
         project_key="tropical",
         endpoint="submittals",
@@ -895,26 +935,40 @@ def _meeting_topic(topic_id: int) -> Dict[str, Any]:
     }
 
 
-def test_meetings_apply_persists_parents_and_topics_separately(
+def _meeting_with_topics(
+    meeting_id: int, title: str, *, topics: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    return {
+        "id": meeting_id,
+        "number": f"MTG-{meeting_id}",
+        "title": title,
+        "status": "scheduled",
+        "starts_at": "2026-03-01T15:00:00Z",
+        "ends_at": "2026-03-01T16:00:00Z",
+        "created_by_id": 91,
+        "updated_at": "2026-02-28T00:00:00Z",
+        "topics": topics,
+    }
+
+
+def test_meetings_apply_persists_parents_and_topics_inline(
     monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
 ) -> None:
     _setup_env(monkeypatch)
     db = _db()
-    transport = _PathAwareFakeTransport(
-        {
-            "/rest/v1.0/projects/2525840/meetings/401/topics": [
-                _meeting_topic(7001),
-                _meeting_topic(7002),
-                _meeting_topic(7003),
-            ],
-            "/rest/v1.0/projects/2525840/meetings/402/topics": [
-                _meeting_topic(7101),
-                _meeting_topic(7102),
-            ],
-            # parent path matched last because it's a prefix of the child paths
-            "/rest/v1.1/projects/2525840/meetings": _MEETING_PAYLOAD,
-        }
-    )
+    payload = [
+        _meeting_with_topics(
+            401,
+            "Weekly OAC",
+            topics=[_meeting_topic(7001), _meeting_topic(7002), _meeting_topic(7003)],
+        ),
+        _meeting_with_topics(
+            402,
+            "Claim review",
+            topics=[_meeting_topic(7101), _meeting_topic(7102)],
+        ),
+    ]
+    transport = _FakeTransport(payload)
 
     receipt = run_live_sync(
         project_key="tropical",
@@ -934,6 +988,7 @@ def test_meetings_apply_persists_parents_and_topics_separately(
     assert receipt["child_endpoint_id"] == "meeting-topics"
     assert receipt["sqlite_upserted_count"] == 7
     assert receipt["child_errors_count"] == 0
+    assert len(transport.calls) == 1
     assert count_procore_live_records(
         project_key="tropical", endpoint_id="meetings", db_path=db
     ) == 2
@@ -947,6 +1002,14 @@ def test_meetings_apply_is_idempotent_for_parents_and_topics(
 ) -> None:
     _setup_env(monkeypatch)
     db = _db()
+    payload = [
+        _meeting_with_topics(
+            401,
+            "Weekly OAC",
+            topics=[_meeting_topic(7001), _meeting_topic(7002)],
+        ),
+        _meeting_with_topics(402, "Claim review", topics=[_meeting_topic(7101)]),
+    ]
 
     def _go() -> Dict[str, Any]:
         return run_live_sync(
@@ -958,18 +1021,7 @@ def test_meetings_apply_is_idempotent_for_parents_and_topics(
             max_pages=1,
             max_items=10,
             db_path=db,
-            transport=_PathAwareFakeTransport(
-                {
-                    "/rest/v1.0/projects/2525840/meetings/401/topics": [
-                        _meeting_topic(7001),
-                        _meeting_topic(7002),
-                    ],
-                    "/rest/v1.0/projects/2525840/meetings/402/topics": [
-                        _meeting_topic(7101),
-                    ],
-                    "/rest/v1.1/projects/2525840/meetings": _MEETING_PAYLOAD,
-                }
-            ),
+            transport=_FakeTransport(payload),
         )
 
     first = _go()
@@ -984,21 +1036,30 @@ def test_meetings_apply_is_idempotent_for_parents_and_topics(
     ) == 3
 
 
-def test_meetings_apply_tolerates_child_404_without_aborting(
+def test_meetings_apply_tolerates_missing_topics_field(
     monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
 ) -> None:
+    """A parent meeting without an inline ``topics`` field upserts cleanly
+    with zero topics. No additional HTTP request is issued."""
     _setup_env(monkeypatch)
     db = _db()
-    transport = _PathAwareFakeTransport(
-        path_to_payload={
-            "/rest/v1.0/projects/2525840/meetings/401/topics": [
-                _meeting_topic(7001),
-                _meeting_topic(7002),
-            ],
-            "/rest/v1.1/projects/2525840/meetings": _MEETING_PAYLOAD,
+    payload = [
+        _meeting_with_topics(
+            401, "Weekly OAC",
+            topics=[_meeting_topic(7001), _meeting_topic(7002)],
+        ),
+        {
+            "id": 402,
+            "number": "MTG-402",
+            "title": "No topics field",
+            "status": "scheduled",
+            "starts_at": "2026-03-02T15:00:00Z",
+            "ends_at": "2026-03-02T16:00:00Z",
+            "created_by_id": 92,
+            "updated_at": "2026-03-01T00:00:00Z",
         },
-        error_paths={"/rest/v1.0/projects/2525840/meetings/402/topics": 404},
-    )
+    ]
+    transport = _FakeTransport(payload)
 
     receipt = run_live_sync(
         project_key="tropical",
@@ -1012,10 +1073,11 @@ def test_meetings_apply_tolerates_child_404_without_aborting(
         transport=transport,
     )
 
-    assert receipt["state"] in {"success", "partial_success"}
+    assert receipt["state"] == "success"
     assert receipt["parent_upserted_count"] == 2
     assert receipt["child_upserted_count"] == 2
-    assert receipt["child_errors_count"] == 1
+    assert receipt["child_errors_count"] == 0
+    assert len(transport.calls) == 1
 
 
 def test_meeting_topic_canonical_json_carries_no_description_body_literal(
@@ -1036,13 +1098,11 @@ def test_meeting_topic_canonical_json_carries_no_description_body_literal(
         "created_at": "2026-03-01T00:00:00Z",
         "updated_at": "2026-03-01T00:00:00Z",
     }
-    transport = _PathAwareFakeTransport(
-        {
-            "/rest/v1.0/projects/2525840/meetings/401/topics": [topic_with_marker],
-            "/rest/v1.0/projects/2525840/meetings/402/topics": [],
-            "/rest/v1.1/projects/2525840/meetings": _MEETING_PAYLOAD,
-        }
-    )
+    payload = [
+        _meeting_with_topics(401, "OAC", topics=[topic_with_marker]),
+        _meeting_with_topics(402, "Other", topics=[]),
+    ]
+    transport = _FakeTransport(payload)
     run_live_sync(
         project_key="tropical",
         endpoint="meetings",

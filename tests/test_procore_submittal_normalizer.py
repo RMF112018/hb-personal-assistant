@@ -100,7 +100,7 @@ def test_normalize_submittal_response_always_review_required() -> None:
     raw_response = SUBMITTAL_SAMPLE_PAYLOAD[0]["responses"][0]
     record = normalize_submittal_response(
         raw_response,
-        parent_submittal_stable_key="synthetic-sub-001",
+        parent_procore_id="synthetic-sub-001",
         project_key="tropical",
         endpoint_id="list-submittals",
         correlation_id=_CORRELATION,
@@ -120,7 +120,7 @@ def test_normalize_submittal_package_always_review_required() -> None:
     raw_package = SUBMITTAL_SAMPLE_PAYLOAD[0]["packages"][0]
     record = normalize_submittal_package(
         raw_package,
-        parent_submittal_stable_key="synthetic-sub-001",
+        parent_procore_id="synthetic-sub-001",
         project_key="tropical",
         endpoint_id="list-submittals",
         correlation_id=_CORRELATION,

@@ -818,6 +818,53 @@ activation.
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/10-meetings-v1.1-normalizer-resolution.md`.
 
+## Phase 04A backlog resolution: remaining `_UNVERIFIED_IDS` + N+1 architecture pivot
+
+The orchestrator's N+1 child GET pattern (one HTTP call per parent for
+replies / responses / topics) was burning Procore's rate-limit budget
+unnecessarily. Procore's RFI and submittal list payloads already embed
+their children inline, so the orchestrator now extracts children from
+the parent payload rather than issuing per-parent GETs.
+
+What changed:
+
+1. **Generic child-adapter dispatch.** `live_sync.py` no longer has
+   hard-coded `if/elif` branches for rfis / submittals / meetings. A
+   single helper `_resolve_child_adapter(parent)` scans the registry by
+   `family` + `parent_record_id_field`, and `_CHILD_NORMALIZER_BY_ID`
+   resolves the normalizer.
+
+2. **Inline child extraction.** A small map
+   `_INLINE_CHILD_FIELD_BY_PARENT_ID = {"rfis": "replies", "submittals":
+   "responses", "meetings": "topics"}` tells the orchestrator which
+   field to read on each parent record. Children are normalized and
+   upserted with `parent_procore_id` set. Zero additional HTTP calls
+   are issued for children.
+
+3. **Promotions.** `rfi-responses` and `submittal-responses` are now
+   `live_verified=True`. They populate inline whenever the parent apply
+   runs against a project that has actual responses.
+
+4. **Standardized normalizer kwargs.** All three child normalizers
+   (`normalize_rfi_reply`, `normalize_submittal_response`,
+   `normalize_meeting_topic`) accept a uniform `parent_procore_id`
+   kwarg. Internal data-key names (`parent_rfi_stable_key`,
+   `parent_submittal_stable_key`, `parent_meeting_id`) are preserved
+   for backward compatibility with downstream consumers.
+
+Remaining deferrals:
+
+- `meeting-topics` — the Procore v1.1 meetings parent payload does NOT
+  embed topics (only `meeting_topics_count` per the Prompt 07
+  discovery probe). Promotion requires either a working per-meeting
+  `/topics` GET surface (prior probes returned 404 + 429) or an
+  embedded topics array in the parent payload (Procore design choice).
+- `daily-log-dcrs` — top-level endpoint at `/dcrs` still returns 404.
+  Multi-path probing was deferred under the active Procore rate-limit
+  budget.
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/11-unverified-ids-resolution.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

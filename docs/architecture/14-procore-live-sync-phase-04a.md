@@ -179,14 +179,66 @@ N+1 dispatch is preserved (unit-tested) for future activation.
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/10-meetings-v1.1-normalizer-resolution.md`.
 
+## Unverified-IDs resolution + N+1 → inline extraction pivot
+
+The orchestrator's N+1 child GET dispatch (one HTTP call per parent
+for `replies` / `responses` / `topics`) was identified as the source
+of recurring Procore HTTP 429 rate-limit pressure. Procore's RFI and
+submittal list endpoints already embed children inline; the
+orchestrator now extracts them from the parent payload rather than
+issuing per-parent GETs.
+
+Two structural changes land together:
+
+1. **Generic child-adapter dispatch.** The three hard-coded `if/elif`
+   branches in `run_live_sync` (one each for rfis / submittals /
+   meetings) are replaced by a single helper
+   `_resolve_child_adapter(parent_adapter)` that scans the registry
+   for an adapter in the same `family` with `parent_record_id_field`
+   set. The child normalizer is resolved via a single
+   `_CHILD_NORMALIZER_BY_ID` lookup.
+
+2. **Inline child extraction.** A small map keyed on the parent
+   `endpoint_id` (`rfis` → `replies`, `submittals` → `responses`,
+   `meetings` → `topics`) tells the orchestrator which field to read
+   on each parent record. If a list is present, each child dict is
+   normalized via the child normalizer (with `parent_procore_id` set)
+   and upserted under the child adapter's canonical `endpoint_id`.
+   Zero additional HTTP calls are issued for children.
+
+Behavioral consequences: a single parent apply now issues exactly one
+HTTP request (the parent list call), bounded by the operator's
+`--max-pages` / `--max-items` caps; the orchestrator persists both
+parent and inline-embedded child rows in one pass. The verification
+semantics of child endpoints stay correct: `procore live sync
+--endpoint <child>` with no parent context still fail-closes because
+the orchestrator's parent loop never runs.
+
+`rfi-responses` and `submittal-responses` are promoted to
+`live_verified=True` on the strength of this architecture.
+`meeting-topics` stays deferred because the Procore v1.1 meetings
+parent does NOT embed topics (only `meeting_topics_count`).
+`daily-log-dcrs` stays deferred — it's a top-level endpoint with a
+404 at `/dcrs`; inline extraction does not apply.
+
+The three child normalizer signatures are standardized to a uniform
+`parent_procore_id` kwarg (was `parent_rfi_stable_key` /
+`parent_submittal_stable_key` / `parent_meeting_id`). Internal
+canonical-fields data-key names are preserved for downstream
+consumers.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/11-unverified-ids-resolution.md`.
+
 ## Verified vs unverified endpoints
 
-Post meetings-v1.1 backlog, 12 of 16 endpoint IDs are
-`live_verified=True` and execute the full chain: `projects`, `rfis`,
-`submittals`, `submittal-packages`, `meetings`, `observations`,
-`daily-log-weather`, `daily-log-manpower`, `daily-log-notes`,
-`daily-log-deliveries`, `daily-log-delays-review-routed`,
-`daily-log-inspections`. The other 4 are command-visible (`endpoints
+Post unverified-ids resolution + inline-extraction architecture
+pivot, 14 of 16 endpoint IDs are `live_verified=True` and execute the
+full chain: `projects`, `rfis`, `rfi-responses`, `submittals`,
+`submittal-responses`, `submittal-packages`, `meetings`,
+`observations`, `daily-log-weather`, `daily-log-manpower`,
+`daily-log-notes`, `daily-log-deliveries`,
+`daily-log-delays-review-routed`, `daily-log-inspections`. The other 2
+(`meeting-topics`, `daily-log-dcrs`) are command-visible (`endpoints
 list`) and command-accepted, but the orchestrator returns a structured
 `state="not_live_verified"` receipt with `no_live_call_performed=true`
 and zero counts; no API call and no DB write occur. Promotion is a

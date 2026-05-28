@@ -194,7 +194,7 @@ def normalize_submittal(
 def normalize_submittal_response(
     raw: Dict[str, Any],
     *,
-    parent_submittal_stable_key: str,
+    parent_procore_id: str,
     project_key: str,
     endpoint_id: str,
     correlation_id: str,
@@ -224,8 +224,8 @@ def normalize_submittal_response(
     record: Dict[str, Any] = {
         "source_project_key": project_key,
         "endpoint_id": endpoint_id,
-        "entity_stable_key": f"response-{parent_submittal_stable_key}-{raw['id']}",
-        "parent_submittal_stable_key": parent_submittal_stable_key,
+        "entity_stable_key": f"response-{parent_procore_id}-{raw['id']}",
+        "parent_submittal_stable_key": parent_procore_id,
         "category": "submittal_responses",
         "review_required": True,
         "routing_reason": "submittal_response_default_review_required",
@@ -243,7 +243,7 @@ def normalize_submittal_response(
 def normalize_submittal_package(
     raw: Dict[str, Any],
     *,
-    parent_submittal_stable_key: str,
+    parent_procore_id: str,
     project_key: str,
     endpoint_id: str,
     correlation_id: str,
@@ -272,8 +272,8 @@ def normalize_submittal_package(
     record: Dict[str, Any] = {
         "source_project_key": project_key,
         "endpoint_id": endpoint_id,
-        "entity_stable_key": f"package-{parent_submittal_stable_key}-{raw['id']}",
-        "parent_submittal_stable_key": parent_submittal_stable_key,
+        "entity_stable_key": f"package-{parent_procore_id}-{raw['id']}",
+        "parent_submittal_stable_key": parent_procore_id,
         "category": "submittal_packages",
         "review_required": True,
         "routing_reason": "submittal_package_default_review_required",
@@ -318,7 +318,7 @@ def normalize_submittal_payload_block(
             responses.append(
                 normalize_submittal_response(
                     raw_response,
-                    parent_submittal_stable_key=submittal_record["entity_stable_key"],
+                    parent_procore_id=submittal_record["entity_stable_key"],
                     project_key=project_key,
                     endpoint_id=endpoint_id,
                     correlation_id=correlation_id,
@@ -331,7 +331,7 @@ def normalize_submittal_payload_block(
             packages.append(
                 normalize_submittal_package(
                     raw_package,
-                    parent_submittal_stable_key=submittal_record["entity_stable_key"],
+                    parent_procore_id=submittal_record["entity_stable_key"],
                     project_key=project_key,
                     endpoint_id=endpoint_id,
                     correlation_id=correlation_id,
