@@ -181,6 +181,24 @@ def _check_obsidian_routing_rules_loadable() -> dict[str, Any]:
     }
 
 
+def _check_obsidian_renderer_phase_04_register_coverage() -> dict[str, Any]:
+    """Phase 04 Prompt 10: assert ProcoreObsidianRenderer exposes a callable
+    builder for each per-entity register (RFI, Submittal, Observation,
+    Meeting, Daily Log). Surfaces missing builders before apply-time."""
+    expected = (
+        "build_rfi_register",
+        "build_submittal_register",
+        "build_observation_register",
+        "build_meeting_register",
+        "build_daily_log_index",
+    )
+    present = {name: callable(getattr(ProcoreObsidianRenderer, name, None)) for name in expected}
+    return {
+        "ok": all(present.values()),
+        "detail": {"builders": present},
+    }
+
+
 def _check_sensitive_routing_rules_cover_phase_04_families() -> dict[str, Any]:
     """Phase 04 Prompt 09: declarative parity — each per-entity normalizer
     family must be represented by at least one rule_id in
@@ -624,6 +642,10 @@ def run_procore_validate(
         _safe_check(
             "sensitive_routing_rules_cover_phase_04_families",
             _check_sensitive_routing_rules_cover_phase_04_families,
+        ),
+        _safe_check(
+            "obsidian_renderer_phase_04_register_coverage",
+            _check_obsidian_renderer_phase_04_register_coverage,
         ),
     ]
 

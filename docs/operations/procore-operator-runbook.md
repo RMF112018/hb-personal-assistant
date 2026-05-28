@@ -248,6 +248,15 @@ exception class name only (no message text leaks).
   reset state).
 - Vault writes are atomic (tempfile + `os.replace`) and marker-bounded
   (`<!-- HB-PROCORE-...:START -->` / `:END`).
+- Phase 04 Prompt 10 added two more marker-bounded artifacts:
+  `HB-PROCORE-OBSERVATION-REGISTER` (per-project observation table; safety-
+  routed rows excluded by `safety_route` flag) and `HB-PROCORE-MEETING-
+  REGISTER` (meetings + topics; sensitive topics routed by
+  `procore_sensitive_routing_rules.yaml`). The existing
+  `HB-PROCORE-DAILY-LOG` artifact is now section-aware — its rows surface
+  the daily-log section, bucket, review/safety flags, and a body-hash
+  fingerprint (never raw body text). All three honor the same dry-run /
+  apply / confirm convention as the original 7 procore artifacts.
 
 ## What is never written / never logged
 

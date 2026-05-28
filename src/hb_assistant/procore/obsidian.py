@@ -39,6 +39,8 @@ PROCORE_TEMPLATE_NAMES: dict[str, str] = {
     "project_card": "procore_project_card.template.md",
     "rfi_register": "procore_rfi_register.template.md",
     "submittal_register": "procore_submittal_register.template.md",
+    "observation_register": "procore_observation_register.template.md",
+    "meeting_register": "procore_meeting_register.template.md",
     "daily_log_index": "procore_daily_log_index.template.md",
     "financial_snapshot": "procore_financial_snapshot.template.md",
     "sync_receipt": "procore_sync_receipt.template.md",
@@ -63,6 +65,8 @@ _PROCORE_MARKERS: dict[str, tuple[str, str]] = {
     "project_card": ("<!-- HB-PROCORE-PROJECT-CARD:START -->", "<!-- HB-PROCORE-PROJECT-CARD:END -->"),
     "rfi_register": ("<!-- HB-PROCORE-RFI-REGISTER:START -->", "<!-- HB-PROCORE-RFI-REGISTER:END -->"),
     "submittal_register": ("<!-- HB-PROCORE-SUBMITTAL-REGISTER:START -->", "<!-- HB-PROCORE-SUBMITTAL-REGISTER:END -->"),
+    "observation_register": ("<!-- HB-PROCORE-OBSERVATION-REGISTER:START -->", "<!-- HB-PROCORE-OBSERVATION-REGISTER:END -->"),
+    "meeting_register": ("<!-- HB-PROCORE-MEETING-REGISTER:START -->", "<!-- HB-PROCORE-MEETING-REGISTER:END -->"),
     "daily_log_index": ("<!-- HB-PROCORE-DAILY-LOG:START -->", "<!-- HB-PROCORE-DAILY-LOG:END -->"),
     "financial_snapshot": ("<!-- HB-PROCORE-FINANCIAL-SNAPSHOT:START -->", "<!-- HB-PROCORE-FINANCIAL-SNAPSHOT:END -->"),
     "sync_receipt": ("<!-- HB-PROCORE-SYNC-RECEIPT:START -->", "<!-- HB-PROCORE-SYNC-RECEIPT:END -->"),
@@ -131,7 +135,7 @@ class ProcoreObsidianRenderer:
         self._collected_review_items: list[ReviewRequiredItem] = []
 
     @staticmethod
-    @lru_cache(maxsize=8)
+    @lru_cache(maxsize=16)
     def _load_procore_template(name: str) -> str:
         if name not in PROCORE_TEMPLATE_NAMES:
             raise ValueError(f"unknown procore template name: {name!r}")
@@ -202,7 +206,13 @@ class ProcoreObsidianRenderer:
             sensitivity="high",
         )
 
-    def _query_synced_entities(self, project_key: str, category: Optional[str] = None) -> list[sqlite3.Row]:
+    def _query_synced_entities(
+        self,
+        project_key: str,
+        category: Optional[str] = None,
+        *,
+        category_like: Optional[str] = None,
+    ) -> list[sqlite3.Row]:
         conn = get_connection(self.db_path)
         try:
             sql = (
@@ -214,6 +224,9 @@ class ProcoreObsidianRenderer:
             if category:
                 sql += " AND category = ?"
                 params.append(category)
+            elif category_like:
+                sql += " AND category LIKE ?"
+                params.append(category_like)
             sql += " ORDER BY last_seen_at DESC, id DESC"
             return list(conn.execute(sql, params).fetchall())
         except Exception:
@@ -359,22 +372,127 @@ class ProcoreObsidianRenderer:
             "guardrails": dict(PROCORE_GUARDRAILS),
         }
 
-    def build_daily_log_index(self, project_key: str) -> dict[str, Any]:
+    def build_observation_register(self, project_key: str) -> dict[str, Any]:
         rows_md: list[str] = []
-        for row in self._query_synced_entities(project_key, "daily-logs"):
+        for row in self._query_synced_entities(project_key, "observations"):
+            fields = json.loads(row["canonical_fields_json"] or "{}") if row["canonical_fields_json"] else {}
+            is_sens, rule = self._is_procore_sensitive(category=row["category"], fields=fields)
+            safety = bool(fields.get("safety_route"))
+            if is_sens or bool(row["review_required"]) or safety:
+                self._collected_review_items.append(
+                    self._make_review_item(row, fields, rule, "procore_observations")
+                )
+                continue
+            num = fields.get("number") or row["entity_stable_key"]
+            title = self._safe_excerpt(fields.get("title") or fields.get("subject") or "")
+            status = fields.get("status", "n/a")
+            otype = fields.get("type") or ""
+            severity = fields.get("severity") or fields.get("priority") or ""
+            src = fields.get("url") or fields.get("source_url") or "#"
+            sid = row["id"]
+            rows_md.append(
+                f"| {num} | {title} | {status} | {otype} | {severity} | no | [{sid}]({src}) |"
+            )
+        table = (
+            "\n".join(rows_md)
+            if rows_md
+            else "| (no non-sensitive Observations after routing) | | | | | | |"
+        )
+        return {
+            "project_name": project_key,
+            "rows": table,
+            "guardrails": dict(PROCORE_GUARDRAILS),
+        }
+
+    def build_meeting_register(self, project_key: str) -> dict[str, Any]:
+        meeting_rows_md: list[str] = []
+        topic_rows_md: list[str] = []
+        for row in self._query_synced_entities(project_key, "meetings"):
             fields = json.loads(row["canonical_fields_json"] or "{}") if row["canonical_fields_json"] else {}
             is_sens, rule = self._is_procore_sensitive(category=row["category"], fields=fields)
             if is_sens or bool(row["review_required"]):
-                self._collected_review_items.append(self._make_review_item(row, fields, rule, "procore_daily_logs"))
+                self._collected_review_items.append(
+                    self._make_review_item(row, fields, rule, "procore_meetings")
+                )
                 continue
-            date = fields.get("date") or fields.get("log_date") or ""
+            num = fields.get("number") or row["entity_stable_key"]
+            title = self._safe_excerpt(fields.get("title") or fields.get("subject") or "")
             status = fields.get("status", "n/a")
-            weather = self._safe_excerpt(fields.get("weather") or "")
-            manpower = self._safe_excerpt(fields.get("manpower") or fields.get("crew") or "")
-            notes = self._safe_excerpt(fields.get("notes") or fields.get("note") or fields.get("delays") or "")
-            review_flag = "flagged" if (is_sens or row["review_required"]) else "ok"
-            rows_md.append(f"| {date} | {status} | {weather} | {manpower} | {notes} | {review_flag} |")
-        table = "\n".join(rows_md) if rows_md else "| (no non-sensitive Daily Logs after routing) | | | | | |"
+            start = fields.get("start_time") or fields.get("start") or ""
+            location = self._safe_excerpt(fields.get("location") or "")
+            src = fields.get("url") or fields.get("source_url") or "#"
+            sid = row["id"]
+            meeting_rows_md.append(
+                f"| {num} | {title} | {status} | {start} | {location} | [{sid}]({src}) |"
+            )
+        for row in self._query_synced_entities(project_key, "meeting_topics"):
+            fields = json.loads(row["canonical_fields_json"] or "{}") if row["canonical_fields_json"] else {}
+            is_sens, rule = self._is_procore_sensitive(category=row["category"], fields=fields)
+            safety = bool(fields.get("safety_route"))
+            if is_sens or bool(row["review_required"]) or safety:
+                self._collected_review_items.append(
+                    self._make_review_item(row, fields, rule, "procore_meeting_topics")
+                )
+                continue
+            title = self._safe_excerpt(fields.get("title") or fields.get("subject") or "")
+            status = fields.get("status", "n/a")
+            parent = fields.get("parent_meeting_id") or ""
+            assignee = fields.get("assignee_id") or ""
+            due = fields.get("due_date") or ""
+            src = fields.get("url") or fields.get("source_url") or "#"
+            sid = row["id"]
+            topic_rows_md.append(
+                f"| {title} | {status} | {parent} | {assignee} | {due} | no | [{sid}]({src}) |"
+            )
+        meeting_table = (
+            "\n".join(meeting_rows_md)
+            if meeting_rows_md
+            else "| (no non-sensitive Meetings after routing) | | | | | |"
+        )
+        topic_table = (
+            "\n".join(topic_rows_md)
+            if topic_rows_md
+            else "| (no non-sensitive Meeting Topics after routing) | | | | | | |"
+        )
+        return {
+            "project_name": project_key,
+            "meeting_rows": meeting_table,
+            "topic_rows": topic_table,
+            "guardrails": dict(PROCORE_GUARDRAILS),
+        }
+
+    def build_daily_log_index(self, project_key: str) -> dict[str, Any]:
+        rows_md: list[str] = []
+        # Phase 04 Prompt 08 normalizer emits per-section categories prefixed with
+        # `daily_log_`; Prompt 10 renders each row tagged with its section + bucket.
+        for row in self._query_synced_entities(project_key, category_like="daily_log_%"):
+            fields = json.loads(row["canonical_fields_json"] or "{}") if row["canonical_fields_json"] else {}
+            is_sens, rule = self._is_procore_sensitive(category=row["category"], fields=fields)
+            if is_sens or bool(row["review_required"]):
+                self._collected_review_items.append(
+                    self._make_review_item(row, fields, rule, "procore_daily_logs")
+                )
+                continue
+            section = (row["category"] or "").replace("daily_log_", "") or "unknown"
+            log_date = fields.get("log_date") or fields.get("date") or ""
+            bucket = fields.get("bucket") or "selected"
+            safety = "yes" if fields.get("safety_route") else "no"
+            body_summary = fields.get("body_summary") or {}
+            body_hash = (
+                body_summary.get("hash_prefix")
+                if isinstance(body_summary, dict)
+                else ""
+            ) or ""
+            src = fields.get("url") or fields.get("source_url") or "#"
+            sid = row["id"]
+            rows_md.append(
+                f"| {log_date} | {section} | {bucket} | ok | {safety} | {body_hash} | [{sid}]({src}) |"
+            )
+        table = (
+            "\n".join(rows_md)
+            if rows_md
+            else "| (no non-sensitive Daily Log sections after routing) | | | | | | |"
+        )
         return {
             "project_name": project_key,
             "rows": table,
@@ -596,6 +714,8 @@ def procore_obsidian_preview(
         card_d = renderer.build_procore_project_card(project_key)
         rfi_d = renderer.build_rfi_register(project_key)
         sub_d = renderer.build_submittal_register(project_key)
+        obs_d = renderer.build_observation_register(project_key)
+        meet_d = renderer.build_meeting_register(project_key)
         daily_d = renderer.build_daily_log_index(project_key)
         fin_d = renderer.build_financial_snapshot(project_key)
         sync_d = renderer.build_sync_receipt(project_key)
@@ -606,6 +726,8 @@ def procore_obsidian_preview(
             "project_card": renderer.render("project_card", card_d),
             "rfi_register": renderer.render("rfi_register", rfi_d),
             "submittal_register": renderer.render("submittal_register", sub_d),
+            "observation_register": renderer.render("observation_register", obs_d),
+            "meeting_register": renderer.render("meeting_register", meet_d),
             "daily_log_index": renderer.render("daily_log_index", daily_d),
             "financial_snapshot": renderer.render("financial_snapshot", fin_d),
             "sync_receipt": renderer.render("sync_receipt", sync_d),
@@ -624,6 +746,8 @@ def procore_obsidian_preview(
                 written.append(str(_write_procore_artifact(root, f"{project_key}.procore-project-card.md", rendered["project_card"], "project_card")))
                 written.append(str(_write_procore_artifact(root, f"{project_key}.procore-rfi-register.md", rendered["rfi_register"], "rfi_register")))
                 written.append(str(_write_procore_artifact(root, f"{project_key}.procore-submittal-register.md", rendered["submittal_register"], "submittal_register")))
+                written.append(str(_write_procore_artifact(root, f"{project_key}.procore-observation-register.md", rendered["observation_register"], "observation_register")))
+                written.append(str(_write_procore_artifact(root, f"{project_key}.procore-meeting-register.md", rendered["meeting_register"], "meeting_register")))
                 written.append(str(_write_procore_artifact(root, f"{project_key}.procore-daily-log-index.md", rendered["daily_log_index"], "daily_log_index")))
                 written.append(str(_write_procore_artifact(root, f"{project_key}.procore-financial-snapshot.md", rendered["financial_snapshot"], "financial_snapshot")))
                 written.append(str(_write_procore_artifact(root, f"{project_key}.procore-sync-receipt.md", rendered["sync_receipt"], "sync_receipt")))

@@ -212,10 +212,16 @@ def _safe_render_data_for(template: str) -> dict:
             "review_sensitive": False,
             "source": "procore",
         }
-    if template in ("rfi_register", "submittal_register", "daily_log_index"):
+    if template in ("rfi_register", "submittal_register", "daily_log_index", "observation_register"):
         return {
             **base,
             "rows": "| 1 | Example | open | 2026-06-01 | [42](https://ex.com/1) |",
+        }
+    if template == "meeting_register":
+        return {
+            **base,
+            "meeting_rows": "| 1 | Example Meeting | scheduled | 2026-06-01T10:00:00Z | Room A | [42](https://ex.com/m/1) |",
+            "topic_rows": "| Topic | open | 1 | u1 | 2026-06-15 | no | [43](https://ex.com/t/1) |",
         }
     if template == "financial_snapshot":
         return {
@@ -313,7 +319,8 @@ def test_redaction_in_builders_and_safe_excerpt(tmp_path: Path) -> None:
         "[REDACTED" in rows
         or "SAFE" in rows
         or "(no non-sensitive Daily Logs after routing)" in rows
-    )  # redacted via _safe_excerpt or fully routed out
+        or "(no non-sensitive Daily Log sections after routing)" in rows
+    )  # redacted via _safe_excerpt or fully routed out (Phase 04: section-aware empty message)
 
     # Review note uses safe_excerpt on reasons
     review = r.build_review_required_note("tropical")
@@ -428,6 +435,8 @@ def test_procore_obsidian_preview_dry_run_structure(tmp_path: Path) -> None:
         "project_card",
         "rfi_register",
         "submittal_register",
+        "observation_register",
+        "meeting_register",
         "daily_log_index",
         "financial_snapshot",
         "sync_receipt",
@@ -533,7 +542,7 @@ def test_cli_smoke_procore_obsidian_preview_dry_json() -> None:
     assert payload["guardrails"]["sqlite_authoritative"] == "true"
     assert "rendered" in payload
     rendered = payload["rendered"]
-    assert len(rendered) == 8
+    assert len(rendered) == 10
     assert "project_card" in rendered
     # Rendered samples present (safe/redacted form from templates)
     card = rendered.get("project_card", "")
@@ -567,6 +576,265 @@ def test_guardrails_present_everywhere_and_yaml_routing_only(tmp_path: Path) -> 
     for item in preview["review_items"]:
         reason = str(item.get("reason", ""))
         assert "routed by" in reason or "contract" in reason.lower() or "procore-financial" in reason
+
+
+# ---------------------------------------------------------------------------
+# Phase 04 Prompt 10 — observation_register + meeting_register + section-aware
+# daily-log + per-builder idempotency + leakage proofs.
+# ---------------------------------------------------------------------------
+
+
+def _seed_phase_04_register_rows(db_path: Path) -> None:
+    """Append observation / meeting / meeting_topic / daily_log_* rows to the
+    shared test DB. Synthetic-only literals; never live."""
+    conn = sqlite3.connect(str(db_path))
+    rows = [
+        # Benign observation
+        (
+            "tropical", "ep-obs", "obs-1", "observations", 0,
+            json.dumps({
+                "number": "OBS-001",
+                "title": "Minor housekeeping",
+                "status": "open",
+                "type": "general",
+                "severity": "low",
+                "source_url": "https://procore.example.com/obs/1",
+            }),
+            "2026-05-28T09:10:00Z",
+        ),
+        # Safety-routed observation (safety_route flag from normalizer)
+        (
+            "tropical", "ep-obs", "obs-2", "observations", 1,
+            json.dumps({
+                "number": "OBS-002",
+                "title": "Near miss inspection",
+                "status": "open",
+                "type": "near miss",
+                "safety_route": True,
+                "source_url": "https://procore.example.com/obs/2",
+            }),
+            "2026-05-28T09:11:00Z",
+        ),
+        # Benign meeting
+        (
+            "tropical", "ep-meet", "meet-1", "meetings", 0,
+            json.dumps({
+                "number": "MTG-001",
+                "title": "Weekly OAC",
+                "status": "scheduled",
+                "start_time": "2026-06-01T10:00:00Z",
+                "location": "Trailer 1",
+                "source_url": "https://procore.example.com/meet/1",
+            }),
+            "2026-05-28T09:12:00Z",
+        ),
+        # Benign meeting topic
+        (
+            "tropical", "ep-meet", "topic-1", "meeting_topics", 0,
+            json.dumps({
+                "title": "RFI status review",
+                "status": "open",
+                "parent_meeting_id": "meet-1",
+                "assignee_id": "user-1",
+                "due_date": "2026-06-15",
+                "source_url": "https://procore.example.com/topic/1",
+            }),
+            "2026-05-28T09:13:00Z",
+        ),
+        # Safety-routed meeting topic (settlement keyword from new YAML rule)
+        (
+            "tropical", "ep-meet", "topic-2", "meeting_topics", 1,
+            json.dumps({
+                "title": "settlement discussion",
+                "status": "open",
+                "parent_meeting_id": "meet-1",
+                "source_url": "https://procore.example.com/topic/2",
+            }),
+            "2026-05-28T09:14:00Z",
+        ),
+        # Daily log selected section (counts) — benign, should render
+        (
+            "tropical", "ep-dlog-counts", "counts-1", "daily_log_counts", 0,
+            json.dumps({
+                "log_date": "2026-05-27",
+                "bucket": "selected",
+                "trade": "general",
+                "count": 12,
+                "source_url": "https://procore.example.com/dlog/counts/1",
+            }),
+            "2026-05-28T09:15:00Z",
+        ),
+        # Daily log review-only section (notes) — review_required=1, body_summary present
+        (
+            "tropical", "ep-dlog-notes", "notes-1", "daily_log_notes", 1,
+            json.dumps({
+                "log_date": "2026-05-27",
+                "bucket": "review_only",
+                "body_summary": {"type": "string", "length": 42, "hash_prefix": "deadbeefcafe"},
+            }),
+            "2026-05-28T09:16:00Z",
+        ),
+        # Daily log routed-to-review section (accident_review) — must route to review
+        (
+            "tropical", "ep-dlog-accident", "accident-1", "daily_log_accident_review", 1,
+            json.dumps({
+                "log_date": "2026-05-27",
+                "bucket": "routed_to_review",
+                "safety_route": True,
+                "body_summary": {"type": "string", "length": 88, "hash_prefix": "0123456789ab"},
+            }),
+            "2026-05-28T09:17:00Z",
+        ),
+    ]
+    for row in rows:
+        conn.execute(
+            "INSERT OR IGNORE INTO procore_synced_entities "
+            "(source_project_key, endpoint_id, entity_stable_key, category, "
+            "review_required, canonical_fields_json, fetched_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            row,
+        )
+    conn.commit()
+    conn.close()
+
+
+def test_observation_register_builder_routes_safety(tmp_path: Path) -> None:
+    db_path = _create_temp_procore_db(tmp_path)
+    _seed_phase_04_register_rows(db_path)
+    r = ProcoreObsidianRenderer(db_path=db_path)
+    r.clear_review_items()
+    out = r.build_observation_register("tropical")
+    rows = out["rows"]
+    # Benign observation present with source link
+    assert "OBS-001" in rows
+    assert "https://procore.example.com/obs/1" in rows
+    # Safety-routed observation absent from register
+    assert "OBS-002" not in rows
+    assert "https://procore.example.com/obs/2" not in rows
+    # Routed to review queue
+    review = r.get_collected_review_items()
+    assert any("obs-2" in (i.item_id or "").lower() or "OBS-002" in (i.name or "") for i in review)
+
+
+def test_meeting_register_builder_renders_topics_table(tmp_path: Path) -> None:
+    db_path = _create_temp_procore_db(tmp_path)
+    _seed_phase_04_register_rows(db_path)
+    r = ProcoreObsidianRenderer(db_path=db_path)
+    r.clear_review_items()
+    out = r.build_meeting_register("tropical")
+    # Benign meeting + benign topic present
+    assert "MTG-001" in out["meeting_rows"]
+    assert "RFI status review" in out["topic_rows"]
+    # Settlement-keyword topic routed out
+    assert "settlement" not in out["topic_rows"]
+    review = r.get_collected_review_items()
+    assert any("settlement" in (i.name or "").lower() or "topic-2" in (i.item_id or "") for i in review)
+
+
+def test_daily_log_index_section_aware(tmp_path: Path) -> None:
+    db_path = _create_temp_procore_db(tmp_path)
+    _seed_phase_04_register_rows(db_path)
+    r = ProcoreObsidianRenderer(db_path=db_path)
+    r.clear_review_items()
+    out = r.build_daily_log_index("tropical")
+    rows = out["rows"]
+    # counts row renders (benign selected)
+    assert "counts" in rows
+    assert "2026-05-27" in rows
+    # notes row routed to review (review_required flag) — body hash never rendered raw
+    assert "deadbeefcafe" not in rows
+    # accident_review row routed to review
+    assert "accident_review" not in rows
+    review = r.get_collected_review_items()
+    review_names = " ".join((i.name or "") for i in review)
+    assert "notes-1" in review_names or "accident-1" in review_names
+
+
+def test_new_registers_byte_idempotent(tmp_path: Path) -> None:
+    db_path = _create_temp_procore_db(tmp_path)
+    _seed_phase_04_register_rows(db_path)
+    r1 = ProcoreObsidianRenderer(db_path=db_path)
+    r1.clear_review_items()
+    obs1 = r1.render("observation_register", r1.build_observation_register("tropical"))
+    meet1 = r1.render("meeting_register", r1.build_meeting_register("tropical"))
+    daily1 = r1.render("daily_log_index", r1.build_daily_log_index("tropical"))
+    r2 = ProcoreObsidianRenderer(db_path=db_path)
+    r2.clear_review_items()
+    obs2 = r2.render("observation_register", r2.build_observation_register("tropical"))
+    meet2 = r2.render("meeting_register", r2.build_meeting_register("tropical"))
+    daily2 = r2.render("daily_log_index", r2.build_daily_log_index("tropical"))
+    assert obs1 == obs2
+    assert meet1 == meet2
+    assert daily1 == daily2
+
+
+def test_no_raw_text_in_new_registers(tmp_path: Path) -> None:
+    """Observation with a sensitive blob in canonical_fields must not leak."""
+    db_path = _create_temp_procore_db(tmp_path)
+    conn = sqlite3.connect(str(db_path))
+    blob = (
+        "Contact synthetic-fixture@example.invalid or 555-010-0001; "
+        "session syntheticfixturetoken00112233445566. " + LONG_EXCERPT_FILLER
+    )
+    conn.execute(
+        "INSERT INTO procore_synced_entities "
+        "(source_project_key, endpoint_id, entity_stable_key, category, "
+        "review_required, canonical_fields_json, fetched_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            "tropical", "ep-obs", "obs-leak", "observations", 0,
+            json.dumps({
+                "number": "OBS-LEAK",
+                "title": blob,
+                "status": "open",
+                "type": "general",
+                "source_url": "https://procore.example.com/obs/leak",
+            }),
+            "2026-05-28T09:18:00Z",
+        ),
+    )
+    conn.commit()
+    conn.close()
+    r = ProcoreObsidianRenderer(db_path=db_path)
+    r.clear_review_items()
+    rendered = r.render("observation_register", r.build_observation_register("tropical"))
+    assert "synthetic-fixture@example.invalid" not in rendered
+    assert "555-010-0001" not in rendered
+    assert "syntheticfixturetoken00112233445566" not in rendered
+    assert LONG_EXCERPT_FILLER not in rendered
+
+
+def test_observation_register_marker_bounded_idempotent(tmp_path: Path) -> None:
+    from hb_assistant.procore.obsidian import _write_procore_artifact
+    target_dir = tmp_path / "vault"
+    target = target_dir / "01_Projects" / "tropical.procore-observation-register.md"
+    rendered_v1 = "# Observation Register — tropical\n\n| OBS-001 | a | b |\n"
+    rendered_v2 = "# Observation Register — tropical\n\n| OBS-001 | a | b |\n| OBS-003 | c | d |\n"
+    p1 = _write_procore_artifact(target_dir, target.name, rendered_v1, "observation_register")
+    p2 = _write_procore_artifact(target_dir, target.name, rendered_v1, "observation_register")
+    p3 = _write_procore_artifact(target_dir, target.name, rendered_v2, "observation_register")
+    assert p1 == p2 == p3 == target
+    text = target.read_text(encoding="utf-8")
+    # Markers present exactly once each
+    assert text.count("<!-- HB-PROCORE-OBSERVATION-REGISTER:START -->") == 1
+    assert text.count("<!-- HB-PROCORE-OBSERVATION-REGISTER:END -->") == 1
+    # Updated content reflects v2 (replaced inside markers)
+    assert "OBS-003" in text
+
+
+def test_meeting_register_marker_bounded_idempotent(tmp_path: Path) -> None:
+    from hb_assistant.procore.obsidian import _write_procore_artifact
+    target_dir = tmp_path / "vault"
+    target = target_dir / "01_Projects" / "tropical.procore-meeting-register.md"
+    rendered_v1 = "# Meeting Register — tropical\n\n## Meetings\n\n| MTG-001 | a |\n"
+    rendered_v2 = "# Meeting Register — tropical\n\n## Meetings\n\n| MTG-001 | a |\n| MTG-002 | b |\n"
+    _write_procore_artifact(target_dir, target.name, rendered_v1, "meeting_register")
+    _write_procore_artifact(target_dir, target.name, rendered_v1, "meeting_register")
+    _write_procore_artifact(target_dir, target.name, rendered_v2, "meeting_register")
+    text = target.read_text(encoding="utf-8")
+    assert text.count("<!-- HB-PROCORE-MEETING-REGISTER:START -->") == 1
+    assert text.count("<!-- HB-PROCORE-MEETING-REGISTER:END -->") == 1
+    assert "MTG-002" in text
 
 
 # End of file. All paths 100% mocked. No live Procore. Zero credential material.
