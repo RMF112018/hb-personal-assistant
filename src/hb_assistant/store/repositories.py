@@ -625,3 +625,204 @@ class Store:
         return [dict(r) for r in cur.fetchall()]
 
     # email retrieval helper removed for schema compat (emails table stores flags + redacted subject not preview text); parser_outputs + actions sufficient for Phase 11 MVP
+
+
+# =============================================================================
+# Prompt_09: Procore pilot sync — additive tables + repository helpers (idempotent)
+# All writes are local-only. No external mutation. Redacted fields only.
+# Tables created IF NOT EXISTS on first use (additive, safe with migrator).
+# =============================================================================
+
+import json  # local to this additive section (module already likely imports it)
+
+
+def _ensure_procore_sync_tables(db_path: Optional[Path] = None) -> None:
+    """Idempotent additive table creation for Prompt_09 sync receipts + normalized entities + watermarks."""
+    conn = get_connection(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS procore_sync_runs (
+            id TEXT PRIMARY KEY,
+            correlation_id TEXT,
+            mode TEXT NOT NULL,
+            pilot_project_key TEXT NOT NULL,
+            company_id TEXT NOT NULL DEFAULT '5280',
+            started_at TEXT,
+            completed_at TEXT,
+            audit_prerequisite_passed INTEGER,
+            total_planned_requests INTEGER,
+            total_items_normalized INTEGER,
+            persisted_to_sqlite INTEGER,
+            policy_used TEXT,
+            receipt_json TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS procore_sync_errors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id TEXT,
+            correlation_id TEXT,
+            endpoint_id TEXT,
+            error_code TEXT,
+            message_redacted TEXT,
+            http_status INTEGER,
+            retry_count INTEGER,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS procore_synced_entities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_project_key TEXT NOT NULL,
+            endpoint_id TEXT NOT NULL,
+            entity_stable_key TEXT NOT NULL,
+            category TEXT,
+            review_required INTEGER DEFAULT 0,
+            canonical_fields_json TEXT,
+            fetched_at TEXT,
+            correlation_id TEXT,
+            redaction_applied INTEGER DEFAULT 1,
+            last_seen_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(source_project_key, endpoint_id, entity_stable_key)
+        );
+
+        CREATE TABLE IF NOT EXISTS procore_sync_watermarks (
+            endpoint_id TEXT NOT NULL,
+            project_key TEXT NOT NULL,
+            last_successful_watermark TEXT,
+            updated_at TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (endpoint_id, project_key)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_procore_synced_entities_project_endpoint
+            ON procore_synced_entities(source_project_key, endpoint_id);
+        """
+    )
+    conn.commit()
+
+
+def upsert_procore_sync_run(
+    db_path: Optional[Path],
+    receipt: Dict[str, Any],
+    correlation: Optional[str] = None,
+) -> None:
+    """Persist run receipt (dry-run or apply). Idempotent on sync_id."""
+    _ensure_procore_sync_tables(db_path)
+    conn = get_connection(db_path)
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO procore_sync_runs
+        (id, correlation_id, mode, pilot_project_key, company_id, started_at, completed_at,
+         audit_prerequisite_passed, total_planned_requests, total_items_normalized,
+         persisted_to_sqlite, policy_used, receipt_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            receipt.get("sync_id"),
+            correlation or receipt.get("correlation_id"),
+            receipt.get("mode"),
+            receipt.get("pilot_project_key"),
+            receipt.get("company_id", "5280"),
+            receipt.get("started_at"),
+            receipt.get("completed_at"),
+            1 if receipt.get("audit_prerequisite_passed") else 0,
+            receipt.get("total_planned_requests", 0),
+            receipt.get("total_items_normalized", 0),
+            1 if receipt.get("persisted_to_sqlite") else 0,
+            receipt.get("policy_used", "auto"),
+            json.dumps(redact_for_evidence(receipt)),  # double redaction belt-and-suspenders
+        ),
+    )
+    conn.commit()
+
+
+def upsert_procore_sync_error(
+    db_path: Optional[Path],
+    run_id: str,
+    error: Dict[str, Any],
+    correlation: Optional[str] = None,
+) -> None:
+    """Log redacted error for a sync run."""
+    _ensure_procore_sync_tables(db_path)
+    conn = get_connection(db_path)
+    conn.execute(
+        """
+        INSERT INTO procore_sync_errors
+        (run_id, correlation_id, endpoint_id, error_code, message_redacted, http_status, retry_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            run_id,
+            correlation,
+            error.get("endpoint_id") or error.get("endpoint"),
+            error.get("error_code") or error.get("error"),
+            error.get("message_redacted") or str(error)[:500],
+            error.get("http_status"),
+            error.get("retry_count", 0),
+        ),
+    )
+    conn.commit()
+
+
+def upsert_procore_synced_entity(
+    db_path: Optional[Path],
+    entity: Dict[str, Any],
+    correlation: Optional[str] = None,
+) -> None:
+    """Idempotent upsert of normalized Procore entity row (local only)."""
+    _ensure_procore_sync_tables(db_path)
+    conn = get_connection(db_path)
+    conn.execute(
+        """
+        INSERT INTO procore_synced_entities
+        (source_project_key, endpoint_id, entity_stable_key, category, review_required,
+         canonical_fields_json, fetched_at, correlation_id, redaction_applied, last_seen_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(source_project_key, endpoint_id, entity_stable_key) DO UPDATE SET
+            last_seen_at = excluded.last_seen_at,
+            canonical_fields_json = excluded.canonical_fields_json,
+            redaction_applied = excluded.redaction_applied
+        """,
+        (
+            entity["source_project_key"],
+            entity["endpoint_id"],
+            entity["entity_stable_key"],
+            entity.get("category"),
+            1 if entity.get("review_required") else 0,
+            json.dumps(entity.get("canonical_fields", {})),
+            entity.get("fetched_at"),
+            correlation or entity.get("correlation_id"),
+            1 if entity.get("redaction_applied", True) else 0,
+            entity.get("last_seen_at") or entity.get("fetched_at"),
+        ),
+    )
+    conn.commit()
+
+
+def get_procore_sync_watermark(
+    db_path: Optional[Path], endpoint_id: str, project_key: str
+) -> Optional[str]:
+    """Return last successful watermark/cursor for incremental policy (redacted safe)."""
+    _ensure_procore_sync_tables(db_path)
+    conn = get_connection(db_path)
+    cur = conn.execute(
+        "SELECT last_successful_watermark FROM procore_sync_watermarks WHERE endpoint_id = ? AND project_key = ?",
+        (endpoint_id, project_key),
+    )
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
+def set_procore_sync_watermark(
+    db_path: Optional[Path], endpoint_id: str, project_key: str, watermark: str
+) -> None:
+    """Store/update watermark after successful apply (no secrets)."""
+    _ensure_procore_sync_tables(db_path)
+    conn = get_connection(db_path)
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO procore_sync_watermarks (endpoint_id, project_key, last_successful_watermark, updated_at)
+        VALUES (?, ?, ?, datetime('now'))
+        """,
+        (endpoint_id, project_key, watermark),
+    )
+    conn.commit()

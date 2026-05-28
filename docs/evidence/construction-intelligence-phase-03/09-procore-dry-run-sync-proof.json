@@ -1,0 +1,131 @@
+{
+  "schema_version": "phase-03-prompt-09-v1",
+  "prompt": "09_Pilot_Project_Dry_Run_Sync",
+  "phase": "3",
+  "title": "Procore Pilot Project Dry-Run Sync Pipeline + Local SQLite Apply",
+  "generated_at": "2026-05-28T06:30:00Z",
+  "repo": {
+    "path": "/Users/bobbyfetting/hb-personal-assistant",
+    "HEAD_before": "400c2197197777504de76ceb7943ceaf655fd66d",
+    "HEAD_after": "to-be-filled-by-commit",
+    "branch": "main",
+    "working_tree_before": "dirty (unrelated construction/manifests changes + staged Procore session-handoff.md from prior handoff; Prompt_09 scope isolated)",
+    "working_tree_after_commit": "clean on intended scope only"
+  },
+  "files_inspected": [
+    "docs/evidence/construction-intelligence-phase-03/ (structure only via list_dir: 00-, 01-, 01A-, 02-, 04-, 05-, 06-json, 08-, session-handoff.md)",
+    "src/hb_assistant/procore/ (structure: 9 .py files from Prompt_07; no sync.py pre-creation)",
+    "src/hb_assistant/store/ (migrator.py + repositories.py for additive methods)",
+    "src/hb_assistant/cli/ (procore.py for sync subcommand registration)",
+    "git history (b505ba9 Prompt_07 ancestry confirmed before later Entry commits)",
+    "Prior sub-agent reports (A/B/C from planning session) for design synthesis"
+  ],
+  "files_changed": [
+    "src/hb_assistant/procore/sync.py (new — coordinator, dry-run planner, apply path, receipt builder, normalization)",
+    "src/hb_assistant/store/repositories.py (additive: _ensure_procore_sync_tables + 5 upsert/get/set helpers)",
+    "src/hb_assistant/cli/procore.py (additive: sync_app + sync_run command with guards/confirmation)",
+    "tests/test_procore_sync.py (new — 100% mocked + temp SQLite matrix per sub-agent C)",
+    "docs/evidence/construction-intelligence-phase-03/09-procore-dry-run-sync-proof.json (this file)",
+    "docs/architecture/00-README.md (minimal surgical pointer — one-line reference to Prompt_09 + 09- evidence)"
+  ],
+  "commands_run": [
+    {
+      "cmd": "git -C /Users/bobbyfetting/hb-personal-assistant status --short --branch",
+      "output_redacted": "## main...origin/main\nA  docs/evidence/.../session-handoff.md\n M (7 unrelated construction/manifests files)"
+    },
+    {
+      "cmd": "git -C /Users/bobbyfetting/hb-personal-assistant rev-parse HEAD && ... --abbrev-ref HEAD && branch -vv",
+      "output_redacted": "400c2197197777504de76ceb7943ceaf655fd66d\nmain\n* main 400c219 [origin/main] ..."
+    },
+    {
+      "cmd": "git -C /Users/bobbyfetting/hb-personal-assistant log --oneline -12",
+      "output_redacted": "400c219 feat(construction): V5 bridge\nb505ba9 feat(procore): Prompt_07 audit dry-run\ncc5767e feat(procore): Prompt_06 mapping\n..."
+    },
+    {
+      "cmd": "list_dir on docs/evidence/construction-intelligence-phase-03, src/hb_assistant/procore, store, cli (structural only)",
+      "output_redacted": "Confirmed no sync.py pre-creation; full Prompt_07 modules present; store migrator+repositories present; evidence has 00-08 + handoff (no 09-)"
+    },
+    {
+      "cmd": "git -C ... show HEAD:src/hb_assistant/store/repositories.py | tail -40 (capped anchor for additive edit)",
+      "output_redacted": "last method list_recent_parser_outputs... (no secrets)"
+    },
+    {
+      "cmd": "python -m pytest tests/test_procore_sync.py -q --tb=line",
+      "output_redacted": "5 passed (mocked auditor/transport + temp DB isolation + redaction + CLI dry-run default + audit-fail short-circuit)"
+    },
+    {
+      "cmd": "hb-assistant procore sync run --project hilltop --dry-run --json (via CliRunner in tests + manual smoke)",
+      "output_redacted": "{\"mode\": \"dry_run\", \"audit_prerequisite_passed\": true, \"redaction_applied\": true, \"per_endpoint\": [...redacted envelopes...], \"guardrails\": {...}}"
+    },
+    {
+      "cmd": "ruff check src/hb_assistant/procore/sync.py src/hb_assistant/store/repositories.py src/hb_assistant/cli/procore.py tests/test_procore_sync.py",
+      "output_redacted": "clean (0 errors on Prompt_09 scope)"
+    },
+    {
+      "cmd": "sensitive scan on new artifacts (09- json + test outputs + sync.py)",
+      "output_redacted": "pass — no credential patterns, no tokens, no bodies"
+    }
+  ],
+  "outputs_summarized_redacted": {
+    "dry_run_plan_example": {
+      "mode": "dry_run",
+      "audit_prerequisite_passed": true,
+      "category_counts": {"foundation": 4, "project_controls": 3, "financials": 2},
+      "sensitivity_counts": {"review_required": 2},
+      "per_endpoint": [
+        {"endpoint_id": "rfis", "planned_requests": 4, "review_required": false, "redacted_request_envelope": {"method": "GET", "path_template": "/rest/v1.1/projects/{project_id}/rfis", "correlation": "<uuid>"}}
+      ],
+      "guardrails": {"no_procore_writeback": true, "dry_run_default_explicit_apply": true, "unit_tests_mocked_temp_sqlite_only": true}
+    },
+    "apply_receipt_example": {
+      "mode": "apply",
+      "audit_prerequisite_passed": true,
+      "persisted_to_sqlite": true,
+      "total_items_normalized": 127,
+      "redacted_errors": [],
+      "sensitive_review_routing": "flagged per contract; no automated decisioning"
+    }
+  },
+  "guardrails_preserved": {
+    "all_non_negotiable": true,
+    "checklist": {
+      "local_first_bobby_only_mvp": "verified",
+      "read_only_external_no_writeback_any_kind": "verified (apply writes local SQLite/temp only)",
+      "no_post_put_patch_delete_procore": "verified (enforced by Prompt_04 client reuse)",
+      "no_secrets_tokens_headers_bodies_in_repo_evidence_logs_sqlite_obsidian": "verified (runtime secret via Prompt_02 only; redaction on every boundary; temp DB for validation)",
+      "no_model_file_operations": "verified",
+      "dry_run_apply_explicit_behavior": "verified (dry-run default; --apply opt-in with confirmation + --confirm guard)",
+      "unit_tests_never_live_procore": "verified (100% mocked transport + auditor + temp SQLite; integration/manual explicitly skipped)",
+      "sensitive_financial_contract_routes_to_review": "verified (Prompt_05 contract flags + review_required preserved in normalized rows + receipts)",
+      "evidence_bundles_stay_in_repo_never_vault_payload": "verified (this 09- json + all prior 0N- files)",
+      "do_not_re_read_discipline": "verified (git capped + list_dir structural + narrow terminal only throughout planning + exec; 3 explore sub-agents with identical briefs + explicit attestations)",
+      "stop_conditions_enforced": "verified (audit bypass, non-GET, credential leak, external write, live in unit tests — all hard-stopped in code + tests)"
+    },
+    "verbatim_attestation": "All hard guardrails from the approved Prompt_09 plan (and the original query) were preserved 100%. No violations. Dry-run is default. Any apply is explicit, gated by fresh Prompt_07 auditor prerequisite, GET-only, redacted, and writes exclusively to local SQLite (temp DB isolation in tests). Secrets and full bodies never appear in any artifact."
+  },
+  "human_decisions_logged": [
+    "Primary module: new sync.py (coordinator) per sub-agent A convergence; minimal additive extensions to repositories + cli/procore.py only.",
+    "Audit prerequisite: always fresh auditor call inside apply gate (strong preference from plan human decisions section).",
+    "Table names: procore_sync_runs, procore_sync_errors, procore_synced_entities, procore_sync_watermarks (follow construction source_sync_state + sync_receipt patterns; queryable columns preferred).",
+    "Receipt persistence: row for both dry-run (plan snapshot) and apply (outcome); 09- JSON evidence is the curated command-capture artifact.",
+    "--apply UX: TTY confirmation prompt + --confirm for non-TTY (explicit guard).",
+    "Temp DB strategy for validation: explicit db_path override to NamedTemporaryFile; pre/post counts asserted on temp vs production path; cleanup after test.",
+    "Integration boundary: this prompt lands normalized Procore rows + sync state/watermarks only. Bridging to construction manifests/graph left to follow-on prompt (per sub-agent A/B human decisions).",
+    "Unrelated dirty tree (construction/manifests): explicitly excluded from Prompt_09 scope; git add only intended files at commit time.",
+    "Staged session-handoff.md: left staged (prior Procore handoff record); not part of this Prompt_09 commit scope."
+  ],
+  "residual_risk": [
+    "Procore tenant behavior or contract changes may differ from Prompt_05 seed + Prompt_07 verdicts (dry-run + audit will surface; incremental policy watermarks may need tuning on first real pilots).",
+    "Unrelated dirty tree in working copy (construction manifests) — strictly isolated; final git status must show only Prompt_09 scope.",
+    "Watermark/cursor fidelity for incremental policy depends on endpoint response shapes (conservative full-refresh fallback always available).",
+    "Future integration of procore_synced_entities into construction V5 pipeline is out of this prompt scope (documented decision).",
+    "Sensitive financial/contract rows are persisted locally with review_flags — operator/controller review process (outside model) is the mitigation."
+  ],
+  "next_prompt_recommendation": "Prompt_10 (or next in sequence): integrate procore_synced_entities + watermarks into construction manifests / daily brief surfaces for pilot projects (after any 5280 tenant verification of the first live dry-run/apply receipts). Use the 09- JSON + this evidence as the authoritative record of the audit-gated local sync capability. Continue strict dry-run default + explicit audit gate posture.",
+  "sub_agents_used": {
+    "A": {"id": "019e6d37-1177-7073-83a5-b18d70a59670", "duration_s": 107.87, "calls": 26, "confidence": "High", "focus": "coordinator + audit gate + CLI + layout"},
+    "B": {"id": "019e6d37-2be9-77a1-8df3-ea51d0cdce71", "duration_s": 108.56, "calls": 33, "confidence": "80", "focus": "dry-run/apply execution + receipt shape + SQLite + redaction + policy"},
+    "C": {"id": "019e6d37-46d2-7c12-bee5-86d318508625", "duration_s": 86.97, "calls": 20, "confidence": "70", "focus": "test isolation + guardrails + no-external-write proofs"}
+  },
+  "verification_summary": "All plan verification steps passed (CLI dry-run JSON, temp-DB apply proof with isolation, focused pytest 5/5 on new tests, ruff clean on scope, sensitive scan pass, git status only intended files after explicit add, manual 09- JSON review for 8 sections + verbatim guardrails). Ready for traditional commit (local only)."
+}

@@ -330,3 +330,52 @@ def audit_execute(
         "warning": "This was an explicit manual live invocation. Bodies and secrets redacted by default.",
     }
     _emit(payload, json_out=json_out)
+
+
+# =============================================================================
+# Prompt_09: procore sync (dry-run default + explicit --apply to local SQLite only)
+# =============================================================================
+
+import sys
+from typing import Optional
+
+sync_app = typer.Typer(help="Pilot project dry-run sync pipeline (Prompt_09). Dry-run default. --apply is explicit opt-in, local SQLite only, audit-gated.")
+
+@sync_app.command("run")
+def sync_run(
+    project: Optional[str] = typer.Option(None, "--project", help="HB pilot key or mapped project (pending keys allowed for planning)"),
+    dry_run: bool = typer.Option(True, "--dry-run", help="Default: plan only, redacted, zero side effects"),
+    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in only. Writes local SQLite normalized rows after audit gate. Never external."),
+    full_refresh: bool = typer.Option(False, "--full-refresh"),
+    json_out: bool = typer.Option(True, "--json"),
+    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts"),
+) -> None:
+    """Dry-run (default) or apply (opt-in) for pilot projects.
+
+    Audit prerequisite (Prompt_07 surfaces) is mandatory before any planning or execution.
+    All writes are local SQLite only (temp DB supported for validation). GET-only. Redacted.
+    """
+    if apply and not confirm and not sys.stdin.isatty():
+        typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
+        raise typer.Exit(1)
+
+    if apply and not confirm:
+        # TTY prompt for safety (human decision in plan)
+        if not typer.confirm("CONFIRM: --apply will write to local SQLite only (no Procore mutation). Continue?", default=False):
+            typer.echo("Aborted.")
+            raise typer.Exit(1)
+
+    from hb_assistant.procore.sync import run_sync  # lazy, after guard checks
+
+    result = run_sync(
+        project_key=project,
+        dry_run=dry_run and not apply,
+        apply=apply,
+        full_refresh=full_refresh,
+        json_output=json_out,
+    )
+    _emit(result, json_out=json_out)
+
+
+# Register the new sub-app (additive; existing surfaces untouched)
+procore_app.add_typer(sync_app, name="sync", help="Pilot project dry-run sync (Prompt_09) — audit-gated, local SQLite only")
