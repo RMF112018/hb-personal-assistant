@@ -131,6 +131,11 @@ minversion = "8.0"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-q --tb=short"
+markers = [
+  "integration: tests that touch external systems; opt-in only",
+  "manual: tests intended to be run by an operator by hand",
+  "live: tests that perform real Procore HTTP calls; require HB_PROCORE_LIVE=1",
+]
 
 
 [tool.ruff.lint.per-file-ignores]

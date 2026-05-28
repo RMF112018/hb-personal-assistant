@@ -178,10 +178,24 @@ exception class name only (no message text leaks).
   once in dry-run, then `--apply --confirm` — the sync coordinator
   creates the tables on demand.
 
+## Live-test mode
+
+No live Procore tests ship in this MVP. The `live` pytest marker is reserved
+for future work and is gated by `HB_PROCORE_LIVE=1`:
+
+```bash
+HB_PROCORE_LIVE=1 python -m pytest -m live -q
+```
+
+Without the env var, all `live`-marked tests are skipped. The default
+`python -m pytest -q` invocation runs only unmarked offline tests. Full
+marker taxonomy and contributor expectations live in
+`docs/operations/test-discipline.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`
-  (prompts 00–11; 09/10/11 are the most relevant for current operations).
+  (prompts 00–12; 09/10/11/12 are the most relevant for current operations).
 - Sibling runbook: `docs/operations/construction-agent-operator-runbook.md`.
 - Local-runtime guide: `docs/operations/mvp-local-runtime-operator-guide.md`.
 - Seeds: `resources/config/procore_endpoint_contract.seed.yaml`,
