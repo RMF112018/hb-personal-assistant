@@ -312,6 +312,24 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         live_verified=True,
         verification_reason="live_smoke_passed_2026-05-28:487d9f3d",
     ),
+    EndpointAdapter(
+        endpoint_id="punch-items",
+        family="punch_items",
+        legacy_endpoint_alias=None,
+        path_template="/rest/v1.1/punch_items",
+        parent_path_template=None,
+        # project_id is required but passed as a query param by the orchestrator
+        # (existing branch: params={"project_id": ...} if "{project_id}" not in path).
+        required_path_params=("project_id",),
+        pagination="page+per_page",
+        record_id_field="id",
+        parent_record_id_field=None,
+        review_required_default=True,
+        sensitivity="high",
+        sqlite_target="procore_live_records",
+        live_verified=True,
+        verification_reason="live_smoke_passed_2026-05-28:0277eee6_pii_hashed_free_text_summaries",
+    ),
 )
 
 _BY_ID: Dict[str, EndpointAdapter] = {ep.endpoint_id: ep for ep in _ENDPOINTS}

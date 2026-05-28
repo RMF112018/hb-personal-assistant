@@ -22,6 +22,7 @@ _CANONICAL_IDS = {
     "daily-log-delays-review-routed",
     "daily-log-inspections",
     "daily-log-dcrs",
+    "punch-items",
 }
 
 
@@ -55,9 +56,10 @@ def test_unknown_endpoint_resolves_to_none() -> None:
 
 def test_verified_endpoints_match_phase04a_matrix() -> None:
     verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
-    # Post meeting-detail addition: 17/17 verified. meeting-detail is a
-    # per-meeting rich fetch (list+detail N+1) that embeds attendees + topics
-    # + categories; PII is reduced to hash-only summaries.
+    # Post punch-items addition: 18/18 verified. punch-items is a top-level
+    # /punch_items list endpoint with project_id as a query param. PII
+    # (people refs, assignment login info) and free-text (description,
+    # schedule_risk_reason, comments) are reduced to hash-only summaries.
     assert verified == {
         "projects",
         "rfis",
@@ -76,6 +78,7 @@ def test_verified_endpoints_match_phase04a_matrix() -> None:
         "daily-log-delays-review-routed",
         "daily-log-inspections",
         "daily-log-dcrs",
+        "punch-items",
     }
 
 

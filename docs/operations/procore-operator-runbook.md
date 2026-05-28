@@ -955,6 +955,48 @@ PII guarantees:
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/13-meeting-detail-endpoint.md`.
 
+## Phase 04A: punch-items endpoint
+
+The `punch-items` endpoint (registry row #18) provides Procore's
+v1.1 punch items list at `/rest/v1.1/punch_items`. It is the first
+Phase 04A endpoint where `project_id` is a **query parameter** rather
+than a path placeholder — the orchestrator's existing
+`params={"project_id": ...} if "{project_id}" not in path else None`
+branch handles this automatically. No code change to the orchestrator's
+dispatch was needed.
+
+Operator command:
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical \
+  --endpoint punch-items \
+  --apply --sqlite-only \
+  --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+```
+
+PII guarantees:
+- People refs (`ball_in_court`, `created_by`, `closed_by`,
+  `punch_item_manager`, `final_approver`, `assignees`,
+  `assignments[].login_information`) reduce to
+  `{count, hashed_identifiers: [{hash_prefix, id}, …]}`. The
+  `hash_prefix` is the SHA-256 prefix of the `login` email when
+  present, otherwise of the `name`. Numeric `id` is preserved as an
+  opaque Procore identifier.
+- Free-text bodies (`description`, `schedule_risk_reason`,
+  `assignments[].comment`) reduce to SHA-256 `*_summary` structures.
+- Structured risk + financial signals (`cost_impact`,
+  `cost_impact_amount`, `schedule_impact`, `schedule_impact_days`,
+  `schedule_risk`, `schedule_risk_confidence`,
+  `schedule_risk_probability`) preserved verbatim for operator triage.
+- Variable-shape `custom_fields` preserved structurally:
+  decimal/boolean/lov_entry values verbatim, string values reduced to
+  hash-only summaries.
+- All persisted rows carry `review_required=1` (PII-bearing by design).
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/14-punch-items-endpoint.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

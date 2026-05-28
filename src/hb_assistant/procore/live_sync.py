@@ -37,6 +37,7 @@ from hb_assistant.procore.normalizers import (
     normalize_meeting_detail,
     normalize_meeting_topic,
     normalize_observation,
+    normalize_punch_item,
     normalize_rfi,
     normalize_rfi_reply,
     normalize_submittal,
@@ -427,6 +428,11 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     # normalizer is already exercised in dry-run tests. Future promotion can
     # flip endpoints.live_verified=True without code changes here.
     "observations": normalize_observation,
+    # punch-items is a top-level list endpoint with project_id as a query
+    # param (no path placeholder). PII (people refs, assignment login info)
+    # and free-text (description, schedule_risk_reason, comments) are
+    # reduced to hash-only summaries inside the normalizer.
+    "punch-items": normalize_punch_item,
 }
 
 

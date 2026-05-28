@@ -27,6 +27,9 @@ from .observation import (
     normalize_observation_comment,
     normalize_observation_payload_block,
 )
+from .punch_item import (
+    normalize_punch_item,
+)
 from .rfi import (
     NORMALIZATION_SCHEMA_VERSION,
     normalize_rfi,
@@ -53,6 +56,7 @@ __all__ = [
     "normalize_observation",
     "normalize_observation_comment",
     "normalize_observation_payload_block",
+    "normalize_punch_item",
     "normalize_rfi",
     "normalize_rfi_payload_block",
     "normalize_rfi_reply",

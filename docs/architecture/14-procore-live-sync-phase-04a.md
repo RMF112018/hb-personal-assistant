@@ -290,17 +290,48 @@ server-side HTTP 500 at `per_page=100`) cannot match.
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/13-meeting-detail-endpoint.md`.
 
+## punch-items endpoint — project_id-as-query-param pattern
+
+`punch-items` is the 18th canonical endpoint and the first Phase 04A
+adapter where `project_id` is passed as a **query parameter** rather
+than as a path placeholder. The path template is
+`/rest/v1.1/punch_items` (no `{project_id}` segment); the orchestrator's
+existing branch
+`params={"project_id": ...} if "{project_id}" not in path else None`
+routes the project_id into the query string automatically. No
+orchestrator dispatch change was needed.
+
+PII handling: the endpoint surfaces seven distinct people-ref fields
+(`ball_in_court`, `created_by`, `closed_by`, `punch_item_manager`,
+`final_approver`, `assignees`, `assignments[].login_information`)
+plus free-text bodies. The `normalize_punch_item` normalizer in
+`src/hb_assistant/procore/normalizers/punch_item.py` reduces every
+people ref to `{count, hashed_identifiers: [{hash_prefix, id}, …]}`
+summaries (SHA-256 prefix of the `login` email or `name`; numeric `id`
+preserved as an opaque Procore identifier). Free-text fields
+(`description`, `schedule_risk_reason`, per-assignment `comment`) go
+through `_hash_summary`. Structured risk + financial signals are
+preserved verbatim. Variable-shape `custom_fields` keep
+numeric/boolean/lov_entry values verbatim and hash string-type values.
+
+Every punch-item row carries `review_required=1` because of the PII
+surface.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/14-punch-items-endpoint.md`.
+
 ## Verified vs unverified endpoints
 
-Post meeting-detail addition, **all 17 of 17 canonical endpoint IDs
-are `live_verified=True`** and execute the full chain: `projects`,
+Post punch-items addition, **all 18 of 18 canonical endpoint IDs are
+`live_verified=True`** and execute the full chain: `projects`,
 `rfis`, `rfi-responses`, `submittals`, `submittal-responses`,
 `submittal-packages`, `meetings`, `meeting-topics`, `meeting-detail`,
 `observations`, `daily-log-weather`, `daily-log-manpower`,
 `daily-log-notes`, `daily-log-deliveries`,
 `daily-log-delays-review-routed`, `daily-log-inspections`,
-`daily-log-dcrs`. Phase 04A registry coverage is complete (16 + the
-rich per-meeting `meeting-detail`).
+`daily-log-dcrs`, `punch-items`. Phase 04A registry coverage spans
+the 16 foundational endpoints plus `meeting-detail` (rich per-meeting
+fetch) and `punch-items` (per-project punch list with PII-hashed
+people refs).
 
 ## Receipt shape
 

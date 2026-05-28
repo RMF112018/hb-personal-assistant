@@ -1405,3 +1405,93 @@ def test_meeting_detail_apply_persists_meeting_and_nested_topics(
         assert secret_minutes_marker not in canonical_json
         assert parent_procore_id in {"11", "22"}
         assert raw_body_persisted == 0
+
+
+# ----------------------------------------------------------------------------
+# punch-items: standalone /punch_items endpoint with project_id query param
+# ----------------------------------------------------------------------------
+
+
+def test_punch_items_apply_persists_with_pii_hashed_and_bodies_summarized(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    secret_email = "should.not.leak@example.com"
+    secret_name = "PII Person Name"
+    secret_description = "DETAIL_BODY_MUST_NEVER_APPEAR"
+    secret_comment = "COMMENT_BODY_MUST_NEVER_APPEAR"
+    payload = [
+        {
+            "id": 1001,
+            "name": "Punch A",
+            "status": "Open",
+            "priority": "High",
+            "due_date": "2026-06-30",
+            "created_at": "2026-05-28T10:00:00Z",
+            "updated_at": "2026-05-28T10:00:00Z",
+            "cost_impact": "yes_known",
+            "cost_impact_amount": "250.0",
+            "schedule_impact_days": 2,
+            "description": secret_description,
+            "schedule_risk_reason": "Risk reasoning that must not appear.",
+            "location": {"id": 50, "name": "Floor 3", "code": "L3"},
+            "trade": {"id": 7, "name": "Electrical", "active": True},
+            "ball_in_court": [{"id": 1, "name": secret_name}],
+            "assignees": [{"id": 2, "login": secret_email, "name": secret_name}],
+            "assignments": [
+                {
+                    "id": 99,
+                    "status": "unresolved",
+                    "comment": secret_comment,
+                    "login_information": {"id": 2, "login": secret_email, "name": secret_name},
+                    "vendor": {"id": 50, "name": "Acme Co"},
+                }
+            ],
+        }
+    ]
+    transport = _FakeTransport(payload)
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="punch-items",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=5,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["sqlite_upserted_count"] == 1
+    # Single HTTP call (no N+1)
+    assert len(transport.calls) == 1
+    # project_id passed as query param (not path placeholder)
+    assert transport.calls[0]["params"].get("project_id") == "2525840"
+
+    conn = sqlite3.connect(str(db))
+    try:
+        rows = conn.execute(
+            "SELECT canonical_json_redacted, review_required, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='punch-items'"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert rows
+    for canonical_json, review_required, raw_body_persisted in rows:
+        assert raw_body_persisted == 0
+        assert review_required == 1  # PII bearing -> always review
+        assert secret_email not in canonical_json
+        assert secret_name not in canonical_json
+        assert secret_description not in canonical_json
+        assert secret_comment not in canonical_json
+        # Structured fields preserved
+        assert "cost_impact_amount" in canonical_json
+        assert "schedule_impact_days" in canonical_json
+        # Hash summaries present
+        assert "description_summary" in canonical_json
+        assert "schedule_risk_reason_summary" in canonical_json
+        # No emails persisted
+        assert "@" not in canonical_json
