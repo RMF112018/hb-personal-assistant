@@ -378,4 +378,4 @@ def sync_run(
 
 
 # Register the new sub-app (additive; existing surfaces untouched)
-procore_app.add_typer(sync_app, name="sync", help="Pilot project dry-run sync (Prompt_09) — audit-gated, local SQLite only")
+app.add_typer(sync_app, name="sync", help="Pilot project dry-run sync (Prompt_09) — audit-gated, local SQLite only")
