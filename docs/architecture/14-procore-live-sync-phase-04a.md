@@ -251,16 +251,56 @@ paths supplied by the operator:
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/12-final-unverified-resolution.md`.
 
+## meeting-detail endpoint — controlled exception to the inline default
+
+`meeting-detail` is a 17th canonical endpoint introduced for rich
+per-meeting data (attendees, full topics with `minutes` HTML, nested
+categories, conclusion). Unlike every other Phase 04A endpoint, the
+list payload at `/rest/v1.1/projects/{project_id}/meetings` does NOT
+embed the rich detail — the operator must call the per-meeting detail
+endpoint `/rest/v1.1/projects/{project_id}/meetings/{id}` to retrieve
+it.
+
+The orchestrator special-cases `adapter.endpoint_id == "meeting-detail"`:
+1. Fetch the meetings list at `parent_path_template` (one HTTP call).
+2. Apply the existing v1.1 grouped-flatten step.
+3. **Issue one detail GET per meeting** (N+1, bounded by `--max-items`).
+4. Replace the items list with the detail payloads; the existing
+   normalize + upsert loop then processes each detail row.
+5. The child dispatcher is hardcoded to `meeting-topics` (the family
+   resolver would otherwise miss it because `meeting-topics`'
+   `parent_record_id_field` is `None` — it's a standalone endpoint at
+   `/meeting_topics`). Topics nested under
+   `meeting_categories[].meeting_topic[]` are extracted via the public
+   helper `extract_topics_from_categories(raw)` (a two-level walk, not
+   the single-field lookup used by other parents).
+
+PII handling: `normalize_meeting_detail` reduces attendees and
+assignment arrays to `{count, hashed_identifiers}` summaries using a
+SHA-256 prefix of the email address. Free-text bodies (`description`,
+`conclusion`, topic `minutes`) reduce to `*_summary` hash structures
+via the shared `_hash_summary` helper. `remote_meeting_url` is
+path-only (query strings stripped) — Zoom/Teams join tokens never
+persist.
+
+The N+1 cost is operator-acknowledged: at `--max-items N` the apply
+issues `1 + N` HTTP requests. The trade-off enables a depth of data
+that the standalone `/meeting_topics` endpoint (which suffers a
+server-side HTTP 500 at `per_page=100`) cannot match.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/13-meeting-detail-endpoint.md`.
+
 ## Verified vs unverified endpoints
 
-Post Phase 04A final closeout, **all 16 of 16 canonical endpoint IDs
+Post meeting-detail addition, **all 17 of 17 canonical endpoint IDs
 are `live_verified=True`** and execute the full chain: `projects`,
 `rfis`, `rfi-responses`, `submittals`, `submittal-responses`,
-`submittal-packages`, `meetings`, `meeting-topics`, `observations`,
-`daily-log-weather`, `daily-log-manpower`, `daily-log-notes`,
-`daily-log-deliveries`, `daily-log-delays-review-routed`,
-`daily-log-inspections`, `daily-log-dcrs`. Phase 04A registry coverage
-is complete.
+`submittal-packages`, `meetings`, `meeting-topics`, `meeting-detail`,
+`observations`, `daily-log-weather`, `daily-log-manpower`,
+`daily-log-notes`, `daily-log-deliveries`,
+`daily-log-delays-review-routed`, `daily-log-inspections`,
+`daily-log-dcrs`. Phase 04A registry coverage is complete (16 + the
+rich per-meeting `meeting-detail`).
 
 ## Receipt shape
 

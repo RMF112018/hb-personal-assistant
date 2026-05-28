@@ -904,6 +904,57 @@ HB_PROCORE_LIVE=1 hb-assistant procore live sync \
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/12-final-unverified-resolution.md`.
 
+## Phase 04A: meeting-detail endpoint (rich per-meeting fetch)
+
+The `meeting-detail` endpoint (registry row #17) provides a rich
+per-meeting view from Procore's v1.1 detail surface
+(`/rest/v1.1/projects/{project_id}/meetings/{id}`). The detail payload
+embeds attendees (PII), full topics with `minutes` (HTML body),
+categories, and conclusion. All PII reduces to SHA-256 hash-only
+summaries; all free-text bodies reduce to `*_summary` hash structures;
+the `remote_meeting_url` is path-only with query strings stripped.
+
+Operator command:
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical \
+  --endpoint meeting-detail \
+  --apply --sqlite-only \
+  --max-pages 1 --max-items 5 \
+  --confirm-live-get --json
+```
+
+Dispatch shape: the orchestrator first fetches the meetings list at
+`parent_path_template` (one HTTP call), then issues **one detail GET
+per meeting** in the returned list (N+1, bounded by `--max-items`).
+Each detail payload becomes one `meeting-detail` row plus N topic rows
+extracted from `meeting_categories[].meeting_topic[]` and upserted
+under `endpoint_id="meeting-topics"` with `parent_procore_id` pointing
+back to the meeting.
+
+Cost model: at `--max-items N`, the orchestrator issues `1 + N` HTTP
+calls. Each parent meeting yields one meeting-detail row and (in
+tropical observation) ~20 meeting-topics rows. The operator-acknowledged
+N+1 trade-off enables the rich data; the prior caveats about Procore
+rate limits apply — pick `--max-items` conservatively until the apply
+proves stable for the project.
+
+PII guarantees:
+- `attendees[].login_information.login` (email) → SHA-256
+  `hash_prefix` only.
+- `attendees[].login_information.name` → never persisted.
+- `attendees[].id` (numeric) preserved as `attendee_id` (opaque
+  Procore identifier, not PII by itself).
+- `meeting_topic[].assignments[]` → same hashed-summary treatment via
+  `_assignments_summary`.
+- `description`, `conclusion`, topic `minutes` → SHA-256 `*_summary`
+  structures.
+- `remote_meeting_url` → path-only, query strings stripped (Zoom/Teams
+  join tokens never persist).
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/13-meeting-detail-endpoint.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

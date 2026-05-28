@@ -1289,3 +1289,119 @@ def test_daily_log_dcrs_apply_persists_with_hash_only_notes(
         assert "notes_summary" in canonical_json  # hash summary present
         assert "hash_prefix" in canonical_json
         assert raw_body_persisted == 0
+
+
+# ----------------------------------------------------------------------------
+# meeting-detail: list+detail N+1 with PII hashing and nested topic extraction
+# ----------------------------------------------------------------------------
+
+
+def test_meeting_detail_apply_persists_meeting_and_nested_topics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """meeting-detail fetches the meetings list, then issues one detail GET per
+    meeting (N+1). The detail payload's meeting_categories[].meeting_topic[]
+    items are extracted and upserted under endpoint_id="meeting-topics"."""
+    _setup_env(monkeypatch)
+    db = _db()
+    secret_attendee_email = "should.not.leak@example.com"
+    secret_minutes_marker = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
+
+    list_payload = [
+        {"id": 11},
+        {"id": 22},
+    ]
+    detail_11 = {
+        "id": 11,
+        "title": "Meeting Eleven",
+        "starts_at": "2026-03-01T15:00:00Z",
+        "ends_at": "2026-03-01T16:00:00Z",
+        "time_zone": "UTC",
+        "mode": "minutes",
+        "is_private": False,
+        "description": "Body that must not be persisted as text.",
+        "conclusion": "Conclusion that must not be persisted.",
+        "remote_meeting_url": "https://zoom.us/j/abc?pwd=SECRET",
+        "attendees": [
+            {"id": 1, "status": "Present",
+             "login_information": {"login": secret_attendee_email, "name": "PII Name"}},
+        ],
+        "meeting_categories": [
+            {
+                "id": 999,
+                "title": "Items",
+                "meeting_topic": [
+                    {"id": 7001, "title": "T1", "status": "Open",
+                     "minutes": secret_minutes_marker},
+                    {"id": 7002, "title": "T2", "status": "Open"},
+                ],
+            }
+        ],
+    }
+    detail_22 = {
+        "id": 22,
+        "title": "Meeting Twenty-Two",
+        "starts_at": "2026-03-02T15:00:00Z",
+        "ends_at": "2026-03-02T16:00:00Z",
+        "time_zone": "UTC",
+        "mode": "minutes",
+        "attendees": [],
+        "meeting_categories": [],
+    }
+
+    transport = _PathAwareFakeTransport(
+        {
+            "/rest/v1.1/projects/2525840/meetings/11": [detail_11],
+            "/rest/v1.1/projects/2525840/meetings/22": [detail_22],
+            "/rest/v1.1/projects/2525840/meetings": list_payload,
+        }
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="meeting-detail",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["parent_upserted_count"] == 2
+    assert receipt["child_endpoint_id"] == "meeting-topics"
+    assert receipt["child_upserted_count"] == 2  # 2 topics from meeting 11
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="meeting-detail", db_path=db
+    ) == 2
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="meeting-topics", db_path=db
+    ) == 2
+
+    # PII redaction attestation
+    conn = sqlite3.connect(str(db))
+    try:
+        detail_rows = conn.execute(
+            "SELECT canonical_json_redacted, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='meeting-detail'"
+        ).fetchall()
+        topic_rows = conn.execute(
+            "SELECT canonical_json_redacted, parent_procore_id, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='meeting-topics'"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    for canonical_json, raw_body_persisted in detail_rows:
+        assert secret_attendee_email not in canonical_json
+        assert "PII Name" not in canonical_json
+        assert "SECRET" not in canonical_json  # remote_meeting_url query stripped
+        assert "?" not in canonical_json or "?pwd=" not in canonical_json
+        assert raw_body_persisted == 0
+
+    for canonical_json, parent_procore_id, raw_body_persisted in topic_rows:
+        assert secret_minutes_marker not in canonical_json
+        assert parent_procore_id in {"11", "22"}
+        assert raw_body_persisted == 0

@@ -394,10 +394,202 @@ def normalize_meeting_topic_payload_block(
     return (topics,)
 
 
+_MEETING_DETAIL_STRUCTURED_KEYS = (
+    "id",
+    "meeting_template_id",
+    "position",
+    "created_by_id",
+    "title",
+    "location",
+    "time_zone",
+    "mode",
+    "is_private",
+    "is_draft",
+    "occurred",
+    "starts_at",
+    "ends_at",
+    "created_at",
+    "updated_at",
+)
+
+
+def _hash_identifier(value: Any) -> Optional[str]:
+    """Return only the SHA-256 hash prefix for a PII string (email, name)."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        value = str(value)
+    return hashlib.sha256(value.encode("utf-8", errors="ignore")).hexdigest()[:12]
+
+
+def _attendees_summary(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Reduce an attendees array to a PII-free summary.
+
+    Each attendee carries a `login_information.login` email + name. The summary
+    keeps the per-attendee `status` (Present/Absent) and a SHA-256 hash of the
+    login email (no raw text). The numeric `id` is preserved separately because
+    it is an opaque Procore identifier (not PII by itself).
+    """
+    raw_attendees = raw.get("attendees")
+    if not isinstance(raw_attendees, list):
+        return {"count": 0, "hashed_identifiers": []}
+    hashed: List[Dict[str, Any]] = []
+    for entry in raw_attendees:
+        if not isinstance(entry, dict):
+            continue
+        login_info = entry.get("login_information") if isinstance(entry.get("login_information"), dict) else {}
+        login_email = login_info.get("login")
+        item: Dict[str, Any] = {"hash_prefix": _hash_identifier(login_email)}
+        status = entry.get("status")
+        if isinstance(status, str):
+            item["status"] = status
+        attendee_id = entry.get("id")
+        if isinstance(attendee_id, int):
+            item["attendee_id"] = attendee_id
+        hashed.append(item)
+    return {"count": len(hashed), "hashed_identifiers": hashed}
+
+
+def _assignments_summary(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Reduce a topic-level assignments array to a PII-free hashed summary."""
+    raw_assignments = raw.get("assignments")
+    if not isinstance(raw_assignments, list):
+        return {"count": 0, "hashed_identifiers": []}
+    hashed: List[Dict[str, Any]] = []
+    for entry in raw_assignments:
+        if not isinstance(entry, dict):
+            continue
+        login_email = entry.get("login")
+        item: Dict[str, Any] = {"hash_prefix": _hash_identifier(login_email)}
+        ent_id = entry.get("id")
+        if isinstance(ent_id, int):
+            item["assignment_id"] = ent_id
+        hashed.append(item)
+    return {"count": len(hashed), "hashed_identifiers": hashed}
+
+
+def _category_titles(raw: Dict[str, Any]) -> List[str]:
+    """Preserve the short category labels (typically generic, e.g. 'Uncategorized Items')."""
+    categories = raw.get("meeting_categories")
+    if not isinstance(categories, list):
+        return []
+    titles: List[str] = []
+    for cat in categories:
+        if not isinstance(cat, dict):
+            continue
+        title = cat.get("title")
+        if isinstance(title, str) and title.strip():
+            titles.append(title.strip()[:120])
+    return titles
+
+
+def _redact_remote_meeting_url(value: Any) -> Optional[str]:
+    """Reduce a remote_meeting_url (Zoom/Teams) to path-only (query stripped)."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    # Strip everything from "?" onward (auth tokens, guest passwords).
+    cut = value.split("?", 1)[0]
+    return cut
+
+
+def extract_topics_from_categories(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Walk meeting_categories[].meeting_topic[] and return a flat list of topic dicts.
+
+    The Procore v1.1 detail payload uses singular ``meeting_topic`` for the list
+    of topics inside each category. Single-topic categories may serialize as a
+    dict; multi-topic categories serialize as a list. Both are normalized here.
+    """
+    out: List[Dict[str, Any]] = []
+    categories = raw.get("meeting_categories")
+    if not isinstance(categories, list):
+        return out
+    for category in categories:
+        if not isinstance(category, dict):
+            continue
+        topics = category.get("meeting_topic")
+        if isinstance(topics, list):
+            out.extend(t for t in topics if isinstance(t, dict))
+        elif isinstance(topics, dict):
+            out.append(topics)
+    return out
+
+
+def normalize_meeting_detail(
+    raw: Dict[str, Any],
+    *,
+    project_key: str,
+    endpoint_id: str,
+    correlation_id: str,
+    fetched_at: str,
+) -> Dict[str, Any]:
+    """Return a canonical meeting-detail record from a Procore v1.1 detail payload.
+
+    PII-bearing fields (attendee logins / names; topic assignment logins) are
+    reduced to SHA-256 hash-only summaries. Free-text fields
+    (description / conclusion / minutes when at the meeting level) are reduced
+    to ``_hash_summary`` structures. ``remote_meeting_url`` is path-only
+    (query strings stripped). Topics nested inside ``meeting_categories[].
+    meeting_topic[]`` are NOT included in this record — they are extracted
+    separately by the orchestrator and upserted under ``endpoint_id="meeting-topics"``.
+    """
+
+    if not isinstance(raw, dict):
+        raise TypeError("normalize_meeting_detail requires a dict payload")
+    if "id" not in raw or raw["id"] in (None, ""):
+        raise ValueError("normalize_meeting_detail requires raw['id']")
+
+    canonical_fields: Dict[str, Any] = {}
+    for key in _MEETING_DETAIL_STRUCTURED_KEYS:
+        if key in raw and raw[key] is not None:
+            canonical_fields[key] = raw[key]
+
+    description_summary = _hash_summary(raw.get("description"))
+    conclusion_summary = _hash_summary(raw.get("conclusion"))
+    if description_summary is not None:
+        canonical_fields["description_summary"] = description_summary
+    if conclusion_summary is not None:
+        canonical_fields["conclusion_summary"] = conclusion_summary
+
+    remote_redacted = _redact_remote_meeting_url(raw.get("remote_meeting_url"))
+    if remote_redacted is not None:
+        canonical_fields["remote_meeting_url_redacted"] = remote_redacted
+
+    canonical_fields["attendees_summary"] = _attendees_summary(raw)
+    canonical_fields["meeting_categories_count"] = (
+        len(raw["meeting_categories"]) if isinstance(raw.get("meeting_categories"), list) else 0
+    )
+    canonical_fields["attachments_count"] = (
+        len(raw["attachments"]) if isinstance(raw.get("attachments"), list) else 0
+    )
+    titles = _category_titles(raw)
+    if titles:
+        canonical_fields["category_titles"] = titles
+
+    record: Dict[str, Any] = {
+        "source_project_key": project_key,
+        "endpoint_id": endpoint_id,
+        "entity_stable_key": str(raw["id"]),
+        "category": "meeting_details",
+        "review_required": True,  # PII bearing; always routed for review
+        "routing_reason": "meeting_detail_default_review_required_pii_bearing",
+        "canonical_fields": canonical_fields,
+        "fetched_at": fetched_at,
+        "correlation_id": correlation_id,
+        "redaction_applied": True,
+        "normalization_schema_version": NORMALIZATION_SCHEMA_VERSION,
+    }
+    title_excerpt = _title_excerpt(raw.get("title"))
+    if title_excerpt is not None:
+        record["redacted_excerpt"] = title_excerpt
+    return record
+
+
 __all__ = [
     "NORMALIZATION_SCHEMA_VERSION",
     "normalize_meeting",
     "normalize_meeting_topic",
+    "normalize_meeting_detail",
     "normalize_meeting_payload_block",
     "normalize_meeting_topic_payload_block",
+    "extract_topics_from_categories",
 ]

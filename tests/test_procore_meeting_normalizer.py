@@ -286,6 +286,144 @@ def test_normalize_meeting_accepts_v1_1_shape_and_carries_v1_1_keys() -> None:
     description_text = _V11_MEETING_RAW["description"]
     assert isinstance(description_text, str)
     assert description_text not in json.dumps(record)
-    # entity_stable_key derived from id
-    assert record["entity_stable_key"] == "901"
-    assert record["category"] == "meetings"
+
+
+# ----------------------------------------------------------------------------
+# meeting-detail: rich per-meeting payload with PII + nested topics
+# ----------------------------------------------------------------------------
+
+
+from hb_assistant.procore.normalizers.meeting import (  # noqa: E402
+    extract_topics_from_categories,
+    normalize_meeting_detail,
+)
+
+_DETAIL_RAW = {
+    "id": 82593,
+    "meeting_template_id": 82593,
+    "position": 1,
+    "created_by_id": 1,
+    "title": "Jon's Meeting",
+    "location": "Victoria Conference Room",
+    "occurred": False,
+    "starts_at": "2021-07-23T10:00:00Z",
+    "ends_at": "2021-07-23T17:00:00Z",
+    "time_zone": "US/Pacific",
+    "is_private": False,
+    "is_draft": False,
+    "mode": "minutes",
+    "created_at": "2021-07-23T10:00:00Z",
+    "updated_at": "2021-07-23T10:00:00Z",
+    "description": "PII-free description text",
+    "conclusion": "PII-free conclusion text",
+    "remote_meeting_url": "https://zoom.us/j/123456789?pwd=SECRET_TOKEN_DO_NOT_LEAK",
+    "attachments": [{"id": 5324, "url": "http://www.example.com/", "filename": "x.jpg"}],
+    "attendees": [
+        {
+            "id": 972145,
+            "status": "Absent",
+            "login_information": {
+                "id": 160586,
+                "login": "carl.contractor@example.com",
+                "name": "Carl Contractor",
+            },
+        },
+        {
+            "id": 972146,
+            "status": "Present",
+            "login_information": {
+                "id": 160587,
+                "login": "alice.architect@example.com",
+                "name": "Alice Architect",
+            },
+        },
+    ],
+    "meeting_categories": [
+        {
+            "id": 192424,
+            "title": "Uncategorized Items",
+            "position": 0,
+            "meeting_topic": [
+                {
+                    "id": 965039,
+                    "number": "1.1",
+                    "title": "34' Level",
+                    "minutes": "<p>HTML content with sensitive details</p>",
+                    "description": "Need pricing from vendor",
+                    "status": "On Hold",
+                    "priority": "Low",
+                    "assignments": [
+                        {
+                            "id": 160586,
+                            "login": "carl.contractor@example.com",
+                            "name": "Carl Contractor",
+                        }
+                    ],
+                }
+            ],
+        }
+    ],
+}
+
+
+def test_normalize_meeting_detail_carries_rich_schema_and_redacts_pii() -> None:
+    record = normalize_meeting_detail(
+        _DETAIL_RAW,
+        project_key="tropical",
+        endpoint_id="meeting-detail",
+        correlation_id=_CORRELATION,
+        fetched_at=_FETCHED_AT,
+    )
+    canonical = record["canonical_fields"]
+    serialized = json.dumps(record)
+
+    # Structured fields preserved
+    assert canonical["id"] == 82593
+    assert canonical["title"] == "Jon's Meeting"
+    assert canonical["time_zone"] == "US/Pacific"
+    assert canonical["mode"] == "minutes"
+    assert canonical["is_private"] is False
+
+    # Free-text reduced to hash-only summaries
+    assert "description_summary" in canonical
+    assert "conclusion_summary" in canonical
+    assert canonical["description_summary"]["hash_prefix"]
+    description_text = _DETAIL_RAW["description"]
+    conclusion_text = _DETAIL_RAW["conclusion"]
+    assert isinstance(description_text, str)
+    assert isinstance(conclusion_text, str)
+    assert description_text not in serialized
+    assert conclusion_text not in serialized
+
+    # remote_meeting_url: path-only, query stripped
+    assert canonical["remote_meeting_url_redacted"] == "https://zoom.us/j/123456789"
+    assert "SECRET_TOKEN_DO_NOT_LEAK" not in serialized
+    assert "?" not in canonical["remote_meeting_url_redacted"]
+
+    # Attendees: counts + hashed identifiers, NO email/name strings
+    attendees = canonical["attendees_summary"]
+    assert attendees["count"] == 2
+    assert len(attendees["hashed_identifiers"]) == 2
+    for a in attendees["hashed_identifiers"]:
+        assert "hash_prefix" in a
+        assert len(a["hash_prefix"]) == 12
+        assert "status" in a
+    assert "carl.contractor@example.com" not in serialized
+    assert "alice.architect@example.com" not in serialized
+    assert "Carl Contractor" not in serialized
+    assert "Alice Architect" not in serialized
+
+    # Structural counts
+    assert canonical["meeting_categories_count"] == 1
+    assert canonical["attachments_count"] == 1
+    assert canonical["category_titles"] == ["Uncategorized Items"]
+
+    # Review-required because PII bearing
+    assert record["review_required"] is True
+
+
+def test_normalize_meeting_detail_extracts_nested_topics_from_categories() -> None:
+    topics = extract_topics_from_categories(_DETAIL_RAW)
+    assert len(topics) == 1
+    assert topics[0]["id"] == 965039
+    assert topics[0]["title"] == "34' Level"

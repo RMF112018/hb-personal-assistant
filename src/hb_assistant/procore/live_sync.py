@@ -32,7 +32,9 @@ from hb_assistant.procore.live_gate import (
 )
 from hb_assistant.procore.loader import load_procore_projects
 from hb_assistant.procore.normalizers import (
+    extract_topics_from_categories,
     normalize_meeting,
+    normalize_meeting_detail,
     normalize_meeting_topic,
     normalize_observation,
     normalize_rfi,
@@ -417,6 +419,10 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     # used in _CHILD_NORMALIZER_BY_ID handles both contexts because its
     # parent_procore_id kwarg defaults to None.
     "meeting-topics": normalize_meeting_topic,
+    # meeting-detail is a per-meeting rich fetch with PII-bearing fields;
+    # the orchestrator's meeting-detail branch fetches the list first then
+    # iterates one detail GET per meeting.
+    "meeting-detail": normalize_meeting_detail,
     # Convenience: observations is not docs-verified in the matrix, but its
     # normalizer is already exercised in dry-run tests. Future promotion can
     # flip endpoints.live_verified=True without code changes here.
@@ -766,12 +772,20 @@ def run_live_sync(
         live_enabled=True,
     )
 
-    path = _resolve_path(adapter, str(procore_project_id))
+    # meeting-detail is a list+detail flow: the operator-facing endpoint_id
+    # resolves to the per-meeting detail URL, but the orchestrator first
+    # fetches the meetings list at parent_path_template to get the meeting ids.
+    if adapter.endpoint_id == "meeting-detail" and adapter.parent_path_template:
+        path = adapter.parent_path_template.replace(
+            "{project_id}", str(procore_project_id)
+        )
+    else:
+        path = _resolve_path(adapter, str(procore_project_id))
 
     try:
         items_iter = client.paginate(
             path=path,
-            params={"project_id": str(procore_project_id)} if "{project_id}" not in adapter.path_template else None,
+            params={"project_id": str(procore_project_id)} if "{project_id}" not in path else None,
             per_page=min(max_items, 100),
             max_pages=max_pages,
             max_items=max_items,
@@ -898,7 +912,7 @@ def run_live_sync(
     # meeting dicts) is detected by absence of the "meetings" wrapper key
     # and passes through unchanged. Truncation honors the operator's
     # --max-items cap at the meeting-row level (not the group level).
-    if adapter.endpoint_id == "meetings" and items:
+    if adapter.endpoint_id in ("meetings", "meeting-detail") and items:
         flattened: List[Dict[str, Any]] = []
         grouped = False
         for raw in items:
@@ -912,6 +926,45 @@ def run_live_sync(
         if grouped:
             items = flattened[:max_items]
             retrieved_count = len(items)
+
+    # meeting-detail per-meeting N+1 detail fetch. The orchestrator already
+    # has the meetings list (`items`); now issue one detail GET per meeting
+    # and REPLACE items with the rich detail payloads. Rate-limit / 5xx on
+    # any single detail call is recorded in redacted_errors and the loop
+    # continues to the next meeting.
+    if adapter.endpoint_id == "meeting-detail" and items:
+        detail_items: List[Dict[str, Any]] = []
+        for meeting_summary in items:
+            if not isinstance(meeting_summary, dict):
+                continue
+            meeting_id = meeting_summary.get("id")
+            if meeting_id is None or meeting_id == "":
+                continue
+            detail_path = (
+                f"/rest/v1.1/projects/{procore_project_id}/meetings/{meeting_id}"
+            )
+            try:
+                detail_iter = list(
+                    client.paginate(detail_path, per_page=1, max_pages=1, max_items=1)
+                )
+            except ProcoreAPIError as exc:
+                redacted_errors.append(
+                    {
+                        "detail_transport_error": exc.code,
+                        "status": exc.status,
+                        "meeting_id": meeting_id,
+                    }
+                )
+                continue
+            except Exception:  # noqa: BLE001
+                redacted_errors.append(
+                    {"detail_transport_error": "unexpected", "meeting_id": meeting_id}
+                )
+                continue
+            if detail_iter:
+                detail_items.append(detail_iter[0])
+        items = detail_items
+        retrieved_count = len(items)
 
     # Normalize + upsert. After each parent upsert, perform an N+1 child GET if
     # the registry contains a child adapter for this parent (its
@@ -932,6 +985,16 @@ def run_live_sync(
     child_adapter: Optional[EndpointAdapter] = (
         _resolve_child_adapter(adapter) if will_write_db else None
     )
+    # meeting-detail: hardcode the child dispatch to meeting-topics. The
+    # generic family-based resolver does not match here because
+    # meeting-topics' parent_record_id_field is None (it's a standalone
+    # /meeting_topics endpoint), yet the detail payload still embeds topics
+    # under meeting_categories[].meeting_topic[] that we want to upsert as
+    # meeting-topics rows.
+    if child_adapter is None and adapter.endpoint_id == "meeting-detail" and will_write_db:
+        from hb_assistant.procore.endpoints import get as _ep_get
+
+        child_adapter = _ep_get("meeting-topics")
     child_normalizer: Optional[Callable[..., Dict[str, Any]]] = None
     if child_adapter is not None:
         child_normalizer = _CHILD_NORMALIZER_BY_ID.get(child_adapter.endpoint_id)
@@ -991,11 +1054,16 @@ def run_live_sync(
         # embeds children (RFI replies, submittal responses). Read them
         # inline rather than issuing a per-parent child GET — that N+1
         # pattern triggers rate-limit storms and the data is already in
-        # hand.
-        child_field = _INLINE_CHILD_FIELD_BY_PARENT_ID.get(adapter.endpoint_id, "")
-        if not child_field:
-            continue
-        raw_children = raw.get(child_field) if isinstance(raw, dict) else None
+        # hand. meeting-detail's children live nested under
+        # meeting_categories[].meeting_topic[] (two levels deep), so it
+        # uses a dedicated walker rather than the single-field map.
+        if adapter.endpoint_id == "meeting-detail":
+            raw_children = extract_topics_from_categories(raw)
+        else:
+            child_field = _INLINE_CHILD_FIELD_BY_PARENT_ID.get(adapter.endpoint_id, "")
+            if not child_field:
+                continue
+            raw_children = raw.get(child_field) if isinstance(raw, dict) else None
         if not isinstance(raw_children, list):
             continue
         inline_children: List[Dict[str, Any]] = [

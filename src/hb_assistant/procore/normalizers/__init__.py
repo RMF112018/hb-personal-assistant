@@ -15,7 +15,9 @@ from .daily_log import (
     normalize_daily_log_section_item,
 )
 from .meeting import (
+    extract_topics_from_categories,
     normalize_meeting,
+    normalize_meeting_detail,
     normalize_meeting_payload_block,
     normalize_meeting_topic,
     normalize_meeting_topic_payload_block,
@@ -42,7 +44,9 @@ __all__ = [
     "NORMALIZATION_SCHEMA_VERSION",
     "normalize_daily_log_payload_block",
     "normalize_daily_log_section_item",
+    "extract_topics_from_categories",
     "normalize_meeting",
+    "normalize_meeting_detail",
     "normalize_meeting_payload_block",
     "normalize_meeting_topic",
     "normalize_meeting_topic_payload_block",

@@ -14,6 +14,7 @@ _CANONICAL_IDS = {
     "observations",
     "meetings",
     "meeting-topics",
+    "meeting-detail",
     "daily-log-weather",
     "daily-log-manpower",
     "daily-log-notes",
@@ -54,11 +55,9 @@ def test_unknown_endpoint_resolves_to_none() -> None:
 
 def test_verified_endpoints_match_phase04a_matrix() -> None:
     verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
-    # Post final closeout: 16/16 verified. Operator provided exact
-    # Procore docs paths for the last two deferred endpoints:
-    # meeting-topics is now a standalone v1.1 top-level surface
-    # (/meeting_topics root noun); daily-log-dcrs is at
-    # /daily_construction_report_logs (not /dcrs).
+    # Post meeting-detail addition: 17/17 verified. meeting-detail is a
+    # per-meeting rich fetch (list+detail N+1) that embeds attendees + topics
+    # + categories; PII is reduced to hash-only summaries.
     assert verified == {
         "projects",
         "rfis",
@@ -68,6 +67,7 @@ def test_verified_endpoints_match_phase04a_matrix() -> None:
         "submittal-packages",
         "meetings",
         "meeting-topics",
+        "meeting-detail",
         "daily-log-weather",
         "observations",
         "daily-log-manpower",
