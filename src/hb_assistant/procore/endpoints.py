@@ -156,7 +156,7 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         endpoint_id="meetings",
         family="meetings",
         legacy_endpoint_alias="list-meetings",
-        path_template="/rest/v1.0/projects/{project_id}/meetings",
+        path_template="/rest/v1.1/projects/{project_id}/meetings",
         parent_path_template=None,
         required_path_params=("project_id",),
         pagination="page+per_page",
@@ -166,7 +166,7 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         sensitivity="medium",
         sqlite_target="procore_live_records",
         live_verified=False,
-        verification_reason="live_smoke_failed_2026-05-28:http_404_at_/rest/v1.0/projects/{project_id}/meetings",
+        verification_reason="phase_04a_prompt_07:v1.1_path_resolves_10_records_but_normalize_meeting_v1.0_schema_mismatch_pending_normalizer_update",
     ),
     EndpointAdapter(
         endpoint_id="meeting-topics",

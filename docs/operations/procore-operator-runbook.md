@@ -651,6 +651,48 @@ assignee_missing) on synthetic fixtures.
 
 Latest apply evidence: `docs/evidence/construction-intelligence-phase-04a/06-observation-live-sync.md`.
 
+## Phase 04A Prompt 07: Meeting live sync (deferred on schema mismatch)
+
+The Phase 04A orchestrator now ships the `meetings → meeting-topics` N+1
+child dispatch (third hard-coded branch alongside `rfis` and
+`submittals`). When promoted, the operator command will be:
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical \
+  --endpoint meetings \
+  --apply --sqlite-only \
+  --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+```
+
+The orchestrator issues one GET to
+`/rest/v1.1/projects/{project_id}/meetings` (Prompt 07 path discovery)
+for parents, then issues one GET per parent at
+`/rest/v1.0/projects/{project_id}/meetings/{meeting_id}/topics`. Topics
+persist with `endpoint_id="meeting-topics"`,
+`parent_procore_id=<meeting_id>`, `review_required=True`, and
+description/action_items reduced to SHA-256 hash-only summaries — never
+raw text.
+
+**Prompt 07 disposition: deferred.** Five candidate Procore paths were
+probed against tropical:
+
+| Path                                                                  | HTTP | Records | Note                                  |
+| ---                                                                   | ---  | ---     | ---                                   |
+| `/rest/v1.0/projects/{project_id}/meetings`                           | 404  | 0       | original adapter path                 |
+| `/rest/v1.1/projects/{project_id}/meetings`                           | 200  | 10      | **path resolves**; v1.0 normalizer mismatch |
+| `/rest/v2.0/companies/5280/projects/{project_id}/meetings`            | 200  | 1       | v1.0 normalizer mismatch              |
+| `/rest/v1.0/companies/5280/meetings`                                  | 404  | 0       | invalid surface                       |
+| `/rest/v1.0/projects/{project_id}/project_meetings`                   | 404  | 0       | invalid noun                          |
+
+The v1.1 path is preserved as the adapter's `path_template` so a future
+prompt that updates `normalize_meeting` for the v1.1 payload shape can
+promote without re-probing. `meetings` and `meeting-topics` both stay
+`live_verified=False` until that follow-up.
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/07-meeting-live-sync.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

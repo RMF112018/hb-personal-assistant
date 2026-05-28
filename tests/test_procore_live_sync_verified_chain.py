@@ -829,3 +829,242 @@ def test_observation_canonical_json_carries_no_description_body_literal(
     for canonical_json, raw_body_persisted in rows:
         assert secret_body_marker not in canonical_json
         assert raw_body_persisted == 0
+
+
+# ----------------------------------------------------------------------------
+# Phase 04A Prompt 07: meetings + topics (N+1 child fetch)
+# ----------------------------------------------------------------------------
+
+
+@pytest.fixture
+def _meetings_promoted(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Temporarily promote the meetings adapter to live_verified=True so the
+    N+1 dispatch path can be exercised under fake transport. In the registry
+    meetings is held at live_verified=False because the v1.1 endpoint payload
+    does not match the v1.0-shaped normalizer (see Prompt 07 probe matrix in
+    docs/evidence/construction-intelligence-phase-04a/07-meeting-live-sync.md)."""
+    from dataclasses import replace
+
+    from hb_assistant.procore import endpoints as ep_registry
+
+    base = ep_registry.get("meetings")
+    assert base is not None
+    promoted = replace(base, live_verified=True)
+    monkeypatch.setitem(ep_registry._BY_ID, "meetings", promoted)
+    if base.legacy_endpoint_alias:
+        monkeypatch.setitem(
+            ep_registry._BY_LEGACY, base.legacy_endpoint_alias, promoted
+        )
+
+
+_MEETING_PAYLOAD = [
+    {
+        "id": 401,
+        "number": "MTG-001",
+        "title": "Weekly OAC coordination",
+        "status": "scheduled",
+        "start_time": "2026-03-01T15:00:00Z",
+        "end_time": "2026-03-01T16:00:00Z",
+        "organizer_id": 91,
+        "updated_at": "2026-02-28T00:00:00Z",
+    },
+    {
+        "id": 402,
+        "number": "MTG-002",
+        "title": "Claim review meeting - delay impact",  # triggers review_required
+        "status": "scheduled",
+        "start_time": "2026-03-02T19:00:00Z",
+        "end_time": "2026-03-02T20:00:00Z",
+        "organizer_id": 92,
+        "updated_at": "2026-03-01T00:00:00Z",
+    },
+]
+
+
+def _meeting_topic(topic_id: int) -> Dict[str, Any]:
+    return {
+        "id": topic_id,
+        "title": "Coordination update",
+        "status": "open",
+        "sequence_number": 1,
+        "assignee_id": 99,
+        "due_date": "2026-03-15",
+        "description": "Topic discussion text that must never appear in canonical storage.",
+        "created_at": "2026-03-01T00:00:00Z",
+        "updated_at": "2026-03-01T00:00:00Z",
+    }
+
+
+def test_meetings_apply_persists_parents_and_topics_separately(
+    monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    transport = _PathAwareFakeTransport(
+        {
+            "/rest/v1.0/projects/2525840/meetings/401/topics": [
+                _meeting_topic(7001),
+                _meeting_topic(7002),
+                _meeting_topic(7003),
+            ],
+            "/rest/v1.0/projects/2525840/meetings/402/topics": [
+                _meeting_topic(7101),
+                _meeting_topic(7102),
+            ],
+            # parent path matched last because it's a prefix of the child paths
+            "/rest/v1.1/projects/2525840/meetings": _MEETING_PAYLOAD,
+        }
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="meetings",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["parent_upserted_count"] == 2
+    assert receipt["child_upserted_count"] == 5
+    assert receipt["child_endpoint_id"] == "meeting-topics"
+    assert receipt["sqlite_upserted_count"] == 7
+    assert receipt["child_errors_count"] == 0
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="meetings", db_path=db
+    ) == 2
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="meeting-topics", db_path=db
+    ) == 5
+
+
+def test_meetings_apply_is_idempotent_for_parents_and_topics(
+    monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+
+    def _go() -> Dict[str, Any]:
+        return run_live_sync(
+            project_key="tropical",
+            endpoint="meetings",
+            apply=True,
+            sqlite_only=True,
+            confirm_live_get=True,
+            max_pages=1,
+            max_items=10,
+            db_path=db,
+            transport=_PathAwareFakeTransport(
+                {
+                    "/rest/v1.0/projects/2525840/meetings/401/topics": [
+                        _meeting_topic(7001),
+                        _meeting_topic(7002),
+                    ],
+                    "/rest/v1.0/projects/2525840/meetings/402/topics": [
+                        _meeting_topic(7101),
+                    ],
+                    "/rest/v1.1/projects/2525840/meetings": _MEETING_PAYLOAD,
+                }
+            ),
+        )
+
+    first = _go()
+    second = _go()
+    assert first["sqlite_upserted_count"] == 5
+    assert second["sqlite_upserted_count"] == 5
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="meetings", db_path=db
+    ) == 2
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="meeting-topics", db_path=db
+    ) == 3
+
+
+def test_meetings_apply_tolerates_child_404_without_aborting(
+    monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    transport = _PathAwareFakeTransport(
+        path_to_payload={
+            "/rest/v1.0/projects/2525840/meetings/401/topics": [
+                _meeting_topic(7001),
+                _meeting_topic(7002),
+            ],
+            "/rest/v1.1/projects/2525840/meetings": _MEETING_PAYLOAD,
+        },
+        error_paths={"/rest/v1.0/projects/2525840/meetings/402/topics": 404},
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="meetings",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] in {"success", "partial_success"}
+    assert receipt["parent_upserted_count"] == 2
+    assert receipt["child_upserted_count"] == 2
+    assert receipt["child_errors_count"] == 1
+
+
+def test_meeting_topic_canonical_json_carries_no_description_body_literal(
+    monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    secret_body_marker = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
+    topic_with_marker = {
+        "id": 8888,
+        "title": "Sensitive coordination topic",
+        "status": "open",
+        "sequence_number": 5,
+        "assignee_id": 60,
+        "due_date": "2026-04-01",
+        "description": secret_body_marker,
+        "action_items": [secret_body_marker, "another action"],
+        "created_at": "2026-03-01T00:00:00Z",
+        "updated_at": "2026-03-01T00:00:00Z",
+    }
+    transport = _PathAwareFakeTransport(
+        {
+            "/rest/v1.0/projects/2525840/meetings/401/topics": [topic_with_marker],
+            "/rest/v1.0/projects/2525840/meetings/402/topics": [],
+            "/rest/v1.1/projects/2525840/meetings": _MEETING_PAYLOAD,
+        }
+    )
+    run_live_sync(
+        project_key="tropical",
+        endpoint="meetings",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+    conn = sqlite3.connect(str(db))
+    try:
+        rows = conn.execute(
+            "SELECT canonical_json_redacted, review_required, parent_procore_id, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id = 'meeting-topics'"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert rows, "expected at least one topic row"
+    for canonical_json, review_required, parent_procore_id, raw_body_persisted in rows:
+        assert secret_body_marker not in canonical_json
+        assert review_required == 1
+        assert parent_procore_id in {"401", "402"}
+        assert raw_body_persisted == 0

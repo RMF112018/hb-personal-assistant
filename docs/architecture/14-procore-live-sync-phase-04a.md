@@ -93,15 +93,41 @@ it at the row level — the normalizer's heuristic is the source of truth.
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/06-observation-live-sync.md`.
 
+## Meetings family — Prompt 07 N+1 dispatch + path probe
+
+`run_live_sync` now ships a third per-endpoint dispatch branch
+(alongside `rfis` and `submittals`): when `adapter.endpoint_id ==
+"meetings"`, after each parent upsert the orchestrator paginates
+`f"/rest/v1.0/projects/{procore_project_id}/meetings/{record_id}/topics"`,
+normalizes via `normalize_meeting_topic(..., parent_meeting_id=...)`,
+and upserts as `endpoint_id="meeting-topics"` with
+`parent_procore_id=<meeting_id>`. Topics are always
+`review_required=True`. Description and action_items are reduced to
+SHA-256 hash-only summaries by the normalizer — raw text never
+persisted. The dispatch is fully covered by `_PathAwareFakeTransport`
+tests in `tests/test_procore_live_sync_verified_chain.py`.
+
+**Path probe outcome (Prompt 07 backlog).** Five candidate Procore
+meeting paths were probed against `tropical`. The v1.0 project-scoped
+path returns HTTP 404; the v1.1 project-scoped path returns 10 records
+but the payload shape is incompatible with the current v1.0-tuned
+`normalize_meeting` (every record raises `ValueError`). The adapter's
+`path_template` is updated to v1.1 to preserve the discovery; both
+`meetings` and `meeting-topics` stay `live_verified=False` pending a
+follow-up prompt that updates the normalizer for v1.1 payload shape.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/07-meeting-live-sync.md`.
+
 ## Verified vs unverified endpoints
 
-5 of 14 endpoint IDs are `live_verified=True` and execute the full chain:
-`projects`, `rfis`, `submittals`, `meetings`, `daily-log-weather`. The other
-9 are command-visible (`endpoints list`) and command-accepted, but the
-orchestrator returns a structured `state="not_live_verified"` receipt with
-`no_live_call_performed=true` and zero counts; no API call and no DB write
-occur. Promotion is a one-line flag flip in `endpoints.py` after a future
-docs/live smoke proof.
+Post-Prompt 07, 5 of 14 endpoint IDs are `live_verified=True` and execute
+the full chain: `projects`, `rfis`, `submittals`, `observations`,
+`daily-log-weather`. The other 9 are command-visible (`endpoints list`)
+and command-accepted, but the orchestrator returns a structured
+`state="not_live_verified"` receipt with `no_live_call_performed=true`
+and zero counts; no API call and no DB write occur. Promotion is a
+one-line flag flip in `endpoints.py` after a future docs/live smoke
+proof.
 
 ## Receipt shape
 

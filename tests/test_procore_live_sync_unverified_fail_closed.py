@@ -18,6 +18,7 @@ _UNVERIFIED_IDS = (
     "rfi-responses",
     "submittal-responses",
     "submittal-packages",
+    "meetings",
     "meeting-topics",
     "daily-log-manpower",
     "daily-log-notes",

@@ -32,6 +32,7 @@ from hb_assistant.procore.live_gate import (
 from hb_assistant.procore.loader import load_procore_projects
 from hb_assistant.procore.normalizers import (
     normalize_meeting,
+    normalize_meeting_topic,
     normalize_observation,
     normalize_rfi,
     normalize_rfi_reply,
@@ -593,7 +594,8 @@ def run_live_sync(
     # N+1 child GET to /rfis/{rfi_id}/replies and persist replies as
     # endpoint_id="rfi-responses" with parent_procore_id set. The same shape
     # applies to `submittals` -> /submittals/{submittal_id}/responses persisted
-    # as endpoint_id="submittal-responses".
+    # as endpoint_id="submittal-responses" and to `meetings` ->
+    # /meetings/{meeting_id}/topics persisted as endpoint_id="meeting-topics".
     fetched_at = _now_utc()
     parent_retrieved_count = len(items)
     parent_normalized_count = 0
@@ -605,10 +607,13 @@ def run_live_sync(
     child_errors_count = 0
     fetch_rfi_replies = adapter.endpoint_id == "rfis" and will_write_db
     fetch_submittal_responses = adapter.endpoint_id == "submittals" and will_write_db
+    fetch_meeting_topics = adapter.endpoint_id == "meetings" and will_write_db
     if fetch_rfi_replies:
         child_endpoint_id = "rfi-responses"
     elif fetch_submittal_responses:
         child_endpoint_id = "submittal-responses"
+    elif fetch_meeting_topics:
+        child_endpoint_id = "meeting-topics"
 
     for raw in items:
         try:
@@ -654,7 +659,7 @@ def run_live_sync(
             redacted_errors.append({"upsert_error": "sqlite_upsert_failed"})
             continue
 
-        if not (fetch_rfi_replies or fetch_submittal_responses):
+        if not (fetch_rfi_replies or fetch_submittal_responses or fetch_meeting_topics):
             continue
 
         if fetch_rfi_replies:
@@ -726,7 +731,7 @@ def run_live_sync(
                     redacted_errors.append(
                         {"child_upsert_error": "sqlite_upsert_failed", "parent_procore_id": record_id}
                     )
-        else:
+        elif fetch_submittal_responses:
             # N+1: fetch this submittal's responses, normalize each, upsert as a child row.
             response_path = (
                 f"/rest/v1.0/projects/{procore_project_id}/submittals/{record_id}/responses"
@@ -788,6 +793,82 @@ def run_live_sync(
                         review_required=True,
                         sensitive_reason=response_record.get("routing_reason"),
                         source_url_redacted=redact_source_url(response_path),
+                        last_sync_run_id=sync_run_id,
+                        now_utc=fetched_at,
+                        db_path=db_path,
+                    )
+                    child_upserted_count += 1
+                    sqlite_upserted_count += 1
+                except Exception:  # noqa: BLE001
+                    child_errors_count += 1
+                    redacted_errors.append(
+                        {
+                            "child_upsert_error": "sqlite_upsert_failed",
+                            "parent_procore_id": record_id,
+                        }
+                    )
+        else:
+            # N+1: fetch this meeting's topics, normalize each, upsert as a child row.
+            topic_path = (
+                f"/rest/v1.0/projects/{procore_project_id}/meetings/{record_id}/topics"
+            )
+            try:
+                topic_items = list(
+                    client.paginate(topic_path, per_page=50, max_pages=1, max_items=50)
+                )
+            except ProcoreAPIError as child_exc:
+                child_errors_count += 1
+                redacted_errors.append(
+                    {
+                        "child_transport_error": child_exc.code,
+                        "status": child_exc.status,
+                        "parent_procore_id": record_id,
+                    }
+                )
+                continue
+            except Exception:  # noqa: BLE001
+                child_errors_count += 1
+                redacted_errors.append(
+                    {"child_transport_error": "unexpected", "parent_procore_id": record_id}
+                )
+                continue
+
+            for topic_raw in topic_items:
+                child_retrieved_count += 1
+                try:
+                    topic_record = normalize_meeting_topic(
+                        topic_raw,
+                        project_key=project_key,
+                        endpoint_id="meeting-topics",
+                        correlation_id=correlation_id,
+                        fetched_at=fetched_at,
+                        parent_meeting_id=str(record_id),
+                    )
+                except (TypeError, ValueError):
+                    child_errors_count += 1
+                    redacted_errors.append(
+                        {"child_normalize_error": "invalid_topic_payload"}
+                    )
+                    continue
+                child_normalized_count += 1
+                normalized_count += 1
+
+                topic_id = topic_raw.get("id") if isinstance(topic_raw, dict) else None
+                if topic_id is None or topic_id == "":
+                    child_errors_count += 1
+                    redacted_errors.append({"child_normalize_error": "missing_topic_id"})
+                    continue
+                try:
+                    upsert_procore_live_record(
+                        project_key=project_key,
+                        procore_project_id=str(procore_project_id),
+                        endpoint_id="meeting-topics",
+                        procore_record_id=str(topic_id),
+                        parent_procore_id=str(record_id),
+                        normalized_fields=topic_record["canonical_fields"],
+                        review_required=True,
+                        sensitive_reason=topic_record.get("routing_reason"),
+                        source_url_redacted=redact_source_url(topic_path),
                         last_sync_run_id=sync_run_id,
                         now_utc=fetched_at,
                         db_path=db_path,
