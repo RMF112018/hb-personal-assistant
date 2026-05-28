@@ -54,7 +54,7 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         sensitivity="low",
         sqlite_target="procore_live_records",
         live_verified=True,
-        verification_reason="phase_04a_foundation_endpoint",
+        verification_reason="live_smoke_passed_2026-05-28:7703b766",
     ),
     EndpointAdapter(
         endpoint_id="rfis",
@@ -70,7 +70,7 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         sensitivity="medium",
         sqlite_target="procore_live_records",
         live_verified=True,
-        verification_reason="phase_04a_rfi_parent_verified",
+        verification_reason="live_smoke_passed_2026-05-28:09113b6d",
     ),
     EndpointAdapter(
         endpoint_id="rfi-responses",
@@ -102,7 +102,7 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         sensitivity="medium",
         sqlite_target="procore_live_records",
         live_verified=True,
-        verification_reason="phase_04a_submittal_parent_verified",
+        verification_reason="live_smoke_passed_2026-05-28:d9506311",
     ),
     EndpointAdapter(
         endpoint_id="submittal-responses",
@@ -165,8 +165,8 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         review_required_default=False,
         sensitivity="medium",
         sqlite_target="procore_live_records",
-        live_verified=True,
-        verification_reason="phase_04a_meeting_parent_verified",
+        live_verified=False,
+        verification_reason="live_smoke_failed_2026-05-28:http_404_at_/rest/v1.0/projects/{project_id}/meetings",
     ),
     EndpointAdapter(
         endpoint_id="meeting-topics",
@@ -198,7 +198,7 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         sensitivity="low",
         sqlite_target="procore_live_records",
         live_verified=True,
-        verification_reason="phase_04a_daily_log_weather_verified",
+        verification_reason="live_smoke_passed_2026-05-28:e4d9f384",
     ),
     EndpointAdapter(
         endpoint_id="daily-log-manpower",

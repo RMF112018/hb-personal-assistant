@@ -460,6 +460,64 @@ Without the env var, all `live`-marked tests are skipped. The default
 marker taxonomy and contributor expectations live in
 `docs/operations/test-discipline.md`.
 
+## Phase 04A Prompt 03: live GET smoke
+
+The first live Procore API calls land here. Before running:
+
+1. Ensure `hb-assistant procore auth status --json` reports
+   `ready_for_live_calls: true` and `cache_present: true`. If the access
+   token is expired, the `RefreshingOAuthTokenProvider` will refresh it
+   silently using the cached refresh token on the first call — no manual
+   action needed.
+2. Confirm the pilot mapping: `hb-assistant procore mapping validate --json`
+   shows the target project (e.g. `tropical`) with `status=pilot` and a
+   non-empty `procore_project_id`.
+3. Set `HB_PROCORE_LIVE=1` in the shell that will issue the smoke.
+
+### Smoke command (one per verified endpoint)
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live smoke \
+  --project tropical \
+  --endpoint <endpoint-id> \
+  --max-pages 1 --max-items 5 \
+  --confirm-live-get --json
+```
+
+Smoke mode does **not** write to SQLite. Verify with:
+
+```bash
+hb-assistant procore live records count --project tropical --endpoint <id> --json
+# expect count: 0
+```
+
+### Interpreting the receipt
+
+Success: `state="success"`, `status="success"`, `http_method="GET"`,
+`retrieved_count > 0`, `sqlite_upserted_count == 0`, `redacted_errors == []`.
+
+Transport failure (e.g. wrong path): `state="transport_error"`,
+`redacted_errors=[{"code":"http_error","status":<code>}]`. Means the endpoint
+adapter's `path_template` does not match Procore's current REST surface;
+update `src/hb_assistant/procore/endpoints.py` and re-smoke.
+
+Gate failure: `state="gate_blocked"` with a `reason_codes` list. Re-check the
+env var, `--confirm-live-get`, and the pilot mapping.
+
+Not docs-verified: `state="not_live_verified"`,
+`no_live_call_performed=true`. The endpoint is in the registry but its
+`live_verified` flag is `false`; promote only after a successful smoke.
+
+### Promotion
+
+After a successful smoke, update the adapter's `verification_reason` in
+`endpoints.py` to record the receipt id and date:
+`live_smoke_passed_<ISO-date>:<receipt-id-prefix>`. After a failed smoke,
+flip `live_verified=False` and record
+`live_smoke_failed_<ISO-date>:<reason>`.
+
+Latest smoke evidence: `docs/evidence/construction-intelligence-phase-04a/03-live-get-smoke-and-promotion.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`
