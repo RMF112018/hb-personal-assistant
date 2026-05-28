@@ -436,6 +436,44 @@ def _check_observation_normalizer_dispatch_present() -> dict[str, Any]:
     }
 
 
+def _check_meeting_normalizer_dispatch_present() -> dict[str, Any]:
+    """Phase 04 Prompt 07: both ``list-meetings`` and ``list-meeting-topics``
+    must be wired through ``sync.NORMALIZER_DISPATCH``. Meetings are
+    metadata-only at the parent level; topics carry safety-aware routing.
+    Both endpoints ship as ``verification_status: candidate`` until docs
+    reconciliation completes.
+    """
+    from hb_assistant.procore.normalizers import (
+        NORMALIZATION_SCHEMA_VERSION,
+        normalize_meeting,
+        normalize_meeting_payload_block,
+        normalize_meeting_topic,
+        normalize_meeting_topic_payload_block,
+    )
+    from hb_assistant.procore.sync import (
+        MEETING_ENDPOINT_ID,
+        MEETING_TOPIC_ENDPOINT_ID,
+        NORMALIZER_DISPATCH,
+    )
+
+    parent_dispatched = NORMALIZER_DISPATCH.get(MEETING_ENDPOINT_ID)
+    topic_dispatched = NORMALIZER_DISPATCH.get(MEETING_TOPIC_ENDPOINT_ID)
+    return {
+        "ok": parent_dispatched is normalize_meeting_payload_block
+        and topic_dispatched is normalize_meeting_topic_payload_block
+        and callable(normalize_meeting)
+        and callable(normalize_meeting_topic)
+        and NORMALIZATION_SCHEMA_VERSION >= 1,
+        "detail": {
+            "meeting_endpoint_id": MEETING_ENDPOINT_ID,
+            "meeting_topic_endpoint_id": MEETING_TOPIC_ENDPOINT_ID,
+            "meeting_dispatch_present": parent_dispatched is not None,
+            "meeting_topic_dispatch_present": topic_dispatched is not None,
+            "schema_version": NORMALIZATION_SCHEMA_VERSION,
+        },
+    }
+
+
 def _check_procore_init_exports_complete() -> dict[str, Any]:
     """Phase 04: the public ``hb_assistant.procore`` API must re-export the
     sync coordinator, ``run_sync``, ``SyncReceipt``, and the new fail-closed
@@ -530,6 +568,7 @@ def run_procore_validate(
         _safe_check("rfi_normalizer_dispatch_present", _check_rfi_normalizer_dispatch_present),
         _safe_check("submittal_normalizer_dispatch_present", _check_submittal_normalizer_dispatch_present),
         _safe_check("observation_normalizer_dispatch_present", _check_observation_normalizer_dispatch_present),
+        _safe_check("meeting_normalizer_dispatch_present", _check_meeting_normalizer_dispatch_present),
     ]
 
     passed = sum(1 for c in checks if c.get("ok"))

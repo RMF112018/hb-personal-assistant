@@ -416,3 +416,134 @@ OBSERVATION_SAMPLE_PAYLOAD: list[dict[str, Any]] = [
 PROCORE_OBSERVATION_FIXTURES: dict[str, list[dict[str, Any]]] = {
     "observation_sample_payload": OBSERVATION_SAMPLE_PAYLOAD,
 }
+
+
+# Phase 04 Prompt 07: synthetic meeting list response.
+#
+# Three meetings, all `synthetic-` prefixed. #1 = bland weekly OAC (low-risk
+# default). #2 = "change order discussion" title fragment triggers review.
+# #3 = "legal hold review" in status fires the status-fragment heuristic.
+MEETING_SAMPLE_PAYLOAD: list[dict[str, Any]] = [
+    {
+        "id": "synthetic-mtg-001",
+        "number": "MTG-001",
+        "title": "Weekly OAC",
+        "status": "scheduled",
+        "start_time": "2026-05-25T15:00:00Z",
+        "end_time": "2026-05-25T16:00:00Z",
+        "location": "Job trailer conference room",
+        "organizer_id": "synthetic-user-15",
+        "project_id": "synthetic-proj-1",
+        "created_at": "2026-05-15T08:00:00Z",
+        "updated_at": "2026-05-22T09:00:00Z",
+        "html_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-001",
+    },
+    {
+        "id": "synthetic-mtg-002",
+        "number": "MTG-002",
+        "title": "Change order discussion: partition framing scope",
+        "status": "scheduled",
+        "start_time": "2026-05-28T13:00:00Z",
+        "end_time": "2026-05-28T14:30:00Z",
+        "location": "Owner conference room",
+        "organizer_id": "synthetic-user-3",
+        "project_id": "synthetic-proj-1",
+        "created_at": "2026-05-22T10:00:00Z",
+        "updated_at": "2026-05-26T16:00:00Z",
+        "html_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-002",
+    },
+    {
+        "id": "synthetic-mtg-003",
+        "number": "MTG-003",
+        "title": "Project alignment",
+        "status": "legal_hold_review",
+        "start_time": "2026-06-02T09:00:00Z",
+        "end_time": "2026-06-02T10:00:00Z",
+        "location": "Remote",
+        "organizer_id": "synthetic-user-1",
+        "project_id": "synthetic-proj-1",
+        "created_at": "2026-05-26T11:00:00Z",
+        "updated_at": "2026-05-27T08:00:00Z",
+        "html_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-003",
+    },
+]
+
+
+# Phase 04 Prompt 07: synthetic meeting-topic list response (separate
+# endpoint, peer to meetings — not nested under any parent payload).
+#
+# Four topics, all `synthetic-` prefixed. Each references a parent meeting
+# via ``parent_meeting_id``. Topic #2 carries a safety description (the
+# body-scan trigger sets safety_route=true). Topic #3 has "claim" in the
+# title (review fires but safety_route stays false — claim is a generic
+# review fragment, not a safety-specific one). Topics #1 and #4 are benign.
+MEETING_TOPIC_SAMPLE_PAYLOAD: list[dict[str, Any]] = [
+    {
+        "id": "synthetic-topic-001",
+        "title": "Schedule update",
+        "status": "open",
+        "sequence_number": 1,
+        "assignee_id": "synthetic-user-15",
+        "due_date": "2026-06-01",
+        "parent_meeting_id": "synthetic-mtg-001",
+        "created_at": "2026-05-22T10:00:00Z",
+        "updated_at": "2026-05-22T10:00:00Z",
+        "html_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-001/topics/synthetic-topic-001",
+        "description": "Walk the look-ahead schedule for next two weeks.",
+        "action_items": "Subcontractor commitments confirmed by Wednesday.",
+    },
+    {
+        "id": "synthetic-topic-002",
+        "title": "Site safety walk follow-up",
+        "status": "open",
+        "sequence_number": 2,
+        "assignee_id": "synthetic-user-2",
+        "due_date": "2026-05-30",
+        "parent_meeting_id": "synthetic-mtg-001",
+        "created_at": "2026-05-22T10:00:00Z",
+        "updated_at": "2026-05-22T10:00:00Z",
+        "html_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-001/topics/synthetic-topic-002",
+        "description": "Reviewing minor injury incident from last week's drywall installation.",
+        "action_items": [
+            "Issue corrective action notice to trade",
+            "Update PPE briefing materials",
+        ],
+    },
+    {
+        "id": "synthetic-topic-003",
+        "title": "Owner claim regarding partition scope",
+        "status": "open",
+        "sequence_number": 1,
+        "assignee_id": "synthetic-user-3",
+        "due_date": "2026-06-05",
+        "parent_meeting_id": "synthetic-mtg-002",
+        "created_at": "2026-05-26T16:00:00Z",
+        "updated_at": "2026-05-26T16:00:00Z",
+        "html_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-002/topics/synthetic-topic-003",
+        "description": "Owner has filed a request for scope clarification under the contract amendment process.",
+        "action_items": "Counsel to review and respond by close of week.",
+    },
+    {
+        "id": "synthetic-topic-004",
+        "title": "Logistics for next pour",
+        "status": "open",
+        "sequence_number": 1,
+        "assignee_id": "synthetic-user-9",
+        "due_date": "2026-06-04",
+        "parent_meeting_id": "synthetic-mtg-003",
+        "created_at": "2026-05-27T08:00:00Z",
+        "updated_at": "2026-05-27T08:00:00Z",
+        "html_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-003/topics/synthetic-topic-004",
+        "description": "Pre-pour checklist and mix truck routing.",
+        "action_items": "Confirm flagger coverage with city.",
+    },
+]
+
+
+PROCORE_MEETING_FIXTURES: dict[str, list[dict[str, Any]]] = {
+    "meeting_sample_payload": MEETING_SAMPLE_PAYLOAD,
+}
+
+PROCORE_MEETING_TOPIC_FIXTURES: dict[str, list[dict[str, Any]]] = {
+    "meeting_topic_sample_payload": MEETING_TOPIC_SAMPLE_PAYLOAD,
+}

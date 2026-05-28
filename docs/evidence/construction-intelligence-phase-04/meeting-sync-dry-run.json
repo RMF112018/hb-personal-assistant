@@ -1,0 +1,382 @@
+{
+  "document": "Phase 04 Prompt 07 \u2014 Meeting + meeting-topic dry-run sync normalization receipt",
+  "generated_at_utc": "2026-05-28T00:00:00+00:00",
+  "fixture_source": {
+    "meetings": "hb_assistant.construction.fixtures.procore.MEETING_SAMPLE_PAYLOAD",
+    "meeting_topics": "hb_assistant.construction.fixtures.procore.MEETING_TOPIC_SAMPLE_PAYLOAD"
+  },
+  "normalization_schema_version": 1,
+  "meeting_canonical_field_keys": [
+    "number",
+    "title",
+    "status",
+    "start_time",
+    "end_time",
+    "location",
+    "organizer_id",
+    "project_id",
+    "source_url",
+    "created_at",
+    "updated_at"
+  ],
+  "meeting_topic_canonical_field_keys": [
+    "id",
+    "title",
+    "status",
+    "sequence_number",
+    "assignee_id",
+    "due_date",
+    "parent_meeting_id",
+    "source_url",
+    "created_at",
+    "updated_at"
+  ],
+  "endpoint_posture": {
+    "list-meetings": {
+      "verification_status": "candidate",
+      "is_live_eligible": false,
+      "apply_behavior": "skipped_not_live_eligible until promoted"
+    },
+    "list-meeting-topics": {
+      "verification_status": "candidate",
+      "is_live_eligible": false,
+      "apply_behavior": "skipped_not_live_eligible until promoted",
+      "live_path_note": "path_template carries a {meeting_id} placeholder; live execution will require parent-id threading once promoted"
+    }
+  },
+  "sync_plan_receipt": {
+    "sync_id": "synthetic-sync-id-meeting-dry-run",
+    "mode": "dry_run",
+    "company_id": "5280",
+    "started_at": "2026-05-28T00:00:00+00:00",
+    "completed_at": "2026-05-28T00:00:00+00:00",
+    "audit_prerequisite_passed": true,
+    "audit_verdict_summary": {
+      "available": 9,
+      "forbidden": 4,
+      "excluded": 1,
+      "deferred": 2
+    },
+    "category_counts": {
+      "meetings": 1,
+      "meeting-topics": 1
+    },
+    "sensitivity_counts": {},
+    "total_planned_requests": 2,
+    "total_items_normalized": 0,
+    "per_endpoint": [
+      {
+        "endpoint_id": "list-meetings",
+        "category": "meetings",
+        "review_required": false,
+        "planned_requests": 1,
+        "supports_incremental": false,
+        "live_eligible": false,
+        "verification_status": "candidate",
+        "endpoint_status": "validated",
+        "redacted_request_envelope": {
+          "method": "GET",
+          "path_template": "/rest/v1.0/projects/{project_id}/meetings",
+          "company_id": "5280",
+          "correlation": "synthetic-correlation-meeting-dry-run"
+        },
+        "normalization_schema_version": 1,
+        "would_persist_children_separately": false,
+        "planned_meeting_record_count": 3,
+        "planned_review_required_count": 2
+      },
+      {
+        "endpoint_id": "list-meeting-topics",
+        "category": "meeting-topics",
+        "review_required": false,
+        "planned_requests": 1,
+        "supports_incremental": false,
+        "live_eligible": false,
+        "verification_status": "candidate",
+        "endpoint_status": "validated",
+        "redacted_request_envelope": {
+          "method": "GET",
+          "path_template": "/rest/v1.0/projects/{project_id}/meetings/{meeting_id}/topics",
+          "company_id": "5280",
+          "correlation": "synthetic-correlation-meeting-dry-run"
+        },
+        "normalization_schema_version": 1,
+        "would_persist_children_separately": false,
+        "planned_meeting_topic_record_count": 4,
+        "planned_review_required_count": 2,
+        "planned_safety_route_count": 1
+      }
+    ],
+    "redacted_errors": [],
+    "redaction_applied": true,
+    "persisted_to_sqlite": false,
+    "policy_used": "auto",
+    "sensitive_review_routing": "flagged per contract; no automated decisioning",
+    "guardrails": {
+      "local_first": true,
+      "bobby_only_mvp": true,
+      "read_only_external": true,
+      "no_procore_writeback": true,
+      "no_post_put_patch_delete": true,
+      "dry_run_default_explicit_apply": true,
+      "audit_prerequisite_gate": true,
+      "unit_tests_mocked_temp_sqlite_only": true,
+      "sensitive_routes_to_review": true,
+      "no_model_file_operations": true
+    }
+  },
+  "fixture_summary": {
+    "meeting_count": 3,
+    "meeting_topic_count": 4
+  },
+  "normalized_preview": {
+    "meeting_records": [
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-meetings",
+        "entity_stable_key": "synthetic-mtg-001",
+        "category": "meetings",
+        "review_required": false,
+        "routing_reason": "default_low_risk",
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-001",
+          "number": "MTG-001",
+          "title": "Weekly OAC",
+          "status": "scheduled",
+          "start_time": "2026-05-25T15:00:00Z",
+          "end_time": "2026-05-25T16:00:00Z",
+          "location": "Job trailer conference room",
+          "organizer_id": "synthetic-user-15",
+          "project_id": "synthetic-proj-1",
+          "created_at": "2026-05-15T08:00:00Z",
+          "updated_at": "2026-05-22T09:00:00Z"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-meeting-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Weekly OAC"
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-meetings",
+        "entity_stable_key": "synthetic-mtg-002",
+        "category": "meetings",
+        "review_required": true,
+        "routing_reason": "subject_contains:change order",
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-002",
+          "number": "MTG-002",
+          "title": "Change order discussion: partition framing scope",
+          "status": "scheduled",
+          "start_time": "2026-05-28T13:00:00Z",
+          "end_time": "2026-05-28T14:30:00Z",
+          "location": "Owner conference room",
+          "organizer_id": "synthetic-user-3",
+          "project_id": "synthetic-proj-1",
+          "created_at": "2026-05-22T10:00:00Z",
+          "updated_at": "2026-05-26T16:00:00Z"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-meeting-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Change order discussion: partition framing scope"
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-meetings",
+        "entity_stable_key": "synthetic-mtg-003",
+        "category": "meetings",
+        "review_required": true,
+        "routing_reason": "status_contains:legal",
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-003",
+          "number": "MTG-003",
+          "title": "Project alignment",
+          "status": "legal_hold_review",
+          "start_time": "2026-06-02T09:00:00Z",
+          "end_time": "2026-06-02T10:00:00Z",
+          "location": "Remote",
+          "organizer_id": "synthetic-user-1",
+          "project_id": "synthetic-proj-1",
+          "created_at": "2026-05-26T11:00:00Z",
+          "updated_at": "2026-05-27T08:00:00Z"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-meeting-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Project alignment"
+      }
+    ],
+    "meeting_topic_records": [
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-meeting-topics",
+        "entity_stable_key": "synthetic-topic-001",
+        "category": "meeting_topics",
+        "review_required": false,
+        "routing_reason": "default_low_risk",
+        "safety_route": false,
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-001/topics/synthetic-topic-001",
+          "id": "synthetic-topic-001",
+          "title": "Schedule update",
+          "status": "open",
+          "sequence_number": 1,
+          "assignee_id": "synthetic-user-15",
+          "due_date": "2026-06-01",
+          "parent_meeting_id": "synthetic-mtg-001",
+          "created_at": "2026-05-22T10:00:00Z",
+          "updated_at": "2026-05-22T10:00:00Z"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-meeting-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Schedule update",
+        "description_summary": {
+          "type": "string",
+          "length": 48,
+          "hash_prefix": "956088e6e73a"
+        },
+        "action_items_summary": {
+          "type": "string",
+          "length": 49,
+          "hash_prefix": "a0ddb00dc4fa"
+        }
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-meeting-topics",
+        "entity_stable_key": "synthetic-topic-002",
+        "category": "meeting_topics",
+        "review_required": true,
+        "routing_reason": "body_contains:incident",
+        "safety_route": true,
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-001/topics/synthetic-topic-002",
+          "id": "synthetic-topic-002",
+          "title": "Site safety walk follow-up",
+          "status": "open",
+          "sequence_number": 2,
+          "assignee_id": "synthetic-user-2",
+          "due_date": "2026-05-30",
+          "parent_meeting_id": "synthetic-mtg-001",
+          "created_at": "2026-05-22T10:00:00Z",
+          "updated_at": "2026-05-22T10:00:00Z"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-meeting-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Site safety walk follow-up",
+        "description_summary": {
+          "type": "string",
+          "length": 70,
+          "hash_prefix": "bc600f384f7e"
+        },
+        "action_items_summary": {
+          "type": "string",
+          "length": 69,
+          "hash_prefix": "77370f830a01"
+        }
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-meeting-topics",
+        "entity_stable_key": "synthetic-topic-003",
+        "category": "meeting_topics",
+        "review_required": true,
+        "routing_reason": "subject_contains:claim",
+        "safety_route": false,
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-002/topics/synthetic-topic-003",
+          "id": "synthetic-topic-003",
+          "title": "Owner claim regarding partition scope",
+          "status": "open",
+          "sequence_number": 1,
+          "assignee_id": "synthetic-user-3",
+          "due_date": "2026-06-05",
+          "parent_meeting_id": "synthetic-mtg-002",
+          "created_at": "2026-05-26T16:00:00Z",
+          "updated_at": "2026-05-26T16:00:00Z"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-meeting-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Owner claim regarding partition scope",
+        "description_summary": {
+          "type": "string",
+          "length": 87,
+          "hash_prefix": "1955c39c8d05"
+        },
+        "action_items_summary": {
+          "type": "string",
+          "length": 47,
+          "hash_prefix": "cd1a29d496d5"
+        }
+      },
+      {
+        "source_project_key": "tropical",
+        "endpoint_id": "list-meeting-topics",
+        "entity_stable_key": "synthetic-topic-004",
+        "category": "meeting_topics",
+        "review_required": false,
+        "routing_reason": "default_low_risk",
+        "safety_route": false,
+        "canonical_fields": {
+          "source_url": "https://app.procore.example/projects/1/meetings/synthetic-mtg-003/topics/synthetic-topic-004",
+          "id": "synthetic-topic-004",
+          "title": "Logistics for next pour",
+          "status": "open",
+          "sequence_number": 1,
+          "assignee_id": "synthetic-user-9",
+          "due_date": "2026-06-04",
+          "parent_meeting_id": "synthetic-mtg-003",
+          "created_at": "2026-05-27T08:00:00Z",
+          "updated_at": "2026-05-27T08:00:00Z"
+        },
+        "fetched_at": "2026-05-28T00:00:00+00:00",
+        "correlation_id": "synthetic-correlation-meeting-dry-run",
+        "redaction_applied": true,
+        "normalization_schema_version": 1,
+        "redacted_excerpt": "Logistics for next pour",
+        "description_summary": {
+          "type": "string",
+          "length": 41,
+          "hash_prefix": "1fbb0f63a71d"
+        },
+        "action_items_summary": {
+          "type": "string",
+          "length": 35,
+          "hash_prefix": "5bddb5651328"
+        }
+      }
+    ]
+  },
+  "safety_routing_summary": {
+    "meeting_topic_count": 4,
+    "safety_routed_count": 1,
+    "safety_routed_ids": [
+      "synthetic-topic-002"
+    ],
+    "routing_reason_histogram": {
+      "default_low_risk": 2,
+      "body_contains:incident": 1,
+      "subject_contains:claim": 1
+    },
+    "destination_rule": "procore-incident-injury-personnel (in procore_sensitive_routing_rules.yaml)"
+  },
+  "guardrails": {
+    "read_only": true,
+    "no_writeback": true,
+    "no_raw_body_persisted": true,
+    "meeting_parent_metadata_only": true,
+    "topic_body_action_items_hash_only": true,
+    "candidate_endpoints_block_live_execution": true,
+    "redaction_applied": true
+  }
+}

@@ -129,6 +129,32 @@ hb-assistant procore sync run --project tropical --dry-run \
   --endpoints list-observations --json
 ```
 
+For the meeting + meeting-topic endpoints (Phase 04 Prompt 07), both ship as
+`verification_status: candidate` → `is_live_eligible: false`. Meetings and
+meeting-topics are **two separate Procore endpoints** (not parent + nested
+children). The meeting parent normalizer is metadata-only (title / time /
+location / organizer); review routing fires on claim / delay /
+change-order / legal / financial title or status fragments. The meeting-topic
+normalizer additionally scans the description and `action_items` (string or
+list) for safety / incident / injury / corrective-action / claim / delay /
+cost / unsafe / PPE / fall keywords; descriptions and action items are reduced
+to SHA-256 hash-only summaries and never persisted as raw text.
+
+```bash
+# Meeting dry-run plan
+hb-assistant procore sync run --project tropical --dry-run \
+  --endpoints list-meetings --json
+
+# Meeting-topic dry-run plan
+hb-assistant procore sync run --project tropical --dry-run \
+  --endpoints list-meeting-topics --json
+```
+
+The meeting-topics path template carries a `{meeting_id}` placeholder. Live
+execution will require threading the parent meeting id through the paginator
+when the endpoint is promoted; until then, the candidate posture keeps
+`apply()` short-circuiting via `skipped_not_live_eligible`.
+
 ### Phase 4 — Obsidian projection
 
 ```bash

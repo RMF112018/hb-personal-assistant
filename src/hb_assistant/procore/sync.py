@@ -36,6 +36,10 @@ from hb_assistant.procore.loader import (
 from hb_assistant.procore.models import ProcoreProjectsRegistry
 from hb_assistant.procore.normalizers import (
     NORMALIZATION_SCHEMA_VERSION,
+    normalize_meeting,
+    normalize_meeting_payload_block,
+    normalize_meeting_topic,
+    normalize_meeting_topic_payload_block,
     normalize_observation,
     normalize_observation_comment,
     normalize_observation_payload_block,
@@ -53,10 +57,14 @@ from hb_assistant.procore.normalizers import (
 RFI_ENDPOINT_ID = "list-rfis"
 SUBMITTAL_ENDPOINT_ID = "list-submittals"
 OBSERVATION_ENDPOINT_ID = "list-observations"
+MEETING_ENDPOINT_ID = "list-meetings"
+MEETING_TOPIC_ENDPOINT_ID = "list-meeting-topics"
 NORMALIZER_DISPATCH: Dict[str, Any] = {
     RFI_ENDPOINT_ID: normalize_rfi_payload_block,
     SUBMITTAL_ENDPOINT_ID: normalize_submittal_payload_block,
     OBSERVATION_ENDPOINT_ID: normalize_observation_payload_block,
+    MEETING_ENDPOINT_ID: normalize_meeting_payload_block,
+    MEETING_TOPIC_ENDPOINT_ID: normalize_meeting_topic_payload_block,
 }
 
 
@@ -194,6 +202,8 @@ class ProcoreSyncCoordinator:
         rfi_preview_payload: Optional[List[Dict[str, Any]]] = None,
         submittal_preview_payload: Optional[List[Dict[str, Any]]] = None,
         observation_preview_payload: Optional[List[Dict[str, Any]]] = None,
+        meeting_preview_payload: Optional[List[Dict[str, Any]]] = None,
+        meeting_topic_preview_payload: Optional[List[Dict[str, Any]]] = None,
     ) -> SyncReceipt:
         """Dry-run default path. Audit gate first. Produces serializable redacted plan. Zero side effects.
 
@@ -294,6 +304,42 @@ class ProcoreSyncCoordinator:
                 entry["planned_rfi_record_count"] = len(rfi_records)
                 entry["planned_reply_record_count"] = len(reply_records)
                 entry["planned_review_required_count"] = review_required_count
+            if (
+                ep.endpoint_id == MEETING_ENDPOINT_ID
+                and meeting_preview_payload is not None
+            ):
+                (meeting_records,) = normalize_meeting_payload_block(
+                    meeting_preview_payload,
+                    project_key=project_key or "multi",
+                    endpoint_id=ep.endpoint_id,
+                    correlation_id=self.correlation_id,
+                    fetched_at=datetime.now(timezone.utc).isoformat(),
+                )
+                meeting_review_count = sum(
+                    1 for r in meeting_records if r["review_required"]
+                )
+                entry["planned_meeting_record_count"] = len(meeting_records)
+                entry["planned_review_required_count"] = meeting_review_count
+            if (
+                ep.endpoint_id == MEETING_TOPIC_ENDPOINT_ID
+                and meeting_topic_preview_payload is not None
+            ):
+                (topic_records,) = normalize_meeting_topic_payload_block(
+                    meeting_topic_preview_payload,
+                    project_key=project_key or "multi",
+                    endpoint_id=ep.endpoint_id,
+                    correlation_id=self.correlation_id,
+                    fetched_at=datetime.now(timezone.utc).isoformat(),
+                )
+                topic_review_count = sum(
+                    1 for r in topic_records if r["review_required"]
+                )
+                topic_safety_count = sum(
+                    1 for r in topic_records if r.get("safety_route")
+                )
+                entry["planned_meeting_topic_record_count"] = len(topic_records)
+                entry["planned_review_required_count"] = topic_review_count
+                entry["planned_safety_route_count"] = topic_safety_count
             if (
                 ep.endpoint_id == OBSERVATION_ENDPOINT_ID
                 and observation_preview_payload is not None
@@ -488,6 +534,58 @@ class ProcoreSyncCoordinator:
                         "reply_records_written": reply_written,
                         "status": "success",
                     }
+                elif ep.endpoint_id == MEETING_ENDPOINT_ID:
+                    meeting_written = 0
+                    for item in items:
+                        meeting_record = normalize_meeting(
+                            item,
+                            project_key=project_key or "multi",
+                            endpoint_id=ep.endpoint_id,
+                            correlation_id=self.correlation_id,
+                            fetched_at=fetched_at,
+                        )
+                        upsert_procore_synced_entity(
+                            self.db_path,
+                            meeting_record,
+                            correlation=self.correlation_id,
+                        )
+                        meeting_written += 1
+                        total_items += 1
+                    items_written = meeting_written
+                    endpoint_entry = {
+                        "endpoint_id": ep.endpoint_id,
+                        "items_written": items_written,
+                        "meeting_records_written": meeting_written,
+                        "status": "success",
+                    }
+                elif ep.endpoint_id == MEETING_TOPIC_ENDPOINT_ID:
+                    topic_written = 0
+                    safety_routed = 0
+                    for item in items:
+                        topic_record = normalize_meeting_topic(
+                            item,
+                            project_key=project_key or "multi",
+                            endpoint_id=ep.endpoint_id,
+                            correlation_id=self.correlation_id,
+                            fetched_at=fetched_at,
+                        )
+                        upsert_procore_synced_entity(
+                            self.db_path,
+                            topic_record,
+                            correlation=self.correlation_id,
+                        )
+                        topic_written += 1
+                        total_items += 1
+                        if topic_record.get("safety_route"):
+                            safety_routed += 1
+                    items_written = topic_written
+                    endpoint_entry = {
+                        "endpoint_id": ep.endpoint_id,
+                        "items_written": items_written,
+                        "meeting_topic_records_written": topic_written,
+                        "safety_route_count": safety_routed,
+                        "status": "success",
+                    }
                 elif ep.endpoint_id == OBSERVATION_ENDPOINT_ID:
                     observation_written = 0
                     comment_written = 0
@@ -668,6 +766,8 @@ def run_sync(
     rfi_preview_payload: Optional[List[Dict[str, Any]]] = None,
     submittal_preview_payload: Optional[List[Dict[str, Any]]] = None,
     observation_preview_payload: Optional[List[Dict[str, Any]]] = None,
+    meeting_preview_payload: Optional[List[Dict[str, Any]]] = None,
+    meeting_topic_preview_payload: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Entry for CLI `procore sync`. Dry-run default. --apply explicit only.
 
@@ -692,6 +792,8 @@ def run_sync(
             rfi_preview_payload=rfi_preview_payload,
             submittal_preview_payload=submittal_preview_payload,
             observation_preview_payload=observation_preview_payload,
+            meeting_preview_payload=meeting_preview_payload,
+            meeting_topic_preview_payload=meeting_topic_preview_payload,
         )
         return plan  # type: ignore[return-value]
     else:

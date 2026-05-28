@@ -243,8 +243,48 @@ endpoints:
       body text triggers review routing in the normalizer; descriptions are
       reduced to SHA-256 hash-only summaries and never persisted raw.
 
+  - endpoint_id: list-meetings
+    http_method: GET
+    path_template: /rest/v1.0/projects/{project_id}/meetings
+    category: meetings
+    status: validated
+    sensitivity: medium
+    included_in_phase_01: true
+    verification_status: candidate
+    verification_reason: |
+      Phase 04 Prompt 07 candidate: normalizer in place. Live verification
+      deferred until docs reconciliation against the Procore REST meetings
+      reference completes. is_live_eligible remains false until promoted.
+    verified_at_utc: "2026-05-28T00:00:00Z"
+    verified_by: phase-04-prompt-07
+    notes: |
+      Meeting list endpoint. Metadata-only normalization (no body text);
+      review routing fires on claim / delay / cost / change-order title
+      fragments. Topics live at a separate endpoint (list-meeting-topics).
+
+  - endpoint_id: list-meeting-topics
+    http_method: GET
+    path_template: /rest/v1.0/projects/{project_id}/meetings/{meeting_id}/topics
+    category: meeting-topics
+    status: validated
+    sensitivity: medium
+    included_in_phase_01: true
+    verification_status: candidate
+    verification_reason: |
+      Phase 04 Prompt 07 candidate: normalizer + safety-routing in place.
+      Live verification deferred until docs reconciliation completes. Path
+      requires a parent meeting_id; live execution path stays blocked by
+      is_live_eligible=false until promoted.
+    verified_at_utc: "2026-05-28T00:00:00Z"
+    verified_by: phase-04-prompt-07
+    notes: |
+      Meeting topic list endpoint. Body / description / action_items text
+      reduced to SHA-256 hash-only summaries; review routing fires on
+      claim / delay / cost / safety / incident / injury / corrective
+      fragments anywhere in status, title, description, or action_items.
+
   # Note: Broader candidates from the materialized procore_endpoint_reference.phase03_unverified.seed.yaml
-  # (company-vendors, cost-codes, WBS, meetings, daily-log sub-types, drawings revisions,
+  # (company-vendors, cost-codes, WBS, daily-log sub-types, drawings revisions,
   # budget views/rows/snapshots/modifications/changes, potential-change-orders, direct-costs, etc.)
   # remain in the unverified reference catalog pending full official reconciliation and dry-run in follow-up prompts.
   # The contract above covers the original required categories with modern paths and structured verification metadata.
