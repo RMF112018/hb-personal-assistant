@@ -3,16 +3,19 @@
 **Date:** 2026-05-28
 **Operator:** bfetting@hedrickbrothers.com
 **Repo:** `/Users/bobbyfetting/hb-personal-assistant`
-**HEAD at evidence capture:** `e303716` (parent of the prompt-09 evidence commit)
+**Initial evidence commit (blocker captured):** `bf867d9`
+**Resolution commits (this update):** see "Resolution" below
 **Prompt:** `HB_Construction_Intelligence_Phase_03_Entry_Package/prompts/Prompt_09_*`
 
 ## Outcome (one-line)
 
-**Mailbox read-only posture: intact and verified.** Live metadata fetch is
-**blocked** by a date-format defect in `MailClient.list_inbound`'s `$filter`
-clause that is unrelated to scope, consent, or persistence posture. No code
-was changed in this commit; the blocker is reported per the prompt's explicit
-"blocker if live mailbox access cannot be tested" clause.
+**Mailbox read-only posture intact AND live metadata fetch now succeeds.**
+Initial run surfaced two latent defects in the read-only metadata path
+(Graph OData filter date format + JSON serialization of a Pydantic
+`datetime`); operator authorized resolving both. Both are surgical fixes to
+the existing read-only diagnostic, do not change scopes, do not introduce
+mutation endpoints, do not persist message bodies, and leave all
+mutation-lockout tests green.
 
 ## 1. Runtime scopes (verbatim)
 
@@ -23,8 +26,8 @@ was changed in this commit; the blocker is reported per the prompt's explicit
 ```
 
 `hb-assistant construction-agent graph auth status --json` →
-`delegated.effective_msal_scopes` (what MSAL actually requested on the most
-recent silent acquisition):
+`delegated.effective_msal_scopes` (what MSAL requested on the most recent
+silent acquisition):
 
 ```json
 [
@@ -35,61 +38,82 @@ recent silent acquisition):
 ]
 ```
 
-`offline_access` is removed before MSAL acquisition (reported under
-`removed_reserved_scopes` in the same envelope). Neither `Mail.ReadWrite`,
-`Mail.ReadWrite.All`, nor `Mail.Send` is requested at runtime by any code
-path.
+`offline_access` is removed before MSAL acquisition (`removed_reserved_scopes`
+in the same envelope). Neither `Mail.ReadWrite`, `Mail.ReadWrite.All`, nor
+`Mail.Send` is requested at runtime by any code path.
 
-Note on cached-token claims: the same `graph auth status` envelope's
-`delegated.scopes` array enumerates **everything admin has consented for the
-app registration at the tenant** (including `Mail.ReadWrite`, `Sites.ReadWrite.All`,
-etc.) — this is the audit-discovery surface for the Phase 02 grant-but-suppress
-posture. Suppression is enforced at the application layer
-(`configured_scopes` / `effective_msal_scopes`) which never requests any
-write scope, and at the lockout-test layer (see section 4).
+Note on cached-token claims: the same envelope's `delegated.scopes` array
+enumerates everything admin has consented for the app registration at the
+tenant (including `Mail.ReadWrite`, `Sites.ReadWrite.All`, etc.). This is
+the Phase 02 grant-but-suppress audit-discovery surface. Suppression is
+enforced at the application layer (`configured_scopes` /
+`effective_msal_scopes`) which never requests any write scope, and at the
+lockout-test layer (section 4).
 
-## 2. Live diagnostic command output
-
-Command:
+## 2. Live diagnostic command output (verbatim, post-resolution)
 
 ```
-hb-assistant diagnostics mail --json
+$ hb-assistant diagnostics mail --json
 ```
 
-Result: **failed (live blocker)**. Verbatim Graph error tail (sanitized — only
-shape, no message content):
-
+```json
+{
+  "count": 3,
+  "samples": [
+    {
+      "id": "AAkALgAAAAAAHYQDEapmEc2byACqAC-EWg0AjIR74mYNJEWRPeTItDu4kAADMYVrqgAA",
+      "immutable_id": "<...redacted-message-id-1@procore.com>",
+      "conversation_id": "AAQkADY1...",
+      "internet_message_id": "<...redacted-message-id-1@procore.com>",
+      "web_link": "https://outlook.office365.com/owa/?ItemID=...&viewmodel=ReadMessageItem",
+      "folder": "inbox",
+      "subject_redacted": "[redacted:7e43720f0b4decaa]",
+      "sender_domain": "procoretech.com",
+      "sender_hash": "<stable-pseudonym>",
+      "from_redacted": "<hashed-local>@procoretech.com",
+      "to_recipients_redacted": ["<hashed-local>@hedrickbrothers.com"],
+      "cc_recipients_redacted": [],
+      "received_datetime": "2026-05-23T10:06:21Z",
+      "sent_datetime": null,
+      "body_preview_redacted": "<Graph bodyPreview snippet, max 255 chars — kept verbatim by the Graph default response>",
+      "has_attachments": false,
+      "importance": null,
+      "body_checked": false,
+      "body_mention_detected": false,
+      "body_excerpt_redacted": null,
+      "source_record_id": null,
+      "source_links": []
+    },
+    /* 2 additional inbound samples, same shape — redacted in this evidence
+       file to avoid persisting third-party metadata into the repo. Verbatim
+       output is in the operator's terminal transcript; sender_domain values
+       observed: procoretech.com, kolter.com, hedrickbrothers.com. */
+  ]
+}
 ```
-GraphHttpError: GET
-https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$filter=receivedDateTime ge
-2026-05-23T06:29:46.825456+00:00&$select=id,conversationId,internetMessageId,subject,from,
-toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,webLink&$top=3
--> 400: Invalid filter clause: The DateTimeOffset text
-'2026-05-23T06:29:46.825456' should be in format
-'yyyy-mm-ddThh:mm:ss('.'s+)?(zzzzzz)?' and each field value is within valid
-range.
-```
 
-Process exit code: `1`.
+Process exit code: `0`.
 
-**Root cause:** `MailClient._inbound_window` (`src/hb_assistant/graph/mail_client.py`
-line 35-37) builds the filter date with Python `datetime.isoformat()`, which
-emits 6-digit microseconds (`.825456`). Microsoft Graph's OData filter parser
-rejects 6-digit fractional seconds and requires the
-`yyyy-mm-ddThh:mm:ss[.fff][zzzzzz]` shape (no microseconds; at most milliseconds).
-The fix is a one-line `since = ... .replace(microsecond=0).isoformat()` (or
-`...strftime("%Y-%m-%dT%H:%M:%SZ")`) — but is **out of scope** for this prompt,
-which is an evidence-only proof and explicitly forbids touching `mail_client.py`.
-Recommended follow-up: a separate `fix(graph): drop microseconds from Mail filter
-DateTimeOffset` commit.
+Notes on the captured shape (the live diagnostic itself returns the data
+above; redactions in this committed evidence file are an additional measure
+to avoid landing third-party metadata in the repo):
 
-**Posture impact: none.** The failure happens client-side at HTTP request
-formation; no mailbox data was retrieved, no body was touched, no mutation
-endpoint was ever invoked.
+- `subject_redacted` is a SHA-derived placeholder; the raw subject never
+  leaves the diagnostic.
+- `sender_hash` is a stable pseudonym (derived from the address local part);
+  `sender_domain` is preserved as a clear-text domain to allow domain-level
+  routing/diagnostics.
+- `body_preview_redacted` carries the **Graph default `bodyPreview` snippet**
+  (capped by Graph at 255 chars). This is the Phase 02 accepted metadata
+  projection — it is **not** the full `body` field (see section 3 and 4).
+- `body_excerpt_redacted` is `null` because the body-inspector path was not
+  invoked; `body_checked: false` confirms no body retrieval occurred.
+- `received_datetime` is an ISO-8601 string (post-fix; previously a raw
+  Python `datetime` which broke `json.dumps`).
 
 ## 3. Metadata fields allowed (static attestation)
 
-Read of `src/hb_assistant/graph/mail_client.py`, `list_inbound` `$select`:
+`MailClient.list_inbound` `$select` (`src/hb_assistant/graph/mail_client.py`):
 
 ```
 id,conversationId,internetMessageId,subject,from,toRecipients,ccRecipients,
@@ -98,27 +122,28 @@ receivedDateTime,bodyPreview,hasAttachments,webLink
 
 Per Prompt 09's allowed-field list:
 
-| Required field          | Project's `$select` field        | Status |
+| Required field           | Project's `$select` field                | Status |
 | --- | --- | --- |
-| message ID / immutable ID | `id`, `internetMessageId`        | ✅ |
-| subject (redact allowed) | `subject`                        | ✅ (raw subject; redaction is a downstream concern) |
-| sender domain            | `from` (full address; domain-only redaction in downstream layer) | ✅ (already-accepted shape per architecture doc) |
-| received datetime        | `receivedDateTime`               | ✅ |
-| has attachments          | `hasAttachments`                 | ✅ |
-| web link                 | `webLink`                        | ✅ (already accepted by existing schema) |
-| **no body**              | `bodyPreview` only — **no `body`** | ✅ (see section 4) |
+| message ID / immutable ID | `id`, `internetMessageId`                 | ✅ |
+| subject (redact allowed) | `subject` → `subject_redacted` (SHA-derived) | ✅ |
+| sender domain            | `from` → `sender_domain` + hashed local   | ✅ |
+| received datetime        | `receivedDateTime`                        | ✅ |
+| has attachments          | `hasAttachments`                          | ✅ |
+| web link                 | `webLink`                                 | ✅ (already-accepted schema) |
+| **no body**              | `bodyPreview` only — **no `body`**        | ✅ (see section 4) |
 
 ## 4. Explicit no-body / no-writeback proof
 
-**Forbidden-symbol grep across `src/hb_assistant/graph/`:**
+**Forbidden-symbol grep across `src/hb_assistant/graph/` and the diagnostics CLI:**
 
 ```
-$ grep -rnE "Mail\.ReadWrite\.All|Mail\.Send|/sendMail|/forward|/reply" src/hb_assistant/graph/
+$ grep -rnE "Mail\.ReadWrite\.All|Mail\.Send|/sendMail|/forward|/reply" \
+    src/hb_assistant/graph/ src/hb_assistant/cli/diagnostics.py
 OK: no forbidden symbols
 ```
 
-Zero matches. No mailbox mutation endpoints, no Mail.ReadWrite.All / Mail.Send
-references anywhere in the Graph client tree.
+Zero matches. No mailbox mutation endpoints; no Mail.ReadWrite.All / Mail.Send
+references in either the Graph client tree or the diagnostic handler.
 
 **`$select` body-field scan in `mail_client.py`:**
 
@@ -128,69 +153,97 @@ $ grep -nE "select.*body[^P]" src/hb_assistant/graph/mail_client.py
 89:        url = f"/me/messages/{message_id}?$select=id,body"
 ```
 
-Both hits are on the **single-message body retrieval paths** —
-`get_message(message_id, include_body=True)` and
-`get_message_body_for_inspection(message_id)`:
+Both hits are on **single-message** body paths (`get_message`,
+`get_message_body_for_inspection`) gated by
+`cfg.mail.persist_full_body=False` (default) and an explicit in-memory-only
+docstring. The `list_inbound` path (the diagnostic's only call) does **not**
+request `body` — only `bodyPreview`.
 
-- `get_message` only appends `,body` when **both** `include_body=True` **and**
-  `cfg.mail.persist_full_body` are set; the config defaults to `False` and a
-  mutation-lockout test rejects flipping it (see below).
-- `get_message_body_for_inspection` retrieves a single message's body
-  **in memory only** for classifier inspection; the docstring explicitly states
-  "Never writes raw body to DB, logs, evidence, or cache" and the caller is
-  responsible for redaction before any persistence.
-
-The `list_inbound` `$select` (the diagnostic's path) does **not** request
-`body` — only `bodyPreview` (a Graph-truncated snippet, max 255 chars), which
-is the accepted Phase 02 metadata projection.
-
-**Mutation-lockout test suite — verbatim pytest tail:**
+**Mutation-lockout + construction test suite — verbatim pytest tail:**
 
 ```
-python -m pytest tests/test_mutation_lockout.py tests/test_construction_*.py
+$ python -m pytest tests/test_mutation_lockout.py tests/test_construction_*.py
 ...
 ......................................................................... [ 18%]
-...........................................................................[100%]
-399 passed in 4.92s
+.......................................                                  [100%]
+399 passed in 5.03s
 ```
 
-The 399-test pass set includes (audit-confirmed) the five mailbox-relevant
-lockout tests:
+The 399-test pass set includes the five mailbox-relevant lockout tests:
 
-- `test_no_m365_write_apis_in_graph_clients` — no write methods in Graph clients.
-- `test_identity_default_scopes_do_not_request_mailbox_write_scopes` — Mail.Read
-  only, no Mail.ReadWrite.All.
-- `test_graph_clients_do_not_contain_mailbox_mutation_endpoints` — explicit
-  mailbox write-endpoint rejection.
+- `test_no_m365_write_apis_in_graph_clients`
+- `test_identity_default_scopes_do_not_request_mailbox_write_scopes`
+- `test_graph_clients_do_not_contain_mailbox_mutation_endpoints`
 - `test_email_intelligence_deferred_policy_rejects_mailbox_writeback_allowed_true`
-  — policy gate locks writeback.
-- `test_email_intelligence_deferred_policy_rejects_persist_full_body_true` —
-  policy gate locks full-body persistence.
+- `test_email_intelligence_deferred_policy_rejects_persist_full_body_true`
 
-## 5. Blocker (live live mailbox access)
+## 5. Resolution — blockers resolved per operator instruction
 
-| Field | Value |
+The initial commit (`bf867d9`) captured the diagnostic failure as a clean
+blocker per the prompt's "blocker if live mailbox access cannot be tested"
+clause. The operator then explicitly authorized resolving all mailbox-access
+blockers; the fixes were applied as part of this update.
+
+### Blocker A — Graph OData filter rejects Python `datetime.isoformat()`
+
+**Symptom:** `400 Invalid filter clause: DateTimeOffset text '...' should be
+in format 'yyyy-mm-ddThh:mm:ss('.'s+)?(zzzzzz)?'`
+
+**Root cause (two interacting issues):**
+1. `datetime.isoformat()` emits 6-digit microseconds (`.825456`); Graph's
+   filter parser accepts at most milliseconds for fractional seconds.
+2. The UTC suffix `+00:00` is URL-encoded as a literal `+` which Graph
+   decodes as a space — splitting the timestamp into an invalid pair
+   `'2026-05-23T06:32:27'` + `'00:00'`.
+
+**Fix:** `src/hb_assistant/graph/mail_client.py` lines 31 and 36 — replace
+
+```python
+since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+```
+
+with
+
+```python
+since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+```
+
+(no microseconds; `Z` suffix avoids the `+` URL-encoding pitfall).
+Read-only, surgical, no behavior change beyond making the filter Graph-valid.
+
+### Blocker B — `json.dumps` of Pydantic model with `datetime` field
+
+**Symptom:** `TypeError: Object of type datetime is not JSON serializable` at
+`src/hb_assistant/cli/diagnostics.py:327`.
+
+**Root cause:** The diagnostic handler called `i.model_dump()` without
+`mode="json"`, so the resulting `dict` retained Python `datetime` objects
+which standard `json.dumps` cannot serialize.
+
+**Fix:** one-word change to `model_dump(mode="json")` on the mail handler's
+payload construction (only the mail handler, not the calendar handler —
+that is out of scope for Prompt 09).
+
+### Posture impact
+
+| Surface                           | Change                          |
 | --- | --- |
-| Symptom | `400 Invalid filter clause: DateTimeOffset '...' should be in format ...` |
-| Layer | Graph OData filter parser (server-side) |
-| Triggering call | `GET /me/mailFolders/inbox/messages?$filter=receivedDateTime ge {iso}&...` |
-| Cause | `datetime.isoformat()` emits microseconds; Graph caps fractional seconds at milliseconds |
-| File | `src/hb_assistant/graph/mail_client.py:35-37` (`_inbound_window`) |
-| Posture impact | none — failure precedes any data retrieval; no body / no mutation touched |
-| Suggested fix (separate prompt) | `since = (datetime.now(timezone.utc) - timedelta(days=days)).replace(microsecond=0).isoformat()` |
-| Auth / scope / consent issue | none |
-| Re-login required | no |
-
-The MSAL token cache is present and valid (`expires_in: 5042`s at capture
-time); silent acquisition succeeds; the cached scopes include `Mail.Read`. The
-auth path is healthy. Only the OData filter formatting blocks the live call.
+| `IdentityConfig.delegated_scopes` | unchanged                       |
+| Requested MSAL scopes             | unchanged                       |
+| `$select` field list              | unchanged                       |
+| Mutation endpoints                | none introduced                 |
+| Body persistence                  | none introduced                 |
+| Obsidian projection of mail body  | not touched                     |
+| `cfg.mail.persist_full_body`      | unchanged (default `False`)     |
+| Mutation-lockout tests            | 399/399 passing pre- and post-fix |
 
 ## Acceptance-criteria readout
 
-| Criterion | Result |
+| Criterion                                              | Result |
 | --- | --- |
-| Mailbox read-only posture remains intact | ✅ scopes pin Mail.Read only; 399/399 lockout-and-construction tests pass; no forbidden symbols in graph tree |
-| Metadata proof succeeds or blocker is clear | ✅ blocker captured precisely with file:line, root cause, and one-line fix proposal |
-| No runtime scope expansion | ✅ `effective_msal_scopes` unchanged; no Mail.ReadWrite, no Mail.Send |
-| No full-message-body retrieval, no body persistence, no Obsidian body projection | ✅ `list_inbound` $select excludes `body`; body paths gated by `cfg.mail.persist_full_body=False` + in-memory-only contract |
-| No mailbox mutation endpoints | ✅ grep confirms zero `sendMail` / `forward` / `reply` / `Mail.ReadWrite` references |
+| Mailbox read-only posture remains intact               | ✅ |
+| Metadata proof succeeds (no blocker)                   | ✅ — 3 inbound samples returned, metadata-only |
+| No runtime scope expansion                             | ✅ |
+| No full-message-body retrieval, persistence, or Obsidian projection | ✅ |
+| No mailbox mutation endpoints                          | ✅ |
+| Live evidence captured                                 | ✅ |
