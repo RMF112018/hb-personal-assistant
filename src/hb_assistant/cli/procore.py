@@ -26,11 +26,15 @@ from pydantic import ValidationError
 from hb_assistant.procore import (
     EndpointAuditor,
     EndpointContractError,
+    LiveEnvNotSet,
     ProcoreProjectsError,
+    assert_live_mapping_strict,
     check_auth_status,
     load_endpoint_contract,
     load_procore_projects,
+    require_live_env,
 )
+from hb_assistant.procore.errors import ProcoreAPIError
 from hb_assistant.procore.models import EndpointAuditRunReceipt
 
 app = typer.Typer(help="Procore foundation: read-only endpoint audit (dry-run only).")
@@ -597,6 +601,12 @@ def audit_execute(
         typer.echo("ERROR: --confirm required for manual live audit (opt-in only). Dry-run is the safe default.", err=True)
         raise typer.Exit(1)
 
+    try:
+        require_live_env(command="procore audit execute")
+    except LiveEnvNotSet as exc:
+        typer.echo(f"ERROR: {exc.message}", err=True)
+        raise typer.Exit(2) from None
+
     contract = _load_contract_or_emit(json_out)
     projects = _load_projects_or_emit(json_out)
 
@@ -654,6 +664,22 @@ def sync_run(
     if apply and not confirm and not typer.confirm("CONFIRM: --apply will write to local SQLite only (no Procore mutation). Continue?", default=False):
         typer.echo("Aborted.")
         raise typer.Exit(1)
+
+    if apply:
+        try:
+            require_live_env(command="procore sync run --apply")
+        except LiveEnvNotSet as exc:
+            typer.echo(f"ERROR: {exc.message}", err=True)
+            raise typer.Exit(2) from None
+        try:
+            registry = load_procore_projects()
+            target_keys = [project] if project else [
+                p.hb_project_key for p in registry.projects if p.status == "pilot"
+            ]
+            assert_live_mapping_strict(registry, target_keys)
+        except ProcoreAPIError as exc:
+            typer.echo(f"ERROR: {exc.message}", err=True)
+            raise typer.Exit(3) from None
 
     from hb_assistant.procore.sync import run_sync  # lazy, after guard checks
 

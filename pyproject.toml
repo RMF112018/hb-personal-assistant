@@ -122,6 +122,8 @@ module = [
   "hb_assistant.retrieval.context",
   "hb_assistant.cli.actions",
   "hb_assistant.cli.run",
+  # Phase 04A Prompt 01: narrow strict-typing coverage for the live env gate.
+  "hb_assistant.procore.live_gate",
 ]
 ignore_errors = false
 follow_imports = "normal"

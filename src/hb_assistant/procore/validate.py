@@ -605,6 +605,58 @@ def _check_procore_tables_present(db_path: Path | None, *, strict: bool) -> dict
     }
 
 
+def _check_live_env_gate_module_present() -> dict[str, Any]:
+    """Phase 04A Prompt 01: the live env-var gate module must expose the
+    three public names that the CLI relies on.
+    """
+    from hb_assistant.procore import live_gate
+
+    required = ("LiveEnvNotSet", "live_env_active", "require_live_env")
+    missing = [name for name in required if not hasattr(live_gate, name)]
+    return {
+        "ok": not missing,
+        "detail": {
+            "module": "hb_assistant.procore.live_gate",
+            "required": list(required),
+            "missing": missing,
+        },
+    }
+
+
+def _check_live_commands_require_env_var() -> dict[str, Any]:
+    """Phase 04A Prompt 01: the live branches of ``audit execute`` and
+    ``sync run`` must call :func:`require_live_env`. AST-level wire-up
+    regression guard — does not execute any CLI path.
+    """
+    import ast
+    from pathlib import Path as _Path
+
+    cli_path = _Path(__file__).resolve().parent.parent / "cli" / "procore.py"
+    tree = ast.parse(cli_path.read_text(encoding="utf-8"))
+
+    targets = {"audit_execute", "sync_run"}
+    found: dict[str, bool] = dict.fromkeys(targets, False)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name in targets:
+            for sub in ast.walk(node):
+                if isinstance(sub, ast.Call):
+                    func = sub.func
+                    if isinstance(func, ast.Name) and func.id == "require_live_env":
+                        found[node.name] = True
+                        break
+
+    missing = [name for name, ok in found.items() if not ok]
+    return {
+        "ok": not missing,
+        "detail": {
+            "cli_path": str(cli_path),
+            "targets": sorted(targets),
+            "missing": missing,
+        },
+    }
+
+
 def run_procore_validate(
     *,
     strict: bool = False,
@@ -647,6 +699,8 @@ def run_procore_validate(
             "obsidian_renderer_phase_04_register_coverage",
             _check_obsidian_renderer_phase_04_register_coverage,
         ),
+        _safe_check("live_env_gate_module_present", _check_live_env_gate_module_present),
+        _safe_check("live_commands_require_env_var", _check_live_commands_require_env_var),
     ]
 
     passed = sum(1 for c in checks if c.get("ok"))

@@ -33,6 +33,14 @@ from .errors import (
     ProcoreRateLimitError,
 )
 from .http_client import ProcoreHTTPClient
+from .live_gate import (
+    LIVE_ENV_ENABLER,
+    LIVE_ENV_VAR,
+    LiveEnvNotSet,
+    assert_live_mapping_strict,
+    live_env_active,
+    require_live_env,
+)
 from .loader import (
     EndpointContractError,
     ProcoreProjectsError,
@@ -85,6 +93,9 @@ __all__ = [
     "EndpointContractError",
     "EndpointStatus",
     "EnvOrKeychainTokenProvider",
+    "LIVE_ENV_ENABLER",
+    "LIVE_ENV_VAR",
+    "LiveEnvNotSet",
     "LocalOAuthCacheTokenProvider",
     "MappingValidationReport",
     "MissingTokenProvider",
@@ -109,12 +120,15 @@ __all__ = [
     "Sensitivity",
     "SyncReceipt",
     "TokenSet",
+    "assert_live_mapping_strict",
     "check_auth_status",
     "clear_token_cache",
     "default_procore_token_provider",
+    "live_env_active",
     "load_endpoint_contract",
     "load_procore_projects",
     "procore_obsidian_preview",
+    "require_live_env",
     "reset_procore_obsidian_caches",
     "run_sync",
     "write_token_cache",

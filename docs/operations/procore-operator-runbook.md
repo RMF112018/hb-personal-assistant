@@ -16,6 +16,23 @@ financials, incidents, injury, or personnel data.
 (SharePoint / OneDrive / Outlook ingestion) and
 `mvp-local-runtime-operator-guide.md` (local-runtime setup).
 
+**Phase 04A Prompt 01 (2026-05-28):** `HB_PROCORE_LIVE` env-var gate is
+now required for the two existing live-execution paths. The CLI fails
+closed with exit code 2 and a redacted stderr message of the form
+`ERROR: live execution requires HB_PROCORE_LIVE=1; command=<...> refused`
+when an operator runs `procore audit execute --confirm` or
+`procore sync run --apply --confirm` without first exporting
+`HB_PROCORE_LIVE=1`. The gate is exact-match on the literal string `"1"`
+— values like `"true"`, `"yes"`, or `"on"` are treated as inactive by
+design. Dry-run workflows (`procore audit dry-run`, default
+`procore sync run`, `tools list`, `mapping validate`, `obsidian preview`,
+`validate`) are unaffected and continue to work with no env-var
+required. A second runtime check (`assert_live_mapping_strict`) fires
+immediately after the env-var gate on `sync run --apply` and refuses to
+proceed against any target whose mapping is pending, unknown, or
+non-pilot (exit code 3). See evidence
+`docs/evidence/construction-intelligence-phase-04a/01-live-readiness-hardening.md`.
+
 **Phase 04A baseline (2026-05-28):** The Procore Live Enablement arc opens
 at commit `e90a5e2` (Phase 04 closeout). Phase 04A Prompt 00 is a
 verification-only rebaseline — no CLI surface changes, no guardrail

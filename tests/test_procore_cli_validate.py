@@ -48,7 +48,7 @@ def test_validate_default_json_envelope_keys() -> None:
     for key in ("command", "schema_version", "started_at", "completed_at", "strict", "ok", "summary", "checks", "guardrails"):
         assert key in payload, f"missing top-level key: {key}"
     assert payload["command"] == "hb-assistant procore validate"
-    assert isinstance(payload["checks"], list) and len(payload["checks"]) == 26
+    assert isinstance(payload["checks"], list) and len(payload["checks"]) == 28
     assert {"total", "passed", "failed"} <= set(payload["summary"].keys())
     assert payload["guardrails"]["external_systems_called"] is False
     assert payload["guardrails"]["writeback"] is False
