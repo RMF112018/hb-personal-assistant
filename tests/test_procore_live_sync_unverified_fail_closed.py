@@ -20,10 +20,7 @@ _UNVERIFIED_IDS = (
     "submittal-packages",
     "meetings",
     "meeting-topics",
-    "daily-log-manpower",
-    "daily-log-notes",
-    "daily-log-deliveries",
-    "daily-log-delays-review-routed",
+    "daily-log-dcrs",
 )
 
 

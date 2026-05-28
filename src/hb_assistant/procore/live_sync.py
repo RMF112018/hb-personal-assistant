@@ -17,7 +17,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from hb_assistant.procore.endpoints import EndpointAdapter
 from hb_assistant.procore.endpoints import get as get_adapter
@@ -131,6 +131,178 @@ def _normalize_daily_log_weather(
     }
 
 
+def _hash_summary_for_daily_log(text: Any) -> Optional[Dict[str, Any]]:
+    """Hash-only structural summary for a daily-log free-text field.
+
+    Mirrors the implementation in normalizers/submittal.py and meeting.py;
+    duplicated here per Prompt 08 scope discipline (no cross-module helper
+    extraction). Never carries the raw text — even short comments get a
+    SHA-256 prefix.
+    """
+    import hashlib
+
+    if text is None:
+        return None
+    if not isinstance(text, str):
+        text = str(text)
+    encoded = text.encode("utf-8", errors="ignore")
+    return {
+        "type": "string",
+        "length": len(text),
+        "hash_prefix": hashlib.sha256(encoded).hexdigest()[:12],
+    }
+
+
+def _daily_log_canonical(
+    raw: Dict[str, Any],
+    *,
+    project_key: str,
+    endpoint_id: str,
+    correlation_id: str,
+    fetched_at: str,
+    category: str,
+    structured_keys: Tuple[str, ...],
+    hash_keys: Tuple[str, ...],
+    review_required: bool,
+    routing_reason: str,
+    safety_route: bool = False,
+) -> Dict[str, Any]:
+    """Shared shape for the per-section daily-log normalizer wrappers."""
+    if not isinstance(raw, dict):
+        raise TypeError(f"normalize_daily_log_{category} requires a dict payload")
+    if "id" not in raw or raw["id"] in (None, ""):
+        raise ValueError(f"normalize_daily_log_{category} requires raw['id']")
+    canonical: Dict[str, Any] = {}
+    for key in structured_keys:
+        if key in raw and raw[key] is not None:
+            canonical[key] = raw[key]
+    hashed: Dict[str, Any] = {}
+    for key in hash_keys:
+        summary = _hash_summary_for_daily_log(raw.get(key))
+        if summary is not None:
+            hashed[f"{key}_summary"] = summary
+    if hashed:
+        canonical.update(hashed)
+    record: Dict[str, Any] = {
+        "source_project_key": project_key,
+        "endpoint_id": endpoint_id,
+        "entity_stable_key": str(raw["id"]),
+        "category": category,
+        "review_required": review_required,
+        "routing_reason": routing_reason,
+        "canonical_fields": canonical,
+        "fetched_at": fetched_at,
+        "correlation_id": correlation_id,
+        "redaction_applied": True,
+    }
+    if safety_route:
+        record["safety_route"] = True
+    return record
+
+
+def _normalize_daily_log_manpower(
+    raw: Dict[str, Any], *, project_key: str, endpoint_id: str, correlation_id: str, fetched_at: str
+) -> Dict[str, Any]:
+    return _daily_log_canonical(
+        raw,
+        project_key=project_key,
+        endpoint_id=endpoint_id,
+        correlation_id=correlation_id,
+        fetched_at=fetched_at,
+        category="daily_log_manpower",
+        structured_keys=("id", "date", "location", "workers", "hours", "contractor_id", "vendor_id", "updated_at"),
+        hash_keys=(),
+        review_required=False,
+        routing_reason="manpower_structured_low_risk",
+    )
+
+
+def _normalize_daily_log_notes(
+    raw: Dict[str, Any], *, project_key: str, endpoint_id: str, correlation_id: str, fetched_at: str
+) -> Dict[str, Any]:
+    return _daily_log_canonical(
+        raw,
+        project_key=project_key,
+        endpoint_id=endpoint_id,
+        correlation_id=correlation_id,
+        fetched_at=fetched_at,
+        category="daily_log_notes",
+        structured_keys=("id", "date", "location", "author_id", "updated_at"),
+        hash_keys=("note", "body", "comments"),
+        review_required=True,
+        routing_reason="notes_section_review_required_high_sensitivity",
+    )
+
+
+def _normalize_daily_log_deliveries(
+    raw: Dict[str, Any], *, project_key: str, endpoint_id: str, correlation_id: str, fetched_at: str
+) -> Dict[str, Any]:
+    return _daily_log_canonical(
+        raw,
+        project_key=project_key,
+        endpoint_id=endpoint_id,
+        correlation_id=correlation_id,
+        fetched_at=fetched_at,
+        category="daily_log_deliveries",
+        structured_keys=("id", "date", "location", "vendor_id", "contractor_id", "quantity", "unit", "status", "updated_at"),
+        hash_keys=(),
+        review_required=False,
+        routing_reason="deliveries_structured_medium_risk",
+    )
+
+
+def _normalize_daily_log_delay(
+    raw: Dict[str, Any], *, project_key: str, endpoint_id: str, correlation_id: str, fetched_at: str
+) -> Dict[str, Any]:
+    return _daily_log_canonical(
+        raw,
+        project_key=project_key,
+        endpoint_id=endpoint_id,
+        correlation_id=correlation_id,
+        fetched_at=fetched_at,
+        category="daily_log_delays",
+        structured_keys=("id", "date", "delay_type", "impact_days", "status", "updated_at"),
+        hash_keys=("description", "cause", "safety_violation"),
+        review_required=True,
+        routing_reason="delays_section_safety_routed_critical",
+        safety_route=True,
+    )
+
+
+def _normalize_daily_log_inspection(
+    raw: Dict[str, Any], *, project_key: str, endpoint_id: str, correlation_id: str, fetched_at: str
+) -> Dict[str, Any]:
+    return _daily_log_canonical(
+        raw,
+        project_key=project_key,
+        endpoint_id=endpoint_id,
+        correlation_id=correlation_id,
+        fetched_at=fetched_at,
+        category="daily_log_inspections",
+        structured_keys=("id", "date", "inspection_type", "status", "inspector_id", "location", "updated_at"),
+        hash_keys=("comments", "description"),
+        review_required=False,
+        routing_reason="inspections_structured_medium_risk",
+    )
+
+
+def _normalize_daily_log_dcr(
+    raw: Dict[str, Any], *, project_key: str, endpoint_id: str, correlation_id: str, fetched_at: str
+) -> Dict[str, Any]:
+    return _daily_log_canonical(
+        raw,
+        project_key=project_key,
+        endpoint_id=endpoint_id,
+        correlation_id=correlation_id,
+        fetched_at=fetched_at,
+        category="daily_log_dcrs",
+        structured_keys=("id", "date", "status", "author_id", "updated_at"),
+        hash_keys=("summary", "comments", "description"),
+        review_required=False,
+        routing_reason="dcrs_structured_medium_risk",
+    )
+
+
 def _normalize_submittal_package_top_level(
     raw: Dict[str, Any],
     *,
@@ -164,6 +336,12 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     "submittal-packages": _normalize_submittal_package_top_level,
     "meetings": normalize_meeting,
     "daily-log-weather": _normalize_daily_log_weather,
+    "daily-log-manpower": _normalize_daily_log_manpower,
+    "daily-log-notes": _normalize_daily_log_notes,
+    "daily-log-deliveries": _normalize_daily_log_deliveries,
+    "daily-log-delays-review-routed": _normalize_daily_log_delay,
+    "daily-log-inspections": _normalize_daily_log_inspection,
+    "daily-log-dcrs": _normalize_daily_log_dcr,
     # Convenience: observations is not docs-verified in the matrix, but its
     # normalizer is already exercised in dry-run tests. Future promotion can
     # flip endpoints.live_verified=True without code changes here.

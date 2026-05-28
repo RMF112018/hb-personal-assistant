@@ -118,12 +118,35 @@ follow-up prompt that updates the normalizer for v1.1 payload shape.
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/07-meeting-live-sync.md`.
 
+## Daily-log family expansion — Prompt 08
+
+Prompt 08 grows the canonical registry from 14 to 16 rows by adding
+`daily-log-inspections` (`/inspection_logs`) and `daily-log-dcrs`
+(`/dcrs`), and promotes four previously-unverified daily-log sections
+(`manpower`, `notes`, `deliveries`, `delays-review-routed`) plus
+`inspections`. `dcrs` failed at HTTP 404 and stays unverified.
+
+Per-section normalizer wrappers live inline in `live_sync.py` next to
+the existing `_normalize_daily_log_weather`, all dispatched through
+`_NORMALIZER_BY_ID`. The wrappers share a `_daily_log_canonical(...)`
+helper that whitelists structured fields and reduces any free-text
+field to a SHA-256 `*_summary` (`type`, `length`, `hash_prefix`) —
+mirroring the pattern from `normalize_meeting_topic` and
+`normalize_submittal_response`. Notes and delays carry
+`review_required=True` (delays also `safety_route=True`); the
+structured-only sections (manpower, deliveries, inspections) land with
+`review_required=False`.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/08-selected-daily-log-live-sync.md`.
+
 ## Verified vs unverified endpoints
 
-Post-Prompt 07, 5 of 14 endpoint IDs are `live_verified=True` and execute
-the full chain: `projects`, `rfis`, `submittals`, `observations`,
-`daily-log-weather`. The other 9 are command-visible (`endpoints list`)
-and command-accepted, but the orchestrator returns a structured
+Post-Prompt 08, 10 of 16 endpoint IDs are `live_verified=True` and
+execute the full chain: `projects`, `rfis`, `submittals`, `observations`,
+`daily-log-weather`, `daily-log-manpower`, `daily-log-notes`,
+`daily-log-deliveries`, `daily-log-delays-review-routed`,
+`daily-log-inspections`. The other 6 are command-visible (`endpoints
+list`) and command-accepted, but the orchestrator returns a structured
 `state="not_live_verified"` receipt with `no_live_call_performed=true`
 and zero counts; no API call and no DB write occur. Promotion is a
 one-line flag flip in `endpoints.py` after a future docs/live smoke

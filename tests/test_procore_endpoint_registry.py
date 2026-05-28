@@ -19,10 +19,12 @@ _CANONICAL_IDS = {
     "daily-log-notes",
     "daily-log-deliveries",
     "daily-log-delays-review-routed",
+    "daily-log-inspections",
+    "daily-log-dcrs",
 }
 
 
-def test_registry_lists_all_14_canonical_endpoints() -> None:
+def test_registry_lists_all_canonical_endpoints() -> None:
     ids = {ep.endpoint_id for ep in ep_registry.list_all()}
     assert ids == _CANONICAL_IDS
 
@@ -52,15 +54,20 @@ def test_unknown_endpoint_resolves_to_none() -> None:
 
 def test_verified_endpoints_match_phase04a_matrix() -> None:
     verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
-    # Post-Prompt 06 live smoke: 5 endpoints confirmed live.
-    # (meetings demoted in Prompt 03 after HTTP 404; observations promoted in
-    # Prompt 06 after a successful live smoke against tropical.)
+    # Post-Prompt 08: 10 endpoints confirmed live (Prompt 08 added
+    # manpower / notes / deliveries / delays-review-routed / inspections via
+    # live smoke; dcrs demoted on HTTP 404).
     assert verified == {
         "projects",
         "rfis",
         "submittals",
         "daily-log-weather",
         "observations",
+        "daily-log-manpower",
+        "daily-log-notes",
+        "daily-log-deliveries",
+        "daily-log-delays-review-routed",
+        "daily-log-inspections",
     }
 
 

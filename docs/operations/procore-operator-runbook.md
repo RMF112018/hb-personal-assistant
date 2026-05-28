@@ -693,6 +693,57 @@ promote without re-probing. `meetings` and `meeting-topics` both stay
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/07-meeting-live-sync.md`.
 
+## Phase 04A Prompt 08: Selected daily-log live sync
+
+Prompt 08 extends the daily-log family from `daily-log-weather` alone
+to five verified per-section endpoints plus the demoted `daily-log-dcrs`
+backlog entry. The canonical registry grows from 14 to 16 rows.
+
+| Section                           | Live verified | review_required | safety_route | Hash-only body |
+| ---                               | ---           | ---             | ---          | ---            |
+| `daily-log-weather`               | ✓ (Prompt 03) | False           | False        | —              |
+| `daily-log-manpower`              | ✓             | False           | False        | —              |
+| `daily-log-deliveries`            | ✓             | False           | False        | —              |
+| `daily-log-inspections` (new)     | ✓             | False           | False        | comments / description |
+| `daily-log-notes`                 | ✓             | **True**        | False        | note / body / comments |
+| `daily-log-delays-review-routed`  | ✓             | **True**        | **True**     | description / cause / safety_violation |
+| `daily-log-dcrs` (new)            | ✗ (HTTP 404)  | n/a             | n/a          | n/a            |
+
+Operator command (per section):
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical \
+  --endpoint daily-log-<section> \
+  --apply --sqlite-only \
+  --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+```
+
+Each promoted section ran two `live_apply` runs in Prompt 08 (apply +
+re-run at the same caps). All ten apply runs returned `state=success`
+with `retrieved_count=0` (the `tropical` project carries no live data
+in these sections at the time of execution); the chain — gate →
+transport → paginate → normalize → upsert → records count — is proven
+end-to-end against an empty result set, with `sync_run_id` audit rows
+recorded for each invocation.
+
+**Free-text guarantees.** The `notes` and `delays-review-routed`
+endpoints reduce any incoming free-text field (`note`, `body`,
+`comments`, `description`, `cause`, `safety_violation`) to a SHA-256
+`*_summary` structure (`type`, `length`, `hash_prefix`) — raw text is
+never persisted. Unit tests in
+`tests/test_procore_live_sync_verified_chain.py` assert the invariant
+against a synthetic secret marker.
+
+**Backlog: `daily-log-dcrs`.** The Daily Construction Report path
+`/rest/v1.0/projects/{project_id}/dcrs` returned HTTP 404 against
+`tropical`. The adapter row carries the failure receipt id in
+`verification_reason`; promotion deferred pending Procore docs
+investigation.
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/08-selected-daily-log-live-sync.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

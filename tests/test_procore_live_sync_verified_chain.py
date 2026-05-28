@@ -1068,3 +1068,151 @@ def test_meeting_topic_canonical_json_carries_no_description_body_literal(
         assert review_required == 1
         assert parent_procore_id in {"401", "402"}
         assert raw_body_persisted == 0
+
+
+# ----------------------------------------------------------------------------
+# Phase 04A Prompt 08: selected daily-log sections (manpower / notes / delays)
+# ----------------------------------------------------------------------------
+
+
+def test_daily_log_delays_persists_with_review_routing_and_hash_only_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    secret_body_marker = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
+    payload = [
+        {
+            "id": 501,
+            "date": "2026-03-01",
+            "delay_type": "weather",
+            "impact_days": 1,
+            "status": "open",
+            "description": secret_body_marker,
+            "cause": "Heavy rainfall delayed concrete pour",
+            "updated_at": "2026-03-01T00:00:00Z",
+        }
+    ]
+    transport = _FakeTransport(payload)
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="daily-log-delays-review-routed",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=5,
+        db_path=db,
+        transport=transport,
+    )
+    assert receipt["state"] == "success"
+    assert receipt["sqlite_upserted_count"] == 1
+    conn = sqlite3.connect(str(db))
+    try:
+        row = conn.execute(
+            "SELECT canonical_json_redacted, review_required, sensitive_reason, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='daily-log-delays-review-routed'"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row is not None
+    canonical_json, review_required, sensitive_reason, raw_body_persisted = row
+    assert review_required == 1
+    assert sensitive_reason == "delays_section_safety_routed_critical"
+    assert raw_body_persisted == 0
+    assert secret_body_marker not in canonical_json
+    assert "description_summary" in canonical_json  # hash present
+    assert "hash_prefix" in canonical_json
+
+
+def test_daily_log_notes_persists_with_review_required_and_hash_only_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    secret_body_marker = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
+    payload = [
+        {
+            "id": 601,
+            "date": "2026-03-02",
+            "location": "Building A - L3",
+            "author_id": 77,
+            "note": secret_body_marker,
+            "updated_at": "2026-03-02T00:00:00Z",
+        }
+    ]
+    transport = _FakeTransport(payload)
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="daily-log-notes",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=5,
+        db_path=db,
+        transport=transport,
+    )
+    assert receipt["state"] == "success"
+    assert receipt["sqlite_upserted_count"] == 1
+    conn = sqlite3.connect(str(db))
+    try:
+        row = conn.execute(
+            "SELECT canonical_json_redacted, review_required, sensitive_reason, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='daily-log-notes'"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row is not None
+    canonical_json, review_required, sensitive_reason, raw_body_persisted = row
+    assert review_required == 1
+    assert sensitive_reason == "notes_section_review_required_high_sensitivity"
+    assert raw_body_persisted == 0
+    assert secret_body_marker not in canonical_json
+    assert "note_summary" in canonical_json
+    assert "hash_prefix" in canonical_json
+
+
+def test_daily_log_manpower_persists_with_review_required_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    payload = [
+        {
+            "id": 701,
+            "date": "2026-03-03",
+            "location": "Building B",
+            "workers": 25,
+            "hours": 200,
+            "contractor_id": 9001,
+            "updated_at": "2026-03-03T00:00:00Z",
+        }
+    ]
+    transport = _FakeTransport(payload)
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="daily-log-manpower",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=5,
+        db_path=db,
+        transport=transport,
+    )
+    assert receipt["state"] == "success"
+    assert receipt["sqlite_upserted_count"] == 1
+    conn = sqlite3.connect(str(db))
+    try:
+        row = conn.execute(
+            "SELECT review_required, sensitive_reason, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='daily-log-manpower'"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row is not None
+    review_required, sensitive_reason, raw_body_persisted = row
+    assert review_required == 0
+    assert sensitive_reason == "manpower_structured_low_risk"
+    assert raw_body_persisted == 0
