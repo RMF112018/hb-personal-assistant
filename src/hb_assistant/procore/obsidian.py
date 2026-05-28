@@ -248,6 +248,23 @@ class ProcoreObsidianRenderer:
         except Exception:
             return []
 
+    def _query_sync_watermarks(self, project_key: str) -> list[sqlite3.Row]:
+        conn = get_connection(self.db_path)
+        try:
+            return list(
+                conn.execute(
+                    """
+                    SELECT endpoint_id, project_key, last_successful_watermark, updated_at
+                    FROM procore_sync_watermarks
+                    WHERE project_key = ?
+                    ORDER BY updated_at DESC
+                    """,
+                    (project_key,),
+                ).fetchall()
+            )
+        except Exception:
+            return []
+
     def build_procore_project_card(self, project_key: str) -> dict[str, Any]:
         try:
             reg = load_procore_projects()
@@ -269,6 +286,8 @@ class ProcoreObsidianRenderer:
 
         runs = self._query_sync_runs(project_key, 1)
         last_sync = runs[0]["completed_at"] if runs else "never"
+        watermarks = self._query_sync_watermarks(project_key)
+        watermark_count = len(watermarks)
 
         review_count = sum(1 for r in self._query_synced_entities(project_key) if r["review_required"])
         review_summary = f"{review_count} items flagged (see procore review required note)"
@@ -289,6 +308,7 @@ class ProcoreObsidianRenderer:
             "observation_count": counts.get("observations", counts.get("daily-logs", 0)),
             "meeting_count": counts.get("meetings", 0),
             "daily_log_count": counts.get("daily-logs", 0),
+            "watermark_count": watermark_count,
             "review_required_summary": review_summary,
             "guardrails": dict(PROCORE_GUARDRAILS),
             "review_sensitive": False,
@@ -424,6 +444,9 @@ class ProcoreObsidianRenderer:
                 "guardrails": dict(PROCORE_GUARDRAILS),
             }
         r = runs[0]
+        watermarks = self._query_sync_watermarks(project_key)
+        last_watermark_at = watermarks[0]["updated_at"] if watermarks else "n/a"
+        watermark_count = len(watermarks)
         return {
             "project_name": project_key,
             "run_id": r["id"],
@@ -433,6 +456,8 @@ class ProcoreObsidianRenderer:
             "completed_utc": r["completed_at"] or "n/a",
             "rows_seen": r["total_items_normalized"] or 0,
             "rows_written": r["total_items_normalized"] if r["persisted_to_sqlite"] else 0,
+            "watermark_count": watermark_count,
+            "last_watermark_updated_utc": last_watermark_at or "n/a",
             "guardrails": dict(PROCORE_GUARDRAILS),
         }
 

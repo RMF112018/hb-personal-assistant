@@ -1,0 +1,104 @@
+Phase 03 Prompt 12 Recovery + Continuation Evidence
+Date: 2026-05-28
+
+1) Repo HEAD (before/after)
+- HEAD before changes: 6b4d215
+- HEAD after changes: 6b4d215 (working tree modified; no commit in this run)
+
+2) Files inspected
+- src/hb_assistant/procore/auditor.py
+- src/hb_assistant/procore/sync.py
+- src/hb_assistant/procore/obsidian.py
+- src/hb_assistant/construction/manifests/service.py
+- src/hb_assistant/store/repositories.py
+- tests/test_procore_endpoint_audit.py
+- tests/test_procore_sync.py
+- tests/test_procore_obsidian_output.py
+- tests/test_construction_manifests.py
+- docs/evidence/construction-intelligence-phase-03/10-procore-obsidian-output-preview.md
+- docs/evidence/construction-intelligence-phase-03/11-procore-cli-surface-and-operator-runbook.md
+
+3) Files changed
+- src/hb_assistant/procore/auditor.py
+- src/hb_assistant/procore/sync.py
+- src/hb_assistant/procore/obsidian.py
+- src/hb_assistant/construction/manifests/service.py
+- tests/test_procore_endpoint_audit.py
+- tests/test_procore_sync.py
+- tests/test_procore_obsidian_output.py
+- tests/test_construction_manifests.py
+- docs/evidence/construction-intelligence-phase-03/10-procore-obsidian-output-preview.md
+- docs/evidence/construction-intelligence-phase-03/11-procore-cli-surface-and-operator-runbook.md
+- docs/evidence/construction-intelligence-phase-03/13-test-fixture-validation-output.txt
+
+4) Scope delivered
+- Hotfix A: EndpointAuditor extension bug fixed via class redeclaration inheritance pattern.
+- Hotfix B: endpoint-audit test payload path corrected for live_calls assertion.
+- Hotfix C: Prompt 09 sync defects corrected (contract loader fallback + CLI app symbol).
+- Hotfix D: Prompt 10 redaction assertion aligned with routed-out daily-log behavior.
+- Prompt 12 continuation: integrated Procore sync-state summaries into:
+  - construction manifest project-card totals projection;
+  - Procore Obsidian project-card/sync-receipt data (watermark count/timestamp).
+- Added fixture/test coverage for the new summary fields and graceful table-absence behavior.
+
+5) Commands run and outcomes (redacted summaries)
+
+CLI stop-conditions:
+- ./.venv/bin/hb-assistant procore tools audit --project tropical --json
+  - exit 0, structured JSON envelope emitted.
+- ./.venv/bin/hb-assistant procore mapping validate --json
+  - exit 1, structured JSON envelope emitted, report.ok=false (pending pilots; expected semantics).
+- ./.venv/bin/hb-assistant procore validate --json
+  - exit 1, structured JSON envelope emitted.
+  - mapping_consistent check: ok=false (semantic pending mapping), not runtime TypeError.
+
+Targeted tests:
+- ./.venv/bin/python -m pytest tests/test_procore_endpoint_audit.py -q
+  - pass (45 passed).
+- ./.venv/bin/python -m pytest tests/test_procore_sync.py -q
+  - pass (5 passed).
+- ./.venv/bin/python -m pytest tests/test_procore_obsidian_output.py::test_redaction_in_builders_and_safe_excerpt -q
+  - pass.
+- ./.venv/bin/python -m pytest tests/test_procore_obsidian_output.py -q
+  - pass (18 passed).
+- ./.venv/bin/python -m pytest tests/test_construction_manifests.py::test_project_card_includes_procore_sync_summary_totals -q
+  - pass.
+
+Requested broad rebaseline subset:
+- ./.venv/bin/python -m pytest tests/test_procore_*.py tests/test_construction_*.py -m "not integration and not manual"
+  - 474 passed / 7 failed.
+  - Failures are pre-existing/out-of-scope broad-suite issues in:
+    - tests/test_procore_endpoint_reference.py
+    - tests/test_procore_http_client.py (local secret readiness dependent)
+    - tests/test_construction_manifests.py::test_cli_sync_dry_run_from_receipts (local DB readiness)
+  - One introduced regression (project-card totals equality) was fixed during this run.
+
+Ruff requested scope:
+- ./.venv/bin/ruff check src/hb_assistant/procore src/hb_assistant/construction src/hb_assistant/cli/procore.py src/hb_assistant/cli/construction.py tests/test_procore_*.py tests/test_construction_*.py
+  - Failing with large existing lint backlog in this broad scope (not fully remediated in this prompt).
+
+Sensitive scans requested:
+- ./.venv/bin/hb-assistant diagnostics scan-sensitive --repo src --json
+- ./.venv/bin/hb-assistant diagnostics scan-sensitive --repo tests --json
+- ./.venv/bin/hb-assistant diagnostics scan-sensitive --repo docs/evidence/construction-intelligence-phase-03 --json
+  - Scanner reports pattern hits (expected for rule-name/token-shape fixtures/docs and local MSAL cache path), with redacted-only output; no raw secret values emitted in this evidence.
+
+6) Guardrails preserved
+- Local-first only; no external writeback.
+- No Procore non-GET write paths introduced.
+- No SharePoint/OneDrive/Outlook writeback introduced.
+- No credential material persisted in changed code/tests/evidence.
+- Redaction posture preserved (no full response body surfaced).
+- Unit tests for changed paths remain offline/mock-only.
+
+7) Residual risk
+- Broad Procore/construction subset still has pre-existing failures not fully resolved in this prompt scope.
+- Broad requested ruff scope remains non-green due existing lint debt.
+- Sensitive scanner continues to flag local environment token-cache indicators and intentional test fixtures by pattern.
+
+8) Next prompt recommendation
+- Resolve remaining broad-suite failures surfaced by the consolidated selector, starting with:
+  1) endpoint-reference test import/status assumptions,
+  2) http-client secret-injection test harness compatibility,
+  3) construction-manifests CLI dry-run receipt behavior under local DB readiness constraints.
+- Then run the same broad pytest/ruff/sensitive-scan matrix to establish a fully green baseline commit.

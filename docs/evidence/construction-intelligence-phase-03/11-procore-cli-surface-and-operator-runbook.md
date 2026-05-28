@@ -403,3 +403,16 @@ record; guardrails remain non-negotiable. The Procore CLI surface is
 now finalized, structured-JSON-by-default, documented for the operator,
 and gated by a single read-only `procore validate` check. No live
 Procore call. No vault write. No secret leak. Closed cleanly.
+
+### Prompt 12 Recovery Addendum (2026-05-28)
+
+- Applied the EndpointAuditor extension fix
+  (`class EndpointAuditor(EndpointAuditor):  # noqa: F811`) to restore
+  inherited constructor/validation behavior and eliminate the runtime
+  `TypeError` path.
+- CLI stop-condition commands now return structured JSON envelopes; mapping
+  remains semantically `ok=false` for pending pilots (expected), not a
+  runtime crash.
+- Prompt 12 continuation integrated Procore sync-state summaries into
+  construction manifest project-card totals and Procore Obsidian
+  sync-receipt/project-card projection fields.

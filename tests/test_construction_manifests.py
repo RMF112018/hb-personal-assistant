@@ -24,6 +24,7 @@ from hb_assistant.construction.manifests import (
 from hb_assistant.construction.manifests.service import GUARDRAILS_DEFAULT, delta_link_fingerprint
 from hb_assistant.construction.manifests.vault_writer import ENV_VAR
 from hb_assistant.construction.store import ConstructionStore
+from hb_assistant.store.connection import get_connection
 
 # ---------- fixtures -------------------------------------------------------
 
@@ -976,3 +977,64 @@ def test_canonical_path_unknown_item_raises(tmp_path: Path) -> None:
             item_id="missing-item",
             policy_reason="manual review",
         )
+
+
+def test_project_card_includes_procore_sync_summary_totals(populated_store: ConstructionStore) -> None:
+    conn = get_connection(populated_store._db_path)  # noqa: SLF001
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS procore_synced_entities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_project_key TEXT NOT NULL,
+            endpoint_id TEXT NOT NULL,
+            entity_stable_key TEXT NOT NULL,
+            category TEXT,
+            review_required INTEGER DEFAULT 0,
+            canonical_fields_json TEXT,
+            fetched_at TEXT,
+            correlation_id TEXT,
+            redaction_applied INTEGER DEFAULT 1,
+            last_seen_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS procore_sync_watermarks (
+            endpoint_id TEXT NOT NULL,
+            project_key TEXT NOT NULL,
+            last_successful_watermark TEXT,
+            updated_at TEXT
+        );
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO procore_synced_entities
+        (source_project_key, endpoint_id, entity_stable_key, category, review_required)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        ("tropical", "list-rfis", "rfi-1", "rfis", 0),
+    )
+    conn.execute(
+        """
+        INSERT INTO procore_synced_entities
+        (source_project_key, endpoint_id, entity_stable_key, category, review_required)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        ("tropical", "list-invoices", "inv-1", "invoices", 1),
+    )
+    conn.execute(
+        """
+        INSERT INTO procore_sync_watermarks (endpoint_id, project_key, last_successful_watermark, updated_at)
+        VALUES (?, ?, ?, ?)
+        """,
+        ("list-rfis", "tropical", "wm-12345", "2026-05-28T00:00:00+00:00"),
+    )
+    conn.commit()
+
+    from hb_assistant.construction.config import load_source_registry
+
+    reg = load_source_registry()
+    svc = ManifestService(populated_store)
+    card = svc.build_project_card(reg, "tropical")
+
+    assert card.totals["procore_entities_total"] == 2
+    assert card.totals["procore_review_required_total"] == 1
+    assert card.totals["procore_watermark_count"] == 1

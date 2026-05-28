@@ -13,6 +13,7 @@ from hb_assistant.construction.baseline import (
 from hb_assistant.construction.config import SourceLocation, SourceRegistry
 from hb_assistant.construction.graph.delta_crawler import CrawlReceipt
 from hb_assistant.construction.store import ConstructionStore
+from hb_assistant.store.connection import get_connection
 
 from .canonical_adapter import (
     CanonicalDocumentCardInput,
@@ -240,6 +241,57 @@ class ManifestService:
             ts = token.get("last_sync_at")
             if ts and (last_sync_at is None or ts > last_sync_at):
                 last_sync_at = ts
+
+        # Prompt 12 continuation: include Procore sync-state summary in
+        # the construction project-card totals projection for pilot projects.
+        procore_entities = 0
+        procore_review_required = 0
+        procore_watermark_count = 0
+        procore_last_watermark_fp: str | None = None
+        try:
+            conn = get_connection(getattr(self._store, "_db_path", None))
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS n,
+                       SUM(CASE WHEN review_required = 1 THEN 1 ELSE 0 END) AS rr
+                FROM procore_synced_entities
+                WHERE source_project_key = ?
+                """,
+                (project_key,),
+            ).fetchone()
+            if row is not None:
+                procore_entities = int(row["n"] or 0)
+                procore_review_required = int(row["rr"] or 0)
+
+            wm = conn.execute(
+                """
+                SELECT COUNT(*) AS n, MAX(last_successful_watermark) AS latest
+                FROM procore_sync_watermarks
+                WHERE project_key = ?
+                """,
+                (project_key,),
+            ).fetchone()
+            if wm is not None:
+                procore_watermark_count = int(wm["n"] or 0)
+                latest = wm["latest"]
+                if latest:
+                    digest = hashlib.sha256(str(latest).encode("utf-8")).hexdigest()
+                    procore_last_watermark_fp = f"sha256:{digest[:12]}"
+        except Exception:
+            # Keep construction manifests resilient when procore_* tables are
+            # absent on a fresh local checkout.
+            pass
+
+        if procore_entities > 0:
+            totals["procore_entities_total"] = procore_entities
+        if procore_review_required > 0:
+            totals["procore_review_required_total"] = procore_review_required
+        if procore_watermark_count > 0:
+            totals["procore_watermark_count"] = procore_watermark_count
+        project_guardrails = dict(GUARDRAILS_DEFAULT)
+        if procore_last_watermark_fp:
+            project_guardrails["procore_last_watermark_fp"] = procore_last_watermark_fp
+
         return ProjectCard(
             project_key=project.project_key,
             display_name=project.display_name,
@@ -250,7 +302,7 @@ class ManifestService:
             totals=totals,
             last_sync_at=last_sync_at,
             generated_at=_utc_now(),
-            guardrails=dict(GUARDRAILS_DEFAULT),
+            guardrails=project_guardrails,
         )
 
     def build_review_required_note(

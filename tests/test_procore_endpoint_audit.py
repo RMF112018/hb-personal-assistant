@@ -656,4 +656,4 @@ def test_audit_dry_run_cli_json_has_mode_dry_run_and_guardrails(runner: CliRunne
     assert "receipt" in p
     assert p["receipt"]["mode"] == "dry_run"
     assert p["guardrails"]["writeback"] == "none"
-    assert p["guardrails"]["live_calls"] == "opt_in_manual_only"
+    assert p["receipt"]["guardrails"]["live_calls"] == "opt_in_manual_only"

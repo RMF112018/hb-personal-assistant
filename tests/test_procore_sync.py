@@ -91,10 +91,10 @@ def test_cli_sync_dry_run_default_via_runner(monkeypatch):
     """CLI surface defaults to dry-run; --apply requires explicit guard."""
     from typer.testing import CliRunner
 
-    from hb_assistant.cli.procore import procore_app
+    from hb_assistant.cli.procore import app
 
     runner = CliRunner()
-    result = runner.invoke(procore_app, ["sync", "run", "--project", "hilltop", "--json"])
+    result = runner.invoke(app, ["sync", "run", "--project", "hilltop", "--json"])
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert payload["mode"] == "dry_run" or "audit_prerequisite_passed" in payload

@@ -23,11 +23,8 @@ from typing import Any, Dict, List, Literal, Optional
 from hb_assistant.procore.auditor import (
     EndpointAuditor,  # real Prompt_07 surface (extended in place)
 )
-from hb_assistant.procore.config import (  # type: ignore
-    get_environment_config,
-    get_procore_client_secret,
-)
 from hb_assistant.procore.http_client import ProcoreHTTPClient  # type: ignore
+from hb_assistant.procore.loader import load_endpoint_contract
 from hb_assistant.procore.models import (
     ProcoreEndpointContract as EndpointContract,  # real name from Prompt_05; aliased for plan clarity
 )
@@ -97,14 +94,9 @@ class ProcoreSyncCoordinator:
 
     def _get_client(self) -> ProcoreHTTPClient:
         if self.client is None:
-            secret = get_procore_client_secret(self.environment)  # runtime only
-            cfg = get_environment_config(self.environment)
             self.client = ProcoreHTTPClient(
                 transport=None,  # real for apply; tests inject mock
                 environment=self.environment,
-                base_url=cfg["base_url"],
-                company_id=cfg.get("company_id", "5280"),
-                secret=secret,
             )
         return self.client
 
@@ -152,24 +144,27 @@ class ProcoreSyncCoordinator:
 
         pilots = self._resolve_pilot_projects(project_key)
 
-        # Mandatory Prompt_07 auditor dry-run prerequisite (real EndpointAuditor surface from Prompt_07/CLI)
-        try:
-            contract = EndpointContract.load_for_company("5280")  # real Prompt_05 surface if present
-        except Exception:
-            contract = EndpointContract()  # defensive for MVP gate (auditor is mocked in tests)
-        projects = self._load_projects_for_gate(pilots)  # thin resolver (reuses Prompt_06 mapping loader)
-        auditor = EndpointAuditor(contract, projects)
-        # build_audit_run_receipt in dry_run mode gives the verdict matrix we need for the gate
-        audit_receipt = auditor.build_audit_run_receipt(
-            pilots[0] if len(pilots) == 1 else "multi",
-            base_url="https://api.procore.com",
-            mode="dry_run",
-        )
-        # Simplified gate: treat overall status or per-endpoint "available" as pass (real verdicts in receipt)
-        verdict_summary = audit_receipt.get("verdict_summary", {}) if isinstance(audit_receipt, dict) else {}
-        all_available = verdict_summary.get("available", 0) > 0 or audit_receipt.get("status") in (None, "ok", "pass")
+        # Mandatory audit prerequisite gate.
+        if self.auditor is not None and hasattr(self.auditor, "audit_endpoints_for_pilots"):
+            verdict_map = self.auditor.audit_endpoints_for_pilots(pilots)  # type: ignore[attr-defined]
+            verdict_summary = {
+                "available": sum(1 for v in verdict_map.values() if v == "available"),
+                "non_available": sum(1 for v in verdict_map.values() if v != "available"),
+            }
+            all_available = all(v == "available" for v in verdict_map.values())
+        else:
+            contract = load_endpoint_contract()
+            projects = self._load_projects_for_gate(pilots)
+            auditor = EndpointAuditor(contract, projects)
+            audit_receipt = auditor.build_audit_run_receipt(
+                pilots[0] if len(pilots) == 1 else "multi",
+                base_url="https://api.procore.com",
+                mode="dry_run",
+            )
+            verdict_summary = dict((audit_receipt.breakdown or {}).get("by_verdict", {}))
+            all_available = verdict_summary.get("available", 0) > 0
         receipt.audit_prerequisite_passed = bool(all_available)
-        receipt.audit_verdict_summary = verdict_summary or {"available": 1}  # conservative for MVP gate
+        receipt.audit_verdict_summary = verdict_summary or {"available": 0}
 
         if not all_available:
             receipt.completed_at = datetime.now(timezone.utc).isoformat()
@@ -182,24 +177,23 @@ class ProcoreSyncCoordinator:
         cat_counts: Dict[str, int] = {}
         sens_counts: Dict[str, int] = {}
 
-        contracts = EndpointContract.load_for_company("5280")  # Prompt_05
-        for ep in contracts.enabled_for_pilots(pilots):  # respects deferred/excluded/review
-            if endpoints and ep.id not in endpoints:
+        contract = load_endpoint_contract()
+        for ep in contract.endpoints:
+            if endpoints and ep.endpoint_id not in endpoints:
                 continue
-            # Simulate planned request count (conservative; real pagination in apply)
-            planned = 1 + (3 if ep.supports_pagination else 0)
+            planned = 1
             total_requests += planned
             cat = ep.category or "foundation"
             cat_counts[cat] = cat_counts.get(cat, 0) + 1
-            if ep.review_required or ep.sensitive:
+            if ep.status == "sensitive_validated":
                 sens_counts["review_required"] = sens_counts.get("review_required", 0) + 1
 
             plan_details.append({
-                "endpoint_id": ep.id,
+                "endpoint_id": ep.endpoint_id,
                 "category": cat,
-                "review_required": bool(ep.review_required or ep.sensitive),
+                "review_required": ep.status == "sensitive_validated",
                 "planned_requests": planned,
-                "supports_incremental": getattr(ep, "supports_incremental", False),
+                "supports_incremental": False,
                 "redacted_request_envelope": {
                     "method": "GET",
                     "path_template": ep.path_template,
@@ -247,22 +241,26 @@ class ProcoreSyncCoordinator:
 
         pilots = self._resolve_pilot_projects(project_key)
 
-        # Fresh audit gate (preferred per human decision in plan) — real EndpointAuditor surface
-        try:
-            contract = EndpointContract.load_for_company("5280")  # real Prompt_05 surface if present
-        except Exception:
-            contract = EndpointContract()  # defensive for MVP gate (auditor is mocked in tests)
-        projects = self._load_projects_for_gate(pilots)
-        auditor = EndpointAuditor(contract, projects)
-        audit_receipt = auditor.build_audit_run_receipt(
-            pilots[0] if len(pilots) == 1 else "multi",
-            base_url="https://api.procore.com",
-            mode="dry_run",
-        )
-        verdict_summary = audit_receipt.get("verdict_summary", {}) if isinstance(audit_receipt, dict) else {}
-        all_available = verdict_summary.get("available", 0) > 0 or audit_receipt.get("status") in (None, "ok", "pass")
+        if self.auditor is not None and hasattr(self.auditor, "audit_endpoints_for_pilots"):
+            verdict_map = self.auditor.audit_endpoints_for_pilots(pilots)  # type: ignore[attr-defined]
+            verdict_summary = {
+                "available": sum(1 for v in verdict_map.values() if v == "available"),
+                "non_available": sum(1 for v in verdict_map.values() if v != "available"),
+            }
+            all_available = all(v == "available" for v in verdict_map.values())
+        else:
+            contract = load_endpoint_contract()
+            projects = self._load_projects_for_gate(pilots)
+            auditor = EndpointAuditor(contract, projects)
+            audit_receipt = auditor.build_audit_run_receipt(
+                pilots[0] if len(pilots) == 1 else "multi",
+                base_url="https://api.procore.com",
+                mode="dry_run",
+            )
+            verdict_summary = dict((audit_receipt.breakdown or {}).get("by_verdict", {}))
+            all_available = verdict_summary.get("available", 0) > 0
         receipt.audit_prerequisite_passed = bool(all_available)
-        receipt.audit_verdict_summary = verdict_summary or {"available": 1}
+        receipt.audit_verdict_summary = verdict_summary or {"available": 0}
 
         if not all_available:
             receipt.completed_at = datetime.now(timezone.utc).isoformat()
@@ -271,19 +269,19 @@ class ProcoreSyncCoordinator:
 
         client = self._get_client()  # Prompt_04, secret at this moment only
 
-        contracts = EndpointContract.load_for_company("5280")
+        contract = load_endpoint_contract()
         total_items = 0
         errors: List[Dict[str, Any]] = []
 
-        for ep in contracts.enabled_for_pilots(pilots):
-            if endpoints and ep.id not in endpoints:
+        for ep in contract.endpoints:
+            if endpoints and ep.endpoint_id not in endpoints:
                 continue
             try:
                 # Watermark / incremental decision (simplified MVP; full in later iteration)
                 watermark = None
                 if not full_refresh and policy != "full":
                     watermark = get_procore_sync_watermark(
-                        self.db_path, ep.id, project_key or "multi"
+                        self.db_path, ep.endpoint_id, project_key or "multi"
                     )
 
                 # Execute via Prompt_04 client (GET + pagination + retry + redaction inside)
@@ -301,18 +299,18 @@ class ProcoreSyncCoordinator:
 
                 # Update watermark (safe, redacted)
                 new_watermark = datetime.now(timezone.utc).isoformat()
-                set_procore_sync_watermark(self.db_path, ep.id, project_key or "multi", new_watermark)
+                set_procore_sync_watermark(self.db_path, ep.endpoint_id, project_key or "multi", new_watermark)
 
                 receipt.per_endpoint.append({
-                    "endpoint_id": ep.id,
+                    "endpoint_id": ep.endpoint_id,
                     "items_written": len(items),
                     "status": "success",
                 })
             except Exception as exc:  # noqa: BLE001
-                redacted = redact_for_evidence({"endpoint": ep.id, "error": str(exc)})
+                redacted = redact_for_evidence({"endpoint": ep.endpoint_id, "error": str(exc)})
                 errors.append(redacted)
                 receipt.per_endpoint.append({
-                    "endpoint_id": ep.id,
+                    "endpoint_id": ep.endpoint_id,
                     "items_written": 0,
                     "status": "error",
                 })
@@ -323,15 +321,15 @@ class ProcoreSyncCoordinator:
         receipt.completed_at = datetime.now(timezone.utc).isoformat()
         return redact_for_evidence(receipt.__dict__)  # type: ignore[arg-type]
 
-    def _normalize(self, ep: EndpointContract, raw: Dict[str, Any], project_key: str) -> Dict[str, Any]:
+    def _normalize(self, ep: Any, raw: Dict[str, Any], project_key: str) -> Dict[str, Any]:
         """Thin normalization. Redact aggressively. Carry review flags + traceability."""
         redacted_raw = redact_for_evidence(raw)
         return {
             "source_project_key": project_key,
-            "endpoint_id": ep.id,
+            "endpoint_id": ep.endpoint_id,
             "entity_stable_key": str(raw.get("id") or raw.get("uid") or hash(str(redacted_raw))),
             "category": ep.category or "foundation",
-            "review_required": bool(ep.review_required or ep.sensitive),
+            "review_required": ep.status == "sensitive_validated",
             "canonical_fields": {k: v for k, v in redacted_raw.items() if k in ("number", "title", "status", "updated_at")},
             "fetched_at": datetime.now(timezone.utc).isoformat(),
             "correlation_id": self.correlation_id,
@@ -342,7 +340,25 @@ class ProcoreSyncCoordinator:
         """Thin resolver for Prompt_07 EndpointAuditor (reuses Prompt_06 mapping loader pattern)."""
         # MVP: return a minimal projects-like object the auditor accepts.
         # In real use this would call the existing _load_projects_or_emit / mapping loader.
-        return type("Projects", (), {"keys": lambda self: pilots, "get": lambda self, k: {"id": k}})()
+        class _Project:
+            def __init__(self, key: str) -> None:
+                self.hb_project_key = key
+                self.procore_project_id = "2525840"
+                self.procore_project_name = key
+
+        class _Projects:
+            company_id = "5280"
+
+            def __init__(self, keys: list[str]) -> None:
+                self.projects = [_Project(k) for k in keys]
+
+            def get(self, hb_project_key: str) -> Any:
+                for p in self.projects:
+                    if p.hb_project_key == hb_project_key:
+                        return p
+                return None
+
+        return _Projects(pilots)
 
 
 # Convenience CLI-facing entry (thin wrapper)

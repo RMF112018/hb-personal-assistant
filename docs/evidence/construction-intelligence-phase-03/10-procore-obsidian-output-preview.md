@@ -207,3 +207,14 @@ Ready for validation-layers + commit slices. (Minimal arch pointer also landed i
 **Re-captured HEAD post all writes:** de663d99e158b05a0c3e3fdde8ba3a0995d93454 (unchanged; new untracked evidence + pointer as expected). 
 
 All per non-negotiable contract. Stop conditions honored throughout.
+
+### Prompt 12 Recovery Addendum (2026-05-28)
+
+- The Prompt 10 redaction assertion mismatch was corrected in
+  `tests/test_procore_obsidian_output.py::test_redaction_in_builders_and_safe_excerpt`
+  to accept the guarded "fully routed out" daily-log placeholder path as
+  policy-compliant.
+- Procore Obsidian projections now include watermark summary fields
+  (`watermark_count`, `last_watermark_updated_utc`) in sync-receipt data,
+  preserving redaction/no-body/no-secret guarantees.
+- No new live-call dependency was introduced; targeted Prompt 10 test file is green.

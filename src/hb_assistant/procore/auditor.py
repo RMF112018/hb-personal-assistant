@@ -169,7 +169,7 @@ def _build_dry_run_envelope(
     )
 
 
-class EndpointAuditor:  # extended in place
+class EndpointAuditor(EndpointAuditor):  # noqa: F811  # extended in place
     # ... (existing __init__, audit_project, audit_all, validate_mapping unchanged above)
 
     def dry_run_audit_project(
