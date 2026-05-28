@@ -393,8 +393,11 @@ def test_missing_seed_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
 
 
 def test_auth_status_env_absent(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.procore import auth as _auth_mod
     for k in REQUIRED_ENV_KEYS:
         monkeypatch.delenv(k, raising=False)
+    monkeypatch.setattr(_auth_mod, "macos_keychain_entry_exists", lambda: False)
+    monkeypatch.setattr(_auth_mod, "_token_cache_present", lambda: False)
     r = check_auth_status()
     assert r.status == "env_absent"
     assert r.ready_for_live_calls is False
@@ -414,11 +417,15 @@ def test_auth_status_env_partial(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_auth_status_env_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.procore import auth as _auth_mod
     for k in REQUIRED_ENV_KEYS:
         monkeypatch.setenv(k, "x")
+    monkeypatch.setattr(_auth_mod, "macos_keychain_entry_exists", lambda: False)
+    monkeypatch.setattr(_auth_mod, "_token_cache_present", lambda: False)
     r = check_auth_status()
     assert r.status == "env_present"
-    # Live calls remain explicitly disabled regardless of env completeness
+    # Live calls remain explicitly disabled when only env vars are set with no
+    # OAuth cache (Phase 04: cache + secret = ready, env-only = not ready).
     assert r.ready_for_live_calls is False
 
 
@@ -513,8 +520,11 @@ def test_cli_procore_help(runner: CliRunner) -> None:
 
 
 def test_cli_auth_status(runner: CliRunner, monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.procore import auth as _auth_mod
     for k in REQUIRED_ENV_KEYS:
         monkeypatch.delenv(k, raising=False)
+    monkeypatch.setattr(_auth_mod, "macos_keychain_entry_exists", lambda: False)
+    monkeypatch.setattr(_auth_mod, "_token_cache_present", lambda: False)
     r = runner.invoke(procore_cli.app, ["auth", "status", "--json"])
     assert r.exit_code == 0
     p = json.loads(r.output)

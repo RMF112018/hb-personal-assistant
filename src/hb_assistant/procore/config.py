@@ -171,6 +171,28 @@ def load_procore_app_profile() -> ProcoreAppProfile:
     return load_procore_app_profile_from_dict(seed)
 
 
+def macos_keychain_entry_exists(
+    service: str = "hb-assistant-procore", account: str = "client-secret"
+) -> bool:
+    """Return True if a Keychain entry exists for ``(service, account)``.
+
+    Uses ``security find-generic-password`` **without** ``-w`` so the secret
+    value is never read into memory and no permission prompt is triggered
+    (existence check only). Safe to call from status surfaces.
+    """
+    try:
+        result = subprocess.run(
+            ["security", "find-generic-password", "-s", service, "-a", account],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
 def get_macos_keychain_secret(service: str = "hb-assistant-procore", account: str = "client-secret") -> Optional[str]:
     """Native macOS Keychain via `security` (no extra dependencies)."""
     try:
@@ -307,6 +329,7 @@ __all__ = [
     "load_procore_app_profile_from_dict",
     "get_procore_client_secret",
     "get_procore_access_token",
+    "macos_keychain_entry_exists",
     "print_secret_setup_instructions",
     "get_environment_config",
     "EmbeddedSecretError",

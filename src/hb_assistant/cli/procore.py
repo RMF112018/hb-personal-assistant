@@ -166,6 +166,7 @@ def auth_login(
     refresh tokens are written to the local cache file with ``0o600`` perms.
     No token values are echoed.
     """
+    from hb_assistant.procore.config import SecretNotAvailableError
     from hb_assistant.procore.oauth import ProcoreOAuthError
     from hb_assistant.procore.token_provider import write_token_cache
 
@@ -181,6 +182,24 @@ def auth_login(
     try:
         token_set = client.exchange_authorization_code(code)
         cache_path = write_token_cache(token_set)
+    except SecretNotAvailableError:
+        _emit(
+            {
+                "command": "hb-assistant procore auth login",
+                "ok": False,
+                "kind": "secret_not_configured",
+                "reason": "no_client_secret_in_keychain_env_or_protected_file",
+                "hint": (
+                    "Install the Procore client secret with: "
+                    "security add-generic-password -U "
+                    "-s 'hb-assistant-procore' -a 'client-secret' -w '<value>'"
+                ),
+                "guardrails": _GUARDRAILS,
+            },
+            json_out=json_out,
+            exit_code=1,
+        )
+        return
     except ProcoreOAuthError as exc:
         _emit(
             {
@@ -209,6 +228,7 @@ def auth_refresh(
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Force-refresh the locally cached OAuth tokens using the stored refresh token."""
+    from hb_assistant.procore.config import SecretNotAvailableError
     from hb_assistant.procore.oauth import ProcoreOAuthError
     from hb_assistant.procore.token_provider import (
         read_token_cache_payload,
@@ -233,6 +253,24 @@ def auth_refresh(
     try:
         token_set = client.refresh_access_token(payload["refresh_token"])
         write_token_cache(token_set)
+    except SecretNotAvailableError:
+        _emit(
+            {
+                "command": "hb-assistant procore auth refresh",
+                "ok": False,
+                "kind": "secret_not_configured",
+                "reason": "no_client_secret_in_keychain_env_or_protected_file",
+                "hint": (
+                    "Install the Procore client secret with: "
+                    "security add-generic-password -U "
+                    "-s 'hb-assistant-procore' -a 'client-secret' -w '<value>'"
+                ),
+                "guardrails": _GUARDRAILS,
+            },
+            json_out=json_out,
+            exit_code=1,
+        )
+        return
     except ProcoreOAuthError as exc:
         _emit(
             {

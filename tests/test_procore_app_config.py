@@ -111,6 +111,70 @@ def test_print_setup_instructions_is_safe_and_helpful(capsys):
     assert "XaxTEVy" not in out
 
 
+def test_macos_keychain_entry_exists_returns_bool(monkeypatch):
+    """Existence check returns True/False based on subprocess exit code.
+
+    Phase 04 ergonomics: ``check_auth_status`` calls this to surface Keychain
+    presence without reading the value. Mocks subprocess so the test is
+    hermetic on any platform.
+    """
+    import subprocess as _sub
+
+    from hb_assistant.procore.config import macos_keychain_entry_exists
+
+    class _FakeProc:
+        def __init__(self, rc: int) -> None:
+            self.returncode = rc
+            self.stdout = ""
+            self.stderr = ""
+
+    monkeypatch.setattr(_sub, "run", lambda *a, **kw: _FakeProc(0))
+    assert macos_keychain_entry_exists() is True
+
+    monkeypatch.setattr(_sub, "run", lambda *a, **kw: _FakeProc(44))
+    assert macos_keychain_entry_exists() is False
+
+
+def test_check_auth_status_marks_ready_when_keychain_and_cache_present(monkeypatch):
+    """Phase 04 ergonomics: keychain-installed secret + populated token cache
+    should report status=env_present and ready_for_live_calls=True even when
+    no PROCORE_* env vars are set.
+    """
+    from hb_assistant.procore import auth as _auth_mod
+    from hb_assistant.procore.auth import check_auth_status
+
+    monkeypatch.setattr(_auth_mod, "macos_keychain_entry_exists", lambda: True)
+    monkeypatch.setattr(_auth_mod, "_token_cache_present", lambda: True)
+    for k in ("PROCORE_CLIENT_ID", "PROCORE_CLIENT_SECRET", "PROCORE_REFRESH_TOKEN"):
+        monkeypatch.delenv(k, raising=False)
+
+    report = check_auth_status()
+    assert report.keychain_secret_present is True
+    assert report.token_cache_present is True
+    assert report.status == "env_present"
+    assert report.ready_for_live_calls is True
+
+
+def test_check_auth_status_marks_partial_when_keychain_only(monkeypatch):
+    """Keychain has secret but no token cache → status=env_partial,
+    not_ready, with a hint pointing the operator at 'procore auth login'.
+    """
+    from hb_assistant.procore import auth as _auth_mod
+    from hb_assistant.procore.auth import check_auth_status
+
+    monkeypatch.setattr(_auth_mod, "macos_keychain_entry_exists", lambda: True)
+    monkeypatch.setattr(_auth_mod, "_token_cache_present", lambda: False)
+    for k in ("PROCORE_CLIENT_ID", "PROCORE_CLIENT_SECRET", "PROCORE_REFRESH_TOKEN"):
+        monkeypatch.delenv(k, raising=False)
+
+    report = check_auth_status()
+    assert report.keychain_secret_present is True
+    assert report.token_cache_present is False
+    assert report.status == "env_partial"
+    assert report.ready_for_live_calls is False
+    assert "procore auth login" in report.hint
+
+
 def test_app_profile_seed_file_has_no_secret(tmp_path):
     """The seed we create in resources/config must never contain secret material (guardrail)."""
     # Simulate reading the seed we just created (content known, no secret)

@@ -83,6 +83,29 @@ def test_login_with_explicit_code_writes_cache(auth_dir: Path) -> None:
     assert SYNTHETIC_REFRESH not in res.output
 
 
+def test_login_missing_client_secret_emits_clean_envelope(auth_dir: Path) -> None:
+    """SecretNotAvailableError must surface as a redacted envelope, never a
+    traceback. Operator hint should point at the security command.
+    """
+    from hb_assistant.procore.config import SecretNotAvailableError
+
+    fake_client = MagicMock()
+    fake_client.exchange_authorization_code.side_effect = SecretNotAvailableError("no secret")
+    with patch("hb_assistant.cli.procore._build_oauth_client", return_value=fake_client):
+        res = _runner().invoke(
+            app,
+            ["procore", "auth", "login", "--code", SYNTHETIC_CODE, "--json"],
+            catch_exceptions=False,
+        )
+    assert res.exit_code == 1
+    payload = json.loads(res.output)
+    assert payload["ok"] is False
+    assert payload["kind"] == "secret_not_configured"
+    assert "security add-generic-password" in payload["hint"]
+    # No traceback markers in output.
+    assert "Traceback" not in res.output
+
+
 def test_login_oauth_error_emits_redacted_envelope(auth_dir: Path) -> None:
     fake_client = MagicMock()
     fake_client.exchange_authorization_code.side_effect = ProcoreOAuthError(
@@ -112,6 +135,22 @@ def test_refresh_without_cache_returns_1(auth_dir: Path) -> None:
     assert payload["ok"] is False
     assert payload["kind"] == "oauth_refresh_unavailable"
     assert payload["reason"] == "no_refresh_token_in_cache"
+
+
+def test_refresh_missing_client_secret_emits_clean_envelope(auth_dir: Path) -> None:
+    from hb_assistant.procore.config import SecretNotAvailableError
+
+    write_token_cache(_fresh_token_set(expires_in=1))
+    fake_client = MagicMock()
+    fake_client.refresh_access_token.side_effect = SecretNotAvailableError("no secret")
+    with patch("hb_assistant.cli.procore._build_oauth_client", return_value=fake_client):
+        res = _runner().invoke(
+            app, ["procore", "auth", "refresh", "--json"], catch_exceptions=False
+        )
+    assert res.exit_code == 1
+    payload = json.loads(res.output)
+    assert payload["kind"] == "secret_not_configured"
+    assert "Traceback" not in res.output
 
 
 def test_refresh_with_cache_calls_oauth_client_and_updates_cache(auth_dir: Path) -> None:

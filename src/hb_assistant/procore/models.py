@@ -329,6 +329,9 @@ class AuthStatusReport(BaseModel):
     token_cache_present: bool
     ready_for_live_calls: bool
     hint: str
+    # Phase 04: also reflect whether the canonical macOS Keychain entry
+    # exists. Defaults to False so existing test fixtures don't need updating.
+    keychain_secret_present: bool = False
 
     model_config = {"extra": "forbid"}
 

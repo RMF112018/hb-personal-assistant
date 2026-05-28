@@ -19,6 +19,7 @@ import os
 
 from hb_assistant.config.path_policy import PathPolicy
 
+from .config import macos_keychain_entry_exists
 from .models import AuthStatusReport
 
 REQUIRED_ENV_KEYS: tuple[str, ...] = (
@@ -43,32 +44,54 @@ def check_auth_status() -> AuthStatusReport:
     present = [k for k in REQUIRED_ENV_KEYS if os.environ.get(k)]
     missing = [k for k in REQUIRED_ENV_KEYS if not os.environ.get(k)]
     token_cache = _token_cache_present()
+    keychain_secret = macos_keychain_entry_exists()
 
-    if not present and not token_cache:
+    # Phase 04: a Keychain-installed client secret + a populated token cache
+    # is the canonical operator posture and counts as fully configured even
+    # when the env-var triad is absent.
+    secret_available = bool(present or keychain_secret)
+    fully_configured = token_cache and secret_available
+
+    if fully_configured:
+        status = "env_present"
+        hint = (
+            "OAuth cache populated and a client secret is available "
+            f"({'Keychain' if keychain_secret else 'environment'}). "
+            "Live calls are gated by the operator-controlled CLI surface."
+        )
+        ready = True
+    elif not present and not token_cache and not keychain_secret:
         status = "env_absent"
         hint = (
-            "No Procore credentials detected. Live access is deferred — "
+            "No Procore credentials detected. Run 'hb-assistant procore auth "
+            "login' (with the client secret installed in macOS Keychain), or "
             "set PROCORE_CLIENT_ID / PROCORE_CLIENT_SECRET / "
-            "PROCORE_REFRESH_TOKEN in the environment (or place a token "
-            "cache under the sensitive auth directory) before any future "
-            "live commands."
+            "PROCORE_REFRESH_TOKEN in the environment, before any live "
+            "commands."
+        )
+        ready = False
+    elif keychain_secret and not token_cache:
+        status = "env_partial"
+        hint = (
+            "macOS Keychain has the Procore client secret but no OAuth token "
+            "cache exists yet. Run 'hb-assistant procore auth login' to "
+            "complete the OOB exchange."
         )
         ready = False
     elif missing:
         status = "env_partial"
         hint = (
-            "Some Procore credentials are present but the set is incomplete "
+            "Some Procore env keys are present but the set is incomplete "
             f"(missing: {missing}). Live access remains gated."
         )
         ready = False
     else:
         status = "env_present"
         hint = (
-            "All required Procore env keys are set. Live calls are still "
-            "intentionally disabled — a live OAuth client is not wired in "
-            "this prompt."
+            "All required Procore env keys are set; OAuth cache not yet "
+            "populated. Run 'hb-assistant procore auth login' to mint tokens."
         )
-        ready = False  # live access deferred regardless
+        ready = False
 
     return AuthStatusReport(
         status=status,
@@ -77,4 +100,5 @@ def check_auth_status() -> AuthStatusReport:
         token_cache_present=token_cache,
         ready_for_live_calls=ready,
         hint=hint,
+        keychain_secret_present=keychain_secret,
     )
