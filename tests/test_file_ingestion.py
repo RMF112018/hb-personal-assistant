@@ -7,13 +7,9 @@ links, eligibility matrix. All green, zero full content in artifacts/outputs/log
 
 from __future__ import annotations
 
-import json
-import tempfile
 import zipfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from hb_assistant.files.eligibility import ApprovalGate, EligibilityGate
 from hb_assistant.files.relevance import FileRelevanceScorer, RelevanceScore
@@ -165,7 +161,7 @@ def test_service_ingest_items_full_pipeline_dry_and_links(tmp_path: Path):
         assert len(outs) >= 1
         assert "bounded excerpt" in outs[0]["text_excerpt"]
         links = store.get_links_for_source(sid1)
-        assert any(l.get("link_type") == "parsed_from" for l in links)
+        assert any(link.get("link_type") == "parsed_from" for link in links)
 
 
 def test_service_blocks_missing_provenance_and_never_persists(tmp_path: Path):

@@ -12,7 +12,6 @@ from typer.testing import CliRunner
 from hb_assistant.automation.launchd_manager import LaunchdManager
 from hb_assistant.cli.main import app
 
-
 runner = CliRunner()
 
 

@@ -12,7 +12,6 @@ Covers:
 Run as part of: python -m pytest tests/test_procore_*.py -q
 """
 
-import os
 import tempfile
 from pathlib import Path
 
@@ -20,7 +19,6 @@ import pytest
 
 from hb_assistant.procore.config import (
     EmbeddedSecretError,
-    ProcoreAppProfile,
     SecretNotAvailableError,
     get_environment_config,
     get_procore_client_secret,
@@ -91,7 +89,7 @@ def test_secret_selector_raises_with_setup_instructions_when_missing(monkeypatch
 
     # Patch file path to non-existent
     with tempfile.TemporaryDirectory() as td:
-        bad_path = Path(td) / "nope" / "client_secret"
+        _ = Path(td) / "nope" / "client_secret"
         # monkeypatch the home resolution is complex; instead just assert the exception type + message content
         with pytest.raises(SecretNotAvailableError) as exc:
             get_procore_client_secret()

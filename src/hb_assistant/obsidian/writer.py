@@ -17,7 +17,7 @@ from __future__ import annotations
 import re
 from datetime import date
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 
 import yaml
 
@@ -106,6 +106,7 @@ class MarkerBoundedWriter:
         companion: bool = False,
         dry_run: bool = False,
         record_link: bool = True,
+        action_item_ids: Optional[Sequence[int]] = None,
     ) -> Path | str:
         """
         Write (or dry-run) the bounded brief section.
@@ -152,10 +153,17 @@ class MarkerBoundedWriter:
         # Real write
         target_path.write_text(new_full, encoding="utf-8")
 
-        if record_link:
-            # Best-effort: record a written_to_note link for the daily note (source_record for the day may exist via other means)
-            # For MVP we rely on caller (brief generator) to have the relevant source_record_id for the brief itself.
-            pass
+        if record_link and action_item_ids:
+            for aid in action_item_ids:
+                try:
+                    self.registry.link_action(
+                        action_item_id=int(aid),
+                        link_type="written_to_note",
+                        confidence=1.0,
+                    )
+                except Exception:
+                    # Provenance linking is best-effort and must never block write.
+                    continue
 
         return target_path
 
@@ -182,12 +190,10 @@ class MarkerBoundedWriter:
         if path.exists():
             old = path.read_text(encoding="utf-8")
             # Still merge frontmatter
-            content = self._merge_frontmatter(old, fm)
+            _ = self._merge_frontmatter(old, fm)
             # Append or replace body? For companion we treat the whole file as generated (user rarely edits it directly).
             # To stay conservative, we still only touch after frontmatter for now.
             # For simplicity in v0.8: overwrite the generated companion (it's in AI Outputs, machine artifact).
-        else:
-            content = ""
 
         fm_text = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
         body = full_content

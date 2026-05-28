@@ -28,7 +28,7 @@ class RetrievalHit:
 def _cosine(a: list[float], b: list[float]) -> float:
     if not a or not b or len(a) != len(b):
         return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
     na = sum(x * x for x in a) ** 0.5
     nb = sum(y * y for y in b) ** 0.5
     return dot / (na * nb + 1e-9)
@@ -87,7 +87,7 @@ class Retriever:
             return []
 
         # 2. Deterministic keyword filter / score (simple overlap)
-        q_terms = set(t.lower() for t in q.split() if len(t) > 2)
+        q_terms = {t.lower() for t in q.split() if len(t) > 2}
         scored: list[tuple[float, dict]] = []
         for c in candidates:
             txt = (c.get("text") or "").lower()

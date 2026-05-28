@@ -13,9 +13,8 @@ from hb_assistant.procore.sync import ProcoreSyncCoordinator
 
 
 def _temp_db() -> Path:
-    tf = tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False)
-    p = Path(tf.name)
-    tf.close()
+    with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as tf:
+        p = Path(tf.name)
     return p
 
 
@@ -39,8 +38,6 @@ def test_dry_run_plan_has_audit_gate_and_redacted_envelopes():
 def test_apply_writes_only_to_caller_temp_db_and_never_external():
     """Apply after audit pass writes only to the explicit temp DB provided; prod DB untouched."""
     temp_db = _temp_db()
-    prod_db_snapshot = 0  # in real harness we would query the default PathPolicy DB
-
     coord = ProcoreSyncCoordinator(db_path=temp_db)
 
     with patch.object(coord, "auditor") as mock_auditor, \

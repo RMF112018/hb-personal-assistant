@@ -50,6 +50,8 @@ SAFE_QUERIES = {
     6: "/me/messages/{message_id}/attachments?$select=id,name,contentType,size,isInline,lastModifiedDateTime",
     7: "/me/drive/items/{item_id}?$select=id,name,size,file,folder,webUrl,parentReference,lastModifiedDateTime,eTag,cTag",
 }
+STEP_1_ENDPOINT = SAFE_QUERIES[1] or "/me"
+STEP_2_ENDPOINT = SAFE_QUERIES[2] or "/me/mailFolders/inbox/messages"
 
 REQUIRED_DELEGATED_SCOPES = [
     "User.Read",
@@ -136,14 +138,14 @@ def run_proof(step_filter: str = "all", emit_json: bool = True, safe_mode: bool 
         print(f"[proof] No valid delegated token: {e}")
         print("Please run: hb-assistant auth login")
         print("Then re-run this proof.")
-        summary = {
+        early_summary: Dict[str, Any] = {
             "status": "no_delegated_token",
             "instruction": "hb-assistant auth login",
             "timestamp": _now_iso(),
         }
         if emit_json:
-            (evidence_dir / "summary.json").write_text(json.dumps(summary, indent=2))
-        return summary
+            (evidence_dir / "summary.json").write_text(json.dumps(early_summary, indent=2))
+        return early_summary
 
     client = GraphHttpClient(lambda scopes=None: del_prov.get_token(scopes or ["User.Read"]))
 
@@ -165,19 +167,19 @@ def run_proof(step_filter: str = "all", emit_json: bool = True, safe_mode: bool 
 
     # ========== Step 1: /me ==========
     try:
-        me = client.get(SAFE_QUERIES[1])
-        _record(1, SAFE_QUERIES[1], 200, {"id_present": bool(me.get("id")), "upn": me.get("userPrincipalName"), "displayName": me.get("displayName")})
+        me = client.get(STEP_1_ENDPOINT)
+        _record(1, STEP_1_ENDPOINT, 200, {"id_present": bool(me.get("id")), "upn": me.get("userPrincipalName"), "displayName": me.get("displayName")})
     except GraphHttpError as e:
-        _record(1, SAFE_QUERIES[1], e.status, None, str(e.message)[:150])
+        _record(1, STEP_1_ENDPOINT, e.status, None, str(e.message)[:150])
 
     # ========== Step 2: Mail metadata (bounded) ==========
     try:
-        msgs = client.get(SAFE_QUERIES[2])
+        msgs = client.get(STEP_2_ENDPOINT)
         count = len(msgs.get("value", []))
-        _record(2, SAFE_QUERIES[2], 200, {"count": count, "first_subject_redacted": bool(msgs.get("value", [{}])[0].get("subject")) if count else False})
+        _record(2, STEP_2_ENDPOINT, 200, {"count": count, "first_subject_redacted": bool(msgs.get("value", [{}])[0].get("subject")) if count else False})
     except GraphHttpError as e:
         note = "403 likely due to missing 'Mail.Read' delegated scope. Assumed granted prior to deployment."
-        _record(2, SAFE_QUERIES[2], e.status, None, note if e.status == 403 else str(e.message)[:150])
+        _record(2, STEP_2_ENDPOINT, e.status, None, note if e.status == 403 else str(e.message)[:150])
 
     # ========== Step 3 & 4: Body + mention (use first message if available) ==========
     # For simplicity in the proof we attempt to get a body from the first message of step 2 if we have an ID.

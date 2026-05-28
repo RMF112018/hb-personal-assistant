@@ -45,7 +45,7 @@ def redact_body(body: Any, *, for_error: bool = False) -> Dict[str, Any]:
         return {"type": "null"}
 
     if isinstance(body, dict):
-        top = sorted(list(body.keys()))[:15]
+        top = sorted(body.keys())[:15]
         summary: Dict[str, Any] = {"type": "dict", "top_level_keys": top, "key_count": len(body)}
         if for_error:
             safe: Dict[str, Any] = {}

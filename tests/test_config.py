@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import stat
 from pathlib import Path
 from unittest.mock import patch
@@ -66,9 +65,8 @@ def test_ensure_dirs_strict_sensitive_raises_on_auth_chmod(path_policy: PathPoli
             raise PermissionError("Operation not permitted")
         orig_chmod(self, mode)
 
-    with patch("os.chmod", side_effect=lambda p, m: _chmod(Path(p), m)):
-        with pytest.raises(PermissionError):
-            path_policy.ensure_dirs(strict_sensitive=True)
+    with patch("os.chmod", side_effect=lambda p, m: _chmod(Path(p), m)), pytest.raises(PermissionError):
+        path_policy.ensure_dirs(strict_sensitive=True)
 
 
 def test_loader_merges_defaults_and_overrides(tmp_path: Path) -> None:

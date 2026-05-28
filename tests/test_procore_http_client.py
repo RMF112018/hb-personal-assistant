@@ -21,6 +21,14 @@ from hb_assistant.procore.errors import ProcoreAPIError, ProcoreRateLimitError
 from hb_assistant.procore.http_client import ProcoreHTTPClient
 
 
+@pytest.fixture(autouse=True)
+def _mock_procore_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "hb_assistant.procore.http_client.get_procore_client_secret",
+        lambda: "TEST_SECRET",
+    )
+
+
 # --- Minimal mock transport support -------------------------------------------------
 
 class FakeResponse:

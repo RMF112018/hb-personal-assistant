@@ -61,6 +61,7 @@ def test_upsert_resolution_preserves_non_null_on_partial_update(db_path: str) ->
         resolution_status="resolved",
     )
     row = store.get_resolution("bobby-onedrive")
+    assert row is not None
     assert row["drive_id"] == "drive-1"  # preserved via COALESCE
     assert row["web_url"] == "https://onedrive/me"
 
@@ -318,6 +319,7 @@ def test_upsert_source_location_is_idempotent_and_updates_in_place(db_path: str)
         source_name="V2",
     )
     record = store.get_source_location("sp_dup")
+    assert record is not None
     assert record["source_name"] == "V2"
 
 
@@ -342,6 +344,7 @@ def test_upsert_source_sync_state_roundtrip(db_path: str) -> None:
         sync_status="ok",
     )
     record = store.get_source_sync_state("sp_sync")
+    assert record is not None
     assert record["delta_link_fingerprint"] == "sha256:abc12345"
     assert record["last_baseline_item_count"] == 100
     assert record["sync_status"] == "ok"
@@ -419,6 +422,7 @@ def test_upsert_drive_item_roundtrip_and_soft_delete(db_path: str) -> None:
         deleted=True,
     )
     item2 = store.get_drive_item(source_id="sp_items", drive_item_id="itm-1")
+    assert item2 is not None
     assert item2["deleted"] is True
 
 
@@ -437,6 +441,7 @@ def test_upsert_project_identity_roundtrip(db_path: str) -> None:
         match_confidence="high",
     )
     record = store.get_project_identity("tropical")
+    assert record is not None
     assert record["hb_project_number"] == "23-435-01"
     assert record["procore_project_id"] == "2525840"
     assert record["is_active"] is True
@@ -499,6 +504,7 @@ def test_upsert_document_card_roundtrip(db_path: str) -> None:
         card_path="Construction/RFIs/card-1.md",
     )
     card = store.get_document_card("card-1")
+    assert card is not None
     assert card["document_type"] == "rfi"
     assert card["confidence"] == 0.82
     assert card["needs_review"] is True
@@ -556,6 +562,7 @@ def test_email_intelligence_deferred_state_singleton_constraint(db_path: str) ->
         mail_readwrite_all_granted=True,
     )
     state = store.get_email_intelligence_deferred_state()
+    assert state is not None
     assert state["id"] == 1
     assert state["mail_read_all_granted"] is True
     assert state["mailbox_writeback_allowed"] is False

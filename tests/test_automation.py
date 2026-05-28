@@ -196,8 +196,6 @@ def test_orchestrator_05_stages_and_blocker_classification_dry_run(tmp_path):
     stages = res.get("stages", [])
     assert len(stages) >= 5  # at least the core local + graph_auth
     # Graph stages should be skipped or ok; local stages should succeed
-    graph_stages = [s for s in stages if "graph" in s.get("stage", "")]
-    local_stages = [s for s in stages if "action" in s.get("stage", "") or "brief" in s.get("stage", "") or "obsidian" in s.get("stage", "")]
     assert all(s.get("status") in ("ok", "skipped", "completed_dry_run") for s in stages)
     assert any("brief" in s.get("stage", "") for s in stages)
 

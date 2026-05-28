@@ -35,7 +35,6 @@ from hb_assistant.procore.loader import load_procore_projects
 from hb_assistant.procore.redaction import redact_body
 from hb_assistant.store.connection import get_connection
 
-
 PROCORE_TEMPLATE_NAMES: dict[str, str] = {
     "project_card": "procore_project_card.template.md",
     "rfi_register": "procore_rfi_register.template.md",

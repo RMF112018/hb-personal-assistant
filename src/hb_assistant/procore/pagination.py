@@ -13,7 +13,7 @@ from __future__ import annotations
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterator, Optional, Protocol
+from typing import Any, Dict, Iterator, Optional, Protocol
 
 
 @dataclass(frozen=True)
@@ -73,7 +73,7 @@ class ProcorePaginator:
     def _extract_next(self, result: PageResult, current_params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         if result.next_link:
             # Simple extraction of query params from the full next URL (Procore returns usable links)
-            from urllib.parse import urlparse, parse_qs
+            from urllib.parse import parse_qs, urlparse
             parsed = urlparse(result.next_link)
             next_params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
             return next_params or None
@@ -98,7 +98,7 @@ class ProcorePaginator:
                 try:
                     result = self.fetch_page(params)
                     break
-                except Exception as exc:  # noqa: BLE001 - transport raises its own normalized errors
+                except Exception:  # noqa: BLE001 - transport raises its own normalized errors
                     if attempt == self.retry_policy.max_retries:
                         raise
                     # Simple heuristic: treat transport-level 429/5xx as retryable

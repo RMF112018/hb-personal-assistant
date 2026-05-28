@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 import yaml
@@ -43,7 +44,7 @@ from hb_assistant.procore.loader import (
     EndpointContractError,
     ProcoreProjectsError,
 )
-from hb_assistant.procore.models import REQUIRED_CATEGORIES
+from hb_assistant.procore.models import REQUIRED_CATEGORIES, EndpointAuditRunReceipt
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -595,14 +596,6 @@ def test_every_cli_payload_advertises_no_writeback(runner: CliRunner) -> None:
 
 
 # Prompt_07: mocked dry-run audit matrix + redaction + live isolation (no real calls ever in these tests)
-import pytest
-from unittest.mock import MagicMock
-
-from hb_assistant.procore.auditor import EndpointAuditor
-from hb_assistant.procore.models import (
-    EndpointAuditRunReceipt,
-    AuditVerdict,
-)
 
 
 def test_procore_endpoint_audit_dry_run_with_injected_mock_produces_receipt_no_network():

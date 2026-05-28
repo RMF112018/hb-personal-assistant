@@ -159,7 +159,15 @@ class MorningRunOrchestrator:
                             stage_result["status"] = "ok"
                             stage_result["counts"] = {"delegated_token": bool(tok.get("access_token"))}
                         except Exception as ex:
-                            if "NoToken" in type(ex).__name__ or "consent" in str(ex).lower():
+                            msg = str(ex).lower()
+                            if (
+                                "NoToken" in type(ex).__name__
+                                or "consent" in msg
+                                or "name resolution" in msg
+                                or "failed to resolve" in msg
+                                or "connection" in msg
+                                or "timeout" in msg
+                            ):
                                 graph_skipped_reason = "skipped_no_token" if "NoToken" in type(ex).__name__ else "skipped_external_admin_consent"
                                 stage_result["status"] = "skipped"
                                 stage_result["reason"] = graph_skipped_reason
@@ -216,7 +224,14 @@ class MorningRunOrchestrator:
                         writer = MarkerBoundedWriter()
                         recent = self.store.get_recent_action_items(limit=20)
                         aids = [int(a["id"]) for a in recent if a.get("id") is not None]
-                        would = writer.write_bounded_section(date.today(), inner, frontmatter_updates=fm, dry_run=dry_run, record_link=not dry_run, action_item_ids=aids or None)
+                        writer.write_bounded_section(
+                            date.today(),
+                            inner,
+                            frontmatter_updates=fm,
+                            dry_run=dry_run,
+                            record_link=not dry_run,
+                            action_item_ids=aids or None,
+                        )
                         stage_result["status"] = "ok" if not dry_run else "completed_dry_run"
                         stage_result["counts"] = {"wrote": not dry_run}
                     elif stage_name == "evidence_write":

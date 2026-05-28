@@ -20,7 +20,6 @@ from typing import Any, Callable, Dict, Iterator, Optional
 from hb_assistant.procore.errors import ProcoreAPIError, ProcoreRateLimitError
 from hb_assistant.procore.pagination import ProcorePaginator
 from hb_assistant.procore.redaction import (
-    redact_headers,
     redact_request,
     redact_response,
 )
@@ -28,9 +27,9 @@ from hb_assistant.procore.redaction import (
 # Prompt_02 config interface (used at runtime only; secret never stored in this client)
 try:
     from hb_assistant.procore.config import (
+        HB_COMPANY_ID,
         get_environment_config,
         get_procore_client_secret,
-        HB_COMPANY_ID,
     )
 except Exception:  # pragma: no cover - graceful for tests that mock the whole layer
     def get_environment_config(env: Optional[str] = None) -> Dict[str, Any]:  # type: ignore
@@ -115,10 +114,25 @@ class ProcoreHTTPClient:
         # Redact response before any consumer sees it
         _ = redact_response(getattr(resp, "status_code", 0), dict(getattr(resp, "headers", {})), getattr(resp, "_json", None))
 
-        if getattr(resp, "status_code", 0) >= 400:
+        status_code = getattr(resp, "status_code", 0)
+        if status_code == 429:
+            retry_after_raw = dict(getattr(resp, "headers", {})).get("Retry-After")
+            retry_after: int | None
+            try:
+                retry_after = int(retry_after_raw) if retry_after_raw is not None else None
+            except (TypeError, ValueError):
+                retry_after = None
+            raise ProcoreRateLimitError(
+                message="rate_limited",
+                status=429,
+                retry_after=retry_after,
+                correlation_id=req_headers.get("X-Correlation-ID"),
+            )
+
+        if status_code >= 400:
             # Let the caller (or higher wrapper) decide; for now raise normalized safe error
             raise ProcoreAPIError(
-                status=getattr(resp, "status_code", 0),
+                status=status_code,
                 code="http_error",
                 message=str(getattr(resp, "text", "")[:300]),
                 correlation_id=req_headers.get("X-Correlation-ID"),

@@ -148,17 +148,17 @@ def test_resolve_dry_run_does_not_persist(tmp_path: Path) -> None:
 
 
 def _make_canonical_project_drive_folder(**overrides) -> SourceLocation:
-    defaults = dict(
-        source_key="sp_2023projects_23_435_01_tropical_sl",
-        kind="sharepoint_project_drive_folder",
-        display_name="23-435-01 Tropical - S L",
-        site_url="https://hedrickbrotherscom.sharepoint.com/sites/2023Projects",
-        site_id="b1abbdda-da3b-4fd1-a038-c4aeb13ba951",
-        drive_id="b!2r2rsTva0U-gOMSusTupUT0Ecgn6KG9CrTXQO7ex9-wjlyM1iYsETbs3ktNIMr0B",
-        folder_item_id="01KUIR4CV3RKZL4MURNRKY6DWASR3B7EGM",
-        folder_path="/23-435-01Tropical -S L",
-        folder_web_url="https://hedrickbrotherscom.sharepoint.com/sites/2023Projects/Shared%20Documents/23-435-01Tropical%20-S%20L",
-    )
+    defaults = {
+        "source_key": "sp_2023projects_23_435_01_tropical_sl",
+        "kind": "sharepoint_project_drive_folder",
+        "display_name": "23-435-01 Tropical - S L",
+        "site_url": "https://hedrickbrotherscom.sharepoint.com/sites/2023Projects",
+        "site_id": "b1abbdda-da3b-4fd1-a038-c4aeb13ba951",
+        "drive_id": "b!2r2rsTva0U-gOMSusTupUT0Ecgn6KG9CrTXQO7ex9-wjlyM1iYsETbs3ktNIMr0B",
+        "folder_item_id": "01KUIR4CV3RKZL4MURNRKY6DWASR3B7EGM",
+        "folder_path": "/23-435-01Tropical -S L",
+        "folder_web_url": "https://hedrickbrotherscom.sharepoint.com/sites/2023Projects/Shared%20Documents/23-435-01Tropical%20-S%20L",
+    }
     defaults.update(overrides)
     return SourceLocation(**defaults)  # type: ignore[arg-type]
 
@@ -356,17 +356,17 @@ def test_pre_resolved_status_normalizes_to_resolved_in_store(tmp_path: Path) -> 
 
 
 def _make_hilltop_projecthome(**overrides) -> SourceLocation:
-    defaults = dict(
-        source_key="sp_hilltop_gardens_projecthome",
-        kind="sharepoint_site_page",
-        display_name="Hilltop Gardens ProjectHome",
-        site_url="https://hedrickbrotherscom.sharepoint.com/sites/HilltopGardens",
-        page_url=(
+    defaults = {
+        "source_key": "sp_hilltop_gardens_projecthome",
+        "kind": "sharepoint_site_page",
+        "display_name": "Hilltop Gardens ProjectHome",
+        "site_url": "https://hedrickbrotherscom.sharepoint.com/sites/HilltopGardens",
+        "page_url": (
             "https://hedrickbrotherscom.sharepoint.com/sites/"
             "HilltopGardens/SitePages/ProjectHome.aspx"
         ),
-        project_key="hilltop-gardens",
-    )
+        "project_key": "hilltop-gardens",
+    }
     defaults.update(overrides)
     return SourceLocation(**defaults)  # type: ignore[arg-type]
 
@@ -546,8 +546,9 @@ def test_resolve_site_page_discovery_failure_degrades_to_empty_list() -> None:
 
 
 def test_linked_source_candidate_cannot_grant_deep_index_at_type_level() -> None:
-    from hb_assistant.construction.graph.resolver import LinkedSourceCandidate
     from pydantic import ValidationError
+
+    from hb_assistant.construction.graph.resolver import LinkedSourceCandidate
 
     with pytest.raises(ValidationError):
         LinkedSourceCandidate(

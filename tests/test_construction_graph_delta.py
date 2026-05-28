@@ -117,6 +117,7 @@ def test_multi_page_iterates_nextlink_and_records_final_deltalink(store: Constru
     assert receipt.items_seen == 3
     assert receipt.items_new == 3
     tok = store.get_delta_token("tropical-sharepoint")
+    assert tok is not None
     assert tok["delta_link"].endswith("token=final")
 
     # Second + third calls follow the nextLink path verbatim
@@ -155,6 +156,7 @@ def test_incremental_uses_stored_deltalink(store: ConstructionStore) -> None:
     # First call should hit the prior deltaLink URL
     assert http.get.call_args_list[0].args[0] == "https://graph/drives/drive-1/root/delta?token=prior"
     tok = store.get_delta_token("tropical-sharepoint")
+    assert tok is not None
     assert tok["delta_link"].endswith("token=new")
 
 
@@ -227,11 +229,11 @@ def test_sample_items_carry_only_metadata(store: ConstructionStore) -> None:
 
 
 def _src(**overrides) -> SourceLocation:
-    defaults = dict(
-        source_key="sp_test",
-        kind="sharepoint_project_drive_folder",
-        display_name="Test",
-    )
+    defaults = {
+        "source_key": "sp_test",
+        "kind": "sharepoint_project_drive_folder",
+        "display_name": "Test",
+    }
     defaults.update(overrides)
     return SourceLocation(**defaults)  # type: ignore[arg-type]
 
@@ -300,7 +302,6 @@ def test_select_endpoint_site_page_returns_none_with_unsupported_kind() -> None:
 
 def test_site_page_scope_emits_skipped_receipt(tmp_path: Path) -> None:
     """When the registry has a site_page source, crawl returns a clean skipped receipt."""
-    import tempfile
     import yaml as _yaml
 
     # Construct a temp registry override containing a site_page source the
@@ -354,7 +355,7 @@ def test_receipt_carries_scope_and_endpoint_kind(
 ) -> None:
     """A successful crawl populates scope + endpoint_kind on the receipt."""
     import os
-    import tempfile
+
     import yaml as _yaml
 
     tmp_yaml = tmp_path / "registry.yml"

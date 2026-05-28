@@ -84,7 +84,6 @@ def test_brief_generator_produces_redacted_content_and_frontmatter(temp_vault: P
         # Seed a couple of action_items (simulating Phase 7 output)
         store.upsert_source_record(source_type="test", source_key="t1", source_system="test")
         # Direct insert for demo (in real code the extraction phase would have done this)
-        conn = store._get_conn_for_test() if hasattr(store, "_get_conn_for_test") else None
         # Use the public helper we added
         # For the test we just call the generator; it will gracefully produce fallback content
         gen = DailyBriefGenerator(store=store)
@@ -114,7 +113,7 @@ def test_redaction_and_leak_proof_on_writer_output(temp_vault: Path):
     # The generator should never have put bad content in, but even if, the writer test asserts the mechanism
     # In practice the BriefGenerator already redacts; here we just confirm no raw secrets escape the pipeline in test data.
     # Final binary scan on any temp files created by the test harness (none in this case).
-    assert "password123" not in result or True  # defensive
+    assert "<!-- HB-DAILY-BRIEF:START -->" in result
 
 
 # =============================================================================

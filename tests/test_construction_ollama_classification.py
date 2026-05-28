@@ -20,6 +20,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 import yaml
 from pydantic import ValidationError
 from typer.testing import CliRunner
@@ -36,7 +37,6 @@ from hb_assistant.construction.classification import (
     ModelRoutingError,
     OllamaChatClient,
     OllamaUnavailable,
-    ReadinessReport,
     check_readiness,
     load_model_routing_config,
     parse_and_validate,
@@ -801,7 +801,7 @@ def test_readiness_daemon_unreachable_on_connection_error(
     cfg = load_model_routing_config()
     import requests as _requests
 
-    def raise_conn(*a: Any, **kw: Any) -> None:
+    def raise_conn(*a: Any, **kw: Any) -> requests.Response:
         raise _requests.ConnectionError("nope")
 
     report = check_readiness(cfg, requests_get=raise_conn)
@@ -866,8 +866,8 @@ def test_cli_ollama_status_ready_when_daemon_returns_models(
     monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
     cfg = load_model_routing_config()
     body = {"models": [{"name": m} for m in cfg.resolved_expected_models()]}
-    with patch.object(
-        readiness_mod.requests, "get",
+    with patch(
+        "hb_assistant.construction.classification.readiness.requests.get",
         return_value=MagicMock(status_code=200, json=MagicMock(return_value=body)),
     ):
         result = _invoke_ollama_status()
@@ -887,8 +887,8 @@ def test_cli_ollama_status_daemon_unreachable_still_exits_0(
     monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
     import requests as _requests
 
-    with patch.object(
-        readiness_mod.requests, "get",
+    with patch(
+        "hb_assistant.construction.classification.readiness.requests.get",
         side_effect=_requests.ConnectionError("nope"),
     ):
         result = _invoke_ollama_status()
@@ -905,8 +905,8 @@ def test_cli_ollama_status_respects_ollama_host_env(
     monkeypatch.setenv(OLLAMA_HOST_ENV_VAR, "http://probe.local:9999")
     import requests as _requests
 
-    with patch.object(
-        readiness_mod.requests, "get",
+    with patch(
+        "hb_assistant.construction.classification.readiness.requests.get",
         side_effect=_requests.ConnectionError("nope"),
     ):
         result = _invoke_ollama_status()
@@ -921,8 +921,8 @@ def test_cli_ollama_status_models_missing_shows_pull_commands(
 ) -> None:
     monkeypatch.delenv(OLLAMA_HOST_ENV_VAR, raising=False)
     body = {"models": [{"name": "some-other-model:latest"}]}
-    with patch.object(
-        readiness_mod.requests, "get",
+    with patch(
+        "hb_assistant.construction.classification.readiness.requests.get",
         return_value=MagicMock(status_code=200, json=MagicMock(return_value=body)),
     ):
         result = _invoke_ollama_status()

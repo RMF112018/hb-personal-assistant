@@ -48,7 +48,7 @@ def extract_cmd(
     except StoreReadinessError as e:
         payload = {"error": "StoreReadinessError", "command": "actions extract", "detail": str(e)}
         typer.echo(json.dumps(payload, indent=2) if json_out else f"error: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command("list")
@@ -75,4 +75,4 @@ def list_cmd(
     except StoreReadinessError as e:
         payload = {"error": "StoreReadinessError", "command": "actions list", "detail": str(e)}
         typer.echo(json.dumps(payload, indent=2) if json_out else f"error: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e

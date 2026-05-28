@@ -526,8 +526,7 @@ def test_apply_is_marker_bounded_and_preserves_user_text(tmp_path: Path) -> None
 
 
 def test_cli_sync_dry_run_from_receipts(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    # Force CLI to use isolated app-support so it sees an empty fresh store.
-    monkeypatch.setenv("HB_PA_CONFIG", "")
+    # Use the autouse isolated HB_PA_CONFIG fixture from tests/conftest.py.
     runner = CliRunner()
     result = runner.invoke(
         construction_cli.app,
@@ -603,19 +602,19 @@ def test_cli_sync_changed_only_skips_unchanged(
 def _make_tropical_canonical(**overrides) -> SourceLocation:
     from hb_assistant.construction.config import BaselineSnapshot
 
-    defaults = dict(
-        source_key="sp_2023projects_23_435_01_tropical_sl",
-        project_key="tropical",
-        kind="sharepoint_project_drive_folder",
-        display_name="Tropical canonical",
-        baseline=BaselineSnapshot(
+    defaults = {
+        "source_key": "sp_2023projects_23_435_01_tropical_sl",
+        "project_key": "tropical",
+        "kind": "sharepoint_project_drive_folder",
+        "display_name": "Tropical canonical",
+        "baseline": BaselineSnapshot(
             baseline_status="complete",
             baseline_unique_item_count=8921,
             baseline_file_count=7208,
             baseline_folder_count=1713,
             baseline_file_size_gb=39.78,
         ),
-    )
+    }
     defaults.update(overrides)
     return SourceLocation(**defaults)  # type: ignore[arg-type]
 
@@ -738,7 +737,9 @@ def test_compute_baseline_comparison_within_tolerance(tmp_path: Path) -> None:
     _seed_inventory(store, src.source_key, file_count=102, folder_count=0)
     cmp = compute_baseline_comparison(src, store)
     assert cmp.status == "within_tolerance", cmp.model_dump()
-    assert abs(cmp.drift_pct["unique_item_count"]) <= 5.0
+    unique_drift = cmp.drift_pct["unique_item_count"]
+    assert unique_drift is not None
+    assert abs(unique_drift) <= 5.0
 
 
 def test_compute_baseline_comparison_drift_detected(tmp_path: Path) -> None:

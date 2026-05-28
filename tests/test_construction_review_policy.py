@@ -651,18 +651,18 @@ def test_source_location_constructs_for_test_fixtures() -> None:
 def _make_onedrive_business(**overrides) -> SourceLocation:
     from hb_assistant.construction.config import BaselinePolicy
 
-    defaults = dict(
-        source_key="od_business_bobby_hedrickbrothers",
-        kind="onedrive_business_root",
-        display_name="Bobby business OneDrive",
-        baseline_policy=BaselinePolicy(
+    defaults = {
+        "source_key": "od_business_bobby_hedrickbrothers",
+        "kind": "onedrive_business_root",
+        "display_name": "Bobby business OneDrive",
+        "baseline_policy": BaselinePolicy(
             mode="inventory_first",
             classify_project_matches=True,
             graph_delta_required=True,
             local_folder_watcher="secondary_signal_only",
             require_review_for_sensitive=True,
         ),
-    )
+    }
     defaults.update(overrides)
     return SourceLocation(**defaults)  # type: ignore[arg-type]
 
@@ -670,16 +670,16 @@ def _make_onedrive_business(**overrides) -> SourceLocation:
 def _make_onedrive_personal(**overrides) -> SourceLocation:
     from hb_assistant.construction.config import BaselinePolicy
 
-    defaults = dict(
-        source_key="od_personal_bobby",
-        kind="onedrive_personal_root",
-        display_name="Bobby personal OneDrive",
-        baseline_policy=BaselinePolicy(
+    defaults = {
+        "source_key": "od_personal_bobby",
+        "kind": "onedrive_personal_root",
+        "display_name": "Bobby personal OneDrive",
+        "baseline_policy": BaselinePolicy(
             mode="inventory_first",
             classify_project_matches=False,
             require_review_for_sensitive=True,
         ),
-    )
+    }
     defaults.update(overrides)
     return SourceLocation(**defaults)  # type: ignore[arg-type]
 
@@ -687,16 +687,16 @@ def _make_onedrive_personal(**overrides) -> SourceLocation:
 def _make_onedrive_shared_library(**overrides) -> SourceLocation:
     from hb_assistant.construction.config import BaselinePolicy
 
-    defaults = dict(
-        source_key="od_shared_libraries_cloudtemp",
-        kind="onedrive_shared_library",
-        display_name="CloudTemp shared library",
-        baseline_policy=BaselinePolicy(
+    defaults = {
+        "source_key": "od_shared_libraries_cloudtemp",
+        "kind": "onedrive_shared_library",
+        "display_name": "CloudTemp shared library",
+        "baseline_policy": BaselinePolicy(
             mode="inventory_first",
             classify_project_matches=True,
             require_review_for_sensitive=True,
         ),
-    )
+    }
     defaults.update(overrides)
     return SourceLocation(**defaults)  # type: ignore[arg-type]
 

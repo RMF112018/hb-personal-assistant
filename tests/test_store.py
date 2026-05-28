@@ -26,6 +26,7 @@ def test_ensure_db_ready_fails_when_db_parent_is_not_directory(tmp_path: Path) -
     db_parent.write_text("not-a-dir", encoding="utf-8")
 
     report = pp.ensure_db_ready(return_report=True)
+    assert report is not None
     assert report["ok"] is False
     assert report["error"] == "db_parent_not_directory"
 
@@ -37,6 +38,7 @@ def test_ensure_db_ready_fails_when_db_parent_not_writable(tmp_path: Path) -> No
     with patch("os.access", return_value=False):
         report = pp.ensure_db_ready(return_report=True)
 
+    assert report is not None
     assert report["ok"] is False
     assert report["error"] == "db_parent_not_writable"
 
@@ -58,6 +60,7 @@ def test_ensure_db_ready_reports_wal_probe(tmp_path: Path) -> None:
     pp = _policy_for_root(tmp_path / "support")
     pp.ensure_dirs(create_sensitive=False)
     report = pp.ensure_db_ready(return_report=True)
+    assert report is not None
     assert report["ok"] is True
     assert report["checks"]["sqlite_openable"] is True
     assert report["checks"]["wal_mode"] in ("wal", "delete", "degraded", "unknown")

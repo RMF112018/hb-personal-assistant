@@ -25,9 +25,6 @@ from hb_assistant.procore.auditor import (
 )
 from hb_assistant.procore.http_client import ProcoreHTTPClient  # type: ignore
 from hb_assistant.procore.loader import load_endpoint_contract
-from hb_assistant.procore.models import (
-    ProcoreEndpointContract as EndpointContract,  # real name from Prompt_05; aliased for plan clarity
-)
 
 
 def redact_for_evidence(obj: Any) -> Any:

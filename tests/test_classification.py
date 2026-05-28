@@ -9,6 +9,7 @@ from __future__ import annotations
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Iterator
 
 import pytest
 
@@ -18,7 +19,7 @@ from hb_assistant.store.repositories import Store
 
 
 @pytest.fixture
-def temp_db_path() -> Path:
+def temp_db_path() -> Iterator[Path]:
     with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f:
         path = Path(f.name)
     yield path

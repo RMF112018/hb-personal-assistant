@@ -7,8 +7,16 @@ and validates the mapping registry against the source registry.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from typing import Any, Literal
+from uuid import uuid4
+
 from .models import (
+    AuditVerdict,
+    DryRunRequestEnvelope,
+    EndpointAuditReceipt,
     EndpointAuditReport,
+    EndpointAuditRunReceipt,
     MappingValidationReport,
     ProcoreEndpoint,
     ProcoreEndpointContract,
@@ -108,18 +116,6 @@ class EndpointAuditor:
 # Prompt_07 additions: endpoint dry-run request construction (no network) + optional explicit manual live (GET-only)
 # + per-endpoint verdicts + default body redaction + receipt emission (JSON-first; SQLite gated on migrator readiness).
 # Reuses existing contract + projects registry + Prompt_04 redaction/error patterns + Prompt_05 categories + Prompt_06 pending handling.
-
-from datetime import datetime, timezone
-from typing import Any
-from uuid import uuid4
-
-from .models import (
-    AuditVerdict,
-    DryRunRequestEnvelope,
-    EndpointAuditReceipt,
-    EndpointAuditRunReceipt,
-)
-from .redaction import redact_headers, redact_body  # Prompt_04 redaction helpers (used for headers/bodies)
 
 # New explicit verdicts (extend/compat with existing _verdict_for where possible).
 NEW_VERDICT_AVAILABLE = "available"

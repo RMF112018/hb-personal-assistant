@@ -18,19 +18,20 @@ Every model is read-only by construction:
 
 from __future__ import annotations
 
+import re
+
 # Prompt_05 addition: Explicit Category enum
 from enum import Enum as _Enum  # avoid collision if Enum already imported
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
 
 class Category(str, _Enum):
     """Prompt_05 categories per Decision Register."""
     FOUNDATION = "foundation"
     PROJECT_CONTROLS = "project_controls"
     FINANCIALS = "financials"
-
-import re
-from typing import Any, Literal
-
-from pydantic import BaseModel, Field, field_validator, model_validator
 
 HttpMethod = Literal["GET"]  # read-only by construction
 EndpointStatus = Literal["validated", "sensitive_validated", "excluded", "deferred"]

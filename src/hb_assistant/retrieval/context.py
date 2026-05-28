@@ -6,6 +6,7 @@ Phase 11: thin assembler using Retriever + direct store queries for actions/ment
 
 from __future__ import annotations
 
+from contextlib import suppress
 from dataclasses import dataclass, field
 
 from hb_assistant.store.repositories import Store
@@ -56,10 +57,8 @@ class WorkstreamContextBuilder:
 
         actions = []
         if include_actions:
-            try:
+            with suppress(Exception):
                 actions = self.store.get_recent_action_items(limit=10) or []
-            except Exception:
-                pass
 
         mentions = self.store.list_recent_body_mentions(limit=limit_per) or []
 

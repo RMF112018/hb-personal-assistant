@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -437,7 +437,7 @@ def test_procore_obsidian_preview_dry_run_structure(tmp_path: Path) -> None:
     assert isinstance(result["review_items"], list)
     assert all("item_id" in i or isinstance(i, dict) for i in result["review_items"])
     # Guardrails block in rendered samples
-    for k, v in rendered.items():
+    for _k, v in rendered.items():
         if isinstance(v, str):
             assert "sqlite_authoritative" in v or "redaction_applied" in v or "guardrails" in v.lower()
 

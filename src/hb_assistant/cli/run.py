@@ -46,7 +46,7 @@ def morning_cmd(
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else "run morning: orchestrator completed (see json for details)")
         raise typer.Exit(0)
     except StoreReadinessError as ex:
-        payload: Dict[str, Any] = {
+        error_payload: Dict[str, Any] = {
             "status": "blocked_db_unavailable",
             "dry_run": dry_run,
             "error": ex.message[:200],
@@ -63,11 +63,11 @@ def morning_cmd(
                 ],
             },
         }
-        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
-        raise typer.Exit(1)
+        typer.echo(json.dumps(error_payload, indent=2, default=str) if json_out else str(error_payload))
+        raise typer.Exit(1) from ex
     except typer.Exit:
         raise
     except Exception as ex:  # pragma: no cover
         payload = {"error": str(ex)[:200], "note": "orchestrator failed before or during ledger update"}
         typer.echo(json.dumps(payload, indent=2) if json_out else f"run morning error: {ex}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from ex

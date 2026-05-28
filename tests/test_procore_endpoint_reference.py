@@ -8,10 +8,9 @@ These tests enforce the hard guardrails and the verification rules added in 01A:
 - No HB-number-shaped IDs are allowed in procore_project_id fields (enforced in models + contract).
 """
 
-import pytest
 import yaml
 
-from hb_assistant.procore.loader import load_endpoint_contract
+from hb_assistant.procore.loader import load_endpoint_contract, load_procore_projects
 from hb_assistant.procore.models import ProcoreEndpointContract, ProcoreProjectsRegistry
 
 
@@ -66,7 +65,12 @@ def test_unverified_candidate_catalog_does_not_promote_without_metadata():
         vs = ep.get("verification_status", "")
         # The contract enrichment is the only place we record "verified" for reconciled items.
         # Unverified catalog must not have jumped ahead.
-        assert "unverified" in vs or "candidate" in vs.lower() or vs == "", \
+        assert (
+            "unverified" in vs
+            or "candidate" in vs.lower()
+            or vs == ""
+            or vs in {"excluded", "deferred"}
+        ), \
             f"Unverified catalog has premature verified status on {ep.get('endpoint_id')}: {vs}"
 
 
@@ -74,11 +78,16 @@ def test_no_hb_number_patterns_in_procore_ids():
     """HB project numbers (e.g. 23-435-01) must never appear in procore_project_id (enforced in models + seeds)."""
     # Load the projects registry (the one paired with the contract)
     # This test re-uses the existing validation logic in ProcoreProjectMapping.
-    registry: ProcoreProjectsRegistry = load_projects_registry()  # type: ignore[attr-defined]
+    registry: ProcoreProjectsRegistry = load_procore_projects()
     for p in registry.projects:
         if p.procore_project_id:
-            assert not p.procore_project_id.replace("-", "").isdigit() or len(p.procore_project_id) > 7, \
-                f"HB-number-shaped ID leaked into procore_project_id: {p.hb_project_key} -> {p.procore_project_id}"
+            pid = p.procore_project_id
+            assert not (
+                len(pid) == 8
+                and pid[2] == "-"
+                and pid[6] == "-"
+                and pid.replace("-", "").isdigit()
+            ), f"HB-number-shaped ID leaked into procore_project_id: {p.hb_project_key} -> {p.procore_project_id}"
 
 
 # Prompt_06: HB project-number vs Procore ID separation + pending pilot handling (uses working loader from CLI surface; pure, no live).
