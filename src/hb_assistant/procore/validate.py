@@ -349,6 +349,33 @@ def _check_oauth_acquisition_path_present() -> dict[str, Any]:
     return {"ok": all(methods.values()), "detail": methods}
 
 
+def _check_rfi_normalizer_dispatch_present() -> dict[str, Any]:
+    """Phase 04 Prompt 04: ``list-rfis`` must be wired through the
+    endpoint-id-keyed normalizer dispatch (``sync.NORMALIZER_DISPATCH``) so
+    the apply path persists RFI replies as separate canonical rows.
+    """
+    from hb_assistant.procore.normalizers import (
+        NORMALIZATION_SCHEMA_VERSION,
+        normalize_rfi,
+        normalize_rfi_payload_block,
+        normalize_rfi_reply,
+    )
+    from hb_assistant.procore.sync import NORMALIZER_DISPATCH, RFI_ENDPOINT_ID
+
+    dispatched = NORMALIZER_DISPATCH.get(RFI_ENDPOINT_ID)
+    return {
+        "ok": dispatched is normalize_rfi_payload_block
+        and callable(normalize_rfi)
+        and callable(normalize_rfi_reply)
+        and NORMALIZATION_SCHEMA_VERSION >= 1,
+        "detail": {
+            "rfi_endpoint_id": RFI_ENDPOINT_ID,
+            "dispatch_present": dispatched is not None,
+            "schema_version": NORMALIZATION_SCHEMA_VERSION,
+        },
+    }
+
+
 def _check_procore_init_exports_complete() -> dict[str, Any]:
     """Phase 04: the public ``hb_assistant.procore`` API must re-export the
     sync coordinator, ``run_sync``, ``SyncReceipt``, and the new fail-closed
@@ -440,6 +467,7 @@ def run_procore_validate(
         _safe_check("endpoint_verification_metadata_complete", _check_endpoint_verification_metadata_complete),
         _safe_check("live_eligibility_blocks_ineligible", _check_live_eligibility_blocks_ineligible),
         _safe_check("procore_init_exports_complete", _check_procore_init_exports_complete),
+        _safe_check("rfi_normalizer_dispatch_present", _check_rfi_normalizer_dispatch_present),
     ]
 
     passed = sum(1 for c in checks if c.get("ok"))

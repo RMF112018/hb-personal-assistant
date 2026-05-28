@@ -78,10 +78,23 @@ hb-assistant procore audit execute --project tropical --confirm --json
 # Dry-run plan (default): redacted, zero side effects.
 hb-assistant procore sync run --project tropical --json
 
+# Dry-run plan filtered to a specific endpoint (Phase 04 Prompt 04). The
+# --endpoints / -e flag is repeatable. The RFI dry-run receipt carries
+# normalization_schema_version + would_persist_children_separately so the
+# operator can confirm the canonical normalizer is wired before any apply.
+hb-assistant procore sync run --project tropical --dry-run \
+  --endpoints list-rfis --json
+
 # EXPLICIT opt-in apply. Writes normalized rows to LOCAL SQLite only
 # after the Prompt 07 audit gate passes. Never mutates Procore.
 hb-assistant procore sync run --project tropical --apply --confirm --json
 ```
+
+For the RFI endpoint specifically, `--apply` persists each RFI as a
+`category="rfis"` row and each nested reply as a separate
+`category="rfi_replies"` row with `review_required=True` (replies are always
+routed for review per the prompt stop-condition). Body text is never persisted
+— reply bodies are reduced to SHA-256 hash-prefix summaries.
 
 ### Phase 4 — Obsidian projection
 

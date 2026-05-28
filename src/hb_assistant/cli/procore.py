@@ -634,12 +634,18 @@ def sync_run(
     json_out: bool = typer.Option(True, "--json"),
     confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts"),
     allow_pending: bool = typer.Option(False, "--allow-pending", help="Explicit opt-in to target a project whose mapping status is 'pending'. Default fails closed."),
+    endpoints: Optional[list[str]] = typer.Option(None, "--endpoints", "-e", help="Filter to one or more endpoint IDs (repeatable). Defaults to every endpoint in the contract."),  # noqa: B008
 ) -> None:
     """Dry-run (default) or apply (opt-in) for pilot projects.
 
     Audit prerequisite (Prompt_07 surfaces) is mandatory before any planning or execution.
     Pending mappings are rejected unless ``--allow-pending`` is set.
     All writes are local SQLite only (temp DB supported for validation). GET-only. Redacted.
+
+    ``--endpoints`` is repeatable; pass once per endpoint id (e.g.
+    ``--endpoints list-rfis -e list-submittals``). Phase 04 Prompt 04 introduces
+    the canonical RFI normalizer; the dry-run receipt for ``list-rfis`` carries
+    the normalization schema version and the children-persistence flag.
     """
     if apply and not confirm and not sys.stdin.isatty():
         typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
@@ -658,6 +664,7 @@ def sync_run(
         full_refresh=full_refresh,
         json_output=json_out,
         allow_pending=allow_pending,
+        endpoints=endpoints or None,
     )
     _emit(result, json_out=json_out)
 

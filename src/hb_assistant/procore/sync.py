@@ -34,6 +34,19 @@ from hb_assistant.procore.loader import (
     load_procore_projects,
 )
 from hb_assistant.procore.models import ProcoreProjectsRegistry
+from hb_assistant.procore.normalizers import (
+    NORMALIZATION_SCHEMA_VERSION,
+    normalize_rfi,
+    normalize_rfi_payload_block,
+    normalize_rfi_reply,
+)
+
+# Endpoint-id keyed normalizer dispatch. Each entry maps to a normalizer block
+# function returning (parent_records, child_records). Extended by Prompts 05–08.
+RFI_ENDPOINT_ID = "list-rfis"
+NORMALIZER_DISPATCH: Dict[str, Any] = {
+    RFI_ENDPOINT_ID: normalize_rfi_payload_block,
+}
 
 
 def redact_for_evidence(obj: Any) -> Any:
@@ -167,6 +180,7 @@ class ProcoreSyncCoordinator:
         endpoints: Optional[List[str]] = None,
         policy: Policy = "auto",
         allow_pending: bool = False,
+        rfi_preview_payload: Optional[List[Dict[str, Any]]] = None,
     ) -> SyncReceipt:
         """Dry-run default path. Audit gate first. Produces serializable redacted plan. Zero side effects.
 
@@ -231,7 +245,7 @@ class ProcoreSyncCoordinator:
             if ep.status == "sensitive_validated":
                 sens_counts["review_required"] = sens_counts.get("review_required", 0) + 1
 
-            plan_details.append({
+            entry: Dict[str, Any] = {
                 "endpoint_id": ep.endpoint_id,
                 "category": cat,
                 "review_required": ep.status == "sensitive_validated",
@@ -247,7 +261,25 @@ class ProcoreSyncCoordinator:
                     "correlation": self.correlation_id,
                     # auth redacted by construction; no token/secret ever present
                 },
-            })
+            }
+            if ep.endpoint_id in NORMALIZER_DISPATCH:
+                entry["normalization_schema_version"] = NORMALIZATION_SCHEMA_VERSION
+                entry["would_persist_children_separately"] = (
+                    ep.endpoint_id == RFI_ENDPOINT_ID
+                )
+            if ep.endpoint_id == RFI_ENDPOINT_ID and rfi_preview_payload is not None:
+                rfi_records, reply_records = normalize_rfi_payload_block(
+                    rfi_preview_payload,
+                    project_key=project_key or "multi",
+                    endpoint_id=ep.endpoint_id,
+                    correlation_id=self.correlation_id,
+                    fetched_at=datetime.now(timezone.utc).isoformat(),
+                )
+                review_required_count = sum(1 for r in rfi_records if r["review_required"])
+                entry["planned_rfi_record_count"] = len(rfi_records)
+                entry["planned_reply_record_count"] = len(reply_records)
+                entry["planned_review_required_count"] = review_required_count
+            plan_details.append(entry)
 
         receipt.total_planned_requests = total_requests
         receipt.category_counts = cat_counts
@@ -347,22 +379,69 @@ class ProcoreSyncCoordinator:
                     params={"updated_after": watermark} if watermark else None,
                 )
 
-                for item in items:
-                    normalized = self._normalize(ep, item, project_key or "multi")
-                    upsert_procore_synced_entity(
-                        self.db_path, normalized, correlation=self.correlation_id
-                    )
-                    total_items += 1
+                fetched_at = datetime.now(timezone.utc).isoformat()
+                if ep.endpoint_id == RFI_ENDPOINT_ID:
+                    parent_written = 0
+                    reply_written = 0
+                    for item in items:
+                        rfi_record = normalize_rfi(
+                            item,
+                            project_key=project_key or "multi",
+                            endpoint_id=ep.endpoint_id,
+                            correlation_id=self.correlation_id,
+                            fetched_at=fetched_at,
+                        )
+                        upsert_procore_synced_entity(
+                            self.db_path, rfi_record, correlation=self.correlation_id
+                        )
+                        parent_written += 1
+                        total_items += 1
+                        for raw_reply in item.get("replies") or []:
+                            if not isinstance(raw_reply, dict):
+                                continue
+                            reply_record = normalize_rfi_reply(
+                                raw_reply,
+                                parent_rfi_stable_key=rfi_record["entity_stable_key"],
+                                project_key=project_key or "multi",
+                                endpoint_id=ep.endpoint_id,
+                                correlation_id=self.correlation_id,
+                                fetched_at=fetched_at,
+                            )
+                            upsert_procore_synced_entity(
+                                self.db_path,
+                                reply_record,
+                                correlation=self.correlation_id,
+                            )
+                            reply_written += 1
+                            total_items += 1
+                    items_written = parent_written + reply_written
+                    endpoint_entry: Dict[str, Any] = {
+                        "endpoint_id": ep.endpoint_id,
+                        "items_written": items_written,
+                        "rfi_records_written": parent_written,
+                        "reply_records_written": reply_written,
+                        "status": "success",
+                    }
+                else:
+                    items_written = 0
+                    for item in items:
+                        normalized = self._normalize(ep, item, project_key or "multi")
+                        upsert_procore_synced_entity(
+                            self.db_path, normalized, correlation=self.correlation_id
+                        )
+                        items_written += 1
+                        total_items += 1
+                    endpoint_entry = {
+                        "endpoint_id": ep.endpoint_id,
+                        "items_written": items_written,
+                        "status": "success",
+                    }
 
                 # Update watermark (safe, redacted)
                 new_watermark = datetime.now(timezone.utc).isoformat()
                 set_procore_sync_watermark(self.db_path, ep.endpoint_id, project_key or "multi", new_watermark)
 
-                receipt.per_endpoint.append({
-                    "endpoint_id": ep.endpoint_id,
-                    "items_written": len(items),
-                    "status": "success",
-                })
+                receipt.per_endpoint.append(endpoint_entry)
             except Exception as exc:  # noqa: BLE001
                 redacted = redact_for_evidence({"endpoint": ep.endpoint_id, "error": str(exc)})
                 errors.append(redacted)
@@ -403,11 +482,18 @@ def run_sync(
     db_path: Optional[Path] = None,
     json_output: bool = True,
     allow_pending: bool = False,
+    endpoints: Optional[List[str]] = None,
+    rfi_preview_payload: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Entry for CLI `procore sync`. Dry-run default. --apply explicit only.
 
     ``allow_pending=True`` is required to target a project whose mapping
     status is ``pending``; default behavior is fail-closed.
+
+    ``endpoints`` filters the contract to a subset (e.g. ``["list-rfis"]``).
+    ``rfi_preview_payload`` is consumed by ``plan()`` only and lets the
+    evidence-generation flow surface fixture-derived record counts in the
+    dry-run receipt without coupling production planning to fixtures.
     """
     if apply and dry_run:
         dry_run = False  # --apply wins when both present (documented guard in CLI)
@@ -416,13 +502,16 @@ def run_sync(
     if dry_run or not apply:
         plan = coord.plan(
             project_key=project_key,
+            endpoints=endpoints,
             policy="full" if full_refresh else "auto",
             allow_pending=allow_pending,
+            rfi_preview_payload=rfi_preview_payload,
         )
         return plan  # type: ignore[return-value]
     else:
         receipt = coord.apply(
             project_key=project_key,
+            endpoints=endpoints,
             full_refresh=full_refresh,
             policy="full" if full_refresh else "auto",
             allow_pending=allow_pending,
