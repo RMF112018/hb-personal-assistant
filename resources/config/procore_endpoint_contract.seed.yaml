@@ -79,7 +79,7 @@ endpoints:
     status: validated
     sensitivity: low
     included_in_phase_01: true
-    notes: Modern path reconciled Prompt 01A. verification_status: official_docs_verified.
+    notes: "Modern path reconciled Prompt 01A. verification_status: official_docs_verified."
 
   - endpoint_id: list-daily-logs
     http_method: GET
@@ -97,7 +97,7 @@ endpoints:
     status: validated
     sensitivity: low
     included_in_phase_01: true
-    notes: Modern path reconciled Prompt 01A. verification_status: official_docs_verified.
+    notes: "Modern path reconciled Prompt 01A. verification_status: official_docs_verified."
 
   # ---- sensitive_validated (high sensitivity — financial / contractual)
   - endpoint_id: list-change-events

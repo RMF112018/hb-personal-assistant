@@ -385,7 +385,7 @@ def obsidian_preview(
     project: str = typer.Argument(..., help="HB project key (pilot/mapped from procore_projects.seed.yaml)"),
     dry_run: bool = typer.Option(True, "--dry-run", help="Default: paths + rendered Markdown (redacted samples), zero side effects"),
     apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in only. Writes hybrid procore-*.md to 01_Projects/ + review note (local vault)."),
-    json_out: bool = typer.Option(False, "--json"),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default). Use --no-json for compact human-readable form."),
     confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts"),
 ) -> None:
     """Procore Obsidian preview/apply (Prompt 10).
@@ -425,3 +425,46 @@ def obsidian_preview(
             result["redacted_errors"] = result["error"]
 
     _emit(result, json_out=json_out)
+
+
+# =============================================================================
+# Prompt_11: procore validate (read-only operator stack-readiness check)
+# =============================================================================
+
+
+@app.command("validate")
+def validate_cmd(
+    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default)."),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help=(
+            "Tighten pass criteria: env_absent/env_partial auth and missing "
+            "procore_* tables become hard failures. Never enables any I/O."
+        ),
+    ),
+) -> None:
+    """Read-only Procore stack-readiness check.
+
+    Cross-checks seed configs, mapping, redaction module, Obsidian renderer
+    + templates, vault writer posture, schema migrator state, and auth
+    credential presence — entirely local, no live Procore call, no write.
+    Exit 0 when every check passes, 1 otherwise.
+    """
+
+    from hb_assistant.procore.validate import run_procore_validate  # lazy import
+
+    envelope = run_procore_validate(strict=strict)
+
+    if json_out:
+        typer.echo(json.dumps(envelope, indent=2, default=str))
+    else:
+        for check in envelope["checks"]:
+            mark = "ok" if check.get("ok") else "FAIL"
+            typer.echo(f"[{mark}] {check['name']}")
+        typer.echo(
+            f"overall: {'ok' if envelope['ok'] else 'FAIL'} "
+            f"({envelope['summary']['passed']}/{envelope['summary']['total']} passed)"
+        )
+
+    raise typer.Exit(0 if envelope["ok"] else 1)

@@ -40,8 +40,16 @@ def test_run_help_parses() -> None:
 
 
 def test_auth_login_parses() -> None:
-    result = _invoke_in_isolated_app_support(["auth", "login", "--json"])
-    assert result.exit_code in (0, 1)
+    # Help-surface grammar test only: invoking the real `auth login` body
+    # builds MSAL providers and attempts interactive delegated/device-code
+    # auth, which is inappropriate for a parser/grammar smoke test and
+    # causes the canonical suite to hang. Validate command registration
+    # and documented option flags via --help instead.
+    result = runner.invoke(app, ["auth", "login", "--help"])
+    assert result.exit_code == 0
+    assert "--json" in result.output
+    assert "--app-only" in result.output
+    assert "--no-device-code" in result.output
 
 
 def test_auth_status_parses() -> None:
