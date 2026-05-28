@@ -312,6 +312,6 @@ def test_live_endpoints_list_emits_canonical_phase04a_rows() -> None:
     assert rfis["live_verified"] is True
     topics_row = next(r for r in rows if r["endpoint_id"] == "meeting-topics")
     assert topics_row["live_verified"] is True
-    # Phase 04A + meeting-detail + punch-items: all 18 canonical endpoints are now verified.
+    # Phase 04A + meeting-detail + punch-items + schedules + activities: all 20 canonical endpoints are now verified.
     assert all(r["live_verified"] for r in rows)
-    assert len(rows) == 18
+    assert len(rows) == 20

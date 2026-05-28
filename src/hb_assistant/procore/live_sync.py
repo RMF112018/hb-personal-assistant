@@ -33,6 +33,7 @@ from hb_assistant.procore.live_gate import (
 from hb_assistant.procore.loader import load_procore_projects
 from hb_assistant.procore.normalizers import (
     extract_topics_from_categories,
+    normalize_activity,
     normalize_meeting,
     normalize_meeting_detail,
     normalize_meeting_topic,
@@ -40,6 +41,7 @@ from hb_assistant.procore.normalizers import (
     normalize_punch_item,
     normalize_rfi,
     normalize_rfi_reply,
+    normalize_schedule,
     normalize_submittal,
     normalize_submittal_package,
     normalize_submittal_response,
@@ -433,6 +435,11 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     # and free-text (description, schedule_risk_reason, comments) are
     # reduced to hash-only summaries inside the normalizer.
     "punch-items": normalize_punch_item,
+    # v2.0 company-scoped scheduling endpoints. data envelope is unwrapped
+    # by http_client.paginate. activities is the child of schedules and
+    # fetched via per-schedule N+1 when operator selects --endpoint activities.
+    "schedules": normalize_schedule,
+    "activities": normalize_activity,
 }
 
 
@@ -456,11 +463,16 @@ def _resolve_procore_project_id(project_key: str) -> Optional[str]:
 
 
 def _resolve_path(adapter: EndpointAdapter, procore_project_id: str) -> str:
-    """Substitute the project_id parameter; raise if a child endpoint lacks
-    its parent record id (we never invoke child endpoints in this prompt)."""
-    if "{project_id}" in adapter.path_template:
-        return adapter.path_template.replace("{project_id}", procore_project_id)
-    return adapter.path_template
+    """Substitute the project_id and company_id parameters.
+
+    Phase 04A v2.0 endpoints (e.g., /companies/{company_id}/projects/.../schedules)
+    require both. v1.x endpoints typically have only {project_id}. Path placeholders
+    that don't appear in the template are no-ops.
+    """
+    path = adapter.path_template
+    path = path.replace("{project_id}", procore_project_id)
+    path = path.replace("{company_id}", COMPANY_ID)
+    return path
 
 
 def _build_receipt(
@@ -778,13 +790,16 @@ def run_live_sync(
         live_enabled=True,
     )
 
-    # meeting-detail is a list+detail flow: the operator-facing endpoint_id
-    # resolves to the per-meeting detail URL, but the orchestrator first
-    # fetches the meetings list at parent_path_template to get the meeting ids.
-    if adapter.endpoint_id == "meeting-detail" and adapter.parent_path_template:
+    # meeting-detail and activities are both list+N+1 flows: the operator-facing
+    # endpoint_id resolves to a per-item URL, but the orchestrator first fetches
+    # the parent list at parent_path_template to get the iteration ids.
+    if (
+        adapter.endpoint_id in ("meeting-detail", "activities")
+        and adapter.parent_path_template
+    ):
         path = adapter.parent_path_template.replace(
             "{project_id}", str(procore_project_id)
-        )
+        ).replace("{company_id}", COMPANY_ID)
     else:
         path = _resolve_path(adapter, str(procore_project_id))
 
@@ -933,6 +948,53 @@ def run_live_sync(
             items = flattened[:max_items]
             retrieved_count = len(items)
 
+    # activities per-schedule N+1 fetch (v2.0 list+detail flow). The
+    # orchestrator already has the schedules list (`items`); for each schedule
+    # it issues one activities GET (data envelope unwrapped by http_client),
+    # then REPLACES items with the flat list of all activities across all
+    # schedules. Each activity carries schedule_id in its payload so the
+    # parent_procore_id can be derived at upsert time without a kwarg.
+    if adapter.endpoint_id == "activities" and items:
+        activity_items: List[Dict[str, Any]] = []
+        for schedule_summary in items:
+            if not isinstance(schedule_summary, dict):
+                continue
+            schedule_id = schedule_summary.get("schedule_id")
+            if schedule_id is None or schedule_id == "":
+                continue
+            activities_path = (
+                f"/rest/v2.0/companies/{COMPANY_ID}/projects/{procore_project_id}"
+                f"/schedules/{schedule_id}/activities"
+            )
+            try:
+                activity_iter = list(
+                    client.paginate(
+                        activities_path, per_page=100, max_pages=3, max_items=200
+                    )
+                )
+            except ProcoreAPIError as exc:
+                redacted_errors.append(
+                    {
+                        "detail_transport_error": exc.code,
+                        "status": exc.status,
+                        "schedule_id": schedule_id,
+                    }
+                )
+                continue
+            except Exception:  # noqa: BLE001
+                redacted_errors.append(
+                    {"detail_transport_error": "unexpected", "schedule_id": schedule_id}
+                )
+                continue
+            for activity_raw in activity_iter:
+                if isinstance(activity_raw, dict):
+                    # Ensure schedule_id is set even if the payload omits it
+                    # (so parent_procore_id can be derived at upsert time).
+                    activity_raw.setdefault("schedule_id", schedule_id)
+                    activity_items.append(activity_raw)
+        items = activity_items[:max_items]
+        retrieved_count = len(items)
+
     # meeting-detail per-meeting N+1 detail fetch. The orchestrator already
     # has the meetings list (`items`); now issue one detail GET per meeting
     # and REPLACE items with the rich detail payloads. Rate-limit / 5xx on
@@ -1032,13 +1094,20 @@ def run_live_sync(
             redacted_errors.append({"normalize_error": "missing_record_id"})
             continue
         source_url = record["canonical_fields"].get("source_url") if isinstance(record.get("canonical_fields"), dict) else None
+        # activities link back to their parent schedule_id via parent_procore_id.
+        # For all other top-level endpoints, parent_procore_id stays None.
+        parent_id_for_upsert: Optional[str] = None
+        if adapter.endpoint_id == "activities":
+            sched_id = raw.get("schedule_id") if isinstance(raw, dict) else None
+            if sched_id is not None and sched_id != "":
+                parent_id_for_upsert = str(sched_id)
         try:
             upsert_procore_live_record(
                 project_key=project_key,
                 procore_project_id=str(procore_project_id),
                 endpoint_id=adapter.endpoint_id,
                 procore_record_id=record_id,
-                parent_procore_id=None,
+                parent_procore_id=parent_id_for_upsert,
                 normalized_fields=record["canonical_fields"],
                 review_required=bool(record.get("review_required")),
                 sensitive_reason=record.get("routing_reason"),

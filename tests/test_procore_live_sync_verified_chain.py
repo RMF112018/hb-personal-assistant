@@ -38,7 +38,7 @@ class _FakeResponse:
 class _FakeTransport:
     """Records every call and returns a fixed JSON body."""
 
-    def __init__(self, payload: List[Dict[str, Any]]):
+    def __init__(self, payload: Any):
         self.payload = payload
         self.calls: List[Dict[str, Any]] = []
 
@@ -275,12 +275,15 @@ class _PathAwareFakeTransport:
 
     def __init__(
         self,
-        path_to_payload: Dict[str, List[Dict[str, Any]]],
+        path_to_payload: Dict[str, Any],
         error_paths: Optional[Dict[str, int]] = None,
     ) -> None:
         self.path_to_payload = path_to_payload
         self.error_paths = error_paths or {}
         self.calls: List[Dict[str, Any]] = []
+        # Track per-URL call count so subsequent paginator calls to the same
+        # URL halt (matches real Procore behavior + the _FakeTransport pattern).
+        self._url_seen: Dict[str, int] = {}
 
     def __call__(
         self,
@@ -289,13 +292,18 @@ class _PathAwareFakeTransport:
         headers: Dict[str, str],
         params: Optional[Dict[str, Any]],
     ) -> _FakeResponse:
-        self.calls.append({"method": method, "url": url})
+        self.calls.append({"method": method, "url": url, "params": dict(params or {})})
         for needle, code in self.error_paths.items():
             if needle in url:
                 return _FakeResponse([], status_code=code)
         for needle, body in self.path_to_payload.items():
             if needle in url:
-                return _FakeResponse(body)
+                seen = self._url_seen.get(needle, 0)
+                self._url_seen[needle] = seen + 1
+                if seen == 0:
+                    return _FakeResponse(body)
+                # Subsequent calls return empty so paginator halts.
+                return _FakeResponse([])
         return _FakeResponse([])
 
 
@@ -1495,3 +1503,153 @@ def test_punch_items_apply_persists_with_pii_hashed_and_bodies_summarized(
         assert "schedule_risk_reason_summary" in canonical_json
         # No emails persisted
         assert "@" not in canonical_json
+
+
+# ----------------------------------------------------------------------------
+# v2.0 schedules + activities: data envelope + list+N+1 dispatch
+# ----------------------------------------------------------------------------
+
+
+def test_schedules_apply_unwraps_data_envelope(monkeypatch: pytest.MonkeyPatch) -> None:
+    """v2.0 endpoints wrap responses in {"data": [...]}. The shared http_client
+    paginator unwraps both items and data keys; the orchestrator then operates
+    on the bare list."""
+    _setup_env(monkeypatch)
+    db = _db()
+    payload = {
+        "data": [
+            {
+                "schedule_id": "100",
+                "project_id": "2525840",
+                "company_id": "5280",
+                "schedule_name": "Schedule One",
+                "schedule_type": "IMPORTED_READ_WRITE_PROJECT_SCHEDULE",
+                "is_active": True,
+                "data_date": "2026-05-01T00:00:00Z",
+                "calendar_id": "1",
+                "created_at": "2026-05-01T00:00:00Z",
+                "updated_at": "2026-05-15T00:00:00Z",
+            },
+            {
+                "schedule_id": "200",
+                "project_id": "2525840",
+                "company_id": "5280",
+                "schedule_name": "Schedule Two",
+                "schedule_type": "IMPORTED_READ_WRITE_PROJECT_SCHEDULE",
+                "is_active": False,
+            },
+        ]
+    }
+    transport = _FakeTransport(payload)
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="schedules",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["sqlite_upserted_count"] == 2
+    assert len(transport.calls) == 1
+    # v2.0 path includes both {company_id} and {project_id} substituted
+    assert "/rest/v2.0/companies/5280/projects/2525840/schedules" in transport.calls[0]["url"]
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="schedules", db_path=db
+    ) == 2
+
+
+def test_activities_apply_list_plus_n_per_schedule(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The activities endpoint first fetches schedules list, then issues one
+    activities GET per schedule. Each activity row carries parent_procore_id =
+    schedule_id."""
+    _setup_env(monkeypatch)
+    db = _db()
+    secret_notes = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
+    list_payload = {
+        "data": [
+            {"schedule_id": "100", "schedule_name": "S1"},
+            {"schedule_id": "200", "schedule_name": "S2"},
+        ]
+    }
+    activities_100 = {
+        "data": [
+            {
+                "activity_id": "A1",
+                "activity_name": "Pour foundation",
+                "is_critical": True,
+                "percent_complete": 50.0,
+                "notes": secret_notes,
+                "schedule_id": "100",
+                "category_data": [{"name": "Phase_GLOBAL", "value": "Foundation"}],
+            },
+            {
+                "activity_id": "A2",
+                "activity_name": "Install windows",
+                "is_critical": False,
+                "schedule_id": "100",
+            },
+        ]
+    }
+    activities_200 = {
+        "data": [
+            {
+                "activity_id": "B1",
+                "activity_name": "Final inspection",
+                "is_critical": True,
+                "schedule_id": "200",
+            }
+        ]
+    }
+    transport = _PathAwareFakeTransport(
+        {
+            "/rest/v2.0/companies/5280/projects/2525840/schedules/100/activities": activities_100,
+            "/rest/v2.0/companies/5280/projects/2525840/schedules/200/activities": activities_200,
+            "/rest/v2.0/companies/5280/projects/2525840/schedules": list_payload,
+        }
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="activities",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    # 3 activities across 2 schedules
+    assert receipt["sqlite_upserted_count"] == 3
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="activities", db_path=db
+    ) == 3
+
+    # Each activity row carries parent_procore_id = its source schedule_id
+    conn = sqlite3.connect(str(db))
+    try:
+        rows = conn.execute(
+            "SELECT procore_record_id, parent_procore_id, canonical_json_redacted, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='activities' ORDER BY procore_record_id"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert len(rows) == 3
+    parent_map = {row[0]: row[1] for row in rows}
+    assert parent_map["A1"] == "100"
+    assert parent_map["A2"] == "100"
+    assert parent_map["B1"] == "200"
+    # notes free-text NEVER appears in any row
+    for _record_id, _parent, canonical_json, raw_body in rows:
+        assert secret_notes not in canonical_json
+        assert raw_body == 0

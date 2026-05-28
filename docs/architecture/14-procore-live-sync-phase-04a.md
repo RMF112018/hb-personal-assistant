@@ -319,19 +319,51 @@ surface.
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/14-punch-items-endpoint.md`.
 
+## v2.0 schedules + activities — `{company_id}` substitution + data envelope
+
+`schedules` (registry row #19) and `activities` (#20) are the first
+Phase 04A endpoints that introduce two v2.0-specific shape elements:
+
+1. **`{company_id}` path placeholder.** v2.0 paths are company-scoped:
+   `/rest/v2.0/companies/{company_id}/projects/{project_id}/schedules/...`.
+   `_resolve_path` is extended to substitute `{company_id}` from the
+   existing module-level `COMPANY_ID = "5280"` constant alongside
+   `{project_id}`. The substitution is a no-op for endpoints whose
+   path template doesn't include `{company_id}`.
+
+2. **`data` envelope.** v2.0 responses wrap their result in
+   `{"data": [...]}` rather than a bare array (v1.0) or `{"items":
+   [...]}` (legacy v1.1). The shared `http_client.paginate.fetch`
+   body unwrap now accepts both `items` and `data` envelopes; a bare
+   dict still falls through to a single-row response.
+
+`activities` is the per-schedule child of `schedules`. The orchestrator
+mirrors the meeting-detail dispatch shape: when `adapter.endpoint_id
+== "activities"`, the initial paginate uses `parent_path_template`
+(the schedules list), then iterates per-schedule
+`/schedules/{schedule_id}/activities` GETs (N+1, bounded by
+`--max-items`). Each activity's `parent_procore_id` is derived from
+`raw["schedule_id"]` at upsert time so the SQLite PK correctly links
+child rows back to their source schedule.
+
+Both normalizers (`normalize_schedule` and `normalize_activity`) live
+in `src/hb_assistant/procore/normalizers/schedule.py`. Activity `notes`
+is the only free-text field; it reduces to a SHA-256 `notes_summary`.
+`category_data` and `resource_data` arrays are preserved verbatim as
+short-label structured collections.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/15-schedules-and-activities-endpoints.md`.
+
 ## Verified vs unverified endpoints
 
-Post punch-items addition, **all 18 of 18 canonical endpoint IDs are
-`live_verified=True`** and execute the full chain: `projects`,
-`rfis`, `rfi-responses`, `submittals`, `submittal-responses`,
-`submittal-packages`, `meetings`, `meeting-topics`, `meeting-detail`,
-`observations`, `daily-log-weather`, `daily-log-manpower`,
-`daily-log-notes`, `daily-log-deliveries`,
-`daily-log-delays-review-routed`, `daily-log-inspections`,
-`daily-log-dcrs`, `punch-items`. Phase 04A registry coverage spans
-the 16 foundational endpoints plus `meeting-detail` (rich per-meeting
-fetch) and `punch-items` (per-project punch list with PII-hashed
-people refs).
+Post schedules + activities addition, **all 20 of 20 canonical
+endpoint IDs are `live_verified=True`** and execute the full chain:
+the prior 18 plus `schedules` (v2.0 company-scoped list) and
+`activities` (per-schedule N+1 child). Phase 04A registry coverage
+spans foundational v1.0/v1.1 endpoints, rich per-item fetches
+(`meeting-detail`), PII-bearing surfaces (`punch-items`,
+`meeting-detail`), and v2.0 scheduling data with the `data` envelope
++ `{company_id}` path-substitution pattern.
 
 ## Receipt shape
 

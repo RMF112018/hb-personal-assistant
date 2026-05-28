@@ -183,7 +183,12 @@ class ProcoreHTTPClient:
             if isinstance(body, list):
                 items = [row for row in body if isinstance(row, dict)]
             elif isinstance(body, dict):
+                # v2.0 endpoints (e.g. /schedules, /activities) wrap the list
+                # in a "data" envelope. v1.0/v1.1 endpoints sometimes wrap in
+                # "items". A bare dict is treated as a single-row response.
                 raw_items = body.get("items")
+                if not isinstance(raw_items, list):
+                    raw_items = body.get("data")
                 if isinstance(raw_items, list):
                     items = [row for row in raw_items if isinstance(row, dict)]
                 elif body:

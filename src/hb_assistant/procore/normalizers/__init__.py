@@ -36,6 +36,10 @@ from .rfi import (
     normalize_rfi_payload_block,
     normalize_rfi_reply,
 )
+from .schedule import (
+    normalize_activity,
+    normalize_schedule,
+)
 from .submittal import (
     normalize_submittal,
     normalize_submittal_package,
@@ -53,11 +57,13 @@ __all__ = [
     "normalize_meeting_payload_block",
     "normalize_meeting_topic",
     "normalize_meeting_topic_payload_block",
+    "normalize_activity",
     "normalize_observation",
     "normalize_observation_comment",
     "normalize_observation_payload_block",
     "normalize_punch_item",
     "normalize_rfi",
+    "normalize_schedule",
     "normalize_rfi_payload_block",
     "normalize_rfi_reply",
     "normalize_submittal",

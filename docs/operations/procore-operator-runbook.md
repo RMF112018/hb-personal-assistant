@@ -997,6 +997,47 @@ PII guarantees:
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/14-punch-items-endpoint.md`.
 
+## Phase 04A: schedules + activities endpoints (v2.0 company-scoped)
+
+Two new endpoints from Procore's v2.0 surface:
+- `schedules` — `/rest/v2.0/companies/{company_id}/projects/{project_id}/schedules`
+- `activities` — per-schedule child fetched via N+1 from the schedules list.
+
+Both endpoints return `{"data": [...]}` envelopes; the shared
+`http_client.paginate` now unwraps both `items` and `data` keys.
+`_resolve_path` now substitutes `{company_id}` from the existing
+`COMPANY_ID = "5280"` constant alongside `{project_id}`.
+
+Operator commands:
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical --endpoint schedules \
+  --apply --sqlite-only --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical --endpoint activities \
+  --apply --sqlite-only --max-pages 1 --max-items 5 \
+  --confirm-live-get --json
+```
+
+Dispatch shape:
+- `schedules`: single list call. Operational scheduling data —
+  `review_required=False`.
+- `activities`: list-fetch (1 call to the schedules list at
+  parent_path_template) + N+1 (one activities GET per schedule, bounded
+  by `--max-items`). Each activity row carries
+  `parent_procore_id = schedule_id` so operators can join activities
+  back to their parent schedule.
+
+Free-text guarantee: activity `notes` reduces to a SHA-256
+`notes_summary`; raw text never persists. Structured fields
+(`category_data`, `resource_data`, `assigned_company`, risk + duration
+fields) preserved verbatim.
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/15-schedules-and-activities-endpoints.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

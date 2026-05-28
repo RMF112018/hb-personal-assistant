@@ -23,6 +23,8 @@ _CANONICAL_IDS = {
     "daily-log-inspections",
     "daily-log-dcrs",
     "punch-items",
+    "schedules",
+    "activities",
 }
 
 
@@ -56,10 +58,10 @@ def test_unknown_endpoint_resolves_to_none() -> None:
 
 def test_verified_endpoints_match_phase04a_matrix() -> None:
     verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
-    # Post punch-items addition: 18/18 verified. punch-items is a top-level
-    # /punch_items list endpoint with project_id as a query param. PII
-    # (people refs, assignment login info) and free-text (description,
-    # schedule_risk_reason, comments) are reduced to hash-only summaries.
+    # Post schedules + activities addition: 20/20 verified. Both are
+    # v2.0 company-scoped endpoints; activities iterates per-schedule N+1.
+    # The shared http_client.paginate now unwraps both `items` and `data`
+    # envelopes.
     assert verified == {
         "projects",
         "rfis",
@@ -79,6 +81,8 @@ def test_verified_endpoints_match_phase04a_matrix() -> None:
         "daily-log-inspections",
         "daily-log-dcrs",
         "punch-items",
+        "schedules",
+        "activities",
     }
 
 
