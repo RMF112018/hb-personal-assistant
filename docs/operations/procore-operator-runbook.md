@@ -16,6 +16,18 @@ financials, incidents, injury, or personnel data.
 (SharePoint / OneDrive / Outlook ingestion) and
 `mvp-local-runtime-operator-guide.md` (local-runtime setup).
 
+**Phase 04A baseline (2026-05-28):** The Procore Live Enablement arc opens
+at commit `e90a5e2` (Phase 04 closeout). Phase 04A Prompt 00 is a
+verification-only rebaseline — no CLI surface changes, no guardrail
+changes, no live transport wiring yet. The default `ProcoreHTTPClient`
+transport still raises `transport_not_injected`; no `procore live`
+subgroup or `procore live smoke` command exists at this baseline. Future
+Phase 04A prompts introduce the production-wired transport (item 05-A)
+and live-gated probes — those changes will land behind `HB_PROCORE_LIVE=1`
++ `--confirm-live-get` and will be documented in this runbook when they
+ship. See evidence
+`docs/evidence/construction-intelligence-phase-04a/00-rebaseline-readiness.md`.
+
 ## Environment variables
 
 | Var | Purpose | Set when |
