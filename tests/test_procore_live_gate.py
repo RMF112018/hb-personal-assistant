@@ -194,3 +194,64 @@ def test_cli_sync_run_dry_run_default_unaffected_by_gate(
     )
     assert res.exit_code == 0
     assert "live_env_not_set" not in res.output.lower()
+
+
+def test_live_env_and_live_enabled_still_require_confirm_live_get(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
+    runner = CliRunner()
+    res = runner.invoke(
+        app,
+        [
+            "procore",
+            "live",
+            "sync",
+            "--project",
+            "tropical",
+            "--endpoint",
+            "list-rfis",
+            "--apply",
+            "--sqlite-only",
+            "--max-pages",
+            "3",
+            "--max-items",
+            "100",
+            "--json",
+        ],
+        catch_exceptions=False,
+    )
+    assert res.exit_code == 3
+    assert "confirm_live_get_required" in res.output
+
+
+def test_live_sync_fail_closed_when_all_gates_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
+    runner = CliRunner()
+    res = runner.invoke(
+        app,
+        [
+            "procore",
+            "live",
+            "sync",
+            "--project",
+            "tropical",
+            "--endpoint",
+            "list-rfis",
+            "--apply",
+            "--sqlite-only",
+            "--max-pages",
+            "3",
+            "--max-items",
+            "100",
+            "--confirm-live-get",
+            "--json",
+        ],
+        catch_exceptions=False,
+    )
+    assert res.exit_code == 2
+    assert "endpoint_sync_not_implemented" in res.output

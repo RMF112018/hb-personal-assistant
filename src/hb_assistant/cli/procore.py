@@ -634,6 +634,7 @@ def audit_execute(
 # =============================================================================
 
 sync_app = typer.Typer(help="Pilot project dry-run sync pipeline (Prompt_09). Dry-run default. --apply is explicit opt-in, local SQLite only, audit-gated.")
+live_app = typer.Typer(help="Fail-closed live Procore scaffolding (Prompt 02). Command surface only; endpoint sync not yet implemented.")
 
 @sync_app.command("run")
 def sync_run(
@@ -697,6 +698,80 @@ def sync_run(
 
 # Register the new sub-app (additive; existing surfaces untouched)
 app.add_typer(sync_app, name="sync", help="Pilot project dry-run sync (Prompt_09) — audit-gated, local SQLite only")
+app.add_typer(live_app, name="live", help="Live Procore command scaffolding (fail-closed)")
+
+
+@live_app.command("sync")
+def live_sync(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    endpoint: str = typer.Option(..., "--endpoint", help="Endpoint family id."),
+    apply: bool = typer.Option(False, "--apply", help="Required for live intent."),
+    sqlite_only: bool = typer.Option(True, "--sqlite-only", help="Required guardrail; no source-system mutation."),
+    max_pages: int = typer.Option(3, "--max-pages", min=1),
+    max_items: int = typer.Option(100, "--max-items", min=1),
+    confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Fail-closed live sync command surface for later endpoint adapters."""
+    from hb_assistant.procore.token_provider import default_procore_token_provider
+
+    gates = {
+        "hb_procore_live": False,
+        "confirm_live_get": bool(confirm_live_get),
+        "apply": bool(apply),
+        "sqlite_only": bool(sqlite_only),
+        "mapped_pilot_project": False,
+        "endpoint_allowed_verified": False,
+        "token_provider_ready": False,
+    }
+    errors: list[str] = []
+
+    try:
+        require_live_env(command="procore live sync")
+        gates["hb_procore_live"] = True
+    except LiveEnvNotSet:
+        errors.append("live_env_not_set")
+
+    registry = load_procore_projects()
+    try:
+        assert_live_mapping_strict(registry, [project])
+        gates["mapped_pilot_project"] = True
+    except ProcoreAPIError:
+        errors.append("mapping_not_live_eligible")
+
+    contract = load_endpoint_contract()
+    endpoint_row = next((ep for ep in contract.endpoints if ep.endpoint_id == endpoint), None)
+    if endpoint_row and endpoint_row.is_live_eligible and endpoint_row.verification_status == "verified":
+        gates["endpoint_allowed_verified"] = True
+    else:
+        errors.append("endpoint_not_live_verified")
+
+    token_provider = default_procore_token_provider()
+    gates["token_provider_ready"] = bool(token_provider.get_access_token())
+    if not gates["token_provider_ready"]:
+        errors.append("token_provider_unavailable")
+    if not confirm_live_get:
+        errors.append("confirm_live_get_required")
+    if not apply:
+        errors.append("apply_required")
+    if not sqlite_only:
+        errors.append("sqlite_only_required")
+
+    payload = {
+        "command": "hb-assistant procore live sync",
+        "ok": False,
+        "status": "live_endpoint_adapter_not_ready",
+        "reason": "endpoint_sync_not_implemented",
+        "project": project,
+        "endpoint": endpoint,
+        "max_pages": max_pages,
+        "max_items": max_items,
+        "gates": gates,
+        "errors": sorted(set(errors)),
+        "guardrails": _GUARDRAILS,
+    }
+    exit_code = 3 if errors else 2
+    _emit(payload, json_out=json_out, exit_code=exit_code)
 
 # =============================================================================
 # Prompt_10: procore obsidian output preview (dry-run default; explicit --apply)

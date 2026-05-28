@@ -207,3 +207,65 @@ def test_paginate_method_aligned_with_sync_call_site():
     """
     assert hasattr(ProcoreHTTPClient, "paginate")
     assert not hasattr(ProcoreHTTPClient, "get_paginated")
+
+
+def test_live_disabled_blocks_default_transport_without_injected_transport():
+    client = ProcoreHTTPClient(
+        environment="sandbox",
+        transport=None,
+        access_token_provider=_stub_token_provider,
+        live_enabled=False,
+    )
+    with pytest.raises(ProcoreAPIError) as exc:
+        client.get("/rest/v1.1/projects")
+    assert exc.value.code == "transport_not_injected"
+
+
+def test_paginate_returns_normalized_items_and_honors_max_bounds():
+    link_next = '<https://sandbox.procore.com/rest/v1.1/projects?page=2&per_page=2>; rel="next"'
+    transport, _ = make_recording_transport(
+        [
+            FakeResponse(200, [{"id": "1"}, {"id": "2"}], headers={"Link": link_next}),
+            FakeResponse(200, [{"id": "3"}, {"id": "4"}], headers={}),
+        ]
+    )
+    client = ProcoreHTTPClient(
+        environment="sandbox",
+        transport=transport,
+        access_token_provider=_stub_token_provider,
+    )
+    rows = list(
+        client.paginate(
+            "/rest/v1.1/projects",
+            params={"page": 1},
+            per_page=2,
+            max_pages=2,
+            max_items=3,
+        )
+    )
+    assert rows == [{"id": "1"}, {"id": "2"}, {"id": "3"}]
+
+
+def test_paginate_retries_429_with_retry_after(monkeypatch: pytest.MonkeyPatch):
+    sleeps: list[float] = []
+
+    def _sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    monkeypatch.setattr("hb_assistant.procore.pagination.time.sleep", _sleep)
+    monkeypatch.setattr("hb_assistant.procore.pagination.random.random", lambda: 0.0)
+
+    transport, _ = make_recording_transport(
+        [
+            FakeResponse(429, {}, headers={"Retry-After": "2"}),
+            FakeResponse(200, [{"id": "ok"}], headers={}),
+        ]
+    )
+    client = ProcoreHTTPClient(
+        environment="sandbox",
+        transport=transport,
+        access_token_provider=lambda: SYNTHETIC_ACCESS_TOKEN,
+    )
+    rows = list(client.paginate("/rest/v1.1/projects", max_pages=1, max_items=10))
+    assert rows == [{"id": "ok"}]
+    assert sleeps == [2.0]

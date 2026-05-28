@@ -35,8 +35,8 @@ from hb_assistant.procore.token_provider import (
 )
 
 # Prompt_02 config interface (used at runtime only; token never stored in this client).
-# Note: the client deliberately does not import ``get_procore_client_secret``. Reusing
-# the client secret as a bearer credential is a Phase 04 Prompt 01 hazard that this
+# Note: the client deliberately does not import any client-secret loader. Reusing
+# the client secret as a bearer credential is a Phase 04 Prompt hazard that this
 # module fails closed against; access tokens come exclusively from a
 # :class:`ProcoreTokenProvider` (Phase 04 Prompt 02).
 try:
@@ -64,6 +64,7 @@ class ProcoreHTTPClient:
         environment: str = "sandbox",
         transport: Optional[Transport] = None,
         access_token_provider: Optional[AccessTokenProvider] = None,
+        live_enabled: bool = False,
         user_agent: str = "HB-Personal-Assistant/1.3.0 (GET-only)",
     ):
         self.environment = environment
@@ -71,6 +72,7 @@ class ProcoreHTTPClient:
         self._access_token_provider: ProcoreTokenProvider = adapt_token_source(
             access_token_provider
         )
+        self.live_enabled = live_enabled
         self.user_agent = user_agent
         self._env_config = get_environment_config(environment)
 
@@ -122,13 +124,13 @@ class ProcoreHTTPClient:
         if self._transport is not None:
             resp = self._transport("GET", url, req_headers, params)
         else:
-            # Production path would use a real session (requests/httpx). Not exercised in tests.
-            # For the foundation we raise a clear message so callers know they must provide transport in test.
-            raise ProcoreAPIError(
-                status=0,
-                code="transport_not_injected",
-                message="No transport provided. In production wire a real session. In tests always inject a mock.",
-            )
+            if not self.live_enabled:
+                raise ProcoreAPIError(
+                    status=0,
+                    code="transport_not_injected",
+                    message="No transport provided. Tests must inject transport. Real transport requires live_enabled=True.",
+                )
+            resp = self._default_live_transport("GET", url, req_headers, params)
 
         # Redact response before any consumer sees it
         _ = redact_response(getattr(resp, "status_code", 0), dict(getattr(resp, "headers", {})), getattr(resp, "_json", None))
@@ -164,16 +166,87 @@ class ProcoreHTTPClient:
         return self._request("GET", path, params=params, **kwargs)
 
     def paginate(
-        self, path: str, params: Optional[Dict[str, Any]] = None, *, per_page: int = 100
+        self,
+        path: str,
+        params: Optional[Dict[str, Any]] = None,
+        *,
+        per_page: int = 100,
+        max_pages: Optional[int] = None,
+        max_items: Optional[int] = None,
     ) -> Iterator[dict]:
-        def fetch(p: Dict[str, Any]) -> Any:
-            # The real transport returns something the paginator can turn into PageResult.
-            # For the foundation we expose the raw response and let a thin adapter normalize.
-            # In practice the client layer above this will provide the adapter.
-            return self.get(path, params=p)
+        from hb_assistant.procore.pagination import PageResult, RateLimitInfo
+
+        def fetch(p: Dict[str, Any]) -> PageResult:
+            resp = self.get(path, params=p)
+            body = resp.json() if callable(getattr(resp, "json", None)) else getattr(resp, "_json", None)
+            items: list[dict] = []
+            if isinstance(body, list):
+                items = [row for row in body if isinstance(row, dict)]
+            elif isinstance(body, dict):
+                raw_items = body.get("items")
+                if isinstance(raw_items, list):
+                    items = [row for row in raw_items if isinstance(row, dict)]
+                elif body:
+                    items = [body]
+
+            headers = dict(getattr(resp, "headers", {}) or {})
+            next_link = self._extract_next_link(headers.get("Link"))
+            next_cursor = None
+            if isinstance(body, dict):
+                for key in ("next_cursor", "starting_after", "next"):
+                    value = body.get(key)
+                    if isinstance(value, str) and value:
+                        next_cursor = value
+                        break
+            return PageResult(
+                items=items,
+                next_link=next_link,
+                next_cursor=next_cursor,
+                rate_info=RateLimitInfo(
+                    limit=_as_int(headers.get("X-RateLimit-Limit")),
+                    remaining=_as_int(headers.get("X-RateLimit-Remaining")),
+                    reset=_as_int(headers.get("X-RateLimit-Reset")),
+                    retry_after=_as_int(headers.get("Retry-After")),
+                ),
+                raw_headers={k: str(v) for k, v in headers.items()},
+            )
 
         paginator = ProcorePaginator(
-            fetch_page=lambda p: fetch(p),  # type: ignore[arg-type]
+            fetch_page=fetch,
             prefer_cursor=True,
         )
-        yield from paginator.iterate(params, per_page=per_page)
+        yield from paginator.iterate(
+            params,
+            per_page=per_page,
+            max_pages=max_pages,
+            max_items=max_items,
+        )
+
+    def _default_live_transport(
+        self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]
+    ) -> Any:
+        import requests
+
+        return requests.request(
+            method=method,
+            url=url,
+            headers=headers,
+            params=params,
+            timeout=30,
+        )
+
+    def _extract_next_link(self, header: Optional[str]) -> Optional[str]:
+        if not header:
+            return None
+        for part in header.split(","):
+            segment = part.strip()
+            if '; rel="next"' in segment and "<" in segment and ">" in segment:
+                return segment[segment.find("<") + 1: segment.find(">")]
+        return None
+
+
+def _as_int(value: Any) -> Optional[int]:
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
