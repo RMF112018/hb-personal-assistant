@@ -1,4 +1,5 @@
-# Source: HB Construction Intelligence Phase 03 package (resources/config/). Package manifest sha: 15584bfd9d673b9216fc785d21317d80b2d4e9d8f78b99408884714e15700c2b. Copied for deterministic rendering. DO NOT EDIT MANUALLY.
+# Source: HB Construction Intelligence Phase 03 package (resources/config/). Package manifest sha: 15584bfd9d673b9216fc785d21317d80b2d4e9d8f78b99408884714e15700c2b.
+# Phase 04 Prompt 09 appended family-scoped rules (procore-rfi-*, procore-submittal-*, procore-observation-*, procore-meeting-*, procore-daily-log-personnel-pii) as declarative parity with the per-entity normalizers shipped in Prompts 04–08. The four Phase 03 rules above remain untouched.
 
 version: 1
 rules:
@@ -19,3 +20,28 @@ rules:
     categories: [daily_log_delays]
     sensitivity: high
     route: review_required
+  - rule_id: procore-rfi-legal-or-contractual
+    keywords: [legal, contract, claim, dispute, breach]
+    sensitivity: high
+    route: review_required
+    note: "Phase 04 Prompt 09: parity with rfi normalizer status-fragment routing. Keyword-only — categories intentionally omitted so non-sensitive RFIs are not blanket-routed."
+  - rule_id: procore-submittal-financial-or-legal
+    keywords: [cost, price, invoice, payment]
+    sensitivity: high
+    route: review_required
+    note: "Phase 04 Prompt 09: parity with submittal normalizer routing. Keyword-only — legal/claim already covered by procore-incident-injury-personnel + procore-rfi-legal-or-contractual."
+  - rule_id: procore-observation-safety
+    keywords: [near miss, violation, unsafe, ppe, fall, fatal, hospitalization, osha]
+    sensitivity: critical
+    route: review_required
+    note: "Phase 04 Prompt 09: parity with observation _safety_route_decision four-field scan. Incident/injury already covered by procore-incident-injury-personnel."
+  - rule_id: procore-meeting-sensitive-topic
+    keywords: [settlement]
+    sensitivity: high
+    route: review_required
+    note: "Phase 04 Prompt 09: parity with meeting + meeting-topic normalizer routing. Other meeting-sensitive keywords (legal/claim/dispute/incident) already covered by earlier rules."
+  - rule_id: procore-daily-log-personnel-pii
+    keywords: [badge id, ssn, personnel record]
+    sensitivity: critical
+    route: review_required
+    note: "Phase 04 Prompt 09: PII-bearing daily log sections; full text never persisted."

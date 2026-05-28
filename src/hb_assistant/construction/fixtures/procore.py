@@ -789,3 +789,47 @@ DAILY_LOG_SAMPLE_PAYLOAD: list[dict[str, Any]] = [
 PROCORE_DAILY_LOG_FIXTURES: dict[str, list[dict[str, Any]]] = {
     "daily_log_sample_payload": DAILY_LOG_SAMPLE_PAYLOAD,
 }
+
+
+# ---------------------------------------------------------------------------
+# Phase 04 Prompt 09: sensitive-routing proof text blobs.
+#
+# Each blob carries one routing-trigger keyword PLUS an obviously-synthetic
+# email, phone, and token-like literal. Consumed only by
+# tests/test_procore_sensitive_routing_proof.py and the proof-evidence
+# generator. The literals share the `synthetic-fixture` / `example.invalid` /
+# `555-0100-*` shape so the repo sensitive-scan allowlist can cover them.
+# ---------------------------------------------------------------------------
+
+SENSITIVE_SYNTHETIC_EMAIL = "synthetic-fixture@example.invalid"
+SENSITIVE_SYNTHETIC_PHONE = "555-010-0001"
+SENSITIVE_SYNTHETIC_TOKEN = "syntheticfixturetoken00112233445566"
+
+PHASE_04_SENSITIVE_TEXT_BLOBS: dict[str, str] = {
+    "rfi": (
+        "Contractor escalates legal claim regarding contract scope; "
+        "contact synthetic-fixture@example.invalid or 555-010-0001; "
+        "session id syntheticfixturetoken00112233445566."
+    ),
+    "submittal": (
+        "Cost impact and invoice dispute attached; reply payment status to "
+        "synthetic-fixture@example.invalid or 555-010-0001; "
+        "reference syntheticfixturetoken00112233445566."
+    ),
+    "observation": (
+        "Near miss injury reported during fall hazard inspection; PPE "
+        "violation logged. Contact safety lead at "
+        "synthetic-fixture@example.invalid or 555-010-0001; "
+        "incident id syntheticfixturetoken00112233445566."
+    ),
+    "meeting": (
+        "Settlement and dispute claim discussed in executive session; "
+        "follow-up to synthetic-fixture@example.invalid or 555-010-0001; "
+        "agenda id syntheticfixturetoken00112233445566."
+    ),
+    "daily_log": (
+        "Badge entry for personnel record; carrier delay logged. "
+        "Contact synthetic-fixture@example.invalid or 555-010-0001; "
+        "log id syntheticfixturetoken00112233445566."
+    ),
+}

@@ -264,6 +264,16 @@ exception class name only (no message text leaks).
   personnel, daily-log delays) is routed exclusively to the review
   queue by controller policy + `procore_sensitive_routing_rules.yaml`
   — never by the model.
+- Phase 04 Prompt 09 extended `procore_sensitive_routing_rules.yaml`
+  with five family-scoped rules (`procore-rfi-legal-or-contractual`,
+  `procore-submittal-financial-or-legal`, `procore-observation-safety`,
+  `procore-meeting-sensitive-topic`, `procore-daily-log-personnel-pii`)
+  for declarative parity with the per-entity normalizers. The validate
+  check `sensitive_routing_rules_cover_phase_04_families` asserts every
+  family appears in a rule_id. The proof artifact lives at
+  `docs/evidence/construction-intelligence-phase-04/sensitive-routing-proof.md`
+  — operators can read it to confirm that raw text / email / phone /
+  token literals never leave the normalizer hash boundary.
 
 ## Recovery
 

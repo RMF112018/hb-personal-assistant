@@ -181,6 +181,27 @@ def _check_obsidian_routing_rules_loadable() -> dict[str, Any]:
     }
 
 
+def _check_sensitive_routing_rules_cover_phase_04_families() -> dict[str, Any]:
+    """Phase 04 Prompt 09: declarative parity — each per-entity normalizer
+    family must be represented by at least one rule_id in
+    procore_sensitive_routing_rules.yaml."""
+    renderer = ProcoreObsidianRenderer()
+    try:
+        rules = renderer._load_procore_routing_rules().get("rules", [])  # noqa: SLF001
+    finally:
+        renderer._reset_routing_cache()  # noqa: SLF001
+    rule_ids = [str(r.get("rule_id", "")) for r in rules if isinstance(r, dict)]
+    families = ("rfi", "submittal", "observation", "meeting", "daily-log")
+    covered = {fam: any(fam in rid for rid in rule_ids) for fam in families}
+    return {
+        "ok": all(covered.values()),
+        "detail": {
+            "rule_ids": rule_ids,
+            "families_covered": covered,
+        },
+    }
+
+
 def _check_vault_root_configurable() -> dict[str, Any]:
     from hb_assistant.construction.manifests.vault_writer import ConstructionVaultWriter
 
@@ -600,6 +621,10 @@ def run_procore_validate(
         _safe_check("observation_normalizer_dispatch_present", _check_observation_normalizer_dispatch_present),
         _safe_check("meeting_normalizer_dispatch_present", _check_meeting_normalizer_dispatch_present),
         _safe_check("daily_log_selection_and_dispatch_present", _check_daily_log_selection_and_dispatch_present),
+        _safe_check(
+            "sensitive_routing_rules_cover_phase_04_families",
+            _check_sensitive_routing_rules_cover_phase_04_families,
+        ),
     ]
 
     passed = sum(1 for c in checks if c.get("ok"))

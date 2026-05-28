@@ -21,6 +21,8 @@ _SENSITIVE_HEADER_KEYS = {"authorization", "proxy-authorization", "x-api-key", "
 _TOKEN_RE = re.compile(
     r"\b(eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,})\b|\b([A-Za-z0-9_-]{20,})\b"
 )
+_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
+_PHONE_RE = re.compile(r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b")
 
 
 def _is_sensitive_key(k: str) -> bool:
@@ -79,6 +81,19 @@ def redact_request(
         "headers": redact_headers(headers or {}),
         "params_summary": safe_params,
     }
+
+
+def mask_pii_in_excerpt(text: str, max_len: int = 120) -> str:
+    """Length-capped excerpt with emails, US-shaped phones, and token-like
+    substrings masked. Masks first, then truncates, so partial literals
+    cannot slip through at the truncation boundary. Used only for evidence
+    artifacts; does not replace hash-summary behavior in normalizers."""
+    if not isinstance(text, str) or not text:
+        return ""
+    masked = _EMAIL_RE.sub("[email-redacted]", text)
+    masked = _PHONE_RE.sub("[phone-redacted]", masked)
+    masked = _TOKEN_RE.sub("[token-redacted]", masked)
+    return masked[:max_len]
 
 
 def redact_response(status: int, headers: Dict[str, str], body: Any) -> Dict[str, Any]:
