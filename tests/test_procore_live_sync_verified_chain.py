@@ -671,3 +671,161 @@ def test_submittal_response_canonical_json_carries_no_body_literal(
         assert review_required == 1
         assert parent_procore_id in {"201", "202"}
         assert raw_body_persisted == 0
+
+
+# ----------------------------------------------------------------------------
+# Phase 04A Prompt 06: observations (parent-only, high-sensitivity routing)
+# ----------------------------------------------------------------------------
+
+
+_OBSERVATION_PAYLOAD = [
+    # 1) Safety fragment hit -> review_required=True, safety_route=True.
+    {
+        "id": 301,
+        "number": "OBS-001",
+        "title": "Near miss at south entry",
+        "status": "near miss",
+        "type": {"category": "Safety"},
+        "assignee_id": 71,
+        "updated_at": "2026-03-01T00:00:00Z",
+    },
+    # 2) Bland subject, status, type, and an assignee -> default_low_risk.
+    {
+        "id": 302,
+        "number": "OBS-002",
+        "title": "Touch-up paint on stair handrail",
+        "status": "open",
+        "type": {"category": "Quality"},
+        "assignee_id": 72,
+        "updated_at": "2026-03-02T00:00:00Z",
+    },
+    # 3) Bland subject, no assignee -> review_required=True, reason=assignee_missing.
+    {
+        "id": 303,
+        "number": "OBS-003",
+        "title": "Routine punch-list item",
+        "status": "open",
+        "type": {"category": "Quality"},
+        "updated_at": "2026-03-03T00:00:00Z",
+    },
+]
+
+
+def test_observations_apply_persists_with_heuristic_review_routing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    transport = _FakeTransport(_OBSERVATION_PAYLOAD)
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="observations",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["retrieved_count"] == 3
+    assert receipt["normalized_count"] == 3
+    assert receipt["sqlite_upserted_count"] == 3
+    assert receipt["endpoint_id"] == "observations"
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="observations", db_path=db
+    ) == 3
+
+    conn = sqlite3.connect(str(db))
+    try:
+        rows = conn.execute(
+            "SELECT procore_record_id, review_required, sensitive_reason "
+            "FROM procore_live_records WHERE endpoint_id='observations' "
+            "ORDER BY procore_record_id"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    by_id = {row[0]: (row[1], row[2]) for row in rows}
+    # Safety fragment -> review_required=1
+    assert by_id["301"][0] == 1
+    assert by_id["301"][1] is not None
+    # Default low-risk path -> review_required=0
+    assert by_id["302"][0] == 0
+    assert by_id["302"][1] == "default_low_risk"
+    # Missing assignee fallback -> review_required=1, reason=assignee_missing
+    assert by_id["303"][0] == 1
+    assert by_id["303"][1] == "assignee_missing"
+
+
+def test_observations_apply_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+
+    def _go() -> Dict[str, Any]:
+        return run_live_sync(
+            project_key="tropical",
+            endpoint="observations",
+            apply=True,
+            sqlite_only=True,
+            confirm_live_get=True,
+            max_pages=1,
+            max_items=10,
+            db_path=db,
+            transport=_FakeTransport(_OBSERVATION_PAYLOAD),
+        )
+
+    first = _go()
+    second = _go()
+    assert first["sqlite_upserted_count"] == 3
+    assert second["sqlite_upserted_count"] == 3
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="observations", db_path=db
+    ) == 3
+
+
+def test_observation_canonical_json_carries_no_description_body_literal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    secret_body_marker = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
+    payload_with_marker = [
+        {
+            "id": 999,
+            "number": "OBS-999",
+            "title": "Sample with sensitive description",
+            "status": "open",
+            "type": {"category": "Safety"},
+            "assignee_id": 81,
+            "description": secret_body_marker,
+            "updated_at": "2026-03-04T00:00:00Z",
+        }
+    ]
+    transport = _FakeTransport(payload_with_marker)
+    run_live_sync(
+        project_key="tropical",
+        endpoint="observations",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=5,
+        db_path=db,
+        transport=transport,
+    )
+    conn = sqlite3.connect(str(db))
+    try:
+        rows = conn.execute(
+            "SELECT canonical_json_redacted, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='observations'"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert rows, "expected at least one observation row"
+    for canonical_json, raw_body_persisted in rows:
+        assert secret_body_marker not in canonical_json
+        assert raw_body_persisted == 0

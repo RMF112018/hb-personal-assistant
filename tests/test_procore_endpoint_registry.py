@@ -52,13 +52,15 @@ def test_unknown_endpoint_resolves_to_none() -> None:
 
 def test_verified_endpoints_match_phase04a_matrix() -> None:
     verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
-    # Post-Prompt 03 live smoke: 4 endpoints confirmed live (meetings demoted
-    # after a 404 against /rest/v1.0/projects/{project_id}/meetings).
+    # Post-Prompt 06 live smoke: 5 endpoints confirmed live.
+    # (meetings demoted in Prompt 03 after HTTP 404; observations promoted in
+    # Prompt 06 after a successful live smoke against tropical.)
     assert verified == {
         "projects",
         "rfis",
         "submittals",
         "daily-log-weather",
+        "observations",
     }
 
 

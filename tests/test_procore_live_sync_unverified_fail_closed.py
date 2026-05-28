@@ -18,7 +18,6 @@ _UNVERIFIED_IDS = (
     "rfi-responses",
     "submittal-responses",
     "submittal-packages",
-    "observations",  # contract marks unverified pending live smoke
     "meeting-topics",
     "daily-log-manpower",
     "daily-log-notes",

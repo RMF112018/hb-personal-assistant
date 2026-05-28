@@ -76,6 +76,23 @@ that consults current Procore REST docs.
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/05-submittal-live-sync.md`.
 
+## Observations parent-only verified endpoint — Prompt 06
+
+`observations` (`/rest/v1.0/projects/{project_id}/observations/items`) is
+promoted to `live_verified=True` after a successful live smoke and three
+applies against `tropical`. It has no N+1 child fetch: the orchestrator
+treats it as a single-page parent endpoint identical to `projects` and
+`daily-log-weather`. Review routing is heuristic — `normalize_observation`
+runs `_safety_route_decision()` across status / type / subtype / title /
+description and emits `review_required` + `safety_route` + a structured
+`routing_reason` (`"type_contains:near-miss"`, `"body_contains:injury"`,
+`"assignee_missing"`, `"default_low_risk"`). The registry's
+`review_required_default=True` on this row is family metadata for
+documentation and downstream routing; the orchestrator does not enforce
+it at the row level — the normalizer's heuristic is the source of truth.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/06-observation-live-sync.md`.
+
 ## Verified vs unverified endpoints
 
 5 of 14 endpoint IDs are `live_verified=True` and execute the full chain:

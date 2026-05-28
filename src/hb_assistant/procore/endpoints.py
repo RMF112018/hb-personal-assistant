@@ -149,8 +149,8 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         review_required_default=True,
         sensitivity="high",
         sqlite_target="procore_live_records",
-        live_verified=False,
-        verification_reason="observation_endpoint_pending_live_smoke",
+        live_verified=True,
+        verification_reason="live_smoke_passed_2026-05-28:2d0a091f",
     ),
     EndpointAdapter(
         endpoint_id="meetings",

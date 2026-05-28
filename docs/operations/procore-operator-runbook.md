@@ -607,6 +607,50 @@ HTTP 404. The orchestrator fails closed cleanly per fetch (structured
 endpoints stay `live_verified=False` until a follow-up prompt verifies
 the correct Procore paths (mirrors the `meetings` 404 disposition).
 
+## Phase 04A Prompt 06: Observation live apply
+
+The `observations` endpoint (a parent-only top-level surface, no N+1)
+is promoted to `live_verified=True`. Live smoke and three live applies
+(caps 1/5, 3/100, 3/100 re-run) succeeded against `tropical`.
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical \
+  --endpoint observations \
+  --apply --sqlite-only \
+  --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+```
+
+Review routing is heuristic-driven via
+`normalize_observation._safety_route_decision()` — a four-field scan
+of status / type / subtype / title / description for safety, incident,
+injury, near-miss, corrective-action, unsafe, violation, PPE, and
+personnel fragments. Any hit sets `review_required=true` and
+`safety_route=true`; a no-fragment row with no assignee sets
+`review_required=true` with `routing_reason="assignee_missing"`; only a
+benign row with an assignee present falls to `routing_reason="default_low_risk"`.
+Descriptions are never persisted as raw text — they're reduced to a
+SHA-256 hash-only `description_summary`; the `redacted_excerpt` is
+derived from the title only (truncated to 200 chars).
+
+Verify persistence:
+
+```bash
+hb-assistant procore live records count --project tropical --endpoint observations --json
+```
+
+Re-running the same apply does **not** duplicate rows — the upsert key
+includes `(project_key, endpoint_id, parent_procore_id, procore_record_id)`.
+
+In the `tropical` live data set, all 100 observations sampled were
+closed without an `assignee_id` populated, so every row routed via the
+`assignee_missing` fallback (`review_required=1`). Unit tests continue
+to cover all three heuristic paths (safety, default_low_risk,
+assignee_missing) on synthetic fixtures.
+
+Latest apply evidence: `docs/evidence/construction-intelligence-phase-04a/06-observation-live-sync.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`
