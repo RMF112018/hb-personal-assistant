@@ -634,7 +634,8 @@ def audit_execute(
 # =============================================================================
 
 sync_app = typer.Typer(help="Pilot project dry-run sync pipeline (Prompt_09). Dry-run default. --apply is explicit opt-in, local SQLite only, audit-gated.")
-live_app = typer.Typer(help="Fail-closed live Procore scaffolding (Prompt 02). Command surface only; endpoint sync not yet implemented.")
+live_app = typer.Typer(help="Phase 04A Prompt 03A live command contract (fail-closed; no live calls).")
+live_endpoints_app = typer.Typer(help="List live endpoint command-contract states.")
 
 @sync_app.command("run")
 def sync_run(
@@ -699,12 +700,90 @@ def sync_run(
 # Register the new sub-app (additive; existing surfaces untouched)
 app.add_typer(sync_app, name="sync", help="Pilot project dry-run sync (Prompt_09) — audit-gated, local SQLite only")
 app.add_typer(live_app, name="live", help="Live Procore command scaffolding (fail-closed)")
+live_app.add_typer(live_endpoints_app, name="endpoints")
+
+_LIVE_ENDPOINT_ALIAS_TO_ID: dict[str, str] = {
+    "projects": "list-projects",
+    "rfis": "list-rfis",
+    "submittals": "list-submittals",
+    "drawings": "list-drawings",
+    "daily-logs": "list-daily-logs",
+    "punch-items": "list-punch-items",
+    "change-events": "list-change-events",
+    "commitments": "list-commitments",
+    "prime-contracts": "list-prime-contracts",
+    "invoices": "list-invoices",
+    "correspondence": "list-correspondence",
+    "schedule": "list-schedule",
+    "tasks": "list-tasks",
+    "observations": "list-observations",
+    "meetings": "list-meetings",
+    "meeting-topics": "list-meeting-topics",
+}
+_SUPPORTED_ENDPOINT_IDS = {
+    "list-rfis",
+    "list-submittals",
+    "list-observations",
+    "list-meetings",
+    "list-meeting-topics",
+    "list-daily-logs",
+}
+_VERIFIED_FOR_LIVE = {"verified", "official_docs_verified"}
+
+
+def _state_for_endpoint(ep: Any) -> tuple[str, list[str]]:
+    reasons: list[str] = []
+    if ep.verification_status == "excluded_by_guardrail":
+        return "fail_closed_unsupported", ["excluded_by_guardrail"]
+    if ep.verification_status == "deferred_by_guardrail":
+        return "fail_closed_unsupported", ["deferred_by_guardrail"]
+    if not ep.is_live_eligible:
+        reasons.append("not_live_verified")
+    if ep.endpoint_id not in _SUPPORTED_ENDPOINT_IDS:
+        reasons.append("adapter_missing")
+        reasons.append("normalizer_missing")
+        reasons.append("sqlite_upsert_missing")
+    if ep.verification_status not in _VERIFIED_FOR_LIVE:
+        reasons.append("not_live_verified")
+    if reasons:
+        state = "not_live_verified" if "not_live_verified" in reasons else "fail_closed_unsupported"
+        return state, sorted(set(reasons))
+    return "operational", []
+
+
+@live_endpoints_app.command("list")
+def live_endpoints_list(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    contract = load_endpoint_contract()
+    endpoint_rows: list[dict[str, Any]] = []
+    for ep in contract.endpoints:
+        alias = next((k for k, v in _LIVE_ENDPOINT_ALIAS_TO_ID.items() if v == ep.endpoint_id), ep.endpoint_id)
+        state, reason_codes = _state_for_endpoint(ep)
+        endpoint_rows.append(
+            {
+                "command_endpoint": alias,
+                "endpoint_id": ep.endpoint_id,
+                "state": state,
+                "reason_codes": reason_codes,
+                "is_live_eligible": ep.is_live_eligible,
+                "verification_status": ep.verification_status,
+            }
+        )
+    payload = {
+        "command": "hb-assistant procore live endpoints list",
+        "ok": True,
+        "phase": "Phase 04A Prompt 03A",
+        "endpoints": endpoint_rows,
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
 
 
 @live_app.command("sync")
 def live_sync(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
-    endpoint: str = typer.Option(..., "--endpoint", help="Endpoint family id."),
+    endpoint: str = typer.Option(..., "--endpoint", help="Endpoint alias (for example: rfis, submittals, observations)."),
     apply: bool = typer.Option(False, "--apply", help="Required for live intent."),
     sqlite_only: bool = typer.Option(True, "--sqlite-only", help="Required guardrail; no source-system mutation."),
     max_pages: int = typer.Option(3, "--max-pages", min=1),
@@ -712,8 +791,13 @@ def live_sync(
     confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
-    """Fail-closed live sync command surface for later endpoint adapters."""
-    from hb_assistant.procore.token_provider import default_procore_token_provider
+    """Fail-closed Prompt 03A live sync contract; never invokes live transport.
+
+    Operator template:
+    HB_PROCORE_LIVE=1 hb-assistant procore live sync --project tropical
+      --endpoint rfis --apply --sqlite-only --max-pages 3 --max-items 100
+      --confirm-live-get --json
+    """
 
     gates = {
         "hb_procore_live": False,
@@ -740,19 +824,20 @@ def live_sync(
         errors.append("mapping_not_live_eligible")
 
     contract = load_endpoint_contract()
-    endpoint_row = next((ep for ep in contract.endpoints if ep.endpoint_id == endpoint), None)
-    live_verified_statuses = {"verified", "official_docs_verified"}
-    if (
-        endpoint_row
-        and endpoint_row.is_live_eligible
-        and endpoint_row.verification_status in live_verified_statuses
-    ):
+    endpoint_id = _LIVE_ENDPOINT_ALIAS_TO_ID.get(endpoint)
+    endpoint_row = next((ep for ep in contract.endpoints if ep.endpoint_id == endpoint_id), None)
+    endpoint_state = "fail_closed_unsupported"
+    endpoint_reasons = ["endpoint_alias_unknown"] if endpoint_id is None else []
+    if endpoint_row is not None:
+        endpoint_state, endpoint_reasons = _state_for_endpoint(endpoint_row)
+    if endpoint_state == "operational":
         gates["endpoint_allowed_verified"] = True
     else:
-        errors.append("endpoint_not_live_verified")
+        errors.extend(endpoint_reasons or ["endpoint_not_live_verified"])
 
-    token_provider = default_procore_token_provider()
-    gates["token_provider_ready"] = bool(token_provider.get_access_token())
+    # Prompt 03A: readiness check is metadata-only and must never trigger a network refresh.
+    auth_report = check_auth_status()
+    gates["token_provider_ready"] = bool(auth_report.ready_for_live_calls)
     if not gates["token_provider_ready"]:
         errors.append("token_provider_unavailable")
     if not confirm_live_get:
@@ -765,14 +850,27 @@ def live_sync(
     payload = {
         "command": "hb-assistant procore live sync",
         "ok": False,
-        "status": "live_endpoint_adapter_not_ready",
+        "phase": "Phase 04A Prompt 03A",
+        "status": "live_endpoint_adapter_not_ready" if endpoint_state != "operational" else "prompt_03a_contract_only",
         "reason": "endpoint_sync_not_implemented",
+        "state": endpoint_state if endpoint_state != "operational" else "fail_closed_unsupported",
+        "reason_codes": sorted(set(errors)),
+        "command_endpoint": endpoint,
+        "endpoint_id": endpoint_row.endpoint_id if endpoint_row is not None else None,
         "project": project,
         "endpoint": endpoint,
         "max_pages": max_pages,
         "max_items": max_items,
         "gates": gates,
         "errors": sorted(set(errors)),
+        "oauth_status": auth_report.status,
+        "request_count": 0,
+        "retrieved_count": 0,
+        "normalized_count": 0,
+        "sqlite_upsert_count": 0,
+        "sqlite_total_count": 0,
+        "evidence_path": "docs/evidence/construction-intelligence-phase-04a/03a-e2e-live-command-contract.md",
+        "no_live_call_performed": True,
         "guardrails": _GUARDRAILS,
     }
     exit_code = 3 if errors else 2

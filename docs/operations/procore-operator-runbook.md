@@ -45,6 +45,19 @@ and live-gated probes — those changes will land behind `HB_PROCORE_LIVE=1`
 ship. See evidence
 `docs/evidence/construction-intelligence-phase-04a/00-rebaseline-readiness.md`.
 
+**Phase 04A Prompt 03A (2026-05-28):** the canonical operator contract now
+surfaces under `hb-assistant procore live` with two explicit commands:
+`live endpoints list --json` and `live sync --project <key> --endpoint <alias>
+--apply --sqlite-only --max-pages N --max-items N --confirm-live-get --json`.
+This prompt is **contract-only + fail-closed**: no live Procore HTTP is
+performed even when all live flags are present. Endpoint visibility and
+execution readiness are intentionally decoupled. Every endpoint appears in
+`live endpoints list` with deterministic state (`operational`,
+`not_live_verified`, `fail_closed_unsupported`) and explicit reason codes.
+`live sync` receipts now always include stable counters
+(`request_count/retrieved_count/normalized_count/sqlite_upsert_count/sqlite_total_count`);
+for fail-closed responses all counters are zero by design.
+
 ## Environment variables
 
 | Var | Purpose | Set when |
