@@ -69,6 +69,13 @@ from hb_assistant.procore.normalizers.owner_contract import (
     normalize_prime_contract_attachment,
     normalize_prime_contract_line_item,
 )
+from hb_assistant.procore.normalizers.subcontractor_invoice import (
+    normalize_billing_period,
+    normalize_subcontractor_invoice,
+    normalize_subcontractor_invoice_change_order_item,
+    normalize_subcontractor_invoice_contract_detail_item,
+    normalize_subcontractor_invoice_contract_item,
+)
 from hb_assistant.procore.redaction import redact_source_url
 from hb_assistant.procore.token_provider import default_procore_token_provider
 from hb_assistant.store.procore_commitment_projection import (
@@ -77,6 +84,10 @@ from hb_assistant.store.procore_commitment_projection import (
 )
 from hb_assistant.store.procore_history import record_procore_history_for_record
 from hb_assistant.store.procore_inspection_projection import project_inspection
+from hb_assistant.store.procore_invoice_projection import (
+    INVOICE_ENDPOINTS,
+    project_invoice_family,
+)
 from hb_assistant.store.procore_meeting_projection import project_meeting_family
 from hb_assistant.store.procore_observation_projection import project_observation
 from hb_assistant.store.procore_owner_projection import (
@@ -276,6 +287,13 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     "purchase-order-contracts": normalize_purchase_order_contract,
     "purchase-order-line-items": normalize_purchase_order_line_item,
     "purchase-order-detail-line-items": normalize_purchase_order_detail_line_item,
+    # Phase 05 subcontractor billing surface (billing periods + requisitions +
+    # invoice items). Same fail-closed posture: registered but live_verified=False.
+    "billing-periods": normalize_billing_period,
+    "subcontractor-invoices": normalize_subcontractor_invoice,
+    "subcontractor-invoice-contract-items": normalize_subcontractor_invoice_contract_item,
+    "subcontractor-invoice-contract-detail-items": normalize_subcontractor_invoice_contract_detail_item,
+    "subcontractor-invoice-change-order-items": normalize_subcontractor_invoice_change_order_item,
 }
 
 
@@ -1150,6 +1168,23 @@ def run_live_sync(
                 )
             except Exception:  # noqa: BLE001
                 redacted_errors.append({"commitment_projection_error": "projection_failed"})
+
+        # Phase 05 subcontractor billing enrichment: billing periods +
+        # subcontractor invoices + invoice items (contract / detail / change-order)
+        # into the V9 billing tables + V8 invoice-items table. Guarded.
+        if adapter.endpoint_id in INVOICE_ENDPOINTS:
+            try:
+                project_invoice_family(
+                    adapter.endpoint_id,
+                    raw,
+                    project_key=project_key,
+                    sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                    parent_procore_id=parent_id_for_upsert,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"invoice_projection_error": "projection_failed"})
 
         if child_adapter is None or child_normalizer is None:
             continue

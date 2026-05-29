@@ -237,6 +237,24 @@ _COLUMNS: Dict[str, frozenset] = {
             "period_end", "wbs_code_id", "cost_code_id", "source_field_path", "created_at_utc",
         }
     ),
+    "procore_financial_billing_periods": frozenset(
+        {
+            "billing_period_key", "project_key", "endpoint_id", "billing_period_id", "status",
+            "start_date", "end_date", "due_date", "position", "updated_at_utc",
+        }
+    ),
+    "procore_financial_subcontractor_invoices": frozenset(
+        {
+            "record_key", "project_key", "endpoint_id", "invoice_id", "commitment_record_key",
+            "commitment_id", "billing_period_key", "billing_period_id", "previous_invoice_id",
+            "vendor_id", "vendor_entity_key", "invoice_number", "number", "invoice_type", "status",
+            "final", "billing_date", "period_start", "period_end", "percent_complete",
+            "payment_date", "submitted_at", "erp_status", "current_payment_due",
+            "total_claimed_amount", "original_contract_sum", "contract_sum_to_date",
+            "total_completed_and_stored_to_date", "total_retainage", "total_earned_less_retainage",
+            "balance_to_finish_including_retainage", "updated_at_utc",
+        }
+    ),
 }
 
 # Tables that carry the redaction_applied guard column (amount_facts does not).
@@ -409,6 +427,46 @@ def upsert_financial_invoice_item(
     )
     _persist("procore_financial_invoice_items", "invoice_item_key", row, db_path=db_path)
     return invoice_item_key
+
+
+def upsert_financial_billing_period(
+    *,
+    billing_period_key: str,
+    project_key: str,
+    endpoint_id: str,
+    billing_period_id: str,
+    fields: Optional[Mapping[str, Any]] = None,
+    db_path: Optional[Path] = None,
+) -> str:
+    row: Dict[str, Any] = dict(fields or {})
+    row.update(
+        billing_period_key=billing_period_key,
+        project_key=project_key,
+        endpoint_id=endpoint_id,
+        billing_period_id=str(billing_period_id),
+    )
+    _persist("procore_financial_billing_periods", "billing_period_key", row, db_path=db_path)
+    return billing_period_key
+
+
+def upsert_financial_subcontractor_invoice(
+    *,
+    record_key: str,
+    project_key: str,
+    endpoint_id: str,
+    invoice_id: str,
+    fields: Optional[Mapping[str, Any]] = None,
+    db_path: Optional[Path] = None,
+) -> str:
+    row: Dict[str, Any] = dict(fields or {})
+    row.update(
+        record_key=record_key,
+        project_key=project_key,
+        endpoint_id=endpoint_id,
+        invoice_id=str(invoice_id),
+    )
+    _persist("procore_financial_subcontractor_invoices", "record_key", row, db_path=db_path)
+    return record_key
 
 
 def upsert_financial_rfq(
@@ -660,6 +718,64 @@ def read_financial_risk_view(
     )
 
 
+def read_financial_billing_periods(
+    *, project_key: str, db_path: Optional[Path] = None
+) -> List[Dict[str, Any]]:
+    """Billing-period anchors for a project, ordered by start date."""
+    conn = _open(db_path)
+    return _rows(
+        conn,
+        """
+        SELECT billing_period_key, billing_period_id, status, start_date, end_date,
+               due_date, position
+        FROM procore_financial_billing_periods
+        WHERE project_key = ?
+        ORDER BY start_date, billing_period_id
+        """,
+        (project_key,),
+    )
+
+
+def read_financial_subcontractor_invoices(
+    *,
+    project_key: str,
+    status: Optional[str] = None,
+    billing_period_id: Optional[str] = None,
+    vendor_id: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
+    """Subcontractor invoices, filterable by status / billing period / vendor.
+
+    Supports period- and commitment-level aggregation queries. All filters are
+    optional and combine with AND; ids are matched verbatim as TEXT.
+    """
+    conn = _open(db_path)
+    clauses = ["project_key = ?"]
+    params: List[Any] = [project_key]
+    if status is not None:
+        clauses.append("status = ?")
+        params.append(status)
+    if billing_period_id is not None:
+        clauses.append("billing_period_id = ?")
+        params.append(str(billing_period_id))
+    if vendor_id is not None:
+        clauses.append("vendor_id = ?")
+        params.append(str(vendor_id))
+    return _rows(
+        conn,
+        f"""
+        SELECT record_key, invoice_id, commitment_id, billing_period_id, vendor_id,
+               number, invoice_number, status, final, billing_date, period_start,
+               period_end, current_payment_due, total_claimed_amount, total_retainage,
+               total_completed_and_stored_to_date
+        FROM procore_financial_subcontractor_invoices
+        WHERE {" AND ".join(clauses)}
+        ORDER BY billing_period_id, invoice_id
+        """,
+        tuple(params),
+    )
+
+
 __all__ = [
     "upsert_financial_contract",
     "upsert_financial_line_item",
@@ -667,6 +783,8 @@ __all__ = [
     "upsert_financial_change_order_line_item",
     "upsert_financial_payment_application",
     "upsert_financial_invoice_item",
+    "upsert_financial_billing_period",
+    "upsert_financial_subcontractor_invoice",
     "upsert_financial_rfq",
     "upsert_financial_change_event",
     "upsert_financial_budget_view",
@@ -677,4 +795,6 @@ __all__ = [
     "read_financial_contract_summary",
     "read_financial_amount_facts",
     "read_financial_risk_view",
+    "read_financial_billing_periods",
+    "read_financial_subcontractor_invoices",
 ]

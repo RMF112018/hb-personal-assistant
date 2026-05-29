@@ -1347,6 +1347,76 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v9 Phase 05 subcontractor billing surface: billing-period anchors +
+    # subcontractor-invoice (requisition) headers. Additive only; invoice *items*
+    # reuse the V8 procore_financial_invoice_items table. Subcontractor address /
+    # contact summary_text is never projected (no column maps to it). Amounts are
+    # decimal-safe TEXT; raw bodies never persist (CHECK guards).
+    V9_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_billing_periods (
+          billing_period_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          billing_period_id TEXT NOT NULL,
+          status TEXT,
+          start_date TEXT,
+          end_date TEXT,
+          due_date TEXT,
+          position INTEGER,
+          updated_at_utc TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_subcontractor_invoices (
+          record_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          invoice_id TEXT NOT NULL,
+          commitment_record_key TEXT,
+          commitment_id TEXT,
+          billing_period_key TEXT,
+          billing_period_id TEXT,
+          previous_invoice_id TEXT,
+          vendor_id TEXT,
+          vendor_entity_key TEXT,
+          invoice_number TEXT,
+          number TEXT,
+          invoice_type TEXT,
+          status TEXT,
+          final INTEGER,
+          billing_date TEXT,
+          period_start TEXT,
+          period_end TEXT,
+          percent_complete TEXT,
+          payment_date TEXT,
+          submitted_at TEXT,
+          erp_status TEXT,
+          current_payment_due TEXT,
+          total_claimed_amount TEXT,
+          original_contract_sum TEXT,
+          contract_sum_to_date TEXT,
+          total_completed_and_stored_to_date TEXT,
+          total_retainage TEXT,
+          total_earned_less_retainage TEXT,
+          balance_to_finish_including_retainage TEXT,
+          updated_at_utc TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_financial_billing_periods_project_status
+          ON procore_financial_billing_periods(project_key, status);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_financial_subcontractor_invoices_project_filters
+          ON procore_financial_subcontractor_invoices(project_key, status, billing_period_id, vendor_id);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -1446,6 +1516,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (8, 'v8_procore_financials', ?)",
+                    (now,),
+                )
+
+            # v9 Phase 05 subcontractor billing surface: billing periods +
+            # subcontractor invoice headers (additive only; does not touch V1-V8).
+            for stmt in self.V9_STATEMENTS:
+                conn.execute(stmt)
+
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 9")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (9, 'v9_procore_billing_and_subcontractor_invoices', ?)",
                     (now,),
                 )
 

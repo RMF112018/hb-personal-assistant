@@ -179,7 +179,19 @@ _COMMITMENT_IMPLEMENTED = frozenset(
     }
 )
 
-_IMPLEMENTED = _OWNER_IMPLEMENTED | _COMMITMENT_IMPLEMENTED
+# Subcontractor billing surface implemented in Prompt 07 (billing periods +
+# subcontractor invoices + the three invoice item families).
+_INVOICE_IMPLEMENTED = frozenset(
+    {
+        "billing-periods",
+        "subcontractor-invoices",
+        "subcontractor-invoice-contract-items",
+        "subcontractor-invoice-contract-detail-items",
+        "subcontractor-invoice-change-order-items",
+    }
+)
+
+_IMPLEMENTED = _OWNER_IMPLEMENTED | _COMMITMENT_IMPLEMENTED | _INVOICE_IMPLEMENTED
 
 
 def test_phase05_financial_endpoints_are_fail_closed() -> None:
@@ -204,6 +216,12 @@ def test_phase05_owner_endpoints_have_normalizers() -> None:
 def test_phase05_commitment_endpoints_have_normalizers() -> None:
     # Prompt 05 registered the vendor-side normalizers; still unverified above.
     for fin_id in _COMMITMENT_IMPLEMENTED:
+        assert resolve_normalizer(fin_id) is not None, fin_id
+
+
+def test_phase05_invoice_endpoints_have_normalizers() -> None:
+    # Prompt 07 registered the subcontractor-billing normalizers; still unverified.
+    for fin_id in _INVOICE_IMPLEMENTED:
         assert resolve_normalizer(fin_id) is not None, fin_id
 
 

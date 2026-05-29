@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–06 · Migration **V8** · registry 27 → 59 endpoints
+Status: **in progress** · Phase 05 Prompts 01–07 · Migration **V9** · registry 27 → 59 endpoints
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -196,6 +196,43 @@ functions (Prompt 02).
   forward-referencing `change_order_of` edge. Wired into both the new commitment-CO
   line items and the existing owner prime-CO line items.
 
+## Subcontractor billing surface — billing periods + invoices + items (Prompt 07)
+
+Adds the vendor billing surface (5 endpoints): `billing-periods`,
+`subcontractor-invoices` (requisitions), and the three child item families
+(`-contract-items`, `-contract-detail-items`, `-change-order-items`). All were
+already registered (Prompt 01); they stay **`live_verified=False`** (fail-closed,
+no transport). New `normalizers/subcontractor_invoice.py` (5 normalizers) +
+`store/procore_invoice_projection.py` (`project_invoice_family` + `INVOICE_ENDPOINTS`),
+wired into live_sync the same way (registered + a guarded `INVOICE_ENDPOINTS` block).
+
+- **Migration V9** (`apply()` now returns 9; additive, idempotent) adds two tables:
+  `procore_financial_billing_periods` (period anchors: status + start/end/due dates)
+  and `procore_financial_subcontractor_invoices` (requisition headers). Invoice
+  **items reuse the V8 `procore_financial_invoice_items`** table (it already carries
+  scheduled value / this-period work / stored materials / total-to-date / retainage /
+  claimed amount / WBS-cost-code), keyed by `item_type` + `endpoint_id`.
+- **Projection:** billing periods → queryable anchors. Invoices link to commitment
+  (`invoice_of`), billing period (`billed_in_period`), previous invoice (`supersedes`),
+  vendor (company label), and creator (hashed person). Amount facts from the AIA
+  `summary` (current payment due, retainage, completed/stored, contract-sum-to-date,
+  claimed) carry the requisition `period_start`/`period_end` for period + commitment
+  aggregation; item facts carry WBS/cost code for cost aggregation.
+- **Redaction:** the `summary_text` AIA cover block (subcontractor street / city /
+  state / zip / name, GC text) is **never projected** — no column maps to it; item
+  `description_of_work` → `description_summary_json` (hash+len+masked-excerpt);
+  creator hashed; vendor label kept (organisation, not PII).
+- **Signals:** `invoice_pending_approval`, `invoice_approved_not_paid`, `invoice_final`,
+  `invoice_retainage_held`, `invoice_payment_due` (header); `invoice_materials_stored`
+  (from a child item with `materials_presently_stored > 0`, anchored on the parent
+  invoice); `billing_period_open`, `billing_period_due_soon` (due within 7 days,
+  non-closed; deterministic from `now_utc`).
+- **Read views** (`procore_financials.py`): `read_financial_billing_periods` and
+  `read_financial_subcontractor_invoices` (filterable by status / billing_period_id /
+  vendor_id — proves invoices query by status/period/vendor).
+- `retainage_held` on items maps from `work_completed_retainage_retained_this_period`
+  (documented mapping; provisional pending live smoke).
+
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
 `01-endpoint-registry-and-live-gate-shell.md`,
@@ -203,4 +240,5 @@ Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 `03-shared-financial-normalizers-and-redaction-utilities.md`,
 `04-prime-contracts-prime-change-orders-and-payment-applications.md`,
 `05-commitments-purchase-orders-attachments-and-compliance.md`,
-`06-change-orders-and-financial-line-items.md`).
+`06-change-orders-and-financial-line-items.md`,
+`07-billing-periods-subcontractor-invoices-and-invoice-items.md`).
