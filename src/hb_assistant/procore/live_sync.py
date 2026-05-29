@@ -54,6 +54,7 @@ from hb_assistant.procore.redaction import redact_source_url
 from hb_assistant.procore.token_provider import default_procore_token_provider
 from hb_assistant.store.procore_history import record_procore_history_for_record
 from hb_assistant.store.procore_inspection_projection import project_inspection
+from hb_assistant.store.procore_meeting_projection import project_meeting_family
 from hb_assistant.store.procore_repositories import (
     count_procore_live_records,
     record_sync_run_complete,
@@ -952,6 +953,22 @@ def run_live_sync(
                 )
             except Exception:  # noqa: BLE001
                 redacted_errors.append({"inspection_projection_error": "projection_failed"})
+
+        # Phase 04B meeting enrichment: project meetings / meeting-detail into the
+        # cross-cutting enrichment tables (attendees, categories, topics, minutes,
+        # attachments, mentioned records, action signals, series chain). Guarded.
+        if adapter.endpoint_id in ("meetings", "meeting-detail"):
+            try:
+                project_meeting_family(
+                    adapter.endpoint_id,
+                    raw,
+                    project_key=project_key,
+                    sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"meeting_projection_error": "projection_failed"})
 
         if child_adapter is None or child_normalizer is None:
             continue

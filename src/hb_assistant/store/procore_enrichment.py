@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional
@@ -70,6 +71,25 @@ def _as_list(value: Any) -> List[Any]:
     if isinstance(value, list):
         return value
     return [value]
+
+
+_EMAIL_RE = re.compile(r"[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}")
+_PHONE_RE = re.compile(r"(?<!\d)(?:\+?\d[\s().-]?){7,}\d")
+_URL_RE = re.compile(r"https?://\S+")
+
+
+def _redact_excerpt(text: str, max_chars: int) -> Optional[str]:
+    """Mask emails / phones / URLs, collapse whitespace, truncate — a short
+    preview that carries no contact PII or signed URLs."""
+    if not text:
+        return None
+    masked = _URL_RE.sub("[url]", text)
+    masked = _EMAIL_RE.sub("[email]", masked)
+    masked = _PHONE_RE.sub("[phone]", masked)
+    masked = re.sub(r"\s+", " ", masked).strip()
+    if not masked:
+        return None
+    return masked[:max_chars]
 
 
 # ---------------------------------------------------------------------------
@@ -457,20 +477,33 @@ def emit_text_intelligence(
     mentioned_records: Optional[Iterable[Any]] = None,
     action_candidates: Optional[Iterable[Any]] = None,
     risk_terms: Optional[Iterable[str]] = None,
+    store_encrypted: bool = False,
+    excerpt_chars: int = 0,
     now_utc: str,
     db_path: Optional[Path] = None,
 ) -> Optional[str]:
-    """Persist a hash-only text-intelligence row for one free-text field.
+    """Persist a text-intelligence row for one free-text field.
 
-    Raw text is never stored — only ``text_hash`` + ``text_length`` and any
-    caller-derived (non-sensitive) topic / risk metadata. ``excerpt_redacted`` is
-    always NULL. Idempotent on ``(record_key, source_field_path, text_hash)``.
+    Always stores ``text_hash`` + ``text_length`` + caller-derived (non-sensitive)
+    topic / mentioned-record / action / risk tokens — never the raw body. When
+    ``excerpt_chars > 0`` a short PII-masked excerpt is stored in
+    ``excerpt_redacted``; when ``store_encrypted`` the full text is encrypted to
+    the vault (outside the repo) and only its reference is stored in
+    ``encrypted_full_text_ref``. Idempotent on ``(record_key, source_field_path,
+    text_hash)``.
     """
     if text is None or (isinstance(text, str) and not text.strip()):
         return None
     text_str = text if isinstance(text, str) else json.dumps(text, default=str, sort_keys=True)
     text_hash = hashlib.sha256(text_str.encode("utf-8")).hexdigest()[:16]
     ti_id = _hash("ti", record_key, source_field_path, text_hash)
+
+    excerpt_redacted = _redact_excerpt(text_str, excerpt_chars) if excerpt_chars > 0 else None
+    encrypted_ref: Optional[str] = None
+    if store_encrypted:
+        from hb_assistant.security.text_vault import encrypt_text
+
+        encrypted_ref = encrypt_text(text_str)
 
     def _json_list(values: Optional[Iterable[Any]]) -> Optional[str]:
         if values is None:
@@ -487,7 +520,7 @@ def emit_text_intelligence(
               text_hash, text_length, excerpt_redacted, topics_json, mentioned_records_json,
               action_candidates_json, risk_terms_json, sensitivity, review_required,
               encrypted_full_text_ref, created_at_utc, raw_body_persisted
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, NULL, ?, 0)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
             """,
             (
                 ti_id,
@@ -497,12 +530,14 @@ def emit_text_intelligence(
                 source_field_path,
                 text_hash,
                 len(text_str),
+                excerpt_redacted,
                 _json_list(topics),
                 _json_list(mentioned_records),
                 _json_list(action_candidates),
                 _json_list(risk_terms),
                 sensitivity,
                 1 if review_required else 0,
+                encrypted_ref,
                 now_utc,
             ),
         )
