@@ -1,6 +1,15 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–11 + live promotion + N+1 children · Migration **V9** · registry 59 endpoints · **56 live-verified** (29 financial promoted 2026-05-29) / 3 fail-closed
+Status: **closed** · Phase 05 Prompts 01–12 (live promotion + N+1 children + final validation/closeout) · Migration **V9** · registry 59 endpoints · **56 live-verified** (29 financial promoted 2026-05-29) / 3 fail-closed (deferred, remediation-listed)
+
+Closeout (Prompt 12, 2026-05-29): full repo-truth validation green — pytest exit 0,
+ruff/mypy(`mypy src`)/compileall clean, `procore validate` 28/28, `procore live endpoints
+list` 59/56/3, 7 SQLite-only query commands proven (no Procore call), no-secret probe over
+2209 financial rows = 0 findings (`raw_body_persisted=0`, `redaction_applied=1`). Phase 05
+is **CLOSED**; the 3 held endpoints (`purchase-order-detail-line-items` — per-PO 404 data
+condition; `budget-change-line-items` — 403 permission grant; `budget-details` — unresolved
+path sentinel) are documented as a remediation list, not blockers. See
+`docs/evidence/construction-intelligence-phase-05-financials/12-final-validation-coverage-evidence-and-closeout.md`.
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
