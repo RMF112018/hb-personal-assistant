@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from hb_assistant.procore import endpoints as ep_registry
+from hb_assistant.procore.live_sync import resolve_normalizer
 
 _CANONICAL_IDS = {
     "projects",
@@ -34,10 +35,57 @@ _CANONICAL_IDS = {
     "inspection-items",
 }
 
+# Phase 05 financial / contract-control endpoint shells. All are registered
+# live_verified=False (fail-closed, no transport) until per-endpoint smoke
+# evidence promotes them; see endpoints.py and
+# docs/evidence/construction-intelligence-phase-05-financials/.
+_PHASE05_FINANCIAL_IDS = frozenset(
+    {
+        "prime-contracts",
+        "prime-contract-line-items",
+        "prime-contract-attachments",
+        "prime-change-orders",
+        "prime-change-order-line-items",
+        "payment-applications",
+        "commitment-contracts",
+        "commitment-line-items",
+        "commitment-attachments",
+        "commitment-compliance",
+        "commitment-change-orders",
+        "commitment-change-order-line-items",
+        "purchase-order-contracts",
+        "purchase-order-line-items",
+        "purchase-order-detail-line-items",
+        "billing-periods",
+        "subcontractor-invoices",
+        "subcontractor-invoice-contract-items",
+        "subcontractor-invoice-contract-detail-items",
+        "subcontractor-invoice-change-order-items",
+        "rfqs",
+        "rfq-responses",
+        "rfq-quotes",
+        "change-events",
+        "change-event-comments",
+        "budget-views",
+        "budget-detail-columns",
+        "budget-details",
+        "budget-detail-rows",
+        "budget-change-history",
+        "budget-change-line-items",
+        "budget-modifications",
+    }
+)
+
 
 def test_registry_lists_all_canonical_endpoints() -> None:
     ids = {ep.endpoint_id for ep in ep_registry.list_all()}
-    assert ids == _CANONICAL_IDS
+    assert ids == _CANONICAL_IDS | _PHASE05_FINANCIAL_IDS
+
+
+def test_phase05_financial_endpoint_count_is_intentional() -> None:
+    # 27 verified operational rows + 32 fail-closed financial shells = 59.
+    assert len(_PHASE05_FINANCIAL_IDS) == 32
+    assert len(ep_registry.list_all()) == len(_CANONICAL_IDS) + 32 == 59
 
 
 def _resolve(endpoint_id: str):
@@ -93,3 +141,54 @@ def test_unverified_endpoints_have_verification_reason() -> None:
         if not ep.live_verified:
             assert ep.verification_reason
             assert isinstance(ep.verification_reason, str)
+
+
+def test_phase05_financial_ids_all_resolve() -> None:
+    for fin_id in _PHASE05_FINANCIAL_IDS:
+        assert ep_registry.is_known(fin_id)
+        assert _resolve(fin_id).endpoint_id == fin_id
+
+
+def test_phase05_financial_endpoints_are_fail_closed() -> None:
+    # Every financial shell must be unverified AND have no normalizer, so the
+    # orchestrator fail-closes (not_live_verified, then normalizer_missing)
+    # with no transport call until smoke evidence promotes it.
+    for fin_id in _PHASE05_FINANCIAL_IDS:
+        adapter = _resolve(fin_id)
+        assert adapter.live_verified is False, fin_id
+        assert adapter.sensitivity == "high", fin_id
+        assert resolve_normalizer(fin_id) is None, fin_id
+
+
+def test_phase05_financial_endpoints_excluded_from_verified() -> None:
+    verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
+    assert verified.isdisjoint(_PHASE05_FINANCIAL_IDS)
+
+
+def test_budget_details_is_non_routable_sentinel() -> None:
+    # Source reference has no resolved path (Prompt 00 §3.2); the sentinel must
+    # never look like a real REST route so it cannot accidentally transport.
+    adapter = _resolve("budget-details")
+    assert not adapter.path_template.startswith("/rest/")
+    assert adapter.required_path_params == ()
+    assert adapter.live_verified is False
+
+
+def test_phase05_financial_parent_child_consistency() -> None:
+    by_path = {
+        ep.path_template: ep
+        for ep in ep_registry.list_all()
+        if ep.endpoint_id in _PHASE05_FINANCIAL_IDS
+    }
+    for fin_id in _PHASE05_FINANCIAL_IDS:
+        adapter = _resolve(fin_id)
+        if adapter.parent_path_template is None:
+            # Top-level financial endpoint: no parent linkage expected.
+            assert adapter.parent_record_id_field is None, fin_id
+            continue
+        # Child endpoint: parent path must point at a registered financial parent.
+        assert adapter.parent_path_template in by_path, fin_id
+        # Where a parent id field is declared, it must appear in the child path
+        # (the non-routable budget-details sentinel is exempt from this check).
+        if adapter.parent_record_id_field and fin_id != "budget-details":
+            assert "{" + adapter.parent_record_id_field + "}" in adapter.path_template, fin_id

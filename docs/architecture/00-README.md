@@ -14,6 +14,7 @@ This directory contains living architecture and decision records for the HB Pers
 - `remediation-bounded-content-sensitive-scan.md` — Prompt 10 bounded line-level sensitive scanner with redacted findings output
 - `14-procore-live-sync-phase-04a.md` — Phase 04A per-endpoint live GET sync (gate → verified-or-fail-closed → pagination → normalize → SQLite latest-state)
 - `15-procore-second-brain-phase-04b.md` — Phase 04B enrichment: V7 history/diff/timeline + cross-cutting entities/edges/signals/text-intelligence + read-only query commands + Obsidian register
+- `16-procore-financials-phase-05.md` — Phase 05 contracts & financials: endpoint registry + live-gate shell (32 fail-closed financial endpoints, `response_envelope` field); V8 schema + normalizers to follow
 - `remediation-final-truthful-closeout.md` — Prompt 11 final remediation closeout status and acceptance gate evidence
 - `remediation-hardened-app-support-permissions.md` — Addendum Prompt 02 path initialization hardening and `diagnostics paths` repair guidance
 - `remediation-db-readiness-and-structured-dry-run-blocking.md` — Addendum Prompt 03 DB readiness gate and dry-run JSON blocked status behavior

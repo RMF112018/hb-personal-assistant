@@ -261,9 +261,7 @@ def test_live_sync_unverified_endpoint_fails_closed_without_transport(
     demoted = replace(base, live_verified=False)
     monkeypatch.setitem(ep_registry._BY_ID, "meeting-topics", demoted)
     if base.legacy_endpoint_alias:
-        monkeypatch.setitem(
-            ep_registry._BY_LEGACY, base.legacy_endpoint_alias, demoted
-        )
+        monkeypatch.setitem(ep_registry._BY_LEGACY, base.legacy_endpoint_alias, demoted)
 
     runner = CliRunner()
     res = runner.invoke(
@@ -276,6 +274,55 @@ def test_live_sync_unverified_endpoint_fails_closed_without_transport(
             "tropical",
             "--endpoint",
             "meeting-topics",
+            "--apply",
+            "--sqlite-only",
+            "--max-pages",
+            "1",
+            "--max-items",
+            "10",
+            "--confirm-live-get",
+            "--json",
+        ],
+        catch_exceptions=False,
+    )
+    assert called["hit"] is False
+    assert res.exit_code == 2
+    payload = json.loads(res.output)
+    assert payload["state"] == "not_live_verified"
+    assert payload["no_live_call_performed"] is True
+    assert payload["request_count"] == 0
+    assert "endpoint_unverified_for_live" in payload["reason_codes"]
+
+
+def test_live_sync_phase05_financial_endpoint_fails_closed_without_transport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A real Phase 05 financial shell (prime-contracts) must fail closed with
+    no transport even when every gate is satisfied — no artificial demotion."""
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
+    called = {"hit": False}
+
+    def _boom(*args: object, **kwargs: object) -> object:  # noqa: ARG001
+        called["hit"] = True
+        raise AssertionError("transport must not be invoked for unverified endpoint")
+
+    monkeypatch.setattr(
+        "hb_assistant.procore.http_client.ProcoreHTTPClient._default_live_transport",
+        _boom,
+    )
+
+    runner = CliRunner()
+    res = runner.invoke(
+        app,
+        [
+            "procore",
+            "live",
+            "sync",
+            "--project",
+            "tropical",
+            "--endpoint",
+            "prime-contracts",
             "--apply",
             "--sqlite-only",
             "--max-pages",
@@ -314,10 +361,18 @@ def test_live_endpoints_list_emits_canonical_phase04a_rows() -> None:
     assert topics_row["live_verified"] is True
     # Phase 04A + meeting-detail + punch-items + schedules + activities +
     # + daily-log resolution (weather v1.1 path + accident/dumpster/
-    # safety-violation/visitor): all 27 canonical endpoints are now
+    # safety-violation/visitor): all 27 operational endpoints are
     # live-verified. inspection-sections and
     # inspection-items use the project-scoped flat list endpoints supplied
     # by the operator on 2026-05-29 (/checklist/list_sections v1.0 and
     # /checklist/list_items v1.1).
-    assert all(r["live_verified"] for r in rows)
-    assert len(rows) == 27
+    #
+    # Phase 05 appended 32 financial / contract-control shells that are
+    # command-visible here but live_verified=False (fail-closed, no transport)
+    # until per-endpoint smoke evidence — so the list is now 27 verified + 32
+    # unverified = 59 rows.
+    verified_rows = [r for r in rows if r["live_verified"]]
+    unverified_rows = [r for r in rows if not r["live_verified"]]
+    assert len(verified_rows) == 27
+    assert len(unverified_rows) == 32
+    assert len(rows) == 59
