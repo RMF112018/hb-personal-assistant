@@ -72,7 +72,7 @@ def _names(db: Path, kind: str) -> set[str]:
 
 def test_v7_creates_all_history_enrichment_inspection_tables() -> None:
     db = _temp_db()
-    assert _migrate(db) == 7
+    assert _migrate(db) == 8
     tables = _names(db, "table")
     missing = _V7_TABLES - tables
     assert not missing, f"V7 tables missing: {sorted(missing)}"
@@ -95,8 +95,8 @@ def test_v7_creates_convenience_views() -> None:
 
 def test_v7_is_idempotent() -> None:
     db = _temp_db()
-    assert _migrate(db) == 7
-    assert _migrate(db) == 7
+    assert _migrate(db) == 8
+    assert _migrate(db) == 8
     conn = sqlite3.connect(str(db))
     try:
         count = conn.execute(
@@ -147,10 +147,11 @@ def test_v7_check_rejects_redaction_not_applied() -> None:
 
 
 def test_existing_migrations_still_run_from_empty_db() -> None:
-    """A fresh DB reaches v7 and retains a representative V1 + V6 table — i.e.
-    V7 is purely additive and does not break the earlier migrations."""
+    """A fresh DB reaches the latest version (v8) and retains representative V1 +
+    V6 tables — i.e. later migrations are purely additive and do not break the
+    earlier ones."""
     db = _temp_db()
-    assert _migrate(db) == 7
+    assert _migrate(db) == 8
     tables = _names(db, "table")
     # V1 core + V6 Procore live records must still exist alongside the V7 tables.
     assert "source_records" in tables

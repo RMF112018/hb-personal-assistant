@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompt 01 · Migration **V7** (V8 financial schema is Prompt 02) · registry 27 → 59 endpoints
+Status: **in progress** · Phase 05 Prompts 01–02 · Migration **V8** · registry 27 → 59 endpoints
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -57,6 +57,41 @@ drives a real `prime-contracts` shell with a transport that raises if hit).
 - Envelope / pagination / `sqlite_target` on unverified rows are **provisional**
   metadata, re-confirmed at live promotion.
 
+## V8 financial schema & repository (Prompt 02)
+
+`store/migrator.py` V8 adds **13 financial projection tables** (additive;
+`apply()` now returns 8). The first 10 (`procore_financial_contracts`,
+`_line_items`, `_change_orders`, `_payment_applications`, `_invoice_items`,
+`_rfqs`, `_change_events`, `_budget_views`, `_budget_rows`, `_amount_facts`) are
+transcribed **verbatim** from the package
+`resources/sql/phase_05_financial_schema_additions.sql`. The last 3
+(`_change_order_line_items`, `_budget_changes`, `_compliance_documents`) are
+**HB-authored extensions** beyond the authoritative SQL — modeled on the ledger
+prose + the verbatim schema conventions, flagged as provisional pending live
+reconciliation.
+
+- **Decimal-safe amounts:** every money column is `TEXT`; the repository stores
+  amount values verbatim and never calls `float()` (TEXT affinity would re-format
+  a float and lose precision). A test persists `-1234567.89012345` /
+  `0.000000000001` and reads them back byte-for-byte.
+- **Redaction guards:** every table carries
+  `CHECK(raw_body_persisted = 0)` and (except `_amount_facts`)
+  `CHECK(redaction_applied = 1)`.
+- **`amount_facts`** is the cross-object aggregation ledger (one normalized row
+  per named amount with deterministic `amount_fact_id`), enabling rollups without
+  per-endpoint SQL.
+
+`store/procore_financials.py` is the standalone repository: free-function
+upserts for each table (DRY `_persist` core building a parameterized
+`INSERT … ON CONFLICT(pk) DO UPDATE`), `emit_financial_amount_fact`
+(deterministic id → idempotent), and deterministic read views
+(`read_financial_contract_summary`, `read_financial_amount_facts`,
+`read_financial_risk_view`). Redaction is enforced at this boundary
+(`*_redacted` excerpt-masked, `description_summary_json` → hash+len+excerpt,
+`attachment_path_redacted` → path-only). Unknown columns fail closed. **No
+live-sync wiring** — the dispatch that calls these lands in Prompt 10.
+
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
-`01-endpoint-registry-and-live-gate-shell.md`).
+`01-endpoint-registry-and-live-gate-shell.md`,
+`02-v8-financial-schema-and-repository-model.md`).

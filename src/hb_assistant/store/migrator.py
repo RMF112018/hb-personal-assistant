@@ -1004,6 +1004,349 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v8 = Phase 05 Procore contracts & financials projection tables (additive
+    # only; does not touch V1-V7 tables). The first 10 tables + 4 indexes are
+    # transcribed verbatim from the package's
+    # resources/sql/phase_05_financial_schema_additions.sql. All money columns
+    # are TEXT to preserve decimal precision (no binary-float coercion). Every
+    # table carries the Phase 04B redaction guards
+    # (CHECK(raw_body_persisted = 0) / CHECK(redaction_applied = 1)).
+    #
+    # The final 3 tables (change_order_line_items, budget_changes,
+    # compliance_documents) are HB-authored EXTENSIONS beyond the authoritative
+    # SQL, modeled on the ledger prose + the verbatim schema conventions. Their
+    # columns are provisional and reconciled against live payloads at promotion.
+    V8_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_contracts (
+          record_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          contract_id TEXT NOT NULL,
+          contract_family TEXT NOT NULL,
+          contract_type TEXT,
+          number TEXT,
+          title_redacted TEXT,
+          status TEXT,
+          executed INTEGER,
+          private INTEGER,
+          accounting_method TEXT,
+          vendor_entity_key TEXT,
+          company_entity_key TEXT,
+          grand_total TEXT,
+          original_contract_sum TEXT,
+          revised_contract_sum TEXT,
+          approved_change_orders_amount TEXT,
+          pending_change_orders_amount TEXT,
+          retainage_percent TEXT,
+          currency_iso_code TEXT,
+          base_currency_iso_code TEXT,
+          currency_exchange_rate TEXT,
+          contract_date TEXT,
+          start_date TEXT,
+          completion_date TEXT,
+          updated_at_utc TEXT,
+          last_sync_run_id TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_line_items (
+          line_item_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          parent_record_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          line_item_id TEXT NOT NULL,
+          line_item_kind TEXT NOT NULL,
+          description_summary_json TEXT,
+          wbs_code_id TEXT,
+          wbs_flat_code TEXT,
+          wbs_description_redacted TEXT,
+          cost_code_id TEXT,
+          line_item_type_id TEXT,
+          tax_code_id TEXT,
+          quantity TEXT,
+          uom TEXT,
+          unit_cost TEXT,
+          amount TEXT,
+          scheduled_value TEXT,
+          billed_to_date TEXT,
+          work_completed_this_period TEXT,
+          materials_presently_stored TEXT,
+          retainage_held TEXT,
+          position INTEGER,
+          currency_iso_code TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_change_orders (
+          record_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          change_order_id TEXT NOT NULL,
+          change_order_family TEXT NOT NULL,
+          contract_record_key TEXT,
+          contract_id TEXT,
+          number TEXT,
+          title_redacted TEXT,
+          status TEXT,
+          executed INTEGER,
+          paid INTEGER,
+          private INTEGER,
+          field_change INTEGER,
+          signature_required INTEGER,
+          grand_total TEXT,
+          schedule_impact_amount TEXT,
+          due_date TEXT,
+          invoiced_date TEXT,
+          paid_date TEXT,
+          reviewed_at_utc TEXT,
+          updated_at_utc TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_payment_applications (
+          record_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          payment_application_id TEXT NOT NULL,
+          contract_record_key TEXT,
+          prime_contract_id TEXT,
+          billing_period_id TEXT,
+          invoice_number TEXT,
+          number TEXT,
+          status TEXT,
+          billing_date TEXT,
+          period_start TEXT,
+          period_end TEXT,
+          percent_complete TEXT,
+          current_payment_due TEXT,
+          total_amount_paid TEXT,
+          total_retainage TEXT,
+          balance_to_finish_including_retainage TEXT,
+          contract_sum_to_date TEXT,
+          updated_at_utc TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_invoice_items (
+          invoice_item_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          invoice_record_key TEXT,
+          requisition_id TEXT,
+          item_id TEXT NOT NULL,
+          item_type TEXT,
+          line_item_id TEXT,
+          cost_code_id TEXT,
+          wbs_flat_code TEXT,
+          description_summary_json TEXT,
+          scheduled_value TEXT,
+          work_completed_this_period TEXT,
+          materials_presently_stored TEXT,
+          total_completed_and_stored_to_date TEXT,
+          retainage_held TEXT,
+          subcontractor_claimed_amount TEXT,
+          status TEXT,
+          position INTEGER,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_rfqs (
+          record_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          rfq_id TEXT NOT NULL,
+          commitment_contract_id TEXT,
+          number TEXT,
+          title_redacted TEXT,
+          status TEXT,
+          private INTEGER,
+          due_date TEXT,
+          estimated_amount TEXT,
+          estimated_schedule_impact TEXT,
+          estimated_status TEXT,
+          intent_to_quote INTEGER,
+          original_quote TEXT,
+          updated_at_utc TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_change_events (
+          record_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          change_event_id TEXT NOT NULL,
+          number TEXT,
+          title_redacted TEXT,
+          status TEXT,
+          scope TEXT,
+          estimated_cost TEXT,
+          estimated_revenue TEXT,
+          schedule_impact_amount TEXT,
+          owner_cost_amount TEXT,
+          commitment_cost_amount TEXT,
+          updated_at_utc TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_budget_views (
+          budget_view_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          budget_view_id TEXT NOT NULL,
+          name_redacted TEXT,
+          description_summary_json TEXT,
+          updated_at_utc TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_budget_rows (
+          budget_row_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          budget_view_key TEXT,
+          endpoint_id TEXT NOT NULL,
+          row_id TEXT NOT NULL,
+          wbs_code_id TEXT,
+          wbs_flat_code TEXT,
+          cost_code_id TEXT,
+          line_item_type_id TEXT,
+          column_values_json_redacted TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_amount_facts (
+          amount_fact_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          record_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          amount_name TEXT NOT NULL,
+          amount_value TEXT NOT NULL,
+          currency_iso_code TEXT,
+          base_currency_iso_code TEXT,
+          period_start TEXT,
+          period_end TEXT,
+          wbs_code_id TEXT,
+          cost_code_id TEXT,
+          source_field_path TEXT NOT NULL,
+          created_at_utc TEXT NOT NULL,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0)
+        );
+        """,
+        # --- HB-authored extension tables (beyond the authoritative SQL) ---
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_change_order_line_items (
+          line_item_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          change_order_record_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          line_item_id TEXT NOT NULL,
+          change_order_family TEXT NOT NULL,
+          description_summary_json TEXT,
+          wbs_code_id TEXT,
+          wbs_flat_code TEXT,
+          cost_code_id TEXT,
+          line_item_type_id TEXT,
+          quantity TEXT,
+          uom TEXT,
+          unit_cost TEXT,
+          amount TEXT,
+          position INTEGER,
+          currency_iso_code TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_budget_changes (
+          budget_change_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          budget_change_kind TEXT NOT NULL,
+          budget_change_id TEXT NOT NULL,
+          budget_view_key TEXT,
+          parent_change_key TEXT,
+          number TEXT,
+          status TEXT,
+          title_redacted TEXT,
+          wbs_code_id TEXT,
+          wbs_flat_code TEXT,
+          cost_code_id TEXT,
+          adjustment_amount TEXT,
+          from_amount TEXT,
+          to_amount TEXT,
+          approved_at_utc TEXT,
+          updated_at_utc TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_financial_compliance_documents (
+          compliance_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          contract_record_key TEXT,
+          endpoint_id TEXT NOT NULL,
+          compliance_id TEXT NOT NULL,
+          document_type TEXT,
+          status TEXT,
+          compliant INTEGER,
+          effective_date TEXT,
+          expiration_date TEXT,
+          attachment_path_redacted TEXT,
+          notes_summary_redacted TEXT,
+          updated_at_utc TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        # --- Indexes (verbatim from package SQL + extension-table indexes) ---
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_financial_contracts_project_family
+          ON procore_financial_contracts(project_key, contract_family, status);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_financial_line_items_parent
+          ON procore_financial_line_items(parent_record_key);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_financial_change_orders_project_status
+          ON procore_financial_change_orders(project_key, status, executed, paid);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_financial_amount_facts_project_name
+          ON procore_financial_amount_facts(project_key, amount_name);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_financial_change_order_line_items_parent
+          ON procore_financial_change_order_line_items(change_order_record_key);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_financial_budget_changes_project_kind
+          ON procore_financial_budget_changes(project_key, budget_change_kind);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_financial_compliance_documents_project_status
+          ON procore_financial_compliance_documents(project_key, status);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -1091,6 +1434,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (7, 'v7_procore_history_and_enrichment', ?)",
+                    (now,),
+                )
+
+            # v8 Phase 05 Procore contracts & financials projection tables
+            # (additive only; does not touch V1-V7 tables).
+            for stmt in self.V8_STATEMENTS:
+                conn.execute(stmt)
+
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 8")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (8, 'v8_procore_financials', ?)",
                     (now,),
                 )
 
