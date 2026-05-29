@@ -297,8 +297,10 @@ def test_live_sync_unverified_endpoint_fails_closed_without_transport(
 def test_live_sync_phase05_financial_endpoint_fails_closed_without_transport(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A real Phase 05 financial shell (prime-contracts) must fail closed with
-    no transport even when every gate is satisfied — no artificial demotion."""
+    """A still-unverified Phase 05 financial shell (prime-contract-line-items) must
+    fail closed with no transport even when every gate is satisfied — no artificial
+    demotion. (Parentless contracts were live-promoted 2026-05-29; child endpoints stay
+    fail-closed pending N+1 orchestration.)"""
     monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
     monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
     called = {"hit": False}
@@ -322,7 +324,7 @@ def test_live_sync_phase05_financial_endpoint_fails_closed_without_transport(
             "--project",
             "tropical",
             "--endpoint",
-            "prime-contracts",
+            "prime-contract-line-items",
             "--apply",
             "--sqlite-only",
             "--max-pages",
@@ -367,12 +369,14 @@ def test_live_endpoints_list_emits_canonical_phase04a_rows() -> None:
     # by the operator on 2026-05-29 (/checklist/list_sections v1.0 and
     # /checklist/list_items v1.1).
     #
-    # Phase 05 appended 32 financial / contract-control shells that are
-    # command-visible here but live_verified=False (fail-closed, no transport)
-    # until per-endpoint smoke evidence — so the list is now 27 verified + 32
+    # Phase 05 appended 32 financial / contract-control shells. 7 parentless ones
+    # (prime-contracts, commitment-contracts, billing-periods, subcontractor-invoices,
+    # rfqs, budget-views, budget-modifications) were live-promoted on 2026-05-29 after a
+    # bounded smoke whose payload matched the normalizer; the remaining 25 stay
+    # live_verified=False (fail-closed). So the list is now 34 verified + 25
     # unverified = 59 rows.
     verified_rows = [r for r in rows if r["live_verified"]]
     unverified_rows = [r for r in rows if not r["live_verified"]]
-    assert len(verified_rows) == 27
-    assert len(unverified_rows) == 32
+    assert len(verified_rows) == 34
+    assert len(unverified_rows) == 25
     assert len(rows) == 59

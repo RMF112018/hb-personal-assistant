@@ -83,7 +83,8 @@ def test_registry_lists_all_canonical_endpoints() -> None:
 
 
 def test_phase05_financial_endpoint_count_is_intentional() -> None:
-    # 27 verified operational rows + 32 fail-closed financial shells = 59.
+    # 32 financial rows total (7 now live-promoted, 25 still fail-closed) + 27 Phase
+    # 04A operational rows = 59.
     assert len(_PHASE05_FINANCIAL_IDS) == 32
     assert len(ep_registry.list_all()) == len(_CANONICAL_IDS) + 32 == 59
 
@@ -125,7 +126,10 @@ def test_verified_endpoints_match_phase04a_matrix() -> None:
     # prior 2-level dispatch was removed. Each item payload carries
     # list_id and section_id directly so parent_procore_id derives from
     # raw["list_id"] at upsert.
-    assert verified == _CANONICAL_IDS
+    #
+    # Phase 05 live promotion (2026-05-29): 7 parentless financial endpoints were
+    # smoke-verified and promoted, so verified == the 27 Phase 04A rows + those 7.
+    assert verified == _CANONICAL_IDS | _PHASE05_PROMOTED
 
 
 def test_child_endpoints_carry_parent_path_template() -> None:
@@ -225,15 +229,35 @@ _IMPLEMENTED = (
     | _BUDGET_IMPLEMENTED
 )
 
+# Parentless financial endpoints promoted to live_verified=True after a real bounded
+# smoke whose live payload matched the normalizer + projection (2026-05-29). The other
+# financial endpoints stay fail-closed (child endpoints await N+1 orchestration;
+# change-events + budget-change-history were held — live contract diverged from the
+# package sample). See evidence 12-live-promotion-parentless-financial-endpoints.md.
+_PHASE05_PROMOTED = frozenset(
+    {
+        "prime-contracts",
+        "commitment-contracts",
+        "billing-periods",
+        "subcontractor-invoices",
+        "rfqs",
+        "budget-views",
+        "budget-modifications",
+    }
+)
 
-def test_phase05_financial_endpoints_are_fail_closed() -> None:
-    # The durable fail-closed guarantee is live_verified=False (the orchestrator
-    # returns not_live_verified BEFORE any normalizer lookup). Not-yet-implemented
+
+def test_phase05_financial_endpoints_fail_closed_unless_promoted() -> None:
+    # Financial endpoints stay live_verified=False (fail-closed before any transport)
+    # UNLESS smoke-verified and promoted (_PHASE05_PROMOTED). Not-yet-implemented
     # endpoints additionally have no normalizer registered.
     for fin_id in _PHASE05_FINANCIAL_IDS:
         adapter = _resolve(fin_id)
-        assert adapter.live_verified is False, fin_id
         assert adapter.sensitivity == "high", fin_id
+        if fin_id in _PHASE05_PROMOTED:
+            assert adapter.live_verified is True, fin_id
+        else:
+            assert adapter.live_verified is False, fin_id
         if fin_id not in _IMPLEMENTED:
             assert resolve_normalizer(fin_id) is None, fin_id
 
@@ -275,9 +299,10 @@ def test_phase05_budget_details_remains_unimplemented() -> None:
     assert resolve_normalizer("budget-details") is None
 
 
-def test_phase05_financial_endpoints_excluded_from_verified() -> None:
+def test_phase05_financial_endpoints_excluded_from_verified_except_promoted() -> None:
     verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
-    assert verified.isdisjoint(_PHASE05_FINANCIAL_IDS)
+    # Only the live-promoted parentless financial endpoints appear among verified.
+    assert verified & _PHASE05_FINANCIAL_IDS == _PHASE05_PROMOTED
 
 
 def test_budget_details_is_non_routable_sentinel() -> None:

@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–11 · Migration **V9** · registry 27 → 59 endpoints
+Status: **in progress** · Phase 05 Prompts 01–11 + live promotion · Migration **V9** · registry 59 endpoints · **34 live-verified** (7 financial promoted 2026-05-29) / 25 fail-closed
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -365,6 +365,27 @@ reads SQLite).
   Rows are built only from already-redacted read-view columns, and a defensive
   `_assert_no_raw` output fence (URL/email/Bearer/PEM/`sig=`) fails closed before any write.
 
+## Live promotion of parentless financial endpoints (2026-05-29)
+
+After Prompt 11, the parentless financial endpoints were live-promoted using a
+**probe-first** method: each was temporarily promoted *in memory only* and run through
+the real `run_live_sync` chain into a throwaway DB; only those whose live payload
+cleanly matched the normalizer + projection (`state=success`, `normalized==retrieved`,
+`projection_error_count=0`, rows projected) were then flipped to `live_verified=True` in
+`procore/endpoints.py`. **7 promoted** — `prime-contracts`, `commitment-contracts`,
+`billing-periods`, `subcontractor-invoices`, `rfqs`, `budget-views`,
+`budget-modifications` — each then passing the full smoke → sync → idempotent-rerun
+cadence (commitment-contracts 63, subcontractor-invoices 100, budget-modifications 100,
+… all `projection_error_count=0`, byte-stable re-runs). **2 held fail-closed**:
+`change-events` (financial projection raised on the live payload) and
+`budget-change-history` (normalizer rejected the live payload) — live contract diverged
+from the package sample; reconcile before promotion. Child endpoints stay fail-closed
+pending the deferred N+1 orchestration; `budget-details` remains a non-routable sentinel.
+A no-secret probe over the 1,028 resulting real financial rows found zero
+secrets/URLs/signed-URLs (guards `raw_body_persisted=0` / `redaction_applied=1` intact).
+Registry posture: **34 live-verified / 25 fail-closed / 59 total**. See evidence
+`12-live-promotion-parentless-financial-endpoints.md`.
+
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
 `01-endpoint-registry-and-live-gate-shell.md`,
@@ -377,4 +398,5 @@ Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 `08-rfqs-rfq-responses-rfq-quotes-change-events-and-comments.md`,
 `09-budget-views-budget-details-budget-rows-and-budget-changes.md`,
 `10-live-sync-dispatch-verification-and-idempotency-sweep.md`,
-`11-financial-query-commands-and-obsidian-register.md`).
+`11-financial-query-commands-and-obsidian-register.md`,
+`12-live-promotion-parentless-financial-endpoints.md`).
