@@ -1082,6 +1082,43 @@ future work).
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/20-inspections-and-inspection-items.md`.
 
+## Inspection-sections bridge + 2-level inspection-items dispatch (2026-05-29)
+
+The Procore checklist model is `Inspection (list) → Section → Item`.
+The `inspection-sections` endpoint is the bridge; `inspection-items`
+walks all three layers in a single 2-level dispatch (sections marked
+`not_applicable=True` are skipped to save requests).
+
+As of 2026-05-29 both endpoints are **registered but fail-closed**:
+both list-of-sections path variants returned 404 against tropical, and
+items can't be reached without a verified sections path. The structural
+infrastructure (normalizer, 2-level dispatch, chain tests) is in place;
+flipping `endpoints.py::inspection-sections.live_verified` to True and
+correcting its `path_template` is the only change needed once the
+operator confirms the canonical Procore list-of-sections URL. After
+that, `inspection-items` follows automatically.
+
+Operator commands once paths are confirmed:
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live smoke \
+  --project tropical --endpoint inspection-sections --confirm-live-get --json
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical --endpoint inspection-sections \
+  --apply --sqlite-only --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+
+# Items follow once sections are verified — 2-level dispatch cost is
+# roughly 1 + N (inspections) + N×M (sections per inspection × items per
+# section). Cap --max-items conservatively for large projects.
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical --endpoint inspection-items \
+  --apply --sqlite-only --max-pages 1 --max-items 5 \
+  --confirm-live-get --json
+```
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/21-inspection-sections-bridge.md`.
+
 ## Obsidian register from Phase 04A live SQLite (Prompt 09A)
 
 A read-only projection of `procore_live_records` into per-family Obsidian

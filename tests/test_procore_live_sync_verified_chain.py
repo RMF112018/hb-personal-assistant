@@ -1735,35 +1735,133 @@ def test_inspections_apply_list_only(
     assert "procore.example.com" not in canonical_json
 
 
-def test_inspection_items_apply_list_plus_n_per_inspection(
+def test_inspection_sections_apply_list_plus_n_per_inspection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The inspection-items endpoint first fetches the inspections list, then
-    issues one items GET per inspection. Each item row carries
+    """inspection-sections is the bridge layer: list-fetch inspections, then
+    issue one sections GET per inspection. Each section row carries
     parent_procore_id = list_id.
 
-    Note: the inspection-items adapter ships with live_verified=False pending
-    operator confirmation of the canonical list-items path. This test exercises
-    the dispatch CODE — it monkeypatches the adapter row to live_verified=True
-    for the duration of the test so the orchestrator's fail-closed gate does
-    not short-circuit the chain.
+    Note: the inspection-sections adapter ships with live_verified=False
+    pending operator confirmation of the canonical list-of-sections path
+    (both v1.0 variants returned 404 against tropical). This test
+    monkeypatches the adapter to live_verified=True so the dispatch code is
+    exercised against fake transport.
     """
     _setup_env(monkeypatch)
     db = _db()
 
     import dataclasses
+
+    from hb_assistant.procore import endpoints as _ep_registry
+
+    real_adapter = _ep_registry.get("inspection-sections")
+    assert real_adapter is not None
+    verified_adapter = dataclasses.replace(real_adapter, live_verified=True)
+    monkeypatch.setattr(
+        _ep_registry,
+        "_BY_ID",
+        {**_ep_registry._BY_ID, "inspection-sections": verified_adapter},
+    )
+    list_payload = [
+        {"id": 100, "name": "Window Inspection", "status": "Closed"},
+        {"id": 200, "name": "Door Inspection", "status": "Closed"},
+    ]
+    sections_100 = [
+        {"id": 11, "name": "Framing", "position": 1, "list_id": 100, "not_applicable": False},
+        {"id": 12, "name": "Glass", "position": 2, "list_id": 100, "not_applicable": False},
+    ]
+    sections_200 = [
+        {"id": 21, "name": "Hinges", "position": 1, "list_id": 200, "not_applicable": False},
+    ]
+    transport = _PathAwareFakeTransport(
+        {
+            "/rest/v1.0/projects/2525840/checklist/lists/100/sections": sections_100,
+            "/rest/v1.0/projects/2525840/checklist/lists/200/sections": sections_200,
+            "/rest/v1.0/projects/2525840/checklist/lists": list_payload,
+        }
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="inspection-sections",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    # 3 sections across 2 inspections.
+    assert receipt["sqlite_upserted_count"] == 3
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="inspection-sections", db_path=db
+    ) == 3
+
+    conn = sqlite3.connect(str(db))
+    try:
+        rows = conn.execute(
+            "SELECT procore_record_id, parent_procore_id, canonical_json_redacted, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='inspection-sections' ORDER BY procore_record_id"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert len(rows) == 3
+    parent_map = {row[0]: row[1] for row in rows}
+    assert parent_map["11"] == "100"
+    assert parent_map["12"] == "100"
+    assert parent_map["21"] == "200"
+    for _record_id, _parent, canonical_json, raw_body in rows:
+        assert raw_body == 0
+        # Sections carry no PII / free-text by construction.
+        assert "@" not in canonical_json
+
+
+def test_inspection_items_apply_via_sections_bridge(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The inspection-items endpoint walks inspections → sections → items
+    in one pass. Sections marked not_applicable=True are skipped (no items
+    GET issued). Each item carries parent_procore_id = list_id AND
+    canonical_fields.section_id.
+
+    Note: like inspection-sections, the inspection-items adapter ships
+    live_verified=False pending operator path confirmation. This test
+    monkeypatches the adapter to live_verified=True so the 2-level
+    dispatch code is exercised against fake transport.
+    """
+    _setup_env(monkeypatch)
+    db = _db()
+
+    import dataclasses
+
     from hb_assistant.procore import endpoints as _ep_registry
 
     real_adapter = _ep_registry.get("inspection-items")
     assert real_adapter is not None
     verified_adapter = dataclasses.replace(real_adapter, live_verified=True)
-    monkeypatch.setattr(_ep_registry, "_BY_ID", {**_ep_registry._BY_ID, "inspection-items": verified_adapter})
+    monkeypatch.setattr(
+        _ep_registry,
+        "_BY_ID",
+        {**_ep_registry._BY_ID, "inspection-items": verified_adapter},
+    )
     secret_body = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
     list_payload = [
         {"id": 100, "name": "Window Inspection", "status": "Closed"},
         {"id": 200, "name": "Door Inspection", "status": "Closed"},
     ]
-    items_100 = [
+    sections_100 = [
+        {"id": 11, "name": "Framing", "position": 1, "list_id": 100, "not_applicable": False},
+        # not_applicable section MUST be skipped — no items GET issued.
+        {"id": 12, "name": "Skipped", "position": 2, "list_id": 100, "not_applicable": True},
+    ]
+    sections_200 = [
+        {"id": 21, "name": "Hinges", "position": 1, "list_id": 200, "not_applicable": False},
+    ]
+    items_100_11 = [
         {
             "id": 1001,
             "name": "Item 1001",
@@ -1780,23 +1878,16 @@ def test_inspection_items_apply_list_plus_n_per_inspection(
                 }
             ],
         },
-        {
-            "id": 1002,
-            "name": "Item 1002",
-            "details": "another body",
-        },
+        {"id": 1002, "name": "Item 1002", "details": "another body"},
     ]
-    items_200 = [
-        {
-            "id": 2001,
-            "name": "Item 2001",
-            "details": "third body",
-        }
-    ]
+    items_200_21 = [{"id": 2001, "name": "Item 2001", "details": "third body"}]
+
     transport = _PathAwareFakeTransport(
         {
-            "/rest/v1.0/projects/2525840/checklist/lists/100/items": items_100,
-            "/rest/v1.0/projects/2525840/checklist/lists/200/items": items_200,
+            "/rest/v1.0/projects/2525840/checklist/lists/100/sections": sections_100,
+            "/rest/v1.0/projects/2525840/checklist/lists/200/sections": sections_200,
+            "/rest/v1.0/projects/2525840/checklist/lists/100/items": items_100_11,
+            "/rest/v1.0/projects/2525840/checklist/lists/200/items": items_200_21,
             "/rest/v1.0/projects/2525840/checklist/lists": list_payload,
         }
     )
@@ -1814,13 +1905,13 @@ def test_inspection_items_apply_list_plus_n_per_inspection(
     )
 
     assert receipt["state"] == "success"
-    # 3 items across 2 inspections.
+    # 3 items: 2 from list 100 section 11, 1 from list 200 section 21.
+    # Section 12 was not_applicable → skipped (no items GET).
     assert receipt["sqlite_upserted_count"] == 3
     assert count_procore_live_records(
         project_key="tropical", endpoint_id="inspection-items", db_path=db
     ) == 3
 
-    # Each item row carries parent_procore_id = its source list_id.
     conn = sqlite3.connect(str(db))
     try:
         rows = conn.execute(
@@ -1834,20 +1925,23 @@ def test_inspection_items_apply_list_plus_n_per_inspection(
     assert parent_map["1001"] == "100"
     assert parent_map["1002"] == "100"
     assert parent_map["2001"] == "200"
-    # Free-text + PII never persists.
-    for _record_id, _parent, canonical_json, raw_body in rows:
+
+    # Verify section_id preserved on the items.
+    for record_id, _parent, canonical_json, raw_body in rows:
         assert raw_body == 0
         assert secret_body not in canonical_json
         assert "synthetic-fixture@example.invalid" not in canonical_json
         assert "Synthetic Tester" not in canonical_json
+        # section_id appears in canonical_json (preserved through the
+        # _INSPECTION_ITEM_STRUCTURED_KEYS whitelist).
+        if record_id in ("1001", "1002"):
+            assert '"section_id": 11' in canonical_json
+        else:
+            assert '"section_id": 21' in canonical_json
 
-    # The per-list sub-fetch path is project-scoped, mirroring most v1.0
-    # endpoints (the operator-supplied detail endpoint omits project_id from
-    # the path, but the list-side endpoint requires it in the path — Procore
-    # returns 404 otherwise).
-    item_calls = [
+    # The not_applicable section's items endpoint must NOT have been called.
+    items_12_calls = [
         c for c in transport.calls
-        if "/projects/2525840/checklist/lists/100/items" in c["url"]
-        or "/projects/2525840/checklist/lists/200/items" in c["url"]
+        if "section_id" in (c.get("params") or {}) and str(c["params"]["section_id"]) == "12"
     ]
-    assert len(item_calls) >= 2, "expected at least one items GET per list"
+    assert items_12_calls == [], "not_applicable section must be skipped"

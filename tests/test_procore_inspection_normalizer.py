@@ -9,6 +9,7 @@ import re
 from hb_assistant.procore.normalizers.inspection import (
     normalize_inspection,
     normalize_inspection_item,
+    normalize_inspection_section,
 )
 
 _CORRELATION = "synthetic-corr-inspection"
@@ -405,6 +406,57 @@ def test_inspection_item_requires_list_id() -> None:
             raw,
             project_key="tropical",
             endpoint_id="inspection-items",
+            correlation_id=_CORRELATION,
+            fetched_at=_FETCHED_AT,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Inspection-section normalizer — structural-only, no PII, no hashing.
+# ---------------------------------------------------------------------------
+
+
+def test_inspection_section_canonical_fields_preserved() -> None:
+    raw = {
+        "id": 21,
+        "name": "Framing",
+        "position": 1,
+        "list_id": 42,
+        "not_applicable": False,
+    }
+    record = normalize_inspection_section(
+        raw,
+        project_key="tropical",
+        endpoint_id="inspection-sections",
+        correlation_id=_CORRELATION,
+        fetched_at=_FETCHED_AT,
+    )
+    assert record["review_required"] is False
+    assert record["routing_reason"] == "default_low_risk"
+    assert record["safety_route"] is False
+    assert record["category"] == "inspection_sections"
+    assert record["entity_stable_key"] == "21"
+    assert record["parent_inspection_stable_key"] == "42"
+    cf = record["canonical_fields"]
+    assert cf["id"] == 21
+    assert cf["name"] == "Framing"
+    assert cf["position"] == 1
+    assert cf["list_id"] == 42
+    assert cf["not_applicable"] is False
+    # Nothing hashed; no PII keys ever appear.
+    serialized = json.dumps(record)
+    assert "hash_prefix" not in serialized
+
+
+def test_inspection_section_requires_list_id() -> None:
+    import pytest as _pytest
+
+    raw = {"id": 21, "name": "Framing", "position": 1, "not_applicable": False}
+    with _pytest.raises(ValueError):
+        normalize_inspection_section(
+            raw,
+            project_key="tropical",
+            endpoint_id="inspection-sections",
             correlation_id=_CORRELATION,
             fetched_at=_FETCHED_AT,
         )

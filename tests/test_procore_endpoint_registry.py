@@ -26,6 +26,7 @@ _CANONICAL_IDS = {
     "schedules",
     "activities",
     "inspections",
+    "inspection-sections",
     "inspection-items",
 }
 
@@ -60,15 +61,14 @@ def test_unknown_endpoint_resolves_to_none() -> None:
 
 def test_verified_endpoints_match_phase04a_matrix() -> None:
     verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
-    # Post inspections + inspection-items addition (2026-05-29): 21/22
-    # verified. inspections (parent) is live-verified at
-    # /rest/v1.0/projects/{project_id}/checklist/lists. inspection-items
-    # (child) is registered but fail-closed pending operator confirmation
-    # of the canonical list-items path — both /checklist/lists/{id}/items
-    # variants returned 404 against tropical; the operator detail URL
-    # requires section_id, suggesting a list-by-section endpoint not yet
-    # identified.
-    assert verified == _CANONICAL_IDS - {"inspection-items"}
+    # Post inspection-sections bridge addition (2026-05-29): 21/23 verified.
+    # inspection-sections is the bridge between inspections and
+    # inspection-items (Procore checklist model: list → section → item).
+    # Both list-of-sections path variants returned 404 against tropical;
+    # the operator-supplied schema is a detail URL only. inspection-items
+    # cannot be reached until inspection-sections is verified. The 2-level
+    # dispatch infrastructure is in place and exercised via fake transport.
+    assert verified == _CANONICAL_IDS - {"inspection-sections", "inspection-items"}
 
 
 def test_child_endpoints_carry_parent_path_template() -> None:

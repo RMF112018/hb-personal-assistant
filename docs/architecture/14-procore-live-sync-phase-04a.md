@@ -579,6 +579,46 @@ stays separate per the prior session handoff.
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/20-inspections-and-inspection-items.md`.
 
+## Inspection-sections bridge + 2-level inspection-items dispatch (2026-05-29)
+
+The operator-supplied checklist sections detail URL
+(`/rest/v1.0/checklist/lists/{list_id}/sections/{id}?project_id=X`)
+revealed the Procore checklist data model: `Inspection (list) → Section →
+Item`. The 23rd canonical endpoint `inspection-sections` (registry row
+between `inspections` and `inspection-items`) was added as the bridge,
+and the `inspection-items` dispatch was rewritten from a single-level
+N+1 to a 2-level walk (inspections → sections → items) so each item
+fetch carries the required `section_id` query param the operator detail
+URL signaled.
+
+Disposition (2026-05-29):
+
+- **`inspection-sections`** (live_verified=False): both
+  `/rest/v1.0/checklist/lists/{list_id}/sections` (smoke `a942dcef`) and
+  `/rest/v1.0/projects/{project_id}/checklist/lists/{list_id}/sections`
+  (smoke `2c1d59d2`) returned 404 against tropical. The operator schema
+  is a detail URL only; Procore may not expose a list-of-sections
+  endpoint via strip-the-id convention. Possible alternatives the
+  operator can confirm: sections embedded in a `/lists/{id}` detail
+  call, or only reachable via the checklist template
+  (`list_template_id`).
+- **`inspection-items`** (live_verified=False): depends on
+  `inspection-sections`. The 2-level dispatch requires `section_id` from
+  the sections sub-fetch; until sections is verified, items cannot be
+  reached.
+
+The structural infrastructure is in place: `normalize_inspection_section`
+(trivial — preserves `id, name, position, list_id, not_applicable`
+verbatim, no PII, no hashing), the 2-level dispatch block in
+`live_sync.py` (skips `not_applicable=True` sections to avoid wasted
+items GETs), parent_procore_id wiring for both endpoints, two
+fake-transport chain tests (each monkeypatches `live_verified=True` for
+its run), and the `_NORMALIZER_BY_ID` + parent-path-template wiring.
+Flipping live_verified to True requires only the correct `path_template`
+once the operator confirms it.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/21-inspection-sections-bridge.md`.
+
 ## Verified vs unverified endpoints
 
 Post schedules + activities addition, **all 20 of 20 canonical

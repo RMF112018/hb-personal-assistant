@@ -614,8 +614,76 @@ def normalize_inspection_item(
     return record
 
 
+# ---------------------------------------------------------------------------
+# Inspection Sections (bridge / per-list sections)
+# ---------------------------------------------------------------------------
+
+_INSPECTION_SECTION_STRUCTURED_KEYS = (
+    "id",
+    "name",
+    "position",
+    "list_id",
+    "not_applicable",
+)
+
+
+def normalize_inspection_section(
+    raw: Dict[str, Any],
+    *,
+    project_key: str,
+    endpoint_id: str,
+    correlation_id: str,
+    fetched_at: str,
+) -> Dict[str, Any]:
+    """Return a canonical inspection-section record.
+
+    Sections are the bridge between inspections and inspection-items in
+    Procore's checklist model. The schema is structural — id, name,
+    position, list_id, not_applicable — no PII, no free-text bodies, no
+    attachments. Preserve every field verbatim; `review_required=False`.
+
+    Operators sync sections to materialize the inspection structure cheaply
+    (1 + N). When syncing `inspection-items`, the orchestrator walks
+    inspections → sections → items in one pass without persisting an
+    intermediate sections row, but the `inspection-sections` endpoint
+    surfaces them as their own canonical rows for triage tooling.
+    """
+    if not isinstance(raw, dict):
+        raise TypeError("normalize_inspection_section requires a dict payload")
+    if "id" not in raw or raw["id"] in (None, ""):
+        raise ValueError("normalize_inspection_section requires raw['id']")
+    list_id = raw.get("list_id")
+    if list_id is None or list_id == "":
+        raise ValueError(
+            "normalize_inspection_section requires raw['list_id']"
+        )
+
+    canonical_fields: Dict[str, Any] = {}
+    for key in _INSPECTION_SECTION_STRUCTURED_KEYS:
+        if key in raw and raw[key] is not None:
+            canonical_fields[key] = raw[key]
+
+    record: Dict[str, Any] = {
+        "source_project_key": project_key,
+        "endpoint_id": endpoint_id,
+        "entity_stable_key": str(raw["id"]),
+        "parent_inspection_stable_key": str(list_id),
+        "category": "inspection_sections",
+        "review_required": False,
+        "routing_reason": "default_low_risk",
+        "safety_route": False,
+        "canonical_fields": canonical_fields,
+        "fetched_at": fetched_at,
+        "correlation_id": correlation_id,
+        "redaction_applied": True,
+        "normalization_schema_version": NORMALIZATION_SCHEMA_VERSION,
+    }
+    return record
+
+
 __all__ = [
     "NORMALIZATION_SCHEMA_VERSION",
     "normalize_inspection",
     "normalize_inspection_item",
+    "normalize_inspection_section",
 ]
