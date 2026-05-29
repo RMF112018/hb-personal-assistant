@@ -815,6 +815,14 @@ _ENDPOINT_TO_REGISTER_TEMPLATE: dict[str, str] = {
     "daily-log-weather": "daily_log_index",
     "daily-log-manpower": "daily_log_index",
     "daily-log-notes": "daily_log_index",
+    "daily-log-deliveries": "daily_log_index",
+    "daily-log-delays-review-routed": "daily_log_index",
+    "daily-log-inspections": "daily_log_index",
+    "daily-log-dcrs": "daily_log_index",
+    "daily-log-accident-review-routed": "daily_log_index",
+    "daily-log-dumpster": "daily_log_index",
+    "daily-log-safety-violation-review-routed": "daily_log_index",
+    "daily-log-visitor": "daily_log_index",
 }
 
 # Family template -> filename suffix under 01_Projects/ (hybrid layout).

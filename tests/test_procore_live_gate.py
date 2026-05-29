@@ -313,10 +313,11 @@ def test_live_endpoints_list_emits_canonical_phase04a_rows() -> None:
     topics_row = next(r for r in rows if r["endpoint_id"] == "meeting-topics")
     assert topics_row["live_verified"] is True
     # Phase 04A + meeting-detail + punch-items + schedules + activities +
-    # inspections + inspection-sections + inspection-items: all 23 canonical
-    # endpoints are now live-verified. inspection-sections and
+    # + daily-log resolution (weather v1.1 path + accident/dumpster/
+    # safety-violation/visitor): all 27 canonical endpoints are now
+    # live-verified. inspection-sections and
     # inspection-items use the project-scoped flat list endpoints supplied
     # by the operator on 2026-05-29 (/checklist/list_sections v1.0 and
     # /checklist/list_items v1.1).
     assert all(r["live_verified"] for r in rows)
-    assert len(rows) == 23
+    assert len(rows) == 27

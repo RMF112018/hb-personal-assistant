@@ -1036,10 +1036,9 @@ def test_daily_log_delays_persists_with_review_routing_and_hash_only_body(
             "id": 501,
             "date": "2026-03-01",
             "delay_type": "weather",
-            "impact_days": 1,
-            "status": "open",
-            "description": secret_body_marker,
-            "cause": "Heavy rainfall delayed concrete pour",
+            "duration": 5,
+            "status": "pending",
+            "comments": secret_body_marker,
             "updated_at": "2026-03-01T00:00:00Z",
         }
     ]
@@ -1071,7 +1070,7 @@ def test_daily_log_delays_persists_with_review_routing_and_hash_only_body(
     assert sensitive_reason == "delays_section_safety_routed_critical"
     assert raw_body_persisted == 0
     assert secret_body_marker not in canonical_json
-    assert "description_summary" in canonical_json  # hash present
+    assert "comments_summary" in canonical_json  # hash present
     assert "hash_prefix" in canonical_json
 
 
@@ -1085,9 +1084,8 @@ def test_daily_log_notes_persists_with_review_required_and_hash_only_body(
         {
             "id": 601,
             "date": "2026-03-02",
-            "location": "Building A - L3",
-            "author_id": 77,
-            "note": secret_body_marker,
+            "status": "pending",
+            "comment": secret_body_marker,
             "updated_at": "2026-03-02T00:00:00Z",
         }
     ]
@@ -1119,7 +1117,7 @@ def test_daily_log_notes_persists_with_review_required_and_hash_only_body(
     assert sensitive_reason == "notes_section_review_required_high_sensitivity"
     assert raw_body_persisted == 0
     assert secret_body_marker not in canonical_json
-    assert "note_summary" in canonical_json
+    assert "comment_summary" in canonical_json
     assert "hash_prefix" in canonical_json
 
 
@@ -1132,10 +1130,11 @@ def test_daily_log_manpower_persists_with_review_required_false(
         {
             "id": 701,
             "date": "2026-03-03",
-            "location": "Building B",
-            "workers": 25,
-            "hours": 200,
-            "contractor_id": 9001,
+            "man_hours": "200.0",
+            "num_workers": 25,
+            "num_hours": "8.0",
+            "status": "pending",
+            "contact": {"id": 9001, "email": "synthetic-contact@example.test", "name": "Synthetic Contact"},
             "updated_at": "2026-03-03T00:00:00Z",
         }
     ]
@@ -1164,7 +1163,7 @@ def test_daily_log_manpower_persists_with_review_required_false(
     assert row is not None
     review_required, sensitive_reason, raw_body_persisted = row
     assert review_required == 0
-    assert sensitive_reason == "manpower_structured_low_risk"
+    assert sensitive_reason == "manpower_contact_pii_hashed_medium"
     assert raw_body_persisted == 0
 
 
