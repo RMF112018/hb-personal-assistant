@@ -584,6 +584,38 @@ def get_procore_action_signals(
     return [{k: row[k] for k in row.keys()} for row in rows]
 
 
+def get_procore_text_intelligence(
+    *,
+    project_key: str,
+    endpoint_id: Optional[str] = None,
+    with_action_candidates: bool = False,
+    db_path: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
+    """Read text-intelligence rows for a project (optionally one endpoint, and/or
+    only rows that carry action candidates). Most-recent first."""
+    clauses = ["project_key = ?"]
+    params: List[Any] = [project_key]
+    if endpoint_id is not None:
+        clauses.append("endpoint_id = ?")
+        params.append(endpoint_id)
+    if with_action_candidates:
+        clauses.append("action_candidates_json IS NOT NULL AND action_candidates_json != ''")
+    conn = _open(db_path)
+    rows = conn.execute(
+        f"""
+        SELECT text_intelligence_id, project_key, record_key, endpoint_id, source_field_path,
+               text_hash, text_length, excerpt_redacted, topics_json, mentioned_records_json,
+               action_candidates_json, risk_terms_json, sensitivity, review_required,
+               created_at_utc
+          FROM procore_text_intelligence
+         WHERE {" AND ".join(clauses)}
+         ORDER BY created_at_utc DESC, text_intelligence_id ASC
+        """,
+        params,
+    ).fetchall()
+    return [{k: row[k] for k in row.keys()} for row in rows]
+
+
 __all__ = [
     "emit_action_signal",
     "emit_record_edge",
@@ -594,4 +626,5 @@ __all__ = [
     "extract_location_refs",
     "extract_people_refs",
     "get_procore_action_signals",
+    "get_procore_text_intelligence",
 ]

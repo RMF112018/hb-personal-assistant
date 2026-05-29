@@ -1290,6 +1290,30 @@ daily-log date-window pulls.
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04b/10-query-command-contracts.md`.
 
+## Phase 04B Prompt 11: enriched Obsidian register
+
+Projects the enriched second-brain memory into ONE deterministic, marker-bounded
+Obsidian note per project (`01_Projects/<project>.procore-memory-register.md`) with
+eight sections: open actions, last-48h changes, inspection unanswered items,
+safety/compliance queue, meeting decisions/actions, RFI response changes, submittal
+workflow changes, schedule risk signals. Read-only / local — never calls Procore.
+Output carries only redacted columns + source `record_key` / `procore_record_id` +
+a `procore live …` query reference (no raw bodies, signed URLs, or tokens).
+
+```bash
+# Dry-run preview (default; zero side effects).
+hb-assistant procore obsidian enriched --project tropical --dry-run --json
+
+# Apply (writes the single marker-bounded note to the local vault; needs
+# HB_CONSTRUCTION_VAULT_ROOT / configured construction vault root).
+hb-assistant procore obsidian enriched --project tropical --apply --confirm --json
+```
+
+`--since` (default `"48 hours ago"`) bounds the changes section. Fail-closed reason
+codes: `since_unparseable`, `vault_root_unconfigured`.
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04b/11-obsidian-registration.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

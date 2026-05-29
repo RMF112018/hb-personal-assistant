@@ -1543,6 +1543,65 @@ def obsidian_preview(
     _emit(result, json_out=json_out)
 
 
+@obsidian_app.command("enriched")
+def obsidian_enriched(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    since: str = typer.Option("48 hours ago", "--since", help='Window for the changes section (relative or ISO).'),
+    dry_run: bool = typer.Option(True, "--dry-run", help="Default: rendered note preview, zero side effects."),
+    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in. Writes one marker-bounded procore-memory-register.md to 01_Projects/ (local vault)."),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default)."),
+    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts."),
+) -> None:
+    """Phase 04B enriched second-brain register (open actions / changes / safety /
+    schedule risk / meeting actions / RFI + submittal workflow). Read-only SQLite;
+    never calls Procore. Dry-run default; --apply writes one marker-bounded note."""
+    if apply and not confirm and not sys.stdin.isatty():
+        typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
+        raise typer.Exit(1)
+    if apply and not confirm and not typer.confirm(
+        "CONFIRM: --apply will write procore-memory-register.md to the local vault only (no Procore mutation). Continue?",
+        default=False,
+    ):
+        typer.echo("Aborted.")
+        raise typer.Exit(1)
+
+    from hb_assistant.procore.obsidian_register import (
+        apply_enriched_register,
+        build_enriched_registers,
+    )
+    from hb_assistant.procore.time_window import parse_since
+
+    now = datetime.now(timezone.utc)
+    try:
+        since_utc = parse_since(since, now=now)
+    except ValueError:
+        _emit({"command": "hb-assistant procore obsidian enriched", "ok": False, "phase": "Phase 04B Prompt 11",
+               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": ["since_unparseable"]},
+              json_out=json_out, exit_code=3)
+        return
+    now_utc = now.isoformat().replace("+00:00", "Z")
+
+    if apply:
+        result = apply_enriched_register(project, since_utc=since_utc, now_utc=now_utc)
+        if not result.get("vault_configured", False):
+            _emit({"command": "hb-assistant procore obsidian enriched", "ok": False, "phase": "Phase 04B Prompt 11",
+                   "project_key": project, "state": "fail_closed_unsupported",
+                   "reason_codes": ["vault_root_unconfigured"]}, json_out=json_out, exit_code=3)
+            return
+    else:
+        result = build_enriched_registers(project, since_utc=since_utc, now_utc=now_utc)
+        result["written_paths"] = []
+
+    payload = {
+        "command": "hb-assistant procore obsidian enriched", "ok": True, "phase": "Phase 04B Prompt 11",
+        "project_key": project, "mode": "apply" if apply else "dry_run", "dry_run": not apply,
+        "since_utc": since_utc, "generated_utc": now_utc, "counts": result["counts"],
+        "section_keys": list(result["sections"]), "rendered": result["rendered"],
+        "written_paths": result["written_paths"], "guardrails": result["guardrails"],
+    }
+    _emit(payload, json_out=json_out)
+
+
 # =============================================================================
 # Prompt_09A: procore obsidian register (endpoint-scoped projection from
 # Phase 04A procore_live_records; read-only SQLite, never calls Procore)
