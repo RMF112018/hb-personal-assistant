@@ -716,12 +716,53 @@ def get_procore_changes(
     return [{k: row[k] for k in row.keys()} for row in rows]
 
 
+def get_procore_timeline(
+    *,
+    project_key: str,
+    since_utc: Optional[str] = None,
+    until_utc: Optional[str] = None,
+    endpoint_id: Optional[str] = None,
+    record_key: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
+    """Return assistant-ready timeline events for a project (optionally an
+    endpoint / record / time window), newest first."""
+    clauses = ["project_key = ?"]
+    params: List[Any] = [project_key]
+    if endpoint_id is not None:
+        clauses.append("endpoint_id = ?")
+        params.append(endpoint_id)
+    if record_key is not None:
+        clauses.append("record_key = ?")
+        params.append(record_key)
+    if since_utc is not None:
+        clauses.append("event_time_utc >= ?")
+        params.append(since_utc)
+    if until_utc is not None:
+        clauses.append("event_time_utc <= ?")
+        params.append(until_utc)
+    conn = _open(db_path)
+    rows = conn.execute(
+        f"""
+        SELECT timeline_event_id, record_key, endpoint_id, procore_record_id, event_type,
+               event_time_utc, summary_redacted, importance, actor_entity_key,
+               target_entity_key, action_signal_id, source_change_event_id
+          FROM procore_record_timeline_events
+         WHERE {" AND ".join(clauses)}
+         ORDER BY event_time_utc DESC, timeline_event_id ASC
+        """,
+        params,
+    ).fetchall()
+    return [{k: row[k] for k in row.keys()} for row in rows]
+
+
 __all__ = [
     "ChangeEvent",
     "compute_canonical_hash",
     "diff_canonical_records",
     "get_procore_changes",
     "get_procore_record_history",
+    "get_procore_timeline",
     "record_procore_change_events",
     "record_procore_current_state",
     "record_procore_history_for_record",

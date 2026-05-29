@@ -1258,6 +1258,38 @@ sqlite3 "$DB" ".restore '$BACKUP'"
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/18-idempotency-reconciliation-rollback.md`.
 
+## Phase 04B Prompt 10: local second-brain query commands (read-only)
+
+Five read-only query commands expose the enriched history/signal memory from the
+local SQLite store. **None call Procore** — no `HB_PROCORE_LIVE`, no token, no
+`--confirm-live-get`. They read the same DB the sync writes and emit stable JSON.
+
+```bash
+# Reconstruct one record's history (snapshots + field-level change events).
+hb-assistant procore live history --project tropical --endpoint rfis --record-id 26550708 --json
+
+# Project-wide changes since a relative or ISO time.
+hb-assistant procore live changes --project tropical --since "48 hours ago" --json
+
+# Assistant-ready timeline events since a time.
+hb-assistant procore live timeline --project tropical --since "7 days ago" --json
+
+# Open/relevant action signals (filterable by --status/--endpoint/--importance/--signal-type).
+hb-assistant procore live actions --project tropical --json
+
+# Field-coverage report for a LOCAL raw payload file (names/types only; no values, no network).
+hb-assistant procore live coverage --project tropical --endpoint inspections --raw-payload /path/to/payload.json --json
+```
+
+Relative `--since` / `--until` accept `"N minutes|hours|days|weeks ago"` or an ISO
+timestamp. Failures fail-closed with reason codes (`endpoint_alias_unknown`,
+`since_unparseable`, `raw_payload_unreadable`). Output carries source
+`record_key`s and already-redacted summaries only. Related: `live sync` /
+`live smoke` accept `--start-date` / `--end-date` (Phase 04B Prompt 09) for
+daily-log date-window pulls.
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04b/10-query-command-contracts.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

@@ -232,6 +232,12 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
 }
 
 
+def resolve_normalizer(endpoint_id: str) -> Optional[Callable[..., Dict[str, Any]]]:
+    """Return the normalizer callable for an endpoint id (parent map, then child
+    map). Read-only lookup used by the local coverage tooling — no I/O."""
+    return _NORMALIZER_BY_ID.get(endpoint_id) or _CHILD_NORMALIZER_BY_ID.get(endpoint_id)
+
+
 def _record_id_of(adapter: EndpointAdapter, raw: Dict[str, Any]) -> Optional[str]:
     value = raw.get(adapter.record_id_field)
     if value is None or value == "":

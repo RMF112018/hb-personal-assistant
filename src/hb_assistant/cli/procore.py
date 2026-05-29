@@ -1246,6 +1246,206 @@ def live_smoke(
     _emit(payload, json_out=json_out, exit_code=exit_code)
 
 
+# --------------------------------------------------------------------------- #
+# Phase 04B Prompt 10 — read-only local second-brain query commands.
+# All are local SQLite / local-file only: no Procore call, no live gate, no token.
+# --------------------------------------------------------------------------- #
+
+_QUERY_PHASE = "Phase 04B Prompt 10"
+
+
+def _query_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _resolve_endpoint_id(endpoint: Optional[str]) -> tuple[Optional[str], list[str]]:
+    """Resolve an optional endpoint alias to a canonical id (read-only)."""
+    if endpoint is None:
+        return None, []
+    from hb_assistant.procore import endpoints as ep_registry
+
+    adapter = ep_registry.get(endpoint)
+    if adapter is None:
+        return None, ["endpoint_alias_unknown"]
+    return adapter.endpoint_id, []
+
+
+@live_app.command("history")
+def live_history(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id (e.g. rfis)."),
+    record_id: str = typer.Option(..., "--record-id", help="Procore record id."),
+    parent_id: Optional[str] = typer.Option(None, "--parent-id", help="Parent procore id for child endpoints."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Reconstruct one record's history (snapshots + field-level change events). Local SQLite only."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_history import get_procore_changes, get_procore_record_history
+
+    endpoint_id, reasons = _resolve_endpoint_id(endpoint)
+    if endpoint_id is None:
+        _emit({"command": "hb-assistant procore live history", "ok": False, "phase": _QUERY_PHASE,
+               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": reasons}, json_out=json_out, exit_code=3)
+        return
+    SQLiteMigrator().apply()
+    record_key = "|".join([project, endpoint_id, parent_id or "", str(record_id)])
+    snapshots = get_procore_record_history(record_key=record_key)
+    changes = get_procore_changes(project_key=project, record_key=record_key)
+    payload = {
+        "command": "hb-assistant procore live history", "ok": True, "phase": _QUERY_PHASE,
+        "project_key": project, "endpoint_id": endpoint_id, "procore_record_id": str(record_id),
+        "record_key": record_key, "snapshot_count": len(snapshots), "change_count": len(changes),
+        "snapshots": [
+            {k: s[k] for k in ("observed_at_utc", "source_updated_at_utc", "canonical_hash",
+                               "changed_from_previous", "change_summary_json", "normalizer_version")}
+            for s in snapshots
+        ],
+        "changes": changes,
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@live_app.command("changes")
+def live_changes(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    since: str = typer.Option(..., "--since", help='Relative ("48 hours ago", "7 days ago") or ISO timestamp.'),
+    until: Optional[str] = typer.Option(None, "--until", help="Optional upper bound (relative or ISO)."),
+    endpoint: Optional[str] = typer.Option(None, "--endpoint", help="Optional endpoint filter."),
+    record_id: Optional[str] = typer.Option(None, "--record-id", help="Optional single-record filter."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List field-level change events for a project since a time. Local SQLite only."""
+    from hb_assistant.procore.time_window import parse_since
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_history import get_procore_changes
+
+    endpoint_id, reasons = _resolve_endpoint_id(endpoint)
+    now = _query_now()
+    try:
+        since_utc = parse_since(since, now=now)
+        until_utc = parse_since(until, now=now) if until else None
+    except ValueError:
+        reasons.append("since_unparseable")
+    if reasons:
+        _emit({"command": "hb-assistant procore live changes", "ok": False, "phase": _QUERY_PHASE,
+               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": reasons}, json_out=json_out, exit_code=3)
+        return
+    SQLiteMigrator().apply()
+    record_key = "|".join([project, endpoint_id, "", str(record_id)]) if (endpoint_id and record_id) else None
+    rows = get_procore_changes(project_key=project, since_utc=since_utc, until_utc=until_utc, record_key=record_key)
+    if endpoint_id and record_key is None:
+        rows = [r for r in rows if r.get("endpoint_id") == endpoint_id]
+    payload = {
+        "command": "hb-assistant procore live changes", "ok": True, "phase": _QUERY_PHASE,
+        "project_key": project, "since_utc": since_utc, "until_utc": until_utc,
+        "endpoint_id": endpoint_id, "change_count": len(rows), "changes": rows, "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@live_app.command("timeline")
+def live_timeline(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    since: str = typer.Option(..., "--since", help='Relative ("7 days ago") or ISO timestamp.'),
+    until: Optional[str] = typer.Option(None, "--until", help="Optional upper bound (relative or ISO)."),
+    endpoint: Optional[str] = typer.Option(None, "--endpoint", help="Optional endpoint filter."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List assistant-ready timeline events for a project since a time. Local SQLite only."""
+    from hb_assistant.procore.time_window import parse_since
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_history import get_procore_timeline
+
+    endpoint_id, reasons = _resolve_endpoint_id(endpoint)
+    now = _query_now()
+    try:
+        since_utc = parse_since(since, now=now)
+        until_utc = parse_since(until, now=now) if until else None
+    except ValueError:
+        reasons.append("since_unparseable")
+    if reasons:
+        _emit({"command": "hb-assistant procore live timeline", "ok": False, "phase": _QUERY_PHASE,
+               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": reasons}, json_out=json_out, exit_code=3)
+        return
+    SQLiteMigrator().apply()
+    rows = get_procore_timeline(project_key=project, since_utc=since_utc, until_utc=until_utc, endpoint_id=endpoint_id)
+    payload = {
+        "command": "hb-assistant procore live timeline", "ok": True, "phase": _QUERY_PHASE,
+        "project_key": project, "since_utc": since_utc, "until_utc": until_utc,
+        "endpoint_id": endpoint_id, "event_count": len(rows), "timeline": rows, "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@live_app.command("actions")
+def live_actions(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    status: Optional[str] = typer.Option(None, "--status", help="Signal status filter (e.g. open, resolved)."),
+    endpoint: Optional[str] = typer.Option(None, "--endpoint", help="Optional endpoint filter."),
+    importance: Optional[str] = typer.Option(None, "--importance", help="Optional importance filter (high/medium/low)."),
+    signal_type: Optional[str] = typer.Option(None, "--signal-type", help="Optional signal-type filter."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List open/relevant action signals for a project. Local SQLite only."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_enrichment import get_procore_action_signals
+
+    endpoint_id, reasons = _resolve_endpoint_id(endpoint)
+    if reasons:
+        _emit({"command": "hb-assistant procore live actions", "ok": False, "phase": _QUERY_PHASE,
+               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": reasons}, json_out=json_out, exit_code=3)
+        return
+    SQLiteMigrator().apply()
+    rows = get_procore_action_signals(
+        project_key=project, signal_status=status, endpoint_id=endpoint_id,
+        importance=importance, signal_type=signal_type,
+    )
+    payload = {
+        "command": "hb-assistant procore live actions", "ok": True, "phase": _QUERY_PHASE,
+        "project_key": project, "filters": {"status": status, "endpoint_id": endpoint_id,
+                                            "importance": importance, "signal_type": signal_type},
+        "action_count": len(rows), "actions": rows, "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@live_app.command("coverage")
+def live_coverage(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key (contextual)."),
+    endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id."),
+    raw_payload: Path = typer.Option(..., "--raw-payload", help="Local JSON payload file (read-only; not persisted)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report normalizer field coverage for a local raw payload (names/types only). No network, no DB."""
+    from hb_assistant.procore.coverage import compute_payload_coverage
+
+    endpoint_id, reasons = _resolve_endpoint_id(endpoint)
+    if endpoint_id is None:
+        _emit({"command": "hb-assistant procore live coverage", "ok": False, "phase": _QUERY_PHASE,
+               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": reasons}, json_out=json_out, exit_code=3)
+        return
+    try:
+        data = json.loads(Path(raw_payload).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        _emit({"command": "hb-assistant procore live coverage", "ok": False, "phase": _QUERY_PHASE,
+               "project_key": project, "endpoint_id": endpoint_id, "state": "fail_closed_unsupported",
+               "reason_codes": ["raw_payload_unreadable"]}, json_out=json_out, exit_code=3)
+        return
+    try:
+        report = compute_payload_coverage(endpoint_id, data, now_utc=_query_now().isoformat())
+    except ValueError:
+        _emit({"command": "hb-assistant procore live coverage", "ok": False, "phase": _QUERY_PHASE,
+               "project_key": project, "endpoint_id": endpoint_id, "state": "fail_closed_unsupported",
+               "reason_codes": ["coverage_compute_failed"]}, json_out=json_out, exit_code=3)
+        return
+    payload = {
+        "command": "hb-assistant procore live coverage", "ok": True, "phase": _QUERY_PHASE,
+        "project_key": project, **report, "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
 live_records_app = typer.Typer(help="Procore live SQLite record read-only commands.")
 live_app.add_typer(live_records_app, name="records")
 

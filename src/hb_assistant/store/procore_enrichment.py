@@ -544,6 +544,46 @@ def emit_text_intelligence(
     return ti_id
 
 
+def get_procore_action_signals(
+    *,
+    project_key: str,
+    signal_status: Optional[str] = None,
+    endpoint_id: Optional[str] = None,
+    importance: Optional[str] = None,
+    signal_type: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
+    """Read action signals for a project (optionally filtered by status / endpoint
+    / importance / signal type). High-importance, most-recent first."""
+    clauses = ["project_key = ?"]
+    params: List[Any] = [project_key]
+    for column, value in (
+        ("signal_status", signal_status),
+        ("endpoint_id", endpoint_id),
+        ("importance", importance),
+        ("signal_type", signal_type),
+    ):
+        if value is not None:
+            clauses.append(f"{column} = ?")
+            params.append(value)
+    conn = _open(db_path)
+    rows = conn.execute(
+        f"""
+        SELECT action_signal_id, project_key, record_key, endpoint_id, signal_type,
+               signal_status, importance, due_at_utc, owner_entity_key, title_redacted,
+               summary_redacted, reason_codes_json, first_detected_at_utc, last_seen_at_utc,
+               resolved_at_utc, metadata_json
+          FROM procore_action_signals
+         WHERE {" AND ".join(clauses)}
+         ORDER BY
+           CASE importance WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END ASC,
+           first_detected_at_utc DESC, action_signal_id ASC
+        """,
+        params,
+    ).fetchall()
+    return [{k: row[k] for k in row.keys()} for row in rows]
+
+
 __all__ = [
     "emit_action_signal",
     "emit_record_edge",
@@ -553,4 +593,5 @@ __all__ = [
     "extract_custom_field_values",
     "extract_location_refs",
     "extract_people_refs",
+    "get_procore_action_signals",
 ]
