@@ -19,11 +19,55 @@ store module — no ``hb_assistant.procore`` import (mirrors the sibling
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
 
 from .procore_enrichment import emit_record_edge, extract_company_refs, extract_people_refs
 from .procore_financials import emit_financial_amount_fact
+
+
+def record_key(project_key: str, endpoint_id: str, parent: Optional[str], record_id: Any) -> str:
+    """Canonical pipe-joined record key (matches the enrichment projections)."""
+    return "|".join([project_key, endpoint_id, parent or "", str(record_id)])
+
+
+def coerce_amount(value: Any) -> Optional[str]:
+    """Store-layer decimal-safe amount coercion (twin of normalizers.parse_amount).
+
+    Source strings are kept verbatim so precision / trailing zeros / sign survive;
+    ints stringify exactly; a float uses its shortest round-trip repr. ``None`` /
+    ``bool`` / non-numeric → ``None``. Never re-coerces through float in a lossy way.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or None
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return repr(value)
+    return None
+
+
+def is_positive_amount(value: Any) -> bool:
+    """True if the amount parses to a strictly positive number. Comparison only —
+    the stored value is never the parsed Decimal (no precision mutation)."""
+    coerced = coerce_amount(value)
+    if coerced is None:
+        return False
+    try:
+        return Decimal(coerced) > 0
+    except (InvalidOperation, ValueError):
+        return False
+
+
+def bool_to_int(value: Any) -> Optional[int]:
+    """Map a Procore boolean flag to 0/1 for an INTEGER column; None stays None."""
+    if value is None:
+        return None
+    return 1 if bool(value) else 0
 
 
 def emit_amount_facts(
@@ -123,6 +167,10 @@ def link_record_entities(
 
 
 __all__ = [
+    "record_key",
+    "coerce_amount",
+    "is_positive_amount",
+    "bool_to_int",
     "emit_amount_facts",
     "link_record_entities",
 ]

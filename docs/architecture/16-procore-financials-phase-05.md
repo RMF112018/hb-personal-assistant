@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–03 · Migration **V8** · registry 27 → 59 endpoints
+Status: **in progress** · Phase 05 Prompts 01–04 · Migration **V8** · registry 27 → 59 endpoints
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -116,8 +116,34 @@ Posture: money/labels preserved as structured business facts usable for
 aggregation; person PII, free text/HTML, contact info, and signed-URL query
 strings never persist raw.
 
+## Owner-side family — prime contracts / COs / payment applications (Prompt 04)
+
+First per-endpoint family. `normalizers/owner_contract.py` (6 normalizers) +
+`store/procore_owner_projection.py` (`project_owner_contract_family`) implement the
+owner side; both are **wired into live_sync** (`_NORMALIZER_BY_ID` + a guard block)
+but the 6 endpoints stay **`live_verified=False`** — the chain fail-closes before
+the normalizer lookup, so nothing transports until an operator runs a bounded smoke
+(no live GETs were performed here).
+
+- **Normalize:** amounts/quantities/rates kept verbatim (decimal-safe); free text
+  (title/description/inclusions/exclusions/review_notes) → **hash-only** summary (no
+  excerpt — high-sensitivity); parties → `person_hash_summary`; attachment URLs →
+  path-only; payment-application amounts read from the nested `g702` AIA object.
+- **Project:** rows into `procore_financial_contracts` / `_line_items` /
+  `_change_orders` / `_change_order_line_items` / `_payment_applications`; amount facts
+  for contract sums, approved COs, grand totals, payment due, retainage, balance to
+  finish; edges contract→architect/created_by (people, hashed) + contractor/vendor
+  (companies, labels preserved) + change_order_of / payment_application_of; attachment
+  refs path-only. Financial table rows carry **structured facts only** (no free text).
+- **Signals:** `prime_contract_unexecuted`, `prime_contract_private`,
+  `prime_change_order_unexecuted`/`_unpaid`/`_schedule_impact`,
+  `payment_application_pending_or_unpaid`, `payment_application_retainage_held`.
+- Shared store-layer helpers `record_key` / `coerce_amount` / `is_positive_amount` /
+  `bool_to_int` added to `procore_financial_projection.py` for reuse by later families.
+
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
 `01-endpoint-registry-and-live-gate-shell.md`,
 `02-v8-financial-schema-and-repository-model.md`,
-`03-shared-financial-normalizers-and-redaction-utilities.md`).
+`03-shared-financial-normalizers-and-redaction-utilities.md`,
+`04-prime-contracts-prime-change-orders-and-payment-applications.md`).

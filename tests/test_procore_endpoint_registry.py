@@ -149,15 +149,38 @@ def test_phase05_financial_ids_all_resolve() -> None:
         assert _resolve(fin_id).endpoint_id == fin_id
 
 
+# Owner-family endpoints whose normalizers + projections are implemented (Prompt
+# 04). They are registered in the dispatch map but stay live_verified=False, so
+# they still fail closed before the normalizer lookup until smoke promotion.
+_OWNER_IMPLEMENTED = frozenset(
+    {
+        "prime-contracts",
+        "prime-contract-line-items",
+        "prime-contract-attachments",
+        "prime-change-orders",
+        "prime-change-order-line-items",
+        "payment-applications",
+    }
+)
+
+
 def test_phase05_financial_endpoints_are_fail_closed() -> None:
-    # Every financial shell must be unverified AND have no normalizer, so the
-    # orchestrator fail-closes (not_live_verified, then normalizer_missing)
-    # with no transport call until smoke evidence promotes it.
+    # The durable fail-closed guarantee is live_verified=False (the orchestrator
+    # returns not_live_verified BEFORE any normalizer lookup). Not-yet-implemented
+    # endpoints additionally have no normalizer registered.
     for fin_id in _PHASE05_FINANCIAL_IDS:
         adapter = _resolve(fin_id)
         assert adapter.live_verified is False, fin_id
         assert adapter.sensitivity == "high", fin_id
-        assert resolve_normalizer(fin_id) is None, fin_id
+        if fin_id not in _OWNER_IMPLEMENTED:
+            assert resolve_normalizer(fin_id) is None, fin_id
+
+
+def test_phase05_owner_endpoints_have_normalizers() -> None:
+    # Prompt 04 registered the owner-family normalizers (ready to project once
+    # promoted); they remain unverified above.
+    for fin_id in _OWNER_IMPLEMENTED:
+        assert resolve_normalizer(fin_id) is not None, fin_id
 
 
 def test_phase05_financial_endpoints_excluded_from_verified() -> None:

@@ -50,12 +50,24 @@ from hb_assistant.procore.normalizers import (
     normalize_submittal_package,
     normalize_submittal_response,
 )
+from hb_assistant.procore.normalizers.owner_contract import (
+    normalize_payment_application,
+    normalize_prime_change_order,
+    normalize_prime_change_order_line_item,
+    normalize_prime_contract,
+    normalize_prime_contract_attachment,
+    normalize_prime_contract_line_item,
+)
 from hb_assistant.procore.redaction import redact_source_url
 from hb_assistant.procore.token_provider import default_procore_token_provider
 from hb_assistant.store.procore_history import record_procore_history_for_record
 from hb_assistant.store.procore_inspection_projection import project_inspection
 from hb_assistant.store.procore_meeting_projection import project_meeting_family
 from hb_assistant.store.procore_observation_projection import project_observation
+from hb_assistant.store.procore_owner_projection import (
+    OWNER_ENDPOINTS,
+    project_owner_contract_family,
+)
 from hb_assistant.store.procore_punch_projection import project_punch_item
 from hb_assistant.store.procore_repositories import (
     count_procore_live_records,
@@ -229,6 +241,15 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     # to per-item PII (responder), free-text bodies, and nested
     # observation refs.
     "inspection-items": normalize_inspection_item,
+    # Phase 05 owner-side financial endpoints. Registered so the live chain can
+    # normalize + project them once promoted; they remain live_verified=False in
+    # the registry, so the orchestrator still fail-closes before this lookup.
+    "prime-contracts": normalize_prime_contract,
+    "prime-contract-line-items": normalize_prime_contract_line_item,
+    "prime-contract-attachments": normalize_prime_contract_attachment,
+    "prime-change-orders": normalize_prime_change_order,
+    "prime-change-order-line-items": normalize_prime_change_order_line_item,
+    "payment-applications": normalize_payment_application,
 }
 
 
@@ -1069,6 +1090,25 @@ def run_live_sync(
                 )
             except Exception:  # noqa: BLE001
                 redacted_errors.append({"schedule_projection_error": "projection_failed"})
+
+        # Phase 05 owner-side financial enrichment: project prime contracts /
+        # line items / attachments / change orders / CO line items / payment
+        # applications into the V8 financial tables (+ amount facts, edges,
+        # owner-side signals). parent_procore_id flows through for child
+        # endpoints once Prompt 10 wires the N+1 fetch. Guarded.
+        if adapter.endpoint_id in OWNER_ENDPOINTS:
+            try:
+                project_owner_contract_family(
+                    adapter.endpoint_id,
+                    raw,
+                    project_key=project_key,
+                    sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                    parent_procore_id=parent_id_for_upsert,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"owner_projection_error": "projection_failed"})
 
         if child_adapter is None or child_normalizer is None:
             continue
