@@ -724,6 +724,81 @@ def read_financial_risk_view(
     )
 
 
+def read_financial_change_orders(
+    *,
+    project_key: str,
+    change_order_family: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
+    """Change orders (prime / commitment), optionally filtered by family."""
+    conn = _open(db_path)
+    clauses = ["project_key = ?"]
+    params: List[Any] = [project_key]
+    if change_order_family is not None:
+        clauses.append("change_order_family = ?")
+        params.append(change_order_family)
+    return _rows(
+        conn,
+        f"""
+        SELECT record_key, change_order_id, change_order_family, contract_record_key,
+               contract_id, number, status, executed, paid, grand_total,
+               schedule_impact_amount, due_date, invoiced_date, paid_date
+        FROM procore_financial_change_orders
+        WHERE {" AND ".join(clauses)}
+        ORDER BY change_order_family, change_order_id
+        """,
+        tuple(params),
+    )
+
+
+def read_financial_payment_applications(
+    *, project_key: str, status: Optional[str] = None, db_path: Optional[Path] = None
+) -> List[Dict[str, Any]]:
+    """Owner payment applications, optionally filtered by status."""
+    conn = _open(db_path)
+    clauses = ["project_key = ?"]
+    params: List[Any] = [project_key]
+    if status is not None:
+        clauses.append("status = ?")
+        params.append(status)
+    return _rows(
+        conn,
+        f"""
+        SELECT record_key, payment_application_id, contract_record_key, prime_contract_id,
+               billing_period_id, number, status, billing_date, period_start, period_end,
+               current_payment_due, total_amount_paid, total_retainage,
+               balance_to_finish_including_retainage
+        FROM procore_financial_payment_applications
+        WHERE {" AND ".join(clauses)}
+        ORDER BY payment_application_id
+        """,
+        tuple(params),
+    )
+
+
+def read_financial_compliance_documents(
+    *, project_key: str, status: Optional[str] = None, db_path: Optional[Path] = None
+) -> List[Dict[str, Any]]:
+    """Commitment compliance/insurance documents, optionally filtered by status."""
+    conn = _open(db_path)
+    clauses = ["project_key = ?"]
+    params: List[Any] = [project_key]
+    if status is not None:
+        clauses.append("status = ?")
+        params.append(status)
+    return _rows(
+        conn,
+        f"""
+        SELECT compliance_key, contract_record_key, compliance_id, document_type, status,
+               compliant, effective_date, expiration_date
+        FROM procore_financial_compliance_documents
+        WHERE {" AND ".join(clauses)}
+        ORDER BY compliance_id
+        """,
+        tuple(params),
+    )
+
+
 def read_financial_billing_periods(
     *, project_key: str, db_path: Optional[Path] = None
 ) -> List[Dict[str, Any]]:
@@ -920,4 +995,7 @@ __all__ = [
     "read_financial_change_events",
     "read_financial_budget_rows",
     "read_financial_budget_changes",
+    "read_financial_change_orders",
+    "read_financial_payment_applications",
+    "read_financial_compliance_documents",
 ]

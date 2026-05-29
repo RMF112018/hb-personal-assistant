@@ -1449,6 +1449,303 @@ def live_coverage(
 live_records_app = typer.Typer(help="Procore live SQLite record read-only commands.")
 live_app.add_typer(live_records_app, name="records")
 
+# =============================================================================
+# Phase 05 Prompt 11: procore live financial <verb> — local-only financial query
+# commands over the V8/V9 financial tables + signals + history. No network, no
+# token, no live gate; SQLite read-only.
+# =============================================================================
+
+live_financial_app = typer.Typer(
+    help="Phase 05 financial read-only queries (contracts, changes, invoices, budget, "
+    "risk, coverage). Local SQLite only — never calls Procore."
+)
+live_app.add_typer(live_financial_app, name="financial")
+
+_FINANCIAL_PHASE = "Phase 05 Prompt 11"
+
+
+@live_financial_app.command("summary")
+def live_financial_summary(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Financial roll-up: contract summary + per-family counts. Local SQLite only."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_enrichment import get_procore_action_signals
+    from hb_assistant.store.procore_financials import (
+        read_financial_budget_changes,
+        read_financial_change_events,
+        read_financial_contract_summary,
+        read_financial_rfqs,
+        read_financial_subcontractor_invoices,
+    )
+
+    SQLiteMigrator().apply()
+    contracts = read_financial_contract_summary(project_key=project)
+    families: dict[str, int] = {}
+    for c in contracts:
+        families[c.get("contract_family") or "unknown"] = (
+            families.get(c.get("contract_family") or "unknown", 0) + 1
+        )
+    open_signals = get_procore_action_signals(project_key=project, signal_status="open")
+    payload = {
+        "command": "hb-assistant procore live financial summary",
+        "ok": True,
+        "phase": _FINANCIAL_PHASE,
+        "project_key": project,
+        "counts": {
+            "contracts": len(contracts),
+            "contracts_by_family": families,
+            "subcontractor_invoices": len(
+                read_financial_subcontractor_invoices(project_key=project)
+            ),
+            "rfqs": len(read_financial_rfqs(project_key=project)),
+            "change_events": len(read_financial_change_events(project_key=project)),
+            "budget_changes": len(read_financial_budget_changes(project_key=project)),
+            "open_financial_actions": len(open_signals),
+        },
+        "contracts": contracts,
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@live_financial_app.command("contracts")
+def live_financial_contracts(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    contract_type: Optional[str] = typer.Option(
+        None, "--type", help="Filter by family: prime | commitment | purchase_order."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List financial contracts (optionally filtered by family). Local SQLite only."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_financials import read_financial_contract_summary
+
+    SQLiteMigrator().apply()
+    rows = read_financial_contract_summary(project_key=project)
+    if contract_type is not None:
+        rows = [r for r in rows if r.get("contract_family") == contract_type]
+    payload = {
+        "command": "hb-assistant procore live financial contracts",
+        "ok": True,
+        "phase": _FINANCIAL_PHASE,
+        "project_key": project,
+        "filters": {"type": contract_type},
+        "contract_count": len(rows),
+        "contracts": rows,
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@live_financial_app.command("changes")
+def live_financial_changes(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    since: str = typer.Option("30 days ago", "--since", help="Relative or ISO change window."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Financial change history within a window (field-level). Local SQLite only."""
+    from hb_assistant.procore.financial_register import _FINANCIAL_ENDPOINTS
+    from hb_assistant.procore.time_window import parse_since
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_history import get_procore_changes
+
+    now = datetime.now(timezone.utc)
+    try:
+        since_utc = parse_since(since, now=now)
+    except ValueError:
+        _emit(
+            {
+                "command": "hb-assistant procore live financial changes",
+                "ok": False,
+                "phase": _FINANCIAL_PHASE,
+                "project_key": project,
+                "state": "fail_closed_unsupported",
+                "reason_codes": ["since_unparseable"],
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
+        return
+    SQLiteMigrator().apply()
+    rows = [
+        c
+        for c in get_procore_changes(project_key=project, since_utc=since_utc)
+        if c.get("endpoint_id") in _FINANCIAL_ENDPOINTS
+    ]
+    payload = {
+        "command": "hb-assistant procore live financial changes",
+        "ok": True,
+        "phase": _FINANCIAL_PHASE,
+        "project_key": project,
+        "filters": {"since_utc": since_utc},
+        "change_count": len(rows),
+        "changes": rows,
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@live_financial_app.command("invoices")
+def live_financial_invoices(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    status: Optional[str] = typer.Option(
+        None, "--status", help="Filter by status: approved | pending | paid | ..."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List subcontractor invoices (optionally filtered by status). Local SQLite only."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_financials import read_financial_subcontractor_invoices
+
+    SQLiteMigrator().apply()
+    rows = read_financial_subcontractor_invoices(project_key=project, status=status)
+    payload = {
+        "command": "hb-assistant procore live financial invoices",
+        "ok": True,
+        "phase": _FINANCIAL_PHASE,
+        "project_key": project,
+        "filters": {"status": status},
+        "invoice_count": len(rows),
+        "invoices": rows,
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@live_financial_app.command("budget")
+def live_financial_budget(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    view_id: Optional[str] = typer.Option(None, "--view-id", help="Filter to one budget view id."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Budget detail rows + changes (optionally one view). Local SQLite only."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_financial_projection import record_key
+    from hb_assistant.store.procore_financials import (
+        read_financial_budget_changes,
+        read_financial_budget_rows,
+    )
+
+    SQLiteMigrator().apply()
+    budget_view_key = (
+        record_key(project, "budget-views", None, view_id) if view_id is not None else None
+    )
+    rows = read_financial_budget_rows(project_key=project, budget_view_key=budget_view_key)
+    payload = {
+        "command": "hb-assistant procore live financial budget",
+        "ok": True,
+        "phase": _FINANCIAL_PHASE,
+        "project_key": project,
+        "filters": {"view_id": view_id},
+        "row_count": len(rows),
+        "rows": rows,
+        "changes": read_financial_budget_changes(project_key=project),
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@live_financial_app.command("risk")
+def live_financial_risk(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Derived financial risk view (unexecuted contracts / unpaid change orders)."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_financials import read_financial_risk_view
+
+    SQLiteMigrator().apply()
+    rows = read_financial_risk_view(project_key=project)
+    payload = {
+        "command": "hb-assistant procore live financial risk",
+        "ok": True,
+        "phase": _FINANCIAL_PHASE,
+        "project_key": project,
+        "risk_count": len(rows),
+        "risks": rows,
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
+@live_financial_app.command("coverage")
+def live_financial_coverage(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    endpoint: str = typer.Option(..., "--endpoint", help="Canonical financial endpoint id."),
+    raw_payload: str = typer.Option(
+        ..., "--raw-payload", help="Path to a JSON file with a sample raw payload (offline)."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Detect financial fields present in a raw payload but NOT captured by the
+    endpoint normalizer. Offline (reads a file); never calls Procore."""
+    import json as _json
+    from pathlib import Path as _Path
+
+    from hb_assistant.procore.live_sync import resolve_normalizer
+
+    normalizer = resolve_normalizer(endpoint)
+    if normalizer is None:
+        _emit(
+            {
+                "command": "hb-assistant procore live financial coverage",
+                "ok": False,
+                "phase": _FINANCIAL_PHASE,
+                "project_key": project,
+                "endpoint_id": endpoint,
+                "state": "fail_closed_unsupported",
+                "reason_codes": ["endpoint_has_no_normalizer"],
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
+        return
+    try:
+        loaded = _json.loads(_Path(raw_payload).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        _emit(
+            {
+                "command": "hb-assistant procore live financial coverage",
+                "ok": False,
+                "phase": _FINANCIAL_PHASE,
+                "project_key": project,
+                "endpoint_id": endpoint,
+                "state": "fail_closed_unsupported",
+                "reason_codes": ["raw_payload_unreadable"],
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
+        return
+    record = loaded[0] if isinstance(loaded, list) and loaded else loaded
+    raw_keys = [k for k, v in record.items() if not isinstance(v, (dict, list))] if isinstance(
+        record, dict
+    ) else []
+    canonical = normalizer(
+        record, project_key=project, endpoint_id=endpoint, correlation_id="coverage",
+        fetched_at="1970-01-01T00:00:00Z",
+    )["canonical_fields"]
+    canonical_keys = set(canonical)
+    omitted = [
+        k for k in raw_keys
+        if not any(ck == k or ck.startswith(f"{k}_") for ck in canonical_keys)
+    ]
+    payload = {
+        "command": "hb-assistant procore live financial coverage",
+        "ok": True,
+        "phase": _FINANCIAL_PHASE,
+        "project_key": project,
+        "endpoint_id": endpoint,
+        "raw_scalar_field_count": len(raw_keys),
+        "captured_field_count": len(canonical_keys),
+        "omitted_field_count": len(omitted),
+        "omitted_fields": sorted(omitted),
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
 
 @live_records_app.command("count")
 def live_records_count(
@@ -1595,6 +1892,85 @@ def obsidian_enriched(
     payload = {
         "command": "hb-assistant procore obsidian enriched", "ok": True, "phase": "Phase 04B Prompt 11",
         "project_key": project, "mode": "apply" if apply else "dry_run", "dry_run": not apply,
+        "since_utc": since_utc, "generated_utc": now_utc, "counts": result["counts"],
+        "section_keys": list(result["sections"]), "rendered": result["rendered"],
+        "written_paths": result["written_paths"], "guardrails": result["guardrails"],
+    }
+    _emit(payload, json_out=json_out)
+
+
+@obsidian_app.command("financial")
+def obsidian_financial(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    since: str = typer.Option(
+        "30 days ago", "--since", help="Window for the recent-changes section (relative or ISO)."
+    ),
+    dry_run: bool = typer.Option(True, "--dry-run", help="Default: rendered note preview, zero side effects."),
+    apply: bool = typer.Option(
+        False, "--apply",
+        help="EXPLICIT opt-in. Writes one marker-bounded procore-financial-register.md to 01_Projects/.",
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default)."),
+    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts."),
+) -> None:
+    """Phase 05 financial register (contracts / change orders / commitments + compliance
+    / invoices / payment applications / RFQs + change events / budget / retainage risk /
+    recent changes). Read-only SQLite; never calls Procore. Dry-run default; --apply
+    writes one marker-bounded source-linked note."""
+    if apply and not confirm and not sys.stdin.isatty():
+        typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
+        raise typer.Exit(1)
+    if apply and not confirm and not typer.confirm(
+        "CONFIRM: --apply will write procore-financial-register.md to the local vault only "
+        "(no Procore mutation). Continue?",
+        default=False,
+    ):
+        typer.echo("Aborted.")
+        raise typer.Exit(1)
+
+    from hb_assistant.procore.financial_register import (
+        apply_financial_register,
+        build_financial_register,
+    )
+    from hb_assistant.procore.time_window import parse_since
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    now = datetime.now(timezone.utc)
+    try:
+        since_utc = parse_since(since, now=now)
+    except ValueError:
+        _emit(
+            {
+                "command": "hb-assistant procore obsidian financial", "ok": False,
+                "phase": _FINANCIAL_PHASE, "project_key": project,
+                "state": "fail_closed_unsupported", "reason_codes": ["since_unparseable"],
+            },
+            json_out=json_out, exit_code=3,
+        )
+        return
+    now_utc = now.isoformat().replace("+00:00", "Z")
+    SQLiteMigrator().apply()
+
+    if apply:
+        result = apply_financial_register(project, now_utc=now_utc, since_utc=since_utc)
+        if not result.get("vault_configured", False):
+            _emit(
+                {
+                    "command": "hb-assistant procore obsidian financial", "ok": False,
+                    "phase": _FINANCIAL_PHASE, "project_key": project,
+                    "state": "fail_closed_unsupported", "reason_codes": ["vault_root_unconfigured"],
+                },
+                json_out=json_out, exit_code=3,
+            )
+            return
+    else:
+        result = build_financial_register(project, now_utc=now_utc, since_utc=since_utc)
+        result["written_paths"] = []
+
+    payload = {
+        "command": "hb-assistant procore obsidian financial", "ok": True,
+        "phase": _FINANCIAL_PHASE, "project_key": project,
+        "mode": "apply" if apply else "dry_run", "dry_run": not apply,
         "since_utc": since_utc, "generated_utc": now_utc, "counts": result["counts"],
         "section_keys": list(result["sections"]), "rendered": result["rendered"],
         "written_paths": result["written_paths"], "guardrails": result["guardrails"],

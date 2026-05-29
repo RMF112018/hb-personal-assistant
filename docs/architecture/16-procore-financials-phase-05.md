@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–10 · Migration **V9** · registry 27 → 59 endpoints
+Status: **in progress** · Phase 05 Prompts 01–11 · Migration **V9** · registry 27 → 59 endpoints
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -336,6 +336,35 @@ financial projection (guarded family blocks) → child-extract → watermark/rec
   (a test-only in-memory adapter promotion; the registry is never mutated). 59/27/32
   endpoint posture unchanged.
 
+## Financial query commands & Obsidian register (Prompt 11)
+
+Exposes the **local-only** read surface over the Phase 05 tables/signals/history
+(no network, token, or live gate; every command runs `SQLiteMigrator().apply()` then
+reads SQLite).
+
+- **`procore live financial <verb>`** (new sub-group under `procore live`):
+  `summary` (roll-up counts + contract summary), `contracts` (`--type` family filter),
+  `changes` (`--since`→`time_window.parse_since`→`get_procore_changes`, filtered to the
+  financial endpoint set), `invoices` (`--status`), `budget` (`--view-id`→budget_view_key),
+  `risk`, and `coverage` (`--endpoint`/`--raw-payload` — offline normalizer-diff that
+  flags raw scalar fields absent from the normalizer's `canonical_fields`). Each emits a
+  `{command, ok, phase, project_key, filters, <rows>, guardrails}` JSON envelope via `_emit`.
+- **3 additive read views** (`procore_financials.py`): `read_financial_change_orders`,
+  `read_financial_payment_applications`, `read_financial_compliance_documents` (mirror the
+  existing read-view pattern) feed the register sections that lacked one.
+- **`procore obsidian financial`** + `procore/financial_register.py`
+  (`build_financial_register` / `apply_financial_register`): a marker-bounded
+  (`HB-PROCORE-FINANCIAL-REGISTER`), source-linked note
+  `01_Projects/<project>.procore-financial-register.md` with 10 sections (contract
+  summary · open financial actions · prime change orders · commitments & compliance ·
+  subcontractor invoices · payment applications · RFQs & change events · budget movement ·
+  retainage/payment risk · last 30-day financial changes). Mirrors the existing
+  `obsidian enriched`/`register` pattern: dry-run renders only, `--apply --confirm`
+  writes one idempotent (byte-identical re-run) note. Every table row carries its source
+  `record_key`; every section header embeds a `procore live financial …` query reference.
+  Rows are built only from already-redacted read-view columns, and a defensive
+  `_assert_no_raw` output fence (URL/email/Bearer/PEM/`sig=`) fails closed before any write.
+
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
 `01-endpoint-registry-and-live-gate-shell.md`,
@@ -347,4 +376,5 @@ Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 `07-billing-periods-subcontractor-invoices-and-invoice-items.md`,
 `08-rfqs-rfq-responses-rfq-quotes-change-events-and-comments.md`,
 `09-budget-views-budget-details-budget-rows-and-budget-changes.md`,
-`10-live-sync-dispatch-verification-and-idempotency-sweep.md`).
+`10-live-sync-dispatch-verification-and-idempotency-sweep.md`,
+`11-financial-query-commands-and-obsidian-register.md`).
