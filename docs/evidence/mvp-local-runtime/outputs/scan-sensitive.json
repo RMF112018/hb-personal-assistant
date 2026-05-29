@@ -4,8 +4,8 @@
   "repo": "docs/evidence/mvp-local-runtime",
   "scanned_paths": [
     "~/hb-personal-assistant/docs/evidence/mvp-local-runtime",
-    "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/pytest-of-bobbyfetting/pytest-560/test_mvp_local_runtime_evidenc0/app-support",
-    "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/pytest-of-bobbyfetting/pytest-560/test_mvp_local_runtime_evidenc0/app-support/evidence"
+    "/private/tmp/claude-501/pytest-of-bobbyfetting/pytest-47/test_mvp_local_runtime_evidenc0/app-support",
+    "/private/tmp/claude-501/pytest-of-bobbyfetting/pytest-47/test_mvp_local_runtime_evidenc0/app-support/evidence"
   ],
   "findings": [
     {
@@ -9193,8 +9193,8 @@
   "stats": {
     "files_considered": 36,
     "files_scanned": 33,
-    "files_binary_skipped": 3,
-    "files_oversize_skipped": 0,
+    "files_binary_skipped": 2,
+    "files_oversize_skipped": 1,
     "files_read_errors": 0,
     "files_excluded": 0
   },
