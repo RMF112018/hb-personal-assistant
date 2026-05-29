@@ -53,6 +53,7 @@ from hb_assistant.procore.normalizers import (
 from hb_assistant.procore.redaction import redact_source_url
 from hb_assistant.procore.token_provider import default_procore_token_provider
 from hb_assistant.store.procore_history import record_procore_history_for_record
+from hb_assistant.store.procore_inspection_projection import project_inspection
 from hb_assistant.store.procore_repositories import (
     count_procore_live_records,
     record_sync_run_complete,
@@ -934,6 +935,23 @@ def run_live_sync(
             )
         except Exception:  # noqa: BLE001
             redacted_errors.append({"history_error": "history_record_failed"})
+
+        # Phase 04B inspection enrichment: project the inspection-family payloads
+        # into the dedicated V7 inspection tables (records / sections / items +
+        # response sets/options + evidence rules) and emit action signals + edges.
+        # Reads structural fields from raw; guarded so it never breaks the sync.
+        if adapter.endpoint_id in ("inspections", "inspection-sections", "inspection-items"):
+            try:
+                project_inspection(
+                    adapter.endpoint_id,
+                    raw,
+                    project_key=project_key,
+                    sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"inspection_projection_error": "projection_failed"})
 
         if child_adapter is None or child_normalizer is None:
             continue
