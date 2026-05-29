@@ -412,6 +412,48 @@ over the per-field length cap.
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/16-obsidian-register-from-live-records.md`.
 
+## Sensitive routing and redaction proof (Prompt 10)
+
+Phase 04A's routing + redaction posture is enforced at three layers:
+
+1. **Normalizer triggers** — `_REVIEW_STATUS_FRAGMENTS`,
+   `_REVIEW_SUBJECT_FRAGMENTS`, and (for observations)
+   `_REVIEW_BODY_FRAGMENTS` in each `src/hb_assistant/procore/normalizers/*.py`
+   set `review_required=True` with a `routing_reason` naming the matched
+   fragment. Reply / response / comment / package / meeting-detail
+   normalizers default to `review_required=True` unconditionally.
+2. **YAML rule catalog** — `resources/config/procore_sensitive_routing_rules.yaml`
+   carries declarative parity for the normalizer triggers
+   (`procore-incident-injury-personnel`, `procore-rfi-legal-or-contractual`,
+   `procore-submittal-financial-or-legal`, `procore-observation-safety`,
+   `procore-daily-log-delays`, `procore-meeting-sensitive-topic`,
+   `procore-daily-log-personnel-pii`, `procore-financial-summary`,
+   `procore-contractual-records`).
+3. **Schema invariants** — V6 CHECK constraints on
+   `procore_live_records.raw_body_persisted = 0` and
+   `procore_live_sync_runs.redaction_applied = 1` enforce no-raw-body /
+   redacted-only persistence at the storage layer, independent of caller
+   correctness.
+
+Prompt 10 closes the explicit-bucket coverage gap with three load-bearing
+tests:
+
+- `tests/test_procore_sensitive_routing_proof.py::test_bucket_routes_to_review_and_redacts`
+  walks the nine named buckets
+  (incidents / injuries / safety / claims / notices / delay / cost /
+  schedule / contract) and proves each routes via a real normalizer
+  trigger.
+- `tests/test_procore_sensitive_routing_proof.py::test_routing_rules_yaml_covers_prompt_10_buckets`
+  proves the same buckets are covered by the YAML rule catalog
+  (with documented synonyms for `schedule → daily_log_delays`).
+- `tests/test_procore_sensitive_routing_proof_corpus.py::test_no_secret_literals_in_live_records_corpus`
+  scans every row of `procore_live_records` for
+  `Bearer / access_token / refresh_token / client_secret / Authorization`
+  literals; corresponding constraint tests cover both CHECK constraints
+  end-to-end.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/17-sensitive-routing-and-redaction-proof.md`.
+
 ## Verified vs unverified endpoints
 
 Post schedules + activities addition, **all 20 of 20 canonical
@@ -451,3 +493,5 @@ token, never an OAuth payload.
 | `tests/test_procore_live_gate.py` | Updated to assert the new canonical endpoint matrix surface. |
 | `tests/test_procore_obsidian_register.py` | Prompt 09A unit coverage: dry-run table render, review_required exclusion, unsupported endpoint rejection, marker-bounded write idempotency, user-content preservation outside markers, corrupted-JSON tolerance. |
 | `tests/test_procore_cli_obsidian_register.py` | Prompt 09A CLI coverage: missing `--from-sqlite` rejection, unknown alias rejection, unsupported endpoint rejection, dry-run happy path, apply + confirm happy path, non-TTY `--apply` without `--confirm` rejection. |
+| `tests/test_procore_sensitive_routing_proof.py` | Prompt 10 routing proof: per-family pre-existing parameterized blob coverage plus new per-bucket (incidents/injuries/safety/claims/notices/delay/cost/schedule/contract) trigger proofs, YAML rule-catalog coverage assertion, and `mask_pii_in_excerpt` redaction. |
+| `tests/test_procore_sensitive_routing_proof_corpus.py` | Prompt 10 corpus attestation: `redact_body` strips secret-shaped literals from dict/list payloads, V6 CHECK constraints reject `raw_body_persisted=1` and `redaction_applied=0`, no secret-shaped literals present in the local `procore_live_records` corpus. |

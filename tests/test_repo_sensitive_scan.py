@@ -23,6 +23,7 @@ _ALLOWED_PREFIXES_BY_RULE: dict[str, tuple[str, ...]] = {
         "tests/test_repo_sensitive_scan.py",
         "tests/test_procore_http_client.py",
         "tests/test_procore_live_sync_verified_chain.py",
+        "tests/test_procore_sensitive_routing_proof_corpus.py",
         "tests/test_construction_manifests.py",
         "docs/",
     ),
