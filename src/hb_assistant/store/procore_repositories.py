@@ -278,6 +278,30 @@ def count_procore_live_records(
     return int(row[0]) if row and row[0] is not None else 0
 
 
+def get_first_procore_record_id(
+    *,
+    project_key: str,
+    endpoint_id: str,
+    db_path: Optional[Path] = None,
+) -> Optional[str]:
+    """Return earliest-seen procore_record_id for (project, endpoint), else None."""
+    conn = _open(db_path)
+    cur = conn.execute(
+        """
+        SELECT procore_record_id
+          FROM procore_live_records
+         WHERE project_key = ? AND endpoint_id = ?
+         ORDER BY first_seen_at_utc ASC, procore_record_id ASC
+         LIMIT 1
+        """,
+        (project_key, endpoint_id),
+    )
+    row = cur.fetchone()
+    if not row or row[0] in (None, ""):
+        return None
+    return str(row[0])
+
+
 def get_sync_run(
     *, sync_run_id: str, db_path: Optional[Path] = None
 ) -> Optional[Dict[str, Any]]:
@@ -295,6 +319,7 @@ def get_sync_run(
 
 __all__ = [
     "count_procore_live_records",
+    "get_first_procore_record_id",
     "get_sync_run",
     "record_sync_run_complete",
     "record_sync_run_start",

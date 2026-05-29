@@ -942,6 +942,7 @@ def live_inspect(
     from hb_assistant.procore import endpoints as ep_registry
     from hb_assistant.procore.http_client import ProcoreHTTPClient
     from hb_assistant.procore.token_provider import default_procore_token_provider
+    from hb_assistant.store.procore_repositories import get_first_procore_record_id
 
     reason_codes: list[str] = []
     adapter = ep_registry.get(endpoint)
@@ -969,6 +970,9 @@ def live_inspect(
         reason_codes.append("endpoint_not_live_verified")
 
     path_params: dict[str, str] = {}
+    parent_resolution_source = "unresolved"
+    resolved_parent_endpoint_id: Optional[str] = None
+    resolved_parent_id: Optional[str] = None
     if project_id:
         path_params["project_id"] = project_id
     path_params["company_id"] = "5280"
@@ -980,6 +984,35 @@ def live_inspect(
         path_params["id"] = meeting_id
     if schedule_id:
         path_params["schedule_id"] = schedule_id
+
+    parent_lookup_by_endpoint: dict[str, tuple[str, str]] = {
+        "rfi-responses": ("rfi_id", "rfis"),
+        "submittal-responses": ("submittal_id", "submittals"),
+        "meeting-detail": ("id", "meetings"),
+        "activities": ("schedule_id", "schedules"),
+    }
+    if adapter is not None:
+        lookup = parent_lookup_by_endpoint.get(adapter.endpoint_id)
+        if lookup is not None:
+            parent_param, parent_endpoint_id = lookup
+            resolved_parent_endpoint_id = parent_endpoint_id
+            explicit_parent_id = path_params.get(parent_param)
+            if explicit_parent_id:
+                parent_resolution_source = "explicit_flag"
+                resolved_parent_id = explicit_parent_id
+            else:
+                looked_up_parent_id = get_first_procore_record_id(
+                    project_key=project,
+                    endpoint_id=parent_endpoint_id,
+                )
+                if looked_up_parent_id:
+                    path_params[parent_param] = looked_up_parent_id
+                    parent_resolution_source = "sqlite_first_occurrence"
+                    resolved_parent_id = looked_up_parent_id
+                else:
+                    reason_codes.append(
+                        f"parent_record_not_found_in_sqlite:{parent_endpoint_id}"
+                    )
 
     if adapter is not None:
         for param in adapter.required_path_params:
@@ -1003,6 +1036,9 @@ def live_inspect(
             "endpoint_id": endpoint_id,
             "project_key": project,
             "oauth_status": auth_report.status,
+            "parent_resolution_source": parent_resolution_source,
+            "resolved_parent_endpoint_id": resolved_parent_endpoint_id,
+            "resolved_parent_id": resolved_parent_id,
             "request_count": 0,
             "attempt_count": 0,
             "retry_count": 0,
@@ -1076,6 +1112,9 @@ def live_inspect(
             "endpoint_id": adapter.endpoint_id,
             "project_key": project,
             "oauth_status": auth_report.status,
+            "parent_resolution_source": parent_resolution_source,
+            "resolved_parent_endpoint_id": resolved_parent_endpoint_id,
+            "resolved_parent_id": resolved_parent_id,
             "request_count": attempt_count,
             "attempt_count": attempt_count,
             "retry_count": retry_count,
@@ -1134,6 +1173,9 @@ def live_inspect(
         "endpoint_id": adapter.endpoint_id,
         "project_key": project,
         "oauth_status": auth_report.status,
+        "parent_resolution_source": parent_resolution_source,
+        "resolved_parent_endpoint_id": resolved_parent_endpoint_id,
+        "resolved_parent_id": resolved_parent_id,
         "request_count": transport_calls["count"],
         "attempt_count": transport_calls["count"],
         "retry_count": max(0, transport_calls["count"] - 1),

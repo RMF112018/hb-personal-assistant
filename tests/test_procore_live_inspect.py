@@ -262,11 +262,15 @@ def test_live_inspect_optional_redacted_derivative(
     assert "[REDACTED]" in redacted_body
 
 
-def test_live_inspect_parent_endpoint_requires_path_param(
+def test_live_inspect_child_endpoint_fails_when_parent_not_found_in_sqlite(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
     monkeypatch.setattr("hb_assistant.cli.procore.check_auth_status", lambda: _AuthReady())
+    monkeypatch.setattr(
+        "hb_assistant.store.procore_repositories.get_first_procore_record_id",
+        lambda **_: None,
+    )
     out_dir = tmp_path / "payload-review"
     runner = CliRunner()
     res = runner.invoke(
@@ -293,7 +297,8 @@ def test_live_inspect_parent_endpoint_requires_path_param(
     )
     assert res.exit_code == 3
     payload = json.loads(res.output)
-    assert "missing_path_param:rfi_id" in payload["reason_codes"]
+    assert "parent_record_not_found_in_sqlite:rfis" in payload["reason_codes"]
+    assert payload["parent_resolution_source"] == "unresolved"
 
 
 def test_live_inspect_rfi_responses_accepts_rfi_id(
@@ -341,6 +346,10 @@ def test_live_inspect_rfi_responses_accepts_rfi_id(
         catch_exceptions=False,
     )
     assert res.exit_code == 0
+    payload = json.loads(res.output)
+    assert payload["parent_resolution_source"] == "explicit_flag"
+    assert payload["resolved_parent_endpoint_id"] == "rfis"
+    assert payload["resolved_parent_id"] == "12345"
     assert "/rfis/12345/replies" in seen_url["value"]
 
 
@@ -389,4 +398,78 @@ def test_live_inspect_activities_accepts_schedule_id(
         catch_exceptions=False,
     )
     assert res.exit_code == 0
+    payload = json.loads(res.output)
+    assert payload["parent_resolution_source"] == "explicit_flag"
+    assert payload["resolved_parent_endpoint_id"] == "schedules"
+    assert payload["resolved_parent_id"] == "200"
     assert "/companies/5280/projects/2525840/schedules/200/activities" in seen_url["value"]
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "parent_endpoint", "expected_path"),
+    [
+        ("rfi-responses", "rfis", "/rfis/700/replies"),
+        ("submittal-responses", "submittals", "/submittals/700/responses"),
+        ("meeting-detail", "meetings", "/meetings/700"),
+        ("activities", "schedules", "/schedules/700/activities"),
+    ],
+)
+def test_live_inspect_auto_resolves_child_parent_id_from_sqlite(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    endpoint: str,
+    parent_endpoint: str,
+    expected_path: str,
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-access-token")
+    monkeypatch.setattr("hb_assistant.cli.procore.check_auth_status", lambda: _AuthReady())
+    monkeypatch.setattr(
+        "hb_assistant.store.procore_repositories.get_first_procore_record_id",
+        lambda **kwargs: "700" if kwargs["endpoint_id"] == parent_endpoint else None,
+    )
+
+    seen_url: dict[str, str] = {}
+
+    def _fake_default_live_transport(self, method: str, url: str, headers: dict[str, str], params: dict | None = None):  # type: ignore[no-untyped-def]
+        seen_url["value"] = url
+        payload: object = [{"id": "row-1"}]
+        if endpoint == "activities":
+            payload = {"data": [{"id": "row-1"}]}
+        return _FakeResponse(200, payload, headers={})
+
+    monkeypatch.setattr(
+        "hb_assistant.procore.http_client.ProcoreHTTPClient._default_live_transport",
+        _fake_default_live_transport,
+    )
+
+    out_dir = tmp_path / "payload-review"
+    runner = CliRunner()
+    res = runner.invoke(
+        app,
+        [
+            "procore",
+            "live",
+            "inspect",
+            "--project",
+            "tropical",
+            "--endpoint",
+            endpoint,
+            "--max-pages",
+            "1",
+            "--max-items",
+            "1",
+            "--confirm-live-get",
+            "--confirm-raw-payload-dump",
+            "--output-dir",
+            str(out_dir),
+            "--json",
+        ],
+        catch_exceptions=False,
+    )
+    assert res.exit_code == 0
+    payload = json.loads(res.output)
+    assert payload["parent_resolution_source"] == "sqlite_first_occurrence"
+    assert payload["resolved_parent_endpoint_id"] == parent_endpoint
+    assert payload["resolved_parent_id"] == "700"
+    assert expected_path in seen_url["value"]
