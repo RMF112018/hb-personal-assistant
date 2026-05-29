@@ -877,6 +877,8 @@ def live_sync(
     max_pages: int = typer.Option(3, "--max-pages", min=1),
     max_items: int = typer.Option(100, "--max-items", min=1),
     confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
+    start_date: Optional[str] = typer.Option(None, "--start-date", help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections)."),
+    end_date: Optional[str] = typer.Option(None, "--end-date", help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections)."),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Per-endpoint live sync (Phase 04A Prompt 03B).
@@ -901,6 +903,8 @@ def live_sync(
         max_items=max_items,
         mode_hint="live_apply" if apply else "live_dry_run",
         evidence_path="docs/evidence/construction-intelligence-phase-04a/02-endpoint-command-matrix.md",
+        start_date=start_date,
+        end_date=end_date,
     )
     payload = {
         "command": "hb-assistant procore live sync",
@@ -1206,6 +1210,8 @@ def live_smoke(
     max_pages: int = typer.Option(1, "--max-pages", min=1),
     max_items: int = typer.Option(10, "--max-items", min=1),
     confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
+    start_date: Optional[str] = typer.Option(None, "--start-date", help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections)."),
+    end_date: Optional[str] = typer.Option(None, "--end-date", help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections)."),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Smoke a verified endpoint without writing to SQLite. Live GET only."""
@@ -1221,6 +1227,8 @@ def live_smoke(
         max_items=max_items,
         mode_hint="live_smoke",
         evidence_path="docs/evidence/construction-intelligence-phase-04a/01-live-transport-token-proof.md",
+        start_date=start_date,
+        end_date=end_date,
     )
     payload = {
         "command": "hb-assistant procore live smoke",

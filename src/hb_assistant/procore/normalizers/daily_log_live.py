@@ -22,7 +22,7 @@ The orchestrator (``live_sync.run_live_sync``) consumes ``canonical_fields``,
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 from .entities import EntityBuilder
 from .hashing import hash_summary
@@ -47,6 +47,29 @@ def _is_safety(*values: Any) -> bool:
         if isinstance(value, str) and any(frag in value.lower() for frag in _SAFETY_FRAGMENTS):
             return True
     return False
+
+
+def _num(value: Any) -> Optional[float]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str) and value.strip():
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _manpower_anomaly(raw: Dict[str, Any]) -> bool:
+    """Flag an inconsistent manpower row: workers reported with zero hours, or
+    hours reported with zero workers."""
+    workers = _num(raw.get("num_workers"))
+    hours = _num(raw.get("man_hours"))
+    if hours is None:
+        hours = _num(raw.get("num_hours"))
+    return bool((workers and not hours) or (hours and not workers))
 
 
 def _base(
@@ -147,6 +170,7 @@ def normalize_daily_log_manpower(raw, *, project_key, endpoint_id, correlation_i
         .set_location(raw.get("location"))
         .set_attachments(raw.get("attachments"))
         .set_custom_fields(raw.get("custom_fields"))
+        .add_signal("daily_manpower_anomaly" if _manpower_anomaly(raw) else None)
     )
     return _base(
         raw, project_key=project_key, endpoint_id=endpoint_id,
@@ -173,6 +197,7 @@ def normalize_daily_log_notes(raw, *, project_key, endpoint_id, correlation_id, 
         .set_attachments(raw.get("attachments"))
         .set_custom_fields(raw.get("custom_fields"))
         .add_signal("issue_day" if raw.get("is_issue_day") else None)
+        .add_signal("daily_note_review_required")
     )
     return _base(
         raw, project_key=project_key, endpoint_id=endpoint_id,
@@ -224,6 +249,7 @@ def normalize_daily_log_delay(raw, *, project_key, endpoint_id, correlation_id, 
         .set_segment(raw.get("daily_log_segment"))
         .set_attachments(raw.get("attachments"))
         .add_signal("delay")
+        .add_signal("daily_delay_reported")
     )
     return _base(
         raw, project_key=project_key, endpoint_id=endpoint_id,

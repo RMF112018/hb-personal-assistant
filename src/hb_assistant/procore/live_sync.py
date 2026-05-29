@@ -65,6 +65,7 @@ from hb_assistant.store.procore_repositories import (
     upsert_procore_live_record,
 )
 from hb_assistant.store.procore_rfi_projection import project_rfi
+from hb_assistant.store.procore_schedule_projection import project_activity
 from hb_assistant.store.procore_submittal_projection import project_submittal
 
 COMPANY_ID = "5280"
@@ -354,6 +355,8 @@ def run_live_sync(
     db_path: Optional[Path] = None,
     transport: Optional[Any] = None,
     evidence_path: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Execute one endpoint's live sync chain and return a redacted receipt.
 
@@ -592,10 +595,21 @@ def run_live_sync(
     else:
         path = _resolve_path(adapter, str(procore_project_id))
 
+    # Build query params: project_id (when not already a path segment) plus an
+    # optional date window (daily-log endpoints default to a narrow/empty window
+    # and need a date filter to return historical rows).
+    get_params: Dict[str, str] = {}
+    if "{project_id}" not in path:
+        get_params["project_id"] = str(procore_project_id)
+    if start_date:
+        get_params["start_date"] = str(start_date)
+    if end_date:
+        get_params["end_date"] = str(end_date)
+
     try:
         items_iter = client.paginate(
             path=path,
-            params={"project_id": str(procore_project_id)} if "{project_id}" not in path else None,
+            params=get_params or None,
             per_page=min(max_items, 100),
             max_pages=max_pages,
             max_items=max_items,
@@ -1033,6 +1047,22 @@ def run_live_sync(
                 )
             except Exception:  # noqa: BLE001
                 redacted_errors.append({"observation_projection_error": "projection_failed"})
+
+        # Phase 04B schedule enrichment: activity critical-path / float / deadline-
+        # variance / constraint signals, hierarchy + schedule + assigned-company /
+        # resource / category edges. Reads raw; guarded. (Schedule version/data-date
+        # history is captured by the generic history path above.)
+        if adapter.endpoint_id == "activities":
+            try:
+                project_activity(
+                    raw,
+                    project_key=project_key,
+                    sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"schedule_projection_error": "projection_failed"})
 
         if child_adapter is None or child_normalizer is None:
             continue

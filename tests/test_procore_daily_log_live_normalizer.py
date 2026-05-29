@@ -141,7 +141,29 @@ def test_notes_review_required_and_comment_hashed():
     assert rec["review_required"] is True
     assert "comment_summary" in cf and "comment" not in cf
     assert "issue_day" in cf["action_signals"]
+    assert "daily_note_review_required" in cf["action_signals"]
     _assert_no_pii_leak(rec)
+
+
+def test_manpower_anomaly_signal_when_workers_without_hours():
+    anomalous = _norm(
+        dll.normalize_daily_log_manpower, "daily-log-manpower",
+        {"id": 1, "date": "2026-03-15", "num_workers": 6, "man_hours": 0},
+    )
+    assert "daily_manpower_anomaly" in anomalous["canonical_fields"]["action_signals"]
+    balanced = _norm(
+        dll.normalize_daily_log_manpower, "daily-log-manpower",
+        {"id": 2, "date": "2026-03-15", "num_workers": 6, "man_hours": "48.0"},
+    )
+    assert "daily_manpower_anomaly" not in balanced["canonical_fields"]["action_signals"]
+
+
+def test_delay_reported_signal():
+    rec = _norm(
+        dll.normalize_daily_log_delay, "daily-log-delays-review-routed",
+        {"id": 1, "delay_type": "weather", "duration": 5},
+    )
+    assert "daily_delay_reported" in rec["canonical_fields"]["action_signals"]
 
 
 # --------------------------------------------------------------------------- #
