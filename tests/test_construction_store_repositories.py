@@ -229,9 +229,10 @@ def test_v5_migration_is_additive_v2_v3_v4_intact(db_path: str) -> None:
 
 def test_v5_migration_is_idempotent(db_path: str) -> None:
     m = SQLiteMigrator(db_path)
-    assert m.apply() == 6
-    assert m.apply() == 6
-    assert m.current_version() == 6
+    # Latest schema version is 7 after the Phase 04B history/enrichment migration.
+    assert m.apply() == 7
+    assert m.apply() == 7
+    assert m.current_version() == 7
 
 
 def test_no_body_or_text_columns_in_drive_items(db_path: str) -> None:

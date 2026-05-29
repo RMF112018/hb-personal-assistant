@@ -43,11 +43,14 @@ def test_v6_migration_creates_three_procore_live_tables() -> None:
         }
     finally:
         conn.close()
-    assert tables == {
+    # Subset check: the Phase 04B V7 migration adds further procore_live_record_*
+    # history tables that also match the LIKE prefix, so assert the three V6
+    # tables are present rather than an exact set.
+    assert {
         "procore_live_sync_runs",
         "procore_live_records",
         "procore_live_sync_watermarks",
-    }
+    } <= tables
 
 
 def test_v6_migration_is_idempotent() -> None:

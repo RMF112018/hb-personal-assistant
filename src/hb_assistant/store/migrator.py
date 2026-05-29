@@ -539,6 +539,441 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v7 = Phase 04B historical-memory + enrichment + inspection schema.
+    # Additive only; never touches V1-V6 tables. Source of truth for the DDL is
+    # resources/sql/phase_04b_schema_additions.sql in the Phase 04B package.
+    # History tables track per-record snapshots / field-level change events /
+    # assistant-ready timeline events keyed by a stable ``record_key``; the
+    # cross-cutting tables project people/company/location/attachment/custom-field
+    # entities, relationship edges, action signals and text intelligence; the
+    # inspection tables hold the checklist projection. Hard CHECK constraints keep
+    # raw bodies out and assert redaction at the schema level, mirroring V6.
+    V7_STATEMENTS: list[str] = [
+        # ----- history -----
+        """
+        CREATE TABLE IF NOT EXISTS procore_live_record_state_index (
+          record_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          parent_procore_id TEXT,
+          procore_record_id TEXT NOT NULL,
+          current_canonical_hash TEXT,
+          current_text_hash TEXT,
+          first_seen_at_utc TEXT NOT NULL,
+          last_seen_at_utc TEXT NOT NULL,
+          last_changed_at_utc TEXT,
+          last_snapshot_id TEXT,
+          last_sync_run_id TEXT,
+          normalizer_version TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_state_index_project_endpoint
+          ON procore_live_record_state_index(project_key, endpoint_id);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_live_record_snapshots (
+          snapshot_id TEXT PRIMARY KEY,
+          record_key TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          parent_procore_id TEXT,
+          procore_record_id TEXT NOT NULL,
+          sync_run_id TEXT,
+          observed_at_utc TEXT NOT NULL,
+          source_updated_at_utc TEXT,
+          canonical_hash TEXT NOT NULL,
+          canonical_json_redacted TEXT NOT NULL,
+          text_intelligence_hash TEXT,
+          raw_payload_hash TEXT,
+          changed_from_previous INTEGER NOT NULL DEFAULT 1,
+          change_summary_json TEXT,
+          normalizer_version TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1),
+          UNIQUE(record_key, canonical_hash)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_snapshots_record_observed
+          ON procore_live_record_snapshots(record_key, observed_at_utc);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_snapshots_project_endpoint
+          ON procore_live_record_snapshots(project_key, endpoint_id, observed_at_utc);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_live_record_change_events (
+          change_event_id TEXT PRIMARY KEY,
+          record_key TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          parent_procore_id TEXT,
+          procore_record_id TEXT NOT NULL,
+          sync_run_id TEXT,
+          from_snapshot_id TEXT,
+          to_snapshot_id TEXT,
+          detected_at_utc TEXT NOT NULL,
+          source_updated_at_utc TEXT,
+          field_path TEXT NOT NULL,
+          old_value_redacted TEXT,
+          new_value_redacted TEXT,
+          old_value_hash TEXT,
+          new_value_hash TEXT,
+          change_type TEXT NOT NULL,
+          change_category TEXT NOT NULL,
+          importance TEXT NOT NULL DEFAULT 'medium',
+          review_required INTEGER NOT NULL DEFAULT 0,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_change_events_record_detected
+          ON procore_live_record_change_events(record_key, detected_at_utc);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_change_events_project_detected
+          ON procore_live_record_change_events(project_key, detected_at_utc);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_change_events_category
+          ON procore_live_record_change_events(change_category);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_record_timeline_events (
+          timeline_event_id TEXT PRIMARY KEY,
+          record_key TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          parent_procore_id TEXT,
+          procore_record_id TEXT NOT NULL,
+          source_change_event_id TEXT,
+          source_snapshot_id TEXT,
+          event_type TEXT NOT NULL,
+          event_time_utc TEXT NOT NULL,
+          summary_redacted TEXT NOT NULL,
+          importance TEXT NOT NULL DEFAULT 'medium',
+          actor_entity_key TEXT,
+          target_entity_key TEXT,
+          action_signal_id TEXT,
+          metadata_json TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_timeline_project_time
+          ON procore_record_timeline_events(project_key, event_time_utc);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_timeline_record_time
+          ON procore_record_timeline_events(record_key, event_time_utc);
+        """,
+        # ----- cross-cutting enrichment -----
+        """
+        CREATE TABLE IF NOT EXISTS procore_people_entities (
+          person_entity_key TEXT PRIMARY KEY,
+          procore_user_id TEXT,
+          login_hash TEXT,
+          display_name_redacted TEXT,
+          company_name_redacted TEXT,
+          first_seen_at_utc TEXT NOT NULL,
+          last_seen_at_utc TEXT NOT NULL,
+          source_count INTEGER NOT NULL DEFAULT 1,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_company_entities (
+          company_entity_key TEXT PRIMARY KEY,
+          procore_company_id TEXT,
+          name_redacted TEXT,
+          first_seen_at_utc TEXT NOT NULL,
+          last_seen_at_utc TEXT NOT NULL,
+          source_count INTEGER NOT NULL DEFAULT 1
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_location_entities (
+          location_entity_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          procore_location_id TEXT,
+          name_redacted TEXT,
+          node_name_redacted TEXT,
+          parent_location_id TEXT,
+          path_redacted TEXT,
+          first_seen_at_utc TEXT NOT NULL,
+          last_seen_at_utc TEXT NOT NULL
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_attachment_refs (
+          attachment_ref_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          source_record_key TEXT NOT NULL,
+          source_endpoint_id TEXT NOT NULL,
+          parent_record_key TEXT,
+          procore_attachment_id TEXT,
+          filename_redacted TEXT,
+          filename_hash TEXT,
+          url_hash TEXT,
+          url_path_redacted TEXT,
+          content_type TEXT,
+          size_bytes INTEGER,
+          download_eligibility TEXT NOT NULL DEFAULT 'metadata_only',
+          sensitivity TEXT NOT NULL DEFAULT 'medium',
+          first_seen_at_utc TEXT NOT NULL,
+          last_seen_at_utc TEXT NOT NULL,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_attachment_refs_source
+          ON procore_attachment_refs(source_record_key);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_custom_field_values (
+          custom_field_value_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          record_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          procore_record_id TEXT NOT NULL,
+          custom_field_key TEXT NOT NULL,
+          data_type TEXT,
+          value_json_redacted TEXT,
+          value_hash TEXT,
+          value_label_redacted TEXT,
+          updated_at_utc TEXT,
+          first_seen_at_utc TEXT NOT NULL,
+          last_seen_at_utc TEXT NOT NULL,
+          UNIQUE(record_key, custom_field_key)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_record_edges (
+          edge_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          from_record_key TEXT NOT NULL,
+          to_record_key TEXT,
+          to_entity_key TEXT,
+          edge_type TEXT NOT NULL,
+          source_endpoint_id TEXT NOT NULL,
+          confidence REAL NOT NULL DEFAULT 1.0,
+          first_seen_at_utc TEXT NOT NULL,
+          last_seen_at_utc TEXT NOT NULL,
+          metadata_json TEXT
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_record_edges_from
+          ON procore_record_edges(from_record_key);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_record_edges_to_record
+          ON procore_record_edges(to_record_key);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_record_edges_to_entity
+          ON procore_record_edges(to_entity_key);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_action_signals (
+          action_signal_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          record_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          signal_type TEXT NOT NULL,
+          signal_status TEXT NOT NULL DEFAULT 'open',
+          importance TEXT NOT NULL DEFAULT 'medium',
+          due_at_utc TEXT,
+          owner_entity_key TEXT,
+          title_redacted TEXT NOT NULL,
+          summary_redacted TEXT,
+          reason_codes_json TEXT,
+          first_detected_at_utc TEXT NOT NULL,
+          last_seen_at_utc TEXT NOT NULL,
+          resolved_at_utc TEXT,
+          source_change_event_id TEXT,
+          metadata_json TEXT
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_action_signals_project_status
+          ON procore_action_signals(project_key, signal_status, importance);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_action_signals_type
+          ON procore_action_signals(signal_type);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_text_intelligence (
+          text_intelligence_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          record_key TEXT NOT NULL,
+          endpoint_id TEXT NOT NULL,
+          source_field_path TEXT NOT NULL,
+          text_hash TEXT NOT NULL,
+          text_length INTEGER,
+          excerpt_redacted TEXT,
+          topics_json TEXT,
+          mentioned_records_json TEXT,
+          action_candidates_json TEXT,
+          risk_terms_json TEXT,
+          sensitivity TEXT NOT NULL DEFAULT 'medium',
+          review_required INTEGER NOT NULL DEFAULT 0,
+          encrypted_full_text_ref TEXT,
+          created_at_utc TEXT NOT NULL,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          UNIQUE(record_key, source_field_path, text_hash)
+        );
+        """,
+        # ----- inspection projection -----
+        """
+        CREATE TABLE IF NOT EXISTS procore_inspection_records (
+          inspection_record_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          inspection_id TEXT NOT NULL,
+          name_redacted TEXT,
+          identifier TEXT,
+          number TEXT,
+          status TEXT,
+          inspection_date TEXT,
+          due_at_utc TEXT,
+          closed_at_utc TEXT,
+          list_template_id TEXT,
+          list_template_name_redacted TEXT,
+          inspection_type_name TEXT,
+          is_safety INTEGER NOT NULL DEFAULT 0,
+          private INTEGER,
+          overdue INTEGER,
+          item_count INTEGER,
+          respondable_item_count INTEGER,
+          inspected_item_count INTEGER,
+          conforming_item_count INTEGER,
+          deficient_item_count INTEGER,
+          observations_count INTEGER,
+          closed_observations_count INTEGER,
+          created_at_utc TEXT,
+          updated_at_utc TEXT,
+          last_sync_run_id TEXT,
+          UNIQUE(project_key, inspection_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_inspection_sections (
+          inspection_section_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          section_id TEXT NOT NULL,
+          inspection_id TEXT,
+          template_section_id TEXT,
+          name_redacted TEXT,
+          position INTEGER,
+          risk_category TEXT,
+          updated_at_utc TEXT,
+          UNIQUE(project_key, section_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_inspection_items (
+          inspection_item_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          inspection_id TEXT,
+          list_id TEXT,
+          section_id TEXT,
+          template_item_id TEXT,
+          parent_item_id TEXT,
+          item_number TEXT,
+          item_name_redacted TEXT,
+          status TEXT,
+          responded_with TEXT,
+          response_id TEXT,
+          response_name TEXT,
+          response_status TEXT,
+          is_unanswered INTEGER NOT NULL DEFAULT 0,
+          is_deficient INTEGER NOT NULL DEFAULT 0,
+          is_conforming INTEGER NOT NULL DEFAULT 0,
+          is_not_applicable INTEGER NOT NULL DEFAULT 0,
+          position INTEGER,
+          relative_position INTEGER,
+          updated_at_utc TEXT,
+          last_sync_run_id TEXT,
+          UNIQUE(project_key, item_id)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_procore_inspection_items_project_status
+          ON procore_inspection_items(project_key, is_unanswered, is_deficient);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_inspection_response_sets (
+          response_set_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          response_set_id TEXT NOT NULL,
+          name_redacted TEXT,
+          active INTEGER,
+          procore_standard INTEGER,
+          created_at_utc TEXT,
+          updated_at_utc TEXT,
+          UNIQUE(project_key, response_set_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_inspection_response_options (
+          response_option_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          response_set_id TEXT NOT NULL,
+          response_option_id TEXT NOT NULL,
+          name_redacted TEXT,
+          item_status_id TEXT,
+          status_category TEXT,
+          UNIQUE(project_key, response_set_id, response_option_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_inspection_evidence_rules (
+          evidence_rule_key TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          item_reference_ids_json TEXT,
+          observation_response_option_ids_json TEXT,
+          observation_status_ids_json TEXT,
+          photo_response_option_ids_json TEXT,
+          photo_status_ids_json TEXT,
+          requires_observation INTEGER NOT NULL DEFAULT 0,
+          requires_photo INTEGER NOT NULL DEFAULT 0,
+          updated_at_utc TEXT,
+          UNIQUE(project_key, item_id)
+        );
+        """,
+        # ----- convenience views (additive; reference tables created above) -----
+        """
+        CREATE VIEW IF NOT EXISTS v_procore_open_action_signals AS
+        SELECT *
+        FROM procore_action_signals
+        WHERE signal_status = 'open';
+        """,
+        """
+        CREATE VIEW IF NOT EXISTS v_procore_inspection_unanswered_items AS
+        SELECT
+          i.project_key,
+          r.name_redacted AS inspection_name_redacted,
+          s.name_redacted AS section_name_redacted,
+          i.item_number,
+          i.item_name_redacted,
+          i.responded_with,
+          i.status,
+          i.updated_at_utc
+        FROM procore_inspection_items i
+        LEFT JOIN procore_inspection_records r
+          ON r.project_key = i.project_key AND r.inspection_id = i.inspection_id
+        LEFT JOIN procore_inspection_sections s
+          ON s.project_key = i.project_key AND s.section_id = i.section_id
+        WHERE i.is_unanswered = 1;
+        """,
+    ]
+
     # v4 = construction-agent Ollama model-decisions audit (metadata only;
     # recommendation-only, controller policy remains authoritative)
     V4_STATEMENTS: list[str] = [
@@ -644,6 +1079,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (6, 'v6_procore_live_sync', ?)",
+                    (now,),
+                )
+
+            # v7 Phase 04B historical-memory + enrichment + inspection tables
+            # (additive only; does not touch V1-V6 tables).
+            for stmt in self.V7_STATEMENTS:
+                conn.execute(stmt)
+
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 7")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (7, 'v7_procore_history_and_enrichment', ?)",
                     (now,),
                 )
 
