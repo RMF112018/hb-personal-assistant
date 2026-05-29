@@ -1,0 +1,3250 @@
+{
+  "provenance": {
+    "head": "48dbcc4c3de09c02cd797289c8fd048f9b8a3347",
+    "source_dir": "/private/tmp/procore-payload-review",
+    "captured_project": "tropical",
+    "captured_utc": "2026-05-29",
+    "no_raw_values_persisted": true,
+    "names_and_types_only": true,
+    "custom_field_keys_generalized": true,
+    "generated_for": "phase-04b-prompt-00",
+    "endpoint_count": 23,
+    "endpoints_inventoried": 23
+  },
+  "endpoints": {
+    "activities": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 1,
+      "top_level_envelope": "list",
+      "field_path_count": 31,
+      "fields": [
+        {
+          "path": "activity_id",
+          "type": "string"
+        },
+        {
+          "path": "activity_name",
+          "type": "string"
+        },
+        {
+          "path": "assigned_company",
+          "type": "null"
+        },
+        {
+          "path": "calendar_id",
+          "type": "string"
+        },
+        {
+          "path": "category_data",
+          "type": "array"
+        },
+        {
+          "path": "company_id",
+          "type": "string"
+        },
+        {
+          "path": "constraint_date",
+          "type": "string"
+        },
+        {
+          "path": "constraint_type",
+          "type": "string"
+        },
+        {
+          "path": "created_at",
+          "type": "string"
+        },
+        {
+          "path": "created_by",
+          "type": "string"
+        },
+        {
+          "path": "crew_size",
+          "type": "null"
+        },
+        {
+          "path": "deadline_date",
+          "type": "null"
+        },
+        {
+          "path": "deadline_variance",
+          "type": "null"
+        },
+        {
+          "path": "duration",
+          "type": "float"
+        },
+        {
+          "path": "duration_display_unit",
+          "type": "string"
+        },
+        {
+          "path": "duration_unit",
+          "type": "string"
+        },
+        {
+          "path": "finish_date",
+          "type": "string"
+        },
+        {
+          "path": "is_actual_finish",
+          "type": "bool"
+        },
+        {
+          "path": "is_actual_start",
+          "type": "bool"
+        },
+        {
+          "path": "is_critical",
+          "type": "bool"
+        },
+        {
+          "path": "notes",
+          "type": "null"
+        },
+        {
+          "path": "ordered_parent_index",
+          "type": "int"
+        },
+        {
+          "path": "parent_id",
+          "type": "null"
+        },
+        {
+          "path": "percent_complete",
+          "type": "float"
+        },
+        {
+          "path": "project_id",
+          "type": "string"
+        },
+        {
+          "path": "resource_data",
+          "type": "array"
+        },
+        {
+          "path": "schedule_id",
+          "type": "string"
+        },
+        {
+          "path": "start_date",
+          "type": "string"
+        },
+        {
+          "path": "total_float",
+          "type": "float"
+        },
+        {
+          "path": "updated_at",
+          "type": "string"
+        },
+        {
+          "path": "updated_by",
+          "type": "string"
+        }
+      ]
+    },
+    "daily-log-dcrs": {
+      "source": "normalizer_source",
+      "observed_record_count": 0,
+      "top_level_envelope": "list",
+      "note": "live capture returned 0 records; contract = _normalize_daily_log_dcr",
+      "field_path_count": 25,
+      "fields": [
+        {
+          "path": "apprentice_hours",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "created_at",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "date",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "datetime",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "first_year_hours",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "foreman_hours",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "journeyman_hours",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "local_city_hours",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "local_county_hours",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "location",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "minority_hours",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "notes",
+          "type": "unknown",
+          "fate": "hashed-summary"
+        },
+        {
+          "path": "number_of_apprentice_workers",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "number_of_foreman_workers",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "number_of_journeyman_workers",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "number_of_other_workers",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "other_hours",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "position",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "status",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "trade",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "updated_at",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "vendor",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "veteran_hours",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "women_hours",
+          "type": "unknown",
+          "fate": "verbatim"
+        }
+      ]
+    },
+    "daily-log-delays-review-routed": {
+      "source": "normalizer_source",
+      "observed_record_count": 0,
+      "top_level_envelope": "list",
+      "note": "live capture returned 0 records; contract = _normalize_daily_log_delay (safety routed)",
+      "field_path_count": 9,
+      "fields": [
+        {
+          "path": "cause",
+          "type": "unknown",
+          "fate": "hashed-summary"
+        },
+        {
+          "path": "date",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "delay_type",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "description",
+          "type": "unknown",
+          "fate": "hashed-summary"
+        },
+        {
+          "path": "id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "impact_days",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "safety_violation",
+          "type": "unknown",
+          "fate": "hashed-summary"
+        },
+        {
+          "path": "status",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "updated_at",
+          "type": "unknown",
+          "fate": "verbatim"
+        }
+      ]
+    },
+    "daily-log-deliveries": {
+      "source": "normalizer_source",
+      "observed_record_count": 0,
+      "top_level_envelope": "list",
+      "note": "live capture returned 0 records; contract = _normalize_daily_log_deliveries",
+      "field_path_count": 9,
+      "fields": [
+        {
+          "path": "contractor_id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "date",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "location",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "quantity",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "status",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "unit",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "updated_at",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "vendor_id",
+          "type": "unknown",
+          "fate": "verbatim"
+        }
+      ]
+    },
+    "daily-log-inspections": {
+      "source": "normalizer_source",
+      "observed_record_count": 0,
+      "top_level_envelope": "list",
+      "note": "live capture returned 0 records; contract = _normalize_daily_log_inspection",
+      "field_path_count": 9,
+      "fields": [
+        {
+          "path": "comments",
+          "type": "unknown",
+          "fate": "hashed-summary"
+        },
+        {
+          "path": "date",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "description",
+          "type": "unknown",
+          "fate": "hashed-summary"
+        },
+        {
+          "path": "id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "inspection_type",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "inspector_id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "location",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "status",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "updated_at",
+          "type": "unknown",
+          "fate": "verbatim"
+        }
+      ]
+    },
+    "daily-log-manpower": {
+      "source": "normalizer_source",
+      "observed_record_count": 0,
+      "top_level_envelope": "list",
+      "note": "live capture returned 0 records; contract = _normalize_daily_log_manpower",
+      "field_path_count": 8,
+      "fields": [
+        {
+          "path": "contractor_id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "date",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "hours",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "location",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "updated_at",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "vendor_id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "workers",
+          "type": "unknown",
+          "fate": "verbatim"
+        }
+      ]
+    },
+    "daily-log-notes": {
+      "source": "normalizer_source",
+      "observed_record_count": 0,
+      "top_level_envelope": "list",
+      "note": "live capture returned 0 records; contract = _normalize_daily_log_notes",
+      "field_path_count": 8,
+      "fields": [
+        {
+          "path": "author_id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "body",
+          "type": "unknown",
+          "fate": "hashed-summary"
+        },
+        {
+          "path": "comments",
+          "type": "unknown",
+          "fate": "hashed-summary"
+        },
+        {
+          "path": "date",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "location",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "note",
+          "type": "unknown",
+          "fate": "hashed-summary"
+        },
+        {
+          "path": "updated_at",
+          "type": "unknown",
+          "fate": "verbatim"
+        }
+      ]
+    },
+    "daily-log-weather": {
+      "source": "normalizer_source",
+      "observed_record_count": 0,
+      "top_level_envelope": "list",
+      "note": "live capture returned 0 records; contract = _normalize_daily_log_weather",
+      "field_path_count": 10,
+      "fields": [
+        {
+          "path": "average_temperature",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "conditions",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "date",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "high_temperature",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "humidity",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "low_temperature",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "precipitation",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "updated_at",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "wind_speed",
+          "type": "unknown",
+          "fate": "verbatim"
+        }
+      ]
+    },
+    "inspection-items": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 1,
+      "top_level_envelope": "list",
+      "field_path_count": 46,
+      "fields": [
+        {
+          "path": "company_template_item_details",
+          "type": "null"
+        },
+        {
+          "path": "details",
+          "type": "null"
+        },
+        {
+          "path": "display_conditions",
+          "type": "array"
+        },
+        {
+          "path": "evidence_configuration",
+          "type": "object"
+        },
+        {
+          "path": "evidence_configuration.created_at",
+          "type": "string"
+        },
+        {
+          "path": "evidence_configuration.item_id",
+          "type": "int"
+        },
+        {
+          "path": "evidence_configuration.observation",
+          "type": "object"
+        },
+        {
+          "path": "evidence_configuration.observation.response_option_ids",
+          "type": "array"
+        },
+        {
+          "path": "evidence_configuration.observation.status_ids",
+          "type": "array"
+        },
+        {
+          "path": "evidence_configuration.photo",
+          "type": "object"
+        },
+        {
+          "path": "evidence_configuration.photo.response_option_ids",
+          "type": "array"
+        },
+        {
+          "path": "evidence_configuration.photo.status_ids",
+          "type": "array"
+        },
+        {
+          "path": "evidence_configuration.updated_at",
+          "type": "string"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "item_reference_ids",
+          "type": "array"
+        },
+        {
+          "path": "item_response",
+          "type": "null"
+        },
+        {
+          "path": "list_id",
+          "type": "int"
+        },
+        {
+          "path": "name",
+          "type": "string"
+        },
+        {
+          "path": "number",
+          "type": "string"
+        },
+        {
+          "path": "parent_item_id",
+          "type": "null"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "relative_position",
+          "type": "int"
+        },
+        {
+          "path": "responded_with",
+          "type": "string"
+        },
+        {
+          "path": "response",
+          "type": "null"
+        },
+        {
+          "path": "response_set",
+          "type": "object"
+        },
+        {
+          "path": "response_set.active",
+          "type": "bool"
+        },
+        {
+          "path": "response_set.created_at",
+          "type": "string"
+        },
+        {
+          "path": "response_set.deletable",
+          "type": "bool"
+        },
+        {
+          "path": "response_set.id",
+          "type": "int"
+        },
+        {
+          "path": "response_set.name",
+          "type": "string"
+        },
+        {
+          "path": "response_set.procore_standard",
+          "type": "bool"
+        },
+        {
+          "path": "response_set.responses",
+          "type": "array"
+        },
+        {
+          "path": "response_set.responses[].id",
+          "type": "int"
+        },
+        {
+          "path": "response_set.responses[].item_status_id",
+          "type": "int"
+        },
+        {
+          "path": "response_set.responses[].name",
+          "type": "string"
+        },
+        {
+          "path": "response_set.responses[].status",
+          "type": "string"
+        },
+        {
+          "path": "response_set.updated_at",
+          "type": "string"
+        },
+        {
+          "path": "section_id",
+          "type": "int"
+        },
+        {
+          "path": "signature_request_ids",
+          "type": "array"
+        },
+        {
+          "path": "status",
+          "type": "string"
+        },
+        {
+          "path": "template_item_id",
+          "type": "int"
+        },
+        {
+          "path": "type",
+          "type": "object"
+        },
+        {
+          "path": "type.category",
+          "type": "string"
+        },
+        {
+          "path": "type.id",
+          "type": "int"
+        },
+        {
+          "path": "type.name",
+          "type": "string"
+        },
+        {
+          "path": "updated_at",
+          "type": "string"
+        }
+      ]
+    },
+    "inspection-sections": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 1,
+      "top_level_envelope": "list",
+      "field_path_count": 5,
+      "fields": [
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "name",
+          "type": "string"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "template_section_id",
+          "type": "int"
+        },
+        {
+          "path": "updated_at",
+          "type": "string"
+        }
+      ]
+    },
+    "inspections": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 1,
+      "top_level_envelope": "list",
+      "field_path_count": 64,
+      "fields": [
+        {
+          "path": "asset_ids",
+          "type": "array"
+        },
+        {
+          "path": "attachments",
+          "type": "array"
+        },
+        {
+          "path": "closed_at",
+          "type": "null"
+        },
+        {
+          "path": "closed_by",
+          "type": "null"
+        },
+        {
+          "path": "closed_observations_count",
+          "type": "int"
+        },
+        {
+          "path": "conforming_item_count",
+          "type": "int"
+        },
+        {
+          "path": "created_at",
+          "type": "string"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.company_name",
+          "type": "string"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.login",
+          "type": "string"
+        },
+        {
+          "path": "created_by.name",
+          "type": "string"
+        },
+        {
+          "path": "current_drawing_revision_ids",
+          "type": "array"
+        },
+        {
+          "path": "custom_fields",
+          "type": "object"
+        },
+        {
+          "path": "default_response_phrasing",
+          "type": "object"
+        },
+        {
+          "path": "default_response_phrasing.conforming_response",
+          "type": "string"
+        },
+        {
+          "path": "default_response_phrasing.deficient_response",
+          "type": "string"
+        },
+        {
+          "path": "default_response_phrasing.global",
+          "type": "bool"
+        },
+        {
+          "path": "deficient_item_count",
+          "type": "int"
+        },
+        {
+          "path": "deleted",
+          "type": "bool"
+        },
+        {
+          "path": "description",
+          "type": "string"
+        },
+        {
+          "path": "distribution_members",
+          "type": "array"
+        },
+        {
+          "path": "drawing_ids",
+          "type": "array"
+        },
+        {
+          "path": "due_at",
+          "type": "null"
+        },
+        {
+          "path": "equipment_id",
+          "type": "null"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "identifier",
+          "type": "string"
+        },
+        {
+          "path": "inspected_item_count",
+          "type": "int"
+        },
+        {
+          "path": "inspection_date",
+          "type": "string"
+        },
+        {
+          "path": "inspection_type",
+          "type": "object"
+        },
+        {
+          "path": "inspection_type.created_at",
+          "type": "string"
+        },
+        {
+          "path": "inspection_type.grouping",
+          "type": "null"
+        },
+        {
+          "path": "inspection_type.id",
+          "type": "int"
+        },
+        {
+          "path": "inspection_type.name",
+          "type": "string"
+        },
+        {
+          "path": "inspection_type.updated_at",
+          "type": "string"
+        },
+        {
+          "path": "inspectors",
+          "type": "array"
+        },
+        {
+          "path": "inspectors[].company_name",
+          "type": "string"
+        },
+        {
+          "path": "inspectors[].id",
+          "type": "int"
+        },
+        {
+          "path": "inspectors[].login",
+          "type": "string"
+        },
+        {
+          "path": "inspectors[].name",
+          "type": "string"
+        },
+        {
+          "path": "item_count",
+          "type": "int"
+        },
+        {
+          "path": "list_template_id",
+          "type": "int"
+        },
+        {
+          "path": "list_template_name",
+          "type": "string"
+        },
+        {
+          "path": "location",
+          "type": "null"
+        },
+        {
+          "path": "managed_equipment_id",
+          "type": "null"
+        },
+        {
+          "path": "name",
+          "type": "string"
+        },
+        {
+          "path": "neutral_item_count",
+          "type": "int"
+        },
+        {
+          "path": "not_applicable_item_count",
+          "type": "int"
+        },
+        {
+          "path": "number",
+          "type": "int"
+        },
+        {
+          "path": "observations_count",
+          "type": "int"
+        },
+        {
+          "path": "overdue",
+          "type": "bool"
+        },
+        {
+          "path": "point_of_contact",
+          "type": "null"
+        },
+        {
+          "path": "private",
+          "type": "bool"
+        },
+        {
+          "path": "reinspected_by_id",
+          "type": "null"
+        },
+        {
+          "path": "reinspected_from_id",
+          "type": "null"
+        },
+        {
+          "path": "respondable_item_count",
+          "type": "int"
+        },
+        {
+          "path": "responsible_contractor",
+          "type": "null"
+        },
+        {
+          "path": "schedule",
+          "type": "null"
+        },
+        {
+          "path": "signature_requests",
+          "type": "array"
+        },
+        {
+          "path": "specification_section",
+          "type": "null"
+        },
+        {
+          "path": "status",
+          "type": "string"
+        },
+        {
+          "path": "template_id",
+          "type": "int"
+        },
+        {
+          "path": "trade",
+          "type": "null"
+        },
+        {
+          "path": "updated_at",
+          "type": "string"
+        }
+      ]
+    },
+    "meeting-detail": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 1,
+      "top_level_envelope": "list",
+      "field_path_count": 44,
+      "fields": [
+        {
+          "path": "attachments",
+          "type": "array"
+        },
+        {
+          "path": "attendees",
+          "type": "array"
+        },
+        {
+          "path": "attendees[].id",
+          "type": "int"
+        },
+        {
+          "path": "attendees[].login_information",
+          "type": "object"
+        },
+        {
+          "path": "attendees[].login_information.id",
+          "type": "int"
+        },
+        {
+          "path": "attendees[].login_information.login",
+          "type": "string"
+        },
+        {
+          "path": "attendees[].login_information.name",
+          "type": "string"
+        },
+        {
+          "path": "attendees[].status",
+          "type": "null"
+        },
+        {
+          "path": "conclusion",
+          "type": "string"
+        },
+        {
+          "path": "created_at",
+          "type": "string"
+        },
+        {
+          "path": "created_by_id",
+          "type": "int"
+        },
+        {
+          "path": "description",
+          "type": "string"
+        },
+        {
+          "path": "ends_at",
+          "type": "string"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "is_draft",
+          "type": "bool"
+        },
+        {
+          "path": "is_private",
+          "type": "bool"
+        },
+        {
+          "path": "location",
+          "type": "string"
+        },
+        {
+          "path": "meeting_categories",
+          "type": "array"
+        },
+        {
+          "path": "meeting_categories[].id",
+          "type": "int"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic",
+          "type": "array"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].assignments",
+          "type": "array"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].attachments",
+          "type": "array"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].created_on",
+          "type": "string"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].description",
+          "type": "string"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].due_date",
+          "type": "null"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].id",
+          "type": "int"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].meeting_category",
+          "type": "object"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].minutes",
+          "type": "null"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].number",
+          "type": "string"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].position",
+          "type": "int"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].priority",
+          "type": "null"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].status",
+          "type": "string"
+        },
+        {
+          "path": "meeting_categories[].meeting_topic[].title",
+          "type": "string"
+        },
+        {
+          "path": "meeting_categories[].position",
+          "type": "int"
+        },
+        {
+          "path": "meeting_categories[].title",
+          "type": "string"
+        },
+        {
+          "path": "meeting_template_id",
+          "type": "null"
+        },
+        {
+          "path": "mode",
+          "type": "string"
+        },
+        {
+          "path": "occurred",
+          "type": "bool"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "remote_meeting_url",
+          "type": "null"
+        },
+        {
+          "path": "starts_at",
+          "type": "string"
+        },
+        {
+          "path": "time_zone",
+          "type": "string"
+        },
+        {
+          "path": "title",
+          "type": "string"
+        },
+        {
+          "path": "updated_at",
+          "type": "string"
+        }
+      ]
+    },
+    "meeting-topics": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 20,
+      "top_level_envelope": "nested:meeting-detail.meeting_categories[].meeting_topic[]",
+      "field_path_count": 19,
+      "fields": [
+        {
+          "path": "assignments",
+          "type": "array"
+        },
+        {
+          "path": "attachments",
+          "type": "array"
+        },
+        {
+          "path": "attachments[].filename",
+          "type": "string"
+        },
+        {
+          "path": "attachments[].id",
+          "type": "int"
+        },
+        {
+          "path": "attachments[].name",
+          "type": "string"
+        },
+        {
+          "path": "attachments[].url",
+          "type": "string"
+        },
+        {
+          "path": "created_on",
+          "type": "string"
+        },
+        {
+          "path": "description",
+          "type": "string"
+        },
+        {
+          "path": "due_date",
+          "type": "null|string"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "meeting_category",
+          "type": "object"
+        },
+        {
+          "path": "meeting_category.id",
+          "type": "int"
+        },
+        {
+          "path": "meeting_category.title",
+          "type": "string"
+        },
+        {
+          "path": "minutes",
+          "type": "null|string"
+        },
+        {
+          "path": "number",
+          "type": "string"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "priority",
+          "type": "null|string"
+        },
+        {
+          "path": "status",
+          "type": "string"
+        },
+        {
+          "path": "title",
+          "type": "string"
+        }
+      ]
+    },
+    "meetings": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 31,
+      "top_level_envelope": "grouped",
+      "field_path_count": 22,
+      "fields": [
+        {
+          "path": "created_at",
+          "type": "string"
+        },
+        {
+          "path": "created_by_id",
+          "type": "int"
+        },
+        {
+          "path": "description",
+          "type": "string"
+        },
+        {
+          "path": "distributed_at",
+          "type": "null|string"
+        },
+        {
+          "path": "distributed_by",
+          "type": "null|object"
+        },
+        {
+          "path": "distributed_by.id",
+          "type": "int"
+        },
+        {
+          "path": "distributed_by.login",
+          "type": "string"
+        },
+        {
+          "path": "distributed_by.name",
+          "type": "string"
+        },
+        {
+          "path": "ends_at",
+          "type": "string"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "is_private",
+          "type": "bool"
+        },
+        {
+          "path": "last_distributed_event",
+          "type": "null|string"
+        },
+        {
+          "path": "location",
+          "type": "string"
+        },
+        {
+          "path": "meeting_template_id",
+          "type": "null"
+        },
+        {
+          "path": "meeting_topics_count",
+          "type": "int"
+        },
+        {
+          "path": "mode",
+          "type": "string"
+        },
+        {
+          "path": "occurred",
+          "type": "bool"
+        },
+        {
+          "path": "parent_id",
+          "type": "int|null"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "starts_at",
+          "type": "string"
+        },
+        {
+          "path": "title",
+          "type": "string"
+        },
+        {
+          "path": "updated_at",
+          "type": "string"
+        }
+      ]
+    },
+    "observations": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 1,
+      "top_level_envelope": "list",
+      "field_path_count": 62,
+      "fields": [
+        {
+          "path": "assignee",
+          "type": "object"
+        },
+        {
+          "path": "assignee.id",
+          "type": "int"
+        },
+        {
+          "path": "assignee.name",
+          "type": "string"
+        },
+        {
+          "path": "assignee.vendor",
+          "type": "object"
+        },
+        {
+          "path": "assignee.vendor.id",
+          "type": "int"
+        },
+        {
+          "path": "assignee.vendor.name",
+          "type": "string"
+        },
+        {
+          "path": "assignees",
+          "type": "array"
+        },
+        {
+          "path": "category",
+          "type": "object"
+        },
+        {
+          "path": "category.grouping",
+          "type": "null"
+        },
+        {
+          "path": "category.name",
+          "type": "string"
+        },
+        {
+          "path": "closed_at",
+          "type": "string"
+        },
+        {
+          "path": "created_at",
+          "type": "string"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.company_name",
+          "type": "string"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.login",
+          "type": "string"
+        },
+        {
+          "path": "created_by.name",
+          "type": "string"
+        },
+        {
+          "path": "custom_fields",
+          "type": "object"
+        },
+        {
+          "path": "date_notified",
+          "type": "string"
+        },
+        {
+          "path": "deleted_at",
+          "type": "null"
+        },
+        {
+          "path": "description",
+          "type": "string"
+        },
+        {
+          "path": "description_rich_text",
+          "type": "string"
+        },
+        {
+          "path": "due_date",
+          "type": "string"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "location",
+          "type": "object"
+        },
+        {
+          "path": "location.created_at",
+          "type": "string"
+        },
+        {
+          "path": "location.id",
+          "type": "int"
+        },
+        {
+          "path": "location.name",
+          "type": "string"
+        },
+        {
+          "path": "location.node_name",
+          "type": "string"
+        },
+        {
+          "path": "location.parent_id",
+          "type": "null"
+        },
+        {
+          "path": "location.updated_at",
+          "type": "string"
+        },
+        {
+          "path": "name",
+          "type": "string"
+        },
+        {
+          "path": "number",
+          "type": "string"
+        },
+        {
+          "path": "origin",
+          "type": "null"
+        },
+        {
+          "path": "permissions",
+          "type": "null"
+        },
+        {
+          "path": "personal",
+          "type": "bool"
+        },
+        {
+          "path": "priority",
+          "type": "string"
+        },
+        {
+          "path": "specification_section",
+          "type": "null"
+        },
+        {
+          "path": "status",
+          "type": "string"
+        },
+        {
+          "path": "trade",
+          "type": "object"
+        },
+        {
+          "path": "trade.active",
+          "type": "bool"
+        },
+        {
+          "path": "trade.id",
+          "type": "int"
+        },
+        {
+          "path": "trade.name",
+          "type": "string"
+        },
+        {
+          "path": "trade.updated_at",
+          "type": "string"
+        },
+        {
+          "path": "type",
+          "type": "object"
+        },
+        {
+          "path": "type.active",
+          "type": "bool"
+        },
+        {
+          "path": "type.category",
+          "type": "string"
+        },
+        {
+          "path": "type.category_key",
+          "type": "string"
+        },
+        {
+          "path": "type.company_active",
+          "type": "bool"
+        },
+        {
+          "path": "type.id",
+          "type": "int"
+        },
+        {
+          "path": "type.in_use",
+          "type": "bool"
+        },
+        {
+          "path": "type.kind",
+          "type": "string"
+        },
+        {
+          "path": "type.localized_name",
+          "type": "string"
+        },
+        {
+          "path": "type.name",
+          "type": "string"
+        },
+        {
+          "path": "type.name_translations",
+          "type": "null"
+        },
+        {
+          "path": "type.observations_category",
+          "type": "object"
+        },
+        {
+          "path": "type.observations_category.grouping",
+          "type": "null"
+        },
+        {
+          "path": "type.observations_category.id",
+          "type": "int"
+        },
+        {
+          "path": "type.observations_category.name",
+          "type": "string"
+        },
+        {
+          "path": "type.observations_category.updated_at",
+          "type": "string"
+        },
+        {
+          "path": "type.parent_inactive",
+          "type": "bool"
+        },
+        {
+          "path": "updated_at",
+          "type": "string"
+        }
+      ]
+    },
+    "projects": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 1,
+      "top_level_envelope": "list",
+      "field_path_count": 59,
+      "fields": [
+        {
+          "path": "accounting_project_number",
+          "type": "string"
+        },
+        {
+          "path": "active",
+          "type": "bool"
+        },
+        {
+          "path": "address",
+          "type": "string"
+        },
+        {
+          "path": "city",
+          "type": "string"
+        },
+        {
+          "path": "company",
+          "type": "object"
+        },
+        {
+          "path": "company.id",
+          "type": "int"
+        },
+        {
+          "path": "company.name",
+          "type": "string"
+        },
+        {
+          "path": "completion_date",
+          "type": "string"
+        },
+        {
+          "path": "country_code",
+          "type": "string"
+        },
+        {
+          "path": "county",
+          "type": "string"
+        },
+        {
+          "path": "created_at",
+          "type": "string"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.login",
+          "type": "string"
+        },
+        {
+          "path": "created_by.name",
+          "type": "string"
+        },
+        {
+          "path": "custom_fields",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_*",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_*.data_type",
+          "type": "string"
+        },
+        {
+          "path": "custom_fields.custom_field_*.value",
+          "type": "array|bool|string"
+        },
+        {
+          "path": "delivery_method",
+          "type": "null"
+        },
+        {
+          "path": "designated_market_area",
+          "type": "string"
+        },
+        {
+          "path": "display_name",
+          "type": "string"
+        },
+        {
+          "path": "estimated_value",
+          "type": "string"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "is_demo",
+          "type": "bool"
+        },
+        {
+          "path": "latitude",
+          "type": "float"
+        },
+        {
+          "path": "longitude",
+          "type": "float"
+        },
+        {
+          "path": "name",
+          "type": "string"
+        },
+        {
+          "path": "origin_code",
+          "type": "string"
+        },
+        {
+          "path": "origin_data",
+          "type": "string"
+        },
+        {
+          "path": "origin_id",
+          "type": "string"
+        },
+        {
+          "path": "owners_project_id",
+          "type": "null"
+        },
+        {
+          "path": "parent_job",
+          "type": "null"
+        },
+        {
+          "path": "parent_job_id",
+          "type": "null"
+        },
+        {
+          "path": "phone",
+          "type": "string"
+        },
+        {
+          "path": "photo_id",
+          "type": "null"
+        },
+        {
+          "path": "project_bid_type_id",
+          "type": "null"
+        },
+        {
+          "path": "project_number",
+          "type": "string"
+        },
+        {
+          "path": "project_owner_type_id",
+          "type": "null"
+        },
+        {
+          "path": "project_region_id",
+          "type": "null"
+        },
+        {
+          "path": "project_sector_id",
+          "type": "null"
+        },
+        {
+          "path": "project_stage",
+          "type": "object"
+        },
+        {
+          "path": "project_stage.id",
+          "type": "int"
+        },
+        {
+          "path": "project_stage.is_concept_stage",
+          "type": "bool"
+        },
+        {
+          "path": "project_stage.name",
+          "type": "string"
+        },
+        {
+          "path": "project_template",
+          "type": "object"
+        },
+        {
+          "path": "project_template.id",
+          "type": "int"
+        },
+        {
+          "path": "project_template.name",
+          "type": "string"
+        },
+        {
+          "path": "projected_finish_date",
+          "type": "string"
+        },
+        {
+          "path": "sector",
+          "type": "null"
+        },
+        {
+          "path": "stage",
+          "type": "string"
+        },
+        {
+          "path": "start_date",
+          "type": "string"
+        },
+        {
+          "path": "state_code",
+          "type": "string"
+        },
+        {
+          "path": "store_number",
+          "type": "string"
+        },
+        {
+          "path": "time_zone",
+          "type": "string"
+        },
+        {
+          "path": "total_value",
+          "type": "string"
+        },
+        {
+          "path": "updated_at",
+          "type": "string"
+        },
+        {
+          "path": "work_scope",
+          "type": "null"
+        },
+        {
+          "path": "zip",
+          "type": "string"
+        }
+      ]
+    },
+    "punch-items": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 1,
+      "top_level_envelope": "list",
+      "field_path_count": 97,
+      "fields": [
+        {
+          "path": "assignees",
+          "type": "array"
+        },
+        {
+          "path": "assignees[].company_name",
+          "type": "string"
+        },
+        {
+          "path": "assignees[].id",
+          "type": "int"
+        },
+        {
+          "path": "assignees[].locale",
+          "type": "null"
+        },
+        {
+          "path": "assignees[].login",
+          "type": "string"
+        },
+        {
+          "path": "assignees[].name",
+          "type": "string"
+        },
+        {
+          "path": "assignments",
+          "type": "array"
+        },
+        {
+          "path": "assignments[].approved",
+          "type": "bool"
+        },
+        {
+          "path": "assignments[].attachments",
+          "type": "array"
+        },
+        {
+          "path": "assignments[].comment",
+          "type": "null"
+        },
+        {
+          "path": "assignments[].id",
+          "type": "int"
+        },
+        {
+          "path": "assignments[].login_information",
+          "type": "object"
+        },
+        {
+          "path": "assignments[].login_information.company_name",
+          "type": "string"
+        },
+        {
+          "path": "assignments[].login_information.id",
+          "type": "int"
+        },
+        {
+          "path": "assignments[].login_information.locale",
+          "type": "null"
+        },
+        {
+          "path": "assignments[].login_information.login",
+          "type": "string"
+        },
+        {
+          "path": "assignments[].login_information.name",
+          "type": "string"
+        },
+        {
+          "path": "assignments[].login_information_id",
+          "type": "int"
+        },
+        {
+          "path": "assignments[].login_information_name",
+          "type": "string"
+        },
+        {
+          "path": "assignments[].manager_accepted_at",
+          "type": "null"
+        },
+        {
+          "path": "assignments[].name",
+          "type": "string"
+        },
+        {
+          "path": "assignments[].notified_at",
+          "type": "string"
+        },
+        {
+          "path": "assignments[].responded_at",
+          "type": "null"
+        },
+        {
+          "path": "assignments[].status",
+          "type": "string"
+        },
+        {
+          "path": "assignments[].updated_at",
+          "type": "string"
+        },
+        {
+          "path": "assignments[].user_name",
+          "type": "string"
+        },
+        {
+          "path": "assignments[].vendor",
+          "type": "object"
+        },
+        {
+          "path": "assignments[].vendor.id",
+          "type": "int"
+        },
+        {
+          "path": "assignments[].vendor.name",
+          "type": "string"
+        },
+        {
+          "path": "ball_in_court",
+          "type": "array"
+        },
+        {
+          "path": "ball_in_court[].company_name",
+          "type": "string"
+        },
+        {
+          "path": "ball_in_court[].id",
+          "type": "int"
+        },
+        {
+          "path": "ball_in_court[].locale",
+          "type": "null"
+        },
+        {
+          "path": "ball_in_court[].login",
+          "type": "string"
+        },
+        {
+          "path": "ball_in_court[].name",
+          "type": "string"
+        },
+        {
+          "path": "closed_at",
+          "type": "null"
+        },
+        {
+          "path": "closed_by",
+          "type": "null"
+        },
+        {
+          "path": "cost_code",
+          "type": "null"
+        },
+        {
+          "path": "cost_impact",
+          "type": "string"
+        },
+        {
+          "path": "cost_impact_amount",
+          "type": "null"
+        },
+        {
+          "path": "created_at",
+          "type": "string"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.company_name",
+          "type": "string"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.locale",
+          "type": "null"
+        },
+        {
+          "path": "created_by.login",
+          "type": "string"
+        },
+        {
+          "path": "created_by.name",
+          "type": "string"
+        },
+        {
+          "path": "custom_fields",
+          "type": "object"
+        },
+        {
+          "path": "deleted_at",
+          "type": "null"
+        },
+        {
+          "path": "description",
+          "type": "string"
+        },
+        {
+          "path": "due_date",
+          "type": "string"
+        },
+        {
+          "path": "due_tomorrow",
+          "type": "bool"
+        },
+        {
+          "path": "final_approver",
+          "type": "object"
+        },
+        {
+          "path": "final_approver.company_name",
+          "type": "string"
+        },
+        {
+          "path": "final_approver.id",
+          "type": "int"
+        },
+        {
+          "path": "final_approver.locale",
+          "type": "null"
+        },
+        {
+          "path": "final_approver.login",
+          "type": "string"
+        },
+        {
+          "path": "final_approver.name",
+          "type": "string"
+        },
+        {
+          "path": "flagged_by",
+          "type": "null"
+        },
+        {
+          "path": "has_attachments",
+          "type": "bool"
+        },
+        {
+          "path": "has_resolved_responses",
+          "type": "bool"
+        },
+        {
+          "path": "has_unresolved_responses",
+          "type": "bool"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "location",
+          "type": "object"
+        },
+        {
+          "path": "location.created_at",
+          "type": "string"
+        },
+        {
+          "path": "location.id",
+          "type": "int"
+        },
+        {
+          "path": "location.name",
+          "type": "string"
+        },
+        {
+          "path": "location.node_name",
+          "type": "string"
+        },
+        {
+          "path": "location.parent_id",
+          "type": "int"
+        },
+        {
+          "path": "location.updated_at",
+          "type": "string"
+        },
+        {
+          "path": "manager_notified_at",
+          "type": "string"
+        },
+        {
+          "path": "name",
+          "type": "string"
+        },
+        {
+          "path": "overdue",
+          "type": "bool"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "priority",
+          "type": "null"
+        },
+        {
+          "path": "private",
+          "type": "bool"
+        },
+        {
+          "path": "punch_item_manager",
+          "type": "object"
+        },
+        {
+          "path": "punch_item_manager.company_name",
+          "type": "string"
+        },
+        {
+          "path": "punch_item_manager.id",
+          "type": "int"
+        },
+        {
+          "path": "punch_item_manager.locale",
+          "type": "null"
+        },
+        {
+          "path": "punch_item_manager.login",
+          "type": "string"
+        },
+        {
+          "path": "punch_item_manager.name",
+          "type": "string"
+        },
+        {
+          "path": "punch_item_type",
+          "type": "null"
+        },
+        {
+          "path": "reference",
+          "type": "string"
+        },
+        {
+          "path": "schedule_impact",
+          "type": "string"
+        },
+        {
+          "path": "schedule_impact_days",
+          "type": "null"
+        },
+        {
+          "path": "schedule_risk",
+          "type": "null"
+        },
+        {
+          "path": "schedule_risk_reason",
+          "type": "null"
+        },
+        {
+          "path": "should_display_risk_flag",
+          "type": "bool"
+        },
+        {
+          "path": "status",
+          "type": "string"
+        },
+        {
+          "path": "trade",
+          "type": "object"
+        },
+        {
+          "path": "trade.active",
+          "type": "bool"
+        },
+        {
+          "path": "trade.id",
+          "type": "int"
+        },
+        {
+          "path": "trade.name",
+          "type": "string"
+        },
+        {
+          "path": "trade.updated_at",
+          "type": "string"
+        },
+        {
+          "path": "updated_at",
+          "type": "string"
+        },
+        {
+          "path": "workflow_status",
+          "type": "string"
+        }
+      ]
+    },
+    "rfi-responses": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 1,
+      "top_level_envelope": "list",
+      "field_path_count": 8,
+      "fields": [
+        {
+          "path": "answer_date",
+          "type": "string"
+        },
+        {
+          "path": "attachments",
+          "type": "array"
+        },
+        {
+          "path": "created_by",
+          "type": "string"
+        },
+        {
+          "path": "created_by_id",
+          "type": "int"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "official",
+          "type": "bool"
+        },
+        {
+          "path": "plain_text_body",
+          "type": "string"
+        },
+        {
+          "path": "rich_text_body",
+          "type": "string"
+        }
+      ]
+    },
+    "rfis": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 1,
+      "top_level_envelope": "list",
+      "field_path_count": 69,
+      "fields": [
+        {
+          "path": "assignee",
+          "type": "object"
+        },
+        {
+          "path": "assignee.id",
+          "type": "int"
+        },
+        {
+          "path": "assignee.locale",
+          "type": "null"
+        },
+        {
+          "path": "assignee.login",
+          "type": "string"
+        },
+        {
+          "path": "assignee.name",
+          "type": "string"
+        },
+        {
+          "path": "assignees",
+          "type": "array"
+        },
+        {
+          "path": "assignees[].id",
+          "type": "int"
+        },
+        {
+          "path": "assignees[].locale",
+          "type": "null"
+        },
+        {
+          "path": "assignees[].login",
+          "type": "string"
+        },
+        {
+          "path": "assignees[].name",
+          "type": "string"
+        },
+        {
+          "path": "assignees[].response_required",
+          "type": "bool"
+        },
+        {
+          "path": "ball_in_court",
+          "type": "null"
+        },
+        {
+          "path": "ball_in_courts",
+          "type": "array"
+        },
+        {
+          "path": "connect_export_origin",
+          "type": "null"
+        },
+        {
+          "path": "cost_code",
+          "type": "null"
+        },
+        {
+          "path": "cost_impact",
+          "type": "object"
+        },
+        {
+          "path": "cost_impact.status",
+          "type": "string"
+        },
+        {
+          "path": "cost_impact.value",
+          "type": "null"
+        },
+        {
+          "path": "created_at",
+          "type": "string"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.login",
+          "type": "string"
+        },
+        {
+          "path": "created_by.name",
+          "type": "string"
+        },
+        {
+          "path": "current_revision",
+          "type": "bool"
+        },
+        {
+          "path": "custom_fields",
+          "type": "object"
+        },
+        {
+          "path": "due_date",
+          "type": "string"
+        },
+        {
+          "path": "full_number",
+          "type": "string"
+        },
+        {
+          "path": "has_revisions",
+          "type": "bool"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "initiated_at",
+          "type": "string"
+        },
+        {
+          "path": "link",
+          "type": "string"
+        },
+        {
+          "path": "location",
+          "type": "null"
+        },
+        {
+          "path": "location_id",
+          "type": "null"
+        },
+        {
+          "path": "number",
+          "type": "string"
+        },
+        {
+          "path": "prefix",
+          "type": "null"
+        },
+        {
+          "path": "priority",
+          "type": "object"
+        },
+        {
+          "path": "priority.name",
+          "type": "null"
+        },
+        {
+          "path": "priority.value",
+          "type": "null"
+        },
+        {
+          "path": "private",
+          "type": "bool"
+        },
+        {
+          "path": "project_stage",
+          "type": "null"
+        },
+        {
+          "path": "proposed_solution",
+          "type": "null"
+        },
+        {
+          "path": "questions",
+          "type": "array"
+        },
+        {
+          "path": "questions[].body",
+          "type": "string"
+        },
+        {
+          "path": "questions[].errors",
+          "type": "object"
+        },
+        {
+          "path": "questions[].id",
+          "type": "int"
+        },
+        {
+          "path": "received_from",
+          "type": "object"
+        },
+        {
+          "path": "received_from.id",
+          "type": "int"
+        },
+        {
+          "path": "received_from.login",
+          "type": "string"
+        },
+        {
+          "path": "received_from.name",
+          "type": "string"
+        },
+        {
+          "path": "reference",
+          "type": "string"
+        },
+        {
+          "path": "responsible_contractor",
+          "type": "object"
+        },
+        {
+          "path": "responsible_contractor.id",
+          "type": "int"
+        },
+        {
+          "path": "responsible_contractor.name",
+          "type": "string"
+        },
+        {
+          "path": "revision",
+          "type": "string"
+        },
+        {
+          "path": "rfi_manager",
+          "type": "object"
+        },
+        {
+          "path": "rfi_manager.id",
+          "type": "int"
+        },
+        {
+          "path": "rfi_manager.login",
+          "type": "string"
+        },
+        {
+          "path": "rfi_manager.name",
+          "type": "string"
+        },
+        {
+          "path": "schedule_impact",
+          "type": "object"
+        },
+        {
+          "path": "schedule_impact.status",
+          "type": "string"
+        },
+        {
+          "path": "schedule_impact.value",
+          "type": "null"
+        },
+        {
+          "path": "source_rfi_header_id",
+          "type": "int"
+        },
+        {
+          "path": "specification_section_id",
+          "type": "null"
+        },
+        {
+          "path": "status",
+          "type": "string"
+        },
+        {
+          "path": "sub_job",
+          "type": "null"
+        },
+        {
+          "path": "subject",
+          "type": "string"
+        },
+        {
+          "path": "time_resolved",
+          "type": "string"
+        },
+        {
+          "path": "translated_status",
+          "type": "string"
+        },
+        {
+          "path": "updated_at",
+          "type": "string"
+        }
+      ]
+    },
+    "schedules": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 1,
+      "top_level_envelope": "list",
+      "field_path_count": 16,
+      "fields": [
+        {
+          "path": "calendar_id",
+          "type": "string"
+        },
+        {
+          "path": "company_id",
+          "type": "string"
+        },
+        {
+          "path": "created_at",
+          "type": "string"
+        },
+        {
+          "path": "created_by",
+          "type": "string"
+        },
+        {
+          "path": "data_date",
+          "type": "string"
+        },
+        {
+          "path": "deleted_at",
+          "type": "null"
+        },
+        {
+          "path": "deleted_by",
+          "type": "null"
+        },
+        {
+          "path": "is_active",
+          "type": "bool"
+        },
+        {
+          "path": "parent_schedule_id",
+          "type": "null"
+        },
+        {
+          "path": "project_id",
+          "type": "string"
+        },
+        {
+          "path": "schedule_id",
+          "type": "string"
+        },
+        {
+          "path": "schedule_name",
+          "type": "string"
+        },
+        {
+          "path": "schedule_type",
+          "type": "string"
+        },
+        {
+          "path": "start_date",
+          "type": "string"
+        },
+        {
+          "path": "updated_at",
+          "type": "string"
+        },
+        {
+          "path": "updated_by",
+          "type": "string"
+        }
+      ]
+    },
+    "submittal-packages": {
+      "source": "normalizer_source",
+      "observed_record_count": 0,
+      "top_level_envelope": "list",
+      "note": "live capture returned 0 records; contract = normalize_submittal_package",
+      "field_path_count": 6,
+      "fields": [
+        {
+          "path": "created_at",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "number",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "status",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "title",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "updated_at",
+          "type": "unknown",
+          "fate": "verbatim"
+        }
+      ]
+    },
+    "submittal-responses": {
+      "source": "normalizer_source",
+      "observed_record_count": 0,
+      "top_level_envelope": "list",
+      "note": "not nested in submittals payload + no standalone file; contract = normalize_submittal_response",
+      "field_path_count": 5,
+      "fields": [
+        {
+          "path": "author_id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "created_at",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "id",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "response_status",
+          "type": "unknown",
+          "fate": "verbatim"
+        },
+        {
+          "path": "updated_at",
+          "type": "unknown",
+          "fate": "verbatim"
+        }
+      ]
+    },
+    "submittals": {
+      "source": "local_raw_inspect",
+      "observed_record_count": 1,
+      "top_level_envelope": "list",
+      "field_path_count": 107,
+      "fields": [
+        {
+          "path": "approvers",
+          "type": "array"
+        },
+        {
+          "path": "approvers[].approver_type",
+          "type": "string"
+        },
+        {
+          "path": "approvers[].attachments",
+          "type": "array"
+        },
+        {
+          "path": "approvers[].attachments[].filename",
+          "type": "string"
+        },
+        {
+          "path": "approvers[].attachments[].id",
+          "type": "int"
+        },
+        {
+          "path": "approvers[].attachments[].name",
+          "type": "string"
+        },
+        {
+          "path": "approvers[].attachments[].url",
+          "type": "string"
+        },
+        {
+          "path": "approvers[].comment",
+          "type": "string"
+        },
+        {
+          "path": "approvers[].days_to_respond",
+          "type": "int"
+        },
+        {
+          "path": "approvers[].distributed",
+          "type": "bool"
+        },
+        {
+          "path": "approvers[].due_date",
+          "type": "string"
+        },
+        {
+          "path": "approvers[].id",
+          "type": "int"
+        },
+        {
+          "path": "approvers[].response",
+          "type": "object"
+        },
+        {
+          "path": "approvers[].response.considered",
+          "type": "string"
+        },
+        {
+          "path": "approvers[].response.id",
+          "type": "int"
+        },
+        {
+          "path": "approvers[].response.name",
+          "type": "string"
+        },
+        {
+          "path": "approvers[].response_required",
+          "type": "bool"
+        },
+        {
+          "path": "approvers[].returned_date",
+          "type": "string"
+        },
+        {
+          "path": "approvers[].sent_date",
+          "type": "null"
+        },
+        {
+          "path": "approvers[].submittal_associated_attachment_ids",
+          "type": "array"
+        },
+        {
+          "path": "approvers[].user",
+          "type": "object"
+        },
+        {
+          "path": "approvers[].user.id",
+          "type": "int"
+        },
+        {
+          "path": "approvers[].user.locale",
+          "type": "string"
+        },
+        {
+          "path": "approvers[].user.login",
+          "type": "string"
+        },
+        {
+          "path": "approvers[].user.name",
+          "type": "string"
+        },
+        {
+          "path": "approvers[].workflow_group_number",
+          "type": "int"
+        },
+        {
+          "path": "attachments_count",
+          "type": "int"
+        },
+        {
+          "path": "ball_in_court",
+          "type": "array"
+        },
+        {
+          "path": "buffer_time",
+          "type": "null"
+        },
+        {
+          "path": "closed_at",
+          "type": "null"
+        },
+        {
+          "path": "created_at",
+          "type": "string"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.locale",
+          "type": "string"
+        },
+        {
+          "path": "created_by.login",
+          "type": "string"
+        },
+        {
+          "path": "created_by.name",
+          "type": "string"
+        },
+        {
+          "path": "current_revision",
+          "type": "bool"
+        },
+        {
+          "path": "custom_fields",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_77760",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_77760.data_type",
+          "type": "string"
+        },
+        {
+          "path": "custom_fields.custom_field_77760.value",
+          "type": "bool"
+        },
+        {
+          "path": "custom_fields.custom_field_77761",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_77761.data_type",
+          "type": "string"
+        },
+        {
+          "path": "custom_fields.custom_field_77761.value",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_77762",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_77762.data_type",
+          "type": "string"
+        },
+        {
+          "path": "custom_fields.custom_field_77762.value",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_77763",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_77763.data_type",
+          "type": "string"
+        },
+        {
+          "path": "custom_fields.custom_field_77763.value",
+          "type": "string"
+        },
+        {
+          "path": "custom_fields.custom_field_77764",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_77764.data_type",
+          "type": "string"
+        },
+        {
+          "path": "custom_fields.custom_field_77764.value",
+          "type": "string"
+        },
+        {
+          "path": "distributed_at",
+          "type": "null"
+        },
+        {
+          "path": "due_date",
+          "type": "string"
+        },
+        {
+          "path": "for_record_only",
+          "type": "bool"
+        },
+        {
+          "path": "formatted_number",
+          "type": "string"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "is_rejected",
+          "type": "bool"
+        },
+        {
+          "path": "issue_date",
+          "type": "string"
+        },
+        {
+          "path": "location",
+          "type": "null"
+        },
+        {
+          "path": "number",
+          "type": "string"
+        },
+        {
+          "path": "open_date",
+          "type": "null"
+        },
+        {
+          "path": "operation_item_errors",
+          "type": "array"
+        },
+        {
+          "path": "private",
+          "type": "bool"
+        },
+        {
+          "path": "received_date",
+          "type": "null"
+        },
+        {
+          "path": "received_from",
+          "type": "object"
+        },
+        {
+          "path": "received_from.id",
+          "type": "int"
+        },
+        {
+          "path": "received_from.locale",
+          "type": "null"
+        },
+        {
+          "path": "received_from.login",
+          "type": "string"
+        },
+        {
+          "path": "received_from.name",
+          "type": "string"
+        },
+        {
+          "path": "rejected_submittal_log_approver_id",
+          "type": "null"
+        },
+        {
+          "path": "required_on_site_date",
+          "type": "null"
+        },
+        {
+          "path": "responsible_contractor",
+          "type": "object"
+        },
+        {
+          "path": "responsible_contractor.id",
+          "type": "int"
+        },
+        {
+          "path": "responsible_contractor.name",
+          "type": "string"
+        },
+        {
+          "path": "revision",
+          "type": "string"
+        },
+        {
+          "path": "scheduled_task",
+          "type": "null"
+        },
+        {
+          "path": "specification_section",
+          "type": "object"
+        },
+        {
+          "path": "specification_section.current_revision_id",
+          "type": "int"
+        },
+        {
+          "path": "specification_section.description",
+          "type": "string"
+        },
+        {
+          "path": "specification_section.id",
+          "type": "int"
+        },
+        {
+          "path": "specification_section.label",
+          "type": "string"
+        },
+        {
+          "path": "specification_section.number",
+          "type": "string"
+        },
+        {
+          "path": "specification_section.specification_area_id",
+          "type": "null"
+        },
+        {
+          "path": "specification_section.specification_area_name",
+          "type": "null"
+        },
+        {
+          "path": "specification_section.viewable_document_id",
+          "type": "null"
+        },
+        {
+          "path": "status",
+          "type": "object"
+        },
+        {
+          "path": "status.id",
+          "type": "int"
+        },
+        {
+          "path": "status.name",
+          "type": "string"
+        },
+        {
+          "path": "status.status",
+          "type": "string"
+        },
+        {
+          "path": "sub_job",
+          "type": "null"
+        },
+        {
+          "path": "submit_by",
+          "type": "null"
+        },
+        {
+          "path": "submittal_manager",
+          "type": "object"
+        },
+        {
+          "path": "submittal_manager.id",
+          "type": "int"
+        },
+        {
+          "path": "submittal_manager.locale",
+          "type": "string"
+        },
+        {
+          "path": "submittal_manager.login",
+          "type": "string"
+        },
+        {
+          "path": "submittal_manager.name",
+          "type": "string"
+        },
+        {
+          "path": "submittal_package",
+          "type": "null"
+        },
+        {
+          "path": "submittal_workflow_template",
+          "type": "null"
+        },
+        {
+          "path": "submittal_workflow_template_applied_at",
+          "type": "null"
+        },
+        {
+          "path": "title",
+          "type": "string"
+        },
+        {
+          "path": "type",
+          "type": "object"
+        },
+        {
+          "path": "type.id",
+          "type": "int"
+        },
+        {
+          "path": "type.name",
+          "type": "string"
+        },
+        {
+          "path": "type.translated_name",
+          "type": "string"
+        },
+        {
+          "path": "updated_at",
+          "type": "string"
+        }
+      ]
+    }
+  }
+}
