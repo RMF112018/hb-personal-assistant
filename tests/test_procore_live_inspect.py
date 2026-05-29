@@ -260,3 +260,133 @@ def test_live_inspect_optional_redacted_derivative(
     assert redacted.exists()
     redacted_body = redacted.read_text(encoding="utf-8")
     assert "[REDACTED]" in redacted_body
+
+
+def test_live_inspect_parent_endpoint_requires_path_param(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setattr("hb_assistant.cli.procore.check_auth_status", lambda: _AuthReady())
+    out_dir = tmp_path / "payload-review"
+    runner = CliRunner()
+    res = runner.invoke(
+        app,
+        [
+            "procore",
+            "live",
+            "inspect",
+            "--project",
+            "tropical",
+            "--endpoint",
+            "rfi-responses",
+            "--max-pages",
+            "1",
+            "--max-items",
+            "1",
+            "--confirm-live-get",
+            "--confirm-raw-payload-dump",
+            "--output-dir",
+            str(out_dir),
+            "--json",
+        ],
+        catch_exceptions=False,
+    )
+    assert res.exit_code == 3
+    payload = json.loads(res.output)
+    assert "missing_path_param:rfi_id" in payload["reason_codes"]
+
+
+def test_live_inspect_rfi_responses_accepts_rfi_id(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-access-token")
+    monkeypatch.setattr("hb_assistant.cli.procore.check_auth_status", lambda: _AuthReady())
+
+    seen_url: dict[str, str] = {}
+
+    def _fake_default_live_transport(self, method: str, url: str, headers: dict[str, str], params: dict | None = None):  # type: ignore[no-untyped-def]
+        seen_url["value"] = url
+        return _FakeResponse(200, [{"id": "reply-1"}], headers={})
+
+    monkeypatch.setattr(
+        "hb_assistant.procore.http_client.ProcoreHTTPClient._default_live_transport",
+        _fake_default_live_transport,
+    )
+
+    out_dir = tmp_path / "payload-review"
+    runner = CliRunner()
+    res = runner.invoke(
+        app,
+        [
+            "procore",
+            "live",
+            "inspect",
+            "--project",
+            "tropical",
+            "--endpoint",
+            "rfi-responses",
+            "--rfi-id",
+            "12345",
+            "--max-pages",
+            "1",
+            "--max-items",
+            "1",
+            "--confirm-live-get",
+            "--confirm-raw-payload-dump",
+            "--output-dir",
+            str(out_dir),
+            "--json",
+        ],
+        catch_exceptions=False,
+    )
+    assert res.exit_code == 0
+    assert "/rfis/12345/replies" in seen_url["value"]
+
+
+def test_live_inspect_activities_accepts_schedule_id(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-access-token")
+    monkeypatch.setattr("hb_assistant.cli.procore.check_auth_status", lambda: _AuthReady())
+
+    seen_url: dict[str, str] = {}
+
+    def _fake_default_live_transport(self, method: str, url: str, headers: dict[str, str], params: dict | None = None):  # type: ignore[no-untyped-def]
+        seen_url["value"] = url
+        return _FakeResponse(200, {"data": [{"id": "act-1"}]}, headers={})
+
+    monkeypatch.setattr(
+        "hb_assistant.procore.http_client.ProcoreHTTPClient._default_live_transport",
+        _fake_default_live_transport,
+    )
+
+    out_dir = tmp_path / "payload-review"
+    runner = CliRunner()
+    res = runner.invoke(
+        app,
+        [
+            "procore",
+            "live",
+            "inspect",
+            "--project",
+            "tropical",
+            "--endpoint",
+            "activities",
+            "--schedule-id",
+            "200",
+            "--max-pages",
+            "1",
+            "--max-items",
+            "1",
+            "--confirm-live-get",
+            "--confirm-raw-payload-dump",
+            "--output-dir",
+            str(out_dir),
+            "--json",
+        ],
+        catch_exceptions=False,
+    )
+    assert res.exit_code == 0
+    assert "/companies/5280/projects/2525840/schedules/200/activities" in seen_url["value"]

@@ -922,6 +922,10 @@ def live_sync(
 def live_inspect(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
     endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id."),
+    rfi_id: Optional[str] = typer.Option(None, "--rfi-id", help="Parent RFI id for rfi-responses."),
+    submittal_id: Optional[str] = typer.Option(None, "--submittal-id", help="Parent submittal id for submittal-responses."),
+    meeting_id: Optional[str] = typer.Option(None, "--meeting-id", help="Meeting id for meeting-detail."),
+    schedule_id: Optional[str] = typer.Option(None, "--schedule-id", help="Schedule id for activities."),
     max_pages: int = typer.Option(1, "--max-pages", min=1),
     max_items: int = typer.Option(5, "--max-items", min=1),
     confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
@@ -964,8 +968,23 @@ def live_inspect(
     if adapter is not None and not adapter.live_verified:
         reason_codes.append("endpoint_not_live_verified")
 
-    if adapter is not None and adapter.required_path_params not in ((), ("project_id",)):
-        reason_codes.append("endpoint_requires_parent_context")
+    path_params: dict[str, str] = {}
+    if project_id:
+        path_params["project_id"] = project_id
+    path_params["company_id"] = "5280"
+    if rfi_id:
+        path_params["rfi_id"] = rfi_id
+    if submittal_id:
+        path_params["submittal_id"] = submittal_id
+    if meeting_id:
+        path_params["id"] = meeting_id
+    if schedule_id:
+        path_params["schedule_id"] = schedule_id
+
+    if adapter is not None:
+        for param in adapter.required_path_params:
+            if not path_params.get(param):
+                reason_codes.append(f"missing_path_param:{param}")
 
     auth_report = check_auth_status()
     token_ready = bool(auth_report.ready_for_live_calls)
@@ -1007,7 +1026,10 @@ def live_inspect(
 
     assert adapter is not None
     assert project_id is not None
-    path = adapter.path_template.replace("{project_id}", project_id)
+    path = adapter.path_template
+    for key, value in path_params.items():
+        path = path.replace(f"{{{key}}}", value)
+    request_params = None if "{project_id}" in adapter.path_template else {"project_id": project_id}
 
     transport_calls = {"count": 0}
     real_client = ProcoreHTTPClient(
@@ -1032,7 +1054,7 @@ def live_inspect(
         rows = list(
             client.paginate(
                 path,
-                params=None,
+                params=request_params,
                 max_pages=max_pages,
                 max_items=max_items,
                 retry_policy=RetryPolicy(max_retries=0, jitter=False),
