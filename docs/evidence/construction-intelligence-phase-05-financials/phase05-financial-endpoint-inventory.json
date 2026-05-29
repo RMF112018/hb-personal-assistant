@@ -1,0 +1,7197 @@
+{
+  "provenance": {
+    "head": "74d89d54c1546f10e0a2f44bf426e4eba5d8659a",
+    "expected_baseline_sha": "0d8a1f64931e8687f8c9d2e033e9236522049c07",
+    "baseline_is_descendant_of_expected": true,
+    "source": "HB_Construction_Intelligence_Phase_05_Procore_Contracts_Financials_Package/resources/json/phase05_endpoint_inventory_from_attached_reference.json",
+    "upstream_source_attribution": "Pasted text(981).txt",
+    "captured_utc": "2026-05-29",
+    "source_status": "sourced_from_attached_reference",
+    "no_raw_values_persisted": true,
+    "names_and_types_only": true,
+    "generated_for": "construction-intelligence-phase-05-financials-prompt-00",
+    "endpoint_count": 32,
+    "endpoints_inventoried": 32,
+    "field_path_total": 1604,
+    "prompt_group_counts": {
+      "owner_contracts": 6,
+      "commitments": 6,
+      "purchase_orders": 3,
+      "invoices": 5,
+      "rfqs_change_events": 5,
+      "budget": 7
+    },
+    "unresolved_path_endpoints": [
+      "budget-details"
+    ],
+    "repo_implementation_status_note": "All 32 endpoints are net-new for Phase 05; none implemented in src/hb_assistant/procore/endpoints.py at HEAD."
+  },
+  "endpoints": [
+    {
+      "endpoint_id": "prime-contracts",
+      "source_name": "Prime Contracts",
+      "family": "owner_contracts",
+      "prompt_group": "owner_contracts",
+      "record_type": "prime_contract",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/prime_contracts",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "filters[id]",
+        "filters[updated_at]",
+        "page",
+        "per_page",
+        "project_id"
+      ],
+      "parent_endpoint_id": null,
+      "parent_path_param": null,
+      "response_envelope": "array",
+      "field_path_count": 235,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "accounting_method",
+          "type": "str"
+        },
+        {
+          "path": "actual_completion_date",
+          "type": "str"
+        },
+        {
+          "path": "approval_letter_date",
+          "type": "str"
+        },
+        {
+          "path": "approved_change_orders",
+          "type": "str"
+        },
+        {
+          "path": "architect",
+          "type": "object"
+        },
+        {
+          "path": "architect.id",
+          "type": "int"
+        },
+        {
+          "path": "architect.login",
+          "type": "str"
+        },
+        {
+          "path": "architect.name",
+          "type": "str"
+        },
+        {
+          "path": "attachments[]",
+          "type": "array"
+        },
+        {
+          "path": "attachments[].filename",
+          "type": "str"
+        },
+        {
+          "path": "attachments[].id",
+          "type": "int"
+        },
+        {
+          "path": "attachments[].url",
+          "type": "str"
+        },
+        {
+          "path": "contract_date",
+          "type": "str"
+        },
+        {
+          "path": "contract_estimated_completion_date",
+          "type": "str"
+        },
+        {
+          "path": "contract_start_date",
+          "type": "str"
+        },
+        {
+          "path": "contract_termination_date",
+          "type": "str"
+        },
+        {
+          "path": "contractor",
+          "type": "object"
+        },
+        {
+          "path": "contractor.abbreviated_name",
+          "type": "str"
+        },
+        {
+          "path": "contractor.address",
+          "type": "str"
+        },
+        {
+          "path": "contractor.attachments[]",
+          "type": "array"
+        },
+        {
+          "path": "contractor.attachments[].filename",
+          "type": "str"
+        },
+        {
+          "path": "contractor.attachments[].id",
+          "type": "int"
+        },
+        {
+          "path": "contractor.attachments[].url",
+          "type": "str"
+        },
+        {
+          "path": "contractor.authorized_bidder",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding",
+          "type": "object"
+        },
+        {
+          "path": "contractor.bidding.affirmative_action",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding.african_american_business",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding.asian_american_business",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding.certified_business_enterprise",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding.disadvantaged_business",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding.eight_a_business",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding.hispanic_business",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding.historically_underutilized_business",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding.minority_business_enterprise",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding.native_american_business",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding.sdvo_business",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding.small_business",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding.womens_business",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.bidding_distribution[]",
+          "type": "array"
+        },
+        {
+          "path": "contractor.bidding_distribution[].id",
+          "type": "int"
+        },
+        {
+          "path": "contractor.bidding_distribution[].login",
+          "type": "str"
+        },
+        {
+          "path": "contractor.bidding_distribution[].name",
+          "type": "str"
+        },
+        {
+          "path": "contractor.business_phone",
+          "type": "str"
+        },
+        {
+          "path": "contractor.business_register",
+          "type": "object"
+        },
+        {
+          "path": "contractor.business_register.id",
+          "type": "int"
+        },
+        {
+          "path": "contractor.business_register.identifier",
+          "type": "str"
+        },
+        {
+          "path": "contractor.business_register.type",
+          "type": "str"
+        },
+        {
+          "path": "contractor.business_register.verification_status",
+          "type": "str"
+        },
+        {
+          "path": "contractor.business_register.verified_at",
+          "type": "str"
+        },
+        {
+          "path": "contractor.children_count",
+          "type": "int"
+        },
+        {
+          "path": "contractor.city",
+          "type": "str"
+        },
+        {
+          "path": "contractor.company",
+          "type": "str"
+        },
+        {
+          "path": "contractor.contact_count",
+          "type": "int"
+        },
+        {
+          "path": "contractor.country_code",
+          "type": "str"
+        },
+        {
+          "path": "contractor.created_at",
+          "type": "str"
+        },
+        {
+          "path": "contractor.email_address",
+          "type": "str"
+        },
+        {
+          "path": "contractor.fax_number",
+          "type": "str"
+        },
+        {
+          "path": "contractor.id",
+          "type": "int"
+        },
+        {
+          "path": "contractor.is_active",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.labor_union",
+          "type": "str"
+        },
+        {
+          "path": "contractor.legal_name",
+          "type": "str"
+        },
+        {
+          "path": "contractor.license_number",
+          "type": "str"
+        },
+        {
+          "path": "contractor.logo",
+          "type": "str"
+        },
+        {
+          "path": "contractor.mobile_phone",
+          "type": "str"
+        },
+        {
+          "path": "contractor.name",
+          "type": "str"
+        },
+        {
+          "path": "contractor.non_union_prevailing_wage",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.notes",
+          "type": "str"
+        },
+        {
+          "path": "contractor.origin_code",
+          "type": "str"
+        },
+        {
+          "path": "contractor.origin_data",
+          "type": "str"
+        },
+        {
+          "path": "contractor.origin_id",
+          "type": "str"
+        },
+        {
+          "path": "contractor.parent",
+          "type": "object"
+        },
+        {
+          "path": "contractor.parent.id",
+          "type": "int"
+        },
+        {
+          "path": "contractor.parent.name",
+          "type": "str"
+        },
+        {
+          "path": "contractor.prequalified",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.primary_contact",
+          "type": "object"
+        },
+        {
+          "path": "contractor.primary_contact.business_phone",
+          "type": "str"
+        },
+        {
+          "path": "contractor.primary_contact.business_phone_extension",
+          "type": "int"
+        },
+        {
+          "path": "contractor.primary_contact.created_at",
+          "type": "str"
+        },
+        {
+          "path": "contractor.primary_contact.email_address",
+          "type": "str"
+        },
+        {
+          "path": "contractor.primary_contact.fax_number",
+          "type": "str"
+        },
+        {
+          "path": "contractor.primary_contact.first_name",
+          "type": "str"
+        },
+        {
+          "path": "contractor.primary_contact.id",
+          "type": "int"
+        },
+        {
+          "path": "contractor.primary_contact.last_name",
+          "type": "str"
+        },
+        {
+          "path": "contractor.primary_contact.mobile_phone",
+          "type": "str"
+        },
+        {
+          "path": "contractor.primary_contact.updated_at",
+          "type": "str"
+        },
+        {
+          "path": "contractor.project_ids[]",
+          "type": "int"
+        },
+        {
+          "path": "contractor.standard_cost_codes[]",
+          "type": "array"
+        },
+        {
+          "path": "contractor.standard_cost_codes[].code",
+          "type": "str"
+        },
+        {
+          "path": "contractor.standard_cost_codes[].full_code",
+          "type": "str"
+        },
+        {
+          "path": "contractor.standard_cost_codes[].id",
+          "type": "int"
+        },
+        {
+          "path": "contractor.standard_cost_codes[].name",
+          "type": "str"
+        },
+        {
+          "path": "contractor.standard_cost_codes[].origin_data",
+          "type": "str"
+        },
+        {
+          "path": "contractor.standard_cost_codes[].origin_id",
+          "type": "str"
+        },
+        {
+          "path": "contractor.standard_cost_codes[].parent_id",
+          "type": "int"
+        },
+        {
+          "path": "contractor.standard_cost_codes[].standard_cost_code_list_id",
+          "type": "int"
+        },
+        {
+          "path": "contractor.state_code",
+          "type": "str"
+        },
+        {
+          "path": "contractor.synced_to_erp",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.trade_name",
+          "type": "str"
+        },
+        {
+          "path": "contractor.trades[]",
+          "type": "array"
+        },
+        {
+          "path": "contractor.trades[].active",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.trades[].id",
+          "type": "int"
+        },
+        {
+          "path": "contractor.trades[].name",
+          "type": "str"
+        },
+        {
+          "path": "contractor.trades[].updated_at",
+          "type": "str"
+        },
+        {
+          "path": "contractor.union_member",
+          "type": "bool"
+        },
+        {
+          "path": "contractor.updated_at",
+          "type": "str"
+        },
+        {
+          "path": "contractor.vendor_group",
+          "type": "object"
+        },
+        {
+          "path": "contractor.vendor_group.id",
+          "type": "int"
+        },
+        {
+          "path": "contractor.vendor_group.name",
+          "type": "str"
+        },
+        {
+          "path": "contractor.website",
+          "type": "str"
+        },
+        {
+          "path": "contractor.zip",
+          "type": "int"
+        },
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.login",
+          "type": "str"
+        },
+        {
+          "path": "created_by.name",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.base_currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_exchange_rate",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "deleted_at",
+          "type": "str"
+        },
+        {
+          "path": "description",
+          "type": "str"
+        },
+        {
+          "path": "exclusions",
+          "type": "str"
+        },
+        {
+          "path": "executed",
+          "type": "bool"
+        },
+        {
+          "path": "execution_date",
+          "type": "str"
+        },
+        {
+          "path": "grand_total",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "inclusions",
+          "type": "str"
+        },
+        {
+          "path": "issued_on_date",
+          "type": "str"
+        },
+        {
+          "path": "letter_of_intent_date",
+          "type": "str"
+        },
+        {
+          "path": "number",
+          "type": "str"
+        },
+        {
+          "path": "origin_code",
+          "type": "str"
+        },
+        {
+          "path": "origin_data",
+          "type": "str"
+        },
+        {
+          "path": "origin_id",
+          "type": "str"
+        },
+        {
+          "path": "private",
+          "type": "bool"
+        },
+        {
+          "path": "retainage_percent",
+          "type": "str"
+        },
+        {
+          "path": "returned_date",
+          "type": "str"
+        },
+        {
+          "path": "show_line_items_to_non_admins",
+          "type": "bool"
+        },
+        {
+          "path": "signed_contract_received_date",
+          "type": "str"
+        },
+        {
+          "path": "status",
+          "type": "str"
+        },
+        {
+          "path": "title",
+          "type": "str"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        },
+        {
+          "path": "vendor",
+          "type": "object"
+        },
+        {
+          "path": "vendor.abbreviated_name",
+          "type": "str"
+        },
+        {
+          "path": "vendor.address",
+          "type": "str"
+        },
+        {
+          "path": "vendor.attachments[]",
+          "type": "array"
+        },
+        {
+          "path": "vendor.attachments[].filename",
+          "type": "str"
+        },
+        {
+          "path": "vendor.attachments[].id",
+          "type": "int"
+        },
+        {
+          "path": "vendor.attachments[].url",
+          "type": "str"
+        },
+        {
+          "path": "vendor.authorized_bidder",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding",
+          "type": "object"
+        },
+        {
+          "path": "vendor.bidding.affirmative_action",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding.african_american_business",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding.asian_american_business",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding.certified_business_enterprise",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding.disadvantaged_business",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding.eight_a_business",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding.hispanic_business",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding.historically_underutilized_business",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding.minority_business_enterprise",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding.native_american_business",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding.sdvo_business",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding.small_business",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding.womens_business",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.bidding_distribution[]",
+          "type": "array"
+        },
+        {
+          "path": "vendor.bidding_distribution[].id",
+          "type": "int"
+        },
+        {
+          "path": "vendor.bidding_distribution[].login",
+          "type": "str"
+        },
+        {
+          "path": "vendor.bidding_distribution[].name",
+          "type": "str"
+        },
+        {
+          "path": "vendor.business_phone",
+          "type": "str"
+        },
+        {
+          "path": "vendor.business_register",
+          "type": "object"
+        },
+        {
+          "path": "vendor.business_register.id",
+          "type": "int"
+        },
+        {
+          "path": "vendor.business_register.identifier",
+          "type": "str"
+        },
+        {
+          "path": "vendor.business_register.type",
+          "type": "str"
+        },
+        {
+          "path": "vendor.business_register.verification_status",
+          "type": "str"
+        },
+        {
+          "path": "vendor.business_register.verified_at",
+          "type": "str"
+        },
+        {
+          "path": "vendor.children_count",
+          "type": "int"
+        },
+        {
+          "path": "vendor.city",
+          "type": "str"
+        },
+        {
+          "path": "vendor.company",
+          "type": "str"
+        },
+        {
+          "path": "vendor.contact_count",
+          "type": "int"
+        },
+        {
+          "path": "vendor.country_code",
+          "type": "str"
+        },
+        {
+          "path": "vendor.created_at",
+          "type": "str"
+        },
+        {
+          "path": "vendor.email_address",
+          "type": "str"
+        },
+        {
+          "path": "vendor.fax_number",
+          "type": "str"
+        },
+        {
+          "path": "vendor.id",
+          "type": "int"
+        },
+        {
+          "path": "vendor.is_active",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.labor_union",
+          "type": "str"
+        },
+        {
+          "path": "vendor.legal_name",
+          "type": "str"
+        },
+        {
+          "path": "vendor.license_number",
+          "type": "str"
+        },
+        {
+          "path": "vendor.logo",
+          "type": "str"
+        },
+        {
+          "path": "vendor.mobile_phone",
+          "type": "str"
+        },
+        {
+          "path": "vendor.name",
+          "type": "str"
+        },
+        {
+          "path": "vendor.non_union_prevailing_wage",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.notes",
+          "type": "str"
+        },
+        {
+          "path": "vendor.origin_code",
+          "type": "str"
+        },
+        {
+          "path": "vendor.origin_data",
+          "type": "str"
+        },
+        {
+          "path": "vendor.origin_id",
+          "type": "str"
+        },
+        {
+          "path": "vendor.parent",
+          "type": "object"
+        },
+        {
+          "path": "vendor.parent.id",
+          "type": "int"
+        },
+        {
+          "path": "vendor.parent.name",
+          "type": "str"
+        },
+        {
+          "path": "vendor.prequalified",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.primary_contact",
+          "type": "object"
+        },
+        {
+          "path": "vendor.primary_contact.business_phone",
+          "type": "str"
+        },
+        {
+          "path": "vendor.primary_contact.business_phone_extension",
+          "type": "int"
+        },
+        {
+          "path": "vendor.primary_contact.created_at",
+          "type": "str"
+        },
+        {
+          "path": "vendor.primary_contact.email_address",
+          "type": "str"
+        },
+        {
+          "path": "vendor.primary_contact.fax_number",
+          "type": "str"
+        },
+        {
+          "path": "vendor.primary_contact.first_name",
+          "type": "str"
+        },
+        {
+          "path": "vendor.primary_contact.id",
+          "type": "int"
+        },
+        {
+          "path": "vendor.primary_contact.last_name",
+          "type": "str"
+        },
+        {
+          "path": "vendor.primary_contact.mobile_phone",
+          "type": "str"
+        },
+        {
+          "path": "vendor.primary_contact.updated_at",
+          "type": "str"
+        },
+        {
+          "path": "vendor.project_ids[]",
+          "type": "int"
+        },
+        {
+          "path": "vendor.standard_cost_codes[]",
+          "type": "array"
+        },
+        {
+          "path": "vendor.standard_cost_codes[].code",
+          "type": "str"
+        },
+        {
+          "path": "vendor.standard_cost_codes[].full_code",
+          "type": "str"
+        },
+        {
+          "path": "vendor.standard_cost_codes[].id",
+          "type": "int"
+        },
+        {
+          "path": "vendor.standard_cost_codes[].name",
+          "type": "str"
+        },
+        {
+          "path": "vendor.standard_cost_codes[].origin_data",
+          "type": "str"
+        },
+        {
+          "path": "vendor.standard_cost_codes[].origin_id",
+          "type": "str"
+        },
+        {
+          "path": "vendor.standard_cost_codes[].parent_id",
+          "type": "int"
+        },
+        {
+          "path": "vendor.standard_cost_codes[].standard_cost_code_list_id",
+          "type": "int"
+        },
+        {
+          "path": "vendor.state_code",
+          "type": "str"
+        },
+        {
+          "path": "vendor.synced_to_erp",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.trade_name",
+          "type": "str"
+        },
+        {
+          "path": "vendor.trades[]",
+          "type": "array"
+        },
+        {
+          "path": "vendor.trades[].active",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.trades[].id",
+          "type": "int"
+        },
+        {
+          "path": "vendor.trades[].name",
+          "type": "str"
+        },
+        {
+          "path": "vendor.trades[].updated_at",
+          "type": "str"
+        },
+        {
+          "path": "vendor.union_member",
+          "type": "bool"
+        },
+        {
+          "path": "vendor.updated_at",
+          "type": "str"
+        },
+        {
+          "path": "vendor.vendor_group",
+          "type": "object"
+        },
+        {
+          "path": "vendor.vendor_group.id",
+          "type": "int"
+        },
+        {
+          "path": "vendor.vendor_group.name",
+          "type": "str"
+        },
+        {
+          "path": "vendor.website",
+          "type": "str"
+        },
+        {
+          "path": "vendor.zip",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "prime-contract-line-items",
+      "source_name": "Prime Contract Line Items",
+      "family": "owner_contracts",
+      "prompt_group": "owner_contracts",
+      "record_type": "prime_contract_line_item",
+      "http_method": "GET",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/prime_contracts/{prime_contract_id}/line_items",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page"
+      ],
+      "parent_endpoint_id": "prime-contracts",
+      "parent_path_param": "prime_contract_id",
+      "response_envelope": "object.data[]",
+      "field_path_count": 18,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "data[]",
+          "type": "array"
+        },
+        {
+          "path": "data[].amount",
+          "type": "str"
+        },
+        {
+          "path": "data[].description",
+          "type": "str"
+        },
+        {
+          "path": "data[].extended_type",
+          "type": "str"
+        },
+        {
+          "path": "data[].funding_rule_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].id",
+          "type": "str"
+        },
+        {
+          "path": "data[].line_item_group_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].position",
+          "type": "int"
+        },
+        {
+          "path": "data[].quantity",
+          "type": "int"
+        },
+        {
+          "path": "data[].tax_code_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].unit_cost",
+          "type": "str"
+        },
+        {
+          "path": "data[].uom",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "data[].wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].work_breakdown_structure",
+          "type": "object"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "prime-contract-attachments",
+      "source_name": "Prime Contract Attachments",
+      "family": "owner_contracts",
+      "prompt_group": "owner_contracts",
+      "record_type": "prime_contract_attachment",
+      "http_method": "GET",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/prime_contracts/{prime_contract_id}/attachments",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page"
+      ],
+      "parent_endpoint_id": "prime-contracts",
+      "parent_path_param": "prime_contract_id",
+      "response_envelope": "object.data[]",
+      "field_path_count": 6,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "data[]",
+          "type": "array"
+        },
+        {
+          "path": "data[].content_type",
+          "type": "str"
+        },
+        {
+          "path": "data[].id",
+          "type": "str"
+        },
+        {
+          "path": "data[].name",
+          "type": "str"
+        },
+        {
+          "path": "data[].url",
+          "type": "str"
+        },
+        {
+          "path": "data[].uuid",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "prime-change-orders",
+      "source_name": "Prime Change Orders",
+      "family": "owner_contracts",
+      "prompt_group": "owner_contracts",
+      "record_type": "prime_change_order",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/projects/{project_id}/prime_change_orders",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "filters[batch_id]",
+        "filters[contract_id]",
+        "filters[executed]",
+        "filters[id]",
+        "filters[legacy_package_id]",
+        "filters[signature_required]",
+        "filters[status]",
+        "filters[updated_at]",
+        "filters[vendor_id]",
+        "sort",
+        "view"
+      ],
+      "parent_endpoint_id": null,
+      "parent_path_param": null,
+      "response_envelope": "object",
+      "field_path_count": 68,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "batch_id",
+          "type": "int"
+        },
+        {
+          "path": "change_order_change_reason",
+          "type": "object"
+        },
+        {
+          "path": "change_order_change_reason.change_reason",
+          "type": "str"
+        },
+        {
+          "path": "change_order_change_reason.id",
+          "type": "int"
+        },
+        {
+          "path": "contract_id",
+          "type": "int"
+        },
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.name",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.base_currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_exchange_rate",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_boolean_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_boolean_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_boolean_definition_id}.value",
+          "type": "bool"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_decimal_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_decimal_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_decimal_definition_id}.value",
+          "type": "float"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}.value[]",
+          "type": "array"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}.value[].id",
+          "type": "int"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}.value[].label",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}.value",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}.value.id",
+          "type": "int"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}.value.label",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_string_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_string_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_string_definition_id}.value",
+          "type": "str"
+        },
+        {
+          "path": "description",
+          "type": "str"
+        },
+        {
+          "path": "designated_reviewer",
+          "type": "object"
+        },
+        {
+          "path": "designated_reviewer.id",
+          "type": "int"
+        },
+        {
+          "path": "designated_reviewer.name",
+          "type": "str"
+        },
+        {
+          "path": "due_date",
+          "type": "str"
+        },
+        {
+          "path": "executed",
+          "type": "bool"
+        },
+        {
+          "path": "field_change",
+          "type": "bool"
+        },
+        {
+          "path": "grand_total",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "invoiced_date",
+          "type": "str"
+        },
+        {
+          "path": "legacy_package_id",
+          "type": "int"
+        },
+        {
+          "path": "legacy_request_id",
+          "type": "int"
+        },
+        {
+          "path": "location_id",
+          "type": "int"
+        },
+        {
+          "path": "number",
+          "type": "str"
+        },
+        {
+          "path": "paid",
+          "type": "bool"
+        },
+        {
+          "path": "paid_date",
+          "type": "str"
+        },
+        {
+          "path": "private",
+          "type": "bool"
+        },
+        {
+          "path": "received_from",
+          "type": "object"
+        },
+        {
+          "path": "received_from.id",
+          "type": "int"
+        },
+        {
+          "path": "received_from.name",
+          "type": "str"
+        },
+        {
+          "path": "reference",
+          "type": "str"
+        },
+        {
+          "path": "review_notes",
+          "type": "str"
+        },
+        {
+          "path": "reviewed_at",
+          "type": "str"
+        },
+        {
+          "path": "reviewed_by",
+          "type": "object"
+        },
+        {
+          "path": "reviewed_by.id",
+          "type": "int"
+        },
+        {
+          "path": "reviewed_by.name",
+          "type": "str"
+        },
+        {
+          "path": "revised_substantial_completion_date",
+          "type": "str"
+        },
+        {
+          "path": "revision",
+          "type": "int"
+        },
+        {
+          "path": "schedule_impact_amount",
+          "type": "int"
+        },
+        {
+          "path": "signature_required",
+          "type": "bool"
+        },
+        {
+          "path": "signed_change_order_received_date",
+          "type": "str"
+        },
+        {
+          "path": "status",
+          "type": "str"
+        },
+        {
+          "path": "title",
+          "type": "str"
+        },
+        {
+          "path": "type",
+          "type": "str"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "prime-change-order-line-items",
+      "source_name": "Prime Change Order Line Items",
+      "family": "owner_contracts",
+      "prompt_group": "owner_contracts",
+      "record_type": "prime_change_order_line_item",
+      "http_method": "GET",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/prime_change_orders/{prime_change_order_id}/line_items",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page",
+        "view"
+      ],
+      "parent_endpoint_id": "prime-change-orders",
+      "parent_path_param": "prime_change_order_id",
+      "response_envelope": "object.data[]",
+      "field_path_count": 30,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "data[]",
+          "type": "array"
+        },
+        {
+          "path": "data[].amount",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item",
+          "type": "object"
+        },
+        {
+          "path": "data[].change_event_line_item.description",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.event",
+          "type": "object"
+        },
+        {
+          "path": "data[].change_event_line_item.event.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.event.number",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.event.title",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.event_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "data[].change_event_line_item.wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.wbs_code.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].description",
+          "type": "str"
+        },
+        {
+          "path": "data[].extended_type",
+          "type": "str"
+        },
+        {
+          "path": "data[].funding_rule_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].id",
+          "type": "str"
+        },
+        {
+          "path": "data[].position",
+          "type": "int"
+        },
+        {
+          "path": "data[].prime_line_item_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].quantity",
+          "type": "int"
+        },
+        {
+          "path": "data[].tax_code_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].unit_cost",
+          "type": "str"
+        },
+        {
+          "path": "data[].uom",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "data[].wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].work_breakdown_structure",
+          "type": "object"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "payment-applications",
+      "source_name": "Payment Applications",
+      "family": "owner_billing",
+      "prompt_group": "owner_contracts",
+      "record_type": "owner_payment_application",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/prime_contracts/{prime_contract_id}/payment_applications",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "filters[id]",
+        "filters[is_last]",
+        "page",
+        "per_page",
+        "project_id"
+      ],
+      "parent_endpoint_id": "prime-contracts",
+      "parent_path_param": "prime_contract_id",
+      "response_envelope": "array",
+      "field_path_count": 49,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "billing_date",
+          "type": "str"
+        },
+        {
+          "path": "billing_period",
+          "type": "object"
+        },
+        {
+          "path": "billing_period.end_date",
+          "type": "str"
+        },
+        {
+          "path": "billing_period.start_date",
+          "type": "str"
+        },
+        {
+          "path": "contract",
+          "type": "object"
+        },
+        {
+          "path": "contract.id",
+          "type": "int"
+        },
+        {
+          "path": "contract.title",
+          "type": "str"
+        },
+        {
+          "path": "contract.type",
+          "type": "str"
+        },
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.base_currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_exchange_rate",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "formatted_contract_company",
+          "type": "str"
+        },
+        {
+          "path": "g702",
+          "type": "object"
+        },
+        {
+          "path": "g702.balance_to_finish_including_retainage",
+          "type": "str"
+        },
+        {
+          "path": "g702.completed_work_retainage_amount",
+          "type": "str"
+        },
+        {
+          "path": "g702.completed_work_retainage_percent",
+          "type": "str"
+        },
+        {
+          "path": "g702.contract_sum_to_date",
+          "type": "str"
+        },
+        {
+          "path": "g702.current_payment_due",
+          "type": "str"
+        },
+        {
+          "path": "g702.formatted_period",
+          "type": "str"
+        },
+        {
+          "path": "g702.less_previous_certificates_for_payment",
+          "type": "str"
+        },
+        {
+          "path": "g702.negative_change_order_item_total",
+          "type": "str"
+        },
+        {
+          "path": "g702.negative_new_change_order_item_total",
+          "type": "str"
+        },
+        {
+          "path": "g702.negative_previous_change_order_item_total",
+          "type": "str"
+        },
+        {
+          "path": "g702.net_change_by_change_orders",
+          "type": "str"
+        },
+        {
+          "path": "g702.original_contract_sum",
+          "type": "str"
+        },
+        {
+          "path": "g702.positive_change_order_item_total",
+          "type": "str"
+        },
+        {
+          "path": "g702.positive_new_change_order_item_total",
+          "type": "str"
+        },
+        {
+          "path": "g702.positive_previous_change_order_item_total",
+          "type": "str"
+        },
+        {
+          "path": "g702.stored_materials_retainage_amount",
+          "type": "str"
+        },
+        {
+          "path": "g702.stored_materials_retainage_percent",
+          "type": "str"
+        },
+        {
+          "path": "g702.tax_applicable_to_this_payment",
+          "type": "str"
+        },
+        {
+          "path": "g702.total_completed_and_stored_to_date",
+          "type": "str"
+        },
+        {
+          "path": "g702.total_earned_less_retainage",
+          "type": "str"
+        },
+        {
+          "path": "g702.total_retainage",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "invoice_number",
+          "type": "int"
+        },
+        {
+          "path": "number",
+          "type": "int"
+        },
+        {
+          "path": "origin_data",
+          "type": "str"
+        },
+        {
+          "path": "origin_id",
+          "type": "str"
+        },
+        {
+          "path": "percent_complete",
+          "type": "str"
+        },
+        {
+          "path": "period_end",
+          "type": "str"
+        },
+        {
+          "path": "period_id",
+          "type": "int"
+        },
+        {
+          "path": "period_start",
+          "type": "str"
+        },
+        {
+          "path": "status",
+          "type": "str"
+        },
+        {
+          "path": "total_amount_accrued_this_period",
+          "type": "str"
+        },
+        {
+          "path": "total_amount_paid",
+          "type": "str"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "commitment-contracts",
+      "source_name": "Subcontract Commitments",
+      "family": "commitments",
+      "prompt_group": "commitments",
+      "record_type": "commitment_contract",
+      "http_method": "GET",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/commitment_contracts",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page",
+        "view"
+      ],
+      "parent_endpoint_id": null,
+      "parent_path_param": null,
+      "response_envelope": "object.data[]",
+      "field_path_count": 35,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "data[]",
+          "type": "array"
+        },
+        {
+          "path": "data[].accounting_method",
+          "type": "str"
+        },
+        {
+          "path": "data[].allow_change_orders_ssov",
+          "type": "bool"
+        },
+        {
+          "path": "data[].allow_comments",
+          "type": "bool"
+        },
+        {
+          "path": "data[].allow_markups",
+          "type": "bool"
+        },
+        {
+          "path": "data[].allow_payment_applications",
+          "type": "bool"
+        },
+        {
+          "path": "data[].allow_payments",
+          "type": "bool"
+        },
+        {
+          "path": "data[].change_order_level_of_detail",
+          "type": "str"
+        },
+        {
+          "path": "data[].created_at",
+          "type": "str"
+        },
+        {
+          "path": "data[].created_by",
+          "type": "object"
+        },
+        {
+          "path": "data[].created_by.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].created_by.name",
+          "type": "str"
+        },
+        {
+          "path": "data[].currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "data[].currency_configuration.base_currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "data[].currency_configuration.currency_exchange_rate",
+          "type": "str"
+        },
+        {
+          "path": "data[].currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "data[].description",
+          "type": "str"
+        },
+        {
+          "path": "data[].display_materials_retainage",
+          "type": "bool"
+        },
+        {
+          "path": "data[].display_work_retainage",
+          "type": "bool"
+        },
+        {
+          "path": "data[].enable_ssov",
+          "type": "bool"
+        },
+        {
+          "path": "data[].executed",
+          "type": "bool"
+        },
+        {
+          "path": "data[].grand_total",
+          "type": "str"
+        },
+        {
+          "path": "data[].id",
+          "type": "str"
+        },
+        {
+          "path": "data[].number",
+          "type": "str"
+        },
+        {
+          "path": "data[].private",
+          "type": "bool"
+        },
+        {
+          "path": "data[].retainage_percent",
+          "type": "int"
+        },
+        {
+          "path": "data[].show_cost_code_on_pdf",
+          "type": "bool"
+        },
+        {
+          "path": "data[].show_line_items_to_non_admins",
+          "type": "bool"
+        },
+        {
+          "path": "data[].ssr_enabled",
+          "type": "bool"
+        },
+        {
+          "path": "data[].status",
+          "type": "str"
+        },
+        {
+          "path": "data[].title",
+          "type": "str"
+        },
+        {
+          "path": "data[].type",
+          "type": "str"
+        },
+        {
+          "path": "data[].updated_at",
+          "type": "str"
+        },
+        {
+          "path": "data[].vendor",
+          "type": "object"
+        },
+        {
+          "path": "data[].vendor.id",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "commitment-line-items",
+      "source_name": "Subcontract Commitment Line Items",
+      "family": "commitments",
+      "prompt_group": "commitments",
+      "record_type": "commitment_line_item",
+      "http_method": "GET",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/commitment_contracts/{commitment_contract_id}/line_items",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page",
+        "view"
+      ],
+      "parent_endpoint_id": "commitment-contracts",
+      "parent_path_param": "commitment_contract_id",
+      "response_envelope": "object.data[]",
+      "field_path_count": 30,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "data[]",
+          "type": "array"
+        },
+        {
+          "path": "data[].amount",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item",
+          "type": "object"
+        },
+        {
+          "path": "data[].change_event_line_item.description",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.event",
+          "type": "object"
+        },
+        {
+          "path": "data[].change_event_line_item.event.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.event.number",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.event.title",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.event_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "data[].change_event_line_item.wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.wbs_code.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].description",
+          "type": "str"
+        },
+        {
+          "path": "data[].extended_type",
+          "type": "str"
+        },
+        {
+          "path": "data[].funding_rule_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].id",
+          "type": "str"
+        },
+        {
+          "path": "data[].position",
+          "type": "int"
+        },
+        {
+          "path": "data[].prime_line_item_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].quantity",
+          "type": "int"
+        },
+        {
+          "path": "data[].tax_code_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].unit_cost",
+          "type": "str"
+        },
+        {
+          "path": "data[].uom",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "data[].wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].work_breakdown_structure",
+          "type": "object"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "commitment-attachments",
+      "source_name": "Subcontract Commitment Attachments",
+      "family": "commitments",
+      "prompt_group": "commitments",
+      "record_type": "commitment_attachment",
+      "http_method": "GET",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/commitment_contracts/{commitment_contract_id}/attachments",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page"
+      ],
+      "parent_endpoint_id": "commitment-contracts",
+      "parent_path_param": "commitment_contract_id",
+      "response_envelope": "object.data[]",
+      "field_path_count": 6,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "data[]",
+          "type": "array"
+        },
+        {
+          "path": "data[].content_type",
+          "type": "str"
+        },
+        {
+          "path": "data[].id",
+          "type": "str"
+        },
+        {
+          "path": "data[].name",
+          "type": "str"
+        },
+        {
+          "path": "data[].url",
+          "type": "str"
+        },
+        {
+          "path": "data[].uuid",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "commitment-compliance",
+      "source_name": "Subcontract Commitment Compliance",
+      "family": "commitments",
+      "prompt_group": "commitments",
+      "record_type": "commitment_compliance",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/projects/{project_id}/work_order_contracts/{contract_id}/compliance",
+      "path_resolved": true,
+      "query_parameters_observed": [],
+      "parent_endpoint_id": "commitment-contracts",
+      "parent_path_param": "contract_id",
+      "response_envelope": "object",
+      "field_path_count": 46,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "compliance_documents[]",
+          "type": "array"
+        },
+        {
+          "path": "compliance_documents[].attachments[]",
+          "type": "array"
+        },
+        {
+          "path": "compliance_documents[].attachments[].content_type",
+          "type": "str"
+        },
+        {
+          "path": "compliance_documents[].attachments[].filename",
+          "type": "str"
+        },
+        {
+          "path": "compliance_documents[].attachments[].id",
+          "type": "int"
+        },
+        {
+          "path": "compliance_documents[].attachments[].url",
+          "type": "str"
+        },
+        {
+          "path": "compliance_documents[].created_at",
+          "type": "str"
+        },
+        {
+          "path": "compliance_documents[].effective_at",
+          "type": "str"
+        },
+        {
+          "path": "compliance_documents[].expires_at",
+          "type": "str"
+        },
+        {
+          "path": "compliance_documents[].id",
+          "type": "int"
+        },
+        {
+          "path": "compliance_documents[].name",
+          "type": "str"
+        },
+        {
+          "path": "compliance_documents[].notes",
+          "type": "str"
+        },
+        {
+          "path": "compliance_documents[].status",
+          "type": "str"
+        },
+        {
+          "path": "compliance_documents[].type",
+          "type": "str"
+        },
+        {
+          "path": "compliance_documents[].updated_at",
+          "type": "str"
+        },
+        {
+          "path": "compliance_notes",
+          "type": "str"
+        },
+        {
+          "path": "compliance_requirements_not_created[]",
+          "type": "array"
+        },
+        {
+          "path": "compliance_requirements_not_created[].id",
+          "type": "int"
+        },
+        {
+          "path": "compliance_requirements_not_created[].name",
+          "type": "str"
+        },
+        {
+          "path": "compliance_requirements_not_created[].status",
+          "type": "str"
+        },
+        {
+          "path": "compliance_requirements_not_created[].type",
+          "type": "str"
+        },
+        {
+          "path": "compliance_status",
+          "type": "str"
+        },
+        {
+          "path": "derived_compliance_status",
+          "type": "str"
+        },
+        {
+          "path": "derived_insurance_status",
+          "type": "str"
+        },
+        {
+          "path": "insurance_documents[]",
+          "type": "array"
+        },
+        {
+          "path": "insurance_documents[].attachments[]",
+          "type": "array"
+        },
+        {
+          "path": "insurance_documents[].attachments[].content_type",
+          "type": "str"
+        },
+        {
+          "path": "insurance_documents[].attachments[].filename",
+          "type": "str"
+        },
+        {
+          "path": "insurance_documents[].attachments[].id",
+          "type": "int"
+        },
+        {
+          "path": "insurance_documents[].attachments[].url",
+          "type": "str"
+        },
+        {
+          "path": "insurance_documents[].effective_at",
+          "type": "str"
+        },
+        {
+          "path": "insurance_documents[].expires_at",
+          "type": "str"
+        },
+        {
+          "path": "insurance_documents[].id",
+          "type": "int"
+        },
+        {
+          "path": "insurance_documents[].insurance_type",
+          "type": "str"
+        },
+        {
+          "path": "insurance_documents[].level",
+          "type": "str"
+        },
+        {
+          "path": "insurance_documents[].name",
+          "type": "str"
+        },
+        {
+          "path": "insurance_documents[].status",
+          "type": "str"
+        },
+        {
+          "path": "insurance_notes",
+          "type": "str"
+        },
+        {
+          "path": "insurance_requirements_not_created[]",
+          "type": "array"
+        },
+        {
+          "path": "insurance_requirements_not_created[].id",
+          "type": "int"
+        },
+        {
+          "path": "insurance_requirements_not_created[].level",
+          "type": "str"
+        },
+        {
+          "path": "insurance_requirements_not_created[].name",
+          "type": "str"
+        },
+        {
+          "path": "insurance_requirements_not_created[].status",
+          "type": "str"
+        },
+        {
+          "path": "insurance_status",
+          "type": "str"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        },
+        {
+          "path": "updated_by_id",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "commitment-change-orders",
+      "source_name": "Subcontract Commitment Change Orders",
+      "family": "commitments",
+      "prompt_group": "commitments",
+      "record_type": "commitment_change_order",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/projects/{project_id}/commitment_change_orders",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "filters[batch_id]",
+        "filters[contract_id]",
+        "filters[executed]",
+        "filters[id]",
+        "filters[legacy_package_id]",
+        "filters[signature_required]",
+        "filters[status]",
+        "filters[updated_at]",
+        "filters[vendor_id]",
+        "sort",
+        "view"
+      ],
+      "parent_endpoint_id": null,
+      "parent_path_param": null,
+      "response_envelope": "object",
+      "field_path_count": 70,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "batch_id",
+          "type": "int"
+        },
+        {
+          "path": "billing_schedule_of_values_status",
+          "type": "str"
+        },
+        {
+          "path": "change_order_change_reason",
+          "type": "object"
+        },
+        {
+          "path": "change_order_change_reason.change_reason",
+          "type": "str"
+        },
+        {
+          "path": "change_order_change_reason.id",
+          "type": "int"
+        },
+        {
+          "path": "contract_id",
+          "type": "int"
+        },
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.name",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.base_currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_exchange_rate",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_boolean_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_boolean_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_boolean_definition_id}.value",
+          "type": "bool"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_decimal_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_decimal_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_decimal_definition_id}.value",
+          "type": "float"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}.value[]",
+          "type": "array"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}.value[].id",
+          "type": "int"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}.value[].label",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}.value",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}.value.id",
+          "type": "int"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}.value.label",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_string_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_string_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_string_definition_id}.value",
+          "type": "str"
+        },
+        {
+          "path": "description",
+          "type": "str"
+        },
+        {
+          "path": "designated_reviewer",
+          "type": "object"
+        },
+        {
+          "path": "designated_reviewer.id",
+          "type": "int"
+        },
+        {
+          "path": "designated_reviewer.name",
+          "type": "str"
+        },
+        {
+          "path": "due_date",
+          "type": "str"
+        },
+        {
+          "path": "enable_ssov",
+          "type": "bool"
+        },
+        {
+          "path": "executed",
+          "type": "bool"
+        },
+        {
+          "path": "field_change",
+          "type": "bool"
+        },
+        {
+          "path": "grand_total",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "invoiced_date",
+          "type": "str"
+        },
+        {
+          "path": "legacy_package_id",
+          "type": "int"
+        },
+        {
+          "path": "legacy_request_id",
+          "type": "int"
+        },
+        {
+          "path": "location_id",
+          "type": "int"
+        },
+        {
+          "path": "number",
+          "type": "str"
+        },
+        {
+          "path": "paid",
+          "type": "bool"
+        },
+        {
+          "path": "paid_date",
+          "type": "str"
+        },
+        {
+          "path": "private",
+          "type": "bool"
+        },
+        {
+          "path": "received_from",
+          "type": "object"
+        },
+        {
+          "path": "received_from.id",
+          "type": "int"
+        },
+        {
+          "path": "received_from.name",
+          "type": "str"
+        },
+        {
+          "path": "reference",
+          "type": "str"
+        },
+        {
+          "path": "review_notes",
+          "type": "str"
+        },
+        {
+          "path": "reviewed_at",
+          "type": "str"
+        },
+        {
+          "path": "reviewed_by",
+          "type": "object"
+        },
+        {
+          "path": "reviewed_by.id",
+          "type": "int"
+        },
+        {
+          "path": "reviewed_by.name",
+          "type": "str"
+        },
+        {
+          "path": "revised_substantial_completion_date",
+          "type": "str"
+        },
+        {
+          "path": "revision",
+          "type": "int"
+        },
+        {
+          "path": "schedule_impact_amount",
+          "type": "int"
+        },
+        {
+          "path": "signature_required",
+          "type": "bool"
+        },
+        {
+          "path": "signed_change_order_received_date",
+          "type": "str"
+        },
+        {
+          "path": "status",
+          "type": "str"
+        },
+        {
+          "path": "title",
+          "type": "str"
+        },
+        {
+          "path": "type",
+          "type": "str"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "commitment-change-order-line-items",
+      "source_name": "Subcontract Commitment Change Order Line Items",
+      "family": "commitments",
+      "prompt_group": "commitments",
+      "record_type": "commitment_change_order_line_item",
+      "http_method": "GET",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/commitment_change_orders/{commitment_change_order_id}/line_items",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page",
+        "view"
+      ],
+      "parent_endpoint_id": "commitment-change-orders",
+      "parent_path_param": "commitment_change_order_id",
+      "response_envelope": "object.data[]",
+      "field_path_count": 31,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "data[]",
+          "type": "array"
+        },
+        {
+          "path": "data[].amount",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item",
+          "type": "object"
+        },
+        {
+          "path": "data[].change_event_line_item.description",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.event",
+          "type": "object"
+        },
+        {
+          "path": "data[].change_event_line_item.event.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.event.number",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.event.title",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.event_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "data[].change_event_line_item.wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "data[].change_event_line_item.wbs_code.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].commitment_line_item_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].description",
+          "type": "str"
+        },
+        {
+          "path": "data[].extended_type",
+          "type": "str"
+        },
+        {
+          "path": "data[].funding_rule_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].id",
+          "type": "str"
+        },
+        {
+          "path": "data[].position",
+          "type": "int"
+        },
+        {
+          "path": "data[].prime_line_item_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].quantity",
+          "type": "int"
+        },
+        {
+          "path": "data[].tax_code_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].unit_cost",
+          "type": "str"
+        },
+        {
+          "path": "data[].uom",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "data[].wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].work_breakdown_structure",
+          "type": "object"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "purchase-order-contracts",
+      "source_name": "Purchase Order Contracts",
+      "family": "purchase_orders",
+      "prompt_group": "purchase_orders",
+      "record_type": "purchase_order_contract",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/purchase_order_contracts",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "filters[created_at]",
+        "filters[id]",
+        "filters[include_deleted]",
+        "filters[origin_id]",
+        "filters[status]",
+        "filters[updated_at]",
+        "page",
+        "per_page",
+        "project_id",
+        "view"
+      ],
+      "parent_endpoint_id": null,
+      "parent_path_param": null,
+      "response_envelope": "array",
+      "field_path_count": 53,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "accounting_method",
+          "type": "str"
+        },
+        {
+          "path": "approval_letter_date",
+          "type": "str"
+        },
+        {
+          "path": "approved_change_orders",
+          "type": "str"
+        },
+        {
+          "path": "assignee",
+          "type": "object"
+        },
+        {
+          "path": "assignee.id",
+          "type": "int"
+        },
+        {
+          "path": "bill_to_address",
+          "type": "str"
+        },
+        {
+          "path": "billing_schedule_of_values_status",
+          "type": "str"
+        },
+        {
+          "path": "contract_date",
+          "type": "str"
+        },
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.base_currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_exchange_rate",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "deleted_at",
+          "type": "str"
+        },
+        {
+          "path": "delivery_date",
+          "type": "str"
+        },
+        {
+          "path": "description",
+          "type": "str"
+        },
+        {
+          "path": "draft_change_orders_amount",
+          "type": "str"
+        },
+        {
+          "path": "executed",
+          "type": "bool"
+        },
+        {
+          "path": "execution_date",
+          "type": "str"
+        },
+        {
+          "path": "grand_total",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "issued_on_date",
+          "type": "str"
+        },
+        {
+          "path": "letter_of_intent_date",
+          "type": "str"
+        },
+        {
+          "path": "number",
+          "type": "str"
+        },
+        {
+          "path": "origin_code",
+          "type": "str"
+        },
+        {
+          "path": "origin_data",
+          "type": "str"
+        },
+        {
+          "path": "origin_id",
+          "type": "int"
+        },
+        {
+          "path": "payment_terms",
+          "type": "str"
+        },
+        {
+          "path": "pending_change_orders",
+          "type": "str"
+        },
+        {
+          "path": "pending_revised_contract",
+          "type": "str"
+        },
+        {
+          "path": "percentage_paid",
+          "type": "int"
+        },
+        {
+          "path": "private",
+          "type": "bool"
+        },
+        {
+          "path": "project",
+          "type": "object"
+        },
+        {
+          "path": "project.id",
+          "type": "int"
+        },
+        {
+          "path": "project.name",
+          "type": "str"
+        },
+        {
+          "path": "remaining_balance_outstanding",
+          "type": "str"
+        },
+        {
+          "path": "requisitions_are_enabled",
+          "type": "bool"
+        },
+        {
+          "path": "retainage_percent",
+          "type": "str"
+        },
+        {
+          "path": "returned_date",
+          "type": "str"
+        },
+        {
+          "path": "revised_contract",
+          "type": "str"
+        },
+        {
+          "path": "ship_to_address",
+          "type": "str"
+        },
+        {
+          "path": "ship_via",
+          "type": "str"
+        },
+        {
+          "path": "show_line_items_to_non_admins",
+          "type": "bool"
+        },
+        {
+          "path": "signed_contract_received_date",
+          "type": "str"
+        },
+        {
+          "path": "status",
+          "type": "str"
+        },
+        {
+          "path": "title",
+          "type": "str"
+        },
+        {
+          "path": "total_draw_requests_amount",
+          "type": "str"
+        },
+        {
+          "path": "total_payments",
+          "type": "str"
+        },
+        {
+          "path": "total_requisitions_amount",
+          "type": "str"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        },
+        {
+          "path": "vendor",
+          "type": "object"
+        },
+        {
+          "path": "vendor.company",
+          "type": "str"
+        },
+        {
+          "path": "vendor.id",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "purchase-order-line-items",
+      "source_name": "Purchase Order Contract Line Items",
+      "family": "purchase_orders",
+      "prompt_group": "purchase_orders",
+      "record_type": "purchase_order_line_item",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/purchase_order_contracts/{purchase_order_contract_id}/line_items",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "filters[cost_code_id]",
+        "filters[created_at]",
+        "filters[id]",
+        "filters[line_item_type_id]",
+        "filters[updated_at]",
+        "page",
+        "per_page",
+        "project_id",
+        "view"
+      ],
+      "parent_endpoint_id": "purchase-order-contracts",
+      "parent_path_param": "purchase_order_contract_id",
+      "response_envelope": "array",
+      "field_path_count": 82,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "amount",
+          "type": "str"
+        },
+        {
+          "path": "change_event_line_item",
+          "type": "object"
+        },
+        {
+          "path": "change_event_line_item.cost_code",
+          "type": "object"
+        },
+        {
+          "path": "change_event_line_item.cost_code.full_code",
+          "type": "str"
+        },
+        {
+          "path": "change_event_line_item.cost_code.id",
+          "type": "int"
+        },
+        {
+          "path": "change_event_line_item.cost_code.name",
+          "type": "str"
+        },
+        {
+          "path": "change_event_line_item.cost_rom",
+          "type": "str"
+        },
+        {
+          "path": "change_event_line_item.currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "change_event_line_item.currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "change_event_line_item.event_id",
+          "type": "int"
+        },
+        {
+          "path": "change_event_line_item.id",
+          "type": "int"
+        },
+        {
+          "path": "change_event_line_item.line_item_type",
+          "type": "object"
+        },
+        {
+          "path": "change_event_line_item.line_item_type.base_type",
+          "type": "str"
+        },
+        {
+          "path": "change_event_line_item.line_item_type.code",
+          "type": "str"
+        },
+        {
+          "path": "change_event_line_item.line_item_type.id",
+          "type": "int"
+        },
+        {
+          "path": "change_event_line_item.line_item_type.name",
+          "type": "str"
+        },
+        {
+          "path": "change_event_line_item.line_item_type.origin_data",
+          "type": "str"
+        },
+        {
+          "path": "change_event_line_item.line_item_type.origin_id",
+          "type": "str"
+        },
+        {
+          "path": "change_event_line_item.revenue_rom",
+          "type": "str"
+        },
+        {
+          "path": "company",
+          "type": "object"
+        },
+        {
+          "path": "company.id",
+          "type": "int"
+        },
+        {
+          "path": "company.name",
+          "type": "str"
+        },
+        {
+          "path": "cost_code",
+          "type": "object"
+        },
+        {
+          "path": "cost_code.biller",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.biller_id",
+          "type": "int"
+        },
+        {
+          "path": "cost_code.biller_type",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.budgeted",
+          "type": "bool"
+        },
+        {
+          "path": "cost_code.code",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.created_at",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.deleted_at",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.full_code",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.id",
+          "type": "int"
+        },
+        {
+          "path": "cost_code.line_item_types[]",
+          "type": "array"
+        },
+        {
+          "path": "cost_code.line_item_types[].base_type",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.line_item_types[].code",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.line_item_types[].id",
+          "type": "int"
+        },
+        {
+          "path": "cost_code.line_item_types[].name",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.line_item_types[].origin_data",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.line_item_types[].origin_id",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.name",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.origin_data",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.origin_id",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.parent",
+          "type": "object"
+        },
+        {
+          "path": "cost_code.parent.id",
+          "type": "int"
+        },
+        {
+          "path": "cost_code.position",
+          "type": "int"
+        },
+        {
+          "path": "cost_code.sortable_code",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.standard_cost_code_id",
+          "type": "int"
+        },
+        {
+          "path": "cost_code.standard_cost_code_list_id",
+          "type": "int"
+        },
+        {
+          "path": "cost_code.updated_at",
+          "type": "str"
+        },
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "description",
+          "type": "str"
+        },
+        {
+          "path": "extended_amount",
+          "type": "str"
+        },
+        {
+          "path": "extended_type",
+          "type": "str"
+        },
+        {
+          "path": "holder",
+          "type": "object"
+        },
+        {
+          "path": "holder.holder_type",
+          "type": "str"
+        },
+        {
+          "path": "holder.id",
+          "type": "int"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "line_item_type",
+          "type": "object"
+        },
+        {
+          "path": "line_item_type.base_type",
+          "type": "str"
+        },
+        {
+          "path": "line_item_type.code",
+          "type": "str"
+        },
+        {
+          "path": "line_item_type.id",
+          "type": "int"
+        },
+        {
+          "path": "line_item_type.name",
+          "type": "str"
+        },
+        {
+          "path": "line_item_type.origin_data",
+          "type": "str"
+        },
+        {
+          "path": "line_item_type.origin_id",
+          "type": "str"
+        },
+        {
+          "path": "origin_data",
+          "type": "str"
+        },
+        {
+          "path": "origin_id",
+          "type": "int"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "project",
+          "type": "object"
+        },
+        {
+          "path": "project.id",
+          "type": "int"
+        },
+        {
+          "path": "project.name",
+          "type": "str"
+        },
+        {
+          "path": "quantity",
+          "type": "str"
+        },
+        {
+          "path": "tax_code_id",
+          "type": "int"
+        },
+        {
+          "path": "total_amount",
+          "type": "str"
+        },
+        {
+          "path": "unit_cost",
+          "type": "str"
+        },
+        {
+          "path": "uom",
+          "type": "str"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code.id",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "purchase-order-detail-line-items",
+      "source_name": "Purchase Order Contract Detail Line Items",
+      "family": "purchase_orders",
+      "prompt_group": "purchase_orders",
+      "record_type": "purchase_order_detail_line_item",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/purchase_order_contracts/{purchase_order_contract_id}/line_item_contract_details",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "filters[id]",
+        "filters[line_item_id]",
+        "project_id"
+      ],
+      "parent_endpoint_id": "purchase-order-contracts",
+      "parent_path_param": "purchase_order_contract_id",
+      "response_envelope": "array",
+      "field_path_count": 9,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "amount",
+          "type": "str"
+        },
+        {
+          "path": "billed_against",
+          "type": "bool"
+        },
+        {
+          "path": "billed_to_date",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "description",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "line_item_id",
+          "type": "int"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "billing-periods",
+      "source_name": "Billing Periods",
+      "family": "billing",
+      "prompt_group": "invoices",
+      "record_type": "billing_period",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/projects/{project_id}/billing_periods",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "filters[created_at]",
+        "filters[id]",
+        "filters[status]",
+        "filters[updated_at]",
+        "page",
+        "per_page"
+      ],
+      "parent_endpoint_id": null,
+      "parent_path_param": null,
+      "response_envelope": "array",
+      "field_path_count": 9,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "due_date",
+          "type": "str"
+        },
+        {
+          "path": "end_date",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "project_id",
+          "type": "int"
+        },
+        {
+          "path": "start_date",
+          "type": "str"
+        },
+        {
+          "path": "status",
+          "type": "str"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "subcontractor-invoices",
+      "source_name": "Subcontractor Invoices",
+      "family": "subcontractor_invoices",
+      "prompt_group": "invoices",
+      "record_type": "subcontractor_invoice",
+      "http_method": "GET",
+      "path_template": "/rest/v1.1/requisitions",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "filters[commitment_id]",
+        "filters[created_at]",
+        "filters[id]",
+        "filters[is_last]",
+        "filters[origin_id]",
+        "filters[period_id]",
+        "filters[status]",
+        "filters[updated_at]",
+        "page",
+        "per_page",
+        "project_id",
+        "view"
+      ],
+      "parent_endpoint_id": null,
+      "parent_path_param": null,
+      "response_envelope": "array",
+      "field_path_count": 184,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "attachments[]",
+          "type": "array"
+        },
+        {
+          "path": "attachments[].content_type",
+          "type": "str"
+        },
+        {
+          "path": "attachments[].filename",
+          "type": "str"
+        },
+        {
+          "path": "attachments[].id",
+          "type": "int"
+        },
+        {
+          "path": "attachments[].url",
+          "type": "str"
+        },
+        {
+          "path": "billing_date",
+          "type": "str"
+        },
+        {
+          "path": "commitment_id",
+          "type": "int"
+        },
+        {
+          "path": "commitment_type",
+          "type": "str"
+        },
+        {
+          "path": "contract_name",
+          "type": "str"
+        },
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.company_name",
+          "type": "str"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.login",
+          "type": "str"
+        },
+        {
+          "path": "created_by.name",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.base_currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_exchange_rate",
+          "type": "float"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_boolean_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_boolean_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_boolean_definition_id}.value",
+          "type": "bool"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_decimal_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_decimal_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_decimal_definition_id}.value",
+          "type": "float"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}.value[]",
+          "type": "array"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}.value[].id",
+          "type": "int"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entries_definition_id}.value[].label",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}.value",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}.value.id",
+          "type": "int"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_lov_entry_definition_id}.value.label",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_string_definition_id}",
+          "type": "object"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_string_definition_id}.data_type",
+          "type": "str"
+        },
+        {
+          "path": "custom_fields.custom_field_%{custom_field_string_definition_id}.value",
+          "type": "str"
+        },
+        {
+          "path": "deletable",
+          "type": "bool"
+        },
+        {
+          "path": "electronic_signature_id",
+          "type": "int"
+        },
+        {
+          "path": "erp_status",
+          "type": "str"
+        },
+        {
+          "path": "final",
+          "type": "bool"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "invoice_number",
+          "type": "int"
+        },
+        {
+          "path": "invoice_type",
+          "type": "str"
+        },
+        {
+          "path": "item_packages[]",
+          "type": "array"
+        },
+        {
+          "path": "item_packages[].batch",
+          "type": "object"
+        },
+        {
+          "path": "item_packages[].batch.change_order_acronym_number",
+          "type": "str"
+        },
+        {
+          "path": "item_packages[].batch.id",
+          "type": "int"
+        },
+        {
+          "path": "item_packages[].batch.title",
+          "type": "str"
+        },
+        {
+          "path": "item_packages[].change_order_acronym_number",
+          "type": "str"
+        },
+        {
+          "path": "item_packages[].change_order_id",
+          "type": "int"
+        },
+        {
+          "path": "item_packages[].change_order_request",
+          "type": "object"
+        },
+        {
+          "path": "item_packages[].change_order_request.change_order_acronym_number",
+          "type": "str"
+        },
+        {
+          "path": "item_packages[].change_order_request.id",
+          "type": "int"
+        },
+        {
+          "path": "item_packages[].change_order_request.title",
+          "type": "str"
+        },
+        {
+          "path": "item_packages[].contract_id",
+          "type": "int"
+        },
+        {
+          "path": "item_packages[].id",
+          "type": "int"
+        },
+        {
+          "path": "item_packages[].number",
+          "type": "int"
+        },
+        {
+          "path": "item_packages[].position",
+          "type": "int"
+        },
+        {
+          "path": "item_packages[].status",
+          "type": "str"
+        },
+        {
+          "path": "item_packages[].title",
+          "type": "str"
+        },
+        {
+          "path": "items[]",
+          "type": "array"
+        },
+        {
+          "path": "items[].accounting_method",
+          "type": "str"
+        },
+        {
+          "path": "items[].comment",
+          "type": "str"
+        },
+        {
+          "path": "items[].cost_code_id",
+          "type": "int"
+        },
+        {
+          "path": "items[].currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "items[].currency_configuration.base_currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "items[].currency_configuration.currency_exchange_rate",
+          "type": "float"
+        },
+        {
+          "path": "items[].currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "items[].description_of_work",
+          "type": "str"
+        },
+        {
+          "path": "items[].gross_amount",
+          "type": "str"
+        },
+        {
+          "path": "items[].id",
+          "type": "int"
+        },
+        {
+          "path": "items[].item_type",
+          "type": "str"
+        },
+        {
+          "path": "items[].line_item_id",
+          "type": "int"
+        },
+        {
+          "path": "items[].line_number",
+          "type": "str"
+        },
+        {
+          "path": "items[].materials_moved",
+          "type": "str"
+        },
+        {
+          "path": "items[].materials_presently_stored",
+          "type": "str"
+        },
+        {
+          "path": "items[].materials_presently_stored_from_previous_progress",
+          "type": "str"
+        },
+        {
+          "path": "items[].materials_presently_stored_quantity",
+          "type": "str"
+        },
+        {
+          "path": "items[].materials_previously_stored_quantity",
+          "type": "float"
+        },
+        {
+          "path": "items[].materials_retainage_retained_moved",
+          "type": "str"
+        },
+        {
+          "path": "items[].materials_stored_retainage_currently_retained",
+          "type": "str"
+        },
+        {
+          "path": "items[].materials_stored_retainage_new_materials",
+          "type": "str"
+        },
+        {
+          "path": "items[].materials_stored_retainage_percent_this_period",
+          "type": "str"
+        },
+        {
+          "path": "items[].materials_stored_retainage_released_this_period",
+          "type": "str"
+        },
+        {
+          "path": "items[].net_amount",
+          "type": "str"
+        },
+        {
+          "path": "items[].position",
+          "type": "int"
+        },
+        {
+          "path": "items[].previous_progress_id",
+          "type": "int"
+        },
+        {
+          "path": "items[].scheduled_quantity",
+          "type": "str"
+        },
+        {
+          "path": "items[].scheduled_unit_price",
+          "type": "str"
+        },
+        {
+          "path": "items[].scheduled_value",
+          "type": "str"
+        },
+        {
+          "path": "items[].ssr_manual_override",
+          "type": "bool"
+        },
+        {
+          "path": "items[].status",
+          "type": "str"
+        },
+        {
+          "path": "items[].subcontractor_claimed_amount",
+          "type": "str"
+        },
+        {
+          "path": "items[].taxes[]",
+          "type": "array"
+        },
+        {
+          "path": "items[].taxes[].tax_code_id",
+          "type": "int"
+        },
+        {
+          "path": "items[].taxes[].tax_code_name",
+          "type": "str"
+        },
+        {
+          "path": "items[].taxes[].tax_code_rate",
+          "type": "float"
+        },
+        {
+          "path": "items[].total_completed_and_stored_to_date",
+          "type": "str"
+        },
+        {
+          "path": "items[].total_completed_and_stored_to_date_from_previous",
+          "type": "str"
+        },
+        {
+          "path": "items[].total_completed_and_stored_to_date_percent",
+          "type": "str"
+        },
+        {
+          "path": "items[].uom",
+          "type": "str"
+        },
+        {
+          "path": "items[].wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "items[].wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "items[].wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "items[].wbs_code.id",
+          "type": "int"
+        },
+        {
+          "path": "items[].wbs_code.segment_items[]",
+          "type": "array"
+        },
+        {
+          "path": "items[].wbs_code.segment_items[].code",
+          "type": "int"
+        },
+        {
+          "path": "items[].wbs_code.segment_items[].id",
+          "type": "int"
+        },
+        {
+          "path": "items[].wbs_code.segment_items[].name",
+          "type": "str"
+        },
+        {
+          "path": "items[].wbs_code.segment_items[].path_codes[]",
+          "type": "array"
+        },
+        {
+          "path": "items[].wbs_code.segment_items[].path_codes[][]",
+          "type": "str"
+        },
+        {
+          "path": "items[].wbs_code.segment_items[].path_ids[]",
+          "type": "array"
+        },
+        {
+          "path": "items[].wbs_code.segment_items[].path_ids[][]",
+          "type": "int"
+        },
+        {
+          "path": "items[].wbs_code.segment_items[].segment_id",
+          "type": "int"
+        },
+        {
+          "path": "items[].wbs_code.segment_items[].segment_type",
+          "type": "str"
+        },
+        {
+          "path": "items[].work_completed_from_previous_application",
+          "type": "str"
+        },
+        {
+          "path": "items[].work_completed_from_previous_application_quantity",
+          "type": "str"
+        },
+        {
+          "path": "items[].work_completed_retainage_from_previous_application",
+          "type": "str"
+        },
+        {
+          "path": "items[].work_completed_retainage_percent_this_period",
+          "type": "str"
+        },
+        {
+          "path": "items[].work_completed_retainage_released_this_period",
+          "type": "str"
+        },
+        {
+          "path": "items[].work_completed_retainage_retained_this_period",
+          "type": "str"
+        },
+        {
+          "path": "items[].work_completed_this_period",
+          "type": "str"
+        },
+        {
+          "path": "items[].work_completed_this_period_quantity",
+          "type": "str"
+        },
+        {
+          "path": "move_materials_to_previous_work_completed",
+          "type": "bool"
+        },
+        {
+          "path": "number",
+          "type": "int"
+        },
+        {
+          "path": "origin_data",
+          "type": "str"
+        },
+        {
+          "path": "origin_id",
+          "type": "str"
+        },
+        {
+          "path": "payment_date",
+          "type": "str"
+        },
+        {
+          "path": "percent_complete",
+          "type": "int"
+        },
+        {
+          "path": "period_id",
+          "type": "int"
+        },
+        {
+          "path": "previous_requisition_id",
+          "type": "int"
+        },
+        {
+          "path": "project_id",
+          "type": "int"
+        },
+        {
+          "path": "requisition_end",
+          "type": "str"
+        },
+        {
+          "path": "requisition_start",
+          "type": "str"
+        },
+        {
+          "path": "status",
+          "type": "str"
+        },
+        {
+          "path": "submitted_at",
+          "type": "str"
+        },
+        {
+          "path": "summary",
+          "type": "object"
+        },
+        {
+          "path": "summary.balance_to_finish_including_retainage",
+          "type": "float"
+        },
+        {
+          "path": "summary.completed_work_retainage_amount",
+          "type": "str"
+        },
+        {
+          "path": "summary.completed_work_retainage_percent",
+          "type": "int"
+        },
+        {
+          "path": "summary.contract_sum_to_date",
+          "type": "float"
+        },
+        {
+          "path": "summary.current_payment_due",
+          "type": "float"
+        },
+        {
+          "path": "summary.formatted_period",
+          "type": "str"
+        },
+        {
+          "path": "summary.less_previous_certificates_for_payment",
+          "type": "int"
+        },
+        {
+          "path": "summary.negative_change_order_item_total",
+          "type": "int"
+        },
+        {
+          "path": "summary.negative_new_change_order_item_total",
+          "type": "int"
+        },
+        {
+          "path": "summary.negative_previous_change_order_item_total",
+          "type": "int"
+        },
+        {
+          "path": "summary.net_change_by_change_orders",
+          "type": "float"
+        },
+        {
+          "path": "summary.new_materials",
+          "type": "str"
+        },
+        {
+          "path": "summary.new_materials_quantity",
+          "type": "str"
+        },
+        {
+          "path": "summary.original_contract_sum",
+          "type": "float"
+        },
+        {
+          "path": "summary.positive_change_order_item_total",
+          "type": "str"
+        },
+        {
+          "path": "summary.positive_new_change_order_item_total",
+          "type": "str"
+        },
+        {
+          "path": "summary.positive_previous_change_order_item_total",
+          "type": "str"
+        },
+        {
+          "path": "summary.stored_materials",
+          "type": "str"
+        },
+        {
+          "path": "summary.stored_materials_quantity",
+          "type": "str"
+        },
+        {
+          "path": "summary.stored_materials_retainage_amount",
+          "type": "float"
+        },
+        {
+          "path": "summary.stored_materials_retainage_percent",
+          "type": "int"
+        },
+        {
+          "path": "summary.tax_applicable_to_this_payment",
+          "type": "int"
+        },
+        {
+          "path": "summary.total_completed_and_stored_to_date",
+          "type": "float"
+        },
+        {
+          "path": "summary.total_earned_less_retainage",
+          "type": "float"
+        },
+        {
+          "path": "summary.total_retainage",
+          "type": "float"
+        },
+        {
+          "path": "summary_text",
+          "type": "object"
+        },
+        {
+          "path": "summary_text.application_number",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.contract_date",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.contract_for",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.project_name",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.project_number",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.requisition_period_end",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.requisition_period_start",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.subcontractor_city",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.subcontractor_country_code",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.subcontractor_name",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.subcontractor_state_code",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.subcontractor_street",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.subcontractor_zip",
+          "type": "str"
+        },
+        {
+          "path": "summary_text.to_general_contractor",
+          "type": "str"
+        },
+        {
+          "path": "total_claimed_amount",
+          "type": "str"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        },
+        {
+          "path": "vendor_id",
+          "type": "int"
+        },
+        {
+          "path": "vendor_name",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "subcontractor-invoice-contract-items",
+      "source_name": "Subcontractor Invoice Contract Items",
+      "family": "subcontractor_invoices",
+      "prompt_group": "invoices",
+      "record_type": "subcontractor_invoice_contract_item",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/requisitions/{requisition_id}/contract_items",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page",
+        "project_id"
+      ],
+      "parent_endpoint_id": "subcontractor-invoices",
+      "parent_path_param": "requisition_id",
+      "response_envelope": "array",
+      "field_path_count": 35,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "comment",
+          "type": "str"
+        },
+        {
+          "path": "cost_code_id",
+          "type": "int"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "description_of_work",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "item_type",
+          "type": "str"
+        },
+        {
+          "path": "line_item_id",
+          "type": "int"
+        },
+        {
+          "path": "materials_moved",
+          "type": "str"
+        },
+        {
+          "path": "materials_presently_stored",
+          "type": "str"
+        },
+        {
+          "path": "materials_retainage_retained_moved",
+          "type": "str"
+        },
+        {
+          "path": "materials_stored_retainage_currently_retained",
+          "type": "str"
+        },
+        {
+          "path": "materials_stored_retainage_percent_this_period",
+          "type": "str"
+        },
+        {
+          "path": "materials_stored_retainage_released_this_period",
+          "type": "str"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "scheduled_quantity",
+          "type": "str"
+        },
+        {
+          "path": "scheduled_unit_price",
+          "type": "str"
+        },
+        {
+          "path": "scheduled_value",
+          "type": "str"
+        },
+        {
+          "path": "ssr_manual_override",
+          "type": "bool"
+        },
+        {
+          "path": "status",
+          "type": "str"
+        },
+        {
+          "path": "subcontractor_claimed_amount",
+          "type": "str"
+        },
+        {
+          "path": "total_completed_and_stored_to_date",
+          "type": "str"
+        },
+        {
+          "path": "total_completed_and_stored_to_date_percent",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code.id",
+          "type": "int"
+        },
+        {
+          "path": "work_completed_from_previous_application",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_from_previous_application_quantity",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_retainage_from_previous_application",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_retainage_percent_this_period",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_retainage_released_this_period",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_retainage_retained_this_period",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_this_period",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_this_period_quantity",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "subcontractor-invoice-contract-detail-items",
+      "source_name": "Subcontractor Invoice Contract Detail Items",
+      "family": "subcontractor_invoices",
+      "prompt_group": "invoices",
+      "record_type": "subcontractor_invoice_contract_detail_item",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/requisitions/{requisition_id}/contract_detail_items",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page",
+        "project_id"
+      ],
+      "parent_endpoint_id": "subcontractor-invoices",
+      "parent_path_param": "requisition_id",
+      "response_envelope": "array",
+      "field_path_count": 31,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "cost_code_id",
+          "type": "int"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "description_of_work",
+          "type": "str"
+        },
+        {
+          "path": "detail_line_item_id",
+          "type": "int"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "materials_moved",
+          "type": "str"
+        },
+        {
+          "path": "materials_presently_stored",
+          "type": "str"
+        },
+        {
+          "path": "materials_retainage_retained_moved",
+          "type": "str"
+        },
+        {
+          "path": "materials_stored_retainage_currently_retained",
+          "type": "str"
+        },
+        {
+          "path": "materials_stored_retainage_percent_this_period",
+          "type": "str"
+        },
+        {
+          "path": "materials_stored_retainage_released_this_period",
+          "type": "str"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "scheduled_quantity",
+          "type": "str"
+        },
+        {
+          "path": "scheduled_unit_price",
+          "type": "str"
+        },
+        {
+          "path": "scheduled_value",
+          "type": "str"
+        },
+        {
+          "path": "subcontractor_claimed_amount",
+          "type": "str"
+        },
+        {
+          "path": "total_completed_and_stored_to_date",
+          "type": "str"
+        },
+        {
+          "path": "total_completed_and_stored_to_date_percent",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code.id",
+          "type": "int"
+        },
+        {
+          "path": "work_completed_from_previous_application",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_from_previous_application_quantity",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_retainage_from_previous_application",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_retainage_percent_this_period",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_retainage_released_this_period",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_retainage_retained_this_period",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_this_period",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_this_period_quantity",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "subcontractor-invoice-change-order-items",
+      "source_name": "Subcontractor Invoice Change Order Items",
+      "family": "subcontractor_invoices",
+      "prompt_group": "invoices",
+      "record_type": "subcontractor_invoice_change_order_item",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/requisitions/{requisition_id}/change_order_items",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "filters[change_order_id]",
+        "page",
+        "per_page",
+        "project_id"
+      ],
+      "parent_endpoint_id": "subcontractor-invoices",
+      "parent_path_param": "requisition_id",
+      "response_envelope": "array",
+      "field_path_count": 34,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "change_order_package_id",
+          "type": "int"
+        },
+        {
+          "path": "commitment_line_item_id",
+          "type": "int"
+        },
+        {
+          "path": "commitment_line_item_origin_id",
+          "type": "str"
+        },
+        {
+          "path": "cost_code_id",
+          "type": "int"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "description_of_work",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "line_item_id",
+          "type": "int"
+        },
+        {
+          "path": "materials_moved",
+          "type": "str"
+        },
+        {
+          "path": "materials_presently_stored",
+          "type": "str"
+        },
+        {
+          "path": "materials_retainage_retained_moved",
+          "type": "str"
+        },
+        {
+          "path": "materials_stored_retainage_currently_retained",
+          "type": "str"
+        },
+        {
+          "path": "materials_stored_retainage_percent_this_period",
+          "type": "str"
+        },
+        {
+          "path": "materials_stored_retainage_released_this_period",
+          "type": "str"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "scheduled_quantity",
+          "type": "str"
+        },
+        {
+          "path": "scheduled_unit_price",
+          "type": "str"
+        },
+        {
+          "path": "scheduled_value",
+          "type": "str"
+        },
+        {
+          "path": "subcontractor_claimed_amount",
+          "type": "str"
+        },
+        {
+          "path": "total_completed_and_stored_to_date",
+          "type": "str"
+        },
+        {
+          "path": "total_completed_and_stored_to_date_percent",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code.id",
+          "type": "int"
+        },
+        {
+          "path": "work_completed_from_previous_application",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_from_previous_application_quantity",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_retainage_from_previous_application",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_retainage_percent_this_period",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_retainage_released_this_period",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_retainage_retained_this_period",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_this_period",
+          "type": "str"
+        },
+        {
+          "path": "work_completed_this_period_quantity",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "rfqs",
+      "source_name": "RFQs",
+      "family": "change_management",
+      "prompt_group": "rfqs_change_events",
+      "record_type": "rfq",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/rfqs",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "contract_id",
+        "filters[commitment_contract_id]",
+        "filters[created_at]",
+        "filters[status]",
+        "filters[updated_at]",
+        "page",
+        "per_page",
+        "project_id"
+      ],
+      "parent_endpoint_id": null,
+      "parent_path_param": null,
+      "response_envelope": "array",
+      "field_path_count": 248,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "assigned",
+          "type": "object"
+        },
+        {
+          "path": "assigned.id",
+          "type": "int"
+        },
+        {
+          "path": "assigned.login",
+          "type": "str"
+        },
+        {
+          "path": "assigned.name",
+          "type": "str"
+        },
+        {
+          "path": "change_event",
+          "type": "object"
+        },
+        {
+          "path": "change_event.alphanumeric_number",
+          "type": "str"
+        },
+        {
+          "path": "change_event.attachments[]",
+          "type": "array"
+        },
+        {
+          "path": "change_event.attachments[].id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.attachments[].name",
+          "type": "str"
+        },
+        {
+          "path": "change_event.attachments[].url",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[]",
+          "type": "array"
+        },
+        {
+          "path": "change_event.change_event_line_items[].budget_mod",
+          "type": "object"
+        },
+        {
+          "path": "change_event.change_event_line_items[].budget_mod.created_at",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].budget_mod.from_budget_line_item_id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_event_line_items[].budget_mod.notes",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].budget_mod.to_budget_line_item_id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_event_line_items[].budget_mod.transfer_amount",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].budget_mod_amount",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].commitment_contract_cost",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].commitment_pco_cost",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].contract",
+          "type": "object"
+        },
+        {
+          "path": "change_event.change_event_line_items[].contract.id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_event_line_items[].contract.number",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].cost_code",
+          "type": "object"
+        },
+        {
+          "path": "change_event.change_event_line_items[].cost_code.full_code",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].cost_code.id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_event_line_items[].cost_code.name",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].cost_code_biller_name",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].cost_code_is_budgeted",
+          "type": "bool"
+        },
+        {
+          "path": "change_event.change_event_line_items[].description",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].event_id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_event_line_items[].id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_event_line_items[].line_item_type",
+          "type": "object"
+        },
+        {
+          "path": "change_event.change_event_line_items[].line_item_type.base_type",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].line_item_type.code",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].line_item_type.id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_event_line_items[].line_item_type.name",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].line_item_type.origin_data",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].line_item_type.origin_id",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].links",
+          "type": "object"
+        },
+        {
+          "path": "change_event.change_event_line_items[].links.commitment_contract_cost",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].links.commitment_pco_cost",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].links.contract",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].links.edit",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].links.prime_pco_cost",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].links.rfq_amount",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].links.rom",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].links.view",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].number",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].prime_pco_cost",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].rfq_amount",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].rfq_status",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].rom",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_event_line_items[].status",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].statuses",
+          "type": "object"
+        },
+        {
+          "path": "change_event.change_event_line_items[].statuses.commitment_contract_cost",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].statuses.commitment_pco_cost",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].statuses.contract",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].statuses.prime_pco_cost",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].statuses.rfq_amount",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].title",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_line_items[].vendor",
+          "type": "object"
+        },
+        {
+          "path": "change_event.change_event_line_items[].vendor.id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_event_line_items[].vendor.name",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_origin_id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_event_origin_type",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_status",
+          "type": "object"
+        },
+        {
+          "path": "change_event.change_event_status.id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_event_status.mapped_to_status",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_status.name",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_event_status.show_in_select",
+          "type": "bool"
+        },
+        {
+          "path": "change_event.change_order_change_reason",
+          "type": "object"
+        },
+        {
+          "path": "change_event.change_order_change_reason.change_reason",
+          "type": "str"
+        },
+        {
+          "path": "change_event.change_order_change_reason.company_id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_order_change_reason.id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.change_order_change_reason.show_in_select",
+          "type": "bool"
+        },
+        {
+          "path": "change_event.created_at",
+          "type": "str"
+        },
+        {
+          "path": "change_event.created_by",
+          "type": "object"
+        },
+        {
+          "path": "change_event.created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.created_by.login",
+          "type": "str"
+        },
+        {
+          "path": "change_event.created_by.name",
+          "type": "str"
+        },
+        {
+          "path": "change_event.description",
+          "type": "str"
+        },
+        {
+          "path": "change_event.event_scope",
+          "type": "str"
+        },
+        {
+          "path": "change_event.event_type",
+          "type": "str"
+        },
+        {
+          "path": "change_event.id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.number",
+          "type": "int"
+        },
+        {
+          "path": "change_event.origin_data",
+          "type": "str"
+        },
+        {
+          "path": "change_event.origin_id",
+          "type": "str"
+        },
+        {
+          "path": "change_event.project_id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.rfi",
+          "type": "object"
+        },
+        {
+          "path": "change_event.rfi.due_date",
+          "type": "str"
+        },
+        {
+          "path": "change_event.rfi.id",
+          "type": "int"
+        },
+        {
+          "path": "change_event.rfi.number",
+          "type": "int"
+        },
+        {
+          "path": "change_event.rfi.status",
+          "type": "str"
+        },
+        {
+          "path": "change_event.rfi.title",
+          "type": "str"
+        },
+        {
+          "path": "change_event.status",
+          "type": "str"
+        },
+        {
+          "path": "change_event.title",
+          "type": "str"
+        },
+        {
+          "path": "change_event.updated_at",
+          "type": "str"
+        },
+        {
+          "path": "change_order_packages",
+          "type": "object"
+        },
+        {
+          "path": "change_order_packages.contract_id",
+          "type": "int"
+        },
+        {
+          "path": "change_order_packages.created_at",
+          "type": "str"
+        },
+        {
+          "path": "change_order_packages.deleted_at",
+          "type": "str"
+        },
+        {
+          "path": "change_order_packages.due_date",
+          "type": "str"
+        },
+        {
+          "path": "change_order_packages.id",
+          "type": "int"
+        },
+        {
+          "path": "change_order_packages.invoiced_date",
+          "type": "str"
+        },
+        {
+          "path": "change_order_packages.number",
+          "type": "str"
+        },
+        {
+          "path": "change_order_packages.origin_data",
+          "type": "str"
+        },
+        {
+          "path": "change_order_packages.origin_id",
+          "type": "str"
+        },
+        {
+          "path": "change_order_packages.paid_date",
+          "type": "str"
+        },
+        {
+          "path": "change_order_packages.reviewed_at",
+          "type": "str"
+        },
+        {
+          "path": "change_order_packages.status",
+          "type": "str"
+        },
+        {
+          "path": "change_order_packages.title",
+          "type": "str"
+        },
+        {
+          "path": "change_order_packages.updated_at",
+          "type": "str"
+        },
+        {
+          "path": "commitment_change_order_packages",
+          "type": "object"
+        },
+        {
+          "path": "commitment_change_order_packages.contract_id",
+          "type": "int"
+        },
+        {
+          "path": "commitment_change_order_packages.created_at",
+          "type": "str"
+        },
+        {
+          "path": "commitment_change_order_packages.deleted_at",
+          "type": "str"
+        },
+        {
+          "path": "commitment_change_order_packages.due_date",
+          "type": "str"
+        },
+        {
+          "path": "commitment_change_order_packages.id",
+          "type": "int"
+        },
+        {
+          "path": "commitment_change_order_packages.invoiced_date",
+          "type": "str"
+        },
+        {
+          "path": "commitment_change_order_packages.number",
+          "type": "str"
+        },
+        {
+          "path": "commitment_change_order_packages.origin_data",
+          "type": "str"
+        },
+        {
+          "path": "commitment_change_order_packages.origin_id",
+          "type": "str"
+        },
+        {
+          "path": "commitment_change_order_packages.paid_date",
+          "type": "str"
+        },
+        {
+          "path": "commitment_change_order_packages.reviewed_at",
+          "type": "str"
+        },
+        {
+          "path": "commitment_change_order_packages.status",
+          "type": "str"
+        },
+        {
+          "path": "commitment_change_order_packages.title",
+          "type": "str"
+        },
+        {
+          "path": "commitment_change_order_packages.updated_at",
+          "type": "str"
+        },
+        {
+          "path": "commitment_contract_id",
+          "type": "int"
+        },
+        {
+          "path": "commitment_potential_change_orders",
+          "type": "object"
+        },
+        {
+          "path": "commitment_potential_change_orders.change_order_package_acronym_number",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.change_order_package_title",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.change_order_request_acronym_number",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.change_order_request_id",
+          "type": "int"
+        },
+        {
+          "path": "commitment_potential_change_orders.change_order_request_title",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.change_order_tiers",
+          "type": "int"
+        },
+        {
+          "path": "commitment_potential_change_orders.change_reason",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.created_at",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.created_by_id",
+          "type": "int"
+        },
+        {
+          "path": "commitment_potential_change_orders.deleted_at",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.due_date",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.executed",
+          "type": "bool"
+        },
+        {
+          "path": "commitment_potential_change_orders.grand_total",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.id",
+          "type": "int"
+        },
+        {
+          "path": "commitment_potential_change_orders.invoiced_date",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.number",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.paid_date",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.potential_change_order_acronym_number",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.reviewed_at",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.revision",
+          "type": "int"
+        },
+        {
+          "path": "commitment_potential_change_orders.schedule_impact_amount",
+          "type": "int"
+        },
+        {
+          "path": "commitment_potential_change_orders.status",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.title",
+          "type": "str"
+        },
+        {
+          "path": "commitment_potential_change_orders.updated_at",
+          "type": "str"
+        },
+        {
+          "path": "cost_code",
+          "type": "object"
+        },
+        {
+          "path": "cost_code.full_code",
+          "type": "str"
+        },
+        {
+          "path": "cost_code.id",
+          "type": "int"
+        },
+        {
+          "path": "cost_code.name",
+          "type": "str"
+        },
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.login",
+          "type": "str"
+        },
+        {
+          "path": "created_by.name",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.base_currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_exchange_rate",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "deleted_at",
+          "type": "str"
+        },
+        {
+          "path": "description",
+          "type": "str"
+        },
+        {
+          "path": "due_date",
+          "type": "str"
+        },
+        {
+          "path": "estimated_amount",
+          "type": "str"
+        },
+        {
+          "path": "estimated_schedule_impact",
+          "type": "int"
+        },
+        {
+          "path": "estimated_status",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "intent_to_quote",
+          "type": "bool"
+        },
+        {
+          "path": "location",
+          "type": "object"
+        },
+        {
+          "path": "location.created_at",
+          "type": "str"
+        },
+        {
+          "path": "location.id",
+          "type": "int"
+        },
+        {
+          "path": "location.name",
+          "type": "str"
+        },
+        {
+          "path": "location.node_name",
+          "type": "str"
+        },
+        {
+          "path": "location.parent_id",
+          "type": "int"
+        },
+        {
+          "path": "location.updated_at",
+          "type": "str"
+        },
+        {
+          "path": "number",
+          "type": "str"
+        },
+        {
+          "path": "original_quote",
+          "type": "str"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "potential_change_orders",
+          "type": "object"
+        },
+        {
+          "path": "potential_change_orders.change_order_package_acronym_number",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.change_order_package_title",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.change_order_request_acronym_number",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.change_order_request_id",
+          "type": "int"
+        },
+        {
+          "path": "potential_change_orders.change_order_request_title",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.change_order_tiers",
+          "type": "int"
+        },
+        {
+          "path": "potential_change_orders.change_reason",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.created_at",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.created_by_id",
+          "type": "int"
+        },
+        {
+          "path": "potential_change_orders.deleted_at",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.due_date",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.executed",
+          "type": "bool"
+        },
+        {
+          "path": "potential_change_orders.grand_total",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.id",
+          "type": "int"
+        },
+        {
+          "path": "potential_change_orders.invoiced_date",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.number",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.paid_date",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.potential_change_order_acronym_number",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.reviewed_at",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.revision",
+          "type": "int"
+        },
+        {
+          "path": "potential_change_orders.schedule_impact_amount",
+          "type": "int"
+        },
+        {
+          "path": "potential_change_orders.status",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.title",
+          "type": "str"
+        },
+        {
+          "path": "potential_change_orders.updated_at",
+          "type": "str"
+        },
+        {
+          "path": "private",
+          "type": "bool"
+        },
+        {
+          "path": "prostore_file_ids[]",
+          "type": "int"
+        },
+        {
+          "path": "quotes[]",
+          "type": "array"
+        },
+        {
+          "path": "quotes[].attachments_count",
+          "type": "int"
+        },
+        {
+          "path": "quotes[].commitment_quote_number",
+          "type": "int"
+        },
+        {
+          "path": "quotes[].cost",
+          "type": "str"
+        },
+        {
+          "path": "quotes[].created_at",
+          "type": "str"
+        },
+        {
+          "path": "quotes[].created_by",
+          "type": "object"
+        },
+        {
+          "path": "quotes[].created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "quotes[].created_by.login",
+          "type": "str"
+        },
+        {
+          "path": "quotes[].created_by.name",
+          "type": "str"
+        },
+        {
+          "path": "quotes[].created_by_id",
+          "type": "int"
+        },
+        {
+          "path": "quotes[].deleted_at",
+          "type": "str"
+        },
+        {
+          "path": "quotes[].description",
+          "type": "str"
+        },
+        {
+          "path": "quotes[].id",
+          "type": "int"
+        },
+        {
+          "path": "quotes[].import_origin_id",
+          "type": "str"
+        },
+        {
+          "path": "quotes[].prostore_file_ids[]",
+          "type": "int"
+        },
+        {
+          "path": "quotes[].request_for_quote_id",
+          "type": "int"
+        },
+        {
+          "path": "quotes[].schedule_impact",
+          "type": "int"
+        },
+        {
+          "path": "quotes[].updated_at",
+          "type": "str"
+        },
+        {
+          "path": "responses[]",
+          "type": "array"
+        },
+        {
+          "path": "responses[].comment",
+          "type": "str"
+        },
+        {
+          "path": "responses[].created_at",
+          "type": "str"
+        },
+        {
+          "path": "responses[].created_by",
+          "type": "object"
+        },
+        {
+          "path": "responses[].created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "responses[].created_by.login",
+          "type": "str"
+        },
+        {
+          "path": "responses[].created_by.name",
+          "type": "str"
+        },
+        {
+          "path": "responses[].deleted_at",
+          "type": "str"
+        },
+        {
+          "path": "responses[].id",
+          "type": "int"
+        },
+        {
+          "path": "responses[].prostore_file_ids[]",
+          "type": "int"
+        },
+        {
+          "path": "responses[].updated_at",
+          "type": "str"
+        },
+        {
+          "path": "specification_section",
+          "type": "object"
+        },
+        {
+          "path": "specification_section.spec_section_description",
+          "type": "str"
+        },
+        {
+          "path": "specification_section.spec_section_number",
+          "type": "int"
+        },
+        {
+          "path": "specification_section.specification_section_id",
+          "type": "int"
+        },
+        {
+          "path": "status",
+          "type": "str"
+        },
+        {
+          "path": "title",
+          "type": "str"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "rfq-responses",
+      "source_name": "RFQ Responses",
+      "family": "change_management",
+      "prompt_group": "rfqs_change_events",
+      "record_type": "rfq_response",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/rfqs/{rfq_id}/responses",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "contract_id",
+        "page",
+        "per_page",
+        "project_id"
+      ],
+      "parent_endpoint_id": "rfqs",
+      "parent_path_param": "rfq_id",
+      "response_envelope": "array",
+      "field_path_count": 14,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "attachments[]",
+          "type": "array"
+        },
+        {
+          "path": "attachments[].id",
+          "type": "int"
+        },
+        {
+          "path": "attachments[].name",
+          "type": "str"
+        },
+        {
+          "path": "attachments[].url",
+          "type": "str"
+        },
+        {
+          "path": "comment",
+          "type": "str"
+        },
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.login",
+          "type": "str"
+        },
+        {
+          "path": "created_by.name",
+          "type": "str"
+        },
+        {
+          "path": "deleted_at",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "prostore_file_ids[]",
+          "type": "int"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "rfq-quotes",
+      "source_name": "RFQ Quotes",
+      "family": "change_management",
+      "prompt_group": "rfqs_change_events",
+      "record_type": "rfq_quote",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/rfqs/{rfq_id}/quotes",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "contract_id",
+        "page",
+        "per_page",
+        "project_id"
+      ],
+      "parent_endpoint_id": "rfqs",
+      "parent_path_param": "rfq_id",
+      "response_envelope": "array",
+      "field_path_count": 21,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "attachments[]",
+          "type": "array"
+        },
+        {
+          "path": "attachments[].id",
+          "type": "int"
+        },
+        {
+          "path": "attachments[].name",
+          "type": "str"
+        },
+        {
+          "path": "attachments[].url",
+          "type": "str"
+        },
+        {
+          "path": "attachments_count",
+          "type": "int"
+        },
+        {
+          "path": "commitment_quote_number",
+          "type": "int"
+        },
+        {
+          "path": "cost",
+          "type": "str"
+        },
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.login",
+          "type": "str"
+        },
+        {
+          "path": "created_by.name",
+          "type": "str"
+        },
+        {
+          "path": "created_by_id",
+          "type": "int"
+        },
+        {
+          "path": "deleted_at",
+          "type": "str"
+        },
+        {
+          "path": "description",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "import_origin_id",
+          "type": "str"
+        },
+        {
+          "path": "prostore_file_ids[]",
+          "type": "int"
+        },
+        {
+          "path": "request_for_quote_id",
+          "type": "int"
+        },
+        {
+          "path": "schedule_impact",
+          "type": "int"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "change-events",
+      "source_name": "Change Events",
+      "family": "change_management",
+      "prompt_group": "rfqs_change_events",
+      "record_type": "change_event",
+      "http_method": "GET",
+      "path_template": "/rest/v1.1/change_events",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "filters[created_at]",
+        "filters[include_deleted]",
+        "filters[updated_at]",
+        "page",
+        "per_page",
+        "project_id"
+      ],
+      "parent_endpoint_id": null,
+      "parent_path_param": null,
+      "response_envelope": "object",
+      "field_path_count": 133,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "filters",
+          "type": "object"
+        },
+        {
+          "path": "filters.budget_change",
+          "type": "object"
+        },
+        {
+          "path": "filters.budget_change.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.budget_change.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.budget_code",
+          "type": "object"
+        },
+        {
+          "path": "filters.budget_code.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.budget_code.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.budget_days_in_stage",
+          "type": "object"
+        },
+        {
+          "path": "filters.budget_days_in_stage.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.budget_days_in_stage.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.budget_in_status_since",
+          "type": "str"
+        },
+        {
+          "path": "filters.budget_rom_amount_project_currency",
+          "type": "object"
+        },
+        {
+          "path": "filters.budget_rom_amount_project_currency.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.budget_rom_amount_project_currency.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.budget_stage",
+          "type": "object"
+        },
+        {
+          "path": "filters.budget_stage.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.budget_stage.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.budget_stage_status",
+          "type": "object"
+        },
+        {
+          "path": "filters.budget_stage_status.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.budget_stage_status.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.budget_unit_cost_value_project_currency",
+          "type": "object"
+        },
+        {
+          "path": "filters.budget_unit_cost_value_project_currency.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.budget_unit_cost_value_project_currency.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.change_event_line_item",
+          "type": "object"
+        },
+        {
+          "path": "filters.change_event_line_item.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.change_event_line_item.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.change_reason",
+          "type": "object"
+        },
+        {
+          "path": "filters.change_reason.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.change_reason.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.change_type",
+          "type": "object"
+        },
+        {
+          "path": "filters.change_type.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.change_type.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.commitment",
+          "type": "object"
+        },
+        {
+          "path": "filters.commitment.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.commitment.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.commitment_status",
+          "type": "object"
+        },
+        {
+          "path": "filters.commitment_status.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.commitment_title",
+          "type": "object"
+        },
+        {
+          "path": "filters.commitment_title.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.commitment_title.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.contract",
+          "type": "object"
+        },
+        {
+          "path": "filters.contract.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.contract.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.cost_days_in_stage",
+          "type": "object"
+        },
+        {
+          "path": "filters.cost_days_in_stage.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.cost_days_in_stage.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.cost_in_status_since",
+          "type": "str"
+        },
+        {
+          "path": "filters.cost_rom_amount",
+          "type": "object"
+        },
+        {
+          "path": "filters.cost_rom_amount.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.cost_rom_amount.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.cost_stage",
+          "type": "object"
+        },
+        {
+          "path": "filters.cost_stage.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.cost_stage.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.cost_stage_status",
+          "type": "object"
+        },
+        {
+          "path": "filters.cost_stage_status.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.cost_stage_status.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.cost_unit_cost_value_project_currency",
+          "type": "object"
+        },
+        {
+          "path": "filters.cost_unit_cost_value_project_currency.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.cost_unit_cost_value_project_currency.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.created_at",
+          "type": "str"
+        },
+        {
+          "path": "filters.created_by",
+          "type": "object"
+        },
+        {
+          "path": "filters.created_by.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.custom_field_id",
+          "type": "object"
+        },
+        {
+          "path": "filters.custom_field_id.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.custom_field_id.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.event_origin_type",
+          "type": "object"
+        },
+        {
+          "path": "filters.event_origin_type.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.event_origin_type.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.item_type",
+          "type": "object"
+        },
+        {
+          "path": "filters.item_type.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.item_type.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.latest_budget_impact_project_currency",
+          "type": "object"
+        },
+        {
+          "path": "filters.latest_budget_impact_project_currency.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.latest_budget_impact_project_currency.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.latest_cost_amount_project_currency",
+          "type": "object"
+        },
+        {
+          "path": "filters.latest_cost_amount_project_currency.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.latest_cost_amount_project_currency.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.latest_quote_amount_project_currency",
+          "type": "object"
+        },
+        {
+          "path": "filters.latest_quote_amount_project_currency.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.latest_quote_amount_project_currency.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.latest_revenue_amount_project_currency",
+          "type": "object"
+        },
+        {
+          "path": "filters.latest_revenue_amount_project_currency.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.latest_revenue_amount_project_currency.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.non_commitment",
+          "type": "object"
+        },
+        {
+          "path": "filters.non_commitment.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.non_commitment.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.number",
+          "type": "object"
+        },
+        {
+          "path": "filters.number.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.number.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.number_title",
+          "type": "object"
+        },
+        {
+          "path": "filters.number_title.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.number_title.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.over_under_project_currency",
+          "type": "object"
+        },
+        {
+          "path": "filters.over_under_project_currency.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.over_under_project_currency.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.prime_pco",
+          "type": "object"
+        },
+        {
+          "path": "filters.prime_pco.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.prime_pco.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.prime_pco_status",
+          "type": "object"
+        },
+        {
+          "path": "filters.prime_pco_status.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.production_quantity",
+          "type": "object"
+        },
+        {
+          "path": "filters.production_quantity.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.production_quantity.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.revenue_days_in_stage",
+          "type": "object"
+        },
+        {
+          "path": "filters.revenue_days_in_stage.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.revenue_days_in_stage.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.revenue_in_status_since",
+          "type": "str"
+        },
+        {
+          "path": "filters.revenue_rom_amount_project_currency",
+          "type": "object"
+        },
+        {
+          "path": "filters.revenue_rom_amount_project_currency.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.revenue_rom_amount_project_currency.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.revenue_unit_cost_project_currency",
+          "type": "object"
+        },
+        {
+          "path": "filters.revenue_unit_cost_project_currency.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.revenue_unit_cost_project_currency.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.rfq",
+          "type": "object"
+        },
+        {
+          "path": "filters.rfq.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.rfq.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.rfq_status",
+          "type": "object"
+        },
+        {
+          "path": "filters.rfq_status.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.rfq_title",
+          "type": "object"
+        },
+        {
+          "path": "filters.rfq_title.id[]",
+          "type": "array"
+        },
+        {
+          "path": "filters.rfq_title.id[][]",
+          "type": "str"
+        },
+        {
+          "path": "filters.scope",
+          "type": "object"
+        },
+        {
+          "path": "filters.scope.id[]",
+          "type": "str"
+        },
+        {
+          "path": "filters.scope.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.status",
+          "type": "object"
+        },
+        {
+          "path": "filters.status.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.status.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.vendor",
+          "type": "object"
+        },
+        {
+          "path": "filters.vendor.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.vendor.operator",
+          "type": "str"
+        },
+        {
+          "path": "filters.wbs_segment_id",
+          "type": "object"
+        },
+        {
+          "path": "filters.wbs_segment_id.id[]",
+          "type": "int"
+        },
+        {
+          "path": "filters.wbs_segment_id.operator",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "change-event-comments",
+      "source_name": "Change Event Comments",
+      "family": "change_management",
+      "prompt_group": "rfqs_change_events",
+      "record_type": "change_event_comment",
+      "http_method": "GET",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/change_events/{change_event_id}/comments",
+      "path_resolved": true,
+      "query_parameters_observed": [],
+      "parent_endpoint_id": "change-events",
+      "parent_path_param": "change_event_id",
+      "response_envelope": "object.data[]",
+      "field_path_count": 17,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "data[]",
+          "type": "array"
+        },
+        {
+          "path": "data[].attachments[]",
+          "type": "array"
+        },
+        {
+          "path": "data[].attachments[].can_be_viewed",
+          "type": "bool"
+        },
+        {
+          "path": "data[].attachments[].id",
+          "type": "str"
+        },
+        {
+          "path": "data[].attachments[].name",
+          "type": "str"
+        },
+        {
+          "path": "data[].attachments[].url",
+          "type": "str"
+        },
+        {
+          "path": "data[].attachments[].viewable",
+          "type": "bool"
+        },
+        {
+          "path": "data[].body",
+          "type": "str"
+        },
+        {
+          "path": "data[].created_at",
+          "type": "str"
+        },
+        {
+          "path": "data[].creator",
+          "type": "object"
+        },
+        {
+          "path": "data[].creator.avatar",
+          "type": "str"
+        },
+        {
+          "path": "data[].creator.id",
+          "type": "str"
+        },
+        {
+          "path": "data[].creator.initials",
+          "type": "str"
+        },
+        {
+          "path": "data[].creator.login",
+          "type": "str"
+        },
+        {
+          "path": "data[].creator.name",
+          "type": "str"
+        },
+        {
+          "path": "data[].id",
+          "type": "str"
+        },
+        {
+          "path": "data[].rating",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "budget-views",
+      "source_name": "Budget Views",
+      "family": "budget",
+      "prompt_group": "budget",
+      "record_type": "budget_view",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/budget_views",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page",
+        "project_id",
+        "sort"
+      ],
+      "parent_endpoint_id": null,
+      "parent_path_param": null,
+      "response_envelope": "array",
+      "field_path_count": 13,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "created_by",
+          "type": "object"
+        },
+        {
+          "path": "created_by.id",
+          "type": "int"
+        },
+        {
+          "path": "created_by.login",
+          "type": "str"
+        },
+        {
+          "path": "created_by.name",
+          "type": "str"
+        },
+        {
+          "path": "description",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "links",
+          "type": "object"
+        },
+        {
+          "path": "links.detail_rows",
+          "type": "str"
+        },
+        {
+          "path": "links.summary_rows",
+          "type": "str"
+        },
+        {
+          "path": "name",
+          "type": "str"
+        },
+        {
+          "path": "role",
+          "type": "str"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "budget-detail-columns",
+      "source_name": "Budget Detail Columns",
+      "family": "budget",
+      "prompt_group": "budget",
+      "record_type": "budget_detail_column",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/budget_views/{budget_view_id}/budget_detail_columns",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "project_id"
+      ],
+      "parent_endpoint_id": "budget-views",
+      "parent_path_param": "view_id",
+      "response_envelope": "array",
+      "field_path_count": 7,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "aggregatable",
+          "type": "bool"
+        },
+        {
+          "path": "filterable",
+          "type": "bool"
+        },
+        {
+          "path": "groupable",
+          "type": "bool"
+        },
+        {
+          "path": "id",
+          "type": "str"
+        },
+        {
+          "path": "name",
+          "type": "str"
+        },
+        {
+          "path": "position",
+          "type": "int"
+        },
+        {
+          "path": "type",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "budget-details",
+      "source_name": "Budget Details",
+      "family": "budget",
+      "prompt_group": "budget",
+      "record_type": "budget_detail",
+      "http_method": "GET",
+      "path_template": null,
+      "path_resolved": false,
+      "query_parameters_observed": [],
+      "parent_endpoint_id": "budget-views",
+      "parent_path_param": "view_id",
+      "response_envelope": "array",
+      "field_path_count": 29,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "biller",
+          "type": "object"
+        },
+        {
+          "path": "biller.id",
+          "type": "int"
+        },
+        {
+          "path": "biller.name",
+          "type": "str"
+        },
+        {
+          "path": "contract",
+          "type": "object"
+        },
+        {
+          "path": "contract.id",
+          "type": "int"
+        },
+        {
+          "path": "contract.name",
+          "type": "str"
+        },
+        {
+          "path": "cost_code",
+          "type": "object"
+        },
+        {
+          "path": "cost_code.id",
+          "type": "int"
+        },
+        {
+          "path": "cost_code.name",
+          "type": "str"
+        },
+        {
+          "path": "cost_type",
+          "type": "object"
+        },
+        {
+          "path": "cost_type.id",
+          "type": "int"
+        },
+        {
+          "path": "cost_type.name",
+          "type": "str"
+        },
+        {
+          "path": "description",
+          "type": "str"
+        },
+        {
+          "path": "detail_type",
+          "type": "object"
+        },
+        {
+          "path": "detail_type.id",
+          "type": "str"
+        },
+        {
+          "path": "detail_type.name",
+          "type": "str"
+        },
+        {
+          "path": "id",
+          "type": "str"
+        },
+        {
+          "path": "item",
+          "type": "str"
+        },
+        {
+          "path": "link",
+          "type": "str"
+        },
+        {
+          "path": "root_cost_code",
+          "type": "object"
+        },
+        {
+          "path": "root_cost_code.id",
+          "type": "int"
+        },
+        {
+          "path": "root_cost_code.name",
+          "type": "str"
+        },
+        {
+          "path": "vendor",
+          "type": "object"
+        },
+        {
+          "path": "vendor.id",
+          "type": "int"
+        },
+        {
+          "path": "vendor.name",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code",
+          "type": "object"
+        },
+        {
+          "path": "wbs_code.description",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code.flat_code",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code.id",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "budget-detail-rows",
+      "source_name": "Budget Detail Rows",
+      "family": "budget",
+      "prompt_group": "budget",
+      "record_type": "budget_detail_row",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/budget_views/{budget_view_id}/detail_rows",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "biller[]",
+        "budget_line_item_id[]",
+        "budget_row_type",
+        "category_id[]",
+        "cost_code_id[]",
+        "cost_code_name[]",
+        "page",
+        "per_page",
+        "project_id",
+        "root_cost_code_id[]",
+        "root_cost_code_name[]",
+        "sort"
+      ],
+      "parent_endpoint_id": "budget-views",
+      "parent_path_param": "view_id",
+      "response_envelope": "array",
+      "field_path_count": 30,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "biller",
+          "type": "str"
+        },
+        {
+          "path": "biller_id",
+          "type": "int"
+        },
+        {
+          "path": "biller_type",
+          "type": "str"
+        },
+        {
+          "path": "budget_forecast",
+          "type": "object"
+        },
+        {
+          "path": "budget_forecast.amount",
+          "type": "str"
+        },
+        {
+          "path": "budget_forecast.automatic_amount",
+          "type": "str"
+        },
+        {
+          "path": "budget_forecast.automatically_calculated",
+          "type": "bool"
+        },
+        {
+          "path": "budget_forecast.calculation_strategy",
+          "type": "str"
+        },
+        {
+          "path": "budget_forecast.id",
+          "type": "int"
+        },
+        {
+          "path": "budget_forecast.manual_amount",
+          "type": "str"
+        },
+        {
+          "path": "budget_forecast.notes",
+          "type": "str"
+        },
+        {
+          "path": "budget_modifications",
+          "type": "str"
+        },
+        {
+          "path": "category",
+          "type": "str"
+        },
+        {
+          "path": "category_id",
+          "type": "int"
+        },
+        {
+          "path": "company",
+          "type": "str"
+        },
+        {
+          "path": "company_id",
+          "type": "int"
+        },
+        {
+          "path": "cost_code",
+          "type": "str"
+        },
+        {
+          "path": "cost_code_id",
+          "type": "int"
+        },
+        {
+          "path": "cost_code_origin_id",
+          "type": "str"
+        },
+        {
+          "path": "currency_configuration",
+          "type": "object"
+        },
+        {
+          "path": "currency_configuration.currency_iso_code",
+          "type": "str"
+        },
+        {
+          "path": "deletable",
+          "type": "bool"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "original_budget_amount",
+          "type": "str"
+        },
+        {
+          "path": "project",
+          "type": "int"
+        },
+        {
+          "path": "project_id",
+          "type": "int"
+        },
+        {
+          "path": "root_cost_code",
+          "type": "int"
+        },
+        {
+          "path": "root_cost_code_id",
+          "type": "int"
+        },
+        {
+          "path": "unbudgeted_reason",
+          "type": "str"
+        },
+        {
+          "path": "wbs_code_id",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "budget-change-history",
+      "source_name": "Budget Change History",
+      "family": "budget",
+      "prompt_group": "budget",
+      "record_type": "budget_change_history",
+      "http_method": "GET",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/budget_change_history",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page"
+      ],
+      "parent_endpoint_id": null,
+      "parent_path_param": null,
+      "response_envelope": "object",
+      "field_path_count": 9,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "data",
+          "type": "object"
+        },
+        {
+          "path": "data.budget_code",
+          "type": "str"
+        },
+        {
+          "path": "data.column",
+          "type": "str"
+        },
+        {
+          "path": "data.created_at",
+          "type": "str"
+        },
+        {
+          "path": "data.created_by",
+          "type": "str"
+        },
+        {
+          "path": "data.description",
+          "type": "str"
+        },
+        {
+          "path": "data.new_value",
+          "type": "str"
+        },
+        {
+          "path": "data.old_value",
+          "type": "str"
+        },
+        {
+          "path": "data.type",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "budget-change-line-items",
+      "source_name": "Budget Change Line Items",
+      "family": "budget",
+      "prompt_group": "budget",
+      "record_type": "budget_change_line_item",
+      "http_method": "GET",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/budget_changes/adjustment_line_items",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page"
+      ],
+      "parent_endpoint_id": "budget-change-history",
+      "parent_path_param": "budget_change_id",
+      "response_envelope": "object.data[]",
+      "field_path_count": 13,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "data[]",
+          "type": "array"
+        },
+        {
+          "path": "data[].adjustment_number",
+          "type": "int"
+        },
+        {
+          "path": "data[].amount",
+          "type": "int"
+        },
+        {
+          "path": "data[].budget_change_id",
+          "type": "str"
+        },
+        {
+          "path": "data[].budget_change_name",
+          "type": "str"
+        },
+        {
+          "path": "data[].budget_change_number",
+          "type": "str"
+        },
+        {
+          "path": "data[].budget_change_status",
+          "type": "str"
+        },
+        {
+          "path": "data[].description",
+          "type": "str"
+        },
+        {
+          "path": "data[].id",
+          "type": "str"
+        },
+        {
+          "path": "data[].quantity",
+          "type": "int"
+        },
+        {
+          "path": "data[].type",
+          "type": "str"
+        },
+        {
+          "path": "data[].uom",
+          "type": "str"
+        },
+        {
+          "path": "data[].wbs_code_id",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "budget-modifications",
+      "source_name": "Budget Modifications",
+      "family": "budget",
+      "prompt_group": "budget",
+      "record_type": "budget_modification",
+      "http_method": "GET",
+      "path_template": "/rest/v1.0/projects/{project_id}/budget_modifications",
+      "path_resolved": true,
+      "query_parameters_observed": [
+        "page",
+        "per_page"
+      ],
+      "parent_endpoint_id": null,
+      "parent_path_param": null,
+      "response_envelope": "array",
+      "field_path_count": 9,
+      "repo_implementation_status": "net_new_phase05",
+      "fields": [
+        {
+          "path": "created_at",
+          "type": "str"
+        },
+        {
+          "path": "from_budget_line_item_id",
+          "type": "int"
+        },
+        {
+          "path": "id",
+          "type": "int"
+        },
+        {
+          "path": "notes",
+          "type": "str"
+        },
+        {
+          "path": "origin_data",
+          "type": "str"
+        },
+        {
+          "path": "origin_id",
+          "type": "int"
+        },
+        {
+          "path": "to_budget_line_item_id",
+          "type": "int"
+        },
+        {
+          "path": "transfer_amount",
+          "type": "str"
+        },
+        {
+          "path": "updated_at",
+          "type": "str"
+        }
+      ]
+    }
+  ]
+}
