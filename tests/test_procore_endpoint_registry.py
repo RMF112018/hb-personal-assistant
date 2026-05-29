@@ -163,6 +163,21 @@ _OWNER_IMPLEMENTED = frozenset(
     }
 )
 
+# Vendor-side endpoints implemented in Prompt 05 (commitments + PO compatibility).
+_COMMITMENT_IMPLEMENTED = frozenset(
+    {
+        "commitment-contracts",
+        "commitment-line-items",
+        "commitment-attachments",
+        "commitment-compliance",
+        "purchase-order-contracts",
+        "purchase-order-line-items",
+        "purchase-order-detail-line-items",
+    }
+)
+
+_IMPLEMENTED = _OWNER_IMPLEMENTED | _COMMITMENT_IMPLEMENTED
+
 
 def test_phase05_financial_endpoints_are_fail_closed() -> None:
     # The durable fail-closed guarantee is live_verified=False (the orchestrator
@@ -172,7 +187,7 @@ def test_phase05_financial_endpoints_are_fail_closed() -> None:
         adapter = _resolve(fin_id)
         assert adapter.live_verified is False, fin_id
         assert adapter.sensitivity == "high", fin_id
-        if fin_id not in _OWNER_IMPLEMENTED:
+        if fin_id not in _IMPLEMENTED:
             assert resolve_normalizer(fin_id) is None, fin_id
 
 
@@ -180,6 +195,12 @@ def test_phase05_owner_endpoints_have_normalizers() -> None:
     # Prompt 04 registered the owner-family normalizers (ready to project once
     # promoted); they remain unverified above.
     for fin_id in _OWNER_IMPLEMENTED:
+        assert resolve_normalizer(fin_id) is not None, fin_id
+
+
+def test_phase05_commitment_endpoints_have_normalizers() -> None:
+    # Prompt 05 registered the vendor-side normalizers; still unverified above.
+    for fin_id in _COMMITMENT_IMPLEMENTED:
         assert resolve_normalizer(fin_id) is not None, fin_id
 
 

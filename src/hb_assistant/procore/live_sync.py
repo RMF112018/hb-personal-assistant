@@ -50,6 +50,15 @@ from hb_assistant.procore.normalizers import (
     normalize_submittal_package,
     normalize_submittal_response,
 )
+from hb_assistant.procore.normalizers.commitment_contract import (
+    normalize_commitment_attachment,
+    normalize_commitment_compliance,
+    normalize_commitment_contract,
+    normalize_commitment_line_item,
+    normalize_purchase_order_contract,
+    normalize_purchase_order_detail_line_item,
+    normalize_purchase_order_line_item,
+)
 from hb_assistant.procore.normalizers.owner_contract import (
     normalize_payment_application,
     normalize_prime_change_order,
@@ -60,6 +69,10 @@ from hb_assistant.procore.normalizers.owner_contract import (
 )
 from hb_assistant.procore.redaction import redact_source_url
 from hb_assistant.procore.token_provider import default_procore_token_provider
+from hb_assistant.store.procore_commitment_projection import (
+    COMMITMENT_ENDPOINTS,
+    project_commitment_family,
+)
 from hb_assistant.store.procore_history import record_procore_history_for_record
 from hb_assistant.store.procore_inspection_projection import project_inspection
 from hb_assistant.store.procore_meeting_projection import project_meeting_family
@@ -250,6 +263,15 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     "prime-change-orders": normalize_prime_change_order,
     "prime-change-order-line-items": normalize_prime_change_order_line_item,
     "payment-applications": normalize_payment_application,
+    # Phase 05 vendor-side financial endpoints (commitments + PO compatibility).
+    # Same fail-closed posture: registered but live_verified=False in the registry.
+    "commitment-contracts": normalize_commitment_contract,
+    "commitment-line-items": normalize_commitment_line_item,
+    "commitment-attachments": normalize_commitment_attachment,
+    "commitment-compliance": normalize_commitment_compliance,
+    "purchase-order-contracts": normalize_purchase_order_contract,
+    "purchase-order-line-items": normalize_purchase_order_line_item,
+    "purchase-order-detail-line-items": normalize_purchase_order_detail_line_item,
 }
 
 
@@ -409,6 +431,7 @@ def run_live_sync(
 
     # Ensure V6 schema is present before any count/upsert path runs.
     from hb_assistant.store.migrator import SQLiteMigrator
+
     SQLiteMigrator(db_path=str(db_path) if db_path is not None else None).apply()
 
     # 1. Resolve adapter (canonical id or legacy alias)
@@ -612,10 +635,7 @@ def run_live_sync(
     # endpoint_id resolves to a per-item URL, but the orchestrator first
     # fetches the parent list at parent_path_template to get the iteration
     # ids.
-    if (
-        adapter.endpoint_id in ("meeting-detail", "activities")
-        and adapter.parent_path_template
-    ):
+    if adapter.endpoint_id in ("meeting-detail", "activities") and adapter.parent_path_template:
         path = adapter.parent_path_template.replace(
             "{project_id}", str(procore_project_id)
         ).replace("{company_id}", COMPANY_ID)
@@ -798,9 +818,7 @@ def run_live_sync(
             )
             try:
                 activity_iter = list(
-                    client.paginate(
-                        activities_path, per_page=100, max_pages=3, max_items=200
-                    )
+                    client.paginate(activities_path, per_page=100, max_pages=3, max_items=200)
                 )
             except ProcoreAPIError as exc:
                 redacted_errors.append(
@@ -838,9 +856,7 @@ def run_live_sync(
             meeting_id = meeting_summary.get("id")
             if meeting_id is None or meeting_id == "":
                 continue
-            detail_path = (
-                f"/rest/v1.1/projects/{procore_project_id}/meetings/{meeting_id}"
-            )
+            detail_path = f"/rest/v1.1/projects/{procore_project_id}/meetings/{meeting_id}"
             try:
                 detail_iter = list(
                     client.paginate(detail_path, per_page=1, max_pages=1, max_items=1)
@@ -923,7 +939,11 @@ def run_live_sync(
         if record_id is None:
             redacted_errors.append({"normalize_error": "missing_record_id"})
             continue
-        source_url = record["canonical_fields"].get("source_url") if isinstance(record.get("canonical_fields"), dict) else None
+        source_url = (
+            record["canonical_fields"].get("source_url")
+            if isinstance(record.get("canonical_fields"), dict)
+            else None
+        )
         # activities link back to their parent schedule_id via parent_procore_id.
         # inspection-items links back to its parent list_id (each item
         # payload carries list_id directly on the v1.1 list endpoint).
@@ -1110,6 +1130,23 @@ def run_live_sync(
             except Exception:  # noqa: BLE001
                 redacted_errors.append({"owner_projection_error": "projection_failed"})
 
+        # Phase 05 vendor-side financial enrichment: commitments + line items +
+        # attachments + compliance + the v1 purchase-order compatibility surface
+        # (with data-driven commitment/PO de-duplication). Guarded.
+        if adapter.endpoint_id in COMMITMENT_ENDPOINTS:
+            try:
+                project_commitment_family(
+                    adapter.endpoint_id,
+                    raw,
+                    project_key=project_key,
+                    sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                    parent_procore_id=parent_id_for_upsert,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"commitment_projection_error": "projection_failed"})
+
         if child_adapter is None or child_normalizer is None:
             continue
 
@@ -1129,9 +1166,7 @@ def run_live_sync(
             raw_children = raw.get(child_field) if isinstance(raw, dict) else None
         if not isinstance(raw_children, list):
             continue
-        inline_children: List[Dict[str, Any]] = [
-            c for c in raw_children if isinstance(c, dict)
-        ]
+        inline_children: List[Dict[str, Any]] = [c for c in raw_children if isinstance(c, dict)]
 
         for child_raw in inline_children:
             child_retrieved_count += 1
@@ -1146,9 +1181,7 @@ def run_live_sync(
                 )
             except (TypeError, ValueError):
                 child_errors_count += 1
-                redacted_errors.append(
-                    {"child_normalize_error": "invalid_child_payload"}
-                )
+                redacted_errors.append({"child_normalize_error": "invalid_child_payload"})
                 continue
             child_normalized_count += 1
             normalized_count += 1

@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–04 · Migration **V8** · registry 27 → 59 endpoints
+Status: **in progress** · Phase 05 Prompts 01–05 · Migration **V8** · registry 27 → 59 endpoints
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -141,9 +141,32 @@ the normalizer lookup, so nothing transports until an operator runs a bounded sm
 - Shared store-layer helpers `record_key` / `coerce_amount` / `is_positive_amount` /
   `bool_to_int` added to `procore_financial_projection.py` for reuse by later families.
 
+## Vendor-side family — commitments / POs / compliance (Prompt 05)
+
+`normalizers/commitment_contract.py` (7 normalizers) + `store/procore_commitment_projection.py`
+(`project_commitment_family`) implement commitment contracts + line items + attachments +
+compliance and the v1 purchase-order compatibility surface; wired into live_sync the same way
+(registered + guard block; endpoints stay `live_verified=False`, fail-closed).
+
+- **Compliance** projects each `compliance_documents[]` + `insurance_documents[]` entry into
+  `procore_financial_compliance_documents` — preserving document status / type / effective +
+  expiration dates, `compliant` flag; **notes are hash-only** (`notes_summary_redacted`),
+  attachment URLs path-only. Signals on the parent commitment: `commitment_non_compliant`,
+  `commitment_insurance_not_compliant`, `commitment_compliance_document_expiring` (per doc with
+  `expires_at` within 30d of `now_utc`, status ≠ expired).
+- **Commitment-vs-PO de-duplication (data-driven):** a PO is a duplicate only when a
+  `commitment` contract with the same `(project_key, contract_id)` already exists (v2 coverage).
+  The PO row is still stored (queryable) but its amount facts are **skipped** — committed cost is
+  never double-counted. Self-corrects regardless of v2 coverage; live determination deferred to
+  operator smoke (Prompt 10). Canonical identity: `project_key|contract_family|procore_contract_id|
+  source_endpoint`.
+- Other signals: `commitment_unexecuted`, `purchase_order_processing`,
+  `purchase_order_delivery_due` (`delivery_date` within 14d, non-terminal status).
+
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
 `01-endpoint-registry-and-live-gate-shell.md`,
 `02-v8-financial-schema-and-repository-model.md`,
 `03-shared-financial-normalizers-and-redaction-utilities.md`,
-`04-prime-contracts-prime-change-orders-and-payment-applications.md`).
+`04-prime-contracts-prime-change-orders-and-payment-applications.md`,
+`05-commitments-purchase-orders-attachments-and-compliance.md`).
