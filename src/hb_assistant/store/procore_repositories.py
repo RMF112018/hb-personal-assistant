@@ -317,8 +317,58 @@ def get_sync_run(
     return {k: row[k] for k in row.keys()}
 
 
+def delete_procore_live_records_by_sync_run(
+    *,
+    sync_run_id: str,
+    db_path: Optional[Path] = None,
+    dry_run: bool = True,
+) -> Dict[str, Any]:
+    """Rollback path: drop every ``procore_live_records`` row attributed to a sync run.
+
+    The matching ``procore_live_sync_runs`` row is intentionally preserved so
+    operators retain an audit trail of "this run was rolled back" — the
+    receipt still exists; only the persisted records it produced are removed.
+
+    Defaults to ``dry_run=True``: returns ``{sync_run_id, would_delete, dry_run}``
+    with no mutation. Pass ``dry_run=False`` to actually delete; the return
+    payload then carries ``deleted`` instead of ``would_delete``.
+    """
+    conn = _open(db_path)
+    cur = conn.execute(
+        """
+        SELECT COUNT(1) FROM procore_live_records
+         WHERE last_sync_run_id = ?
+        """,
+        (sync_run_id,),
+    )
+    row = cur.fetchone()
+    matched = int(row[0]) if row and row[0] is not None else 0
+
+    if dry_run:
+        return {
+            "sync_run_id": sync_run_id,
+            "would_delete": matched,
+            "dry_run": True,
+        }
+
+    with transaction(conn):
+        conn.execute(
+            """
+            DELETE FROM procore_live_records
+             WHERE last_sync_run_id = ?
+            """,
+            (sync_run_id,),
+        )
+    return {
+        "sync_run_id": sync_run_id,
+        "deleted": matched,
+        "dry_run": False,
+    }
+
+
 __all__ = [
     "count_procore_live_records",
+    "delete_procore_live_records_by_sync_run",
     "get_first_procore_record_id",
     "get_sync_run",
     "record_sync_run_complete",

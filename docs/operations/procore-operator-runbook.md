@@ -1086,6 +1086,62 @@ in the JSON envelope.
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/16-obsidian-register-from-live-records.md`.
 
+## Rollback (Prompt 11)
+
+Two operator-supported rollback paths. Both run entirely against the local
+SQLite at `~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite`;
+neither calls Procore.
+
+### Rollback by receipt id (sync_run_id)
+
+Removes every `procore_live_records` row attributed to one sync run while
+preserving the matching `procore_live_sync_runs` row (audit trail of the
+rolled-back run remains discoverable via `procore live records count` and
+the JSON sync receipts).
+
+```bash
+# Dry-run preview (default; mutates nothing). Replace RUN_ID with the
+# sync_run_id from the apply receipt you want to roll back.
+python -c "
+from hb_assistant.store.procore_repositories import delete_procore_live_records_by_sync_run
+print(delete_procore_live_records_by_sync_run(sync_run_id='RUN_ID', dry_run=True))
+"
+
+# Apply the rollback (only after reviewing the would_delete count above).
+python -c "
+from hb_assistant.store.procore_repositories import delete_procore_live_records_by_sync_run
+print(delete_procore_live_records_by_sync_run(sync_run_id='RUN_ID', dry_run=False))
+"
+```
+
+The dry-run preview returns `{sync_run_id, would_delete, dry_run: True}`;
+the apply form returns `{sync_run_id, deleted, dry_run: False}`. A second
+apply for the same run-id is itself idempotent — it returns
+`{deleted: 0, ...}`.
+
+### Rollback by backup restore
+
+Take a WAL-safe SQLite snapshot before any high-risk apply; restore it
+afterward if the apply produced unwanted state. Uses the `sqlite3` shell's
+`.backup` command, which copies the database in a consistent way
+regardless of WAL state — `shutil.copyfile` is NOT WAL-safe and will miss
+in-flight pages.
+
+```bash
+DB="$HOME/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite"
+BACKUP="$DB.bak.$(date +%Y%m%d%H%M%S)"
+
+# Take a snapshot (before the apply).
+sqlite3 "$DB" ".backup '$BACKUP'"
+
+# ...run an apply that you may want to roll back...
+
+# Restore the snapshot (reverses every change since the snapshot).
+sqlite3 "$DB" ".restore '$BACKUP'"
+```
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/18-idempotency-reconciliation-rollback.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

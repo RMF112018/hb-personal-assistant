@@ -454,6 +454,45 @@ tests:
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/17-sensitive-routing-and-redaction-proof.md`.
 
+## Idempotency, reconciliation, and rollback (Prompt 11)
+
+Phase 04A's apply pipeline is idempotent by primary key
+(`project_key, endpoint_id, parent_procore_id, procore_record_id`):
+`upsert_procore_live_record` returns `"inserted"` on first write and
+`"updated"` on every subsequent write. Each `procore_live_records` row
+also carries `last_sync_run_id`, which advances on every replay and
+groups rows by the sync run that last touched them.
+
+Three Prompt 11 invariants are pinned by
+`tests/test_procore_live_apply_idempotency_reconciliation_rollback_proof.py`:
+
+1. **Receipt counts reconcile.** The sync-run row's
+   `sqlite_upserted_count` matches the live `COUNT(*)` of
+   `procore_live_records` for the same scope.
+2. **Replay is update-only.** A second apply of the same payloads under a
+   new sync_run_id returns `"updated"` for every row, leaves the row
+   count unchanged, and advances `last_sync_run_id` on every existing
+   row.
+3. **Per-run grouping reconciles.** `SELECT COUNT(*) FROM
+   procore_live_records WHERE last_sync_run_id = ?` matches each run's
+   receipt-side `sqlite_upserted_count` independently.
+
+Rollback has two documented recipes:
+
+- **By receipt id (sync_run_id)** —
+  `delete_procore_live_records_by_sync_run(sync_run_id=..., dry_run=...)`
+  in `src/hb_assistant/store/procore_repositories.py`. Default
+  `dry_run=True` returns `{would_delete, dry_run}` with no mutation;
+  `dry_run=False` deletes every row attributed to that run and returns
+  `{deleted, dry_run}`. The matching `procore_live_sync_runs` row is
+  intentionally preserved as an audit trail of the rolled-back run.
+- **By backup restore** — `sqlite3 Connection.backup()` (or the
+  shell-form `sqlite3 db.sqlite ".backup backup.db"`). WAL-safe by
+  contract; the proof test exercises the round trip and asserts the
+  restored DB has zero records and zero sync-run rows.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/18-idempotency-reconciliation-rollback.md`.
+
 ## Verified vs unverified endpoints
 
 Post schedules + activities addition, **all 20 of 20 canonical
@@ -495,3 +534,4 @@ token, never an OAuth payload.
 | `tests/test_procore_cli_obsidian_register.py` | Prompt 09A CLI coverage: missing `--from-sqlite` rejection, unknown alias rejection, unsupported endpoint rejection, dry-run happy path, apply + confirm happy path, non-TTY `--apply` without `--confirm` rejection. |
 | `tests/test_procore_sensitive_routing_proof.py` | Prompt 10 routing proof: per-family pre-existing parameterized blob coverage plus new per-bucket (incidents/injuries/safety/claims/notices/delay/cost/schedule/contract) trigger proofs, YAML rule-catalog coverage assertion, and `mask_pii_in_excerpt` redaction. |
 | `tests/test_procore_sensitive_routing_proof_corpus.py` | Prompt 10 corpus attestation: `redact_body` strips secret-shaped literals from dict/list payloads, V6 CHECK constraints reject `raw_body_persisted=1` and `redaction_applied=0`, no secret-shaped literals present in the local `procore_live_records` corpus. |
+| `tests/test_procore_live_apply_idempotency_reconciliation_rollback_proof.py` | Prompt 11 proof: receipt counts reconcile with `procore_live_records` row count; replay is update-only with `last_sync_run_id` advance; per-sync_run_id grouping reconciles; `delete_procore_live_records_by_sync_run` rolls back exactly the targeted rows and preserves the audit trail; `sqlite3.Connection.backup()` round trip restores pre-apply state. |
