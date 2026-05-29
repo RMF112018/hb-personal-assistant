@@ -12,8 +12,9 @@ structural hash summary.
 
 from __future__ import annotations
 
-import hashlib
 from typing import Any, Dict, List, Optional, Tuple
+
+from .hashing import hash_summary
 
 NORMALIZATION_SCHEMA_VERSION = 1
 
@@ -58,24 +59,6 @@ _REVIEW_SUBJECT_FRAGMENTS = (
     "lien",
     "stop work",
 )
-
-
-def _hash_summary(text: Any) -> Optional[Dict[str, Any]]:
-    """Return a hash-only structural summary for a body string.
-
-    Never carries the raw text — even short replies get a SHA-256 prefix so the
-    stop-condition guarantee (no raw RFI / reply body persisted) is uniform.
-    """
-    if text is None:
-        return None
-    if not isinstance(text, str):
-        text = str(text)
-    encoded = text.encode("utf-8", errors="ignore")
-    return {
-        "type": "string",
-        "length": len(text),
-        "hash_prefix": hashlib.sha256(encoded).hexdigest()[:12],
-    }
 
 
 def _subject_excerpt(subject: Any, *, max_chars: int = 200) -> Optional[str]:
@@ -198,7 +181,7 @@ def normalize_rfi_reply(
             canonical_fields[key] = raw[key]
 
     body = raw.get("body") if "body" in raw else raw.get("comment")
-    body_summary = _hash_summary(body) if body is not None else None
+    body_summary = hash_summary(body) if body is not None else None
 
     record: Dict[str, Any] = {
         "source_project_key": project_key,

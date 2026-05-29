@@ -25,7 +25,6 @@ a tuple — the multi-section demultiplexing doesn't fit a tuple cleanly.
 
 from __future__ import annotations
 
-import hashlib
 from typing import Any, Dict, List, Optional
 
 from hb_assistant.procore.daily_log_selection import (
@@ -33,6 +32,7 @@ from hb_assistant.procore.daily_log_selection import (
     ProcoreDailyLogSelection,
 )
 
+from .hashing import hash_summary
 from .rfi import NORMALIZATION_SCHEMA_VERSION
 
 # Common timestamp / id keys that EVERY persisted section row carries even
@@ -49,27 +49,6 @@ _BODY_TEXT_KEYS = (
     "comment",
     "details",
 )
-
-
-def _hash_summary(text: Any) -> Optional[Dict[str, Any]]:
-    """Return a hash-only structural summary for a body string.
-
-    Never carries the raw text — accident / injury / delay / safety /
-    notes text becomes a SHA-256 prefix so the stop-condition guarantees
-    ("raw observation body persisted" / "accident/injury/delay text enters
-    normal rows" / "notes logs bypass review") are structurally
-    unsatisfiable.
-    """
-    if text is None:
-        return None
-    if not isinstance(text, str):
-        text = str(text)
-    encoded = text.encode("utf-8", errors="ignore")
-    return {
-        "type": "string",
-        "length": len(text),
-        "hash_prefix": hashlib.sha256(encoded).hexdigest()[:12],
-    }
 
 
 def _extract_body(raw: Dict[str, Any]) -> Optional[str]:
@@ -166,7 +145,7 @@ def normalize_daily_log_section_item(
 
     if bucket in ("review_only", "routed_to_review"):
         body = _extract_body(raw)
-        body_summary = _hash_summary(body)
+        body_summary = hash_summary(body)
         if body_summary is not None:
             record["body_summary"] = body_summary
 

@@ -15,9 +15,9 @@ not consulted.
 
 from __future__ import annotations
 
-import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 
+from .hashing import hash_summary
 from .rfi import NORMALIZATION_SCHEMA_VERSION
 
 _OBSERVATION_CANONICAL_FIELD_KEYS = (
@@ -96,25 +96,6 @@ _REVIEW_BODY_FRAGMENTS = _REVIEW_SUBJECT_FRAGMENTS + (
     "hospital",
     "emergency",
 )
-
-
-def _hash_summary(text: Any) -> Optional[Dict[str, Any]]:
-    """Return a hash-only structural summary for a body string.
-
-    Never carries the raw text — even short descriptions/comments get a
-    SHA-256 prefix so the stop-condition guarantee ("raw observation body
-    persisted") is structurally unsatisfiable.
-    """
-    if text is None:
-        return None
-    if not isinstance(text, str):
-        text = str(text)
-    encoded = text.encode("utf-8", errors="ignore")
-    return {
-        "type": "string",
-        "length": len(text),
-        "hash_prefix": hashlib.sha256(encoded).hexdigest()[:12],
-    }
 
 
 def _title_excerpt(title: Any, *, max_chars: int = 200) -> Optional[str]:
@@ -248,7 +229,7 @@ def normalize_observation(
         if "description" in raw
         else raw.get("body")
     )
-    description_summary = _hash_summary(description) if description is not None else None
+    description_summary = hash_summary(description) if description is not None else None
     comments_list = raw.get("comments") if isinstance(raw.get("comments"), list) else []
 
     record: Dict[str, Any] = {
@@ -285,7 +266,7 @@ def normalize_observation_comment(
     """Return a canonical observation-comment record.
 
     All comments are flagged ``review_required=True``. The comment body is
-    reduced through :func:`_hash_summary` to a structural hash; the canonical
+    reduced through :func:`hash_summary` to a structural hash; the canonical
     record never carries comment text.
     """
 
@@ -300,7 +281,7 @@ def normalize_observation_comment(
             canonical_fields[key] = raw[key]
 
     body = raw.get("comment") if "comment" in raw else raw.get("body")
-    body_summary = _hash_summary(body) if body is not None else None
+    body_summary = hash_summary(body) if body is not None else None
 
     record: Dict[str, Any] = {
         "source_project_key": project_key,

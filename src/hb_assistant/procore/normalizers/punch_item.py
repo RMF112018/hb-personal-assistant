@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Dict, List, Optional
 
+from .hashing import hash_summary
 from .rfi import NORMALIZATION_SCHEMA_VERSION
 
 # Top-level whitelist of always-preserved structured fields. Fields outside this
@@ -50,20 +51,6 @@ _PUNCH_ITEM_STRUCTURED_KEYS = (
     "punch_item_type",
     "cost_code",
 )
-
-
-def _hash_summary(text: Any) -> Optional[Dict[str, Any]]:
-    """Hash-only structural summary for a free-text field."""
-    if text is None:
-        return None
-    if not isinstance(text, str):
-        text = str(text)
-    encoded = text.encode("utf-8", errors="ignore")
-    return {
-        "type": "string",
-        "length": len(text),
-        "hash_prefix": hashlib.sha256(encoded).hexdigest()[:12],
-    }
 
 
 def _hash_identifier(value: Any) -> Optional[str]:
@@ -134,7 +121,7 @@ def _assignment_summary(raw: Dict[str, Any]) -> Dict[str, Any]:
             "id": raw.get("login_information_id") if isinstance(raw.get("login_information_id"), int) else None,
         }
     # Comment is free-text -> hash-only.
-    comment_summary = _hash_summary(raw.get("comment"))
+    comment_summary = hash_summary(raw.get("comment"))
     if comment_summary is not None:
         summary["comment_summary"] = comment_summary
     # vendor is a short-label structured object (id + name); preserve verbatim.
@@ -179,7 +166,7 @@ def _custom_fields_summary(raw_custom_fields: Any) -> Dict[str, Any]:
         value = payload.get("value")
         entry: Dict[str, Any] = {"data_type": data_type}
         if data_type == "string":
-            summary = _hash_summary(value)
+            summary = hash_summary(value)
             if summary is not None:
                 entry["value_summary"] = summary
         elif data_type in {"decimal", "boolean", "lov_entry", "lov_entries"}:
@@ -188,7 +175,7 @@ def _custom_fields_summary(raw_custom_fields: Any) -> Dict[str, Any]:
         else:
             # Defensive: unknown data_type -> hash the str() of value.
             if value is not None:
-                summary = _hash_summary(str(value))
+                summary = hash_summary(str(value))
                 if summary is not None:
                     entry["value_summary"] = summary
         fields[key] = entry
@@ -225,10 +212,10 @@ def normalize_punch_item(
             canonical_fields[key] = raw[key]
 
     # Free-text bodies -> hash-only summaries.
-    description_summary = _hash_summary(raw.get("description"))
+    description_summary = hash_summary(raw.get("description"))
     if description_summary is not None:
         canonical_fields["description_summary"] = description_summary
-    schedule_risk_summary = _hash_summary(raw.get("schedule_risk_reason"))
+    schedule_risk_summary = hash_summary(raw.get("schedule_risk_reason"))
     if schedule_risk_summary is not None:
         canonical_fields["schedule_risk_reason_summary"] = schedule_risk_summary
 

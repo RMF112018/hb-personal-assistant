@@ -46,6 +46,7 @@ from hb_assistant.procore.normalizers import (
     normalize_submittal_package,
     normalize_submittal_response,
 )
+from hb_assistant.procore.normalizers.hashing import hash_summary
 from hb_assistant.procore.redaction import redact_source_url
 from hb_assistant.procore.token_provider import default_procore_token_provider
 from hb_assistant.store.procore_repositories import (
@@ -137,28 +138,6 @@ def _normalize_daily_log_weather(
     }
 
 
-def _hash_summary_for_daily_log(text: Any) -> Optional[Dict[str, Any]]:
-    """Hash-only structural summary for a daily-log free-text field.
-
-    Mirrors the implementation in normalizers/submittal.py and meeting.py;
-    duplicated here per Prompt 08 scope discipline (no cross-module helper
-    extraction). Never carries the raw text — even short comments get a
-    SHA-256 prefix.
-    """
-    import hashlib
-
-    if text is None:
-        return None
-    if not isinstance(text, str):
-        text = str(text)
-    encoded = text.encode("utf-8", errors="ignore")
-    return {
-        "type": "string",
-        "length": len(text),
-        "hash_prefix": hashlib.sha256(encoded).hexdigest()[:12],
-    }
-
-
 def _daily_log_canonical(
     raw: Dict[str, Any],
     *,
@@ -184,7 +163,7 @@ def _daily_log_canonical(
             canonical[key] = raw[key]
     hashed: Dict[str, Any] = {}
     for key in hash_keys:
-        summary = _hash_summary_for_daily_log(raw.get(key))
+        summary = hash_summary(raw.get(key))
         if summary is not None:
             hashed[f"{key}_summary"] = summary
     if hashed:

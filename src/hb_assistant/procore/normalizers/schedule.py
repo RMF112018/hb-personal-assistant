@@ -16,9 +16,9 @@ on the already-unwrapped per-item dict.
 
 from __future__ import annotations
 
-import hashlib
 from typing import Any, Dict, List, Optional
 
+from .hashing import hash_summary
 from .rfi import NORMALIZATION_SCHEMA_VERSION
 
 _SCHEDULE_STRUCTURED_KEYS = (
@@ -71,20 +71,6 @@ _ACTIVITY_STRUCTURED_KEYS = (
     "updated_at",
     "updated_by",
 )
-
-
-def _hash_summary(text: Any) -> Optional[Dict[str, Any]]:
-    """Hash-only structural summary for a free-text field."""
-    if text is None:
-        return None
-    if not isinstance(text, str):
-        text = str(text)
-    encoded = text.encode("utf-8", errors="ignore")
-    return {
-        "type": "string",
-        "length": len(text),
-        "hash_prefix": hashlib.sha256(encoded).hexdigest()[:12],
-    }
 
 
 def normalize_schedule(
@@ -160,7 +146,7 @@ def normalize_activity(
             canonical_fields[key] = raw[key]
 
     # Free-text notes -> hash-only summary.
-    notes_summary = _hash_summary(raw.get("notes"))
+    notes_summary = hash_summary(raw.get("notes"))
     if notes_summary is not None:
         canonical_fields["notes_summary"] = notes_summary
 

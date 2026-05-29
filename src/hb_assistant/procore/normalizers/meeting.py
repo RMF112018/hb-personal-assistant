@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 
+from .hashing import hash_summary
 from .rfi import NORMALIZATION_SCHEMA_VERSION
 
 _MEETING_CANONICAL_FIELD_KEYS = (
@@ -98,25 +99,6 @@ _TOPIC_SAFETY_SUBJECT_FRAGMENTS = (
     "fall",
     "first aid",
 )
-
-
-def _hash_summary(text: Any) -> Optional[Dict[str, Any]]:
-    """Return a hash-only structural summary for a body string.
-
-    Never carries the raw text — any topic description / action-items text
-    becomes a SHA-256 prefix so the stop-condition guarantee ("raw minutes /
-    topic notes persisted") is structurally unsatisfiable.
-    """
-    if text is None:
-        return None
-    if not isinstance(text, str):
-        text = str(text)
-    encoded = text.encode("utf-8", errors="ignore")
-    return {
-        "type": "string",
-        "length": len(text),
-        "hash_prefix": hashlib.sha256(encoded).hexdigest()[:12],
-    }
 
 
 def _title_excerpt(title: Any, *, max_chars: int = 200) -> Optional[str]:
@@ -315,10 +297,10 @@ def normalize_meeting_topic(
         if "description" in raw
         else raw.get("body")
     )
-    description_summary = _hash_summary(description) if description is not None else None
+    description_summary = hash_summary(description) if description is not None else None
     flattened_actions = _action_items_text(raw)
     action_items_summary = (
-        _hash_summary(flattened_actions) if flattened_actions is not None else None
+        hash_summary(flattened_actions) if flattened_actions is not None else None
     )
 
     record: Dict[str, Any] = {
@@ -527,7 +509,7 @@ def normalize_meeting_detail(
     PII-bearing fields (attendee logins / names; topic assignment logins) are
     reduced to SHA-256 hash-only summaries. Free-text fields
     (description / conclusion / minutes when at the meeting level) are reduced
-    to ``_hash_summary`` structures. ``remote_meeting_url`` is path-only
+    to ``hash_summary`` structures. ``remote_meeting_url`` is path-only
     (query strings stripped). Topics nested inside ``meeting_categories[].
     meeting_topic[]`` are NOT included in this record — they are extracted
     separately by the orchestrator and upserted under ``endpoint_id="meeting-topics"``.
@@ -543,8 +525,8 @@ def normalize_meeting_detail(
         if key in raw and raw[key] is not None:
             canonical_fields[key] = raw[key]
 
-    description_summary = _hash_summary(raw.get("description"))
-    conclusion_summary = _hash_summary(raw.get("conclusion"))
+    description_summary = hash_summary(raw.get("description"))
+    conclusion_summary = hash_summary(raw.get("conclusion"))
     if description_summary is not None:
         canonical_fields["description_summary"] = description_summary
     if conclusion_summary is not None:
