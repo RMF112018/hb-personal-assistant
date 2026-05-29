@@ -40,6 +40,7 @@ from hb_assistant.procore import (
 )
 from hb_assistant.procore.errors import ProcoreAPIError, ProcoreRateLimitError
 from hb_assistant.procore.models import EndpointAuditRunReceipt
+from hb_assistant.procore.pagination import RetryPolicy
 
 app = typer.Typer(help="Procore foundation: read-only endpoint audit (dry-run only).")
 auth_app = typer.Typer(help="Procore auth status (no live call).")
@@ -1028,7 +1029,15 @@ def live_inspect(
     )
 
     try:
-        rows = list(client.paginate(path, params=None, max_pages=max_pages, max_items=max_items))
+        rows = list(
+            client.paginate(
+                path,
+                params=None,
+                max_pages=max_pages,
+                max_items=max_items,
+                retry_policy=RetryPolicy(max_retries=0, jitter=False),
+            )
+        )
     except ProcoreAPIError as exc:
         attempt_count = transport_calls["count"]
         retry_count = max(0, attempt_count - 1)

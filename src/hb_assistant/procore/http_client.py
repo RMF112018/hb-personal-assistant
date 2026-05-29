@@ -24,7 +24,7 @@ from hb_assistant.procore.errors import (
     ProcoreAuthRequired,
     ProcoreRateLimitError,
 )
-from hb_assistant.procore.pagination import ProcorePaginator
+from hb_assistant.procore.pagination import ProcorePaginator, RetryPolicy
 from hb_assistant.procore.redaction import (
     redact_request,
     redact_response,
@@ -173,6 +173,7 @@ class ProcoreHTTPClient:
         per_page: int = 100,
         max_pages: Optional[int] = None,
         max_items: Optional[int] = None,
+        retry_policy: Optional["RetryPolicy"] = None,
     ) -> Iterator[dict]:
         from hb_assistant.procore.pagination import PageResult, RateLimitInfo
 
@@ -218,6 +219,7 @@ class ProcoreHTTPClient:
 
         paginator = ProcorePaginator(
             fetch_page=fetch,
+            retry_policy=retry_policy,
             prefer_cursor=True,
         )
         yield from paginator.iterate(
