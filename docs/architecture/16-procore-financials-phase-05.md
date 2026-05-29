@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–08 · Migration **V9** · registry 27 → 59 endpoints
+Status: **in progress** · Phase 05 Prompts 01–09 · Migration **V9** · registry 27 → 59 endpoints
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -270,6 +270,43 @@ pricing/change workflow to the *formal* change records. All were registered
 - **Read views** (`procore_financials.py`): `read_financial_rfqs` /
   `read_financial_change_events` (filter by status) — make the workflow queryable.
 
+## Budget surface — views / rows / changes (Prompt 09)
+
+Adds the budget surface (7 endpoints; **6 implemented, 1 deferred**): `budget-views`,
+`budget-detail-columns`, `budget-detail-rows`, `budget-change-history`,
+`budget-change-line-items`, `budget-modifications`. New `normalizers/budget.py`
+(6 normalizers) + `store/procore_budget_projection.py` (`project_budget_family` +
+`BUDGET_ENDPOINTS`), wired into live_sync (registered + a guarded `BUDGET_ENDPOINTS`
+block). All implemented endpoints stay **`live_verified=False`** (fail-closed).
+
+- **No migration.** Views → V8 `procore_financial_budget_views`; detail rows →
+  `procore_financial_budget_rows`; change history / change line items / modifications →
+  `procore_financial_budget_changes` via the `budget_change_kind` discriminator
+  (`change_history` / `line_item` / `modification`). `budget-detail-columns` has no
+  table → projects a `column_of` edge to its parent view (column names kept in the
+  live record).
+- **`budget-details` is DEFERRED** (acceptance allows "implemented or explicitly
+  deferred with reason"): it was registered in Prompt 00 as a non-routable sentinel
+  (`path_template="unresolved:budget-details"`) because the source reference carries no
+  resolved REST path. It has **no normalizer**, is not in `BUDGET_ENDPOINTS`, and the
+  fail-closed invariant + `test_budget_details_is_non_routable_sentinel` enforce it
+  can never transport. To be resolved (likely merged into `budget-detail-rows`) before
+  any live promotion.
+- **Column-name-agnostic:** budget detail rows preserve their full structured value set
+  verbatim in `column_values_json_redacted` (curated to amounts/codes only — free text
+  excluded; non-PII so stored as structured JSON, not hashed) and emit amount facts per
+  recognised named amount field (WBS/cost code attached to each fact). Row signals use a
+  defensive optional-field lookup (no fixed tenant column names): `budget` =
+  `revised_budget|original_budget_amount`, `forecast` = `budget_forecast.amount`,
+  `actual` = first-present cost field, `variance` = `projected_over_under|variance|over_under`.
+- **Signals:** `budget_change_posted` (change history + posted line items),
+  `budget_modification_posted` (modifications), `budget_forecast_exceeds_budget`,
+  `budget_actual_exceeds_budget`, `budget_variance_negative` (rows).
+- **Read views** (`procore_financials.py`): `read_financial_budget_rows` (by
+  view/WBS/cost) and `read_financial_budget_changes` (by kind/status); budget amount
+  facts are queried by column (`amount_name`), row (`record_key`), and WBS/cost via the
+  existing `read_financial_amount_facts`.
+
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
 `01-endpoint-registry-and-live-gate-shell.md`,
@@ -279,4 +316,5 @@ Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 `05-commitments-purchase-orders-attachments-and-compliance.md`,
 `06-change-orders-and-financial-line-items.md`,
 `07-billing-periods-subcontractor-invoices-and-invoice-items.md`,
-`08-rfqs-rfq-responses-rfq-quotes-change-events-and-comments.md`).
+`08-rfqs-rfq-responses-rfq-quotes-change-events-and-comments.md`,
+`09-budget-views-budget-details-budget-rows-and-budget-changes.md`).

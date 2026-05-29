@@ -50,6 +50,14 @@ from hb_assistant.procore.normalizers import (
     normalize_submittal_package,
     normalize_submittal_response,
 )
+from hb_assistant.procore.normalizers.budget import (
+    normalize_budget_change_history,
+    normalize_budget_change_line_item,
+    normalize_budget_detail_column,
+    normalize_budget_detail_row,
+    normalize_budget_modification,
+    normalize_budget_view,
+)
 from hb_assistant.procore.normalizers.commitment_contract import (
     normalize_commitment_attachment,
     normalize_commitment_change_order,
@@ -85,6 +93,10 @@ from hb_assistant.procore.normalizers.subcontractor_invoice import (
 )
 from hb_assistant.procore.redaction import redact_source_url
 from hb_assistant.procore.token_provider import default_procore_token_provider
+from hb_assistant.store.procore_budget_projection import (
+    BUDGET_ENDPOINTS,
+    project_budget_family,
+)
 from hb_assistant.store.procore_commitment_projection import (
     COMMITMENT_ENDPOINTS,
     project_commitment_family,
@@ -312,6 +324,15 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     "rfq-quotes": normalize_rfq_quote,
     "change-events": normalize_change_event,
     "change-event-comments": normalize_change_event_comment,
+    # Phase 05 budget surface (views / detail-columns / detail-rows / change-history
+    # / change-line-items / modifications). budget-details is a non-routable sentinel
+    # and is intentionally NOT registered. live_verified=False (fail-closed).
+    "budget-views": normalize_budget_view,
+    "budget-detail-columns": normalize_budget_detail_column,
+    "budget-detail-rows": normalize_budget_detail_row,
+    "budget-change-history": normalize_budget_change_history,
+    "budget-change-line-items": normalize_budget_change_line_item,
+    "budget-modifications": normalize_budget_modification,
 }
 
 
@@ -1220,6 +1241,24 @@ def run_live_sync(
                 )
             except Exception:  # noqa: BLE001
                 redacted_errors.append({"rfq_projection_error": "projection_failed"})
+
+        # Phase 05 budget enrichment: project budget views / detail rows / change
+        # history / change line items / modifications into the V8 budget tables
+        # (+ amount facts, edges, budget signals). budget-details (sentinel) is not
+        # in BUDGET_ENDPOINTS. Guarded.
+        if adapter.endpoint_id in BUDGET_ENDPOINTS:
+            try:
+                project_budget_family(
+                    adapter.endpoint_id,
+                    raw,
+                    project_key=project_key,
+                    sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                    parent_procore_id=parent_id_for_upsert,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"budget_projection_error": "projection_failed"})
 
         if child_adapter is None or child_normalizer is None:
             continue

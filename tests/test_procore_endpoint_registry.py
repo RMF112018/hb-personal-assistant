@@ -203,8 +203,26 @@ _RFQ_IMPLEMENTED = frozenset(
     }
 )
 
+# Budget surface implemented in Prompt 09 — 6 of 7 endpoints. budget-details is a
+# non-routable sentinel (unresolved path, Prompt 00 §3.2) and is intentionally
+# EXCLUDED: it must resolve no normalizer so the fail-closed invariant holds.
+_BUDGET_IMPLEMENTED = frozenset(
+    {
+        "budget-views",
+        "budget-detail-columns",
+        "budget-detail-rows",
+        "budget-change-history",
+        "budget-change-line-items",
+        "budget-modifications",
+    }
+)
+
 _IMPLEMENTED = (
-    _OWNER_IMPLEMENTED | _COMMITMENT_IMPLEMENTED | _INVOICE_IMPLEMENTED | _RFQ_IMPLEMENTED
+    _OWNER_IMPLEMENTED
+    | _COMMITMENT_IMPLEMENTED
+    | _INVOICE_IMPLEMENTED
+    | _RFQ_IMPLEMENTED
+    | _BUDGET_IMPLEMENTED
 )
 
 
@@ -243,6 +261,18 @@ def test_phase05_rfq_change_event_endpoints_have_normalizers() -> None:
     # Prompt 08 registered the RFQ / change-event normalizers; still unverified.
     for fin_id in _RFQ_IMPLEMENTED:
         assert resolve_normalizer(fin_id) is not None, fin_id
+
+
+def test_phase05_budget_endpoints_have_normalizers() -> None:
+    # Prompt 09 registered the budget normalizers (budget-details excluded); unverified.
+    for fin_id in _BUDGET_IMPLEMENTED:
+        assert resolve_normalizer(fin_id) is not None, fin_id
+
+
+def test_phase05_budget_details_remains_unimplemented() -> None:
+    # The non-routable sentinel must never resolve a normalizer (fail-closed).
+    assert "budget-details" not in _BUDGET_IMPLEMENTED
+    assert resolve_normalizer("budget-details") is None
 
 
 def test_phase05_financial_endpoints_excluded_from_verified() -> None:

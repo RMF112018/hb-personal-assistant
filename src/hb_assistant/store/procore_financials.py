@@ -784,6 +784,71 @@ def read_financial_change_events(
     )
 
 
+def read_financial_budget_rows(
+    *,
+    project_key: str,
+    budget_view_key: Optional[str] = None,
+    wbs_code_id: Optional[str] = None,
+    cost_code_id: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
+    """Budget detail rows, filterable by view / WBS / cost code."""
+    conn = _open(db_path)
+    clauses = ["project_key = ?"]
+    params: List[Any] = [project_key]
+    if budget_view_key is not None:
+        clauses.append("budget_view_key = ?")
+        params.append(budget_view_key)
+    if wbs_code_id is not None:
+        clauses.append("wbs_code_id = ?")
+        params.append(str(wbs_code_id))
+    if cost_code_id is not None:
+        clauses.append("cost_code_id = ?")
+        params.append(str(cost_code_id))
+    return _rows(
+        conn,
+        f"""
+        SELECT budget_row_key, budget_view_key, row_id, wbs_code_id, wbs_flat_code,
+               cost_code_id, column_values_json_redacted
+        FROM procore_financial_budget_rows
+        WHERE {" AND ".join(clauses)}
+        ORDER BY row_id
+        """,
+        tuple(params),
+    )
+
+
+def read_financial_budget_changes(
+    *,
+    project_key: str,
+    budget_change_kind: Optional[str] = None,
+    status: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
+    """Budget changes (history / line items / modifications), filterable by kind / status."""
+    conn = _open(db_path)
+    clauses = ["project_key = ?"]
+    params: List[Any] = [project_key]
+    if budget_change_kind is not None:
+        clauses.append("budget_change_kind = ?")
+        params.append(budget_change_kind)
+    if status is not None:
+        clauses.append("status = ?")
+        params.append(status)
+    return _rows(
+        conn,
+        f"""
+        SELECT budget_change_key, budget_change_kind, budget_change_id, parent_change_key,
+               number, status, wbs_code_id, wbs_flat_code, cost_code_id, adjustment_amount,
+               from_amount, to_amount, approved_at_utc
+        FROM procore_financial_budget_changes
+        WHERE {" AND ".join(clauses)}
+        ORDER BY budget_change_kind, budget_change_id
+        """,
+        tuple(params),
+    )
+
+
 def read_financial_subcontractor_invoices(
     *,
     project_key: str,
@@ -847,4 +912,6 @@ __all__ = [
     "read_financial_subcontractor_invoices",
     "read_financial_rfqs",
     "read_financial_change_events",
+    "read_financial_budget_rows",
+    "read_financial_budget_changes",
 ]
