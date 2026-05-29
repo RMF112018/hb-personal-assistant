@@ -1119,6 +1119,41 @@ HB_PROCORE_LIVE=1 hb-assistant procore live sync \
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/21-inspection-sections-bridge.md`.
 
+## Inspection-sections + inspection-items flat-list re-target (2026-05-29)
+
+The canonical Procore endpoints are flat project-scoped paginated lists,
+NOT per-inspection N+1 fetches. Both endpoints are live-verified as of
+2026-05-29.
+
+```bash
+# Inspection-sections (v1.0 flat list)
+HB_PROCORE_LIVE=1 hb-assistant procore live smoke \
+  --project tropical --endpoint inspection-sections --confirm-live-get --json
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical --endpoint inspection-sections \
+  --apply --sqlite-only --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+
+# Inspection-items (v1.1 flat list; each item payload carries list_id +
+# section_id directly so parent_procore_id derives at upsert)
+HB_PROCORE_LIVE=1 hb-assistant procore live smoke \
+  --project tropical --endpoint inspection-items --confirm-live-get --json
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical --endpoint inspection-items \
+  --apply --sqlite-only --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+```
+
+Redaction posture (unchanged from prior runbook section):
+- Inspection-sections — no PII, no free-text bodies, no hashing.
+- Inspection-items — `review_required=True`. PII (responder, assignee,
+  created_by) hashed via `person_hash_summary`; free-text (`details`,
+  `company_template_item_details`, `item_response.payload.text_value`,
+  `comments[].body`, `histories[].body`) hashed via `hash_summary`;
+  attachments URL → path-only + hashed filename.
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/22-inspection-flat-list-endpoints.md`.
+
 ## Obsidian register from Phase 04A live SQLite (Prompt 09A)
 
 A read-only projection of `procore_live_records` into per-family Obsidian

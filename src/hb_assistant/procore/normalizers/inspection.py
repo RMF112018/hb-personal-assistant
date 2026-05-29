@@ -364,8 +364,12 @@ _INSPECTION_ITEM_STRUCTURED_KEYS = (
     "status",
     "responded_with",
     "origin_id",
+    "list_id",
     "section_id",
     "position",
+    "number",
+    "relative_position",
+    "parent_item_id",
     "response_set_id",
     "template_item_id",
     "response_type_id",
@@ -565,6 +569,18 @@ def normalize_inspection_item(
     if details_summary is not None:
         canonical_fields["details_summary"] = details_summary
 
+    # company_template_item_details is the per-company template form of
+    # the per-item details — hash it the same way.
+    ct_details_summary = hash_summary(raw.get("company_template_item_details"))
+    if ct_details_summary is not None:
+        canonical_fields["company_template_item_details_summary"] = ct_details_summary
+
+    # display_conditions are structural per-item conditional-display rules;
+    # preserve verbatim (ids + arrays + timestamps; no PII).
+    display_conditions = raw.get("display_conditions")
+    if isinstance(display_conditions, list):
+        canonical_fields["display_conditions"] = display_conditions
+
     # Structured short-label refs preserved verbatim.
     for key in ("response", "type"):
         value = raw.get(key)
@@ -615,15 +631,15 @@ def normalize_inspection_item(
 
 
 # ---------------------------------------------------------------------------
-# Inspection Sections (bridge / per-list sections)
+# Inspection Sections (project-wide flat list of checklist sections)
 # ---------------------------------------------------------------------------
 
 _INSPECTION_SECTION_STRUCTURED_KEYS = (
     "id",
     "name",
     "position",
-    "list_id",
-    "not_applicable",
+    "template_section_id",
+    "updated_at",
 )
 
 
@@ -637,26 +653,18 @@ def normalize_inspection_section(
 ) -> Dict[str, Any]:
     """Return a canonical inspection-section record.
 
-    Sections are the bridge between inspections and inspection-items in
-    Procore's checklist model. The schema is structural — id, name,
-    position, list_id, not_applicable — no PII, no free-text bodies, no
-    attachments. Preserve every field verbatim; `review_required=False`.
-
-    Operators sync sections to materialize the inspection structure cheaply
-    (1 + N). When syncing `inspection-items`, the orchestrator walks
-    inspections → sections → items in one pass without persisting an
-    intermediate sections row, but the `inspection-sections` endpoint
-    surfaces them as their own canonical rows for triage tooling.
+    The list endpoint
+    ``/rest/v1.0/projects/{project_id}/checklist/list_sections`` returns
+    project-wide template sections — id, name, position, template_section_id,
+    updated_at — without a per-inspection list_id field. Operators relate
+    items back to sections via the item payload's section_id field, not via
+    sections themselves. Sections carry no PII and no free-text bodies; all
+    fields preserve verbatim. ``review_required=False``.
     """
     if not isinstance(raw, dict):
         raise TypeError("normalize_inspection_section requires a dict payload")
     if "id" not in raw or raw["id"] in (None, ""):
         raise ValueError("normalize_inspection_section requires raw['id']")
-    list_id = raw.get("list_id")
-    if list_id is None or list_id == "":
-        raise ValueError(
-            "normalize_inspection_section requires raw['list_id']"
-        )
 
     canonical_fields: Dict[str, Any] = {}
     for key in _INSPECTION_SECTION_STRUCTURED_KEYS:
@@ -667,7 +675,6 @@ def normalize_inspection_section(
         "source_project_key": project_key,
         "endpoint_id": endpoint_id,
         "entity_stable_key": str(raw["id"]),
-        "parent_inspection_stable_key": str(list_id),
         "category": "inspection_sections",
         "review_required": False,
         "routing_reason": "default_low_risk",

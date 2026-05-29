@@ -619,6 +619,47 @@ once the operator confirms it.
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/21-inspection-sections-bridge.md`.
 
+## Inspection-sections + inspection-items flat-list re-target (2026-05-29)
+
+The operator supplied the canonical Procore list endpoints, replacing
+the prior detail-URL guesses:
+
+- **Sections**: `GET /rest/v1.0/projects/{project_id}/checklist/list_sections`
+  — project-wide flat paginated list. Response shape:
+  `{id, name, position, template_section_id, updated_at}`. NOT per-
+  inspection (no `list_id` field). Sections are template-scoped
+  surfaces; their per-inspection relationship lives at the items
+  layer.
+- **Items**: `GET /rest/v1.1/projects/{project_id}/checklist/list_items`
+  — project-wide flat paginated list. Items are at **v1.1**, not v1.0.
+  Each item payload carries `list_id` and `section_id` directly, so
+  `parent_procore_id = raw["list_id"]` is derivable at upsert (same
+  shape as `activities` deriving from `schedule_id`).
+
+The prior 2-level dispatch (inspections → sections → items) was
+removed: it was unnecessary because both endpoints are flat lists. The
+orchestrator's special-case dispatch blocks for `inspection-sections`
+and `inspection-items` were deleted; the parent-path-template tuple was
+shrunk back to `("meeting-detail", "activities")`. Both endpoints now
+use the default flat-list paginate path.
+
+Normalizer extensions:
+
+- `normalize_inspection_section` structured-keys list is now
+  `(id, name, position, template_section_id, updated_at)`. The prior
+  `list_id` field was dropped (not present on the list response);
+  `parent_inspection_stable_key` is no longer emitted.
+- `normalize_inspection_item` structured-keys list gains `list_id`,
+  `number`, `relative_position`, `parent_item_id`. New free-text field
+  `company_template_item_details` reduces to
+  `company_template_item_details_summary` via `hash_summary`.
+  `display_conditions[]` is preserved as a structural array.
+
+Disposition: both endpoints are **`live_verified=True`** (verified
+end-to-end via the 2026-05-29 live cadence — receipt ids below).
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/22-inspection-flat-list-endpoints.md`.
+
 ## Verified vs unverified endpoints
 
 Post schedules + activities addition, **all 20 of 20 canonical

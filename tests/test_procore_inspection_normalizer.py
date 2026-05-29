@@ -261,20 +261,34 @@ def test_inspection_review_required_heuristic() -> None:
 
 
 def _make_inspection_item_raw(**overrides) -> dict:
-    """Build a synthetic inspection-item payload mirroring the operator example.
-
-    Sets list_id (the orchestrator dispatch sets this on each item before
-    normalization, mirroring the activities pattern's schedule_id setdefault)."""
+    """Build a synthetic inspection-item payload mirroring the v1.1
+    list_items endpoint shape. Each item payload carries list_id and
+    section_id directly (the orchestrator derives parent_procore_id from
+    raw["list_id"] at upsert)."""
     raw = {
         "id": 2,
         "list_id": 42,
         "name": "Item 1",
+        "number": "1.1",
+        "relative_position": 1,
+        "parent_item_id": 34,
         "details": "+/- 1 degrees of free-text detail that must not persist",
+        "company_template_item_details": "company-template free-text that must be hashed",
         "status": "yes",
         "responded_with": "Safe - Knowledge",
         "origin_id": 1,
         "section_id": 21,
         "position": 1,
+        "display_conditions": [
+            {
+                "id": 1,
+                "child_item_id": 34,
+                "status_ids": [42],
+                "response_option_ids": [42],
+                "created_at": "2024-10-02T21:00:00Z",
+                "updated_at": "2024-10-02T21:00:00Z",
+            }
+        ],
         "observations": [
             {
                 "id": 2085,
@@ -362,8 +376,19 @@ def test_inspection_item_always_review_and_redacts_all_surfaces() -> None:
     assert record["canonical_fields"]["parent_list_id"] == "42"
 
     cf = record["canonical_fields"]
-    # Free-text + bodies + payload.text_value all reduce to *_summary blocks.
+    # v1.1 list_items endpoint fields preserved verbatim.
+    assert cf["list_id"] == 42
+    assert cf["section_id"] == 21
+    assert cf["number"] == "1.1"
+    assert cf["relative_position"] == 1
+    assert cf["parent_item_id"] == 34
+    # display_conditions preserved as a structural array (no PII inside).
+    assert isinstance(cf["display_conditions"], list)
+    assert cf["display_conditions"][0]["id"] == 1
+    # Both free-text fields reduce to hash summaries.
     assert "details_summary" in cf
+    assert "company_template_item_details_summary" in cf
+    assert "company-template free-text" not in json.dumps(cf)
     assert cf["comments_summary"]["count"] == 1
     assert "body_summary" in cf["comments_summary"]["items"][0]
     assert cf["histories_summary"]["count"] == 1
@@ -417,12 +442,15 @@ def test_inspection_item_requires_list_id() -> None:
 
 
 def test_inspection_section_canonical_fields_preserved() -> None:
+    # The project-wide list_sections endpoint returns template-shaped rows:
+    # id, name, position, template_section_id, updated_at. No list_id field
+    # (sections are template-scoped, not per-inspection).
     raw = {
         "id": 21,
         "name": "Framing",
         "position": 1,
-        "list_id": 42,
-        "not_applicable": False,
+        "template_section_id": 3,
+        "updated_at": "2012-10-23T21:39:40Z",
     }
     record = normalize_inspection_section(
         raw,
@@ -436,22 +464,23 @@ def test_inspection_section_canonical_fields_preserved() -> None:
     assert record["safety_route"] is False
     assert record["category"] == "inspection_sections"
     assert record["entity_stable_key"] == "21"
-    assert record["parent_inspection_stable_key"] == "42"
+    # No parent on the v1.0 list_sections endpoint.
+    assert "parent_inspection_stable_key" not in record
     cf = record["canonical_fields"]
     assert cf["id"] == 21
     assert cf["name"] == "Framing"
     assert cf["position"] == 1
-    assert cf["list_id"] == 42
-    assert cf["not_applicable"] is False
+    assert cf["template_section_id"] == 3
+    assert cf["updated_at"] == "2012-10-23T21:39:40Z"
     # Nothing hashed; no PII keys ever appear.
     serialized = json.dumps(record)
     assert "hash_prefix" not in serialized
 
 
-def test_inspection_section_requires_list_id() -> None:
+def test_inspection_section_requires_id() -> None:
     import pytest as _pytest
 
-    raw = {"id": 21, "name": "Framing", "position": 1, "not_applicable": False}
+    raw = {"name": "Framing", "position": 1, "template_section_id": 3}
     with _pytest.raises(ValueError):
         normalize_inspection_section(
             raw,

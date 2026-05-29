@@ -61,14 +61,15 @@ def test_unknown_endpoint_resolves_to_none() -> None:
 
 def test_verified_endpoints_match_phase04a_matrix() -> None:
     verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
-    # Post inspection-sections bridge addition (2026-05-29): 21/23 verified.
-    # inspection-sections is the bridge between inspections and
-    # inspection-items (Procore checklist model: list → section → item).
-    # Both list-of-sections path variants returned 404 against tropical;
-    # the operator-supplied schema is a detail URL only. inspection-items
-    # cannot be reached until inspection-sections is verified. The 2-level
-    # dispatch infrastructure is in place and exercised via fake transport.
-    assert verified == _CANONICAL_IDS - {"inspection-sections", "inspection-items"}
+    # Post inspection-sections/items flat-list re-target (2026-05-29):
+    # 23/23 verified. The operator supplied the canonical list URLs —
+    # /rest/v1.0/projects/{project_id}/checklist/list_sections (sections)
+    # and /rest/v1.1/projects/{project_id}/checklist/list_items (items).
+    # Both are flat project-scoped lists, NOT per-inspection N+1; the
+    # prior 2-level dispatch was removed. Each item payload carries
+    # list_id and section_id directly so parent_procore_id derives from
+    # raw["list_id"] at upsert.
+    assert verified == _CANONICAL_IDS
 
 
 def test_child_endpoints_carry_parent_path_template() -> None:

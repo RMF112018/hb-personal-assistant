@@ -382,51 +382,33 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         endpoint_id="inspection-sections",
         family="inspections",
         legacy_endpoint_alias=None,
-        path_template="/rest/v1.0/projects/{project_id}/checklist/lists/{list_id}/sections",
-        parent_path_template="/rest/v1.0/projects/{project_id}/checklist/lists",
-        required_path_params=("project_id", "list_id"),
+        path_template="/rest/v1.0/projects/{project_id}/checklist/list_sections",
+        parent_path_template=None,
+        required_path_params=("project_id",),
         pagination="page+per_page",
         record_id_field="id",
-        parent_record_id_field="list_id",
+        parent_record_id_field=None,
         review_required_default=False,
         sensitivity="low",
         sqlite_target="procore_live_records",
-        live_verified=False,
-        verification_reason=(
-            "operator_path_unverified_2026-05-29:"
-            "both /rest/v1.0/checklist/lists/{list_id}/sections (smoke a942dcef) "
-            "and /rest/v1.0/projects/{project_id}/checklist/lists/{list_id}/sections "
-            "(smoke 2c1d59d2) returned 404 against tropical. The operator-supplied "
-            "schema is a detail URL (/sections/{id}); Procore may not expose a "
-            "list-of-sections endpoint via strip-the-id convention. Sections may "
-            "be embedded in a /lists/{id} detail call or only reachable via the "
-            "checklist template. The 2-level dispatch + normalizer + chain tests "
-            "are in place — flip live_verified=True once the correct list-of-"
-            "sections path is confirmed."
-        ),
+        live_verified=True,
+        verification_reason="operator_supplied_list_endpoint_2026-05-29",
     ),
     EndpointAdapter(
         endpoint_id="inspection-items",
         family="inspections",
         legacy_endpoint_alias=None,
-        path_template="/rest/v1.0/projects/{project_id}/checklist/lists/{list_id}/items",
-        parent_path_template="/rest/v1.0/projects/{project_id}/checklist/lists",
-        required_path_params=("project_id", "list_id", "section_id"),
+        path_template="/rest/v1.1/projects/{project_id}/checklist/list_items",
+        parent_path_template=None,
+        required_path_params=("project_id",),
         pagination="page+per_page",
         record_id_field="id",
         parent_record_id_field="list_id",
         review_required_default=True,
         sensitivity="high",
         sqlite_target="procore_live_records",
-        live_verified=False,
-        verification_reason=(
-            "operator_path_unverified_2026-05-29:depends_on_inspection_sections. "
-            "The items endpoint requires section_id (from the operator-supplied "
-            "detail URL); the orchestrator derives section_id from the per-list "
-            "sections sub-fetch in the 2-level dispatch. Until inspection-sections "
-            "is verified, inspection-items cannot be reached. Flip live_verified="
-            "True after the sections path is confirmed and re-smoked."
-        ),
+        live_verified=True,
+        verification_reason="operator_supplied_list_endpoint_2026-05-29:v1.1",
     ),
 )
 

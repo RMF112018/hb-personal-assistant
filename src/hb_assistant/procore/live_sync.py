@@ -427,14 +427,19 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     # attachments + custom_fields; review_required heuristic mirrors the
     # observation safety/status fragment scan.
     "inspections": normalize_inspection,
-    # inspection-sections is the bridge between inspections and
-    # inspection-items: a per-list sections fetch (1+N). Structural only
-    # (id, name, position, list_id, not_applicable) — no PII, no review.
+    # inspection-sections is a project-wide flat list of checklist
+    # template sections at
+    # /rest/v1.0/projects/{project_id}/checklist/list_sections.
+    # Structural only — id, name, position, template_section_id,
+    # updated_at — no PII, no parent.
     "inspection-sections": normalize_inspection_section,
-    # inspection-items is the per-section child fetched via 2-level
-    # dispatch (inspections list → per-list sections → per-section items).
-    # Always review_required=True due to per-item comments + histories +
-    # observations + responder PII.
+    # inspection-items is a project-wide flat list of checklist items
+    # at /rest/v1.1/projects/{project_id}/checklist/list_items. Each
+    # item payload carries list_id + section_id directly; the upsert
+    # step derives parent_procore_id from raw["list_id"] the same way
+    # activities derives schedule_id. Always review_required=True due
+    # to per-item PII (responder), free-text bodies, and nested
+    # observation refs.
     "inspection-items": normalize_inspection_item,
 }
 
@@ -786,18 +791,12 @@ def run_live_sync(
         live_enabled=True,
     )
 
-    # meeting-detail, activities, inspection-sections, and inspection-items
-    # are list+N+1 flows (inspection-items is 2-level): the operator-facing
+    # meeting-detail and activities are list+N+1 flows: the operator-facing
     # endpoint_id resolves to a per-item URL, but the orchestrator first
     # fetches the parent list at parent_path_template to get the iteration
     # ids.
     if (
-        adapter.endpoint_id in (
-            "meeting-detail",
-            "activities",
-            "inspection-sections",
-            "inspection-items",
-        )
+        adapter.endpoint_id in ("meeting-detail", "activities")
         and adapter.parent_path_template
     ):
         path = adapter.parent_path_template.replace(
@@ -998,154 +997,6 @@ def run_live_sync(
         items = activity_items[:max_items]
         retrieved_count = len(items)
 
-    # inspection-sections per-list N+1 fetch (mirrors activities). The
-    # orchestrator already has the inspections list (`items`); for each
-    # inspection id, issue one sections GET to
-    # /rest/v1.0/checklist/lists/{list_id}/sections with project_id as a
-    # query parameter. Replace items with the flat list of all sections
-    # across all inspections. Each section carries list_id at upsert time
-    # so parent_procore_id is derivable.
-    if adapter.endpoint_id == "inspection-sections" and items:
-        section_items: List[Dict[str, Any]] = []
-        for inspection_summary in items:
-            if not isinstance(inspection_summary, dict):
-                continue
-            list_id = inspection_summary.get("id")
-            if list_id is None or list_id == "":
-                continue
-            sections_path = (
-                f"/rest/v1.0/projects/{procore_project_id}/checklist/lists/{list_id}/sections"
-            )
-            try:
-                section_iter = list(
-                    client.paginate(
-                        sections_path,
-                        params={"project_id": str(procore_project_id)},
-                        per_page=100,
-                        max_pages=3,
-                        max_items=200,
-                    )
-                )
-            except ProcoreAPIError as exc:
-                redacted_errors.append(
-                    {
-                        "detail_transport_error": exc.code,
-                        "status": exc.status,
-                        "list_id": list_id,
-                    }
-                )
-                continue
-            except Exception:  # noqa: BLE001
-                redacted_errors.append(
-                    {"detail_transport_error": "unexpected", "list_id": list_id}
-                )
-                continue
-            for section_raw in section_iter:
-                if isinstance(section_raw, dict):
-                    section_raw.setdefault("list_id", list_id)
-                    section_items.append(section_raw)
-        items = section_items[:max_items]
-        retrieved_count = len(items)
-
-    # inspection-items 2-level dispatch: inspections list → per-list
-    # sections → per-section items. Skip sections marked
-    # `not_applicable=True` to save requests on N/A sections. Each item
-    # carries list_id AND section_id at upsert time so cross-row joins
-    # work (parent_procore_id = list_id; section_id preserved in
-    # canonical_fields by the normalizer).
-    if adapter.endpoint_id == "inspection-items" and items:
-        item_items: List[Dict[str, Any]] = []
-        for inspection_summary in items:
-            if not isinstance(inspection_summary, dict):
-                continue
-            list_id = inspection_summary.get("id")
-            if list_id is None or list_id == "":
-                continue
-            # Per-list sections sub-fetch.
-            sections_path = (
-                f"/rest/v1.0/projects/{procore_project_id}/checklist/lists/{list_id}/sections"
-            )
-            try:
-                section_iter = list(
-                    client.paginate(
-                        sections_path,
-                        params={"project_id": str(procore_project_id)},
-                        per_page=100,
-                        max_pages=3,
-                        max_items=200,
-                    )
-                )
-            except ProcoreAPIError as exc:
-                redacted_errors.append(
-                    {
-                        "detail_transport_error": exc.code,
-                        "status": exc.status,
-                        "list_id": list_id,
-                        "stage": "sections",
-                    }
-                )
-                continue
-            except Exception:  # noqa: BLE001
-                redacted_errors.append(
-                    {
-                        "detail_transport_error": "unexpected",
-                        "list_id": list_id,
-                        "stage": "sections",
-                    }
-                )
-                continue
-            for section_raw in section_iter:
-                if not isinstance(section_raw, dict):
-                    continue
-                section_id = section_raw.get("id")
-                if section_id is None or section_id == "":
-                    continue
-                if bool(section_raw.get("not_applicable")):
-                    continue
-                # Per-section items sub-fetch.
-                items_path = f"/rest/v1.0/projects/{procore_project_id}/checklist/lists/{list_id}/items"
-                try:
-                    inner_iter = list(
-                        client.paginate(
-                            items_path,
-                            params={
-                                "project_id": str(procore_project_id),
-                                "section_id": str(section_id),
-                            },
-                            per_page=100,
-                            max_pages=3,
-                            max_items=200,
-                        )
-                    )
-                except ProcoreAPIError as exc:
-                    redacted_errors.append(
-                        {
-                            "detail_transport_error": exc.code,
-                            "status": exc.status,
-                            "list_id": list_id,
-                            "section_id": section_id,
-                            "stage": "items",
-                        }
-                    )
-                    continue
-                except Exception:  # noqa: BLE001
-                    redacted_errors.append(
-                        {
-                            "detail_transport_error": "unexpected",
-                            "list_id": list_id,
-                            "section_id": section_id,
-                            "stage": "items",
-                        }
-                    )
-                    continue
-                for item_raw in inner_iter:
-                    if isinstance(item_raw, dict):
-                        item_raw.setdefault("list_id", list_id)
-                        item_raw.setdefault("section_id", section_id)
-                        item_items.append(item_raw)
-        items = item_items[:max_items]
-        retrieved_count = len(items)
-
     # meeting-detail per-meeting N+1 detail fetch. The orchestrator already
     # has the meetings list (`items`); now issue one detail GET per meeting
     # and REPLACE items with the rich detail payloads. Rate-limit / 5xx on
@@ -1246,15 +1097,18 @@ def run_live_sync(
             continue
         source_url = record["canonical_fields"].get("source_url") if isinstance(record.get("canonical_fields"), dict) else None
         # activities link back to their parent schedule_id via parent_procore_id.
-        # inspection-sections and inspection-items link back to their parent
-        # list_id (set by the respective dispatch blocks above). All other
-        # top-level endpoints leave parent_procore_id as None.
+        # inspection-items links back to its parent list_id (each item
+        # payload carries list_id directly on the v1.1 list endpoint).
+        # inspection-sections are project-wide template surfaces with no
+        # list_id field on the v1.0 list endpoint — parent_procore_id stays
+        # None for sections. All other top-level endpoints leave
+        # parent_procore_id as None.
         parent_id_for_upsert: Optional[str] = None
         if adapter.endpoint_id == "activities":
             sched_id = raw.get("schedule_id") if isinstance(raw, dict) else None
             if sched_id is not None and sched_id != "":
                 parent_id_for_upsert = str(sched_id)
-        elif adapter.endpoint_id in ("inspection-sections", "inspection-items"):
+        elif adapter.endpoint_id == "inspection-items":
             list_id = raw.get("list_id") if isinstance(raw, dict) else None
             if list_id is not None and list_id != "":
                 parent_id_for_upsert = str(list_id)
