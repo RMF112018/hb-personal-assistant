@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–09 · Migration **V9** · registry 27 → 59 endpoints
+Status: **in progress** · Phase 05 Prompts 01–10 · Migration **V9** · registry 27 → 59 endpoints
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -307,6 +307,35 @@ block). All implemented endpoints stay **`live_verified=False`** (fail-closed).
   facts are queried by column (`amount_name`), row (`record_key`), and WBS/cost via the
   existing `read_financial_amount_facts`.
 
+## Live-sync dispatch verification & idempotency sweep (Prompt 10)
+
+Verifies the end-to-end Phase 05 dispatch and hardens redaction. All 5 families were
+already wired into `run_live_sync` as guarded projection blocks (Prompts 04–09); the
+per-record order is confirmed: **normalize → latest-state upsert
+(`upsert_procore_live_record`) → history (`record_procore_history_for_record`) →
+financial projection (guarded family blocks) → child-extract → watermark/receipt**.
+
+- **Receipt** now carries `projection_error_count` (count of guarded
+  `*_projection_error` entries in `redacted_errors`) alongside the existing
+  parent/child counts and redacted error details — the full Receipt Requirements set.
+- **Projection-failure isolation:** each family block is `try/except` → appends a
+  redacted `{"<family>_projection_error": "projection_failed"}` and continues; a
+  projection blowup leaves the latest-state row + history intact and the run reports
+  `partial_success` with `projection_error_count >= 1` (proven by test).
+- **No-secret hardening:** the Prompt 10 SQL probe surfaced that the excerpt maskers
+  masked emails/phones/URLs but **not** `Bearer` tokens or PEM key blocks — both
+  `procore/normalizers/financial.py:mask_excerpt` and
+  `store/procore_financials.py:_redact_excerpt` now also mask `Bearer …` → `[token]`
+  and `-----BEGIN…` → `[pem]`. The probe scans every `procore_financial_*` row and
+  asserts zero raw bodies / secrets / signed-URL query strings + `raw_body_persisted=0`
+  / `redaction_applied=1`.
+- **Live promotion is operator-gated.** No financial endpoint is `live_verified=True`;
+  the required live smoke/apply/idempotency cadence runs against **zero** promoted
+  endpoints and is deferred to an operator with real Procore smoke evidence. The chain,
+  idempotency, and failure-isolation are instead proven with synthetic-transport tests
+  (a test-only in-memory adapter promotion; the registry is never mutated). 59/27/32
+  endpoint posture unchanged.
+
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
 `01-endpoint-registry-and-live-gate-shell.md`,
@@ -317,4 +346,5 @@ Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 `06-change-orders-and-financial-line-items.md`,
 `07-billing-periods-subcontractor-invoices-and-invoice-items.md`,
 `08-rfqs-rfq-responses-rfq-quotes-change-events-and-comments.md`,
-`09-budget-views-budget-details-budget-rows-and-budget-changes.md`).
+`09-budget-views-budget-details-budget-rows-and-budget-changes.md`,
+`10-live-sync-dispatch-verification-and-idempotency-sweep.md`).

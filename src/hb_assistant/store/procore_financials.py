@@ -72,6 +72,10 @@ def _url_path(value: Any) -> Optional[str]:
 _EMAIL_RE = re.compile(r"[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}")
 _PHONE_RE = re.compile(r"(?<!\d)(?:\+?\d[\s().-]?){7,}\d")
 _URL_RE = re.compile(r"https?://\S+")
+# Secret-shaped tokens must never survive even in a masked excerpt (defense in
+# depth on top of the normalizers): Bearer/OAuth tokens and PEM key blocks.
+_BEARER_RE = re.compile(r"Bearer\s+[A-Za-z0-9._\-+/=]+", re.IGNORECASE)
+_PEM_RE = re.compile(r"-----BEGIN[^\n]*")
 
 
 def _redact_excerpt(value: Any, max_chars: int = 200) -> Optional[str]:
@@ -81,7 +85,9 @@ def _redact_excerpt(value: Any, max_chars: int = 200) -> Optional[str]:
     text = value if isinstance(value, str) else str(value)
     if not text:
         return None
-    masked = _URL_RE.sub("[url]", text)
+    masked = _PEM_RE.sub("[pem]", text)
+    masked = _BEARER_RE.sub("[token]", masked)
+    masked = _URL_RE.sub("[url]", masked)
     masked = _EMAIL_RE.sub("[email]", masked)
     masked = _PHONE_RE.sub("[phone]", masked)
     masked = re.sub(r"\s+", " ", masked).strip()

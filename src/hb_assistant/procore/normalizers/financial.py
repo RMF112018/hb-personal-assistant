@@ -40,6 +40,10 @@ _EMAIL_RE = re.compile(r"[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}")
 _PHONE_RE = re.compile(r"(?<!\d)(?:\+?\d[\s().-]?){7,}\d")
 _URL_RE = re.compile(r"https?://\S+")
 _TAG_RE = re.compile(r"<[^>]+>")
+# Secret-shaped tokens must never survive even in a masked excerpt (Phase 04B /
+# Prompt 10 no-secret posture): Bearer/OAuth tokens and PEM key blocks.
+_BEARER_RE = re.compile(r"Bearer\s+[A-Za-z0-9._\-+/=]+", re.IGNORECASE)
+_PEM_RE = re.compile(r"-----BEGIN[^\n]*")
 
 
 def parse_amount(value: Any) -> Optional[str]:
@@ -131,7 +135,9 @@ def mask_excerpt(text: Any, max_chars: int = 200) -> Optional[str]:
     value = text if isinstance(text, str) else str(text)
     if not value:
         return None
-    masked = _URL_RE.sub("[url]", value)
+    masked = _PEM_RE.sub("[pem]", value)
+    masked = _BEARER_RE.sub("[token]", masked)
+    masked = _URL_RE.sub("[url]", masked)
     masked = _EMAIL_RE.sub("[email]", masked)
     masked = _PHONE_RE.sub("[phone]", masked)
     masked = re.sub(r"\s+", " ", masked).strip()

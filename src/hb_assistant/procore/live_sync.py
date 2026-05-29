@@ -409,6 +409,7 @@ def _build_receipt(
     child_normalized_count: int = 0,
     child_upserted_count: int = 0,
     child_errors_count: int = 0,
+    projection_error_count: int = 0,
 ) -> Dict[str, Any]:
     return {
         "receipt_id": receipt_id,
@@ -449,6 +450,7 @@ def _build_receipt(
         "child_normalized_count": child_normalized_count,
         "child_upserted_count": child_upserted_count,
         "child_errors_count": child_errors_count,
+        "projection_error_count": projection_error_count,
     }
 
 
@@ -1369,6 +1371,13 @@ def run_live_sync(
         db_path=db_path,
     )
 
+    # Count guarded enrichment/projection failures (each entry names a
+    # ``*_projection_error`` family). Captured here, not raised — a projection
+    # failure never breaks the latest-state upsert + history recording above.
+    projection_error_count = sum(
+        1 for err in redacted_errors if any(str(k).endswith("projection_error") for k in err)
+    )
+
     return _build_receipt(
         receipt_id=receipt_id,
         sync_run_id=sync_run_id,
@@ -1403,6 +1412,7 @@ def run_live_sync(
         child_normalized_count=child_normalized_count,
         child_upserted_count=child_upserted_count,
         child_errors_count=child_errors_count,
+        projection_error_count=projection_error_count,
     )
 
 
