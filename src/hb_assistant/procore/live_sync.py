@@ -17,7 +17,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 from hb_assistant.procore.endpoints import EndpointAdapter
 from hb_assistant.procore.endpoints import get as get_adapter
@@ -32,6 +32,7 @@ from hb_assistant.procore.live_gate import (
 )
 from hb_assistant.procore.loader import load_procore_projects
 from hb_assistant.procore.normalizers import (
+    daily_log_live,
     extract_topics_from_categories,
     normalize_activity,
     normalize_inspection,
@@ -49,7 +50,6 @@ from hb_assistant.procore.normalizers import (
     normalize_submittal_package,
     normalize_submittal_response,
 )
-from hb_assistant.procore.normalizers import daily_log_live
 from hb_assistant.procore.redaction import redact_source_url
 from hb_assistant.procore.token_provider import default_procore_token_provider
 from hb_assistant.store.procore_repositories import (

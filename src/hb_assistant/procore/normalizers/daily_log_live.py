@@ -22,7 +22,7 @@ The orchestrator (``live_sync.run_live_sync``) consumes ``canonical_fields``,
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Tuple
 
 from .entities import EntityBuilder
 from .hashing import hash_summary

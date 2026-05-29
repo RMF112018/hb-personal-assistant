@@ -12,7 +12,7 @@ import pytest
 
 from hb_assistant.procore.normalizers import daily_log_live as dll
 
-_KW = dict(project_key="tropical", correlation_id="synthetic-corr", fetched_at="2026-05-29T00:00:00Z")
+_KW = {"project_key": "tropical", "correlation_id": "synthetic-corr", "fetched_at": "2026-05-29T00:00:00Z"}
 
 # A synthetic person object shaped like Procore's created_by / user.
 _PERSON = {"id": 160586, "login": "synthetic-carl@example.test", "name": "Synthetic Carl"}
