@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–02 · Migration **V8** · registry 27 → 59 endpoints
+Status: **in progress** · Phase 05 Prompts 01–03 · Migration **V8** · registry 27 → 59 endpoints
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -91,7 +91,33 @@ upserts for each table (DRY `_persist` core building a parameterized
 `attachment_path_redacted` → path-only). Unknown columns fail closed. **No
 live-sync wiring** — the dispatch that calls these lands in Prompt 10.
 
+## Shared financial normalizers & redaction utilities (Prompt 03)
+
+Two new shared modules give the per-endpoint normalizers (Prompts 04–09) and the
+live-sync dispatch (Prompt 10) one toolkit each layer:
+
+- **`procore/normalizers/financial.py`** (pure, no DB) — decimal-safe
+  `parse_amount` (preserves source string, never float/Decimal re-coercion that
+  drops trailing zeros/sign), `extract_currency_config`, `extract_wbs_cost_code`,
+  `mask_excerpt` (PII), `html_to_text` + `summarize_text` (HTML→text
+  hash+len+masked-excerpt; raw never returned), `attachment_path` (path-only,
+  drops signed-URL query), `custom_field_policy` (decimal/bool/lov preserved,
+  strings hashed), and `build_amount_facts` (generic value-level emitter). It
+  re-exposes the shared `hashing` / `entities` primitives (person PII hashed,
+  company labels preserved) so callers have one import.
+- **`store/procore_financial_projection.py`** (store layer) — the shared
+  projection primitives: `emit_amount_facts` (generic store-layer amount-fact
+  emitter over Prompt 02's `emit_financial_amount_fact` — idempotent, decimal
+  preserved) and `link_record_entities` (people hashed + company/vendor labels
+  preserved, emitting relationship edges via the Phase 04B enrichment
+  primitives). Per-endpoint `project_*` functions are added in later prompts.
+
+Posture: money/labels preserved as structured business facts usable for
+aggregation; person PII, free text/HTML, contact info, and signed-URL query
+strings never persist raw.
+
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
 `01-endpoint-registry-and-live-gate-shell.md`,
-`02-v8-financial-schema-and-repository-model.md`).
+`02-v8-financial-schema-and-repository-model.md`,
+`03-shared-financial-normalizers-and-redaction-utilities.md`).
