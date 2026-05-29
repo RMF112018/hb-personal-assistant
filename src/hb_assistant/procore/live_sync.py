@@ -55,6 +55,8 @@ from hb_assistant.procore.token_provider import default_procore_token_provider
 from hb_assistant.store.procore_history import record_procore_history_for_record
 from hb_assistant.store.procore_inspection_projection import project_inspection
 from hb_assistant.store.procore_meeting_projection import project_meeting_family
+from hb_assistant.store.procore_observation_projection import project_observation
+from hb_assistant.store.procore_punch_projection import project_punch_item
 from hb_assistant.store.procore_repositories import (
     count_procore_live_records,
     record_sync_run_complete,
@@ -1001,6 +1003,36 @@ def run_live_sync(
                 )
             except Exception:  # noqa: BLE001
                 redacted_errors.append({"submittal_projection_error": "projection_failed"})
+
+        # Phase 04B punch-item enrichment: assignments (assignee/vendor, status,
+        # notified/responded dates), location/trade/ball-in-court edges, unresolved
+        # response + schedule-risk text intelligence, overdue/waiting signals. Guarded.
+        if adapter.endpoint_id == "punch-items":
+            try:
+                project_punch_item(
+                    raw,
+                    project_key=project_key,
+                    sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"punch_projection_error": "projection_failed"})
+
+        # Phase 04B observation + safety enrichment: description text intelligence,
+        # assignee/vendor/created-by/location/trade edges, safety classification +
+        # priority / closed / due-soon signals. Guarded.
+        if adapter.endpoint_id == "observations":
+            try:
+                project_observation(
+                    raw,
+                    project_key=project_key,
+                    sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"observation_projection_error": "projection_failed"})
 
         if child_adapter is None or child_normalizer is None:
             continue
