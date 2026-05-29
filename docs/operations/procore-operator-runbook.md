@@ -1038,6 +1038,50 @@ fields) preserved verbatim.
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/15-schedules-and-activities-endpoints.md`.
 
+## Inspections + Inspection-Items (2026-05-29)
+
+Inspections is a v1.0 list endpoint at
+`/rest/v1.0/projects/{project_id}/checklist/lists` returning checklist
+instances. inspection-items is the per-list child fetched via the same
+list+N+1 dispatch pattern as activities. As of 2026-05-29 the parent
+endpoint is live-verified; the child endpoint is registered but
+fail-closed pending operator confirmation of the canonical list-items
+path (Procore returned 404 against the two most plausible variants; the
+operator detail URL requires `section_id`, implying a list-by-section
+endpoint that has not yet been identified — flip
+`endpoints.py::inspection-items.live_verified` to True once the path is
+known).
+
+Operator commands:
+
+```bash
+HB_PROCORE_LIVE=1 hb-assistant procore live smoke \
+  --project tropical --endpoint inspections --confirm-live-get --json
+HB_PROCORE_LIVE=1 hb-assistant procore live sync \
+  --project tropical --endpoint inspections \
+  --apply --sqlite-only --max-pages 3 --max-items 100 \
+  --confirm-live-get --json
+```
+
+Redaction posture:
+- Inspections — `review_required` heuristic on safety inspection_type /
+  overdue / open status. PII (created_by, closed_by, point_of_contact,
+  responsible_contractor, inspectors, distribution_members) hashed via
+  `person_hash_summary`. Signature requests + attachments reduced to
+  count + hashed filename + path-only URL. `description` hashed.
+  Custom fields preserve numeric/boolean/lov_entry values verbatim;
+  string values hashed.
+- Inspection-items — always `review_required=True`. observations,
+  comments, histories, attachment_histories, attachments all reduced to
+  `*_summary` blocks with hashed identifiers + hashed bodies.
+
+`procore obsidian register` rejects `--endpoint inspections` and
+`--endpoint inspection-items` with the existing `unsupported_endpoint`
+error (no register template exists for the inspections family yet —
+future work).
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/20-inspections-and-inspection-items.md`.
+
 ## Obsidian register from Phase 04A live SQLite (Prompt 09A)
 
 A read-only projection of `procore_live_records` into per-family Obsidian

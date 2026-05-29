@@ -1653,3 +1653,201 @@ def test_activities_apply_list_plus_n_per_schedule(
     for _record_id, _parent, canonical_json, raw_body in rows:
         assert secret_notes not in canonical_json
         assert raw_body == 0
+
+
+# ---------------------------------------------------------------------------
+# inspections + inspection-items: list+N+1 dispatch with project_id as query
+# parameter on the per-list sub-fetch (the same query-param shape punch-items
+# uses). Each inspection-items row carries parent_procore_id = list_id.
+# ---------------------------------------------------------------------------
+
+
+def test_inspections_apply_list_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The inspections endpoint by itself is a single list fetch; PII fields
+    in the parent payload must reduce to hashed summaries; description must
+    reduce to a hash summary; raw bodies never persist."""
+    _setup_env(monkeypatch)
+    db = _db()
+    sensitive_description = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
+    inspection_payload = [
+        {
+            "id": 42,
+            "name": "Window Inspection",
+            "number": 1,
+            "status": "Closed",
+            "description": sensitive_description,
+            "overdue": False,
+            "inspection_type": {"id": 142, "name": "Quality Compliance"},
+            "created_by": {
+                "id": 160586,
+                "login": "synthetic-fixture@example.invalid",
+                "name": "Synthetic Tester",
+            },
+            "inspectors": [
+                {
+                    "id": 200001,
+                    "login": "synthetic-fixture@example.invalid",
+                    "name": "Synthetic Inspector",
+                }
+            ],
+            "attachments": [
+                {"id": 5324, "url": "https://procore.example.com/foo.pdf?token=x", "filename": "foo.pdf"}
+            ],
+        }
+    ]
+    transport = _PathAwareFakeTransport(
+        {"/rest/v1.0/projects/2525840/checklist/lists": inspection_payload}
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="inspections",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["sqlite_upserted_count"] == 1
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="inspections", db_path=db
+    ) == 1
+
+    conn = sqlite3.connect(str(db))
+    try:
+        row = conn.execute(
+            "SELECT canonical_json_redacted, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='inspections'"
+        ).fetchone()
+    finally:
+        conn.close()
+    canonical_json, raw_body = row
+    assert raw_body == 0
+    assert sensitive_description not in canonical_json
+    assert "synthetic-fixture@example.invalid" not in canonical_json
+    assert "Synthetic Tester" not in canonical_json
+    assert "procore.example.com" not in canonical_json
+
+
+def test_inspection_items_apply_list_plus_n_per_inspection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The inspection-items endpoint first fetches the inspections list, then
+    issues one items GET per inspection. Each item row carries
+    parent_procore_id = list_id.
+
+    Note: the inspection-items adapter ships with live_verified=False pending
+    operator confirmation of the canonical list-items path. This test exercises
+    the dispatch CODE — it monkeypatches the adapter row to live_verified=True
+    for the duration of the test so the orchestrator's fail-closed gate does
+    not short-circuit the chain.
+    """
+    _setup_env(monkeypatch)
+    db = _db()
+
+    import dataclasses
+    from hb_assistant.procore import endpoints as _ep_registry
+
+    real_adapter = _ep_registry.get("inspection-items")
+    assert real_adapter is not None
+    verified_adapter = dataclasses.replace(real_adapter, live_verified=True)
+    monkeypatch.setattr(_ep_registry, "_BY_ID", {**_ep_registry._BY_ID, "inspection-items": verified_adapter})
+    secret_body = "MUST_NEVER_APPEAR_IN_CANONICAL_STORAGE"
+    list_payload = [
+        {"id": 100, "name": "Window Inspection", "status": "Closed"},
+        {"id": 200, "name": "Door Inspection", "status": "Closed"},
+    ]
+    items_100 = [
+        {
+            "id": 1001,
+            "name": "Item 1001",
+            "details": secret_body,
+            "comments": [
+                {
+                    "id": 1,
+                    "body": secret_body,
+                    "created_by": {
+                        "id": 160586,
+                        "login": "synthetic-fixture@example.invalid",
+                        "name": "Synthetic Tester",
+                    },
+                }
+            ],
+        },
+        {
+            "id": 1002,
+            "name": "Item 1002",
+            "details": "another body",
+        },
+    ]
+    items_200 = [
+        {
+            "id": 2001,
+            "name": "Item 2001",
+            "details": "third body",
+        }
+    ]
+    transport = _PathAwareFakeTransport(
+        {
+            "/rest/v1.0/projects/2525840/checklist/lists/100/items": items_100,
+            "/rest/v1.0/projects/2525840/checklist/lists/200/items": items_200,
+            "/rest/v1.0/projects/2525840/checklist/lists": list_payload,
+        }
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="inspection-items",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    # 3 items across 2 inspections.
+    assert receipt["sqlite_upserted_count"] == 3
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="inspection-items", db_path=db
+    ) == 3
+
+    # Each item row carries parent_procore_id = its source list_id.
+    conn = sqlite3.connect(str(db))
+    try:
+        rows = conn.execute(
+            "SELECT procore_record_id, parent_procore_id, canonical_json_redacted, raw_body_persisted "
+            "FROM procore_live_records WHERE endpoint_id='inspection-items' ORDER BY procore_record_id"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert len(rows) == 3
+    parent_map = {row[0]: row[1] for row in rows}
+    assert parent_map["1001"] == "100"
+    assert parent_map["1002"] == "100"
+    assert parent_map["2001"] == "200"
+    # Free-text + PII never persists.
+    for _record_id, _parent, canonical_json, raw_body in rows:
+        assert raw_body == 0
+        assert secret_body not in canonical_json
+        assert "synthetic-fixture@example.invalid" not in canonical_json
+        assert "Synthetic Tester" not in canonical_json
+
+    # The per-list sub-fetch path is project-scoped, mirroring most v1.0
+    # endpoints (the operator-supplied detail endpoint omits project_id from
+    # the path, but the list-side endpoint requires it in the path — Procore
+    # returns 404 otherwise).
+    item_calls = [
+        c for c in transport.calls
+        if "/projects/2525840/checklist/lists/100/items" in c["url"]
+        or "/projects/2525840/checklist/lists/200/items" in c["url"]
+    ]
+    assert len(item_calls) >= 2, "expected at least one items GET per list"

@@ -34,6 +34,8 @@ from hb_assistant.procore.loader import load_procore_projects
 from hb_assistant.procore.normalizers import (
     extract_topics_from_categories,
     normalize_activity,
+    normalize_inspection,
+    normalize_inspection_item,
     normalize_meeting,
     normalize_meeting_detail,
     normalize_meeting_topic,
@@ -419,6 +421,15 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     # fetched via per-schedule N+1 when operator selects --endpoint activities.
     "schedules": normalize_schedule,
     "activities": normalize_activity,
+    # Inspections: list at /rest/v1.0/projects/{project_id}/checklist/lists.
+    # Heavy PII (inspectors, signature_requests, point_of_contact) +
+    # attachments + custom_fields; review_required heuristic mirrors the
+    # observation safety/status fragment scan.
+    "inspections": normalize_inspection,
+    # inspection-items is the per-list child fetched via N+1 dispatch (same
+    # shape as activities). Always review_required=True due to per-item
+    # comments + histories + observations + responder PII.
+    "inspection-items": normalize_inspection_item,
 }
 
 
@@ -769,11 +780,12 @@ def run_live_sync(
         live_enabled=True,
     )
 
-    # meeting-detail and activities are both list+N+1 flows: the operator-facing
-    # endpoint_id resolves to a per-item URL, but the orchestrator first fetches
-    # the parent list at parent_path_template to get the iteration ids.
+    # meeting-detail, activities, and inspection-items are list+N+1 flows:
+    # the operator-facing endpoint_id resolves to a per-item URL, but the
+    # orchestrator first fetches the parent list at parent_path_template to
+    # get the iteration ids.
     if (
-        adapter.endpoint_id in ("meeting-detail", "activities")
+        adapter.endpoint_id in ("meeting-detail", "activities", "inspection-items")
         and adapter.parent_path_template
     ):
         path = adapter.parent_path_template.replace(
@@ -974,6 +986,58 @@ def run_live_sync(
         items = activity_items[:max_items]
         retrieved_count = len(items)
 
+    # inspection-items per-list N+1 fetch (mirrors activities). The
+    # orchestrator already has the inspections list (`items`); for each
+    # inspection id, issue one items GET to
+    # /rest/v1.0/checklist/lists/{list_id}/items with project_id as a
+    # query parameter (the same query-param shape punch-items uses for
+    # project_id). Replace items with the flat list of all items across
+    # all inspections. Each item carries list_id at upsert time so
+    # parent_procore_id is derivable.
+    if adapter.endpoint_id == "inspection-items" and items:
+        item_items: List[Dict[str, Any]] = []
+        for inspection_summary in items:
+            if not isinstance(inspection_summary, dict):
+                continue
+            list_id = inspection_summary.get("id")
+            if list_id is None or list_id == "":
+                continue
+            items_path = (
+                f"/rest/v1.0/projects/{procore_project_id}/checklist/lists/{list_id}/items"
+            )
+            try:
+                item_iter = list(
+                    client.paginate(
+                        items_path,
+                        per_page=100,
+                        max_pages=3,
+                        max_items=200,
+                    )
+                )
+            except ProcoreAPIError as exc:
+                redacted_errors.append(
+                    {
+                        "detail_transport_error": exc.code,
+                        "status": exc.status,
+                        "list_id": list_id,
+                    }
+                )
+                continue
+            except Exception:  # noqa: BLE001
+                redacted_errors.append(
+                    {"detail_transport_error": "unexpected", "list_id": list_id}
+                )
+                continue
+            for item_raw in item_iter:
+                if isinstance(item_raw, dict):
+                    # Set list_id on the raw payload so parent_procore_id
+                    # can be derived at upsert time (mirrors activities'
+                    # schedule_id setdefault).
+                    item_raw.setdefault("list_id", list_id)
+                    item_items.append(item_raw)
+        items = item_items[:max_items]
+        retrieved_count = len(items)
+
     # meeting-detail per-meeting N+1 detail fetch. The orchestrator already
     # has the meetings list (`items`); now issue one detail GET per meeting
     # and REPLACE items with the rich detail payloads. Rate-limit / 5xx on
@@ -1074,12 +1138,18 @@ def run_live_sync(
             continue
         source_url = record["canonical_fields"].get("source_url") if isinstance(record.get("canonical_fields"), dict) else None
         # activities link back to their parent schedule_id via parent_procore_id.
-        # For all other top-level endpoints, parent_procore_id stays None.
+        # inspection-items link back to their parent list_id (set by the
+        # inspection-items dispatch block above). All other top-level endpoints
+        # leave parent_procore_id as None.
         parent_id_for_upsert: Optional[str] = None
         if adapter.endpoint_id == "activities":
             sched_id = raw.get("schedule_id") if isinstance(raw, dict) else None
             if sched_id is not None and sched_id != "":
                 parent_id_for_upsert = str(sched_id)
+        elif adapter.endpoint_id == "inspection-items":
+            list_id = raw.get("list_id") if isinstance(raw, dict) else None
+            if list_id is not None and list_id != "":
+                parent_id_for_upsert = str(list_id)
         try:
             upsert_procore_live_record(
                 project_key=project_key,

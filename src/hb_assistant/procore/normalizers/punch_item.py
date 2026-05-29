@@ -13,10 +13,9 @@ verbatim; string values are reduced to hash-only summaries.
 
 from __future__ import annotations
 
-import hashlib
 from typing import Any, Dict, List, Optional
 
-from .hashing import hash_summary
+from .hashing import hash_identifier, hash_summary, person_hash_summary
 from .rfi import NORMALIZATION_SCHEMA_VERSION
 
 # Top-level whitelist of always-preserved structured fields. Fields outside this
@@ -53,44 +52,16 @@ _PUNCH_ITEM_STRUCTURED_KEYS = (
 )
 
 
-def _hash_identifier(value: Any) -> Optional[str]:
-    """Return only the SHA-256 hash prefix for a PII string (email, name)."""
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        value = str(value)
-    return hashlib.sha256(value.encode("utf-8", errors="ignore")).hexdigest()[:12]
-
-
-def _person_hash_summary(person: Any) -> Optional[Dict[str, Any]]:
-    """Reduce a single person ref to a hash-only summary.
-
-    The person dict carries ``id`` (numeric, opaque Procore identifier — not PII
-    by itself), ``name`` (PII), and optionally ``login`` (email, PII) or
-    ``company_name`` (semi-PII). The summary keeps the numeric id and hashes
-    the name (preferring login when present so the same person hashes
-    consistently across endpoints that carry the email).
-    """
-    if not isinstance(person, dict):
-        return None
-    hash_input = person.get("login") if isinstance(person.get("login"), str) else person.get("name")
-    item: Dict[str, Any] = {"hash_prefix": _hash_identifier(hash_input)}
-    person_id = person.get("id")
-    if isinstance(person_id, int):
-        item["id"] = person_id
-    return item
-
-
 def _people_summary(values: Any) -> Dict[str, Any]:
     """Reduce a people-array or single person ref to a {count, hashed_identifiers} summary."""
     items: List[Dict[str, Any]] = []
     if isinstance(values, list):
         for entry in values:
-            summary = _person_hash_summary(entry)
+            summary = person_hash_summary(entry)
             if summary is not None:
                 items.append(summary)
     elif isinstance(values, dict):
-        summary = _person_hash_summary(values)
+        summary = person_hash_summary(values)
         if summary is not None:
             items.append(summary)
     return {"count": len(items), "hashed_identifiers": items}
@@ -114,10 +85,10 @@ def _assignment_summary(raw: Dict[str, Any]) -> Dict[str, Any]:
     # Hash the login_information ref + the legacy login_information_name field.
     login_info = raw.get("login_information") if isinstance(raw.get("login_information"), dict) else None
     if login_info is not None:
-        summary["hashed_login"] = _person_hash_summary(login_info)
+        summary["hashed_login"] = person_hash_summary(login_info)
     elif raw.get("login_information_name") or raw.get("login_information_id"):
         summary["hashed_login"] = {
-            "hash_prefix": _hash_identifier(raw.get("login_information_name")),
+            "hash_prefix": hash_identifier(raw.get("login_information_name")),
             "id": raw.get("login_information_id") if isinstance(raw.get("login_information_id"), int) else None,
         }
     # Comment is free-text -> hash-only.

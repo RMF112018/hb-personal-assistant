@@ -362,6 +362,46 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         live_verified=True,
         verification_reason="live_smoke_passed_2026-05-28:6956f007_list_plus_n_per_schedule_notes_hashed",
     ),
+    EndpointAdapter(
+        endpoint_id="inspections",
+        family="inspections",
+        legacy_endpoint_alias=None,
+        path_template="/rest/v1.0/projects/{project_id}/checklist/lists",
+        parent_path_template=None,
+        required_path_params=("project_id",),
+        pagination="page+per_page",
+        record_id_field="id",
+        parent_record_id_field=None,
+        review_required_default=False,
+        sensitivity="high",
+        sqlite_target="procore_live_records",
+        live_verified=True,
+        verification_reason="operator_supplied_schema_2026-05-29",
+    ),
+    EndpointAdapter(
+        endpoint_id="inspection-items",
+        family="inspections",
+        legacy_endpoint_alias=None,
+        path_template="/rest/v1.0/projects/{project_id}/checklist/lists/{list_id}/items",
+        parent_path_template="/rest/v1.0/projects/{project_id}/checklist/lists",
+        required_path_params=("project_id", "list_id"),
+        pagination="page+per_page",
+        record_id_field="id",
+        parent_record_id_field="list_id",
+        review_required_default=True,
+        sensitivity="high",
+        sqlite_target="procore_live_records",
+        live_verified=False,
+        verification_reason=(
+            "operator_path_unverified_2026-05-29:"
+            "both /rest/v1.0/checklist/lists/{list_id}/items and "
+            "/rest/v1.0/projects/{project_id}/checklist/lists/{list_id}/items "
+            "returned 404 against tropical (smoke 12298720, 0482d06c). "
+            "Operator detail URL requires section_id query param — implies a "
+            "list-by-section endpoint that is not yet identified. Flip to "
+            "True once the canonical list-items path is confirmed."
+        ),
+    ),
 )
 
 _BY_ID: Dict[str, EndpointAdapter] = {ep.endpoint_id: ep for ep in _ENDPOINTS}

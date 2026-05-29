@@ -14,6 +14,10 @@ from .daily_log import (
     normalize_daily_log_payload_block,
     normalize_daily_log_section_item,
 )
+from .inspection import (
+    normalize_inspection,
+    normalize_inspection_item,
+)
 from .meeting import (
     extract_topics_from_categories,
     normalize_meeting,
@@ -58,6 +62,8 @@ __all__ = [
     "normalize_meeting_topic",
     "normalize_meeting_topic_payload_block",
     "normalize_activity",
+    "normalize_inspection",
+    "normalize_inspection_item",
     "normalize_observation",
     "normalize_observation_comment",
     "normalize_observation_payload_block",

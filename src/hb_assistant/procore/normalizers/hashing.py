@@ -33,4 +33,44 @@ def hash_summary(text: Any) -> Optional[Dict[str, Any]]:
     }
 
 
-__all__ = ["hash_summary"]
+def hash_identifier(value: Any) -> Optional[str]:
+    """Return only the SHA-256 hash prefix (12 hex chars) for a PII string.
+
+    Used for email, name, and other short PII identifiers where the
+    structural shape is not interesting but the value itself must not
+    persist. ``meeting.py`` has a separate 64-char variant for a different
+    use case (operator audit / cross-row joins) — that one is intentionally
+    not consolidated here.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        value = str(value)
+    return hashlib.sha256(value.encode("utf-8", errors="ignore")).hexdigest()[:12]
+
+
+def person_hash_summary(person: Any) -> Optional[Dict[str, Any]]:
+    """Reduce a single person ref to ``{hash_prefix, id}``.
+
+    The Procore person dict carries ``id`` (numeric, opaque Procore id —
+    not PII by itself), ``name`` (PII), and optionally ``login`` (email,
+    PII) or ``company_name`` (semi-PII). The summary keeps the numeric
+    id and hashes the email/name (preferring login when present so the
+    same person hashes consistently across endpoints that carry the
+    email).
+    """
+    if not isinstance(person, dict):
+        return None
+    hash_input = (
+        person.get("login")
+        if isinstance(person.get("login"), str)
+        else person.get("name")
+    )
+    item: Dict[str, Any] = {"hash_prefix": hash_identifier(hash_input)}
+    person_id = person.get("id")
+    if isinstance(person_id, int):
+        item["id"] = person_id
+    return item
+
+
+__all__ = ["hash_summary", "hash_identifier", "person_hash_summary"]

@@ -25,6 +25,8 @@ _CANONICAL_IDS = {
     "punch-items",
     "schedules",
     "activities",
+    "inspections",
+    "inspection-items",
 }
 
 
@@ -58,32 +60,15 @@ def test_unknown_endpoint_resolves_to_none() -> None:
 
 def test_verified_endpoints_match_phase04a_matrix() -> None:
     verified = {ep.endpoint_id for ep in ep_registry.list_verified()}
-    # Post schedules + activities addition: 20/20 verified. Both are
-    # v2.0 company-scoped endpoints; activities iterates per-schedule N+1.
-    # The shared http_client.paginate now unwraps both `items` and `data`
-    # envelopes.
-    assert verified == {
-        "projects",
-        "rfis",
-        "rfi-responses",
-        "submittals",
-        "submittal-responses",
-        "submittal-packages",
-        "meetings",
-        "meeting-topics",
-        "meeting-detail",
-        "daily-log-weather",
-        "observations",
-        "daily-log-manpower",
-        "daily-log-notes",
-        "daily-log-deliveries",
-        "daily-log-delays-review-routed",
-        "daily-log-inspections",
-        "daily-log-dcrs",
-        "punch-items",
-        "schedules",
-        "activities",
-    }
+    # Post inspections + inspection-items addition (2026-05-29): 21/22
+    # verified. inspections (parent) is live-verified at
+    # /rest/v1.0/projects/{project_id}/checklist/lists. inspection-items
+    # (child) is registered but fail-closed pending operator confirmation
+    # of the canonical list-items path — both /checklist/lists/{id}/items
+    # variants returned 404 against tropical; the operator detail URL
+    # requires section_id, suggesting a list-by-section endpoint not yet
+    # identified.
+    assert verified == _CANONICAL_IDS - {"inspection-items"}
 
 
 def test_child_endpoints_carry_parent_path_template() -> None:

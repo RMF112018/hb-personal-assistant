@@ -312,6 +312,12 @@ def test_live_endpoints_list_emits_canonical_phase04a_rows() -> None:
     assert rfis["live_verified"] is True
     topics_row = next(r for r in rows if r["endpoint_id"] == "meeting-topics")
     assert topics_row["live_verified"] is True
-    # Phase 04A + meeting-detail + punch-items + schedules + activities: all 20 canonical endpoints are now verified.
-    assert all(r["live_verified"] for r in rows)
-    assert len(rows) == 20
+    # Phase 04A + meeting-detail + punch-items + schedules + activities +
+    # inspections + inspection-items: 22 canonical endpoints. inspection-items
+    # is registered but fail-closed pending operator path confirmation
+    # (Procore returned 404 for both unscoped and project-scoped list-items
+    # URLs; the operator detail URL requires section_id, implying a
+    # list-by-section endpoint not yet identified). All others verified.
+    assert len(rows) == 22
+    not_verified = [r for r in rows if not r["live_verified"]]
+    assert {r["endpoint_id"] for r in not_verified} == {"inspection-items"}

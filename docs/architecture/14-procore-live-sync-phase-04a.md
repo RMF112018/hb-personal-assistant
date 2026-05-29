@@ -524,6 +524,61 @@ Net effects:
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/19-mapping-consistent-resolution.md`.
 
+## Inspections + Inspection Items (2026-05-29)
+
+Two new endpoint adapters bring the canonical registry to 22 rows:
+
+- **`inspections`** — `GET /rest/v1.0/projects/{project_id}/checklist/lists`,
+  paginated list of checklist instances. `live_verified=True`; smoke
+  receipt `d90b1851` retrieved 10, apply receipts `c426e87f` / `5477dc21`
+  upserted 5 then 74; idempotent rerun `0e7153f4` upserted 74 (zero new
+  inserts).
+- **`inspection-items`** — child fetch from each inspection's id. The
+  normalizer + orchestrator dispatch (mirrors the activities list+N+1
+  pattern) are wired and tested via fake transport. The adapter ships
+  with **`live_verified=False`** pending operator confirmation of the
+  canonical list-items path — Procore returned 404 against both
+  `/rest/v1.0/checklist/lists/{list_id}/items` and
+  `/rest/v1.0/projects/{project_id}/checklist/lists/{list_id}/items`
+  (smokes `12298720`, `0482d06c`). The operator detail URL the registry
+  inherits its schema from carries `section_id` as a required query
+  parameter, implying a list-by-section endpoint that has not yet been
+  identified. Flipping `live_verified` to `True` requires only the path
+  correction in `src/hb_assistant/procore/endpoints.py`; the dispatch,
+  normalizer, and tests are already in place.
+
+Redaction posture for both endpoints:
+
+- Inspections — `review_required` heuristic mirrors
+  `observation._safety_route_decision`: True when status is non-Closed
+  OR `overdue` OR `inspection_type.name` matches the safety fragment
+  list (`safety`, `incident`, `injury`, `near miss`, `osha`, `ppe`,
+  `fall`). `safety_route=True` only on the inspection_type-safety
+  trigger. PII person refs (created_by, closed_by, point_of_contact,
+  responsible_contractor, inspectors, distribution_members) reduce via
+  the new shared `person_hash_summary` helper in
+  `src/hb_assistant/procore/normalizers/hashing.py`. Signature requests
+  reduce to per-signatory hashed identifiers plus path-only attachment
+  URLs + hashed filenames. Custom fields preserve numeric / boolean /
+  lov_entry values verbatim; string values hash via `hash_summary`.
+  `description` is the only top-level free-text field and is hashed.
+- Inspection-items — default `review_required=True`,
+  `routing_reason="inspection_item_default_review_required"`. Every
+  per-item array (observations, comments, histories,
+  attachment_histories, attachments) reduces to a `*_summary` count +
+  per-entry hashed bodies + hashed identifiers. `item_response.payload.
+  text_value` hashes; structured payload fields (number_value,
+  date_value, response_option) preserve verbatim.
+
+A small secondary consolidation lands with this slice: `hash_identifier`
+and `person_hash_summary` graduated from `punch_item.py`'s private
+surface into the shared `normalizers/hashing.py` module so the new
+inspection normalizer doesn't reintroduce the duplication the prior
+slice removed. The 64-char `_hash_identifier` variant in `meeting.py`
+stays separate per the prior session handoff.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/20-inspections-and-inspection-items.md`.
+
 ## Verified vs unverified endpoints
 
 Post schedules + activities addition, **all 20 of 20 canonical
