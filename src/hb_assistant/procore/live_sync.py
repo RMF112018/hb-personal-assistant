@@ -1024,10 +1024,19 @@ def run_live_sync(
             if parent_id is None or parent_id == "":
                 continue
             child_path = _resolve_child_path(adapter, str(procore_project_id), str(parent_id))
+            # v1.0 child endpoints (e.g. /rest/v1.0/requisitions/{id}/contract_items) carry
+            # no {project_id} path segment and require it as a query param; v2.0 children
+            # already embed /projects/{project_id}/ in the path.
+            child_params = (
+                {"project_id": str(procore_project_id)}
+                if "{project_id}" not in adapter.path_template
+                else None
+            )
             try:
                 child_iter = list(
                     client.paginate(
                         child_path,
+                        params=child_params,
                         per_page=min(max_items, 100),
                         max_pages=max_pages,
                         max_items=max_items,

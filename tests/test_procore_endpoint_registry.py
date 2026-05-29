@@ -261,6 +261,13 @@ _PHASE05_PROMOTED = frozenset(
         "change-event-comments",
         # commitment-compliance: id-less compliance blob -> synthetic id from parent.
         "commitment-compliance",
+        # v1.0 children unblocked by the N+1 project_id query param (see evidence 15):
+        "subcontractor-invoice-contract-items",
+        "subcontractor-invoice-contract-detail-items",
+        "subcontractor-invoice-change-order-items",
+        "purchase-order-line-items",
+        "budget-detail-columns",
+        "budget-detail-rows",
     }
 )
 

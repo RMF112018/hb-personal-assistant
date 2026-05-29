@@ -81,6 +81,38 @@ class _PathAwareTransport:
         return _FakeResponse({"data": []})
 
 
+class _ReqItemsTransport:
+    """v1.0 requisition contract-items: parent list on `/requisitions`, items on
+    `/requisitions/{id}/contract_items` — the child GET MUST carry ?project_id."""
+
+    def __init__(self) -> None:
+        self.child_params: List[Dict[str, Any]] = []
+
+    def __call__(
+        self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]
+    ) -> _FakeResponse:
+        page = int((params or {}).get("page", 1))
+        if "/contract_items" in url:
+            self.child_params.append(dict(params or {}))
+            pid = url.split("/requisitions/")[1].split("/")[0]
+            if page != 1:
+                return _FakeResponse([])
+            return _FakeResponse([
+                {"id": int(pid) * 10 + 1, "item_type": "contract_detail_item",
+                 "cost_code_id": 21585118, "line_item_id": 3129856,
+                 "description_of_work": "Install windows", "scheduled_value": "1.00",
+                 "work_completed_this_period": "0.00", "materials_presently_stored": "2691.36",
+                 "subcontractor_claimed_amount": "0.0",
+                 "work_completed_retainage_retained_this_period": "12.50",
+                 "wbs_code": {"id": 999, "flat_code": "01-011.CT1", "description": "Eng.CT1"},
+                 "currency_configuration": {"currency_iso_code": "USD"},
+                 "comment": "Installation charges", "status": "no_action", "position": 1},
+            ])
+        if url.rstrip("/").endswith("/requisitions"):  # parent list (v1.1, array)
+            return _FakeResponse([{"id": 58820}, {"id": 58821}] if page == 1 else [])
+        return _FakeResponse([])
+
+
 def _promote(monkeypatch: pytest.MonkeyPatch, endpoint_id: str) -> None:
     base = ep_registry.get(endpoint_id)
     assert base is not None
@@ -126,3 +158,38 @@ def test_commitment_line_items_n1_fetch_projects_with_parent_id(
     # per-parent child transport error captured, run not aborted
     assert receipt["projection_error_count"] == 0
     assert any("detail_transport_error" in e for e in receipt["redacted_errors"])
+
+
+def test_v1_child_get_carries_project_id_query_param(monkeypatch: pytest.MonkeyPatch) -> None:
+    # v1.0 requisition children carry no {project_id} path segment -> the N+1 child GET must
+    # send project_id as a query param (else Procore 404s, as observed live).
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-bearer-token")
+    _promote(monkeypatch, "subcontractor-invoice-contract-items")
+    db = _db()
+    transport = _ReqItemsTransport()
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="subcontractor-invoice-contract-items",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=50,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] in ("success", "partial_success")
+    # every child GET carried project_id
+    assert transport.child_params and all("project_id" in p for p in transport.child_params)
+    # children upserted with the requisition id as parent + projected into invoice items
+    live = [r for r in _rows(db, "procore_live_records")
+            if r["endpoint_id"] == "subcontractor-invoice-contract-items"]
+    assert len(live) == 2 and {r["parent_procore_id"] for r in live} == {"58820", "58821"}
+    items = _rows(db, "procore_financial_invoice_items")
+    assert len(items) == 2
+    assert all(r["item_type"] == "contract_detail_item" for r in items)
+    assert any(r["retainage_held"] == "12.50" for r in items)  # work_completed_retainage_*
+    assert all(r["raw_body_persisted"] == 0 for r in items)

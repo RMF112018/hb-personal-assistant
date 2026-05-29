@@ -378,9 +378,13 @@ def test_live_endpoints_list_emits_canonical_phase04a_rows() -> None:
     # live_verified=False (fail-closed): child paths that 404 against the live API
     # (PO/requisition/rfq/budget-view children), payment-applications (404, nested path),
     # budget-change-line-items (403 forbidden), and the budget-details sentinel. So the
-    # list is now 47 verified + 12 unverified = 59 rows.
+    # list is now 53 verified + 6 unverified = 59 rows (the N+1 project_id fix unblocked the
+    # v1.0 requisition/PO-line/budget-view children). The 6 still fail-closed:
+    # purchase-order-detail-line-items + rfq-responses/quotes (child paths 404 vs live API),
+    # payment-applications (404 nested path), budget-change-line-items (403 forbidden),
+    # budget-details (sentinel).
     verified_rows = [r for r in rows if r["live_verified"]]
     unverified_rows = [r for r in rows if not r["live_verified"]]
-    assert len(verified_rows) == 47
-    assert len(unverified_rows) == 12
+    assert len(verified_rows) == 53
+    assert len(unverified_rows) == 6
     assert len(rows) == 59
