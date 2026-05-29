@@ -52,6 +52,7 @@ from hb_assistant.procore.normalizers import (
 )
 from hb_assistant.procore.redaction import redact_source_url
 from hb_assistant.procore.token_provider import default_procore_token_provider
+from hb_assistant.store.procore_history import record_procore_history_for_record
 from hb_assistant.store.procore_repositories import (
     count_procore_live_records,
     record_sync_run_complete,
@@ -912,6 +913,27 @@ def run_live_sync(
         except Exception:  # noqa: BLE001
             redacted_errors.append({"upsert_error": "sqlite_upsert_failed"})
             continue
+
+        # Phase 04B historical memory: snapshot + field-level change events +
+        # timeline events alongside the latest-state row above. Guarded so a
+        # history failure never breaks the latest-state upsert.
+        try:
+            record_procore_history_for_record(
+                project_key=project_key,
+                endpoint_id=adapter.endpoint_id,
+                parent_procore_id=parent_id_for_upsert,
+                procore_record_id=record_id,
+                normalized_fields=record["canonical_fields"],
+                sync_run_id=sync_run_id,
+                now_utc=fetched_at,
+                source_updated_at=record["canonical_fields"].get("updated_at")
+                if isinstance(record.get("canonical_fields"), dict)
+                else None,
+                normalizer_version=record.get("normalization_schema_version"),
+                db_path=db_path,
+            )
+        except Exception:  # noqa: BLE001
+            redacted_errors.append({"history_error": "history_record_failed"})
 
         if child_adapter is None or child_normalizer is None:
             continue
