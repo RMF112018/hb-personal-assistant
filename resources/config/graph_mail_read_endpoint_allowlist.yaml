@@ -1,0 +1,80 @@
+# Phase 06 — Read-only Microsoft Graph mail endpoint allowlist (GET-only).
+#
+# This is a static contract resource (no runtime loader yet; the Pydantic loader
+# + HTTP-guard wiring land in Phase 06 Prompt 04). It records exactly which Graph
+# mail read patterns Phase 06 may use, the metadata-first $select sets, and the
+# paging discipline. Grounded in official Microsoft Graph docs (fetched 2026-05);
+# see docs/evidence/construction-intelligence-phase-06-email/01-official-graph-mail-research.md.
+#
+# Hard boundary: GET only. Full message body and attachment content are NOT
+# requested by default. A path here may also appear in the mutation blocklist
+# (e.g. /me/messages/{id}); the HTTP *verb* decides — GET allowed, mutating verbs
+# forbidden.
+version: 1
+
+allowed_methods:
+  - GET
+
+# Read patterns Phase 06 may issue. Folder-scoped listing is the preferred entry.
+allowed_paths:
+  - /me                                          # identity / mailbox owner probe
+  - /me/mailFolders                              # folder discovery
+  - /me/mailFolders/{id}                         # single folder metadata
+  - /me/mailFolders/{id}/messages                # preferred: folder-scoped listing
+  - /me/messages                                 # mailbox-wide listing (bounded)
+  - /me/messages/{id}                            # single message metadata
+  - /me/messages/{id}/attachments                # attachment METADATA only (see attachment_metadata_select)
+  - /me/mailFolders/{id}/messages/delta          # future incremental sync; not used by default lookback workflow
+
+# Per-request header to stabilize IDs across folder moves.
+prefer_headers:
+  - 'IdType="ImmutableId"'
+
+# Message metadata $select — minimal, body-free. Requesting only these fields
+# keeps payloads small and avoids the HTTP 504 gateway-timeout risk on large pages.
+# Note: `body` is intentionally absent (never requested by default).
+message_metadata_select:
+  - id
+  - internetMessageId
+  - conversationId
+  - parentFolderId
+  - subject
+  - from
+  - sender
+  - toRecipients
+  - ccRecipients
+  - bccRecipients
+  - replyTo
+  - receivedDateTime
+  - sentDateTime
+  - hasAttachments
+  - importance
+  - categories
+  - sensitivity
+  - webLink
+  - bodyPreview
+  - lastModifiedDateTime
+
+# Attachment metadata $select — MUST exclude `contentBytes`.
+# Microsoft Graph returns `contentBytes` (the full file content) by default when
+# listing attachments; selecting only these fields keeps access metadata-only and
+# honors the "no attachment content download by default" boundary.
+attachment_metadata_select:
+  - id
+  - name
+  - contentType
+  - size
+  - isInline
+  - lastModifiedDateTime
+
+paging:
+  follow: "@odata.nextLink"        # apply the whole nextLink URL verbatim
+  do_not_parse_skip_token: true    # never extract/manipulate $skip from nextLink
+  default_page_size: 10            # Graph default when $top omitted
+  max_top: 1000                    # $top valid range is 1..1000
+
+notes:
+  - "Runtime mail scope is Mail.Read. Mail.ReadBasic is least-privileged but omits body/bodyPreview, which the metadata-first workflow needs."
+  - "Full body ($select=body / Prefer: outlook.body-content-type) is NOT requested by default; bounded body inspection is in-memory only."
+  - "Attachment content ($value path / contentBytes property) is NOT downloaded by default."
+  - "Bounded lookback ($filter on receivedDateTime/sentDateTime) is used instead of full-mailbox backfill."

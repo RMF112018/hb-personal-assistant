@@ -1,0 +1,55 @@
+# Phase 06 — Microsoft Graph mailbox mutation blocklist.
+#
+# Static contract resource (no runtime loader yet; enforcement wiring lands in
+# Phase 06 Prompt 04). Records the mailbox-mutating verbs, endpoint paths, and
+# operation keywords that Phase 06 must reject *before* any HTTP request. Even
+# when the tenant has consented Mail.ReadWrite.All, Phase 06 runtime is strictly
+# read-only.
+#
+# Method/path interaction: some paths (e.g. /me/messages, /me/messages/{id})
+# also appear in graph_mail_read_endpoint_allowlist.yaml. The HTTP *verb* decides
+# — GET is allowed for reading metadata; the verbs below are forbidden on the same
+# path. The Prompt 04 enforcement keys on (method, path) together.
+version: 1
+
+forbidden_methods:
+  - POST
+  - PATCH
+  - DELETE
+  - PUT
+
+forbidden_paths:
+  - /me/sendMail                                          # POST send
+  - /me/messages                                          # POST create message / draft
+  - /me/messages/{id}                                     # PATCH update / DELETE message
+  - /me/messages/{id}/move                                # POST move folder
+  - /me/messages/{id}/copy                                # POST copy
+  - /me/messages/{id}/forward                             # POST forward
+  - /me/messages/{id}/reply                               # POST reply
+  - /me/messages/{id}/replyAll                            # POST reply-all
+  - /me/messages/{id}/createForward                       # POST draft forward
+  - /me/messages/{id}/createReply                         # POST draft reply
+  - /me/messages/{id}/createReplyAll                      # POST draft reply-all
+  - /me/messages/{id}/send                                # POST send draft
+  - /me/messages/{id}/attachments                         # POST add attachment
+  - /me/messages/{id}/attachments/{attachment_id}/$value  # raw attachment content download
+
+# Substring/verb keywords that must never appear in a constructed mail operation,
+# covering the forbidden behaviors enumerated in the Phase 06 package boundaries.
+forbidden_operation_keywords:
+  - send
+  - draft
+  - forward
+  - reply
+  - replyAll
+  - delete
+  - move
+  - copy
+  - markRead
+  - markUnread
+  - categorize
+  - flag
+  - update
+  - create
+
+on_match: "raise MailboxMutationBlockedError before HTTP request; write blocked processing receipt; stop workflow"
