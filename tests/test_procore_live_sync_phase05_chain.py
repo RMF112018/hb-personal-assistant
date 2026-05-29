@@ -108,6 +108,23 @@ def _sync(db: Path, transport: _FakeTransport) -> Dict[str, Any]:
     )
 
 
+def test_budget_change_history_synthetic_record_id() -> None:
+    # budget-change-history records carry no `id`; the orchestrator must derive a
+    # deterministic synthetic id (else every record is skipped with missing_record_id).
+    from hb_assistant.procore.live_sync import _record_id_of
+
+    adapter = ep_registry.get("budget-change-history")
+    rec = {"budget_code": "01-100", "column": "Revised", "created_at": "2026-05-20",
+           "old_value": "100.00", "new_value": "150.00"}
+    rid1 = _record_id_of(adapter, rec)
+    rid2 = _record_id_of(adapter, dict(rec))
+    assert rid1 and rid1.startswith("h:") and rid1 == rid2  # deterministic
+    # a different change yields a different id
+    assert _record_id_of(adapter, {**rec, "new_value": "200.00"}) != rid1
+    # a record that DOES carry an id uses it verbatim
+    assert _record_id_of(adapter, {**rec, "id": 77}) == "77"
+
+
 def test_prime_contract_full_dispatch_chain(monkeypatch: pytest.MonkeyPatch) -> None:
     _setup_env(monkeypatch)
     _promote(monkeypatch, "prime-contracts")

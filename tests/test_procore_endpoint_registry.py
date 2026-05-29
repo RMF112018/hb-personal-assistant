@@ -243,6 +243,11 @@ _PHASE05_PROMOTED = frozenset(
         "rfqs",
         "budget-views",
         "budget-modifications",
+        # Reconciled against their live shapes + promoted (see evidence 13):
+        # change-events (status was a nested {id,name} object) and
+        # budget-change-history (id-less change log -> synthetic record id).
+        "change-events",
+        "budget-change-history",
     }
 )
 

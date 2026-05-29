@@ -369,14 +369,15 @@ def test_live_endpoints_list_emits_canonical_phase04a_rows() -> None:
     # by the operator on 2026-05-29 (/checklist/list_sections v1.0 and
     # /checklist/list_items v1.1).
     #
-    # Phase 05 appended 32 financial / contract-control shells. 7 parentless ones
-    # (prime-contracts, commitment-contracts, billing-periods, subcontractor-invoices,
-    # rfqs, budget-views, budget-modifications) were live-promoted on 2026-05-29 after a
-    # bounded smoke whose payload matched the normalizer; the remaining 25 stay
-    # live_verified=False (fail-closed). So the list is now 34 verified + 25
+    # Phase 05 appended 32 financial / contract-control shells. 9 parentless ones were
+    # live-promoted on 2026-05-29 after a bounded smoke whose payload matched the
+    # normalizer + projection: prime-contracts, commitment-contracts, billing-periods,
+    # subcontractor-invoices, rfqs, budget-views, budget-modifications, plus change-events
+    # and budget-change-history (reconciled against their live shapes). The remaining 23
+    # stay live_verified=False (fail-closed). So the list is now 36 verified + 23
     # unverified = 59 rows.
     verified_rows = [r for r in rows if r["live_verified"]]
     unverified_rows = [r for r in rows if not r["live_verified"]]
-    assert len(verified_rows) == 34
-    assert len(unverified_rows) == 25
+    assert len(verified_rows) == 36
+    assert len(unverified_rows) == 23
     assert len(rows) == 59

@@ -66,6 +66,19 @@ def _cost_code_id(raw: Mapping[str, Any]) -> Optional[str]:
     return None
 
 
+def _scalar_name(value: Any) -> Optional[str]:
+    """Reduce an enum-like field to a scalar for a TEXT column. Live v1.1 change
+    events return ``status`` as a ``{id, name, mapped_to_status}`` object; older
+    shapes return a bare string. Keep the ``name`` (else the id) so the value never
+    reaches a TEXT column as a dict."""
+    if isinstance(value, dict):
+        name = value.get("name")
+        if name is not None:
+            return str(name)
+        return str(value["id"]) if value.get("id") is not None else None
+    return value
+
+
 def _emit_facts(
     *,
     project_key: str,
@@ -220,12 +233,13 @@ def _project_change_event(
     ceid = str(raw["id"])
     ce_rk = record_key(project_key, "change-events", None, ceid)
     cost_code_id = _cost_code_id(raw)
+    status_name = _scalar_name(raw.get("status"))
     fields = _drop_none(
         {
             "number": raw.get("number"),
             "title_redacted": raw.get("title"),
-            "status": raw.get("status"),
-            "scope": raw.get("scope"),
+            "status": status_name,
+            "scope": _scalar_name(raw.get("scope")),
             "estimated_cost": coerce_amount(raw.get("estimated_cost")),
             "estimated_revenue": coerce_amount(raw.get("estimated_revenue")),
             "schedule_impact_amount": coerce_amount(raw.get("schedule_impact_amount")),
@@ -256,7 +270,7 @@ def _project_change_event(
                            signal_type=signal_type, importance=importance, now_utc=now_utc, db_path=db_path)
         signals.append(signal_type)
 
-    status = str(raw.get("status") or "").strip().lower()
+    status = str(status_name or "").strip().lower()
     if status and status not in _CHANGE_EVENT_TERMINAL:
         _sig("change_event_pending", "medium")
     if is_positive_amount(raw.get("estimated_cost")):

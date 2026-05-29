@@ -902,8 +902,8 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         review_required_default=True,
         sensitivity="high",
         sqlite_target="procore_live_records",
-        live_verified=False,
-        verification_reason="phase05_shell_pending_live_smoke",
+        live_verified=True,
+        verification_reason="phase05_live_smoke_verified_2026-05-29",
         response_envelope="object",
     ),
     EndpointAdapter(
@@ -1010,8 +1010,8 @@ _ENDPOINTS: Tuple[EndpointAdapter, ...] = (
         review_required_default=True,
         sensitivity="high",
         sqlite_target="procore_live_records",
-        live_verified=False,
-        verification_reason="phase05_shell_pending_live_smoke",
+        live_verified=True,
+        verification_reason="phase05_live_smoke_verified_2026-05-29",
         response_envelope="object",
     ),
     EndpointAdapter(

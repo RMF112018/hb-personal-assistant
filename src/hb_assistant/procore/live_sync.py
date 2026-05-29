@@ -342,9 +342,25 @@ def resolve_normalizer(endpoint_id: str) -> Optional[Callable[..., Dict[str, Any
     return _NORMALIZER_BY_ID.get(endpoint_id) or _CHILD_NORMALIZER_BY_ID.get(endpoint_id)
 
 
+# Endpoints whose records carry no natural id field. budget-change-history is an
+# append-only change log keyed by (budget_code, column, when, before/after) rather than
+# an id; derive a deterministic synthetic id so latest-state upsert + history stay
+# idempotent (same change -> same id).
+_SYNTHETIC_RECORD_ID_FIELDS: Dict[str, tuple[str, ...]] = {
+    "budget-change-history": ("budget_code", "column", "created_at", "old_value", "new_value"),
+}
+
+
 def _record_id_of(adapter: EndpointAdapter, raw: Dict[str, Any]) -> Optional[str]:
     value = raw.get(adapter.record_id_field)
     if value is None or value == "":
+        fields = _SYNTHETIC_RECORD_ID_FIELDS.get(adapter.endpoint_id)
+        if fields and isinstance(raw, dict):
+            import hashlib
+
+            key = "|".join("" if raw.get(f) is None else str(raw.get(f)) for f in fields)
+            if key.strip("|"):
+                return "h:" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
         return None
     return str(value)
 

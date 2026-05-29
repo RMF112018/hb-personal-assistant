@@ -32,10 +32,12 @@ code.
 | **budget-change-history** | partial_success | 5 | 5 | n/a | **0** | 🔒 **HELD** — normalizer rejected every live record (`normalize_error`) |
 
 **Held endpoints (do not guess):** the live contract for `change-events` and
-`budget-change-history` diverges from the package sample — the projection / normalizer
-raised on the real payloads. They remain `live_verified=False` (fail-closed) pending a
-normalizer/projection reconciliation against the observed live shape (separate
-remediation). No flag was flipped for them.
+`budget-change-history` diverged from the package sample — the projection / normalizer
+raised on the real payloads. They were held `live_verified=False` here pending
+reconciliation. **UPDATE:** both were subsequently reconciled against their observed live
+shapes and promoted — see `13-reconcile-change-events-and-budget-change-history.md`
+(change-events: `status` was a nested `{id,name}` object; budget-change-history: id-less
+change log → deterministic synthetic record id). Final posture: **36 verified / 23 fail-closed**.
 
 ## Promotion (committed)
 

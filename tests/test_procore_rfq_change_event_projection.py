@@ -133,6 +133,29 @@ def test_change_event_rows_facts_signals_and_query() -> None:
     )} == {"77"}
 
 
+def test_change_event_object_status_projects_name() -> None:
+    # Live v1.1 change_events returns status as a nested {id, name, ...} object (not a
+    # string); the projection must store the scalar name, never a dict (TEXT-column bind).
+    db = _db()
+    project_rfq_change_event_family(
+        "change-events",
+        {
+            "id": 90,
+            "number": "CE-90",
+            "status": {"id": 3, "name": "Open", "mapped_to_status": "open"},
+            "scope": {"id": 1, "name": "tbd"},
+            "title": "live-shaped change event",
+            "created_by": {"id": 5, "login": "pat@example.test", "name": "Pat"},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
+    )
+    row = _rows(db, "procore_financial_change_events")[0]
+    assert row["status"] == "Open" and row["scope"] == "tbd"  # scalar, not a dict
+    assert "change_event_pending" in _signals(db)
+
+
 def test_change_event_terminal_status_no_pending_signal() -> None:
     db = _db()
     project_rfq_change_event_family(
