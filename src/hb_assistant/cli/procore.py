@@ -16,8 +16,12 @@ Commands:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
+from contextlib import suppress
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 import typer
@@ -34,7 +38,7 @@ from hb_assistant.procore import (
     load_procore_projects,
     require_live_env,
 )
-from hb_assistant.procore.errors import ProcoreAPIError
+from hb_assistant.procore.errors import ProcoreAPIError, ProcoreRateLimitError
 from hb_assistant.procore.models import EndpointAuditRunReceipt
 
 app = typer.Typer(help="Procore foundation: read-only endpoint audit (dry-run only).")
@@ -755,6 +759,80 @@ def _phase04a_endpoint_rows() -> list[dict[str, Any]]:
     return rows
 
 
+def _resolve_project_mapping(project_key: str) -> tuple[Optional[str], list[str]]:
+    errors: list[str] = []
+    procore_project_id: Optional[str] = None
+    try:
+        registry = load_procore_projects()
+        assert_live_mapping_strict(registry, [project_key])
+        for row in registry.projects:
+            if row.hb_project_key == project_key:
+                value = (row.procore_project_id or "").strip()
+                procore_project_id = value or None
+                break
+        if not procore_project_id:
+            errors.append("procore_project_id_unresolved")
+    except ProcoreAPIError:
+        errors.append("mapping_not_live_eligible")
+    except Exception:  # noqa: BLE001
+        errors.append("mapping_registry_unavailable")
+    return procore_project_id, errors
+
+
+def _validate_non_repo_output_dir(output_dir: Path) -> tuple[bool, str]:
+    from hb_assistant.config.path_policy import PathPolicy
+
+    if not output_dir.is_absolute():
+        return False, "output_dir_not_absolute"
+    repo_root = PathPolicy().resolve_repo_root().resolve()
+    candidate = output_dir.resolve()
+    if candidate == repo_root or repo_root in candidate.parents:
+        return False, "output_dir_inside_repo"
+    return True, ""
+
+
+def _top_level_shape_summary(payload: Any) -> dict[str, Any]:
+    if isinstance(payload, list):
+        first = payload[0] if payload else None
+        return {
+            "top_level_type": "list",
+            "record_count": len(payload),
+            "first_item_type": type(first).__name__ if first is not None else None,
+            "first_item_keys": sorted(first.keys())[:20] if isinstance(first, dict) else None,
+        }
+    if isinstance(payload, dict):
+        keys = sorted(payload.keys())
+        return {
+            "top_level_type": "dict",
+            "key_count": len(keys),
+            "keys": keys[:50],
+        }
+    return {"top_level_type": type(payload).__name__}
+
+
+def _redact_known_sensitive_fields(payload: Any) -> Any:
+    sensitive_keys = {
+        "authorization",
+        "access_token",
+        "refresh_token",
+        "client_secret",
+        "password",
+        "token",
+        "bearer",
+    }
+    if isinstance(payload, list):
+        return [_redact_known_sensitive_fields(item) for item in payload]
+    if isinstance(payload, dict):
+        out: dict[str, Any] = {}
+        for key, value in payload.items():
+            if key.lower() in sensitive_keys:
+                out[key] = "[REDACTED]"
+            else:
+                out[key] = _redact_known_sensitive_fields(value)
+        return out
+    return payload
+
+
 def _state_for_endpoint(ep: Any) -> tuple[str, list[str]]:
     reasons: list[str] = []
     if ep.verification_status == "excluded_by_guardrail":
@@ -837,6 +915,215 @@ def live_sync(
     else:
         exit_code = 3
     _emit(payload, json_out=json_out, exit_code=exit_code)
+
+
+@live_app.command("inspect")
+def live_inspect(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id."),
+    max_pages: int = typer.Option(1, "--max-pages", min=1),
+    max_items: int = typer.Option(5, "--max-items", min=1),
+    confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
+    confirm_raw_payload_dump: bool = typer.Option(False, "--confirm-raw-payload-dump"),
+    output_dir: Path = typer.Option(..., "--output-dir", help="Explicit absolute non-repo directory for raw payload dumps."),  # noqa: B008
+    redact_known_sensitive_fields: bool = typer.Option(False, "--redact-known-sensitive-fields"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Operator-only payload inspection.
+
+    Raw payload is written only to the explicit non-repo output dir.
+    No raw payload is persisted to SQLite, evidence, Obsidian, logs, or repo files.
+    """
+    from hb_assistant.procore import endpoints as ep_registry
+    from hb_assistant.procore.http_client import ProcoreHTTPClient
+    from hb_assistant.procore.token_provider import default_procore_token_provider
+
+    reason_codes: list[str] = []
+    adapter = ep_registry.get(endpoint)
+    endpoint_id = adapter.endpoint_id if adapter is not None else None
+    if adapter is None:
+        reason_codes.append("endpoint_alias_unknown")
+
+    if not confirm_live_get:
+        reason_codes.append("confirm_live_get_required")
+    if not confirm_raw_payload_dump:
+        reason_codes.append("confirm_raw_payload_dump_required")
+    try:
+        require_live_env(command="procore live inspect")
+    except LiveEnvNotSet:
+        reason_codes.append("live_env_not_set")
+
+    ok_dir, dir_reason = _validate_non_repo_output_dir(output_dir)
+    if not ok_dir:
+        reason_codes.append(dir_reason)
+
+    project_id, mapping_errors = _resolve_project_mapping(project)
+    reason_codes.extend(mapping_errors)
+
+    if adapter is not None and not adapter.live_verified:
+        reason_codes.append("endpoint_not_live_verified")
+
+    if adapter is not None and adapter.required_path_params not in ((), ("project_id",)):
+        reason_codes.append("endpoint_requires_parent_context")
+
+    auth_report = check_auth_status()
+    token_ready = bool(auth_report.ready_for_live_calls)
+    if not token_ready:
+        reason_codes.append("token_provider_unavailable")
+
+    if reason_codes:
+        payload = {
+            "command": "hb-assistant procore live inspect",
+            "ok": False,
+            "phase": "Phase 04A Prompt 03B",
+            "status": "fail_closed",
+            "state": "fail_closed_unsupported",
+            "reason_codes": sorted(set(reason_codes)),
+            "command_endpoint": endpoint,
+            "endpoint_id": endpoint_id,
+            "project_key": project,
+            "oauth_status": auth_report.status,
+            "request_count": 0,
+            "attempt_count": 0,
+            "retry_count": 0,
+            "last_retry_after": None,
+            "retrieved_count": 0,
+            "normalized_count": 0,
+            "sqlite_upsert_count": 0,
+            "sqlite_total_count": 0,
+            "record_count": 0,
+            "output_file_path": None,
+            "output_file_sha256": None,
+            "top_level_shape_summary": None,
+            "no_sqlite_write": True,
+            "no_evidence_write": True,
+            "no_obsidian_write": True,
+            "no_live_call_performed": True,
+            "guardrails": _GUARDRAILS,
+        }
+        _emit(payload, json_out=json_out, exit_code=3)
+        return
+
+    assert adapter is not None
+    assert project_id is not None
+    path = adapter.path_template.replace("{project_id}", project_id)
+
+    transport_calls = {"count": 0}
+    real_client = ProcoreHTTPClient(
+        environment="production",
+        transport=None,
+        access_token_provider=default_procore_token_provider(),
+        live_enabled=True,
+    )
+
+    def _recording_transport(method: str, url: str, headers: dict[str, str], params: Optional[dict[str, Any]] = None) -> Any:
+        transport_calls["count"] += 1
+        return real_client._default_live_transport(method, url, headers, params)  # type: ignore[attr-defined]
+
+    client = ProcoreHTTPClient(
+        environment="production",
+        transport=_recording_transport,
+        access_token_provider=default_procore_token_provider(),
+        live_enabled=True,
+    )
+
+    try:
+        rows = list(client.paginate(path, params=None, max_pages=max_pages, max_items=max_items))
+    except ProcoreAPIError as exc:
+        attempt_count = transport_calls["count"]
+        retry_count = max(0, attempt_count - 1)
+        last_retry_after = exc.retry_after if isinstance(exc, ProcoreRateLimitError) else None
+        reason = "transport_error:429_rate_limited" if exc.status == 429 else f"transport_error:{exc.status or exc.code or 'unknown'}"
+        payload = {
+            "command": "hb-assistant procore live inspect",
+            "ok": False,
+            "phase": "Phase 04A Prompt 03B",
+            "status": "fail_closed",
+            "state": "transport_error",
+            "reason_codes": [reason],
+            "command_endpoint": endpoint,
+            "endpoint_id": adapter.endpoint_id,
+            "project_key": project,
+            "oauth_status": auth_report.status,
+            "request_count": attempt_count,
+            "attempt_count": attempt_count,
+            "retry_count": retry_count,
+            "last_retry_after": last_retry_after,
+            "retrieved_count": 0,
+            "normalized_count": 0,
+            "sqlite_upsert_count": 0,
+            "sqlite_total_count": 0,
+            "record_count": 0,
+            "output_file_path": None,
+            "output_file_sha256": None,
+            "top_level_shape_summary": None,
+            "no_sqlite_write": True,
+            "no_evidence_write": True,
+            "no_obsidian_write": True,
+            "no_live_call_performed": False,
+            "guardrails": _GUARDRAILS,
+        }
+        _emit(payload, json_out=json_out, exit_code=3)
+        return
+    raw_payload = rows
+    serialized = json.dumps(raw_payload, indent=2, sort_keys=True, default=str)
+    payload_sha256 = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+    short_hash = payload_sha256[:8]
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with suppress(OSError):
+        output_dir.chmod(0o700)
+
+    output_file = output_dir / f"procore_raw_{project}_{endpoint}_{stamp}_{short_hash}.json"
+    output_file.write_text(serialized, encoding="utf-8")
+    with suppress(OSError):
+        output_file.chmod(0o600)
+
+    redacted_file_path: Optional[str] = None
+    redacted_sha256: Optional[str] = None
+    if redact_known_sensitive_fields:
+        redacted_payload = _redact_known_sensitive_fields(raw_payload)
+        redacted_serialized = json.dumps(redacted_payload, indent=2, sort_keys=True, default=str)
+        redacted_sha256 = hashlib.sha256(redacted_serialized.encode("utf-8")).hexdigest()
+        redacted_file = output_dir / f"procore_raw_{project}_{endpoint}_{stamp}_{short_hash}.redacted.json"
+        redacted_file.write_text(redacted_serialized, encoding="utf-8")
+        with suppress(OSError):
+            redacted_file.chmod(0o600)
+        redacted_file_path = str(redacted_file)
+
+    payload = {
+        "command": "hb-assistant procore live inspect",
+        "ok": True,
+        "phase": "Phase 04A Prompt 03B",
+        "status": "success",
+        "state": "success",
+        "reason_codes": [],
+        "command_endpoint": endpoint,
+        "endpoint_id": adapter.endpoint_id,
+        "project_key": project,
+        "oauth_status": auth_report.status,
+        "request_count": transport_calls["count"],
+        "attempt_count": transport_calls["count"],
+        "retry_count": max(0, transport_calls["count"] - 1),
+        "last_retry_after": None,
+        "retrieved_count": len(rows),
+        "normalized_count": 0,
+        "sqlite_upsert_count": 0,
+        "sqlite_total_count": 0,
+        "record_count": len(rows),
+        "output_file_path": str(output_file),
+        "output_file_sha256": payload_sha256,
+        "redacted_output_file_path": redacted_file_path,
+        "redacted_output_file_sha256": redacted_sha256,
+        "top_level_shape_summary": _top_level_shape_summary(raw_payload),
+        "no_sqlite_write": True,
+        "no_evidence_write": True,
+        "no_obsidian_write": True,
+        "no_live_call_performed": False,
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out, exit_code=0)
 
 
 @live_app.command("smoke")
