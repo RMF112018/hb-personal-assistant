@@ -63,6 +63,7 @@ from hb_assistant.store.procore_repositories import (
     upsert_procore_live_record,
 )
 from hb_assistant.store.procore_rfi_projection import project_rfi
+from hb_assistant.store.procore_submittal_projection import project_submittal
 
 COMPANY_ID = "5280"
 EVIDENCE_DIR_REL = "docs/evidence/construction-intelligence-phase-04a"
@@ -985,6 +986,21 @@ def run_live_sync(
                 )
             except Exception:  # noqa: BLE001
                 redacted_errors.append({"rfi_projection_error": "projection_failed"})
+
+        # Phase 04B submittal workflow enrichment: approvers, responses,
+        # attachments, workflow-duration metrics, procurement/schedule signals.
+        # Reads raw; guarded so it never breaks the latest-state upsert.
+        if adapter.endpoint_id == "submittals":
+            try:
+                project_submittal(
+                    raw,
+                    project_key=project_key,
+                    sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"submittal_projection_error": "projection_failed"})
 
         if child_adapter is None or child_normalizer is None:
             continue
