@@ -297,10 +297,10 @@ def test_live_sync_unverified_endpoint_fails_closed_without_transport(
 def test_live_sync_phase05_financial_endpoint_fails_closed_without_transport(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A still-unverified Phase 05 financial shell (prime-contract-line-items) must
-    fail closed with no transport even when every gate is satisfied — no artificial
-    demotion. (Parentless contracts were live-promoted 2026-05-29; child endpoints stay
-    fail-closed pending N+1 orchestration.)"""
+    """A still-unverified Phase 05 financial endpoint (budget-details — the permanent
+    non-routable sentinel) must fail closed with no transport even when every gate is
+    satisfied — no artificial demotion. (Many financial endpoints were live-promoted
+    2026-05-29; 12 remain fail-closed: budget-details + 404/403 paths.)"""
     monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
     monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
     called = {"hit": False}
@@ -324,7 +324,7 @@ def test_live_sync_phase05_financial_endpoint_fails_closed_without_transport(
             "--project",
             "tropical",
             "--endpoint",
-            "prime-contract-line-items",
+            "budget-details",
             "--apply",
             "--sqlite-only",
             "--max-pages",
@@ -369,15 +369,18 @@ def test_live_endpoints_list_emits_canonical_phase04a_rows() -> None:
     # by the operator on 2026-05-29 (/checklist/list_sections v1.0 and
     # /checklist/list_items v1.1).
     #
-    # Phase 05 appended 32 financial / contract-control shells. 9 parentless ones were
-    # live-promoted on 2026-05-29 after a bounded smoke whose payload matched the
-    # normalizer + projection: prime-contracts, commitment-contracts, billing-periods,
-    # subcontractor-invoices, rfqs, budget-views, budget-modifications, plus change-events
-    # and budget-change-history (reconciled against their live shapes). The remaining 23
-    # stay live_verified=False (fail-closed). So the list is now 36 verified + 23
-    # unverified = 59 rows.
+    # Phase 05 appended 32 financial / contract-control shells. 20 were live-promoted on
+    # 2026-05-29 after bounded smokes whose payloads matched the normalizer + projection:
+    # the parentless contracts/billing/rfq/change-event/budget set, the remaining
+    # parentless parents (prime/commitment change orders, purchase-order contracts), and
+    # the N+1 children (prime/commitment line items + attachments, CO line items,
+    # change-event comments, commitment compliance). The remaining 12 stay
+    # live_verified=False (fail-closed): child paths that 404 against the live API
+    # (PO/requisition/rfq/budget-view children), payment-applications (404, nested path),
+    # budget-change-line-items (403 forbidden), and the budget-details sentinel. So the
+    # list is now 47 verified + 12 unverified = 59 rows.
     verified_rows = [r for r in rows if r["live_verified"]]
     unverified_rows = [r for r in rows if not r["live_verified"]]
-    assert len(verified_rows) == 36
-    assert len(unverified_rows) == 23
+    assert len(verified_rows) == 47
+    assert len(unverified_rows) == 12
     assert len(rows) == 59

@@ -248,6 +248,19 @@ _PHASE05_PROMOTED = frozenset(
         # budget-change-history (id-less change log -> synthetic record id).
         "change-events",
         "budget-change-history",
+        # N+1 child orchestration + remaining parentless parents (see evidence 14):
+        "prime-change-orders",
+        "commitment-change-orders",
+        "purchase-order-contracts",
+        "prime-contract-line-items",
+        "prime-contract-attachments",
+        "prime-change-order-line-items",
+        "commitment-line-items",
+        "commitment-attachments",
+        "commitment-change-order-line-items",
+        "change-event-comments",
+        # commitment-compliance: id-less compliance blob -> synthetic id from parent.
+        "commitment-compliance",
     }
 )
 

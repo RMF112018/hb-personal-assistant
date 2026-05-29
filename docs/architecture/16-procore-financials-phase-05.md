@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–11 + live promotion · Migration **V9** · registry 59 endpoints · **36 live-verified** (9 financial promoted 2026-05-29) / 23 fail-closed
+Status: **in progress** · Phase 05 Prompts 01–11 + live promotion + N+1 children · Migration **V9** · registry 59 endpoints · **47 live-verified** (20 financial promoted 2026-05-29) / 12 fail-closed
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -383,10 +383,22 @@ budget-change-history: id-less change log → deterministic synthetic record id)
 `projection_error_count=0` and byte-stable re-runs. Child endpoints stay fail-closed
 pending the deferred N+1 orchestration; `budget-details` remains a non-routable sentinel.
 No-secret probes over the resulting real financial rows found zero secrets/URLs/signed-URLs
-(guards `raw_body_persisted=0` / `redaction_applied=1` intact). Registry posture:
-**36 live-verified / 23 fail-closed / 59 total**. See evidence
-`12-live-promotion-parentless-financial-endpoints.md` +
-`13-reconcile-change-events-and-budget-change-history.md`.
+(guards `raw_body_persisted=0` / `redaction_applied=1` intact).
+
+**N+1 child orchestration (evidence 14):** the live-sync N+1 was generalized
+(registry-driven `_resolve_child_path` + per-parent fetch + parent-id tagging) so financial
+**child** endpoints transport. A live probe of the 22 unverified financials promoted **11**
+more (the 3 remaining parentless parents + the clean N+1 children + commitment-compliance,
+reconciled via a synthetic id for its id-less per-contract blob), each passing the full
+cadence with `projection_error_count=0`. **12 remain fail-closed**: 9 child paths that
+**404** against the live API (PO / requisition / rfq / budget-view children),
+payment-applications (404 — nested under prime contracts, not flat), budget-change-line-items
+(403 forbidden), and the budget-details sentinel — held, not guessed. Registry posture:
+**47 live-verified / 12 fail-closed / 59 total**; 2,109 real financial rows persisted, no
+secrets/URLs. See evidence
+`12-live-promotion-parentless-financial-endpoints.md`,
+`13-reconcile-change-events-and-budget-change-history.md`,
+`14-n1-child-orchestration-and-child-promotion.md`.
 
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
@@ -402,4 +414,5 @@ Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 `10-live-sync-dispatch-verification-and-idempotency-sweep.md`,
 `11-financial-query-commands-and-obsidian-register.md`,
 `12-live-promotion-parentless-financial-endpoints.md`,
-`13-reconcile-change-events-and-budget-change-history.md`).
+`13-reconcile-change-events-and-budget-change-history.md`,
+`14-n1-child-orchestration-and-child-promotion.md`).

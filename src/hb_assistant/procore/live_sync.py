@@ -348,6 +348,9 @@ def resolve_normalizer(endpoint_id: str) -> Optional[Callable[..., Dict[str, Any
 # idempotent (same change -> same id).
 _SYNTHETIC_RECORD_ID_FIELDS: Dict[str, tuple[str, ...]] = {
     "budget-change-history": ("budget_code", "column", "created_at", "old_value", "new_value"),
+    # The work-order-contract compliance blob is id-less (one per commitment); key it
+    # by the parent contract id tagged onto each child during the N+1 fetch.
+    "commitment-compliance": ("_hb_parent_procore_id",),
 }
 
 
@@ -387,6 +390,50 @@ def _resolve_path(adapter: EndpointAdapter, procore_project_id: str) -> str:
     path = adapter.path_template
     path = path.replace("{project_id}", procore_project_id)
     path = path.replace("{company_id}", COMPANY_ID)
+    return path
+
+
+# Phase 05 financial child endpoints whose path carries a parent record-id token
+# (``parent_record_id_field``). They are fetched via a generalized N+1: list the parent
+# at ``parent_path_template``, then issue one child GET per parent with the parent id
+# substituted into the child token. budget-change-line-items is intentionally excluded
+# (its path is a flat project-scoped list — no parent token, synced like a top-level
+# endpoint). The 04A inline children (rfi-responses / submittal-responses / meeting-topics)
+# are excluded — they are extracted inline from the parent payload, not fetched per-parent.
+_N1_CHILD_ENDPOINTS = frozenset(
+    {
+        "prime-contract-line-items",
+        "prime-contract-attachments",
+        "prime-change-order-line-items",
+        "commitment-line-items",
+        "commitment-attachments",
+        "commitment-compliance",
+        "commitment-change-order-line-items",
+        "purchase-order-line-items",
+        "purchase-order-detail-line-items",
+        "subcontractor-invoice-contract-items",
+        "subcontractor-invoice-contract-detail-items",
+        "subcontractor-invoice-change-order-items",
+        "rfq-responses",
+        "rfq-quotes",
+        "change-event-comments",
+        "budget-detail-columns",
+        "budget-detail-rows",
+    }
+)
+
+# Reserved key used to carry the parent procore record id on each fetched child record
+# (mirrors how `activities` reuses `schedule_id`); read by the per-item parent-id
+# derivation so the financial projection receives the correct `parent_procore_id`.
+_PARENT_ID_KEY = "_hb_parent_procore_id"
+
+
+def _resolve_child_path(adapter: EndpointAdapter, procore_project_id: str, parent_id: str) -> str:
+    """Build an N+1 child path: substitute project_id + company_id + the parent token
+    (``parent_record_id_field``) with the parent's procore record id."""
+    path = _resolve_path(adapter, procore_project_id)
+    if adapter.parent_record_id_field:
+        path = path.replace("{" + adapter.parent_record_id_field + "}", str(parent_id))
     return path
 
 
@@ -714,7 +761,10 @@ def run_live_sync(
     # endpoint_id resolves to a per-item URL, but the orchestrator first
     # fetches the parent list at parent_path_template to get the iteration
     # ids.
-    if adapter.endpoint_id in ("meeting-detail", "activities") and adapter.parent_path_template:
+    if (
+        adapter.endpoint_id in ("meeting-detail", "activities")
+        or adapter.endpoint_id in _N1_CHILD_ENDPOINTS
+    ) and adapter.parent_path_template:
         path = adapter.parent_path_template.replace(
             "{project_id}", str(procore_project_id)
         ).replace("{company_id}", COMPANY_ID)
@@ -959,6 +1009,47 @@ def run_live_sync(
         items = detail_items
         retrieved_count = len(items)
 
+    # Phase 05 generalized N+1: `items` currently holds the PARENT list (fetched via
+    # parent_path_template above). For each parent, issue one child GET with the parent
+    # id substituted into the child token, tag each child with the parent id (so the
+    # financial projection receives parent_procore_id), and REPLACE items with the flat
+    # child list. Per-parent transport errors are recorded and the loop continues.
+    if adapter.endpoint_id in _N1_CHILD_ENDPOINTS and items:
+        token = adapter.parent_record_id_field or "id"
+        child_records: List[Dict[str, Any]] = []
+        for parent_summary in items:
+            if not isinstance(parent_summary, dict):
+                continue
+            parent_id = parent_summary.get("id")
+            if parent_id is None or parent_id == "":
+                continue
+            child_path = _resolve_child_path(adapter, str(procore_project_id), str(parent_id))
+            try:
+                child_iter = list(
+                    client.paginate(
+                        child_path,
+                        per_page=min(max_items, 100),
+                        max_pages=max_pages,
+                        max_items=max_items,
+                    )
+                )
+            except ProcoreAPIError as exc:
+                redacted_errors.append(
+                    {"detail_transport_error": exc.code, "status": exc.status, token: parent_id}
+                )
+                continue
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"detail_transport_error": "unexpected", token: parent_id})
+                continue
+            for child_raw in child_iter:
+                if isinstance(child_raw, dict):
+                    child_raw[_PARENT_ID_KEY] = str(parent_id)
+                    child_records.append(child_raw)
+            if len(child_records) >= max_items:
+                break
+        items = child_records[:max_items]
+        retrieved_count = len(items)
+
     # Normalize + upsert. After each parent upsert, perform an N+1 child GET if
     # the registry contains a child adapter for this parent (its
     # parent_path_template matches the parent's path_template, and it has a
@@ -1039,6 +1130,11 @@ def run_live_sync(
             list_id = raw.get("list_id") if isinstance(raw, dict) else None
             if list_id is not None and list_id != "":
                 parent_id_for_upsert = str(list_id)
+        elif adapter.endpoint_id in _N1_CHILD_ENDPOINTS:
+            # Parent id was tagged onto each child during the N+1 fetch above.
+            pid = raw.get(_PARENT_ID_KEY) if isinstance(raw, dict) else None
+            if pid is not None and pid != "":
+                parent_id_for_upsert = str(pid)
         try:
             upsert_procore_live_record(
                 project_key=project_key,
