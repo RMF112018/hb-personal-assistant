@@ -976,6 +976,96 @@ def obsidian_preview(
 
 
 # =============================================================================
+# Prompt_09A: procore obsidian register (endpoint-scoped projection from
+# Phase 04A procore_live_records; read-only SQLite, never calls Procore)
+# =============================================================================
+
+@obsidian_app.command("register")
+def obsidian_register(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key (per procore_projects.seed.yaml)."),
+    endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id (e.g. rfis, submittals, observations, meetings, daily-log-weather)."),
+    from_sqlite: bool = typer.Option(False, "--from-sqlite", help="REQUIRED. Asserts the read source is the local SQLite procore_live_records table (no live Procore call)."),
+    dry_run: bool = typer.Option(True, "--dry-run", help="Default: rendered Markdown preview + counts, zero side effects."),
+    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in. Writes the marker-bounded register section into 01_Projects/<project>.procore-<family>-register.md."),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default). Use --no-json for compact human-readable form."),
+    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts."),
+) -> None:
+    """Project Phase 04A procore_live_records into a per-family Obsidian register section.
+
+    Read-only over local SQLite — never calls Procore. Supported endpoints map
+    to one of: rfi_register, submittal_register, observation_register,
+    meeting_register, daily_log_index. Unsupported endpoints (projects,
+    punch-items, schedules, activities) are rejected with a structured error
+    pointing at the operator runbook.
+    """
+    if not from_sqlite:
+        payload = {
+            "command": "hb-assistant procore obsidian register",
+            "ok": False,
+            "phase": "Phase 04A Prompt 09A",
+            "project_key": project,
+            "endpoint_id": endpoint,
+            "status": "missing_required_flag",
+            "error": "--from-sqlite is required (asserts no live Procore call).",
+            "guardrails": _GUARDRAILS,
+        }
+        _emit(payload, json_out=json_out, exit_code=2)
+        return
+
+    if apply and not confirm and not sys.stdin.isatty():
+        typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
+        raise typer.Exit(1)
+    if apply and not confirm and not typer.confirm(
+        "CONFIRM: --apply will write a marker-bounded register section to the local vault only (no Procore mutation). Continue?",
+        default=False,
+    ):
+        typer.echo("Aborted.")
+        raise typer.Exit(1)
+
+    from hb_assistant.procore import endpoints as ep_registry
+    from hb_assistant.procore.obsidian import procore_obsidian_register
+
+    adapter = ep_registry.get(endpoint)
+    if adapter is None:
+        payload = {
+            "command": "hb-assistant procore obsidian register",
+            "ok": False,
+            "phase": "Phase 04A Prompt 09A",
+            "project_key": project,
+            "endpoint_id": None,
+            "command_endpoint": endpoint,
+            "status": "endpoint_alias_unknown",
+            "reason_codes": ["endpoint_alias_unknown"],
+            "guardrails": _GUARDRAILS,
+        }
+        _emit(payload, json_out=json_out, exit_code=2)
+        return
+
+    result = procore_obsidian_register(
+        project_key=project,
+        endpoint_id=adapter.endpoint_id,
+        dry_run=dry_run and not apply,
+        apply=apply,
+        json_out=json_out,
+    )
+
+    envelope: dict[str, Any] = {
+        "command": "hb-assistant procore obsidian register",
+        "phase": "Phase 04A Prompt 09A",
+        "command_endpoint": endpoint,
+        "legacy_endpoint_alias": adapter.legacy_endpoint_alias,
+        **result,
+    }
+    if envelope.get("status") == "unsupported_endpoint":
+        _emit(envelope, json_out=json_out, exit_code=2)
+        return
+    if not envelope.get("ok", False):
+        _emit(envelope, json_out=json_out, exit_code=3)
+        return
+    _emit(envelope, json_out=json_out)
+
+
+# =============================================================================
 # Prompt_11: procore validate (read-only operator stack-readiness check)
 # =============================================================================
 

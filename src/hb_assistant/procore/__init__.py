@@ -65,8 +65,10 @@ from .oauth import (
 )
 from .obsidian import (
     PROCORE_GUARDRAILS,
+    LiveRecordsRegisterBuilder,
     ProcoreObsidianRenderer,
     procore_obsidian_preview,
+    procore_obsidian_register,
     reset_procore_obsidian_caches,
 )
 from .sync import (
@@ -96,6 +98,7 @@ __all__ = [
     "LIVE_ENV_ENABLER",
     "LIVE_ENV_VAR",
     "LiveEnvNotSet",
+    "LiveRecordsRegisterBuilder",
     "LocalOAuthCacheTokenProvider",
     "MappingValidationReport",
     "MissingTokenProvider",
@@ -128,6 +131,7 @@ __all__ = [
     "load_endpoint_contract",
     "load_procore_projects",
     "procore_obsidian_preview",
+    "procore_obsidian_register",
     "require_live_env",
     "reset_procore_obsidian_caches",
     "run_sync",

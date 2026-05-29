@@ -354,6 +354,64 @@ short-label structured collections.
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/15-schedules-and-activities-endpoints.md`.
 
+## Obsidian register from live SQLite (Prompt 09A)
+
+Phase 04A's twenty endpoints land in `procore_live_records`, but the older
+`procore obsidian preview` command queries the Phase 03 `procore_synced_entities`
+table and therefore cannot project any of the new Phase 04A surfaces into the
+local vault. `procore obsidian register` closes that gap with a focused,
+endpoint-scoped projection.
+
+Surface:
+
+```bash
+hb-assistant procore obsidian register \
+  --project tropical --endpoint rfis --from-sqlite --dry-run --json
+
+hb-assistant procore obsidian register \
+  --project tropical --endpoint rfis --from-sqlite --apply --confirm --json
+```
+
+Read source: the local SQLite `procore_live_records` table, scoped by
+`(project_key, endpoint_id)`. The code path is hard-wired never to touch HTTP;
+the `--from-sqlite` flag is a mandatory, semantic gate that asserts no live
+Procore call will be attempted. The command also never reads
+`raw_body_persisted` — the V6 schema's CHECK constraint guarantees the column
+is always `0`.
+
+Endpoint → register-family template mapping
+(`_ENDPOINT_TO_REGISTER_TEMPLATE` in `src/hb_assistant/procore/obsidian.py`):
+
+| Endpoint id | Family template |
+| --- | --- |
+| `rfis`, `rfi-responses` | `rfi_register` |
+| `submittals`, `submittal-responses`, `submittal-packages` | `submittal_register` |
+| `observations` | `observation_register` |
+| `meetings`, `meeting-detail` | `meeting_register` (Meetings table) |
+| `meeting-topics` | `meeting_register` (Topics table) |
+| `daily-log-weather`, `daily-log-manpower`, `daily-log-notes` | `daily_log_index` |
+
+Endpoints **without** a register-family template (`projects`, `punch-items`,
+`schedules`, `activities`) are deliberately rejected with `ok=False`,
+`status="unsupported_endpoint"`, and a `next_steps` hint pointing at
+`procore obsidian preview` for foundational artifacts. Adding register
+templates for those families is future work.
+
+Write target reuses the existing hybrid layout used by `obsidian preview`:
+`<vault_root>/01_Projects/<project_key>.procore-<family>-register.md`. The
+marker-bounded region (`<!-- HB-PROCORE-<FAMILY>-REGISTER:START/END -->`)
+is shared with `preview` so the two commands are interchangeable, and reruns
+of either are byte-identical when the underlying records are unchanged.
+
+Sensitive routing is the same posture as `preview`: any row with
+`procore_live_records.review_required = 1` is excluded from the register
+table and surfaced in `review_items` (procore_record_id + endpoint_id +
+sensitive_reason). Free-text excerpts route through
+`ProcoreObsidianRenderer._safe_excerpt`, which redacts and hashes anything
+over the per-field length cap.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/16-obsidian-register-from-live-records.md`.
+
 ## Verified vs unverified endpoints
 
 Post schedules + activities addition, **all 20 of 20 canonical
@@ -391,3 +449,5 @@ token, never an OAuth payload.
 | `tests/test_procore_live_sync_unverified_fail_closed.py` | 9 unverified IDs each return `not_live_verified` with no transport call and no DB write. |
 | `tests/test_procore_live_sync_verified_chain.py` | RFI + submittal fake-transport end-to-end: GET-only, bearer-token header, idempotent upsert, no raw body persisted, review_required flag set on sensitive parents, child fetches tolerate 404 without aborting. |
 | `tests/test_procore_live_gate.py` | Updated to assert the new canonical endpoint matrix surface. |
+| `tests/test_procore_obsidian_register.py` | Prompt 09A unit coverage: dry-run table render, review_required exclusion, unsupported endpoint rejection, marker-bounded write idempotency, user-content preservation outside markers, corrupted-JSON tolerance. |
+| `tests/test_procore_cli_obsidian_register.py` | Prompt 09A CLI coverage: missing `--from-sqlite` rejection, unknown alias rejection, unsupported endpoint rejection, dry-run happy path, apply + confirm happy path, non-TTY `--apply` without `--confirm` rejection. |

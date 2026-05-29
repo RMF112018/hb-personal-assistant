@@ -1038,6 +1038,54 @@ fields) preserved verbatim.
 
 Latest evidence: `docs/evidence/construction-intelligence-phase-04a/15-schedules-and-activities-endpoints.md`.
 
+## Obsidian register from Phase 04A live SQLite (Prompt 09A)
+
+A read-only projection of `procore_live_records` into per-family Obsidian
+register sections. Never calls Procore; consumes whatever has already been
+persisted by `procore live sync`.
+
+Operator commands:
+
+```bash
+# Preview the section for one endpoint family (zero side effects).
+hb-assistant procore obsidian register \
+  --project tropical --endpoint rfis --from-sqlite --dry-run --json
+
+# Write the marker-bounded section into the local vault.
+hb-assistant procore obsidian register \
+  --project tropical --endpoint rfis --from-sqlite --apply --confirm --json
+```
+
+The command requires `--from-sqlite` (explicit no-live-call assertion). The
+`--apply --confirm` gate matches the rest of the Procore CLI: non-TTY without
+`--confirm` exits `1`; TTY without `--confirm` prompts. Apply writes to
+`$HB_CONSTRUCTION_VAULT_ROOT/01_Projects/<project_key>.procore-<family>-register.md`
+using the same marker-bounded region as `procore obsidian preview`, so reruns
+are byte-identical and the two commands interoperate cleanly on the same files.
+
+Supported endpoints:
+
+| Endpoint id | Renders into |
+| --- | --- |
+| `rfis`, `rfi-responses` | `procore-rfi-register.md` (RFI table) |
+| `submittals`, `submittal-responses`, `submittal-packages` | `procore-submittal-register.md` |
+| `observations` | `procore-observation-register.md` |
+| `meetings`, `meeting-detail` | `procore-meeting-register.md` (Meetings section) |
+| `meeting-topics` | `procore-meeting-register.md` (Topics section) |
+| `daily-log-weather`, `daily-log-manpower`, `daily-log-notes` | `procore-daily-log-index.md` |
+
+Unsupported endpoints (`projects`, `punch-items`, `schedules`, `activities`)
+return `ok=False`, `status="unsupported_endpoint"`, exit code `2`, and a
+`next_steps` hint pointing at `procore obsidian preview` for the foundational
+`project_card` / `endpoint_audit` projections. Adding register templates for
+these families is future work.
+
+Rows with `review_required=1` (PII routing, sensitive_reason from the live
+sync) are excluded from the register table and surfaced under `review_items`
+in the JSON envelope.
+
+Latest evidence: `docs/evidence/construction-intelligence-phase-04a/16-obsidian-register-from-live-records.md`.
+
 ## References
 
 - Source-of-truth evidence: `docs/evidence/construction-intelligence-phase-03/`

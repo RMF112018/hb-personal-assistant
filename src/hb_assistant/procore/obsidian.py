@@ -794,10 +794,358 @@ def procore_obsidian_preview(
         }
 
 
+# =============================================================================
+# Prompt_09A: register from Phase 04A procore_live_records (read-only projection)
+# =============================================================================
+
+# Endpoint id (Phase 04A) -> register family template key. Endpoints whose
+# family has no register template (projects, punch-items, schedules, activities)
+# are deliberately absent; the projection function rejects them with a clear
+# error pointing at this map and the operator runbook.
+_ENDPOINT_TO_REGISTER_TEMPLATE: dict[str, str] = {
+    "rfis": "rfi_register",
+    "rfi-responses": "rfi_register",
+    "submittals": "submittal_register",
+    "submittal-responses": "submittal_register",
+    "submittal-packages": "submittal_register",
+    "observations": "observation_register",
+    "meetings": "meeting_register",
+    "meeting-detail": "meeting_register",
+    "meeting-topics": "meeting_register",
+    "daily-log-weather": "daily_log_index",
+    "daily-log-manpower": "daily_log_index",
+    "daily-log-notes": "daily_log_index",
+}
+
+# Family template -> filename suffix under 01_Projects/ (hybrid layout).
+_REGISTER_FILENAME_SUFFIX: dict[str, str] = {
+    "rfi_register": "procore-rfi-register.md",
+    "submittal_register": "procore-submittal-register.md",
+    "observation_register": "procore-observation-register.md",
+    "meeting_register": "procore-meeting-register.md",
+    "daily_log_index": "procore-daily-log-index.md",
+}
+
+_EMPTY_TABLE_ROW: dict[str, str] = {
+    "rfi_register": "| (no non-sensitive records in procore_live_records) | | | | |",
+    "submittal_register": "| (no non-sensitive records in procore_live_records) | | | | | |",
+    "observation_register": "| (no non-sensitive records in procore_live_records) | | | | | | |",
+    "daily_log_index": "| (no non-sensitive records in procore_live_records) | | | | | | |",
+    "meeting_register_meetings": "| (no non-sensitive records in procore_live_records) | | | | | |",
+    "meeting_register_topics": "| (no non-sensitive records in procore_live_records) | | | | | | |",
+}
+
+
+class LiveRecordsRegisterBuilder:
+    """Read-only projector from procore_live_records to per-family register data.
+
+    Source-of-truth: Phase 04A canonical table (project_key, endpoint_id) scope.
+    Never calls Procore live and never reads raw bodies (the V6 schema enforces
+    raw_body_persisted = 0 at write time). Rows with review_required = 1 are
+    excluded from the table and surfaced in `review_items` instead.
+    """
+
+    def __init__(self, db_path: Optional[Path | str] = None) -> None:
+        self.db_path: Optional[Path] = Path(db_path) if db_path else None
+        self._renderer = ProcoreObsidianRenderer(db_path=db_path)
+        self._review_items: list[dict[str, Any]] = []
+
+    def _fetch_rows(self, project_key: str, endpoint_id: str) -> list[sqlite3.Row]:
+        conn = get_connection(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cur = conn.execute(
+            """
+            SELECT procore_record_id,
+                   procore_record_number,
+                   title_redacted,
+                   status,
+                   updated_at_utc,
+                   source_url_redacted,
+                   canonical_json_redacted,
+                   review_required,
+                   sensitive_reason,
+                   parent_procore_id
+              FROM procore_live_records
+             WHERE project_key = ? AND endpoint_id = ?
+             ORDER BY procore_record_id
+            """,
+            (project_key, endpoint_id),
+        )
+        return list(cur.fetchall())
+
+    @staticmethod
+    def _row_fields(row: sqlite3.Row) -> dict[str, Any]:
+        raw = row["canonical_json_redacted"] or "{}"
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+
+    def _record_review(self, row: sqlite3.Row, endpoint_id: str) -> None:
+        self._review_items.append(
+            {
+                "procore_record_id": row["procore_record_id"],
+                "endpoint_id": endpoint_id,
+                "sensitive_reason": row["sensitive_reason"] or "review_required_flag",
+            }
+        )
+
+    def _safe_excerpt(self, val: Any, max_len: int = 96) -> str:
+        return self._renderer._safe_excerpt(val, max_len)
+
+    def _rfi_table(self, rows: list[sqlite3.Row], endpoint_id: str) -> str:
+        out: list[str] = []
+        for row in rows:
+            if bool(row["review_required"]):
+                self._record_review(row, endpoint_id)
+                continue
+            fields = self._row_fields(row)
+            num = row["procore_record_number"] or fields.get("number") or row["procore_record_id"]
+            subj = self._safe_excerpt(
+                row["title_redacted"] or fields.get("subject") or fields.get("title") or ""
+            )
+            status = row["status"] or fields.get("status") or "n/a"
+            due = fields.get("due_date") or fields.get("due") or ""
+            src = row["source_url_redacted"] or "#"
+            out.append(f"| {num} | {subj} | {status} | {due} | [{row['procore_record_id']}]({src}) |")
+        return "\n".join(out) if out else _EMPTY_TABLE_ROW["rfi_register"]
+
+    def _submittal_table(self, rows: list[sqlite3.Row], endpoint_id: str) -> str:
+        out: list[str] = []
+        for row in rows:
+            if bool(row["review_required"]):
+                self._record_review(row, endpoint_id)
+                continue
+            fields = self._row_fields(row)
+            num = row["procore_record_number"] or fields.get("number") or row["procore_record_id"]
+            title = self._safe_excerpt(row["title_redacted"] or fields.get("title") or "")
+            spec = fields.get("spec_section") or fields.get("specification_section") or ""
+            status = row["status"] or fields.get("status") or "n/a"
+            due = fields.get("due_date") or ""
+            src = row["source_url_redacted"] or "#"
+            out.append(
+                f"| {num} | {title} | {spec} | {status} | {due} | [{row['procore_record_id']}]({src}) |"
+            )
+        return "\n".join(out) if out else _EMPTY_TABLE_ROW["submittal_register"]
+
+    def _observation_table(self, rows: list[sqlite3.Row], endpoint_id: str) -> str:
+        out: list[str] = []
+        for row in rows:
+            if bool(row["review_required"]):
+                self._record_review(row, endpoint_id)
+                continue
+            fields = self._row_fields(row)
+            num = row["procore_record_number"] or fields.get("number") or row["procore_record_id"]
+            title = self._safe_excerpt(
+                row["title_redacted"] or fields.get("title") or fields.get("name") or ""
+            )
+            status = row["status"] or fields.get("status") or "n/a"
+            otype = fields.get("type") or fields.get("observation_type") or ""
+            severity = fields.get("severity") or fields.get("priority") or ""
+            src = row["source_url_redacted"] or "#"
+            out.append(
+                f"| {num} | {title} | {status} | {otype} | {severity} | no | [{row['procore_record_id']}]({src}) |"
+            )
+        return "\n".join(out) if out else _EMPTY_TABLE_ROW["observation_register"]
+
+    def _meeting_tables(
+        self, meeting_rows: list[sqlite3.Row], topic_rows: list[sqlite3.Row]
+    ) -> dict[str, str]:
+        m_out: list[str] = []
+        for row in meeting_rows:
+            if bool(row["review_required"]):
+                self._record_review(row, "meetings")
+                continue
+            fields = self._row_fields(row)
+            num = row["procore_record_number"] or fields.get("number") or row["procore_record_id"]
+            title = self._safe_excerpt(row["title_redacted"] or fields.get("title") or "")
+            status = row["status"] or fields.get("status") or "n/a"
+            start = fields.get("start_time") or fields.get("start") or ""
+            location = self._safe_excerpt(fields.get("location") or "")
+            src = row["source_url_redacted"] or "#"
+            m_out.append(
+                f"| {num} | {title} | {status} | {start} | {location} | [{row['procore_record_id']}]({src}) |"
+            )
+        t_out: list[str] = []
+        for row in topic_rows:
+            if bool(row["review_required"]):
+                self._record_review(row, "meeting-topics")
+                continue
+            fields = self._row_fields(row)
+            title = self._safe_excerpt(row["title_redacted"] or fields.get("title") or "")
+            status = row["status"] or fields.get("status") or "n/a"
+            parent = row["parent_procore_id"] or fields.get("parent_meeting_id") or ""
+            assignee = fields.get("assignee_id") or fields.get("assignment_id") or ""
+            due = fields.get("due_date") or ""
+            src = row["source_url_redacted"] or "#"
+            t_out.append(
+                f"| {title} | {status} | {parent} | {assignee} | {due} | no | [{row['procore_record_id']}]({src}) |"
+            )
+        return {
+            "meeting_rows": "\n".join(m_out) if m_out else _EMPTY_TABLE_ROW["meeting_register_meetings"],
+            "topic_rows": "\n".join(t_out) if t_out else _EMPTY_TABLE_ROW["meeting_register_topics"],
+        }
+
+    def _daily_log_table(self, rows: list[sqlite3.Row], endpoint_id: str) -> str:
+        out: list[str] = []
+        section = endpoint_id.replace("daily-log-", "") or "unknown"
+        for row in rows:
+            if bool(row["review_required"]):
+                self._record_review(row, endpoint_id)
+                continue
+            fields = self._row_fields(row)
+            log_date = fields.get("log_date") or fields.get("date") or ""
+            bucket = fields.get("bucket") or "selected"
+            body_summary = fields.get("body_summary") or {}
+            body_hash = (
+                body_summary.get("hash_prefix") if isinstance(body_summary, dict) else ""
+            ) or ""
+            src = row["source_url_redacted"] or "#"
+            out.append(
+                f"| {log_date} | {section} | {bucket} | ok | no | {body_hash} | [{row['procore_record_id']}]({src}) |"
+            )
+        return "\n".join(out) if out else _EMPTY_TABLE_ROW["daily_log_index"]
+
+    def build(self, project_key: str, endpoint_id: str) -> dict[str, Any]:
+        family_template = _ENDPOINT_TO_REGISTER_TEMPLATE[endpoint_id]
+        rows = self._fetch_rows(project_key, endpoint_id)
+        count_from_sqlite = len(rows)
+
+        if family_template == "rfi_register":
+            data: dict[str, Any] = {
+                "project_name": project_key,
+                "rows": self._rfi_table(rows, endpoint_id),
+            }
+        elif family_template == "submittal_register":
+            data = {
+                "project_name": project_key,
+                "rows": self._submittal_table(rows, endpoint_id),
+            }
+        elif family_template == "observation_register":
+            data = {
+                "project_name": project_key,
+                "rows": self._observation_table(rows, endpoint_id),
+            }
+        elif family_template == "meeting_register":
+            if endpoint_id == "meeting-topics":
+                tables = self._meeting_tables([], rows)
+            else:
+                tables = self._meeting_tables(rows, [])
+            data = {
+                "project_name": project_key,
+                "meeting_rows": tables["meeting_rows"],
+                "topic_rows": tables["topic_rows"],
+            }
+        elif family_template == "daily_log_index":
+            data = {
+                "project_name": project_key,
+                "rows": self._daily_log_table(rows, endpoint_id),
+            }
+        else:  # pragma: no cover - guarded by _ENDPOINT_TO_REGISTER_TEMPLATE
+            raise ValueError(f"unknown family template: {family_template}")
+
+        data["guardrails"] = dict(PROCORE_GUARDRAILS)
+        rendered = self._renderer.render(family_template, data)
+        return {
+            "family_template": family_template,
+            "rendered": rendered,
+            "count_from_sqlite": count_from_sqlite,
+            "review_items": list(self._review_items),
+        }
+
+
+def procore_obsidian_register(
+    project_key: str,
+    endpoint_id: str,
+    *,
+    dry_run: bool = True,
+    apply: bool = False,
+    json_out: bool = False,
+    db_path: Optional[Path | str] = None,
+) -> dict[str, Any]:
+    """Project Phase 04A procore_live_records into a marker-bounded register section.
+
+    Read-only from local SQLite (never calls Procore). Endpoint must map to a
+    register-family template via ``_ENDPOINT_TO_REGISTER_TEMPLATE``; unsupported
+    endpoints return ``ok=False`` with ``status="unsupported_endpoint"``.
+    """
+    base: dict[str, Any] = {
+        "command": "procore-obsidian-register",
+        "project_key": project_key,
+        "endpoint_id": endpoint_id,
+        "source_table": "procore_live_records",
+        "mode": "apply" if apply else "dry_run",
+        "dry_run": (dry_run and not apply),
+        "guardrails": dict(PROCORE_GUARDRAILS),
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+
+    if endpoint_id not in _ENDPOINT_TO_REGISTER_TEMPLATE:
+        return {
+            **base,
+            "ok": False,
+            "status": "unsupported_endpoint",
+            "error": (
+                f"endpoint '{endpoint_id}' has no register template; supported: "
+                f"{sorted(_ENDPOINT_TO_REGISTER_TEMPLATE)}"
+            ),
+            "next_steps": (
+                "use 'hb-assistant procore obsidian preview' for project_card / endpoint_audit, "
+                "or add a register template (out of Prompt 09A scope)."
+            ),
+            "review_items": [],
+            "written_paths": [],
+            "count_from_sqlite": 0,
+        }
+
+    try:
+        builder = LiveRecordsRegisterBuilder(db_path=db_path)
+        built = builder.build(project_key=project_key, endpoint_id=endpoint_id)
+        family_template = built["family_template"]
+        rendered = built["rendered"]
+
+        written: list[str] = []
+        if apply:
+            writer = ConstructionVaultWriter()
+            if writer.configured:
+                filename = f"{project_key}.{_REGISTER_FILENAME_SUFFIX[family_template]}"
+                target = _write_procore_artifact(writer.root, filename, rendered, family_template)
+                written.append(str(target))
+            else:
+                written.append("vault-not-configured (dry paths only)")
+
+        return {
+            **base,
+            "ok": True,
+            "status": "ok",
+            "family_template": family_template,
+            "rendered_section": family_template,
+            "count_from_sqlite": built["count_from_sqlite"],
+            "rendered": rendered,
+            "review_items": built["review_items"],
+            "review_count": len(built["review_items"]),
+            "written_paths": written,
+            "db_path_used": str(db_path) if db_path else "default",
+        }
+    except Exception as exc:
+        return {
+            **base,
+            "ok": False,
+            "status": "error",
+            "error": f"redacted:{type(exc).__name__}",
+            "review_items": [],
+            "written_paths": [],
+            "count_from_sqlite": 0,
+        }
+
+
 # Exports (import directly from hb_assistant.procore.obsidian)
 __all__ = [
     "ProcoreObsidianRenderer",
+    "LiveRecordsRegisterBuilder",
     "procore_obsidian_preview",
+    "procore_obsidian_register",
     "reset_procore_obsidian_caches",
     "PROCORE_GUARDRAILS",
 ]
