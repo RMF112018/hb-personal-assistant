@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–11 + live promotion + N+1 children · Migration **V9** · registry 59 endpoints · **53 live-verified** (26 financial promoted 2026-05-29) / 6 fail-closed
+Status: **in progress** · Phase 05 Prompts 01–11 + live promotion + N+1 children · Migration **V9** · registry 59 endpoints · **56 live-verified** (29 financial promoted 2026-05-29) / 3 fail-closed
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -402,11 +402,21 @@ contract/detail/change-order items, purchase-order-line-items, budget-detail-col
 each clean + idempotent. The remaining 6 are genuine upstream gaps:
 purchase-order-detail-line-items + rfq-responses/quotes (child paths 404 vs the live API),
 payment-applications (404 nested path), budget-change-line-items (403), budget-details
-(sentinel). Registry posture: **53 live-verified / 6 fail-closed / 59 total**. See evidence
+(sentinel).
+
+**Remaining child fixes from operator shapes (evidence 16):** payment-applications was a
+**flat** list (`/rest/v1.0/payment_applications?project_id=`, not the nested per-prime-contract
+path), and the rfq children need a **`contract_id`** query param (the rfq's
+`commitment_contract_id`). Both fixed → **3 more promoted** (payment-applications, rfq-responses,
+rfq-quotes). Registry posture: **56 live-verified / 3 fail-closed / 59 total**. The final 3 held:
+purchase-order-detail-line-items (`/line_item_contract_details` 404s for the sampled POs —
+no detail items), budget-change-line-items (**403** — needs a Procore permission grant),
+budget-details (sentinel). See evidence
 `12-live-promotion-parentless-financial-endpoints.md`,
 `13-reconcile-change-events-and-budget-change-history.md`,
 `14-n1-child-orchestration-and-child-promotion.md`,
-`15-n1-child-project-id-fix-and-subcontractor-invoice-children.md`.
+`15-n1-child-project-id-fix-and-subcontractor-invoice-children.md`,
+`16-remaining-child-fixes-payment-applications-and-rfq-children.md`.
 
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
@@ -424,4 +434,5 @@ Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 `12-live-promotion-parentless-financial-endpoints.md`,
 `13-reconcile-change-events-and-budget-change-history.md`,
 `14-n1-child-orchestration-and-child-promotion.md`,
-`15-n1-child-project-id-fix-and-subcontractor-invoice-children.md`).
+`15-n1-child-project-id-fix-and-subcontractor-invoice-children.md`,
+`16-remaining-child-fixes-payment-applications-and-rfq-children.md`).

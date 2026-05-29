@@ -113,6 +113,33 @@ class _ReqItemsTransport:
         return _FakeResponse([])
 
 
+class _RfqQuotesTransport:
+    """rfq quotes: parent list on `/rfqs`, quotes on `/rfqs/{id}/quotes` — the child GET
+    MUST carry both `project_id` and `contract_id` (the rfq's commitment_contract_id)."""
+
+    def __init__(self) -> None:
+        self.child_params: List[Dict[str, Any]] = []
+
+    def __call__(
+        self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]
+    ) -> _FakeResponse:
+        page = int((params or {}).get("page", 1))
+        if "/quotes" in url:
+            self.child_params.append(dict(params or {}))
+            if page != 1:
+                return _FakeResponse([])
+            return _FakeResponse([
+                {"id": 105445, "cost": "4500.0", "schedule_impact": 2,
+                 "description": "Need to destroy some roofing.", "request_for_quote_id": 136264,
+                 "created_by": {"id": 160586, "login": "carl@example.com", "name": "Carl"},
+                 "attachments": [{"id": 42, "name": "f.ext",
+                                  "url": "https://storage.procore.com/x?sig=SECRETSIG"}]},
+            ])
+        if url.rstrip("/").endswith("/rfqs"):  # parent list (array)
+            return _FakeResponse([{"id": 136264, "commitment_contract_id": 701973}] if page == 1 else [])
+        return _FakeResponse([])
+
+
 def _promote(monkeypatch: pytest.MonkeyPatch, endpoint_id: str) -> None:
     base = ep_registry.get(endpoint_id)
     assert base is not None
@@ -193,3 +220,40 @@ def test_v1_child_get_carries_project_id_query_param(monkeypatch: pytest.MonkeyP
     assert all(r["item_type"] == "contract_detail_item" for r in items)
     assert any(r["retainage_held"] == "12.50" for r in items)  # work_completed_retainage_*
     assert all(r["raw_body_persisted"] == 0 for r in items)
+
+
+def test_rfq_quote_child_get_carries_project_id_and_contract_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # rfq quotes require contract_id (= the rfq's commitment_contract_id) AND project_id.
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-bearer-token")
+    _promote(monkeypatch, "rfq-quotes")
+    db = _db()
+    transport = _RfqQuotesTransport()
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="rfq-quotes",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=50,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] in ("success", "partial_success")
+    # the child GET carried project_id AND contract_id (= parent rfq's commitment_contract_id)
+    assert transport.child_params
+    assert all("project_id" in p and p.get("contract_id") == "701973" for p in transport.child_params)
+    # quote amount fact + quote_of edge; signed-URL attachment never persisted raw
+    facts = {f["amount_name"]: f["amount_value"] for f in _rows(db, "procore_financial_amount_facts")}
+    assert facts.get("cost") == "4500.0"
+    edges = {(e["edge_type"], e["to_record_key"]) for e in _rows(db, "procore_record_edges")}
+    assert ("quote_of", "tropical|rfqs||136264") in edges
+    blob = "|".join(
+        "" if c is None else str(c) for r in _rows(db, "procore_live_records") for c in r
+    )
+    assert "SECRETSIG" not in blob and "sig=" not in blob

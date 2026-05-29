@@ -427,6 +427,14 @@ _N1_CHILD_ENDPOINTS = frozenset(
 # derivation so the financial projection receives the correct `parent_procore_id`.
 _PARENT_ID_KEY = "_hb_parent_procore_id"
 
+# N+1 children that need an extra query param sourced from the parent record. RFQ
+# responses/quotes require `contract_id` (= the rfq's commitment_contract_id) in addition
+# to project_id, else Procore 404s ("Contract not found"). Map: child -> (query_param, parent_field).
+_N1_CHILD_EXTRA_PARENT_PARAMS: Dict[str, tuple[str, str]] = {
+    "rfq-responses": ("contract_id", "commitment_contract_id"),
+    "rfq-quotes": ("contract_id", "commitment_contract_id"),
+}
+
 
 def _resolve_child_path(adapter: EndpointAdapter, procore_project_id: str, parent_id: str) -> str:
     """Build an N+1 child path: substitute project_id + company_id + the parent token
@@ -1032,6 +1040,12 @@ def run_live_sync(
                 if "{project_id}" not in adapter.path_template
                 else None
             )
+            extra = _N1_CHILD_EXTRA_PARENT_PARAMS.get(adapter.endpoint_id)
+            if extra:
+                qname, pfield = extra
+                pval = parent_summary.get(pfield)
+                if pval is not None and pval != "":
+                    child_params = {**(child_params or {}), qname: str(pval)}
             try:
                 child_iter = list(
                     client.paginate(

@@ -268,6 +268,11 @@ _PHASE05_PROMOTED = frozenset(
         "purchase-order-line-items",
         "budget-detail-columns",
         "budget-detail-rows",
+        # Operator-supplied shapes (evidence 16): payment-applications is a flat list;
+        # rfq responses/quotes need a contract_id query param.
+        "payment-applications",
+        "rfq-responses",
+        "rfq-quotes",
     }
 )
 
