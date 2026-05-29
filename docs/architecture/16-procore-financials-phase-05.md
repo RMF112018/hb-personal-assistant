@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–07 · Migration **V9** · registry 27 → 59 endpoints
+Status: **in progress** · Phase 05 Prompts 01–08 · Migration **V9** · registry 27 → 59 endpoints
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -233,6 +233,43 @@ wired into live_sync the same way (registered + a guarded `INVOICE_ENDPOINTS` bl
 - `retainage_held` on items maps from `work_completed_retainage_retained_this_period`
   (documented mapping; provisional pending live smoke).
 
+## Change-management surface — RFQs + change events (Prompt 08)
+
+Adds the pricing/exposure surface (5 endpoints): `rfqs`, `rfq-responses`,
+`rfq-quotes`, `change-events`, `change-event-comments` — linking the *informal*
+pricing/change workflow to the *formal* change records. All were registered
+(Prompt 01); they stay **`live_verified=False`** (fail-closed). New
+`normalizers/rfq_change_event.py` (5 normalizers) +
+`store/procore_rfq_change_event_projection.py` (`project_rfq_change_event_family` +
+`RFQ_ENDPOINTS`), wired into live_sync the same way (registered + a guarded
+`RFQ_ENDPOINTS` block).
+
+- **No migration.** RFQs → the V8 `procore_financial_rfqs` table; change events →
+  `procore_financial_change_events`. The package defines **no tables** for
+  rfq-responses / rfq-quotes / change-event-comments — they project as **amount
+  facts + edges + signals**; their hashed + masked-excerpt text lives only in the
+  normalized live record (same pattern as rfi-replies / submittal-responses).
+- **Cost/schedule exposure facts:** RFQ facts `estimated_amount`, `original_quote`,
+  `estimated_schedule_impact`; quote facts `cost`, `schedule_impact`; change-event
+  facts `estimated_cost`, `estimated_revenue`, `owner_cost_amount`,
+  `commitment_cost_amount`, `schedule_impact_amount` (cost-code attached to facts
+  when present).
+- **Text never raw:** RFQ/change-event titles + descriptions, quote descriptions,
+  response comments and change-event comment bodies → `summarize_text` (hash +
+  length + PII-masked excerpt); creator/assignee hashed.
+- **Edges:** rfq → commitment (`rfq_of_commitment`), → change event
+  (`rfq_change_event`), → PCO/COR/CCO (`rfq_change_order`; prime-family refs map to
+  the `prime-change-orders` namespace, commitment-family to `commitment-change-orders`
+  — documented mapping), creator/assignee linked; quote `quote_of` → rfq; response
+  `response_of` → rfq; comment `comment_of` → change event.
+- **Signals:** `rfq_overdue` (past due, non-terminal), `rfq_under_review`,
+  `rfq_no_intent_to_quote`, `rfq_estimated_schedule_impact`,
+  `rfq_estimated_cost_exposure`; `change_event_pending` (non-terminal status),
+  `change_event_rom_cost_exposure`, `change_event_schedule_impact`;
+  `change_event_comment_added` (per comment).
+- **Read views** (`procore_financials.py`): `read_financial_rfqs` /
+  `read_financial_change_events` (filter by status) — make the workflow queryable.
+
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
 `01-endpoint-registry-and-live-gate-shell.md`,
@@ -241,4 +278,5 @@ Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 `04-prime-contracts-prime-change-orders-and-payment-applications.md`,
 `05-commitments-purchase-orders-attachments-and-compliance.md`,
 `06-change-orders-and-financial-line-items.md`,
-`07-billing-periods-subcontractor-invoices-and-invoice-items.md`).
+`07-billing-periods-subcontractor-invoices-and-invoice-items.md`,
+`08-rfqs-rfq-responses-rfq-quotes-change-events-and-comments.md`).

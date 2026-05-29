@@ -736,6 +736,54 @@ def read_financial_billing_periods(
     )
 
 
+def read_financial_rfqs(
+    *, project_key: str, status: Optional[str] = None, db_path: Optional[Path] = None
+) -> List[Dict[str, Any]]:
+    """RFQs for a project, optionally filtered by status."""
+    conn = _open(db_path)
+    clauses = ["project_key = ?"]
+    params: List[Any] = [project_key]
+    if status is not None:
+        clauses.append("status = ?")
+        params.append(status)
+    return _rows(
+        conn,
+        f"""
+        SELECT record_key, rfq_id, commitment_contract_id, number, status, due_date,
+               estimated_amount, estimated_schedule_impact, estimated_status,
+               intent_to_quote, original_quote
+        FROM procore_financial_rfqs
+        WHERE {" AND ".join(clauses)}
+        ORDER BY rfq_id
+        """,
+        tuple(params),
+    )
+
+
+def read_financial_change_events(
+    *, project_key: str, status: Optional[str] = None, db_path: Optional[Path] = None
+) -> List[Dict[str, Any]]:
+    """Change events for a project, optionally filtered by status."""
+    conn = _open(db_path)
+    clauses = ["project_key = ?"]
+    params: List[Any] = [project_key]
+    if status is not None:
+        clauses.append("status = ?")
+        params.append(status)
+    return _rows(
+        conn,
+        f"""
+        SELECT record_key, change_event_id, number, status, scope, estimated_cost,
+               estimated_revenue, schedule_impact_amount, owner_cost_amount,
+               commitment_cost_amount
+        FROM procore_financial_change_events
+        WHERE {" AND ".join(clauses)}
+        ORDER BY change_event_id
+        """,
+        tuple(params),
+    )
+
+
 def read_financial_subcontractor_invoices(
     *,
     project_key: str,
@@ -797,4 +845,6 @@ __all__ = [
     "read_financial_risk_view",
     "read_financial_billing_periods",
     "read_financial_subcontractor_invoices",
+    "read_financial_rfqs",
+    "read_financial_change_events",
 ]

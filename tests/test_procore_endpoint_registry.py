@@ -191,7 +191,21 @@ _INVOICE_IMPLEMENTED = frozenset(
     }
 )
 
-_IMPLEMENTED = _OWNER_IMPLEMENTED | _COMMITMENT_IMPLEMENTED | _INVOICE_IMPLEMENTED
+# Change-management surface implemented in Prompt 08 (RFQs + responses/quotes +
+# change events + comments).
+_RFQ_IMPLEMENTED = frozenset(
+    {
+        "rfqs",
+        "rfq-responses",
+        "rfq-quotes",
+        "change-events",
+        "change-event-comments",
+    }
+)
+
+_IMPLEMENTED = (
+    _OWNER_IMPLEMENTED | _COMMITMENT_IMPLEMENTED | _INVOICE_IMPLEMENTED | _RFQ_IMPLEMENTED
+)
 
 
 def test_phase05_financial_endpoints_are_fail_closed() -> None:
@@ -222,6 +236,12 @@ def test_phase05_commitment_endpoints_have_normalizers() -> None:
 def test_phase05_invoice_endpoints_have_normalizers() -> None:
     # Prompt 07 registered the subcontractor-billing normalizers; still unverified.
     for fin_id in _INVOICE_IMPLEMENTED:
+        assert resolve_normalizer(fin_id) is not None, fin_id
+
+
+def test_phase05_rfq_change_event_endpoints_have_normalizers() -> None:
+    # Prompt 08 registered the RFQ / change-event normalizers; still unverified.
+    for fin_id in _RFQ_IMPLEMENTED:
         assert resolve_normalizer(fin_id) is not None, fin_id
 
 

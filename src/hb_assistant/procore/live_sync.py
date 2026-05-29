@@ -69,6 +69,13 @@ from hb_assistant.procore.normalizers.owner_contract import (
     normalize_prime_contract_attachment,
     normalize_prime_contract_line_item,
 )
+from hb_assistant.procore.normalizers.rfq_change_event import (
+    normalize_change_event,
+    normalize_change_event_comment,
+    normalize_rfq,
+    normalize_rfq_quote,
+    normalize_rfq_response,
+)
 from hb_assistant.procore.normalizers.subcontractor_invoice import (
     normalize_billing_period,
     normalize_subcontractor_invoice,
@@ -103,6 +110,10 @@ from hb_assistant.store.procore_repositories import (
     upsert_procore_live_record,
 )
 from hb_assistant.store.procore_rfi_projection import project_rfi
+from hb_assistant.store.procore_rfq_change_event_projection import (
+    RFQ_ENDPOINTS,
+    project_rfq_change_event_family,
+)
 from hb_assistant.store.procore_schedule_projection import project_activity
 from hb_assistant.store.procore_submittal_projection import project_submittal
 
@@ -294,6 +305,13 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     "subcontractor-invoice-contract-items": normalize_subcontractor_invoice_contract_item,
     "subcontractor-invoice-contract-detail-items": normalize_subcontractor_invoice_contract_detail_item,
     "subcontractor-invoice-change-order-items": normalize_subcontractor_invoice_change_order_item,
+    # Phase 05 change-management surface (RFQs + responses/quotes + change events
+    # + comments). Same fail-closed posture: registered but live_verified=False.
+    "rfqs": normalize_rfq,
+    "rfq-responses": normalize_rfq_response,
+    "rfq-quotes": normalize_rfq_quote,
+    "change-events": normalize_change_event,
+    "change-event-comments": normalize_change_event_comment,
 }
 
 
@@ -1185,6 +1203,23 @@ def run_live_sync(
                 )
             except Exception:  # noqa: BLE001
                 redacted_errors.append({"invoice_projection_error": "projection_failed"})
+
+        # Phase 05 change-management enrichment: RFQs + responses/quotes + change
+        # events + comments — links informal pricing/change workflow to the formal
+        # change records (amount facts, edges, signals). Guarded.
+        if adapter.endpoint_id in RFQ_ENDPOINTS:
+            try:
+                project_rfq_change_event_family(
+                    adapter.endpoint_id,
+                    raw,
+                    project_key=project_key,
+                    sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                    parent_procore_id=parent_id_for_upsert,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"rfq_projection_error": "projection_failed"})
 
         if child_adapter is None or child_normalizer is None:
             continue
