@@ -1,81 +1,66 @@
 # CLAUDE.md
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+## Project
 
-## 1. Think Before Coding
+`hb-personal-assistant` — a Bobby-only, **local-first** MVP that pulls delegated Microsoft 365 (Graph) and Procore data, classifies/enriches it, and writes source-linked notes into an Obsidian vault. Pure Python 3.12+, single package `hb_assistant`, Typer CLI, SQLite for local state. No web service, frontend, or JS workspaces.
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+Work is organized by **phases** (Construction Intelligence 01/02, Procore 04A live sync / 04B second-brain). The README "Repository Status" block is the authoritative phase ledger; each phase has an evidence bundle under `docs/evidence/`.
 
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+## Commands
 
-## 2. Simplicity First
+Run inside the venv (`source .venv/bin/activate`) or prefix with `.venv/bin/`.
 
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
+```bash
+pip install -e ".[dev]"                                    # package + dev tooling
+pytest                                                     # full suite
+pytest tests/test_procore_cli_validate.py::test_name       # one test (or pass a file)
+pytest -m "not integration and not live and not manual"    # default-safe subset
+ruff check . && ruff format .                              # lint + format (line-length 100)
+mypy src                                                   # type-check
+hb-assistant --help                                        # CLI entry point
+construction-agent validate --json                         # `construction-agent` is an hb-assistant subgroup
 ```
 
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+- **Lint/type scope is intentionally partial.** `pyproject.toml` (`[tool.ruff] extend-exclude`, `per-file-ignores`, `[[tool.mypy.overrides]]`) lists exactly which modules are held to strict ruff/mypy; new phases opt their modules in. Check whether a module is in-scope before trusting a clean `ruff check .` / `mypy src`.
+- **Markers** `integration`/`manual`/`live` are opt-in. `live` hits real Procore HTTP and needs `HB_PROCORE_LIVE=1` — never run without explicit intent.
 
----
+## Architecture
 
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+All source under `src/hb_assistant/`. Layered pipeline: **auth → external read clients → SQLite store + projections → classification/retrieval → Obsidian output**, with `cli/` on top and `automation/` driving scheduled runs.
 
-## 5. Obsidian Vault Planning and Implementation Package Governance
+- **`cli/`** — Typer apps composed in `cli/main.py` (`hb-assistant`). Large nested groups: `construction-agent` (`cli/construction.py`), `procore` (`cli/procore.py`). `vault`/`sync`/`brief` are deliberate "not implemented" stubs. Most commands support `--json` + a dry-run posture.
+- **`auth/`** — MSAL delegated (Bobby-user) tokens are the runtime default; cert app-only is proof/admin only. Scopes are minimized in `scope_policy.py` (tenant consented `Mail.ReadWrite.All`, but runtime requests only `Mail.Read`). Token cache lives outside the repo.
+- **`graph/`** — read-only Graph clients (mail, calendar, drive) over `http_client.py` + `proof_runner.py`. Delta crawling is folder-scoped, not deep-index.
+- **`store/`** — SQLite via `connection.py` + `migrator.py` (**additive, versioned schema V1…V7 — never rewrite existing tables, add migrations**). `procore_*_projection.py` modules are per-domain read models; `construction/store/repositories.py` is the construction-side schema.
+- **`construction/`** — source registry (Pydantic + YAML loaders), Graph resolution/delta, classification, manifests, policy. Config seeds in `resources/config/*.seed.yaml`.
+- **`procore/`** — `auth.py` (OAuth), `normalizers/`, `sync.py`, `live_gate.py` (fail-closed live gate), daily-log selection. The Procore HTTP client is intentionally absent for non-live work (a test enforces this).
+- **`obsidian/`** — `writer.py` + `brief.py` project store data into vault notes. Hard invariant: every output carries source traceability and never leaks raw delta links, tokens, full bodies, or PEMs (redaction attestations + an output-fence enforce this).
+- **`retrieval/` `classification/` `actions/`** — embeddings/context, Ollama-backed classification (`--mock-output` offline mode), action extraction.
+- **`automation/`** — `orchestrator.py` (morning "run" pipeline) + `launchd_manager.py` (macOS launchd).
+- **`config/`** — `path_policy.py` resolves the macOS Application Support root; **all auth cache, SQLite, and logs live outside the repo** under `~/Library/Application Support/HB Personal Assistant/`.
 
-- Vault root: `/Users/bobbyfetting/Documents/Obsidian Vault/Work/HB Personal Assistant/`
-- Repo root: `/Users/bobbyfetting/hb-personal-assistant`
-- Source-of-truth rule: Repository code, tests, runtime behavior, and repo evidence are authoritative over planning notes.
-- Package lifecycle states: `Active`, `Closed`, `Deferred`, `Superseded`.
-- Preflight rule: Before modifying or removing package sources, verify migration prerequisites, manifest status, and registry coverage.
-- Migration verification rule: Package migration is valid only when manifest coverage, payload counts, and pre-metadata hash verification pass; post-metadata changes must be declared.
-- Closure-note rule: Any `Closed` package must have `CLOSURE_NOTE.md` or be explicitly marked pending closeout.
-- Registry update rule: Lifecycle changes must be reflected in `09_Implementation_Packages/Package Registry.md` and related migration manifests.
-- Deferred scope rule: Deferred external blockers may be documented without reclassifying evidence bundles as lifecycle packages.
-- Conflict rule: If vault package instructions conflict with repo truth, stop and report conflict before patching.
-- Evidence rule: `docs/evidence/**` stays in repo and is referenced; evidence bundles are not lifecycle-classified implementation packages.
-- No-secret rule: Never copy credentials, tokens, or sensitive runtime material into governance notes.
-- No-plugin rule: Governance instructions must remain usable without Obsidian plugin dependencies.
+**Non-negotiable runtime guardrails** (enforced in code/tests): no Microsoft 365 write-back; mailbox read-only at four layers (YAML policy, MSAL scope, Python adapter, SQLite `CHECK`); dry-run before any write; no secrets/tokens/full-bodies/PEMs logged or committed; state stored outside the repo.
+
+`docs/architecture/` holds per-component design records; `docs/evidence/<phase>/` holds authoritative per-phase validation bundles. Repo code/tests/evidence are the source of truth over any planning note.
+
+### Code graph
+
+A pre-built index lives at `.code-graph/graph.bin` (with a daemon), but the wrapper commands (`update-code-graph`, `query-graph`, `graph-blast-radius`) are **not installed on PATH** — they're unfilled placeholders. Use standard Grep/Glob/Read; don't invoke commands that don't resolve. Update this section if a real graph CLI is wired up.
+
+## Working style
+
+- **Think before coding.** State assumptions; if multiple interpretations exist, surface them rather than picking silently. If something is unclear or a simpler approach exists, say so.
+- **Simplicity first.** Minimum code that solves the problem — no speculative features, abstractions for single-use code, or error handling for impossible cases.
+- **Surgical changes.** Touch only what the request requires; match existing style; don't refactor what isn't broken. Remove orphans *your* change created; flag (don't delete) pre-existing dead code.
+- **Goal-driven.** Turn tasks into verifiable goals (e.g. "fix the bug" → "write a failing test, then make it pass") and loop until verified. State a brief step→verify plan for multi-step work.
+
+## Obsidian vault governance
+
+- Vault root: `/Users/bobbyfetting/Documents/Obsidian Vault/Work/HB Personal Assistant/` · Repo root: `/Users/bobbyfetting/hb-personal-assistant`
+- **Source of truth:** repo code, tests, runtime behavior, and repo evidence are authoritative over planning notes. If vault instructions conflict with repo truth, stop and report before patching.
+- Package lifecycle: `Active`, `Closed`, `Deferred`, `Superseded`. Lifecycle changes must be reflected in `09_Implementation_Packages/Package Registry.md` + related manifests. Any `Closed` package needs `CLOSURE_NOTE.md` (or explicit pending-closeout mark).
+- Before modifying/removing package sources, verify migration prerequisites, manifest status, and registry coverage. Migration is valid only when manifest coverage, payload counts, and pre-metadata hash verification pass; declare post-metadata changes.
+- `docs/evidence/**` stays in-repo and is referenced — evidence bundles are *not* lifecycle-classified packages. Deferred external blockers may be documented without reclassifying evidence bundles.
+- Never copy credentials/tokens/sensitive material into governance notes. Governance must stay usable without Obsidian plugins.
