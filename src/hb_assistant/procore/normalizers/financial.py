@@ -176,6 +176,41 @@ def custom_field_policy(raw_custom_fields: Any) -> Dict[str, Any]:
     return custom_field_entities(raw_custom_fields)
 
 
+def change_event_line_item_summary(raw: Any) -> Optional[Dict[str, Any]]:
+    """Redacted summary of a line item's ``change_event_line_item`` linkage.
+
+    Shared across the contract / change-order line-item normalizers (prime,
+    commitment, purchase-order). Identifiers are kept (change-event line-item id,
+    change-event id, change-event number — business labels, not PII) and WBS /
+    cost-code metadata is preserved; the change-event title and the line-item
+    description are free text and are reduced to hash-only summaries. Returns
+    ``None`` when the payload carries no ``change_event_line_item`` block.
+    """
+    if not isinstance(raw, dict):
+        return None
+    cel = raw.get("change_event_line_item")
+    if not isinstance(cel, dict):
+        return None
+    out: Dict[str, Any] = {}
+    if cel.get("id") is not None:
+        out["change_event_line_item_id"] = str(cel["id"])
+    event = cel.get("event")
+    if isinstance(event, dict) and event.get("id") is not None:
+        out["change_event_id"] = str(event["id"])
+    elif cel.get("event_id") is not None:
+        out["change_event_id"] = str(cel["event_id"])
+    if isinstance(event, dict) and event.get("number") is not None:
+        out["change_event_number"] = event["number"]
+    title_summary = hash_summary(event.get("title")) if isinstance(event, dict) else None
+    if title_summary is not None:
+        out["change_event_title_summary"] = title_summary
+    description_summary = hash_summary(cel.get("description"))
+    if description_summary is not None:
+        out["description_summary"] = description_summary
+    out.update(extract_wbs_cost_code(cel))
+    return out
+
+
 def build_amount_facts(
     canonical: Mapping[str, Any],
     *,
@@ -214,6 +249,7 @@ __all__ = [
     "summarize_text",
     "attachment_path",
     "custom_field_policy",
+    "change_event_line_item_summary",
     "build_amount_facts",
     # re-exposed shared primitives (people PII hashed; company labels preserved;
     # attachments path-only)

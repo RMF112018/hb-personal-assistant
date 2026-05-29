@@ -24,6 +24,7 @@ from .procore_financial_projection import (
     bool_to_int,
     coerce_amount,
     emit_amount_facts,
+    emit_change_event_edge,
     is_positive_amount,
     link_record_entities,
     record_key,
@@ -343,6 +344,11 @@ def _project_co_line_item(
         project_key=project_key, rk=li_key, endpoint_id="prime-change-order-line-items",
         table="procore_financial_change_order_line_items", fields=fields, amount_keys=("amount",),
         now_utc=now_utc, currency_iso_code=_currency(raw).get("currency_iso_code"), db_path=db_path,
+    )
+    emit_change_event_edge(
+        project_key=project_key, from_record_key=li_key,
+        source_endpoint_id="prime-change-order-line-items",
+        change_event_line_item=raw.get("change_event_line_item"), now_utc=now_utc, db_path=db_path,
     )
     return {"projected": True, "record_key": li_key, "signals": []}
 

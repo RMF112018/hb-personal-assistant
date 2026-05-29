@@ -1,6 +1,6 @@
 # 16 — Procore Contracts & Financials (Phase 05)
 
-Status: **in progress** · Phase 05 Prompts 01–05 · Migration **V8** · registry 27 → 59 endpoints
+Status: **in progress** · Phase 05 Prompts 01–06 · Migration **V8** · registry 27 → 59 endpoints
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change
@@ -163,10 +163,44 @@ compliance and the v1 purchase-order compatibility surface; wired into live_sync
 - Other signals: `commitment_unexecuted`, `purchase_order_processing`,
   `purchase_order_delivery_due` (`delivery_date` within 14d, non-terminal status).
 
+## Change orders & shared line items (Prompt 06)
+
+Closes the vendor-side change-order gap and hardens the line-item path. Two
+registered-but-unwired endpoints — `commitment-change-orders` and
+`commitment-change-order-line-items` — get normalizers (added to
+`normalizers/commitment_contract.py`) + projections (added to
+`store/procore_commitment_projection.py`), wired into live_sync the same way
+(registered in `_NORMALIZER_BY_ID`; the existing `COMMITMENT_ENDPOINTS` guard now
+includes both ids). Both stay **`live_verified=False`** — fail-closed before the
+normalizer lookup. **No migration / repository / registry-row changes** — V8 already
+carries `procore_financial_change_orders` + `procore_financial_change_order_line_items`
+and the `upsert_financial_change_order` / `_change_order_line_item` repository
+functions (Prompt 02).
+
+- **Commitment change orders** mirror the owner-side prime-CO projection
+  (`change_order_family="commitment"`): linked to the parent commitment by
+  `contract_id` (`change_order_of` edge); amount facts for `grand_total` +
+  `schedule_impact_amount`; parties (`created_by` / `received_from` /
+  `designated_reviewer` / `reviewed_by`) hashed; title/description/review_notes
+  hash-only. Signals: `commitment_change_order_unexecuted` (unexecuted +
+  signature_required), `commitment_change_order_unpaid` (unpaid + invoiced or
+  billable status), `commitment_change_order_schedule_impact` (positive impact).
+- **Shared line-item hardening:** a single `change_event_line_item_summary` helper
+  in `normalizers/financial.py` redacts the `change_event_line_item` linkage block
+  (ids + WBS kept; change-event title + line-item description hash-only) for **all**
+  line-item normalizers (prime, commitment, prime-CO, commitment-CO). A shared
+  `emit_change_event_edge` primitive in `store/procore_financial_projection.py`
+  emits a `change_event_line_item` edge from a change-order line item to its source
+  change event (`record_key(project_key, "change-events", None, event_id)`) — a
+  forward reference (the change-events endpoint lands in Prompt 08), mirroring the
+  forward-referencing `change_order_of` edge. Wired into both the new commitment-CO
+  line items and the existing owner prime-CO line items.
+
 Evidence: `docs/evidence/construction-intelligence-phase-05-financials/`
 (`00-…source-inventory.md`, `phase05-financial-endpoint-inventory.json`,
 `01-endpoint-registry-and-live-gate-shell.md`,
 `02-v8-financial-schema-and-repository-model.md`,
 `03-shared-financial-normalizers-and-redaction-utilities.md`,
 `04-prime-contracts-prime-change-orders-and-payment-applications.md`,
-`05-commitments-purchase-orders-attachments-and-compliance.md`).
+`05-commitments-purchase-orders-attachments-and-compliance.md`,
+`06-change-orders-and-financial-line-items.md`).

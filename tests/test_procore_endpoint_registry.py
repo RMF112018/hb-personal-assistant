@@ -163,11 +163,14 @@ _OWNER_IMPLEMENTED = frozenset(
     }
 )
 
-# Vendor-side endpoints implemented in Prompt 05 (commitments + PO compatibility).
+# Vendor-side endpoints implemented in Prompt 05 (commitments + PO compatibility)
+# and Prompt 06 (commitment change orders + CO line items).
 _COMMITMENT_IMPLEMENTED = frozenset(
     {
         "commitment-contracts",
         "commitment-line-items",
+        "commitment-change-orders",
+        "commitment-change-order-line-items",
         "commitment-attachments",
         "commitment-compliance",
         "purchase-order-contracts",

@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 
 from .financial import (
     attachment_path,
+    change_event_line_item_summary,
     extract_currency_config,
     extract_wbs_cost_code,
     hash_summary,
@@ -161,9 +162,14 @@ def _line_item_canonical(raw: Dict[str, Any]) -> Dict[str, Any]:
     _keep_scalars(raw, ("position", "uom", "extended_type", "updated_at"), cf)
     _keep_amounts(raw, _LINE_ITEM_AMOUNTS, cf)
     cf.update(extract_wbs_cost_code(raw))
+    if raw.get("prime_line_item_id") is not None:
+        cf["prime_line_item_id"] = str(raw["prime_line_item_id"])
     summary = hash_summary(raw.get("description"))
     if summary is not None:
         cf["description_summary"] = summary
+    cel = change_event_line_item_summary(raw)
+    if cel is not None:
+        cf["change_event_line_item"] = cel
     return cf
 
 

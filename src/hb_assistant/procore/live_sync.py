@@ -52,6 +52,8 @@ from hb_assistant.procore.normalizers import (
 )
 from hb_assistant.procore.normalizers.commitment_contract import (
     normalize_commitment_attachment,
+    normalize_commitment_change_order,
+    normalize_commitment_change_order_line_item,
     normalize_commitment_compliance,
     normalize_commitment_contract,
     normalize_commitment_line_item,
@@ -267,6 +269,8 @@ _NORMALIZER_BY_ID: Dict[str, Callable[..., Dict[str, Any]]] = {
     # Same fail-closed posture: registered but live_verified=False in the registry.
     "commitment-contracts": normalize_commitment_contract,
     "commitment-line-items": normalize_commitment_line_item,
+    "commitment-change-orders": normalize_commitment_change_order,
+    "commitment-change-order-line-items": normalize_commitment_change_order_line_item,
     "commitment-attachments": normalize_commitment_attachment,
     "commitment-compliance": normalize_commitment_compliance,
     "purchase-order-contracts": normalize_purchase_order_contract,

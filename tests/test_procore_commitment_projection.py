@@ -158,6 +158,111 @@ def test_purchase_order_dedup_against_commitment() -> None:
     assert len(_rows(db, "procore_financial_amount_facts")) == facts_before  # not double-counted
 
 
+def _edges(db: Path) -> list[sqlite3.Row]:
+    return _rows(db, "procore_record_edges")
+
+
+def test_commitment_change_order_rows_facts_edge_signals() -> None:
+    db = _db()
+    out = project_commitment_family(
+        "commitment-change-orders",
+        {
+            "id": 30,
+            "number": "CCO-002",
+            "contract_id": 1,
+            "status": "Pending",
+            "executed": False,
+            "paid": False,
+            "signature_required": True,
+            "grand_total": "25000.00",
+            "schedule_impact_amount": "5",
+            "currency_configuration": {"currency_iso_code": "USD"},
+            "invoiced_date": "2026-06-01",
+            "created_by": {"id": 5, "name": "Pat", "login": "pat@example.test"},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
+    )
+    assert out["projected"] is True
+    row = _rows(db, "procore_financial_change_orders")[0]
+    assert row["change_order_family"] == "commitment" and row["grand_total"] == "25000.00"
+    assert row["contract_record_key"] == "tropical|commitment-contracts||1"
+    facts = {r["amount_name"] for r in _rows(db, "procore_financial_amount_facts")}
+    assert {"grand_total", "schedule_impact_amount"} <= facts
+    edges = {(e["edge_type"], e["to_record_key"]) for e in _edges(db)}
+    assert ("change_order_of", "tropical|commitment-contracts||1") in edges
+    sigs = _signals(db)
+    assert {
+        "commitment_change_order_unexecuted",
+        "commitment_change_order_unpaid",
+        "commitment_change_order_schedule_impact",
+    } <= sigs
+
+
+def test_commitment_co_line_item_amount_and_change_event_edge() -> None:
+    db = _db()
+    out = project_commitment_family(
+        "commitment-change-order-line-items",
+        {
+            "id": 99,
+            "amount": "0.000000000001",
+            "unit_cost": "1.25",
+            "quantity": 3,
+            "wbs_code": {"id": 3, "flat_code": "01-100"},
+            "change_event_line_item": {
+                "id": 700,
+                "event": {"id": 42, "number": "CE-007", "title": "Owner request"},
+            },
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
+        parent_procore_id="30",
+    )
+    assert out["projected"] is True
+    li = _rows(db, "procore_financial_change_order_line_items")[0]
+    assert li["change_order_family"] == "commitment" and li["amount"] == "0.000000000001"
+    assert li["change_order_record_key"] == "tropical|commitment-change-orders||30"
+    facts = _rows(db, "procore_financial_amount_facts")
+    assert facts[0]["amount_value"] == "0.000000000001"  # precision preserved
+    edges = {(e["edge_type"], e["to_record_key"]) for e in _edges(db)}
+    assert ("change_event_line_item", "tropical|change-events||42") in edges
+
+
+def test_commitment_co_line_item_without_change_event_emits_no_edge() -> None:
+    db = _db()
+    project_commitment_family(
+        "commitment-change-order-line-items",
+        {"id": 1, "amount": "10.00"},
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
+        parent_procore_id="30",
+    )
+    assert not any(e["edge_type"] == "change_event_line_item" for e in _edges(db))
+
+
+def test_commitment_change_order_executed_paid_emits_no_signal() -> None:
+    db = _db()
+    project_commitment_family(
+        "commitment-change-orders",
+        {
+            "id": 31,
+            "contract_id": 1,
+            "status": "Closed",
+            "executed": True,
+            "paid": True,
+            "signature_required": True,
+            "grand_total": "100.00",
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
+    )
+    assert _signals(db) == set()
+
+
 def test_commitment_contract_idempotent() -> None:
     db = _db()
     raw = {"id": 1, "status": "Active", "executed": True, "grand_total": "1.00"}

@@ -166,6 +166,47 @@ def link_record_entities(
     return linked
 
 
+def emit_change_event_edge(
+    *,
+    project_key: str,
+    from_record_key: str,
+    source_endpoint_id: str,
+    change_event_line_item: Any,
+    now_utc: str,
+    db_path: Optional[Path] = None,
+) -> Optional[str]:
+    """Link a line item to its source change event via a record edge.
+
+    Reads the ``change_event_line_item`` linkage block from a raw line-item
+    payload (prime / commitment / change-order line items all carry it) and,
+    when a change-event id is present, emits a ``change_event_line_item`` edge to
+    the change-event record key. The change-events endpoint is projected by a
+    later prompt; the edge is emitted ahead of it, mirroring the forward-
+    referencing ``change_order_of`` edge. Returns the edge id, or ``None`` when
+    no linkage / event id is present.
+    """
+    if not isinstance(change_event_line_item, Mapping):
+        return None
+    event = change_event_line_item.get("event")
+    if isinstance(event, Mapping) and event.get("id") is not None:
+        event_id: Optional[str] = str(event["id"])
+    elif change_event_line_item.get("event_id") is not None:
+        event_id = str(change_event_line_item["event_id"])
+    else:
+        event_id = None
+    if event_id is None:
+        return None
+    return emit_record_edge(
+        project_key=project_key,
+        from_record_key=from_record_key,
+        edge_type="change_event_line_item",
+        source_endpoint_id=source_endpoint_id,
+        to_record_key=record_key(project_key, "change-events", None, event_id),
+        now_utc=now_utc,
+        db_path=db_path,
+    )
+
+
 __all__ = [
     "record_key",
     "coerce_amount",
@@ -173,4 +214,5 @@ __all__ = [
     "bool_to_int",
     "emit_amount_facts",
     "link_record_entities",
+    "emit_change_event_edge",
 ]

@@ -18,6 +18,7 @@ from typing import Any, Dict, List
 
 from .financial import (
     attachment_path,
+    change_event_line_item_summary,
     extract_currency_config,
     extract_wbs_cost_code,
     hash_summary,
@@ -35,6 +36,7 @@ _PO_AMOUNTS = (
     "remaining_balance_outstanding",
 )
 _LINE_ITEM_AMOUNTS = ("amount", "unit_cost", "quantity", "extended_amount", "total_amount")
+_CHANGE_ORDER_AMOUNTS = ("grand_total", "schedule_impact_amount")
 
 
 def _base(
@@ -137,9 +139,15 @@ def _line_item_canonical(raw: Dict[str, Any]) -> Dict[str, Any]:
     _keep_scalars(raw, ("position", "uom", "extended_type", "updated_at"), cf)
     _keep_amounts(raw, _LINE_ITEM_AMOUNTS, cf)
     cf.update(extract_wbs_cost_code(raw))
+    for id_key in ("commitment_line_item_id", "prime_line_item_id"):
+        if raw.get(id_key) is not None:
+            cf[id_key] = str(raw[id_key])
     summary = hash_summary(raw.get("description"))
     if summary is not None:
         cf["description_summary"] = summary
+    cel = change_event_line_item_summary(raw)
+    if cel is not None:
+        cf["change_event_line_item"] = cel
     return cf
 
 
@@ -152,6 +160,69 @@ def normalize_commitment_line_item(
         project_key=project_key,
         endpoint_id=endpoint_id,
         category="commitment_line_items",
+        correlation_id=correlation_id,
+        fetched_at=fetched_at,
+        canonical_fields=_line_item_canonical(raw),
+        review_required=False,
+        routing_reason="commitment_high_sensitivity",
+        entity_stable_key=str(raw["id"]),
+    )
+
+
+def normalize_commitment_change_order(
+    raw: Dict[str, Any], *, project_key: str, endpoint_id: str, correlation_id: str, fetched_at: str
+) -> Dict[str, Any]:
+    _require_id(raw, "normalize_commitment_change_order")
+    cf: Dict[str, Any] = {}
+    _keep_scalars(
+        raw,
+        (
+            "number",
+            "contract_id",
+            "status",
+            "executed",
+            "paid",
+            "private",
+            "field_change",
+            "signature_required",
+            "type",
+            "revision",
+            "billing_schedule_of_values_status",
+            "due_date",
+            "invoiced_date",
+            "paid_date",
+            "reviewed_at",
+            "updated_at",
+        ),
+        cf,
+    )
+    _keep_amounts(raw, _CHANGE_ORDER_AMOUNTS, cf)
+    cf.update(extract_currency_config(raw))
+    _summarize_into(cf, raw, ("title", "description", "review_notes"))
+    _parties_into(cf, raw, ("created_by", "received_from", "designated_reviewer", "reviewed_by"))
+    return _base(
+        raw,
+        project_key=project_key,
+        endpoint_id=endpoint_id,
+        category="commitment_change_orders",
+        correlation_id=correlation_id,
+        fetched_at=fetched_at,
+        canonical_fields=cf,
+        review_required=bool(raw.get("private")),
+        routing_reason="commitment_high_sensitivity",
+        entity_stable_key=str(raw["id"]),
+    )
+
+
+def normalize_commitment_change_order_line_item(
+    raw: Dict[str, Any], *, project_key: str, endpoint_id: str, correlation_id: str, fetched_at: str
+) -> Dict[str, Any]:
+    _require_id(raw, "normalize_commitment_change_order_line_item")
+    return _base(
+        raw,
+        project_key=project_key,
+        endpoint_id=endpoint_id,
+        category="commitment_change_order_line_items",
         correlation_id=correlation_id,
         fetched_at=fetched_at,
         canonical_fields=_line_item_canonical(raw),
@@ -342,6 +413,8 @@ __all__: List[str] = [
     "NORMALIZATION_SCHEMA_VERSION",
     "normalize_commitment_contract",
     "normalize_commitment_line_item",
+    "normalize_commitment_change_order",
+    "normalize_commitment_change_order_line_item",
     "normalize_commitment_attachment",
     "normalize_commitment_compliance",
     "normalize_purchase_order_contract",

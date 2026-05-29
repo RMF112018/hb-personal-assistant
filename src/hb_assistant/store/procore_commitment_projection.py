@@ -31,10 +31,14 @@ from .procore_financial_projection import (
     bool_to_int,
     coerce_amount,
     emit_amount_facts,
+    emit_change_event_edge,
+    is_positive_amount,
     link_record_entities,
     record_key,
 )
 from .procore_financials import (
+    upsert_financial_change_order,
+    upsert_financial_change_order_line_item,
     upsert_financial_compliance_document,
     upsert_financial_contract,
     upsert_financial_line_item,
@@ -44,6 +48,8 @@ COMMITMENT_ENDPOINTS = frozenset(
     {
         "commitment-contracts",
         "commitment-line-items",
+        "commitment-change-orders",
+        "commitment-change-order-line-items",
         "commitment-attachments",
         "commitment-compliance",
         "purchase-order-contracts",
@@ -58,6 +64,7 @@ _PO_PROCESSING = {
 }
 _PO_TERMINAL = {"closed", "completed", "cancelled", "canceled", "void", "paid"}
 _COMPLIANT = {"compliant", "approved", "active", "valid"}
+_CO_BILLABLE = {"approved", "executed", "closed"}
 
 
 def _drop_none(fields: Dict[str, Any]) -> Dict[str, Any]:
@@ -239,6 +246,120 @@ def _project_line_item(
         project_key=project_key, rk=li_key, endpoint_id=endpoint_id,
         table="procore_financial_line_items", fields=fields, amount_keys=("amount",),
         now_utc=now_utc, currency_iso_code=_currency(raw).get("currency_iso_code"), db_path=db_path,
+    )
+    return {"projected": True, "record_key": li_key, "signals": []}
+
+
+def _project_commitment_change_order(
+    raw: Mapping[str, Any], *, project_key: str, sync_run_id: Optional[str], now_utc: str,
+    db_path: Optional[Path],
+) -> Dict[str, Any]:
+    coid = str(raw["id"])
+    co_rk = record_key(project_key, "commitment-change-orders", None, coid)
+    contract_id = raw.get("contract_id")
+    contract_rk = (
+        record_key(project_key, "commitment-contracts", None, str(contract_id))
+        if contract_id is not None else None
+    )
+    currency = _currency(raw)
+    fields = _drop_none(
+        {
+            "contract_record_key": contract_rk,
+            "contract_id": str(contract_id) if contract_id is not None else None,
+            "number": raw.get("number"),
+            "title_redacted": raw.get("title"),
+            "status": raw.get("status"),
+            "executed": bool_to_int(raw.get("executed")),
+            "paid": bool_to_int(raw.get("paid")),
+            "private": bool_to_int(raw.get("private")),
+            "field_change": bool_to_int(raw.get("field_change")),
+            "signature_required": bool_to_int(raw.get("signature_required")),
+            "grand_total": coerce_amount(raw.get("grand_total")),
+            "schedule_impact_amount": coerce_amount(raw.get("schedule_impact_amount")),
+            "due_date": raw.get("due_date"),
+            "invoiced_date": raw.get("invoiced_date"),
+            "paid_date": raw.get("paid_date"),
+            "reviewed_at_utc": raw.get("reviewed_at"),
+            "updated_at_utc": raw.get("updated_at"),
+        }
+    )
+    upsert_financial_change_order(
+        record_key=co_rk, project_key=project_key, endpoint_id="commitment-change-orders",
+        change_order_id=coid, change_order_family="commitment", fields=fields, db_path=db_path,
+    )
+    _emit_facts(
+        project_key=project_key, rk=co_rk, endpoint_id="commitment-change-orders",
+        table="procore_financial_change_orders", fields=fields,
+        amount_keys=("grand_total", "schedule_impact_amount"),
+        now_utc=now_utc, currency_iso_code=currency.get("currency_iso_code"), db_path=db_path,
+    )
+    link_record_entities(
+        project_key=project_key, record_key=co_rk, endpoint_id="commitment-change-orders",
+        people={
+            "created_by": raw.get("created_by"), "received_from": raw.get("received_from"),
+            "designated_reviewer": raw.get("designated_reviewer"), "reviewed_by": raw.get("reviewed_by"),
+        },
+        now_utc=now_utc, db_path=db_path,
+    )
+    if contract_rk:
+        emit_record_edge(
+            project_key=project_key, from_record_key=co_rk, edge_type="change_order_of",
+            source_endpoint_id="commitment-change-orders", to_record_key=contract_rk,
+            now_utc=now_utc, db_path=db_path,
+        )
+    signals: List[str] = []
+
+    def _sig(signal_type: str, importance: str) -> None:
+        emit_action_signal(project_key=project_key, record_key=co_rk,
+                           endpoint_id="commitment-change-orders", signal_type=signal_type,
+                           importance=importance, now_utc=now_utc, db_path=db_path)
+        signals.append(signal_type)
+
+    status = str(raw.get("status") or "").strip().lower()
+    if not raw.get("executed") and raw.get("signature_required"):
+        _sig("commitment_change_order_unexecuted", "high")
+    if not raw.get("paid") and (raw.get("invoiced_date") or status in _CO_BILLABLE):
+        _sig("commitment_change_order_unpaid", "high")
+    if is_positive_amount(raw.get("schedule_impact_amount")):
+        _sig("commitment_change_order_schedule_impact", "medium")
+    return {"projected": True, "record_key": co_rk, "signals": signals}
+
+
+def _project_commitment_co_line_item(
+    raw: Mapping[str, Any], *, parent_procore_id: Optional[str], project_key: str, now_utc: str,
+    db_path: Optional[Path],
+) -> Dict[str, Any]:
+    lid = str(raw["id"])
+    parent = parent_procore_id or (
+        str(raw.get("change_order_id")) if raw.get("change_order_id") is not None else None
+    )
+    co_rk = record_key(project_key, "commitment-change-orders", None, parent) if parent else ""
+    li_key = record_key(project_key, "commitment-change-order-line-items", parent, lid)
+    fields = _drop_none(
+        {
+            "amount": coerce_amount(raw.get("amount")),
+            "unit_cost": coerce_amount(raw.get("unit_cost")),
+            "quantity": coerce_amount(raw.get("quantity")),
+            "uom": raw.get("uom"),
+            "position": raw.get("position"),
+            **_wbs(raw, include_description=False),
+            **_currency(raw),
+        }
+    )
+    upsert_financial_change_order_line_item(
+        line_item_key=li_key, project_key=project_key, change_order_record_key=co_rk,
+        endpoint_id="commitment-change-order-line-items", line_item_id=lid,
+        change_order_family="commitment", fields=fields, db_path=db_path,
+    )
+    _emit_facts(
+        project_key=project_key, rk=li_key, endpoint_id="commitment-change-order-line-items",
+        table="procore_financial_change_order_line_items", fields=fields, amount_keys=("amount",),
+        now_utc=now_utc, currency_iso_code=_currency(raw).get("currency_iso_code"), db_path=db_path,
+    )
+    emit_change_event_edge(
+        project_key=project_key, from_record_key=li_key,
+        source_endpoint_id="commitment-change-order-line-items",
+        change_event_line_item=raw.get("change_event_line_item"), now_utc=now_utc, db_path=db_path,
     )
     return {"projected": True, "record_key": li_key, "signals": []}
 
@@ -430,6 +551,15 @@ def project_commitment_family(
             raw, endpoint_id="commitment-line-items", parent_endpoint="commitment-contracts",
             line_item_kind="commitment", parent_field="commitment_contract_id",
             parent_procore_id=parent_procore_id, project_key=project_key, now_utc=now_utc, db_path=db_path,
+        )
+    if endpoint_id == "commitment-change-orders":
+        return _project_commitment_change_order(
+            raw, project_key=project_key, sync_run_id=sync_run_id, now_utc=now_utc, db_path=db_path
+        )
+    if endpoint_id == "commitment-change-order-line-items":
+        return _project_commitment_co_line_item(
+            raw, parent_procore_id=parent_procore_id, project_key=project_key,
+            now_utc=now_utc, db_path=db_path,
         )
     if endpoint_id == "commitment-attachments":
         return _project_attachment(
