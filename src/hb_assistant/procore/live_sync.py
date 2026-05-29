@@ -62,6 +62,7 @@ from hb_assistant.store.procore_repositories import (
     update_watermark,
     upsert_procore_live_record,
 )
+from hb_assistant.store.procore_rfi_projection import project_rfi
 
 COMPANY_ID = "5280"
 EVIDENCE_DIR_REL = "docs/evidence/construction-intelligence-phase-04a"
@@ -969,6 +970,21 @@ def run_live_sync(
                 )
             except Exception:  # noqa: BLE001
                 redacted_errors.append({"meeting_projection_error": "projection_failed"})
+
+        # Phase 04B RFI enrichment: project the RFI (responsibility, cost/schedule
+        # impacts, question/proposed-solution text intelligence, signals) and its
+        # inline replies (answer text, official flag, response->rfi edges). Guarded.
+        if adapter.endpoint_id == "rfis":
+            try:
+                project_rfi(
+                    raw,
+                    project_key=project_key,
+                    sync_run_id=sync_run_id,
+                    now_utc=fetched_at,
+                    db_path=db_path,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"rfi_projection_error": "projection_failed"})
 
         if child_adapter is None or child_normalizer is None:
             continue

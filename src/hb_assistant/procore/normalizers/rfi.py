@@ -35,6 +35,9 @@ _RFI_REPLY_CANONICAL_FIELD_KEYS = (
     "created_at",
     "updated_at",
     "author_id",
+    "created_by_id",
+    "answer_date",
+    "official",
 )
 
 # Status strings that flag an RFI for explicit review routing. Match is
@@ -89,11 +92,77 @@ def _looks_review_required(raw: Dict[str, Any]) -> Tuple[bool, str]:
 
 
 def _source_url(raw: Dict[str, Any]) -> Optional[str]:
-    for key in ("html_url", "url", "source_url"):
+    for key in ("html_url", "url", "source_url", "link"):
         value = raw.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def _ref_id(value: Any) -> Optional[int]:
+    """Opaque numeric id from a person/company ref dict (no name/login)."""
+    if isinstance(value, dict) and isinstance(value.get("id"), int):
+        return value["id"]
+    return None
+
+
+def _ball_in_court(raw: Dict[str, Any]) -> Tuple[Optional[int], int]:
+    """Return (first ball_in_court id, count) from ball_in_court / ball_in_courts."""
+    bic = raw.get("ball_in_court")
+    if isinstance(bic, dict) and isinstance(bic.get("id"), int):
+        return bic["id"], 1
+    courts = raw.get("ball_in_courts")
+    if isinstance(courts, list):
+        ids = [c["id"] for c in courts if isinstance(c, dict) and isinstance(c.get("id"), int)]
+        if ids:
+            return ids[0], len(ids)
+    return None, 0
+
+
+def _rfi_extra_fields(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Structured (non-PII) RFI fields beyond the minimal canonical set.
+
+    People refs are reduced to opaque ids; cost/schedule impacts and revision /
+    priority / location metadata are kept so latest-state and the history diff
+    (ball_in_court / cost / schedule changes) can see them. No names/logins/bodies.
+    """
+    out: Dict[str, Any] = {}
+    for key in (
+        "full_number", "prefix", "revision", "current_revision", "has_revisions",
+        "location_id", "translated_status", "time_resolved", "private",
+    ):
+        if raw.get(key) is not None:
+            out[key] = raw[key]
+
+    priority = raw.get("priority")
+    if isinstance(priority, dict):
+        label = priority.get("name") or priority.get("value")
+        if label is not None:
+            out["priority_name"] = label
+
+    for ref_key, out_key in (
+        ("received_from", "received_from_id"),
+        ("responsible_contractor", "responsible_contractor_id"),
+        ("rfi_manager", "rfi_manager_id"),
+    ):
+        rid = _ref_id(raw.get(ref_key))
+        if rid is not None:
+            out[out_key] = rid
+
+    bic_id, bic_count = _ball_in_court(raw)
+    if bic_id is not None:
+        out["ball_in_court_id"] = bic_id
+    if bic_count:
+        out["ball_in_court_count"] = bic_count
+
+    for impact_key, prefix in (("cost_impact", "cost_impact"), ("schedule_impact", "schedule_impact")):
+        impact = raw.get(impact_key)
+        if isinstance(impact, dict):
+            if impact.get("status") is not None:
+                out[f"{prefix}_status"] = impact["status"]
+            if impact.get("value") is not None:
+                out[f"{prefix}_value"] = impact["value"]
+    return out
 
 
 def normalize_rfi(
@@ -125,6 +194,7 @@ def normalize_rfi(
             continue
         if key in raw and raw[key] is not None:
             canonical_fields[key] = raw[key]
+    canonical_fields.update(_rfi_extra_fields(raw))
 
     review_required, routing_reason = _looks_review_required(raw)
     excerpt = _subject_excerpt(raw.get("subject"))
@@ -180,7 +250,10 @@ def normalize_rfi_reply(
         if key in raw and raw[key] is not None:
             canonical_fields[key] = raw[key]
 
-    body = raw.get("body") if "body" in raw else raw.get("comment")
+    body = next(
+        (raw[k] for k in ("plain_text_body", "rich_text_body", "body", "comment") if raw.get(k) is not None),
+        None,
+    )
     body_summary = hash_summary(body) if body is not None else None
 
     record: Dict[str, Any] = {
