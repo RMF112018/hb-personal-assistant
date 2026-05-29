@@ -15,9 +15,12 @@
 #     counterpart; live audits skip pending mappings with verdict
 #     'project_not_mapped').
 #
-# Project keys mirror the canonical construction source registry
-# (resources/config/sharepoint_onedrive_sources.seed.yaml). Every project_key
-# present there must appear here.
+# Project keys overlap with the canonical construction source registry
+# (resources/config/sharepoint_onedrive_sources.seed.yaml), but the Procore
+# mapping side may be a strict subset: when two SharePoint surfaces index the
+# same Procore project (e.g. a Phase 01 compat record plus a Phase 02
+# canonical SitePages entry), both project_keys live SharePoint-side but
+# resolve to one Procore mapping here.
 
 version: 1
 company_id: "5280"
@@ -43,12 +46,10 @@ projects:
     procore_project_name: "The Wellington"
     status: pilot
 
-  - hb_project_key: hilltop
-    procore_project_id: ""
-    procore_project_name: ""
-    status: pending
-
-  - hb_project_key: hilltop-gardens
-    procore_project_id: ""
-    procore_project_name: ""
-    status: pending
+  # `hilltop` and `hilltop-gardens` were retired here on 2026-05-29; they were
+  # two SharePoint-side aliases for the same Procore project (24-606-01,
+  # procore_project_id 2982068), which is already mapped above under
+  # hb_project_key `alton-hilltop-pbg`. The two project_keys remain valid on
+  # the SharePoint sources side as distinct source surfaces for the same
+  # construction project. See
+  # docs/evidence/construction-intelligence-phase-04a/19-mapping-consistent-resolution.md.

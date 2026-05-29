@@ -493,6 +493,37 @@ Rollback has two documented recipes:
 
 Evidence: `docs/evidence/construction-intelligence-phase-04a/18-idempotency-reconciliation-rollback.md`.
 
+## Mapping consistency closeout (2026-05-29)
+
+The Phase 04A seed had carried two `pending` rows in
+`resources/config/procore_projects.seed.yaml` (`hilltop` and
+`hilltop-gardens`) since Phase 03. Both were SharePoint-side aliases for
+the same construction project (24-606-01, procore_project_id `2982068`),
+which is already mapped under `alton-hilltop-pbg`. The pending rows were
+retired into the existing `alton-hilltop-pbg` mapping; the SharePoint
+sources seed (`resources/config/sharepoint_onedrive_sources.seed.yaml`)
+is left untouched so the two distinct SharePoint surfaces remain
+identifiable as separate source records that index one Procore project.
+
+Net effects:
+
+- `hb-assistant procore validate --json` now returns **28/28** (was 27/28
+  for the entire Phase 04A series).
+- `EndpointAuditor.validate_mapping()` returns `ok=True` against the live
+  seed: 4 pilot rows, 0 pending, 0 deprecated.
+- `mapping_consistent` remains a strict stop condition for any *future*
+  pending entry — the check itself was not loosened. The pending-handling
+  invariant is exercised structurally in
+  `tests/test_procore_endpoint_audit.py::test_mapping_validation_reports_pending_as_not_ok`
+  and in the synthetic-registry tests in
+  `tests/test_procore_sync_guards.py`.
+- `tests/test_procore_endpoint_audit.py::test_seed_projects_covers_canonical_construction_registry_keys`
+  now allows a documented `KNOWN_ORPHAN_SHAREPOINT_KEYS` set
+  (`{"hilltop", "hilltop-gardens"}`); any *new* SharePoint-only
+  project_key not on that list still fails the drift guard.
+
+Evidence: `docs/evidence/construction-intelligence-phase-04a/19-mapping-consistent-resolution.md`.
+
 ## Verified vs unverified endpoints
 
 Post schedules + activities addition, **all 20 of 20 canonical

@@ -322,8 +322,18 @@ def test_seed_projects_includes_tropical_pilot() -> None:
 
 def test_seed_projects_covers_canonical_construction_registry_keys() -> None:
     """Every project_key in sharepoint_onedrive_sources.seed.yaml must have a
-    corresponding row in procore_projects.seed.yaml (mapped or pending) so the
-    two registries cannot silently drift."""
+    corresponding row in procore_projects.seed.yaml UNLESS it is on the
+    documented orphan allowlist below — orphans are SharePoint surfaces that
+    share a Procore project with another already-mapped HB key (so multiple
+    SharePoint sources legitimately roll up to one Procore mapping)."""
+    # SharePoint-side project_keys that intentionally have no procore-side row.
+    # `hilltop` and `hilltop-gardens` are two SharePoint aliases (a Phase 01
+    # compat record and a Phase 02 canonical SitePages entry, respectively)
+    # for project 24-606-01 / procore_project_id 2982068, which is already
+    # mapped as `alton-hilltop-pbg`. Adding more entries here requires a
+    # deliberate decision — drift is silent only with respect to this list.
+    KNOWN_ORPHAN_SHAREPOINT_KEYS = frozenset({"hilltop", "hilltop-gardens"})
+
     canonical_seed = (
         Path(__file__).resolve().parents[1]
         / "resources"
@@ -337,10 +347,10 @@ def test_seed_projects_covers_canonical_construction_registry_keys() -> None:
         if p.get("project_key")
     }
     procore_keys = {p.hb_project_key for p in load_procore_projects().projects}
-    missing = canonical_keys - procore_keys
+    missing = (canonical_keys - procore_keys) - KNOWN_ORPHAN_SHAREPOINT_KEYS
     assert not missing, (
         "procore_projects.seed.yaml is missing rows for canonical "
-        f"project_keys: {sorted(missing)}"
+        f"project_keys not on the documented orphan allowlist: {sorted(missing)}"
     )
 
 
@@ -454,8 +464,22 @@ def test_auditor_classifies_tropical_correctly() -> None:
 
 
 def test_auditor_marks_unmapped_project_endpoints_not_mapped() -> None:
-    a = _make_unenforced_auditor()
-    r = a.audit_project("hilltop")
+    # The live seed no longer carries any pending row (hilltop / hilltop-gardens
+    # were retired into alton-hilltop-pbg on 2026-05-29). To keep the
+    # "unmapped project → project_not_mapped verdict" semantics tested, build
+    # a synthetic registry that mixes a pilot and a pending row.
+    contract = load_endpoint_contract()
+    registry = ProcoreProjectsRegistry.model_validate({
+        "company_id": "5280",
+        "projects": [
+            {"hb_project_key": "tropical", "procore_project_id": "2525840",
+             "procore_project_name": "Tropical - S L", "status": "pilot"},
+            {"hb_project_key": "synthetic-pending", "procore_project_id": "",
+             "procore_project_name": "", "status": "pending"},
+        ],
+    })
+    a = EndpointAuditor(contract, registry)
+    r = a.audit_project("synthetic-pending")
     assert r.procore_project_id == ""
     assert r.summary.get("project_not_mapped", 0) > 0
     # Excluded + deferred verdicts are independent of mapping status
@@ -470,11 +494,26 @@ def test_auditor_unknown_project_raises() -> None:
 
 
 def test_mapping_validation_reports_pending_as_not_ok() -> None:
-    a = _make_unenforced_auditor()
+    # The live seed no longer carries any pending row, so this test pins the
+    # invariant ("any pending entry forces ok=False") against a synthetic
+    # registry rather than against seed contents. The sibling test
+    # `test_mapping_validation_passes_when_only_pilots_and_deprecated`
+    # exercises the positive case from the same idiom.
+    contract = load_endpoint_contract()
+    registry = ProcoreProjectsRegistry.model_validate({
+        "company_id": "5280",
+        "projects": [
+            {"hb_project_key": "tropical", "procore_project_id": "2525840",
+             "procore_project_name": "Tropical - S L", "status": "pilot"},
+            {"hb_project_key": "synthetic-pending", "procore_project_id": "",
+             "procore_project_name": "", "status": "pending"},
+        ],
+    })
+    a = EndpointAuditor(contract, registry)
     r = a.validate_mapping()
-    assert r.total == 6
-    assert r.by_status.get("pilot") == 4
-    assert r.by_status.get("pending") == 2
+    assert r.total == 2
+    assert r.by_status.get("pilot") == 1
+    assert r.by_status.get("pending") == 1
     assert r.ok is False
 
 
@@ -569,12 +608,19 @@ def test_cli_tools_audit_unknown_project_exit_1(runner: CliRunner) -> None:
     assert "no-such-key" in p["requested"]
 
 
-def test_cli_mapping_validate_pending_yields_exit_1(runner: CliRunner) -> None:
+def test_cli_mapping_validate_clean_seed_yields_exit_0(runner: CliRunner) -> None:
+    # After the 2026-05-29 retirement of hilltop / hilltop-gardens from the
+    # procore-side seeds, the live seed carries only pilot rows so the CLI
+    # mapping-validate command returns exit 0. The pending → ok=False
+    # invariant is exercised structurally in
+    # `test_mapping_validation_reports_pending_as_not_ok` via a synthetic
+    # registry.
     r = runner.invoke(procore_cli.app, ["mapping", "validate", "--json"])
-    assert r.exit_code == 1  # because seed contains pending rows (hilltop, hilltop-gardens)
+    assert r.exit_code == 0
     p = json.loads(r.output)
-    assert p["report"]["ok"] is False
-    assert p["report"]["by_status"].get("pending") == 2
+    assert p["report"]["ok"] is True
+    assert p["report"]["by_status"].get("pending") is None
+    assert p["report"]["by_status"].get("pilot") == 4
 
 
 # ---------------------------------------------------------------------------

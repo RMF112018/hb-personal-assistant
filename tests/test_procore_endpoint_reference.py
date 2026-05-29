@@ -94,15 +94,25 @@ def test_no_hb_number_patterns_in_procore_ids():
             ), f"HB-number-shaped ID leaked into procore_project_id: {p.hb_project_key} -> {p.procore_project_id}"
 
 
-# Prompt_06: HB project-number vs Procore ID separation + pending pilot handling (uses working loader from CLI surface; pure, no live).
-def test_procore_projects_5280_pilots_vs_pending_hilltop_explicit():
-    """Validate 5280 context, 4 numeric-ID pilots, 2 pending (hilltop*) with empty procore IDs (separation + auditable pending)."""
+# Prompt_06 + 2026-05-29 consolidation: HB project-number vs Procore ID
+# separation. The seed used to carry two pending rows (`hilltop`,
+# `hilltop-gardens`) that nagged the mapping_consistent validate gate. Both
+# were retired on 2026-05-29 — they are two SharePoint-side aliases for the
+# Procore project already mapped as `alton-hilltop-pbg`. The seed now carries
+# only pilot rows; the HB-number / Procore-ID separation invariant remains.
+def test_procore_projects_5280_pilots_only_post_consolidation():
+    """Validate 5280 context, 4 numeric-ID pilots, 0 pending after the
+    2026-05-29 retirement of hilltop / hilltop-gardens. HB-number vs Procore-ID
+    separation invariant still pinned."""
     from hb_assistant.procore.loader import load_procore_projects
     reg = load_procore_projects()
     projs = reg.projects if hasattr(reg, 'projects') else reg
-    assert len(projs) >= 6
+    assert len(projs) == 4
     pending_keys = [getattr(p, 'hb_project_key', getattr(p, 'project_key', '')) for p in projs if not getattr(p, 'procore_project_id', None) or getattr(p, 'status', None) == 'pending']
-    assert 'hilltop' in pending_keys and 'hilltop-gardens' in pending_keys
+    assert pending_keys == [], (
+        "live seed must carry no pending rows; hilltop / hilltop-gardens were "
+        "retired into alton-hilltop-pbg on 2026-05-29"
+    )
     for p in projs:
         pid = getattr(p, 'procore_project_id', '') or ''
         if pid:
