@@ -1,6 +1,6 @@
 # 17 — Operational Email Intelligence (Phase 06)
 
-Status: **in progress** · Phase 06 Prompts 00–03 landed · Migration **V11** (Prompt 03)
+Status: **in progress** · Phase 06 Prompts 00–04 landed · Migration **V11** (Prompt 03) · read-only mail client + endpoint guard (Prompt 04)
 
 Phase 06 turns the Phase 02 *deferred* email intelligence into operational, **read-only**,
 project-aware email workflows over the existing GET-only Graph stack. It is local-first: SQLite is
@@ -64,12 +64,36 @@ additive `CREATE TABLE IF NOT EXISTS` only, V1–V10 and the V5 deferred-state r
 - **Evidence** — `docs/evidence/construction-intelligence-phase-06-email/`
   `03-email-schema-and-migrations.md` + captured `email-schema-validation.txt`.
 
-### Four-layer read-only lock (defense in depth)
+## Prompt 04 — read-only mail client + endpoint guard + `graph mail status`
+
+Makes the mail read path operational while keeping the mailbox read-only at the HTTP layer.
+
+- **Endpoint guard** — `graph/mail_endpoint_guard.py` (`MailboxMutationBlockedError`,
+  `load_mail_endpoint_contract`, `assert_mail_request_allowed`). Loads the Prompt 01 repo YAML
+  contract and refuses any request that is not an allowlisted GET, *before* the HTTP call.
+  Positive-allowlist-first so legitimate folder reads (even by well-known name) never false-positive
+  on a mutation keyword; forbidden literals live only in the YAML, so `graph/` source stays clean for
+  the `test_mutation_lockout` static scan.
+- **Read-only client** — `graph/mail_readonly_client.py` (`ReadOnlyMailClient`): guarded GET wrappers
+  over `GraphHttpClient` for identity, folders, message metadata, and attachment metadata. Uses the
+  contract's metadata-only `$select` (full `body` and attachment `contentBytes` excluded); exposes no
+  mutation method.
+- **CLI** — new top-level `graph` group (`cli/graph.py`, registered in `cli/main.py`) with `graph mail
+  status [--json] [--probe/--no-probe]`: reports redacted auth/scope readiness, runs an in-process
+  guard self-test (every allowlisted GET allowed, every forbidden verb/path blocked), and issues one
+  bounded `/me/mailFolders` probe through the guarded client.
+- **Evidence** — `docs/evidence/construction-intelligence-phase-06-email/`
+  `04-readonly-graph-client-and-auth-status.md` + captured `graph-mail-auth-status.json` (live: guard
+  self-test passed, probe 200, all guardrails true, no token leaked).
+
+### Five-layer read-only lock (defense in depth)
 
 1. **Model** — Pydantic `Literal` (raises `ValidationError`).
 2. **Adapter** — `ValueError` before SQL.
 3. **Database** — SQLite `CHECK` (raises `IntegrityError`).
 4. **Scope** — runtime requests `Mail.Read` only.
+5. **HTTP endpoint guard** — `assert_mail_request_allowed` raises `MailboxMutationBlockedError`
+   before any mail HTTP request that is not an allowlisted GET (Prompt 04).
 
 Naming reconciliation: new operational email tables use the package's `email_*` family (Prompt 03
 extends it); the active policy lives beside the deferred one in `construction/policy/` rather than a

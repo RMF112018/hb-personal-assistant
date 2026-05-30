@@ -1,0 +1,239 @@
+{
+  "command": "graph mail status",
+  "ok": true,
+  "mail_read_scope_present": true,
+  "forbidden_mail_scopes_requested": [],
+  "auth": {
+    "token_type": "app_only",
+    "classification": "unexpected",
+    "upn": "bfetting@hedrickbrothers.com",
+    "tenant": "0e834bd7-628b-42c8-b9ec-ecebc9719be4",
+    "scopes": [
+      "AllSites.FullControl",
+      "Calendars.Read.Shared",
+      "Calendars.ReadWrite.Shared",
+      "Files.ReadWrite.All",
+      "Group.ReadWrite.All",
+      "Mail.Read",
+      "Mail.ReadWrite",
+      "openid",
+      "profile",
+      "Sites.FullControl.All",
+      "Sites.Manage.All",
+      "Sites.ReadWrite.All",
+      "Sites.Selected",
+      "User.Read",
+      "User.ReadBasic.All",
+      "email"
+    ],
+    "expires_in": 4547,
+    "cache": {
+      "path_status": {
+        "path_error": null,
+        "ensure_report": {
+          "ok": true,
+          "warnings": [],
+          "failures": [],
+          "paths": [
+            {
+              "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant",
+              "kind": "app_support_root",
+              "exists": true,
+              "writable": true,
+              "mode": "0o755",
+              "owner": "bobbyfetting",
+              "chmod_attempted": true,
+              "chmod_ok": true,
+              "error": null
+            },
+            {
+              "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth",
+              "kind": "auth_dir",
+              "exists": true,
+              "writable": true,
+              "mode": "0o700",
+              "owner": "bobbyfetting",
+              "chmod_attempted": true,
+              "chmod_ok": true,
+              "error": null
+            },
+            {
+              "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db",
+              "kind": "db_dir",
+              "exists": true,
+              "writable": true,
+              "mode": "0o755",
+              "owner": "bobbyfetting",
+              "chmod_attempted": true,
+              "chmod_ok": true,
+              "error": null
+            },
+            {
+              "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache",
+              "kind": "cache_root",
+              "exists": true,
+              "writable": true,
+              "mode": "0o755",
+              "owner": "bobbyfetting",
+              "chmod_attempted": true,
+              "chmod_ok": true,
+              "error": null
+            },
+            {
+              "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/files",
+              "kind": "cache_files",
+              "exists": true,
+              "writable": true,
+              "mode": "0o755",
+              "owner": "bobbyfetting",
+              "chmod_attempted": true,
+              "chmod_ok": true,
+              "error": null
+            },
+            {
+              "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/extracted-text",
+              "kind": "cache_extracted_text",
+              "exists": true,
+              "writable": true,
+              "mode": "0o755",
+              "owner": "bobbyfetting",
+              "chmod_attempted": true,
+              "chmod_ok": true,
+              "error": null
+            },
+            {
+              "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/cache/embeddings",
+              "kind": "cache_embeddings",
+              "exists": true,
+              "writable": true,
+              "mode": "0o755",
+              "owner": "bobbyfetting",
+              "chmod_attempted": true,
+              "chmod_ok": true,
+              "error": null
+            },
+            {
+              "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs",
+              "kind": "logs_root",
+              "exists": true,
+              "writable": true,
+              "mode": "0o755",
+              "owner": "bobbyfetting",
+              "chmod_attempted": true,
+              "chmod_ok": true,
+              "error": null
+            },
+            {
+              "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/run-logs",
+              "kind": "logs_run",
+              "exists": true,
+              "writable": true,
+              "mode": "0o755",
+              "owner": "bobbyfetting",
+              "chmod_attempted": true,
+              "chmod_ok": true,
+              "error": null
+            },
+            {
+              "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/logs/error-logs",
+              "kind": "logs_error",
+              "exists": true,
+              "writable": true,
+              "mode": "0o755",
+              "owner": "bobbyfetting",
+              "chmod_attempted": true,
+              "chmod_ok": true,
+              "error": null
+            },
+            {
+              "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/evidence",
+              "kind": "evidence_dir",
+              "exists": true,
+              "writable": true,
+              "mode": "0o755",
+              "owner": "bobbyfetting",
+              "chmod_attempted": true,
+              "chmod_ok": true,
+              "error": null
+            }
+          ]
+        }
+      },
+      "msal-token-cache.bin": {
+        "exists": true,
+        "mode": "0o600",
+        "perms_ok": true,
+        "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth/msal-token-cache.bin"
+      },
+      "msal-token-cache-app.bin": {
+        "exists": false,
+        "mode": null,
+        "perms_ok": false,
+        "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/auth/msal-token-cache-app.bin"
+      }
+    },
+    "safe_claims": {
+      "aud": "08c399eb-a394-4087-b859-659d493f8dc7",
+      "iss": "https://login.microsoftonline.com/0e834bd7-628b-42c8-b9ec-ecebc9719be4/v2.0",
+      "tid": "0e834bd7-628b-42c8-b9ec-ecebc9719be4",
+      "name": "Bobby Fetting",
+      "oid": "0026a9f0-8ed0-45ca-8bc4-8e1593fcc37b",
+      "token_type": "app_only",
+      "scp_count": 0,
+      "roles": [
+        "Admin",
+        "HBIntelFoleonAdministrator"
+      ],
+      "exp": 1780127133,
+      "iat": 1780123233
+    },
+    "configured_scopes": [
+      "User.Read",
+      "Mail.Read",
+      "Calendars.ReadWrite.Shared",
+      "Files.ReadWrite.All",
+      "offline_access"
+    ],
+    "effective_msal_scopes": [
+      "User.Read",
+      "Mail.Read",
+      "Calendars.ReadWrite.Shared",
+      "Files.ReadWrite.All"
+    ],
+    "removed_reserved_scopes": [
+      "offline_access"
+    ]
+  },
+  "guard_self_test": {
+    "passed": true,
+    "read_paths_allowed": 8,
+    "mutation_attempts_blocked": 18,
+    "anomalies": []
+  },
+  "mail_probe": {
+    "attempted": true,
+    "path": "/me/mailFolders",
+    "status": 200,
+    "folder_sample_count": 1
+  },
+  "guardrails": {
+    "mailbox_read_only": true,
+    "mutation_endpoints_blocked": true,
+    "no_mail_write_scopes_requested": true,
+    "metadata_only_select": true,
+    "attachment_content_excluded": true
+  },
+  "contract": {
+    "allowed_methods": [
+      "GET"
+    ],
+    "allowed_paths_count": 8,
+    "forbidden_methods": [
+      "DELETE",
+      "PATCH",
+      "POST",
+      "PUT"
+    ],
+    "forbidden_paths_count": 14
+  }
+}

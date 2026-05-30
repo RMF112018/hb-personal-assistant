@@ -23,6 +23,7 @@ from . import automation as auto_mod
 from . import construction as construction_mod
 from . import diagnostics as diag_mod
 from . import files as files_mod
+from . import graph as graph_mod
 from . import procore as procore_mod
 from . import run as run_mod
 from . import search as search_mod
@@ -65,6 +66,7 @@ app.add_typer(run_mod.app, name="run")
 app.add_typer(auto_mod.app, name="automation")
 app.add_typer(construction_mod.app, name="construction-agent")
 app.add_typer(procore_mod.app, name="procore")
+app.add_typer(graph_mod.app, name="graph")
 
 
 # Explicit thin stubs for remaining command groups
