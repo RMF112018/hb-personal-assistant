@@ -61,6 +61,26 @@ migration — the V5 table already supports this; the package's proposed ingesti
 tables are deferred to later prompts. The resolver/crawler still write the V2 inventory shape;
 migrating those to V5 is later work.
 
+### SharePoint site & drive discovery (Prompt 04) — `graph files sites` / `site resolve` / `drives`
+`construction/graph/site_drive_discovery.py` (`SiteDriveDiscovery`) reuses `ConstructionGraphResolver`
+for site resolution (URL + pre-seeded ID + ProjectHome `sharepoint_site_page` linked-source
+candidates, `deep_index_allowed=False`) and adds drive **enumeration + matching**: it guard-asserts +
+reads `GET /sites/{site_id}/drives` (metadata `$select` only — no `/items`/`/content`) and matches a
+configured source by precedence `drive_id`(high) → `list_id`(high) → `library_name`(medium) →
+`webUrl`(medium); no match → `unmatched` (no silent default-drive fallback). Three CLI commands
+(dry-run default; `--apply` persists), with structured `auth_required` degradation when no delegated
+token is cached. Discovery receipts reuse the generic `construction_processing_receipts` table
+(`operation=site_discovery|drive_discovery`) — **no new migration**; the package's proposed typed
+discovery tables are deferred. The enumeration GET is asserted through `assert_files_request_allowed`
+(first live use of the Prompt 02 guard).
+
+> Guard-wiring scope note (supersedes the Prompt 02 forward reference): full HTTP-layer guard
+> interception of every files read — including the resolver's colon-addressed site-by-URL path
+> (`/sites/{host}:/{path}`, which the guard's segment matcher cannot yet match) — plus the matcher
+> enhancement, is deferred to the **controlled-download client (Prompt 11)**, where mutation risk is
+> highest. The discovery path is read-only by construction (GET-only) and covered by the
+> `test_mutation_lockout` static scan over `construction/graph/`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and

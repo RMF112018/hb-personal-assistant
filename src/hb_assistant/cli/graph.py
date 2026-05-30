@@ -36,6 +36,8 @@ from hb_assistant.construction.email import (
     run_operational_validation,
 )
 from hb_assistant.construction.email.email_classifier import DEFAULT_MODEL_NAME
+from hb_assistant.construction.graph.resolver import GRAPH_SCOPES as _FILES_GRAPH_SCOPES
+from hb_assistant.construction.graph.site_drive_discovery import SiteDriveDiscovery
 from hb_assistant.construction.policy.email_active import (
     load_email_intelligence_active_policy,
 )
@@ -63,6 +65,8 @@ body_app = typer.Typer(help="Controlled decrypt read for encrypted email bodies 
 mail_app.add_typer(body_app, name="body")
 files_app = typer.Typer(help="Read-only SharePoint/OneDrive file intelligence (Phase 06).")
 app.add_typer(files_app, name="files")
+files_site_app = typer.Typer(help="SharePoint site resolution (read-only, metadata-only).")
+files_app.add_typer(files_site_app, name="site")
 
 # Write-capable Graph file/site scopes whose presence is the known DEFERRED
 # over-broad posture (documented, not tightened in this phase).
@@ -286,6 +290,264 @@ def files_no_writeback_proof_cmd(
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(1) from None
+
+
+_DISCOVERY_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": True,
+    "content_crawl": "none",
+    "permission_tightening": "deferred",
+}
+_SHAREPOINT_SOURCE_KINDS = {
+    "sharepoint_site",
+    "sharepoint_library",
+    "sharepoint_project_drive_folder",
+    "sharepoint_site_page",
+}
+
+
+def _files_graph_client_or_auth(
+    scopes: List[str],
+) -> tuple[Optional[GraphHttpClient], Optional[Dict[str, Any]]]:
+    """Build a delegated GraphHttpClient, or return a structured ``auth_required``
+    payload when no cached token exists. Never triggers an interactive login."""
+    try:
+        cfg = load_config()
+        pp = PathPolicy(cfg)
+        provider = DelegatedAuthProvider(
+            cfg.identity.tenant_id,
+            cfg.identity.client_id,
+            list(cfg.identity.delegated_scopes),
+            path_policy=pp,
+        )
+        token = provider.get_token(scopes)
+    except Exception as e:  # noqa: BLE001 — surface as structured payload
+        return None, {
+            "status": "auth_required",
+            "scopes": scopes,
+            "detail": str(e)[:200],
+            "hint": "Run `hb-assistant auth login --json` interactively to obtain a delegated token.",
+        }
+    if "access_token" not in token:
+        return None, {
+            "status": "auth_required",
+            "scopes": scopes,
+            "detail": token.get("error_description")
+            or token.get("error")
+            or "no_access_token_in_cache",
+            "hint": "Run `hb-assistant auth login --json` interactively to obtain a delegated token.",
+        }
+
+    def token_getter(s: Optional[List[str]] = None) -> Dict[str, Any]:
+        return provider.get_token(s or scopes)
+
+    return GraphHttpClient(token_getter), None
+
+
+@files_app.command("sites")
+def files_sites_cmd(
+    source: Optional[str] = typer.Option(None, "--source", help="Resolve only this source key."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply persists discovery receipts."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Resolve approved SharePoint sites (by URL or pre-seeded ID). Read-only,
+    metadata-only; no content crawl. Dry-run by default."""
+    try:
+        registry = load_source_registry()
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files sites", e, json_out)
+        return
+
+    targets = [
+        s
+        for s in registry.sources
+        if s.kind in _SHAREPOINT_SOURCE_KINDS and (source is None or s.source_key == source)
+    ]
+    if not targets:
+        payload = {
+            "command": "graph files sites",
+            "status": "not_found",
+            "requested": source,
+            "available": [
+                s.source_key for s in registry.sources if s.kind in _SHAREPOINT_SOURCE_KINDS
+            ],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+    if client is None:
+        payload = {
+            "command": "graph files sites",
+            "mode": "dry_run" if dry_run else "apply",
+            **auth_payload,
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+
+    try:
+        store = ConstructionStore() if not dry_run else None
+        discovery = SiteDriveDiscovery(client, store=store)
+        results = [discovery.discover_site(s, apply=not dry_run) for s in targets]
+    finally:
+        client.close()
+
+    rows = [r.model_dump() for r in results]
+    summary = {
+        "total": len(rows),
+        "pre_resolved": sum(1 for r in results if r.pre_resolved),
+        "resolved": sum(1 for r in results if r.status == "resolved"),
+        "pending": sum(1 for r in results if r.status == "pending"),
+        "unsupported": sum(1 for r in results if r.status == "unsupported"),
+        "error": sum(1 for r in results if r.status == "error"),
+    }
+    payload = {
+        "command": "graph files sites",
+        "mode": "dry_run" if dry_run else "apply",
+        "ok": summary["error"] == 0,
+        "summary": summary,
+        "sites": rows,
+        "guardrails": _DISCOVERY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_site_app.command("resolve")
+def files_site_resolve_cmd(
+    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply persists a discovery receipt."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Resolve a single SharePoint source's site to its canonical Graph site_id."""
+    try:
+        registry = load_source_registry()
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files site resolve", e, json_out)
+        return
+
+    matching = [s for s in registry.sources if s.source_key == source]
+    if not matching:
+        payload = {
+            "command": "graph files site resolve",
+            "status": "not_found",
+            "requested": source,
+            "available": [s.source_key for s in registry.sources],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+    if client is None:
+        payload = {
+            "command": "graph files site resolve",
+            "source": source,
+            "mode": "dry_run" if dry_run else "apply",
+            **auth_payload,
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+
+    try:
+        store = ConstructionStore() if not dry_run else None
+        discovery = SiteDriveDiscovery(client, store=store)
+        result = discovery.discover_site(matching[0], apply=not dry_run)
+    finally:
+        client.close()
+
+    payload = {
+        "command": "graph files site resolve",
+        "source": source,
+        "mode": "dry_run" if dry_run else "apply",
+        "ok": result.status != "error",
+        "site": result.model_dump(),
+        "guardrails": _DISCOVERY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_app.command("drives")
+def files_drives_cmd(
+    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply persists a discovery receipt."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Enumerate a SharePoint site's drives and match the configured source by
+    drive_id / list_id / library_name / webUrl. Metadata-only; no content crawl."""
+    try:
+        registry = load_source_registry()
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files drives", e, json_out)
+        return
+
+    matching = [s for s in registry.sources if s.source_key == source]
+    if not matching:
+        payload = {
+            "command": "graph files drives",
+            "status": "not_found",
+            "requested": source,
+            "available": [s.source_key for s in registry.sources],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+    if client is None:
+        payload = {
+            "command": "graph files drives",
+            "source": source,
+            "mode": "dry_run" if dry_run else "apply",
+            **auth_payload,
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+
+    try:
+        store = ConstructionStore() if not dry_run else None
+        discovery = SiteDriveDiscovery(client, store=store)
+        result = discovery.discover_drives(matching[0], apply=not dry_run)
+    finally:
+        client.close()
+
+    payload = {
+        "command": "graph files drives",
+        "source": source,
+        "mode": "dry_run" if dry_run else "apply",
+        "ok": result.status not in {"error"},
+        "result": result.model_dump(),
+        "guardrails": _DISCOVERY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+def _echo_files_error(command: str, exc: Exception, json_out: bool) -> None:
+    """Emit a blocking JSON envelope for registry load/validation failures."""
+    if isinstance(exc, ValidationError):
+        payload: Dict[str, Any] = {
+            "command": command,
+            "ok": False,
+            "error": "schema_validation_failed",
+            "detail": exc.errors(),
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    else:
+        payload = {
+            "command": command,
+            "ok": False,
+            "error": "source_registry_unavailable",
+            "detail": str(exc)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(1)
 
 
 def _classify_source(src: Any) -> Dict[str, Any]:

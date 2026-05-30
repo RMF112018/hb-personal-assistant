@@ -1,0 +1,55 @@
+{
+  "command": "graph files drives",
+  "source": "sp_2023projects_23_435_01_tropical_sl",
+  "mode": "dry_run",
+  "note": "Deterministic mocked dry-run proof (live delegated token expired at capture time; live calls degrade to auth_required). Drive metadata is synthetic-but-shaped; no tokens/signed URLs/delta links/downloadUrl.",
+  "ok": true,
+  "result": {
+    "source_id": "sp_2023projects_23_435_01_tropical_sl",
+    "kind": "sharepoint_project_drive_folder",
+    "site_id": "b1abbdda-da3b-4fd1-a038-c4aeb13ba951",
+    "matched_drive": {
+      "drive_id": "b!2r2rsTva0U-gOMSusTupUT0Ecgn6KG9CrTXQO7ex9-wjlyM1iYsETbs3ktNIMr0B",
+      "name": "Project Files",
+      "web_url": "https://hedrickbrotherscom.sharepoint.com/sites/2023Projects/ProjectFiles",
+      "drive_type": "documentLibrary",
+      "list_id": null
+    },
+    "match_method": "drive_id",
+    "match_confidence": "high",
+    "candidates": [
+      {
+        "drive_id": "b!docs-drive-id",
+        "name": "Shared Documents",
+        "web_url": "https://hedrickbrotherscom.sharepoint.com/sites/2023Projects/Shared%20Documents",
+        "drive_type": "documentLibrary",
+        "list_id": null
+      },
+      {
+        "drive_id": "b!2r2rsTva0U-gOMSusTupUT0Ecgn6KG9CrTXQO7ex9-wjlyM1iYsETbs3ktNIMr0B",
+        "name": "Project Files",
+        "web_url": "https://hedrickbrotherscom.sharepoint.com/sites/2023Projects/ProjectFiles",
+        "drive_type": "documentLibrary",
+        "list_id": null
+      }
+    ],
+    "linked_sources": [],
+    "status": "matched",
+    "note": null,
+    "error_redacted": null
+  },
+  "match_precedence_proven_in_tests": {
+    "drive_id": "high",
+    "list_id": "high",
+    "library_name": "medium",
+    "web_url": "medium",
+    "no_signal": "none (unmatched; no silent default-drive fallback)"
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true,
+    "content_crawl": "none",
+    "permission_tightening": "deferred"
+  }
+}
