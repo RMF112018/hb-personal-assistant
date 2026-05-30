@@ -31,3 +31,17 @@ review_required_for_sensitive: true
 ollama_enabled_for_email_intelligence: true
 ollama_invalid_json_routes_to_review: true
 low_confidence_threshold: 0.75
+
+# Prompt 08A — controlled encrypted full-body storage. Full body capture is
+# allowed ONLY encrypted at rest via the text vault; plaintext persistence in
+# SQLite / Obsidian / evidence / logs stays hard-locked false, and the mailbox
+# stays strictly read-only. Bounded per-run capture (no full-mailbox backfill).
+full_body_storage_allowed: true
+full_body_storage_mode: encrypted_text_vault
+plaintext_body_persistence_allowed: false
+obsidian_full_body_allowed: false
+evidence_full_body_allowed: false
+log_full_body_allowed: false
+attachment_content_storage_allowed: false
+encrypted_body_requires_review_for_sensitive: true
+max_full_body_fetch_per_run: 100

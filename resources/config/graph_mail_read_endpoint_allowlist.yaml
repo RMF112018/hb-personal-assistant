@@ -69,6 +69,20 @@ attachment_metadata_select:
   - isInline
   - lastModifiedDateTime
 
+# Body $select — used ONLY by the Prompt 08A controlled encrypted-body capture
+# path (read-only GET /me/messages/{id}), gated by the active policy
+# (full_body_storage_allowed) + the explicit --include-encrypted-body flag. The
+# fetched body is encrypted immediately via the text vault and the plaintext is
+# discarded; it is never persisted to SQLite/Obsidian/evidence/logs. The default
+# metadata path (message_metadata_select above) remains body-free.
+body_fetch_select:
+  - id
+  - internetMessageId
+  - conversationId
+  - body
+  - bodyPreview
+  - lastModifiedDateTime
+
 paging:
   follow: "@odata.nextLink"        # apply the whole nextLink URL verbatim
   do_not_parse_skip_token: true    # never extract/manipulate $skip from nextLink

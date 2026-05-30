@@ -59,6 +59,7 @@ class MailEndpointContract:
     forbidden_operation_keywords: tuple[str, ...]
     message_metadata_select: tuple[str, ...]
     attachment_metadata_select: tuple[str, ...]
+    body_fetch_select: tuple[str, ...]
 
 
 def _config_dir() -> Path:
@@ -97,6 +98,7 @@ def load_mail_endpoint_contract(*, refresh: bool = False) -> MailEndpointContrac
         forbidden_operation_keywords=tuple(block.get("forbidden_operation_keywords", [])),
         message_metadata_select=tuple(allow.get("message_metadata_select", [])),
         attachment_metadata_select=tuple(allow.get("attachment_metadata_select", [])),
+        body_fetch_select=tuple(allow.get("body_fetch_select", [])),
     )
     _CONTRACT = contract
     return contract

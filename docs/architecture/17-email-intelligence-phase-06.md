@@ -1,6 +1,6 @@
 # 17 — Operational Email Intelligence (Phase 06)
 
-Status: **in progress** · Phase 06 Prompts 00–08 landed · Migration **V11** (Prompt 03) · read-only mail client + endpoint guard (Prompt 04) · folder discovery + sync state (Prompt 05) · message metadata indexing (Prompt 06) · project-aware discovery (Prompt 07) · attachment metadata + source-link candidates (Prompt 08)
+Status: **in progress** · Phase 06 Prompts 00–08A landed · Migration **V12** · read-only mail client + endpoint guard (Prompt 04) · folder discovery + sync state (Prompt 05) · message metadata indexing (Prompt 06) · project-aware discovery (Prompt 07) · attachment metadata + source-link candidates (Prompt 08) · encrypted full-body storage (Prompt 08A)
 
 Phase 06 turns the Phase 02 *deferred* email intelligence into operational, **read-only**,
 project-aware email workflows over the existing GET-only Graph stack. It is local-first: SQLite is
@@ -171,6 +171,36 @@ Enriches attachment handling during `index` (no separate command), metadata-only
   name/content-type only; `$value` never called. Filenames/URLs stored as hashes only.
 - **Evidence** — `08-source-link-and-relationship-candidate-proof.md` (live: 94 attachments, 5
   sensitive, 22 source-link candidates, 6 review items; 0/94 content downloaded).
+
+## Prompt 08A — encrypted full email body storage (posture change)
+
+Evolves the prior "no full body persistence" posture to "full body persistence allowed **only when
+encrypted at rest**". This stays consistent with the repo's non-negotiables: plaintext is never logged,
+committed, or stored in SQLite/Obsidian/evidence — it lives encrypted outside the repo via the existing
+`security/text_vault` (Fernet). The mailbox remains strictly read-only.
+
+- **Policy** — `email_active.py` + YAML add `full_body_storage_allowed` (true), `full_body_storage_mode`
+  (Literal `encrypted_text_vault`), and hard-locked falses for plaintext/Obsidian/evidence/log body
+  persistence + attachment-content storage + mailbox mutation, plus `max_full_body_fetch_per_run`
+  (bounded 1–1000). The V10 policy table/adapter are unchanged (model fields are decoupled).
+- **Schema** — Migration **V12** side table `email_message_body_vault_refs` (PK `message_id`): stores
+  `encrypted_full_body_ref` + hash/length/content-type/review/sensitivity, with
+  `CHECK(plaintext_persisted=0)` and obsidian/evidence/log body-persistence CHECKs. No plaintext column;
+  `email_messages.full_body_persisted=0` preserved.
+- **Read path** — `body_fetch_select` contract key + `ReadOnlyMailClient.get_message_body` (guarded
+  `GET /me/messages/{id}` with body `$select`). The default metadata path stays body-free.
+- **Capture** — `EmailMessageIndexer.index(include_encrypted_body=True)` (policy-gated, bounded by the
+  per-run budget) fetches each body, `hashlib.sha256` + length, classifies sensitivity in-memory
+  (`classify_text_sensitivity` → review), `text_vault.encrypt_text`, persists the ref, and **discards the
+  plaintext**. CLI `graph mail index --include-encrypted-body`; dry-run reports eligibility only.
+- **Controlled read** — `graph mail body show --message-id --reason [--show-plaintext] --json` is
+  **local-only** (vault + DB, no Graph): default redacted summary, `--show-plaintext` to terminal only,
+  every read writes a `body_decrypt_read` audit receipt (no plaintext).
+- **Deferred to later prompts** — review-routing/summaries/Obsidian *consumption* of the encrypted body
+  is deferred (those email commands don't exist yet); the policy locks (`obsidian_full_body_allowed=False`)
+  pre-constrain them, and sensitive captured bodies already set `review_required` on the vault ref.
+- **Evidence** — `10A-*` (preflight, policy proof, schema proof, indexing dry-run JSON, encryption proof,
+  decrypt proof, no-leak proof, no-mutation proof). Live: 5 real bodies encrypted (0/5 plaintext).
 
 ### Five-layer read-only lock (defense in depth)
 

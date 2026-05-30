@@ -1715,6 +1715,43 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v12 = Phase 06 Prompt 08A controlled encrypted full-body storage. The body
+    # is fetched read-only, encrypted via the text vault (outside the repo), and
+    # ONLY a deterministic encrypted_full_body_ref + hash/length/metadata are
+    # stored here. No plaintext column exists; CHECK constraints lock plaintext /
+    # obsidian / evidence / log body persistence to 0 (defense in depth beneath
+    # the Pydantic policy locks). Additive only; V1-V11 untouched, and the V11
+    # email_messages.full_body_persisted=0 CHECK is preserved (the body never
+    # lives as plaintext in email_messages or any SQLite table).
+    V12_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS email_message_body_vault_refs (
+          message_id TEXT PRIMARY KEY REFERENCES email_messages(message_id) ON DELETE CASCADE,
+          internet_message_id TEXT,
+          conversation_id TEXT,
+          body_content_type TEXT,
+          body_hash TEXT NOT NULL,
+          body_length INTEGER NOT NULL,
+          encrypted_full_body_ref TEXT NOT NULL,
+          encrypted_at_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          encryption_method TEXT NOT NULL DEFAULT 'fernet_text_vault',
+          plaintext_persisted INTEGER NOT NULL DEFAULT 0 CHECK(plaintext_persisted = 0),
+          obsidian_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(obsidian_body_persisted = 0),
+          evidence_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(evidence_body_persisted = 0),
+          log_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(log_body_persisted = 0),
+          extraction_policy TEXT NOT NULL,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          sensitivity_classification TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_email_body_vault_refs_review
+          ON email_message_body_vault_refs(review_required);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -1851,6 +1888,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (11, 'v11_email_operational_intelligence_schema', ?)",
+                    (now,),
+                )
+
+            # v12 Phase 06 Prompt 08A encrypted full-body vault refs (additive
+            # only; does not touch V1-V11, preserves email_messages CHECKs).
+            for stmt in self.V12_STATEMENTS:
+                conn.execute(stmt)
+
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 12")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (12, 'v12_email_encrypted_body_vault_refs', ?)",
                     (now,),
                 )
 

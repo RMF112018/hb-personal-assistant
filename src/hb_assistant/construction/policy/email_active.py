@@ -74,6 +74,21 @@ class EmailIntelligenceActivePolicy(BaseModel):
     ollama_enabled_for_email_intelligence: bool = True
     low_confidence_threshold: float = 0.75
 
+    # Prompt 08A — controlled encrypted full-body storage. Full body capture is
+    # permitted ONLY when encrypted at rest via text_vault; plaintext persistence
+    # in SQLite / Obsidian / evidence / logs stays hard-locked False. The mailbox
+    # remains strictly read-only (writeback/mutation locked above). These Literal
+    # locks mean the YAML cannot loosen them without a Pydantic model change.
+    full_body_storage_allowed: bool = False
+    full_body_storage_mode: Literal["encrypted_text_vault"] = "encrypted_text_vault"
+    plaintext_body_persistence_allowed: Literal[False] = False
+    obsidian_full_body_allowed: Literal[False] = False
+    evidence_full_body_allowed: Literal[False] = False
+    log_full_body_allowed: Literal[False] = False
+    attachment_content_storage_allowed: Literal[False] = False
+    encrypted_body_requires_review_for_sensitive: Literal[True] = True
+    max_full_body_fetch_per_run: int = 100
+
     model_config = {"extra": "forbid"}
 
     @field_validator("default_lookback_days")
@@ -82,6 +97,14 @@ class EmailIntelligenceActivePolicy(BaseModel):
         # Bounded lookback only — never a full-mailbox backfill window.
         if not 1 <= value <= 366:
             raise ValueError("default_lookback_days must be between 1 and 366 (bounded lookback)")
+        return value
+
+    @field_validator("max_full_body_fetch_per_run")
+    @classmethod
+    def _bounded_body_fetch(cls, value: int) -> int:
+        # Bounded per-run body capture — never a full-mailbox backfill.
+        if not 1 <= value <= 1000:
+            raise ValueError("max_full_body_fetch_per_run must be between 1 and 1000")
         return value
 
     @field_validator("low_confidence_threshold")

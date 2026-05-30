@@ -65,6 +65,9 @@ class ReadOnlyMailClient:
     def _attachment_select(self) -> str:
         return ",".join(self._contract.attachment_metadata_select)
 
+    def _body_select(self) -> str:
+        return ",".join(self._contract.body_fetch_select)
+
     @staticmethod
     def _clamp_top(top: int) -> int:
         return max(1, min(int(top), _MAX_TOP))
@@ -122,3 +125,14 @@ class ReadOnlyMailClient:
         """Attachment **metadata** only (``$select`` excludes ``contentBytes``)."""
         params = {"$select": self._attachment_select()}
         return self._guarded_pages(f"/me/messages/{message_id}/attachments", params)
+
+    def get_message_body(self, message_id: str) -> dict[str, Any]:
+        """Single message **with body** (``GET /me/messages/{id}``), read-only.
+
+        Used only by the Prompt 08A controlled encrypted-body capture path: the
+        returned ``body`` (``{contentType, content}``) is encrypted immediately
+        via the text vault and the plaintext discarded — it is never persisted to
+        SQLite/Obsidian/evidence/logs. The path is allowlisted; only the
+        ``$select`` differs from the body-free metadata path.
+        """
+        return self._guarded_get(f"/me/messages/{message_id}", {"$select": self._body_select()})

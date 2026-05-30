@@ -98,6 +98,15 @@ def _classify_sensitivity(name: Optional[str]) -> tuple[Optional[str], Optional[
     return None, None
 
 
+def classify_text_sensitivity(text: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """Classify arbitrary text (e.g. a decrypted-in-memory body) against the
+    sensitivity categories. Returns ``(category, level)`` or ``(None, None)``.
+
+    Used in-memory only (the caller discards plaintext after); no text is stored.
+    """
+    return _classify_sensitivity(text)
+
+
 def analyze_attachment(
     name: Optional[str], content_type: Optional[str], is_inline: bool
 ) -> AttachmentAnalysis:

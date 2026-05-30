@@ -17,6 +17,7 @@ later prompt; here `--project` is a validated crawl-run label only.
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -25,6 +26,7 @@ from pydantic import BaseModel
 
 from hb_assistant.construction.email.attachment_analyzer import (
     analyze_attachment,
+    classify_text_sensitivity,
     detect_drive_links,
 )
 from hb_assistant.construction.email.folder_discovery import EmailFolderDiscovery
@@ -173,6 +175,7 @@ class IndexedFolder(BaseModel):
     sensitive_attachments: int = 0
     source_link_candidates: int = 0
     review_items_created: int = 0
+    bodies_encrypted: int = 0
     status: str
 
     model_config = {"extra": "forbid"}
@@ -198,6 +201,14 @@ class IndexResult(BaseModel):
     sensitive_attachments: int = 0
     source_link_candidates: int = 0
     review_items_created: int = 0
+    bodies_encrypted: int = 0
+    # Prompt 08A encrypted-body capture telemetry (no plaintext).
+    include_encrypted_body: bool = False
+    body_capture_enabled: bool = False
+    bodies_eligible: int = 0
+    max_full_body_fetch_per_run: int = 0
+    plaintext_persisted: bool = False
+    vault_blob_written: bool = False
 
     model_config = {"extra": "forbid"}
 
@@ -208,6 +219,7 @@ class EmailMessageIndexer:
     def __init__(self, mail_client: ReadOnlyMailClient, store: ConstructionStore) -> None:
         self._mail = mail_client
         self._store = store
+        self._body_budget = 0  # per-run encrypted-body fetch budget (Prompt 08A)
 
     def index(
         self,
@@ -216,10 +228,17 @@ class EmailMessageIndexer:
         lookback_days: Optional[int] = None,
         dry_run: bool = False,
         max_messages_per_folder: int = _DEFAULT_MAX_MESSAGES_PER_FOLDER,
+        include_encrypted_body: bool = False,
     ) -> IndexResult:
         policy = load_email_intelligence_active_policy()
         lookback = self._clamp_lookback(lookback_days or policy.default_lookback_days)
         max_per_folder = max(1, int(max_messages_per_folder))
+
+        # Prompt 08A: encrypted full-body capture is enabled only when the active
+        # policy allows it AND the caller passes the explicit flag. Bounded by a
+        # per-run budget; never a full-mailbox backfill.
+        body_capture_enabled = bool(include_encrypted_body and policy.full_body_storage_allowed)
+        self._body_budget = policy.max_full_body_fetch_per_run if body_capture_enabled else 0
 
         project_resolved = False
         if project_key:
@@ -245,6 +264,7 @@ class EmailMessageIndexer:
                     max_per_folder=max_per_folder,
                     project_key=project_key,
                     dry_run=dry_run,
+                    body_capture=body_capture_enabled,
                 )
             )
 
@@ -257,7 +277,15 @@ class EmailMessageIndexer:
             "sensitive_attachments": sum(f.sensitive_attachments for f in folder_results),
             "source_link_candidates": sum(f.source_link_candidates for f in folder_results),
             "review_items_created": sum(f.review_items_created for f in folder_results),
+            "bodies_encrypted": sum(f.bodies_encrypted for f in folder_results),
         }
+
+        # Dry-run eligibility: how many bodies WOULD be captured (no fetch, no blob).
+        bodies_eligible = (
+            min(totals["messages_seen"], policy.max_full_body_fetch_per_run)
+            if (dry_run and body_capture_enabled)
+            else 0
+        )
 
         if not dry_run:
             self._store.insert_email_processing_receipt(
@@ -279,6 +307,12 @@ class EmailMessageIndexer:
             persisted=not dry_run,
             folders=folder_results,
             folders_crawled=len(folder_results),
+            include_encrypted_body=include_encrypted_body,
+            body_capture_enabled=body_capture_enabled,
+            bodies_eligible=bodies_eligible,
+            max_full_body_fetch_per_run=policy.max_full_body_fetch_per_run,
+            plaintext_persisted=False,
+            vault_blob_written=bool((not dry_run) and totals["bodies_encrypted"] > 0),
             **totals,
         )
 
@@ -308,6 +342,7 @@ class EmailMessageIndexer:
         max_per_folder: int,
         project_key: Optional[str],
         dry_run: bool,
+        body_capture: bool = False,
     ) -> IndexedFolder:
         source_id = folder["source_id"]
         folder_id = folder["folder_id"]
@@ -332,6 +367,7 @@ class EmailMessageIndexer:
         sensitive = 0
         candidates = 0
         review_items = 0
+        bodies_encrypted = 0
         status = "completed"
         error_redacted: Optional[str] = None
 
@@ -360,6 +396,9 @@ class EmailMessageIndexer:
                 body_counts = self._index_body_links(msg, project_key)
                 candidates += body_counts["candidates"]
                 review_items += body_counts["review_items"]
+                if body_capture and self._body_budget > 0 and self._capture_body(msg):
+                    bodies_encrypted += 1
+                    self._body_budget -= 1
                 messages_indexed += 1
         except Exception as e:  # bounded, sanitized
             status = "failed"
@@ -389,8 +428,50 @@ class EmailMessageIndexer:
             sensitive_attachments=sensitive,
             source_link_candidates=candidates,
             review_items_created=review_items,
+            bodies_encrypted=bodies_encrypted,
             status=status,
         )
+
+    def _capture_body(self, msg: dict[str, Any]) -> bool:
+        """Fetch a message body (read-only), encrypt it via the text vault, store
+        only the ref + hash/length/metadata, and discard the plaintext.
+
+        Returns True if a body was encrypted and a vault ref persisted. The
+        plaintext is never returned, logged, or stored in SQLite/Obsidian/evidence.
+        """
+        message_id = msg.get("id")
+        if not message_id:
+            return False
+        full = self._mail.get_message_body(message_id)
+        body = full.get("body") or {}
+        content = body.get("content")
+        if not content:
+            return False
+        content_type = body.get("contentType")
+        body_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        body_length = len(content)
+        category, _level = classify_text_sensitivity(content)
+        review_required = category is not None
+
+        from hb_assistant.security.text_vault import encrypt_text
+
+        ref = encrypt_text(content)
+        content = None  # discard plaintext immediately after encryption
+        if not ref:
+            return False
+        self._store.upsert_email_body_vault_ref(
+            message_id=message_id,
+            internet_message_id=full.get("internetMessageId"),
+            conversation_id=full.get("conversationId"),
+            body_content_type=content_type,
+            body_hash=body_hash,
+            body_length=body_length,
+            encrypted_full_body_ref=ref,
+            extraction_policy="encrypted_text_vault",
+            review_required=review_required,
+            sensitivity_classification=category,
+        )
+        return True
 
     def _index_attachments(self, msg: dict[str, Any], project_key: Optional[str]) -> dict[str, int]:
         counts = {"attachments": 0, "links": 0, "sensitive": 0, "candidates": 0, "review_items": 0}

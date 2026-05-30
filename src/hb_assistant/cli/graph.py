@@ -10,6 +10,7 @@ mutated.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any, Dict, List, Optional
 
@@ -36,6 +37,8 @@ from hb_assistant.graph.mail_readonly_client import ReadOnlyMailClient
 app = typer.Typer(help="Microsoft Graph read-only commands.")
 mail_app = typer.Typer(help="Read-only Outlook/Exchange mail intelligence (Phase 06).")
 app.add_typer(mail_app, name="mail")
+body_app = typer.Typer(help="Controlled decrypt read for encrypted email bodies (local-only).")
+mail_app.add_typer(body_app, name="body")
 
 # Mail write scopes that must never be requested at runtime (mirrors the
 # mutation-lockout regression set). Read-only Phase 06 requests Mail.Read only.
@@ -237,6 +240,11 @@ def index_cmd(
     project: Optional[str] = typer.Option(None, "--project", help="Project key label for this crawl run"),
     lookback_days: int = typer.Option(30, "--lookback-days", help="Bounded lookback window in days (1-366)"),
     max_messages: int = typer.Option(200, "--max-messages", help="Max messages indexed per folder (bounded)"),
+    include_encrypted_body: bool = typer.Option(
+        False,
+        "--include-encrypted-body",
+        help="Also capture full bodies ENCRYPTED at rest (policy-gated; no plaintext persisted)",
+    ),
     dry_run: bool = typer.Option(
         False, "--dry-run/--no-dry-run", help="Preview without writing message rows (default: persist)"
     ),
@@ -271,6 +279,7 @@ def index_cmd(
             lookback_days=lookback_days,
             dry_run=dry_run,
             max_messages_per_folder=max_messages,
+            include_encrypted_body=include_encrypted_body,
         )
 
         payload: Dict[str, Any] = {"command": "graph mail index", "ok": True, **result.model_dump()}
@@ -351,3 +360,77 @@ def discover_cmd(
     finally:
         if client is not None:
             client.close()
+
+
+@body_app.command("show")
+def body_show_cmd(
+    message_id: str = typer.Option(..., "--message-id", help="Indexed message id whose encrypted body to read"),
+    reason: str = typer.Option(..., "--reason", help="Operator reason for the decrypt (audited locally)"),
+    show_plaintext: bool = typer.Option(
+        False, "--show-plaintext", help="Print the decrypted body to THIS terminal only (never to disk/log/evidence)"
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON (redacted summary; never plaintext)"),
+) -> None:
+    """Controlled, local-only read of an encrypted email body (no Graph call).
+
+    Default output is a redacted summary (length, hash prefix, content type,
+    sensitivity, review flag) — never plaintext. --show-plaintext decrypts to this
+    terminal only. Every invocation records a local audit receipt (no plaintext).
+    """
+    from hb_assistant.security.text_vault import decrypt_text
+
+    try:
+        store = ConstructionStore()
+        record = store.get_email_body_vault_ref(message_id)
+        if record is None:
+            payload = {"command": "graph mail body show", "ok": True, "found": False, "message_id": message_id}
+            typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+            raise typer.Exit(0)
+
+        ref = record["encrypted_full_body_ref"]
+        plaintext_emitted = False
+        plaintext: Optional[str] = None
+        if show_plaintext:
+            plaintext = decrypt_text(ref)
+            plaintext_emitted = plaintext is not None
+
+        # Local audit receipt — reason + length only, never plaintext.
+        store.insert_email_processing_receipt(
+            receipt_id=f"{message_id}:body_decrypt_read:{hashlib.sha256(reason.encode('utf-8')).hexdigest()[:12]}",
+            operation="body_decrypt_read",
+            status="ok",
+            message_id=message_id,
+            detail={
+                "reason": reason,
+                "body_length": record["body_length"],
+                "plaintext_emitted": plaintext_emitted,
+            },
+        )
+
+        summary: Dict[str, Any] = {
+            "command": "graph mail body show",
+            "ok": True,
+            "found": True,
+            "message_id": message_id,
+            "reason": reason,
+            "encrypted_full_body_ref_present": bool(ref),
+            "body_hash_prefix": (record["body_hash"] or "")[:12],
+            "body_length": record["body_length"],
+            "body_content_type": record["body_content_type"],
+            "sensitivity_classification": record["sensitivity_classification"],
+            "review_required": record["review_required"],
+            "plaintext_persisted": False,
+            "encryption_method": record["encryption_method"],
+        }
+        typer.echo(json.dumps(summary, indent=2) if json_out else str(summary))
+        if show_plaintext and plaintext is not None:
+            # Plaintext to THIS terminal only; never captured in JSON/evidence/logs.
+            typer.echo("\n----- decrypted body (terminal only; not persisted) -----")
+            typer.echo(plaintext)
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": "graph mail body show", "ok": False, "status": "body_show_error", "error": str(e)[:200]}
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None

@@ -2497,3 +2497,95 @@ class ConstructionStore:
                 "attachment_content_downloaded must be False — Phase 06 never "
                 "downloads attachment content by default"
             )
+
+    # --- V12 encrypted full-body vault refs (Phase 06 Prompt 08A) -----------
+    # Stores ONLY a deterministic encrypted_full_body_ref + hash/length/metadata.
+    # There is no plaintext parameter and no plaintext column; the body lives
+    # encrypted in the text vault outside the repo. All plaintext / obsidian /
+    # evidence / log persistence flags are forced 0 (and CHECK-locked at the DB).
+
+    def upsert_email_body_vault_ref(
+        self,
+        *,
+        message_id: str,
+        encrypted_full_body_ref: str,
+        body_hash: str,
+        body_length: int,
+        extraction_policy: str,
+        internet_message_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        body_content_type: Optional[str] = None,
+        review_required: bool = False,
+        sensitivity_classification: Optional[str] = None,
+    ) -> None:
+        if not encrypted_full_body_ref:
+            raise ValueError("encrypted_full_body_ref must be a non-empty vault reference")
+        if not body_hash:
+            raise ValueError("body_hash must be a non-empty hash")
+        if body_length <= 0:
+            raise ValueError("body_length must be positive (record a no-body status elsewhere)")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_message_body_vault_refs
+                    (message_id, internet_message_id, conversation_id, body_content_type,
+                     body_hash, body_length, encrypted_full_body_ref, encryption_method,
+                     plaintext_persisted, obsidian_body_persisted, evidence_body_persisted,
+                     log_body_persisted, extraction_policy, review_required,
+                     sensitivity_classification, encrypted_at_utc, created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'fernet_text_vault', 0, 0, 0, 0, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(message_id) DO UPDATE SET
+                    internet_message_id = excluded.internet_message_id,
+                    conversation_id = excluded.conversation_id,
+                    body_content_type = excluded.body_content_type,
+                    body_hash = excluded.body_hash,
+                    body_length = excluded.body_length,
+                    encrypted_full_body_ref = excluded.encrypted_full_body_ref,
+                    extraction_policy = excluded.extraction_policy,
+                    review_required = excluded.review_required,
+                    sensitivity_classification = excluded.sensitivity_classification,
+                    encrypted_at_utc = excluded.encrypted_at_utc,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    message_id,
+                    internet_message_id,
+                    conversation_id,
+                    body_content_type,
+                    body_hash,
+                    body_length,
+                    encrypted_full_body_ref,
+                    extraction_policy,
+                    1 if review_required else 0,
+                    sensitivity_classification,
+                    _utc_now(),
+                    _utc_now(),
+                    _utc_now(),
+                ),
+            )
+
+    def get_email_body_vault_ref(self, message_id: str) -> Optional[dict[str, Any]]:
+        """Return the encrypted-body metadata for a message (never plaintext)."""
+        keys = (
+            "message_id", "internet_message_id", "conversation_id", "body_content_type",
+            "body_hash", "body_length", "encrypted_full_body_ref", "encrypted_at_utc",
+            "encryption_method", "plaintext_persisted", "obsidian_body_persisted",
+            "evidence_body_persisted", "log_body_persisted", "extraction_policy",
+            "review_required", "sensitivity_classification", "created_utc", "updated_utc",
+        )
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_message_body_vault_refs WHERE message_id = ?",
+            (message_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        record = dict(zip(keys, row, strict=True))
+        for bool_field in (
+            "plaintext_persisted", "obsidian_body_persisted", "evidence_body_persisted",
+            "log_body_persisted", "review_required",
+        ):
+            record[bool_field] = bool(record[bool_field])
+        return record

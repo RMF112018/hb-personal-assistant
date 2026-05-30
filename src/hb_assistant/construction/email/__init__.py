@@ -10,6 +10,7 @@ from __future__ import annotations
 from .attachment_analyzer import (
     AttachmentAnalysis,
     analyze_attachment,
+    classify_text_sensitivity,
     detect_drive_links,
 )
 from .folder_discovery import (
@@ -50,6 +51,7 @@ __all__ = [
     "ProjectMatchSummary",
     "ProjectMatcher",
     "analyze_attachment",
+    "classify_text_sensitivity",
     "detect_drive_links",
     "load_pilot_project_descriptors",
     "normalize_message",
