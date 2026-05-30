@@ -23,6 +23,23 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Column order for construction_drive_items reads (V5 base + V15 rich metadata).
+_DRIVE_ITEM_KEYS: tuple[str, ...] = (
+    "source_id", "drive_id", "drive_item_id", "parent_drive_item_id",
+    "site_id", "list_id", "list_item_id", "name", "path", "web_url",
+    "is_folder", "is_file", "file_extension", "mime_type", "size_bytes",
+    "last_modified_datetime", "deleted", "quick_xor_hash",
+    "project_number_detected", "document_type_detected",
+    "indexing_policy", "classification_status",
+    "created_utc", "updated_utc",
+    "is_package", "e_tag", "c_tag", "created_datetime",
+    "parent_reference_path", "folder_child_count",
+    "sharepoint_web_id", "sharepoint_list_item_id",
+    "file_hashes_json", "package_json_redacted",
+    "remote_item_json_redacted", "first_seen_utc", "last_seen_utc",
+)
+
+
 class ConstructionStore:
     """Thin facade over construction_* tables added in V2 migration."""
 
@@ -845,7 +862,20 @@ class ConstructionStore:
         document_type_detected: Optional[str] = None,
         indexing_policy: Optional[str] = None,
         classification_status: Optional[str] = None,
+        # v15 Phase 06 (Files) rich driveItem metadata.
+        is_package: bool = False,
+        e_tag: Optional[str] = None,
+        c_tag: Optional[str] = None,
+        created_datetime: Optional[str] = None,
+        parent_reference_path: Optional[str] = None,
+        folder_child_count: Optional[int] = None,
+        sharepoint_web_id: Optional[str] = None,
+        sharepoint_list_item_id: Optional[str] = None,
+        file_hashes_json: Optional[str] = None,
+        package_json_redacted: Optional[str] = None,
+        remote_item_json_redacted: Optional[str] = None,
     ) -> None:
+        now = _utc_now()
         conn = get_connection(self._db_path)
         with transaction(conn):
             conn.execute(
@@ -857,8 +887,14 @@ class ConstructionStore:
                      last_modified_datetime, deleted, quick_xor_hash,
                      project_number_detected, document_type_detected,
                      indexing_policy, classification_status,
-                     created_utc, updated_utc)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     created_utc, updated_utc,
+                     is_package, e_tag, c_tag, created_datetime,
+                     parent_reference_path, folder_child_count,
+                     sharepoint_web_id, sharepoint_list_item_id,
+                     file_hashes_json, package_json_redacted,
+                     remote_item_json_redacted, first_seen_utc, last_seen_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(source_id, drive_item_id) DO UPDATE SET
                     drive_id = excluded.drive_id,
                     parent_drive_item_id = excluded.parent_drive_item_id,
@@ -880,7 +916,19 @@ class ConstructionStore:
                     document_type_detected = excluded.document_type_detected,
                     indexing_policy = excluded.indexing_policy,
                     classification_status = excluded.classification_status,
-                    updated_utc = excluded.updated_utc
+                    updated_utc = excluded.updated_utc,
+                    is_package = excluded.is_package,
+                    e_tag = excluded.e_tag,
+                    c_tag = excluded.c_tag,
+                    created_datetime = excluded.created_datetime,
+                    parent_reference_path = excluded.parent_reference_path,
+                    folder_child_count = excluded.folder_child_count,
+                    sharepoint_web_id = excluded.sharepoint_web_id,
+                    sharepoint_list_item_id = excluded.sharepoint_list_item_id,
+                    file_hashes_json = excluded.file_hashes_json,
+                    package_json_redacted = excluded.package_json_redacted,
+                    remote_item_json_redacted = excluded.remote_item_json_redacted,
+                    last_seen_utc = excluded.last_seen_utc
                 """,
                 (
                     source_id, drive_id, drive_item_id, parent_drive_item_id,
@@ -890,7 +938,12 @@ class ConstructionStore:
                     last_modified_datetime, 1 if deleted else 0, quick_xor_hash,
                     project_number_detected, document_type_detected,
                     indexing_policy, classification_status,
-                    _utc_now(), _utc_now(),
+                    now, now,
+                    1 if is_package else 0, e_tag, c_tag, created_datetime,
+                    parent_reference_path, folder_child_count,
+                    sharepoint_web_id, sharepoint_list_item_id,
+                    file_hashes_json, package_json_redacted,
+                    remote_item_json_redacted, now, now,
                 ),
             )
 
@@ -906,7 +959,12 @@ class ConstructionStore:
                    last_modified_datetime, deleted, quick_xor_hash,
                    project_number_detected, document_type_detected,
                    indexing_policy, classification_status,
-                   created_utc, updated_utc
+                   created_utc, updated_utc,
+                   is_package, e_tag, c_tag, created_datetime,
+                   parent_reference_path, folder_child_count,
+                   sharepoint_web_id, sharepoint_list_item_id,
+                   file_hashes_json, package_json_redacted,
+                   remote_item_json_redacted, first_seen_utc, last_seen_utc
             FROM construction_drive_items
             WHERE source_id = ? AND drive_item_id = ?
             """,
@@ -915,17 +973,8 @@ class ConstructionStore:
         row = cur.fetchone()
         if row is None:
             return None
-        keys = (
-            "source_id", "drive_id", "drive_item_id", "parent_drive_item_id",
-            "site_id", "list_id", "list_item_id", "name", "path", "web_url",
-            "is_folder", "is_file", "file_extension", "mime_type", "size_bytes",
-            "last_modified_datetime", "deleted", "quick_xor_hash",
-            "project_number_detected", "document_type_detected",
-            "indexing_policy", "classification_status",
-            "created_utc", "updated_utc",
-        )
-        record = dict(zip(keys, row, strict=True))
-        for bool_field in ("is_folder", "is_file", "deleted"):
+        record = dict(zip(_DRIVE_ITEM_KEYS, row, strict=True))
+        for bool_field in ("is_folder", "is_file", "deleted", "is_package"):
             record[bool_field] = bool(record[bool_field])
         return record
 
@@ -948,7 +997,12 @@ class ConstructionStore:
             "last_modified_datetime, deleted, quick_xor_hash, "
             "project_number_detected, document_type_detected, "
             "indexing_policy, classification_status, "
-            "created_utc, updated_utc "
+            "created_utc, updated_utc, "
+            "is_package, e_tag, c_tag, created_datetime, "
+            "parent_reference_path, folder_child_count, "
+            "sharepoint_web_id, sharepoint_list_item_id, "
+            "file_hashes_json, package_json_redacted, "
+            "remote_item_json_redacted, first_seen_utc, last_seen_utc "
             "FROM construction_drive_items WHERE source_id = ? "
             "ORDER BY drive_item_id"
         )
@@ -957,19 +1011,10 @@ class ConstructionStore:
             sql += " LIMIT ?"
             params = (source_id, int(limit))
         conn = get_connection(self._db_path)
-        keys = (
-            "source_id", "drive_id", "drive_item_id", "parent_drive_item_id",
-            "site_id", "list_id", "list_item_id", "name", "path", "web_url",
-            "is_folder", "is_file", "file_extension", "mime_type", "size_bytes",
-            "last_modified_datetime", "deleted", "quick_xor_hash",
-            "project_number_detected", "document_type_detected",
-            "indexing_policy", "classification_status",
-            "created_utc", "updated_utc",
-        )
         out: list[dict[str, Any]] = []
         for row in conn.execute(sql, params).fetchall():
-            record = dict(zip(keys, row, strict=True))
-            for bool_field in ("is_folder", "is_file", "deleted"):
+            record = dict(zip(_DRIVE_ITEM_KEYS, row, strict=True))
+            for bool_field in ("is_folder", "is_file", "deleted", "is_package"):
                 record[bool_field] = bool(record[bool_field])
             out.append(record)
         return out

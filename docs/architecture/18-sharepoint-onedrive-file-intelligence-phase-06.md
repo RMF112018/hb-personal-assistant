@@ -93,6 +93,23 @@ fabricated), carrying the registry `resolution_status` (`pending_source_resoluti
 `construction_processing_receipts` row — no new migration) degrades to `auth_required` without a
 token. Limitations recorded in `docs/evidence/.../18-shared-library-resolution-limitations.md`.
 
+### Rich driveItem metadata indexing (Prompt 06) — `graph files index` + schema V15
+`construction/graph/drive_item_indexer.py` adds `normalize_drive_item` (pure: raw Graph driveItem →
+canonical V5 kwargs, handling file/folder/package/remoteItem/deleted facets, parentReference,
+sharepointIds, eTag/cTag, createdDateTime, file hashes) and `DriveItemIndexer` (bounded, guard-
+asserted read-only enumeration of a drive's delta endpoint → normalize → upsert into
+`construction_drive_items`). **`@microsoft.graph.downloadUrl` is never read or stored** (dropped from
+the normalized payload; facet JSON is redacted to strip any url/token-bearing keys), proven by the
+`download_url_persisted: false` flag + tests. Schema **V15** (additive `ALTER TABLE ADD COLUMN`,
+version-gated like V13; max schema version 14 → 15) extends `construction_drive_items` with
+`is_package`, `e_tag`, `c_tag`, `created_datetime`, `parent_reference_path`, `folder_child_count`,
+`sharepoint_web_id`, `sharepoint_list_item_id`, `file_hashes_json`, `package_json_redacted`,
+`remote_item_json_redacted`, `first_seen_utc`, `last_seen_utc` (+ a `(deleted)` index);
+`upsert_drive_item` extended accordingly (`first_seen_utc` preserved on conflict, `last_seen_utc`
+refreshed). The `graph files index` command is dry-run default (`--apply` persists + writes a
+`drive_item_index` receipt), degrading to `auth_required` without a token. Delta-token persistence +
+410 rebaseline remain P08.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and

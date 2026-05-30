@@ -36,6 +36,7 @@ from hb_assistant.construction.email import (
     run_operational_validation,
 )
 from hb_assistant.construction.email.email_classifier import DEFAULT_MODEL_NAME
+from hb_assistant.construction.graph.drive_item_indexer import DriveItemIndexer
 from hb_assistant.construction.graph.resolver import GRAPH_SCOPES as _FILES_GRAPH_SCOPES
 from hb_assistant.construction.graph.site_drive_discovery import SiteDriveDiscovery
 from hb_assistant.construction.policy.email_active import (
@@ -606,6 +607,67 @@ def files_onedrive_cmd(
         "summary": summary,
         "onedrive": rows,
         "guardrails": _DISCOVERY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_app.command("index")
+def files_index_cmd(
+    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply persists canonical driveItems."
+    ),
+    max_pages: int = typer.Option(5, "--max-pages", help="Hard cap on pages read."),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Index rich driveItem metadata into the canonical V5 construction_drive_items
+    table (file/folder/package/deleted/parent/sharepoint facets; downloadUrl dropped).
+    Read-only, metadata-only; dry-run by default."""
+    try:
+        registry = load_source_registry()
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files index", e, json_out)
+        return
+
+    matching = [s for s in registry.sources if s.source_key == source]
+    if not matching:
+        payload = {
+            "command": "graph files index",
+            "status": "not_found",
+            "requested": source,
+            "available": [s.source_key for s in registry.sources],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+    if client is None:
+        payload = {
+            "command": "graph files index",
+            "source": source,
+            "mode": "dry_run" if dry_run else "apply",
+            **auth_payload,
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+
+    try:
+        store = ConstructionStore() if not dry_run else None
+        indexer = DriveItemIndexer(client, store=store)
+        report = indexer.index(matching[0], dry_run=dry_run, max_pages=max_pages)
+    finally:
+        client.close()
+
+    guardrails = dict(_DISCOVERY_GUARDRAILS)
+    guardrails["download_url_persisted"] = report.download_url_persisted
+    payload = {
+        "command": "graph files index",
+        "source": source,
+        "mode": "dry_run" if dry_run else "apply",
+        "ok": report.status not in {"error"} and not report.download_url_persisted,
+        "result": report.model_dump(),
+        "guardrails": guardrails,
     }
     typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
     raise typer.Exit(0)

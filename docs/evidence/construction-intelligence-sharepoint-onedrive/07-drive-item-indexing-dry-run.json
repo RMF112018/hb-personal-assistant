@@ -1,0 +1,54 @@
+{
+  "command": "graph files index",
+  "source": "sp_2023projects_23_435_01_tropical_sl",
+  "mode": "dry_run",
+  "schema": "V5 construction_drive_items (+ V15 rich columns: is_package, e_tag, c_tag, created_datetime, parent_reference_path, folder_child_count, sharepoint_web_id, sharepoint_list_item_id, file_hashes_json, package_json_redacted, remote_item_json_redacted, first_seen_utc, last_seen_utc)",
+  "note": "Deterministic mocked normalization proof (live `graph files index` degrades to auth_required at capture: delegated token expired). Item ids/urls are synthetic-but-shaped. The raw 'file' input carried @microsoft.graph.downloadUrl with a token; it is dropped from the normalized payload and never persisted.",
+  "download_url_dropped": true,
+  "samples": [
+    {"drive_item_id": "01KUIR4CV3RKZL4...FILE", "name": "23-435-01 RFI Log.xlsx", "is_file": true, "is_folder": false, "is_package": false, "deleted": false, "size_bytes": 48213, "file_extension": "xlsx", "last_modified_datetime": "2026-05-20T09:30:00Z", "parent_reference_path": "/drive/root:/23-435-01Tropical -S L/07-RFI"},
+    {"drive_item_id": "01...FOLDER", "name": "07-RFI", "is_file": false, "is_folder": true, "is_package": false, "deleted": false, "size_bytes": null, "file_extension": null, "last_modified_datetime": null, "parent_reference_path": "/drive/root:/23-435-01Tropical -S L"},
+    {"drive_item_id": "01...PKG", "name": "Project Notebook", "is_file": false, "is_folder": false, "is_package": true, "deleted": false, "size_bytes": null, "file_extension": null, "last_modified_datetime": null, "parent_reference_path": "/drive/root:"},
+    {"drive_item_id": "01...DEL", "name": "obsolete-spec.pdf", "is_file": false, "is_folder": false, "is_package": false, "deleted": true, "size_bytes": null, "file_extension": null, "last_modified_datetime": null, "parent_reference_path": "/drive/root:/16-DrawSpecPic"}
+  ],
+  "normalized_canonical_kwargs": {
+    "file": {
+      "source_id": "sp_2023projects_23_435_01_tropical_sl", "drive_id": "b!tropical-drive", "drive_item_id": "01KUIR4CV3RKZL4...FILE",
+      "parent_drive_item_id": "PARENTFOLDER", "site_id": "b1abbdda", "list_id": "list-1", "list_item_id": "42",
+      "name": "23-435-01 RFI Log.xlsx", "path": "/drive/root:/23-435-01Tropical -S L/07-RFI",
+      "web_url": "https://hedrickbrotherscom.sharepoint.com/.../RFI%20Log.xlsx",
+      "is_folder": false, "is_file": true, "is_package": false, "file_extension": "xlsx",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "size_bytes": 48213,
+      "created_datetime": "2026-01-04T12:00:00Z", "last_modified_datetime": "2026-05-20T09:30:00Z",
+      "e_tag": "\"{GUID},3\"", "c_tag": "\"c:{GUID},2\"", "quick_xor_hash": "abc123QXH==",
+      "file_hashes_json": "{\"quickXorHash\": \"abc123QXH==\", \"sha256Hash\": \"DEAD...\"}",
+      "deleted": false, "parent_reference_path": "/drive/root:/23-435-01Tropical -S L/07-RFI", "folder_child_count": null,
+      "sharepoint_web_id": "web-1", "sharepoint_list_item_id": "42", "package_json_redacted": null, "remote_item_json_redacted": null
+    },
+    "folder": {
+      "source_id": "sp_2023projects_23_435_01_tropical_sl", "drive_id": "b!tropical-drive", "drive_item_id": "01...FOLDER",
+      "parent_drive_item_id": "ROOT", "name": "07-RFI", "path": "/drive/root:/23-435-01Tropical -S L", "web_url": "https://.../07-RFI",
+      "is_folder": true, "is_file": false, "is_package": false, "folder_child_count": 134,
+      "parent_reference_path": "/drive/root:/23-435-01Tropical -S L", "deleted": false
+    },
+    "package": {
+      "source_id": "sp_2023projects_23_435_01_tropical_sl", "drive_id": "b!tropical-drive", "drive_item_id": "01...PKG",
+      "parent_drive_item_id": "ROOT", "name": "Project Notebook", "path": "/drive/root:", "web_url": "https://.../Notebook",
+      "is_folder": false, "is_file": false, "is_package": true, "package_json_redacted": "{\"type\": \"oneNote\"}", "deleted": false
+    },
+    "deleted": {
+      "source_id": "sp_2023projects_23_435_01_tropical_sl", "drive_id": "b!tropical-drive", "drive_item_id": "01...DEL",
+      "parent_drive_item_id": "PARENTFOLDER", "name": "obsolete-spec.pdf", "path": "/drive/root:/16-DrawSpecPic",
+      "is_folder": false, "is_file": false, "is_package": false, "deleted": true,
+      "parent_reference_path": "/drive/root:/16-DrawSpecPic"
+    }
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true,
+    "content_crawl": "none",
+    "download_url_persisted": false,
+    "permission_tightening": "deferred"
+  }
+}

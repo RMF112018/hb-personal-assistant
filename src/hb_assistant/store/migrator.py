@@ -1812,6 +1812,30 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v15 Phase 06 (SharePoint/OneDrive Files) Prompt 06 rich driveItem metadata.
+    # Additive ADD COLUMN only: extends the V5 construction_drive_items canonical
+    # table with the package facet, change tags, created time, parent path, folder
+    # child count, sharepoint web/listItem ids, redacted facet JSON, and first/last
+    # -seen lifecycle so the normalizer can persist durable rich metadata. No
+    # source document text, no @microsoft.graph.downloadUrl column. V1-V14 untouched.
+    V15_STATEMENTS: list[str] = [
+        "ALTER TABLE construction_drive_items ADD COLUMN is_package INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE construction_drive_items ADD COLUMN e_tag TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN c_tag TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN created_datetime TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN parent_reference_path TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN folder_child_count INTEGER",
+        "ALTER TABLE construction_drive_items ADD COLUMN sharepoint_web_id TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN sharepoint_list_item_id TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN file_hashes_json TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN package_json_redacted TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN remote_item_json_redacted TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN first_seen_utc TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN last_seen_utc TEXT",
+        "CREATE INDEX IF NOT EXISTS ix_construction_drive_items_deleted "
+        "ON construction_drive_items(deleted)",
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -1984,6 +2008,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (14, 'v14_email_model_classifications', ?)",
+                    (now,),
+                )
+
+            # v15 Phase 06 (Files) Prompt 06 rich driveItem metadata columns on
+            # construction_drive_items (additive ADD COLUMN only; gated like v13
+            # because ALTER TABLE ADD COLUMN is not idempotent). V1-V14 untouched.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 15")
+            if cur.fetchone() is None:
+                for stmt in self.V15_STATEMENTS:
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (15, 'v15_construction_drive_items_rich_metadata', ?)",
                     (now,),
                 )
 

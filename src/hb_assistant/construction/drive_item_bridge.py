@@ -38,7 +38,7 @@ _LOSSY_V2_FIELDS: tuple[str, ...] = ("etag", "first_seen_at", "last_seen_at")
 
 
 class V5DriveItem(BaseModel):
-    """Canonical V5 ``construction_drive_items`` row shape (24 columns).
+    """Canonical V5 ``construction_drive_items`` row shape (V5 base + V15 rich metadata).
 
     ``extra: forbid`` makes it a type-layer guard against accidental
     leakage of body/content/text/excerpt fields through the bridge —
@@ -70,6 +70,20 @@ class V5DriveItem(BaseModel):
     classification_status: Optional[str] = None
     created_utc: Optional[str] = None
     updated_utc: Optional[str] = None
+    # v15 Phase 06 (Files) rich driveItem metadata (all metadata; no body/content).
+    is_package: bool = False
+    e_tag: Optional[str] = None
+    c_tag: Optional[str] = None
+    created_datetime: Optional[str] = None
+    parent_reference_path: Optional[str] = None
+    folder_child_count: Optional[int] = None
+    sharepoint_web_id: Optional[str] = None
+    sharepoint_list_item_id: Optional[str] = None
+    file_hashes_json: Optional[str] = None
+    package_json_redacted: Optional[str] = None
+    remote_item_json_redacted: Optional[str] = None
+    first_seen_utc: Optional[str] = None
+    last_seen_utc: Optional[str] = None
 
     model_config = {"extra": "forbid"}
 

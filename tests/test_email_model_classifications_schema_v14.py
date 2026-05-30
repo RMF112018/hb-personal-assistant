@@ -29,8 +29,8 @@ def _migrate(db: Path) -> int:
 
 def test_v14_applies_and_is_idempotent() -> None:
     db = _temp_db()
-    assert _migrate(db) == 14
-    assert _migrate(db) == 14
+    assert _migrate(db) == 15
+    assert _migrate(db) == 15
     conn = sqlite3.connect(str(db))
     try:
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
