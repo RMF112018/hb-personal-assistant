@@ -1354,3 +1354,273 @@ class ConstructionStore:
         ):
             record[bool_field] = bool(record[bool_field])
         return record
+
+    # =====================================================================
+    # V10: Phase 06 operational email intelligence — ACTIVE policy singleton +
+    # mailbox source registry. Additive over V1-V9; the V5 deferred-state row is
+    # left untouched as preserved historical evidence. Adapter-level guardrails
+    # reject any read-only / no-mutation / no-full-body / no-source-copy /
+    # no-attachment-download / metadata-only / pilot-only-backfill violation
+    # before the SQL CHECKs ever fire.
+    # =====================================================================
+
+    # --- active email-intelligence policy singleton (V10) -------------------
+
+    def set_email_intelligence_active_policy(
+        self,
+        *,
+        policy_phase: str,
+        default_lookback_days: int = 30,
+        low_confidence_threshold: float = 0.75,
+        ollama_enabled_for_email_intelligence: bool = True,
+        mailbox_mode: str = "read_only",
+        writeback_allowed: bool = False,
+        mailbox_mutation_allowed: bool = False,
+        full_archive_crawl: bool = False,
+        source_copy_to_vault: bool = False,
+        full_email_body_in_obsidian: bool = False,
+        attachment_content_download_by_default: bool = False,
+        metadata_only_by_default: bool = True,
+        review_required_for_sensitive: bool = True,
+        initial_backfill_mode: str = "pilot_projects_only",
+        ollama_invalid_json_routes_to_review: bool = True,
+    ) -> None:
+        if mailbox_mode != "read_only":
+            raise ValueError(
+                "mailbox_mode must be 'read_only' — Phase 06 mailbox stays read-only"
+            )
+        for flag_name, flag_value in (
+            ("writeback_allowed", writeback_allowed),
+            ("mailbox_mutation_allowed", mailbox_mutation_allowed),
+            ("full_archive_crawl", full_archive_crawl),
+            ("source_copy_to_vault", source_copy_to_vault),
+            ("full_email_body_in_obsidian", full_email_body_in_obsidian),
+            ("attachment_content_download_by_default", attachment_content_download_by_default),
+        ):
+            if flag_value is not False:
+                raise ValueError(
+                    f"{flag_name} must be False — Phase 06 email intelligence is "
+                    "read-only and metadata-only"
+                )
+        if metadata_only_by_default is not True:
+            raise ValueError("metadata_only_by_default must be True in Phase 06")
+        if review_required_for_sensitive is not True:
+            raise ValueError("review_required_for_sensitive must be True in Phase 06")
+        if initial_backfill_mode != "pilot_projects_only":
+            raise ValueError(
+                "initial_backfill_mode must be 'pilot_projects_only' — no full "
+                "mailbox backfill in Phase 06"
+            )
+        if ollama_invalid_json_routes_to_review is not True:
+            raise ValueError("ollama_invalid_json_routes_to_review must be True in Phase 06")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_intelligence_active_policy
+                    (id, policy_phase, mailbox_mode, writeback_allowed,
+                     mailbox_mutation_allowed, full_archive_crawl, source_copy_to_vault,
+                     full_email_body_in_obsidian, attachment_content_download_by_default,
+                     metadata_only_by_default, review_required_for_sensitive,
+                     initial_backfill_mode, ollama_invalid_json_routes_to_review,
+                     default_lookback_days, ollama_enabled_for_email_intelligence,
+                     low_confidence_threshold, updated_utc)
+                VALUES (1, ?, 'read_only', 0, 0, 0, 0, 0, 0, 1, 1,
+                        'pilot_projects_only', 1, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    policy_phase = excluded.policy_phase,
+                    default_lookback_days = excluded.default_lookback_days,
+                    ollama_enabled_for_email_intelligence = excluded.ollama_enabled_for_email_intelligence,
+                    low_confidence_threshold = excluded.low_confidence_threshold,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    policy_phase,
+                    default_lookback_days,
+                    1 if ollama_enabled_for_email_intelligence else 0,
+                    low_confidence_threshold,
+                    _utc_now(),
+                ),
+            )
+
+    def get_email_intelligence_active_policy(self) -> Optional[dict[str, Any]]:
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT id, policy_phase, mailbox_mode, writeback_allowed,
+                   mailbox_mutation_allowed, full_archive_crawl, source_copy_to_vault,
+                   full_email_body_in_obsidian, attachment_content_download_by_default,
+                   metadata_only_by_default, review_required_for_sensitive,
+                   initial_backfill_mode, ollama_invalid_json_routes_to_review,
+                   default_lookback_days, ollama_enabled_for_email_intelligence,
+                   low_confidence_threshold, updated_utc
+            FROM email_intelligence_active_policy
+            WHERE id = 1
+            """,
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        keys = (
+            "id", "policy_phase", "mailbox_mode", "writeback_allowed",
+            "mailbox_mutation_allowed", "full_archive_crawl", "source_copy_to_vault",
+            "full_email_body_in_obsidian", "attachment_content_download_by_default",
+            "metadata_only_by_default", "review_required_for_sensitive",
+            "initial_backfill_mode", "ollama_invalid_json_routes_to_review",
+            "default_lookback_days", "ollama_enabled_for_email_intelligence",
+            "low_confidence_threshold", "updated_utc",
+        )
+        record = dict(zip(keys, row, strict=True))
+        for bool_field in (
+            "writeback_allowed", "mailbox_mutation_allowed", "full_archive_crawl",
+            "source_copy_to_vault", "full_email_body_in_obsidian",
+            "attachment_content_download_by_default", "metadata_only_by_default",
+            "review_required_for_sensitive", "ollama_invalid_json_routes_to_review",
+            "ollama_enabled_for_email_intelligence",
+        ):
+            record[bool_field] = bool(record[bool_field])
+        return record
+
+    # --- mailbox source registry (V10) --------------------------------------
+
+    def upsert_email_source_location(
+        self,
+        *,
+        source_id: str,
+        mailbox_owner_hash: str,
+        folder_role: str,
+        folder_display_name: Optional[str] = None,
+        folder_id: Optional[str] = None,
+        mailbox_display_name_redacted: Optional[str] = None,
+        mailbox_user_principal_name_hash: Optional[str] = None,
+        source_system: str = "outlook",
+        include_in_sync: bool = True,
+        sync_mode: str = "bounded_lookback",
+        default_lookback_days: int = 30,
+        read_only: bool = True,
+        mailbox_mutation_allowed: bool = False,
+        full_archive_crawl_allowed: bool = False,
+        source_copy_to_vault_allowed: bool = False,
+        full_email_body_in_obsidian_allowed: bool = False,
+    ) -> None:
+        if read_only is not True:
+            raise ValueError(
+                "email_source_locations.read_only must be True (no mailbox writeback)"
+            )
+        for flag_name, flag_value in (
+            ("mailbox_mutation_allowed", mailbox_mutation_allowed),
+            ("full_archive_crawl_allowed", full_archive_crawl_allowed),
+            ("source_copy_to_vault_allowed", source_copy_to_vault_allowed),
+            ("full_email_body_in_obsidian_allowed", full_email_body_in_obsidian_allowed),
+        ):
+            if flag_value is not False:
+                raise ValueError(f"email_source_locations.{flag_name} must be False")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_source_locations
+                    (source_id, source_system, mailbox_owner_hash,
+                     mailbox_display_name_redacted, mailbox_user_principal_name_hash,
+                     folder_id, folder_display_name, folder_role, include_in_sync,
+                     sync_mode, default_lookback_days, read_only,
+                     mailbox_mutation_allowed, full_archive_crawl_allowed,
+                     source_copy_to_vault_allowed, full_email_body_in_obsidian_allowed,
+                     created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 0, 0, 0, ?, ?)
+                ON CONFLICT(source_id) DO UPDATE SET
+                    source_system = excluded.source_system,
+                    mailbox_owner_hash = excluded.mailbox_owner_hash,
+                    mailbox_display_name_redacted = excluded.mailbox_display_name_redacted,
+                    mailbox_user_principal_name_hash = excluded.mailbox_user_principal_name_hash,
+                    folder_id = excluded.folder_id,
+                    folder_display_name = excluded.folder_display_name,
+                    folder_role = excluded.folder_role,
+                    include_in_sync = excluded.include_in_sync,
+                    sync_mode = excluded.sync_mode,
+                    default_lookback_days = excluded.default_lookback_days,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    source_id,
+                    source_system,
+                    mailbox_owner_hash,
+                    mailbox_display_name_redacted,
+                    mailbox_user_principal_name_hash,
+                    folder_id,
+                    folder_display_name,
+                    folder_role,
+                    1 if include_in_sync else 0,
+                    sync_mode,
+                    default_lookback_days,
+                    _utc_now(),
+                    _utc_now(),
+                ),
+            )
+
+    @staticmethod
+    def _email_source_location_keys() -> tuple[str, ...]:
+        return (
+            "source_id", "source_system", "mailbox_owner_hash",
+            "mailbox_display_name_redacted", "mailbox_user_principal_name_hash",
+            "folder_id", "folder_display_name", "folder_role", "include_in_sync",
+            "sync_mode", "default_lookback_days", "read_only",
+            "mailbox_mutation_allowed", "full_archive_crawl_allowed",
+            "source_copy_to_vault_allowed", "full_email_body_in_obsidian_allowed",
+            "created_utc", "updated_utc",
+        )
+
+    def get_email_source_location(self, source_id: str) -> Optional[dict[str, Any]]:
+        conn = get_connection(self._db_path)
+        keys = self._email_source_location_keys()
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_source_locations WHERE source_id = ?",
+            (source_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        record = dict(zip(keys, row, strict=True))
+        for bool_field in (
+            "include_in_sync", "read_only", "mailbox_mutation_allowed",
+            "full_archive_crawl_allowed", "source_copy_to_vault_allowed",
+            "full_email_body_in_obsidian_allowed",
+        ):
+            record[bool_field] = bool(record[bool_field])
+        return record
+
+    def list_email_source_locations(
+        self,
+        *,
+        mailbox_owner_hash: Optional[str] = None,
+        include_in_sync: Optional[bool] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        conn = get_connection(self._db_path)
+        keys = self._email_source_location_keys()
+        clauses: list[str] = []
+        params: list[Any] = []
+        if mailbox_owner_hash is not None:
+            clauses.append("mailbox_owner_hash = ?")
+            params.append(mailbox_owner_hash)
+        if include_in_sync is not None:
+            clauses.append("include_in_sync = ?")
+            params.append(1 if include_in_sync else 0)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_source_locations {where} "
+            "ORDER BY folder_role, source_id LIMIT ?",
+            tuple(params),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            for bool_field in (
+                "include_in_sync", "read_only", "mailbox_mutation_allowed",
+                "full_archive_crawl_allowed", "source_copy_to_vault_allowed",
+                "full_email_body_in_obsidian_allowed",
+            ):
+                record[bool_field] = bool(record[bool_field])
+            results.append(record)
+        return results

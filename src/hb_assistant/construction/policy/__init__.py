@@ -9,6 +9,11 @@ Phase 02 additions: :class:`InventoryFirstPolicy` exposes the per-source
 operational policy for OneDrive sources running in inventory-first mode.
 """
 
+from .email_active import (
+    EmailIntelligenceActivePolicy,
+    EmailIntelligenceActivePolicyError,
+    load_email_intelligence_active_policy,
+)
 from .email_deferred import (
     EmailIntelligenceDeferredPolicy,
     EmailIntelligenceDeferredPolicyError,
@@ -25,6 +30,11 @@ from .inventory_first import (
     build_policy,
 )
 from .loader import ReviewRulesError, load_review_rules
+from .mailbox_registry import (
+    MailboxFolderSource,
+    MailboxSourceRegistry,
+    build_mailbox_source_registry,
+)
 from .models import ReviewRule, ReviewRules, RuleKind, RuleMatch, Sensitivity
 from .router import ReviewQueueRouter, RouterResult
 
@@ -51,4 +61,11 @@ __all__ = [
     "EmailIntelligenceDeferredPolicy",
     "EmailIntelligenceDeferredPolicyError",
     "load_email_intelligence_deferred_policy",
+    # Phase 06 active email-intelligence policy + mailbox source registry
+    "EmailIntelligenceActivePolicy",
+    "EmailIntelligenceActivePolicyError",
+    "load_email_intelligence_active_policy",
+    "MailboxFolderSource",
+    "MailboxSourceRegistry",
+    "build_mailbox_source_registry",
 ]

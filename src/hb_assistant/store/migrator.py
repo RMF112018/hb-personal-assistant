@@ -1417,6 +1417,68 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v10 = Phase 06 operational email intelligence: ACTIVE policy singleton +
+    # mailbox source registry (Bobby's mailbox + included/excluded folders).
+    # Additive only; never touches V1-V9 tables, and in particular leaves the
+    # V5 construction_email_intelligence_deferred_state row untouched as
+    # preserved historical evidence. Hard CHECK constraints lock the read-only /
+    # no-mutation / no-full-body / no-source-copy / no-attachment-download /
+    # metadata-only / pilot-only-backfill guardrails at the schema level
+    # (defense in depth beneath the Pydantic Literal locks + adapter guards).
+    V10_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS email_intelligence_active_policy (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          policy_phase TEXT NOT NULL,
+          mailbox_mode TEXT NOT NULL DEFAULT 'read_only' CHECK(mailbox_mode = 'read_only'),
+          writeback_allowed INTEGER NOT NULL DEFAULT 0 CHECK(writeback_allowed = 0),
+          mailbox_mutation_allowed INTEGER NOT NULL DEFAULT 0 CHECK(mailbox_mutation_allowed = 0),
+          full_archive_crawl INTEGER NOT NULL DEFAULT 0 CHECK(full_archive_crawl = 0),
+          source_copy_to_vault INTEGER NOT NULL DEFAULT 0 CHECK(source_copy_to_vault = 0),
+          full_email_body_in_obsidian INTEGER NOT NULL DEFAULT 0 CHECK(full_email_body_in_obsidian = 0),
+          attachment_content_download_by_default INTEGER NOT NULL DEFAULT 0 CHECK(attachment_content_download_by_default = 0),
+          metadata_only_by_default INTEGER NOT NULL DEFAULT 1 CHECK(metadata_only_by_default = 1),
+          review_required_for_sensitive INTEGER NOT NULL DEFAULT 1 CHECK(review_required_for_sensitive = 1),
+          initial_backfill_mode TEXT NOT NULL DEFAULT 'pilot_projects_only' CHECK(initial_backfill_mode = 'pilot_projects_only'),
+          ollama_invalid_json_routes_to_review INTEGER NOT NULL DEFAULT 1 CHECK(ollama_invalid_json_routes_to_review = 1),
+          default_lookback_days INTEGER NOT NULL DEFAULT 30,
+          ollama_enabled_for_email_intelligence INTEGER NOT NULL DEFAULT 1,
+          low_confidence_threshold REAL NOT NULL DEFAULT 0.75,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_source_locations (
+          source_id TEXT PRIMARY KEY,
+          source_system TEXT NOT NULL DEFAULT 'outlook',
+          mailbox_owner_hash TEXT NOT NULL,
+          mailbox_display_name_redacted TEXT,
+          mailbox_user_principal_name_hash TEXT,
+          folder_id TEXT,
+          folder_display_name TEXT,
+          folder_role TEXT NOT NULL,
+          include_in_sync INTEGER NOT NULL DEFAULT 1,
+          sync_mode TEXT NOT NULL DEFAULT 'bounded_lookback',
+          default_lookback_days INTEGER NOT NULL DEFAULT 30,
+          read_only INTEGER NOT NULL DEFAULT 1 CHECK(read_only = 1),
+          mailbox_mutation_allowed INTEGER NOT NULL DEFAULT 0 CHECK(mailbox_mutation_allowed = 0),
+          full_archive_crawl_allowed INTEGER NOT NULL DEFAULT 0 CHECK(full_archive_crawl_allowed = 0),
+          source_copy_to_vault_allowed INTEGER NOT NULL DEFAULT 0 CHECK(source_copy_to_vault_allowed = 0),
+          full_email_body_in_obsidian_allowed INTEGER NOT NULL DEFAULT 0 CHECK(full_email_body_in_obsidian_allowed = 0),
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_email_source_locations_owner
+          ON email_source_locations(mailbox_owner_hash);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_email_source_locations_role
+          ON email_source_locations(folder_role);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -1528,6 +1590,19 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (9, 'v9_procore_billing_and_subcontractor_invoices', ?)",
+                    (now,),
+                )
+
+            # v10 Phase 06 active email-intelligence policy + mailbox source
+            # registry (additive only; does not touch V1-V9, preserves the V5
+            # deferred-state row).
+            for stmt in self.V10_STATEMENTS:
+                conn.execute(stmt)
+
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 10")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (10, 'v10_email_intelligence_active_policy_and_mailbox_source_registry', ?)",
                     (now,),
                 )
 

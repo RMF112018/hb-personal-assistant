@@ -1,0 +1,33 @@
+# Phase 06 Operational Email Intelligence Policy (ACTIVE).
+#
+# Activates the email intelligence that Phase 02 deferred. The deferred policy
+# (email_intelligence_deferred_policy.yaml) + its V5 deferred-state row remain
+# untouched as historical evidence; this file governs Phase 06 operational,
+# read-only, project-aware workflows.
+#
+# Locked guardrails (cannot be loosened without a Pydantic model change):
+#   mailbox_mode == read_only, writeback/mutation/full-archive/source-copy/
+#   full-body-in-obsidian/attachment-content-download all false, metadata-only,
+#   review-required-for-sensitive true, pilot-only backfill, invalid-json→review.
+mailbox_mode: read_only
+writeback_allowed: false
+mailbox_mutation_allowed: false
+full_archive_crawl: false
+source_copy_to_vault: false
+full_email_body_in_obsidian: false
+attachment_content_download_by_default: false
+metadata_only_by_default: true
+default_lookback_days: 30
+initial_backfill_mode: pilot_projects_only
+include_folders:
+  - Inbox
+  - Sent Items
+  - Archive
+exclude_folders:
+  - Deleted Items
+  - Junk Email
+  - Drafts
+review_required_for_sensitive: true
+ollama_enabled_for_email_intelligence: true
+ollama_invalid_json_routes_to_review: true
+low_confidence_threshold: 0.75
