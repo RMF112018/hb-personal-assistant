@@ -23,6 +23,10 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from hb_assistant.construction.email.attachment_analyzer import (
+    analyze_attachment,
+    detect_drive_links,
+)
 from hb_assistant.construction.email.folder_discovery import EmailFolderDiscovery
 from hb_assistant.construction.policy import (
     EmailIntelligenceActivePolicy,
@@ -165,6 +169,10 @@ class IndexedFolder(BaseModel):
     messages_indexed: int
     recipients_indexed: int
     attachments_indexed: int
+    attachments_with_link_hint: int = 0
+    sensitive_attachments: int = 0
+    source_link_candidates: int = 0
+    review_items_created: int = 0
     status: str
 
     model_config = {"extra": "forbid"}
@@ -186,6 +194,10 @@ class IndexResult(BaseModel):
     messages_indexed: int
     recipients_indexed: int
     attachments_indexed: int
+    attachments_with_link_hint: int = 0
+    sensitive_attachments: int = 0
+    source_link_candidates: int = 0
+    review_items_created: int = 0
 
     model_config = {"extra": "forbid"}
 
@@ -241,6 +253,10 @@ class EmailMessageIndexer:
             "messages_indexed": sum(f.messages_indexed for f in folder_results),
             "recipients_indexed": sum(f.recipients_indexed for f in folder_results),
             "attachments_indexed": sum(f.attachments_indexed for f in folder_results),
+            "attachments_with_link_hint": sum(f.attachments_with_link_hint for f in folder_results),
+            "sensitive_attachments": sum(f.sensitive_attachments for f in folder_results),
+            "source_link_candidates": sum(f.source_link_candidates for f in folder_results),
+            "review_items_created": sum(f.review_items_created for f in folder_results),
         }
 
         if not dry_run:
@@ -312,6 +328,10 @@ class EmailMessageIndexer:
         messages_indexed = 0
         recipients_indexed = 0
         attachments_indexed = 0
+        link_hints = 0
+        sensitive = 0
+        candidates = 0
+        review_items = 0
         status = "completed"
         error_redacted: Optional[str] = None
 
@@ -331,7 +351,15 @@ class EmailMessageIndexer:
                 for r in recipients:
                     self._store.add_email_message_recipient(**r)
                 recipients_indexed += len(recipients)
-                attachments_indexed += self._index_attachments(msg)
+                att_counts = self._index_attachments(msg, project_key)
+                attachments_indexed += att_counts["attachments"]
+                link_hints += att_counts["links"]
+                sensitive += att_counts["sensitive"]
+                candidates += att_counts["candidates"]
+                review_items += att_counts["review_items"]
+                body_counts = self._index_body_links(msg, project_key)
+                candidates += body_counts["candidates"]
+                review_items += body_counts["review_items"]
                 messages_indexed += 1
         except Exception as e:  # bounded, sanitized
             status = "failed"
@@ -344,6 +372,8 @@ class EmailMessageIndexer:
                 messages_seen=messages_seen,
                 messages_in_scope=messages_seen,
                 messages_indexed=messages_indexed,
+                relationship_candidates_created=candidates,
+                review_items_created=review_items,
                 error_redacted=error_redacted,
             )
 
@@ -355,31 +385,108 @@ class EmailMessageIndexer:
             messages_indexed=messages_indexed,
             recipients_indexed=recipients_indexed,
             attachments_indexed=attachments_indexed,
+            attachments_with_link_hint=link_hints,
+            sensitive_attachments=sensitive,
+            source_link_candidates=candidates,
+            review_items_created=review_items,
             status=status,
         )
 
-    def _index_attachments(self, msg: dict[str, Any]) -> int:
+    def _index_attachments(self, msg: dict[str, Any], project_key: Optional[str]) -> dict[str, int]:
+        counts = {"attachments": 0, "links": 0, "sensitive": 0, "candidates": 0, "review_items": 0}
         if not msg.get("hasAttachments"):
-            return 0
+            return counts
         message_id = msg.get("id")
         if not message_id:
-            return 0
-        count = 0
+            return counts
         for att in self._mail.list_attachment_metadata(message_id):
             att_id = att.get("id")
+            analysis = analyze_attachment(att.get("name"), att.get("contentType"), bool(att.get("isInline")))
             self._store.upsert_email_message_attachment(
                 attachment_key=f"{message_id}:{att_id}",
                 message_id=message_id,
                 attachment_id=att_id,
-                name_hash=hash_value(att.get("name")),
+                name_redacted=analysis.name_redacted,
+                name_hash=analysis.name_hash,
                 content_type=att.get("contentType"),
                 size_bytes=att.get("size"),
                 is_inline=bool(att.get("isInline")),
+                sharepoint_or_onedrive_link_detected=analysis.link_detected,
+                sensitivity_hint=analysis.sensitivity_hint,
+                review_required=analysis.review_required,
                 metadata_only=True,
                 content_downloaded=False,
             )
-            count += 1
-        return count
+            counts["attachments"] += 1
+            if analysis.link_detected:
+                counts["links"] += 1
+            if analysis.source_link_candidate and analysis.name_hash:
+                self._store.upsert_email_relationship_candidate(
+                    candidate_id=f"{message_id}:{analysis.name_hash}:attachment_filename",
+                    message_id=message_id,
+                    candidate_type=f"{analysis.candidate_target_system}_drive_item",
+                    match_signal="attachment_filename",
+                    confidence=0.5,
+                    project_key=project_key,
+                    target_source_system=analysis.candidate_target_system,
+                    target_table="construction_drive_items",
+                    target_key=analysis.name_hash,
+                    review_required=False,
+                    evidence_redacted="attachment filename suggests a stored document",
+                )
+                counts["candidates"] += 1
+            if analysis.review_required and analysis.sensitivity_hint:
+                inserted = self._store.enqueue_email_review_item(
+                    review_id=f"{message_id}:attachment:{analysis.name_hash}",
+                    message_id=message_id,
+                    category=analysis.sensitivity_hint,
+                    sensitivity=analysis.sensitivity_level or "medium",
+                    reason=f"sensitive attachment hint: {analysis.sensitivity_hint}",
+                    suggested_action="manual_review",
+                    confidence=0.7,
+                    project_key=project_key,
+                )
+                counts["sensitive"] += 1
+                if inserted:
+                    counts["review_items"] += 1
+        return counts
+
+    def _index_body_links(self, msg: dict[str, Any], project_key: Optional[str]) -> dict[str, int]:
+        counts = {"candidates": 0, "review_items": 0}
+        message_id = msg.get("id")
+        if not message_id:
+            return counts
+        evidence = detect_drive_links(msg.get("bodyPreview"))
+        if not evidence:
+            return counts
+        target_system = "onedrive" if evidence.startswith("onedrive") else "sharepoint"
+        self._store.upsert_email_relationship_candidate(
+            candidate_id=f"{message_id}:body_link:{hash_value(evidence)}",
+            message_id=message_id,
+            candidate_type=f"{target_system}_drive_item",
+            match_signal="sharepoint_link_in_body_preview",
+            confidence=0.6,
+            project_key=project_key,
+            target_source_system=target_system,
+            target_table="construction_drive_items",
+            target_key=hash_value(evidence),
+            review_required=True,
+            evidence_redacted=f"drive link in body preview ({evidence.split(':', 1)[0]})",
+        )
+        counts["candidates"] += 1
+        inserted = self._store.enqueue_email_review_item(
+            review_id=f"{message_id}:body_link:{hash_value(evidence)}",
+            message_id=message_id,
+            category="privileged_or_confidential_markers",
+            sensitivity="medium",
+            reason="drive link detected in body preview (body-derived match)",
+            suggested_action="manual_review",
+            confidence=0.6,
+            project_key=project_key,
+        )
+        if inserted:
+            counts["review_items"] += 1
+        return counts
 
     def _normalize(
         self,

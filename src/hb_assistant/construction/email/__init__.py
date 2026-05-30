@@ -7,6 +7,11 @@ the only writes are local SQLite source/sync/index rows.
 
 from __future__ import annotations
 
+from .attachment_analyzer import (
+    AttachmentAnalysis,
+    analyze_attachment,
+    detect_drive_links,
+)
 from .folder_discovery import (
     DiscoveredFolder,
     EmailFolderDiscovery,
@@ -31,6 +36,7 @@ from .project_matcher import (
 )
 
 __all__ = [
+    "AttachmentAnalysis",
     "DiscoveredFolder",
     "DiscoveryReport",
     "EmailFolderDiscovery",
@@ -43,6 +49,8 @@ __all__ = [
     "ProjectEmailDiscovery",
     "ProjectMatchSummary",
     "ProjectMatcher",
+    "analyze_attachment",
+    "detect_drive_links",
     "load_pilot_project_descriptors",
     "normalize_message",
 ]

@@ -1,6 +1,6 @@
 # 17 — Operational Email Intelligence (Phase 06)
 
-Status: **in progress** · Phase 06 Prompts 00–07 landed · Migration **V11** (Prompt 03) · read-only mail client + endpoint guard (Prompt 04) · folder discovery + sync state (Prompt 05) · message metadata indexing (Prompt 06) · project-aware discovery (Prompt 07)
+Status: **in progress** · Phase 06 Prompts 00–08 landed · Migration **V11** (Prompt 03) · read-only mail client + endpoint guard (Prompt 04) · folder discovery + sync state (Prompt 05) · message metadata indexing (Prompt 06) · project-aware discovery (Prompt 07) · attachment metadata + source-link candidates (Prompt 08)
 
 Phase 06 turns the Phase 02 *deferred* email intelligence into operational, **read-only**,
 project-aware email workflows over the existing GET-only Graph stack. It is local-first: SQLite is
@@ -152,6 +152,25 @@ Matches the bounded message window to pilot projects, read-only, with subject ma
   reuse by the discovery persist path.
 - **Evidence** — `07-project-aware-discovery.md` + `email-discovery-dry-run.json` (live: 202 scanned, 40
   matched to tropical) + `email-project-match-test-results.json` (8/8 matcher fixtures pass).
+
+## Prompt 08 — attachment metadata + source-link candidates
+
+Enriches attachment handling during `index` (no separate command), metadata-only, never content.
+
+- **Analyzer** — `construction/email/attachment_analyzer.py`: pure `analyze_attachment(name,
+  content_type, is_inline)` classifies link (`.url`/sharepoint/onedrive name), document /
+  source-link-candidate (non-inline document type), and sensitivity (filename → one of the 20
+  `email_sensitivity_review_categories.json` categories → level + `review_required`), with a redacted
+  `[redacted:hash].ext` name. `detect_drive_links(bodyPreview)` finds a SharePoint/OneDrive host.
+- **Indexer integration** — `_index_attachments` enriches each attachment row (`name_redacted`,
+  `sharepoint_or_onedrive_link_detected`, `sensitivity_hint`, `review_required`), creates a
+  `*_drive_item` source-link `email_relationship_candidates` row per document + a body-preview link
+  candidate per message, and enqueues `email_review_queue` rows for sensitive attachments. New counters
+  surface in the `index` JSON; candidate/review counts recorded on the crawl run. Idempotent.
+- **No content** — `content_downloaded=0` / `metadata_only=1` for every row; analyzer reads
+  name/content-type only; `$value` never called. Filenames/URLs stored as hashes only.
+- **Evidence** — `08-source-link-and-relationship-candidate-proof.md` (live: 94 attachments, 5
+  sensitive, 22 source-link candidates, 6 review items; 0/94 content downloaded).
 
 ### Five-layer read-only lock (defense in depth)
 

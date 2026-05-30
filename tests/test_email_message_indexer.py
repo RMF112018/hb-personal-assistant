@@ -200,3 +200,97 @@ def test_max_messages_per_folder_is_bounded() -> None:
     result = EmailMessageIndexer(reader, store).index(lookback_days=30, max_messages_per_folder=3)
     assert result.messages_indexed == 3
     assert _counts(db)["email_messages"] == 3
+
+
+# --- Prompt 08: attachment enrichment ---------------------------------------
+
+
+def _enrich_counts(db: str) -> dict[str, int]:
+    conn = sqlite3.connect(db)
+    try:
+        return {
+            t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+            for t in ("email_message_attachments", "email_relationship_candidates", "email_review_queue")
+        }
+    finally:
+        conn.close()
+
+
+def test_attachment_enrichment_link_sensitivity_and_candidates() -> None:
+    db = _tmp_db()
+    store = _store_with_inbox(db)
+    reader = FakeReader(
+        by_folder={"AAMkInbox": [_msg("m1", has_attachments=True)]},
+        attachments={
+            "m1": [
+                {"id": "a1", "name": "Subcontract Agreement.pdf", "contentType": "application/pdf", "size": 2048},
+                {"id": "a2", "name": "logo.png", "contentType": "image/png", "size": 10, "isInline": True},
+            ]
+        },
+    )
+    result = EmailMessageIndexer(reader, store).index(project_key="tropical", lookback_days=30)
+
+    assert result.attachments_indexed == 2
+    assert result.sensitive_attachments == 1
+    assert result.source_link_candidates >= 1
+    assert result.review_items_created >= 1
+
+    conn = sqlite3.connect(db)
+    try:
+        # The contract attachment is flagged sensitive + review_required; name is redacted.
+        row = conn.execute(
+            "SELECT name_redacted, sensitivity_hint, review_required, content_downloaded, metadata_only "
+            "FROM email_message_attachments WHERE attachment_key='m1:a1'"
+        ).fetchone()
+        assert row[1] == "contracts"
+        assert row[2] == 1  # review_required
+        assert row[3] == 0  # content_downloaded never set
+        assert row[4] == 1  # metadata_only locked
+        assert "Subcontract" not in (row[0] or "")
+        # A SharePoint source-link candidate exists for the document.
+        cand = conn.execute(
+            "SELECT candidate_type, target_source_system FROM email_relationship_candidates "
+            "WHERE message_id='m1' AND match_signal='attachment_filename'"
+        ).fetchone()
+        assert cand == ("sharepoint_drive_item", "sharepoint")
+        # The sensitive attachment is routed to the review queue.
+        rq = conn.execute(
+            "SELECT category FROM email_review_queue WHERE message_id='m1' AND category='contracts'"
+        ).fetchone()
+        assert rq is not None
+    finally:
+        conn.close()
+
+
+def test_body_preview_drive_link_creates_candidate() -> None:
+    db = _tmp_db()
+    store = _store_with_inbox(db)
+    msg = _msg("m1")
+    msg["bodyPreview"] = "latest set at https://hbcc.sharepoint.com/sites/tropical/Shared%20Documents/x.pdf"
+    reader = FakeReader(by_folder={"AAMkInbox": [msg]})
+    result = EmailMessageIndexer(reader, store).index(project_key="tropical", lookback_days=30)
+    assert result.source_link_candidates >= 1
+    conn = sqlite3.connect(db)
+    try:
+        cand = conn.execute(
+            "SELECT candidate_type FROM email_relationship_candidates "
+            "WHERE message_id='m1' AND match_signal='sharepoint_link_in_body_preview'"
+        ).fetchone()
+        assert cand is not None and cand[0] == "sharepoint_drive_item"
+    finally:
+        conn.close()
+
+
+def test_attachment_enrichment_is_idempotent() -> None:
+    db = _tmp_db()
+    store = _store_with_inbox(db)
+    reader = FakeReader(
+        by_folder={"AAMkInbox": [_msg("m1", has_attachments=True)]},
+        attachments={"m1": [{"id": "a1", "name": "Change Order 3.pdf", "contentType": "application/pdf", "size": 5}]},
+    )
+    indexer = EmailMessageIndexer(reader, store)
+    indexer.index(project_key="tropical", lookback_days=30)
+    first = _enrich_counts(db)
+    indexer.index(project_key="tropical", lookback_days=30)
+    second = _enrich_counts(db)
+    assert second == first  # attachments, candidates, review-queue rows all stable
