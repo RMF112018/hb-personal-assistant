@@ -15,7 +15,9 @@
       "verification_reason": "live_smoke_passed_2026-05-28:6956f007_list_plus_n_per_schedule_notes_hashed",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "billing-periods",
@@ -25,7 +27,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "budget-change-history",
@@ -35,7 +39,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "budget-change-line-items",
@@ -45,7 +51,13 @@
       "verification_reason": "phase05_shell_pending_live_smoke",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": null,
-      "next_step": "operator-run bounded live smoke to verify before promotion; remains fail-closed until verified"
+      "next_step": "operator-run bounded live smoke to verify before promotion; remains fail-closed until verified",
+      "disposition": "fail_closed_permission_blocked",
+      "held_detail": {
+        "blocker": "live 403 FORBIDDEN \u2014 the Procore token/role lacks budget-changes adjustment-line-items access",
+        "operator_action": "a Procore administrator must grant the integration user's role access to budget changes (adjustment line items) for the company/project, then re-probe; this tool does not modify Procore permissions",
+        "evidence": "docs/evidence/construction-intelligence-phase-05-financials/12-final-validation-coverage-evidence-and-closeout.md"
+      }
     },
     {
       "endpoint_id": "budget-detail-columns",
@@ -55,7 +67,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "budget-detail-rows",
@@ -65,7 +79,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "budget-details",
@@ -75,7 +91,13 @@
       "verification_reason": "phase05_unresolved_path_fail_closed_prompt00-3.2",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": null,
-      "next_step": "resolve API path and obtain permission grant before any live smoke; remains fail-closed until verified"
+      "next_step": "resolve the authoritative API path (do not guess); remains fail-closed until verified",
+      "disposition": "fail_closed_unresolved_path",
+      "held_detail": {
+        "blocker": "no resolved REST path in the source reference (Prompt 00 \u00a73.2); registered with a non-routable 'unresolved:budget-details' sentinel and no normalizer",
+        "operator_action": "obtain the authoritative budget-details path from Procore (likely a merge into budget-detail-rows) with an operator-supplied real path \u2014 the path will NOT be guessed",
+        "evidence": "docs/evidence/construction-intelligence-phase-05-financials/12-final-validation-coverage-evidence-and-closeout.md"
+      }
     },
     {
       "endpoint_id": "budget-modifications",
@@ -85,7 +107,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "budget-views",
@@ -95,7 +119,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "change-event-comments",
@@ -105,7 +131,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "change-events",
@@ -115,7 +143,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "commitment-attachments",
@@ -125,7 +155,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "commitment-change-order-line-items",
@@ -135,7 +167,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "commitment-change-orders",
@@ -145,7 +179,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "commitment-compliance",
@@ -155,7 +191,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "commitment-contracts",
@@ -165,7 +203,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "commitment-line-items",
@@ -175,7 +215,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "daily-log-accident-review-routed",
@@ -185,7 +227,9 @@
       "verification_reason": "live_smoke_passed_2026-05-29:b9538451_safety_routed",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "daily-log-dcrs",
@@ -195,7 +239,9 @@
       "verification_reason": "live_smoke_passed_2026-05-29:95f5a809",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "daily-log-delays-review-routed",
@@ -205,7 +251,9 @@
       "verification_reason": "live_smoke_passed_2026-05-29:c31a788f_safety_routed",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "daily-log-deliveries",
@@ -215,7 +263,9 @@
       "verification_reason": "live_smoke_passed_2026-05-29:ec249d59",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "daily-log-dumpster",
@@ -225,7 +275,9 @@
       "verification_reason": "live_smoke_passed_2026-05-29:7a99ff77",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "daily-log-inspections",
@@ -235,7 +287,9 @@
       "verification_reason": "live_smoke_passed_2026-05-29:6ea9b013",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "daily-log-manpower",
@@ -245,7 +299,9 @@
       "verification_reason": "live_smoke_passed_2026-05-29:22391cff_contact_pii_hashed",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "daily-log-notes",
@@ -255,7 +311,9 @@
       "verification_reason": "live_smoke_passed_2026-05-29:f5e0e409_comment_hashed",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "daily-log-safety-violation-review-routed",
@@ -265,7 +323,9 @@
       "verification_reason": "live_smoke_passed_2026-05-29:1cc4bd61_safety_routed",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "daily-log-visitor",
@@ -275,7 +335,9 @@
       "verification_reason": "live_smoke_passed_2026-05-29:e968273f_subject_pii_hashed",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "daily-log-weather",
@@ -285,7 +347,9 @@
       "verification_reason": "live_smoke_passed_2026-05-29:26762b35_v1.1_daily_logs_path",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "inspection-items",
@@ -295,7 +359,9 @@
       "verification_reason": "operator_supplied_list_endpoint_2026-05-29:v1.1",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "inspection-sections",
@@ -305,7 +371,9 @@
       "verification_reason": "operator_supplied_list_endpoint_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "inspections",
@@ -315,7 +383,9 @@
       "verification_reason": "operator_supplied_schema_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "meeting-detail",
@@ -325,7 +395,9 @@
       "verification_reason": "live_smoke_passed_2026-05-28:7eaf5ae6_list_plus_n_detail_with_pii_hashed_summaries",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "meeting-topics",
@@ -335,7 +407,9 @@
       "verification_reason": "live_smoke_passed_2026-05-28:a0499320_max_per_page_10_server_500_at_100",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "meetings",
@@ -345,7 +419,9 @@
       "verification_reason": "live_smoke_passed_2026-05-28:452d9421",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "observations",
@@ -355,7 +431,9 @@
       "verification_reason": "live_smoke_passed_2026-05-28:2d0a091f",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "payment-applications",
@@ -365,7 +443,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "prime-change-order-line-items",
@@ -375,7 +455,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "prime-change-orders",
@@ -385,7 +467,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "prime-contract-attachments",
@@ -395,7 +479,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "prime-contract-line-items",
@@ -405,7 +491,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "prime-contracts",
@@ -415,7 +503,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "projects",
@@ -425,7 +515,9 @@
       "verification_reason": "live_smoke_passed_2026-05-28:7703b766",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "punch-items",
@@ -435,7 +527,9 @@
       "verification_reason": "live_smoke_passed_2026-05-28:0277eee6_pii_hashed_free_text_summaries",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "purchase-order-contracts",
@@ -445,7 +539,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "purchase-order-detail-line-items",
@@ -455,7 +551,13 @@
       "verification_reason": "phase05_shell_pending_live_smoke",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": null,
-      "next_step": "operator-run bounded live smoke to verify before promotion; remains fail-closed until verified"
+      "next_step": "operator-run bounded live smoke to verify before promotion; remains fail-closed until verified",
+      "disposition": "fail_closed_pending_live_smoke",
+      "held_detail": {
+        "blocker": "per-PO 404 data condition: the line_item_contract_details path 404s for the sampled POs (their /line_items sibling succeeds), i.e. those POs carry no detail items \u2014 a data condition, not a path bug",
+        "operator_action": "run a bounded live smoke against a PO known to have contract-detail items (or an operator-supplied real payload), then re-probe and promote on a clean projection",
+        "evidence": "docs/evidence/construction-intelligence-phase-05-financials/12-final-validation-coverage-evidence-and-closeout.md"
+      }
     },
     {
       "endpoint_id": "purchase-order-line-items",
@@ -465,7 +567,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "rfi-responses",
@@ -475,7 +579,9 @@
       "verification_reason": "live_apply_n_plus_1_passed_via_rfis_parent_2026-05-28",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "rfis",
@@ -485,7 +591,9 @@
       "verification_reason": "live_smoke_passed_2026-05-28:09113b6d",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "rfq-quotes",
@@ -495,7 +603,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "rfq-responses",
@@ -505,7 +615,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "rfqs",
@@ -515,7 +627,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "schedules",
@@ -525,7 +639,9 @@
       "verification_reason": "live_smoke_passed_2026-05-28:980e7fb0_v2_data_envelope",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "subcontractor-invoice-change-order-items",
@@ -535,7 +651,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "subcontractor-invoice-contract-detail-items",
@@ -545,7 +663,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "subcontractor-invoice-contract-items",
@@ -555,7 +675,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "subcontractor-invoices",
@@ -565,7 +687,9 @@
       "verification_reason": "phase05_live_smoke_verified_2026-05-29",
       "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
       "last_verified_date": "2026-05-29",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "submittal-packages",
@@ -575,7 +699,9 @@
       "verification_reason": "live_smoke_passed_2026-05-28:7b9077ee",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "submittal-responses",
@@ -585,7 +711,9 @@
       "verification_reason": "populated_via_submittals_inline_extraction_2026-05-28",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     },
     {
       "endpoint_id": "submittals",
@@ -595,7 +723,9 @@
       "verification_reason": "live_smoke_passed_2026-05-28:d9506311",
       "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
       "last_verified_date": "2026-05-28",
-      "next_step": "none \u2014 live-verified; monitor for drift"
+      "next_step": "none \u2014 live-verified; monitor for drift",
+      "disposition": "promoted",
+      "held_detail": null
     }
   ],
   "guardrails": {

@@ -19,6 +19,15 @@ path sentinel) are documented as a remediation list, not blockers. See
 > The per-prompt narrative below records each Prompt's *landing* state (shells
 > registered fail-closed); endpoints were promoted to `live_verified=True` by the
 > later live-smoke prompts, as the banner above and the ledger reflect.
+>
+> **Held endpoint disposition (Phase 06B Prompt 04).** The three still-held endpoints
+> are explicitly preserved fail-closed, each with a machine-readable disposition in
+> `docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/held-endpoint-disposition.json`:
+> `budget-change-line-items` → `fail_closed_permission_blocked` (Procore admin must grant
+> access; no programmatic permission change), `budget-details` → `fail_closed_unresolved_path`
+> (operator-supplied path required; not guessed), `purchase-order-detail-line-items` →
+> `fail_closed_pending_live_smoke` (needs a live smoke against a PO that has detail items).
+> None was promoted (no live environment; each blocker is a stop condition).
 
 Phase 05 extends the Procore subsystem into the contract / financial-control
 surface (owner contracts, commitments, purchase orders, invoices, RFQs / change

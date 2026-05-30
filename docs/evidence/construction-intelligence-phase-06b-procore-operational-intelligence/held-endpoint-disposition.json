@@ -1,0 +1,58 @@
+{
+  "command": "phase-06b prompt-04 held endpoint disposition",
+  "ok": true,
+  "live_call_performed": false,
+  "promoted_this_prompt": 0,
+  "held_count": 3,
+  "all_fail_closed": true,
+  "held_endpoints": [
+    {
+      "endpoint_id": "budget-change-line-items",
+      "family": "budget",
+      "live_verified": false,
+      "promotion_status": "held",
+      "verification_reason": "phase05_shell_pending_live_smoke",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": null,
+      "next_step": "operator-run bounded live smoke to verify before promotion; remains fail-closed until verified",
+      "disposition": "fail_closed_permission_blocked",
+      "held_detail": {
+        "blocker": "live 403 FORBIDDEN \u2014 the Procore token/role lacks budget-changes adjustment-line-items access",
+        "operator_action": "a Procore administrator must grant the integration user's role access to budget changes (adjustment line items) for the company/project, then re-probe; this tool does not modify Procore permissions",
+        "evidence": "docs/evidence/construction-intelligence-phase-05-financials/12-final-validation-coverage-evidence-and-closeout.md"
+      }
+    },
+    {
+      "endpoint_id": "budget-details",
+      "family": "budget",
+      "live_verified": false,
+      "promotion_status": "held",
+      "verification_reason": "phase05_unresolved_path_fail_closed_prompt00-3.2",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": null,
+      "next_step": "resolve the authoritative API path (do not guess); remains fail-closed until verified",
+      "disposition": "fail_closed_unresolved_path",
+      "held_detail": {
+        "blocker": "no resolved REST path in the source reference (Prompt 00 \u00a73.2); registered with a non-routable 'unresolved:budget-details' sentinel and no normalizer",
+        "operator_action": "obtain the authoritative budget-details path from Procore (likely a merge into budget-detail-rows) with an operator-supplied real path \u2014 the path will NOT be guessed",
+        "evidence": "docs/evidence/construction-intelligence-phase-05-financials/12-final-validation-coverage-evidence-and-closeout.md"
+      }
+    },
+    {
+      "endpoint_id": "purchase-order-detail-line-items",
+      "family": "purchase_orders",
+      "live_verified": false,
+      "promotion_status": "held",
+      "verification_reason": "phase05_shell_pending_live_smoke",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": null,
+      "next_step": "operator-run bounded live smoke to verify before promotion; remains fail-closed until verified",
+      "disposition": "fail_closed_pending_live_smoke",
+      "held_detail": {
+        "blocker": "per-PO 404 data condition: the line_item_contract_details path 404s for the sampled POs (their /line_items sibling succeeds), i.e. those POs carry no detail items \u2014 a data condition, not a path bug",
+        "operator_action": "run a bounded live smoke against a PO known to have contract-detail items (or an operator-supplied real payload), then re-probe and promote on a clean projection",
+        "evidence": "docs/evidence/construction-intelligence-phase-05-financials/12-final-validation-coverage-evidence-and-closeout.md"
+      }
+    }
+  ]
+}

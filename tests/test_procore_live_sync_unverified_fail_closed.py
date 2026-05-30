@@ -14,7 +14,13 @@ from hb_assistant.store.migrator import SQLiteMigrator
 pytestmark = pytest.mark.usefixtures("isolated_hb_pa_config")
 
 
-_UNVERIFIED_IDS: tuple[str, ...] = ()
+# The three held (live_verified=False) endpoints — Phase 06B Prompt 04 keeps them
+# explicitly fail-closed (no live env, no permission change, no path guessing).
+_UNVERIFIED_IDS: tuple[str, ...] = (
+    "purchase-order-detail-line-items",
+    "budget-change-line-items",
+    "budget-details",
+)
 
 
 def _db() -> Path:

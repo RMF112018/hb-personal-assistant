@@ -60,11 +60,45 @@ def test_every_row_has_required_fields() -> None:
         "evidence_path",
         "last_verified_date",
         "next_step",
+        "disposition",
+        "held_detail",
     }
     for row in build_promotion_ledger()["ledger"]:
         assert required <= set(row.keys())
         assert row["promotion_status"] in ("promoted", "held")
         assert row["evidence_path"].startswith("docs/evidence/")
+
+
+def test_promoted_rows_have_promoted_disposition_and_no_held_detail() -> None:
+    for row in build_promotion_ledger()["ledger"]:
+        if row["promotion_status"] == "promoted":
+            assert row["disposition"] == "promoted"
+            assert row["held_detail"] is None
+
+
+def test_held_endpoints_carry_explicit_disposition() -> None:
+    expected = {
+        "purchase-order-detail-line-items": "fail_closed_pending_live_smoke",
+        "budget-change-line-items": "fail_closed_permission_blocked",
+        "budget-details": "fail_closed_unresolved_path",
+    }
+    by_id = {r["endpoint_id"]: r for r in build_promotion_ledger()["ledger"]}
+    for endpoint_id, disposition in expected.items():
+        row = by_id[endpoint_id]
+        assert row["disposition"] == disposition
+        detail = row["held_detail"]
+        assert detail is not None
+        assert set(detail.keys()) == {"blocker", "operator_action", "evidence"}
+        assert all(detail[k] for k in detail)
+        assert detail["evidence"].startswith("docs/evidence/")
+
+
+def test_held_disposition_map_matches_registry_held_set() -> None:
+    # Drift guard: any endpoint that goes held must get an explicit disposition entry.
+    from hb_assistant.procore.endpoint_ledger import _HELD_DISPOSITION
+
+    registry_held = {a.endpoint_id for a in ep_registry.list_all() if not a.live_verified}
+    assert set(_HELD_DISPOSITION.keys()) == registry_held == _HELD_ENDPOINTS
 
 
 def test_promoted_rows_carry_verified_date() -> None:
