@@ -18,7 +18,7 @@ import typer
 from hb_assistant.auth.providers import DelegatedAuthProvider
 from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
-from hb_assistant.construction.email import EmailFolderDiscovery
+from hb_assistant.construction.email import EmailFolderDiscovery, EmailMessageIndexer
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
 from hb_assistant.graph.mail_endpoint_guard import (
@@ -219,6 +219,67 @@ def folders_cmd(
             "ok": False,
             "dry_run": dry_run,
             "status": "folders_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+    finally:
+        if client is not None:
+            client.close()
+
+
+@mail_app.command("index")
+def index_cmd(
+    project: Optional[str] = typer.Option(None, "--project", help="Project key label for this crawl run"),
+    lookback_days: int = typer.Option(30, "--lookback-days", help="Bounded lookback window in days (1-366)"),
+    max_messages: int = typer.Option(200, "--max-messages", help="Max messages indexed per folder (bounded)"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run/--no-dry-run", help="Preview without writing message rows (default: persist)"
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Index bounded message metadata (no full body) into local SQLite, read-only.
+
+    Discovers messages in the included folders within the lookback window, normalizes
+    redacted metadata, and persists email_messages + recipients + attachment metadata
+    + crawl runs + receipts. Idempotent: re-running upserts in place.
+    """
+    client: Optional[GraphHttpClient] = None
+    try:
+        cfg = load_config()
+        pp = PathPolicy(cfg)
+        provider = DelegatedAuthProvider(
+            cfg.identity.tenant_id,
+            cfg.identity.client_id,
+            list(cfg.identity.delegated_scopes),
+            path_policy=pp,
+        )
+        contract = load_mail_endpoint_contract()
+
+        def token_getter(scopes: Optional[List[str]] = None) -> Dict[str, Any]:
+            return provider.get_token(scopes or ["Mail.Read"])
+
+        client = GraphHttpClient(token_getter)
+        reader = ReadOnlyMailClient(client, contract=contract)
+        indexer = EmailMessageIndexer(reader, ConstructionStore())
+        result = indexer.index(
+            project_key=project,
+            lookback_days=lookback_days,
+            dry_run=dry_run,
+            max_messages_per_folder=max_messages,
+        )
+
+        payload: Dict[str, Any] = {"command": "graph mail index", "ok": True, **result.model_dump()}
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail index",
+            "ok": False,
+            "dry_run": dry_run,
+            "status": "index_error",
             "error": str(e)[:200],
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))

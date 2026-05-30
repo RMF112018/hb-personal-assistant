@@ -12,9 +12,17 @@ from .folder_discovery import (
     EmailFolderDiscovery,
     FolderDiscoveryResult,
 )
+from .message_indexer import (
+    EmailMessageIndexer,
+    IndexedFolder,
+    IndexResult,
+)
 
 __all__ = [
     "DiscoveredFolder",
     "EmailFolderDiscovery",
+    "EmailMessageIndexer",
     "FolderDiscoveryResult",
+    "IndexResult",
+    "IndexedFolder",
 ]

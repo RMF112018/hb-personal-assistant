@@ -1,6 +1,6 @@
 # 17 — Operational Email Intelligence (Phase 06)
 
-Status: **in progress** · Phase 06 Prompts 00–05 landed · Migration **V11** (Prompt 03) · read-only mail client + endpoint guard (Prompt 04) · folder discovery + sync state (Prompt 05)
+Status: **in progress** · Phase 06 Prompts 00–06 landed · Migration **V11** (Prompt 03) · read-only mail client + endpoint guard (Prompt 04) · folder discovery + sync state (Prompt 05) · message metadata indexing (Prompt 06)
 
 Phase 06 turns the Phase 02 *deferred* email intelligence into operational, **read-only**,
 project-aware email workflows over the existing GET-only Graph stack. It is local-first: SQLite is
@@ -106,6 +106,29 @@ state, all read-only.
   ids/tokens).
 - **Evidence** — `05-folder-discovery-dry-run.md` (live: all 6 policy folders resolved against Bobby's
   mailbox; 6 source rows + 3 included sync cursors persisted; excluded folders carry no cursor).
+
+## Prompt 06 — message metadata indexing
+
+Bounded, read-only indexing of message metadata into local SQLite (the corpus later prompts match,
+relate, and summarize).
+
+- **Service** — `construction/email/message_indexer.py` (`EmailMessageIndexer`, `IndexResult`,
+  `IndexedFolder`). Reads included folders' raw `folder_id` from `email_source_locations`, then per
+  folder lists bounded messages (`received_after` `$filter` + `$top` + `max_items` cap), normalizes
+  each to a **redacted, metadata-only** record (`redact_subject`/`hash_value`/`truncate_preview`;
+  `thread_key = conversation_id or hash(internet_message_id | normalized-subject + participant
+  domains)`), and upserts `email_messages` + `email_message_recipients` (`is_bobby` flagged by owner
+  hash) + `email_message_attachments` (metadata-only). Records one `email_crawl_runs` row per folder +
+  one `email_processing_receipts` row per run.
+- **Idempotent** — message/recipient/attachment rows upsert by stable keys (re-run = stable counts);
+  crawl-run + receipt rows are append-only audit logs. Proven live: 52 messages / 237 recipients / 73
+  attachments stable across two runs.
+- **CLI** — `graph mail index --project … --lookback-days … --max-messages … [--dry-run/--no-dry-run]
+  --json` (default persist). `--project` is a validated crawl-run **label**; project *matching* is a
+  later prompt.
+- **Contract fix** — removed `sensitivity` from the Prompt 01 `message_metadata_select` (not a valid
+  Graph v1.0 `message` property; HTTP 400 on live select).
+- **Evidence** — `06-message-metadata-index.md` (live counts + idempotency proof).
 
 ### Five-layer read-only lock (defense in depth)
 

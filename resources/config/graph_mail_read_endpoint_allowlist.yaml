@@ -33,6 +33,9 @@ prefer_headers:
 # Message metadata $select — minimal, body-free. Requesting only these fields
 # keeps payloads small and avoids the HTTP 504 gateway-timeout risk on large pages.
 # Note: `body` is intentionally absent (never requested by default).
+# Note: `sensitivity` is NOT a valid property on the Graph v1.0 `message` entity
+# (selecting it returns HTTP 400 "Could not find a property named 'sensitivity'");
+# verified live during Prompt 06 indexing and removed.
 message_metadata_select:
   - id
   - internetMessageId
@@ -50,7 +53,6 @@ message_metadata_select:
   - hasAttachments
   - importance
   - categories
-  - sensitivity
   - webLink
   - bodyPreview
   - lastModifiedDateTime
