@@ -37,6 +37,7 @@ from hb_assistant.construction.email import (
 )
 from hb_assistant.construction.email.email_classifier import DEFAULT_MODEL_NAME
 from hb_assistant.construction.graph.drive_item_indexer import DriveItemIndexer
+from hb_assistant.construction.graph.link_resolver import LinkResolver
 from hb_assistant.construction.graph.resolver import GRAPH_SCOPES as _FILES_GRAPH_SCOPES
 from hb_assistant.construction.graph.site_drive_discovery import SiteDriveDiscovery
 from hb_assistant.construction.policy.email_active import (
@@ -68,6 +69,10 @@ files_app = typer.Typer(help="Read-only SharePoint/OneDrive file intelligence (P
 app.add_typer(files_app, name="files")
 files_site_app = typer.Typer(help="SharePoint site resolution (read-only, metadata-only).")
 files_app.add_typer(files_site_app, name="site")
+files_link_app = typer.Typer(
+    help="Resolve a user-provided OneDrive/SharePoint link to canonical IDs."
+)
+files_app.add_typer(files_link_app, name="link")
 
 # Write-capable Graph file/site scopes whose presence is the known DEFERRED
 # over-broad posture (documented, not tightened in this phase).
@@ -669,6 +674,54 @@ def files_index_cmd(
         "result": report.model_dump(),
         "guardrails": guardrails,
     }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_link_app.command("resolve")
+def files_link_resolve_cmd(
+    url: str = typer.Option(..., "--url", help="User-provided OneDrive/SharePoint link."),
+    source_id: Optional[str] = typer.Option(
+        None, "--source-id", help="Associate with a source key."
+    ),
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run/--apply",
+        help="Default dry-run; --apply persists a redacted resolution row.",
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Resolve a user-provided OneDrive/SharePoint link to canonical IDs via the
+    read-only Graph Shares API (no sharing-link redemption). Malformed links fail
+    before any Graph call; the raw tokenized URL is never persisted. Dry-run default."""
+    client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+    graph_available = client is not None
+    try:
+        store = ConstructionStore() if not dry_run else None
+        resolver = LinkResolver(http_client=client, store=store)
+        result = resolver.resolve_link(url, dry_run=dry_run, source_id=source_id)
+    finally:
+        if client is not None:
+            client.close()
+
+    payload: Dict[str, Any] = {
+        "command": "graph files link resolve",
+        "mode": "dry_run" if dry_run else "apply",
+        "graph_available": graph_available,
+        "ok": result.status in {"resolved", "pending"},
+        "result": result.model_dump(),
+        "guardrails": {
+            "external_systems": "read_only",
+            "writeback": "none",
+            "sharing_link_redemption": "none",
+            "raw_tokenized_url_persisted": False,
+            "metadata_only": True,
+            "permission_tightening": "deferred",
+        },
+    }
+    if not graph_available and auth_payload is not None:
+        # Shares-API resolution was skipped (no token); registry/parse fallbacks ran.
+        payload["auth"] = auth_payload
     typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
     raise typer.Exit(0)
 

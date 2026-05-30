@@ -179,3 +179,47 @@ permission tightening, copied **no** source files into Obsidian, persisted **no*
 document text, exposed **no** raw delta links, and bypassed **no** sensitive-file review routing.
 The over-broad-permission risk is documented and **deferred**. No tokens, Authorization headers,
 signed URLs, raw delta links, full bodies, PEMs, or secrets appear in any artifact.
+
+---
+
+## 11. Shares API — user-provided link → ID resolution (Phase 06A addendum)
+
+**Last checked: 2026-05-30.** This addendum supports `graph files link resolve`
+(`05a-user-provided-link-resolution-proof.json`).
+
+Official references:
+
+- Shares (access a shared item): https://learn.microsoft.com/en-us/graph/api/shares-get?view=graph-rest-1.0
+- driveItem from a share: https://learn.microsoft.com/en-us/graph/api/shares-driveitem?view=graph-rest-1.0
+- Encoding sharing URLs: https://learn.microsoft.com/en-us/graph/api/shares-get?view=graph-rest-1.0#encoding-sharing-urls
+
+### Read operations in scope (added to the allowlist)
+
+```text
+GET /shares/{shareIdOrEncodedSharingUrl}
+GET /shares/{shareIdOrEncodedSharingUrl}/driveItem
+```
+
+`$select` on the driveItem read:
+`id,name,webUrl,size,file,folder,package,parentReference,sharepointIds,lastModifiedDateTime,createdDateTime,eTag,cTag`.
+
+### Sharing-URL encoding rule
+
+`shareId` = `u!` + base64(url) → drop `=` padding → `+`→`-`, `/`→`_` (unpadded base64url).
+Implemented as `link_resolver.encode_sharing_url`.
+
+### Boundaries (non-negotiable)
+
+- **Resolution, not redemption.** `GET /shares/{id}/driveItem` is read-only. The phase **never**
+  sends a `Prefer: redeemSharingLink` header (the shared `GraphHttpClient.get` exposes no `headers`
+  kwarg, so redemption cannot be issued via the public API). Redemption would mutate the user's
+  "Shared with me" list and is forbidden.
+- **Shared-folder expansion** (`?$expand=children`) is permitted **only** for bounded metadata
+  previews — never as a broad-crawl substitute. This phase does not expand children.
+- **Authenticated user context required.** OneDrive for Business / SharePoint shared links resolve
+  only under Bobby's delegated token; without a token the command degrades to `auth_required`
+  (and still runs offline source-registry / URL-parse fallbacks).
+- **No raw tokenized URL persistence.** Only a redacted URL (host + path, query/fragment dropped,
+  token-like path substrings masked), a SHA-256 URL fingerprint, and a share-token fingerprint are
+  stored (`construction_graph_link_resolution`, schema V16; `CHECK(raw_tokenized_url_persisted=0)`).
+  `@microsoft.graph.downloadUrl` is never read or cached.

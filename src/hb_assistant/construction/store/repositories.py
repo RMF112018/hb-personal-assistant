@@ -1276,6 +1276,88 @@ class ConstructionStore:
             r["detail"] = self._load_json(r.pop("detail_json"))
         return rows
 
+    # --- graph link resolution (V16) ----------------------------------------
+
+    def insert_link_resolution(
+        self,
+        *,
+        resolution_id: str,
+        source_id: Optional[str] = None,
+        redacted_url: Optional[str] = None,
+        hostname: Optional[str] = None,
+        normalized_path: Optional[str] = None,
+        url_fingerprint: Optional[str] = None,
+        share_token_fingerprint: Optional[str] = None,
+        resolution_method: Optional[str] = None,
+        status: str,
+        site_id: Optional[str] = None,
+        drive_id: Optional[str] = None,
+        drive_item_id: Optional[str] = None,
+        folder_item_id: Optional[str] = None,
+        parent_drive_id: Optional[str] = None,
+        parent_drive_item_id: Optional[str] = None,
+        list_id: Optional[str] = None,
+        list_item_id: Optional[str] = None,
+        web_url: Optional[str] = None,
+        name: Optional[str] = None,
+        item_kind: Optional[str] = None,
+        error_redacted: Optional[str] = None,
+    ) -> None:
+        """Persist one redacted link-resolution row. The raw tokenized URL is
+        never stored (the schema CHECK locks raw_tokenized_url_persisted = 0)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO construction_graph_link_resolution
+                    (resolution_id, source_id, redacted_url, hostname,
+                     normalized_path, url_fingerprint, share_token_fingerprint,
+                     resolution_method, status, site_id, drive_id, drive_item_id,
+                     folder_item_id, parent_drive_id, parent_drive_item_id,
+                     list_id, list_item_id, web_url, name, item_kind,
+                     error_redacted, raw_tokenized_url_persisted, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+                """,
+                (
+                    resolution_id, source_id, redacted_url, hostname,
+                    normalized_path, url_fingerprint, share_token_fingerprint,
+                    resolution_method, status, site_id, drive_id, drive_item_id,
+                    folder_item_id, parent_drive_id, parent_drive_item_id,
+                    list_id, list_item_id, web_url, name, item_kind,
+                    error_redacted, _utc_now(),
+                ),
+            )
+
+    def list_link_resolutions(
+        self, *, source_id: Optional[str] = None, limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        conn = get_connection(self._db_path)
+        sql = """
+            SELECT resolution_id, source_id, redacted_url, hostname,
+                   normalized_path, url_fingerprint, share_token_fingerprint,
+                   resolution_method, status, site_id, drive_id, drive_item_id,
+                   folder_item_id, parent_drive_id, parent_drive_item_id,
+                   list_id, list_item_id, web_url, name, item_kind,
+                   error_redacted, raw_tokenized_url_persisted, created_utc
+            FROM construction_graph_link_resolution
+            WHERE 1=1
+        """
+        params: list[Any] = []
+        if source_id is not None:
+            sql += " AND source_id = ?"
+            params.append(source_id)
+        sql += " ORDER BY created_utc DESC LIMIT ?"
+        params.append(limit)
+        keys = (
+            "resolution_id", "source_id", "redacted_url", "hostname",
+            "normalized_path", "url_fingerprint", "share_token_fingerprint",
+            "resolution_method", "status", "site_id", "drive_id", "drive_item_id",
+            "folder_item_id", "parent_drive_id", "parent_drive_item_id",
+            "list_id", "list_item_id", "web_url", "name", "item_kind",
+            "error_redacted", "raw_tokenized_url_persisted", "created_utc",
+        )
+        return [dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()]
+
     # --- canonical sync errors (V5) -----------------------------------------
 
     def insert_sync_error(

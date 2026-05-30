@@ -110,6 +110,23 @@ refreshed). The `graph files index` command is dry-run default (`--apply` persis
 `drive_item_index` receipt), degrading to `auth_required` without a token. Delta-token persistence +
 410 rebaseline remain P08.
 
+### User-provided link → ID resolution (Phase 06A) — `graph files link resolve` + schema V16
+`construction/graph/link_resolver.py` resolves a browser sharing link to canonical IDs via the
+read-only Graph **Shares API**: `encode_sharing_url` (`u!` + unpadded base64url) → guard-asserted
+`GET /shares/{encoded}/driveItem` → normalize `drive_item_id`/`drive_id`/`parent_*`/`site_id`/
+`list_id`/`list_item_id` + `item_kind` (file/folder/package/root_candidate). **Resolution, never
+redemption** — no `Prefer: redeemSharingLink` header is sent (the shared `GraphHttpClient.get` cannot
+send custom headers). Fallbacks: `/me/drive` for an own-OneDrive-root link, and a source-registry
+host/path + project-number match (works offline without a token). Malformed links fail before any
+Graph call. The **raw tokenized URL is never returned or persisted** — only a redacted URL
+(query/fragment dropped, token-like path bits masked), a SHA-256 URL fingerprint, and a share-token
+fingerprint; schema **V16** adds `construction_graph_link_resolution` with
+`CHECK(raw_tokenized_url_persisted = 0)` (max schema version 15 → 16). `/shares/{id}` +
+`/shares/{id}/driveItem` added to the read allowlist. The `graph files link resolve` command is
+dry-run default (`--apply` persists a redacted row), degrading to `auth_required` (but still running
+offline fallbacks). Evidence: `05a-user-provided-link-resolution-proof.json`; research addendum §11
+in `01-official-graph-files-research.md`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and

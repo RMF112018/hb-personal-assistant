@@ -75,6 +75,11 @@ allowed_paths:
     provenance: forward_looking
   - path: /me/drive/items/{itemId}/content                   # bounded streaming download (OneDrive; gated)
     provenance: repo_confirmed
+  # --- Shares (Phase 06A user-provided-link resolution; read-only, NO redemption) ---
+  - path: /shares/{shareIdOrEncodedSharingUrl}               # share metadata by encoded sharing URL
+    provenance: forward_looking
+  - path: /shares/{shareIdOrEncodedSharingUrl}/driveItem     # resolve a shared link to its driveItem (metadata)
+    provenance: forward_looking
 
 # driveItem metadata $select — minimal, identity + facets, content-free.
 # See graph_files_drive_item_metadata_field_contract.yaml for the full field contract.

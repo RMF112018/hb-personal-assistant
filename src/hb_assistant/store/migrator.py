@@ -1836,6 +1836,46 @@ class SQLiteMigrator:
         "ON construction_drive_items(deleted)",
     ]
 
+    # v16 Phase 06A user-provided link → ID resolution. Additive CREATE TABLE only.
+    # Stores ONLY redacted/fingerprinted link provenance + resolved canonical IDs;
+    # the raw tokenized sharing URL is never persisted (CHECK locks
+    # raw_tokenized_url_persisted = 0). Read-only resolution via the Graph Shares
+    # API — no sharing-link redemption, no writeback. V1-V15 untouched.
+    V16_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS construction_graph_link_resolution (
+          resolution_id TEXT PRIMARY KEY,
+          source_id TEXT,
+          redacted_url TEXT,
+          hostname TEXT,
+          normalized_path TEXT,
+          url_fingerprint TEXT,
+          share_token_fingerprint TEXT,
+          resolution_method TEXT,
+          status TEXT NOT NULL,
+          site_id TEXT,
+          drive_id TEXT,
+          drive_item_id TEXT,
+          folder_item_id TEXT,
+          parent_drive_id TEXT,
+          parent_drive_item_id TEXT,
+          list_id TEXT,
+          list_item_id TEXT,
+          web_url TEXT,
+          name TEXT,
+          item_kind TEXT,
+          error_redacted TEXT,
+          raw_tokenized_url_persisted INTEGER NOT NULL DEFAULT 0
+            CHECK(raw_tokenized_url_persisted = 0),
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_graph_link_resolution_source
+          ON construction_graph_link_resolution(source_id);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -2020,6 +2060,17 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (15, 'v15_construction_drive_items_rich_metadata', ?)",
+                    (now,),
+                )
+
+            # v16 Phase 06A user-provided link → ID resolution (additive CREATE
+            # TABLE only; raw tokenized URL never persisted). V1-V15 untouched.
+            for stmt in self.V16_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 16")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (16, 'v16_construction_graph_link_resolution', ?)",
                     (now,),
                 )
 
