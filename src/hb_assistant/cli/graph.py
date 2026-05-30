@@ -42,6 +42,7 @@ from hb_assistant.construction.graph.delta_sync import DeltaSync
 from hb_assistant.construction.graph.drive_item_indexer import DriveItemIndexer
 from hb_assistant.construction.graph.file_obsidian_projection import FileObsidianProjector
 from hb_assistant.construction.graph.file_project_matcher import FileProjectMatcher
+from hb_assistant.construction.graph.file_retrieval import FileRetriever
 from hb_assistant.construction.graph.file_review_router import FileReviewRouter
 from hb_assistant.construction.graph.ingestion_eligibility import IngestionEligibilityEvaluator
 from hb_assistant.construction.graph.link_resolver import LinkResolver
@@ -1120,6 +1121,39 @@ def files_obsidian_cmd(
     payload = {
         "command": "graph files obsidian",
         "mode": "dry_run" if dry_run else "apply",
+        "ok": True,
+        "result": report.model_dump(),
+        "guardrails": report.guardrails,
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_app.command("retrieve")
+def files_retrieve_cmd(
+    query: str = typer.Option(..., "--query", help="Search query (keywords)."),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to one project key."),
+    source: Optional[str] = typer.Option(None, "--source", help="Limit to one source key."),
+    limit: int = typer.Option(10, "--limit", min=1, max=100, help="Max hits to return."),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Source-linked retrieval over bounded, redacted file excerpts. Deterministic + offline
+    (SQLite; no Graph, no embeddings). Each hit links back to drive item identity + web URL,
+    project, parser output, and processing receipt. Bounded redacted excerpts only — never full
+    document text. Review-routed / sensitive files are excluded from results."""
+    try:
+        load_source_registry()  # surface registry/schema errors early
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files retrieve", e, json_out)
+        return
+
+    store = ConstructionStore()
+    report = FileRetriever(store).retrieve(
+        query=query, project_key=project, source_id=source, limit=limit
+    )
+    payload = {
+        "command": "graph files retrieve",
+        "query": query,
         "ok": True,
         "result": report.model_dump(),
         "guardrails": report.guardrails,

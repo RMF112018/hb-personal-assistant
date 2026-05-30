@@ -246,6 +246,22 @@ Graph), no writeback, **no new migration** (schema stays at version 19). The V2 
 (construction-agent/email track) is intentionally untouched (parallel path). Evidence:
 `13-obsidian-source-manifest-preview.md`.
 
+### Source-linked retrieval (Phase 06A) — `graph files retrieve` (no new schema)
+`construction/graph/file_retrieval.py` (`FileRetriever`) performs **deterministic, offline** keyword
+retrieval over the bounded redacted parser excerpts in V19 `construction_file_extraction_runs`
+(`text_excerpt_redacted`). It reuses the scoring pattern from `retrieval/retriever.py` (query-term
+overlap + exact-phrase boost, capped at 1.0) against the construction store — no embeddings, no Ollama,
+no Graph — so the proof is fully reproducible. Each hit is source-linked for traceability: drive item
+identity + `web_url` (plain item link, never a signed/download URL), project identity, the parser
+output id (`extraction_id`), and the processing-receipt id (`construction_graph_download_receipts`).
+Excerpts are bounded + redacted (`_bounded_redact`, ≤2000 chars; V19 CHECK `full_text_persisted = 0`);
+full document text is never returned. Review routing is never bypassed — runs flagged `review_required`
+and drive items in the open review queue (Prompt 12) are excluded (`review_routed_excluded`). CLI:
+`graph files retrieve --query ... [--project|--source] --json` (the Prompt 17 matrix command). Offline
+(SQLite), no writeback, **no new migration** (schema stays at version 19); the Phase-11 `retrieval/`
+package + `hb-assistant search` remain the embeddings home and are untouched. Evidence:
+`15-source-linked-retrieval-proof.md`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and
