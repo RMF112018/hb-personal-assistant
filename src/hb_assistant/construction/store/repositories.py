@@ -2243,6 +2243,80 @@ class ConstructionStore:
                 ),
             )
 
+    def list_email_project_matches(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        message_id: Optional[str] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        keys = (
+            "match_id", "message_id", "project_key", "project_number",
+            "project_name_normalized", "match_signal", "match_value_hash",
+            "confidence", "review_required", "evidence_redacted", "created_utc",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if message_id is not None:
+            clauses.append("message_id = ?")
+            params.append(message_id)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_project_matches {where} "
+            "ORDER BY confidence DESC, match_id LIMIT ?",
+            tuple(params),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            record["review_required"] = bool(record["review_required"])
+            results.append(record)
+        return results
+
+    def list_email_relationship_candidates(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        message_id: Optional[str] = None,
+        candidate_type: Optional[str] = None,
+        limit: int = 2000,
+    ) -> list[dict[str, Any]]:
+        keys = (
+            "candidate_id", "message_id", "project_key", "candidate_type",
+            "target_source_system", "target_table", "target_key", "match_signal",
+            "confidence", "evidence_redacted", "review_required", "created_utc",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if message_id is not None:
+            clauses.append("message_id = ?")
+            params.append(message_id)
+        if candidate_type is not None:
+            clauses.append("candidate_type = ?")
+            params.append(candidate_type)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_relationship_candidates {where} "
+            "ORDER BY candidate_type, candidate_id LIMIT ?",
+            tuple(params),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            record["review_required"] = bool(record["review_required"])
+            results.append(record)
+        return results
+
     def upsert_email_thread_summary(
         self,
         *,

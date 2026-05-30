@@ -1,6 +1,6 @@
 # 17 — Operational Email Intelligence (Phase 06)
 
-Status: **in progress** · Phase 06 Prompts 00–08A landed · Migration **V12** · read-only mail client + endpoint guard (Prompt 04) · folder discovery + sync state (Prompt 05) · message metadata indexing (Prompt 06) · project-aware discovery (Prompt 07) · attachment metadata + source-link candidates (Prompt 08) · encrypted full-body storage (Prompt 08A)
+Status: **in progress** · Phase 06 Prompts 00–09 landed · Migration **V12** · read-only mail client + endpoint guard (Prompt 04) · folder discovery + sync state (Prompt 05) · message metadata indexing (Prompt 06) · project-aware discovery (Prompt 07) · attachment metadata + source-link candidates (Prompt 08) · encrypted full-body storage (Prompt 08A) · relationship candidates (Prompt 09)
 
 Phase 06 turns the Phase 02 *deferred* email intelligence into operational, **read-only**,
 project-aware email workflows over the existing GET-only Graph stack. It is local-first: SQLite is
@@ -201,6 +201,27 @@ committed, or stored in SQLite/Obsidian/evidence — it lives encrypted outside 
   pre-constrain them, and sensitive captured bodies already set `review_required` on the vault ref.
 - **Evidence** — `10A-*` (preflight, policy proof, schema proof, indexing dry-run JSON, encryption proof,
   decrypt proof, no-leak proof, no-mutation proof). Live: 5 real bodies encrypted (0/5 plaintext).
+
+## Prompt 09 — relationship candidates (local synthesis)
+
+Synthesizes the cross-system candidate graph, **local-only** (no Graph/mailbox), from stored email
+intelligence + the repo's Procore/calendar/drive tables.
+
+- **Builder** — `construction/email/relationship_builder.py` (`RelationshipCandidateBuilder`,
+  `RelationshipReport`, `RelationshipCandidate`). Per project-matched message (from `email_project_matches`,
+  within lookback): emits a `project` candidate, a `procore_*` candidate when the sender is a Procore
+  notification (control type from the bounded preview), a `procore_payment_application|invoice|contract`
+  candidate when a financial keyword appears **and** financials are available (→ review), and a
+  `calendar_event` candidate on Outlook meeting-email patterns. Counts existing Prompt 08 `*_drive_item`
+  file candidates; surfaces Procore/drive/calendar availability counts.
+- **Not determinations** — every candidate carries confidence + `review_required` + a redacted "possible
+  …" evidence string; financial/legal-sensitive topics route to review. The report disclaims
+  determinations. Repo helpers `list_email_project_matches` / `list_email_relationship_candidates` added.
+- **CLI** — `graph mail relationships --project … --lookback-days … [--dry-run/--no-dry-run] --json`
+  (default persist). Idempotent (deterministic `candidate_id`).
+- **Evidence** — `09-relationship-candidates-proof.md` + `email-relationship-candidates.json` (live: 40
+  matched messages → 47 candidates incl. 7 Procore; Procore availability rfis 72 / submittals 100 /
+  meetings 96 / financials 74).
 
 ### Five-layer read-only lock (defense in depth)
 

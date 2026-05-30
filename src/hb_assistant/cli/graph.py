@@ -23,6 +23,7 @@ from hb_assistant.construction.email import (
     EmailFolderDiscovery,
     EmailMessageIndexer,
     ProjectEmailDiscovery,
+    RelationshipCandidateBuilder,
 )
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
@@ -360,6 +361,41 @@ def discover_cmd(
     finally:
         if client is not None:
             client.close()
+
+
+@mail_app.command("relationships")
+def relationships_cmd(
+    project: Optional[str] = typer.Option(None, "--project", help="Pilot project key"),
+    lookback_days: int = typer.Option(30, "--lookback-days", help="Bounded lookback window in days (1-366)"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run/--no-dry-run", help="Preview without persisting (default: persist candidates)"
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Generate email relationship candidates (project, Procore, files, meetings), local-only.
+
+    Reads stored email intelligence + the repo's Procore/calendar/drive data — NO Graph
+    call, NO mailbox access. Candidates are NOT determinations: each carries confidence,
+    review-required, and redacted evidence. The only writes are local SQLite candidate rows.
+    """
+    try:
+        builder = RelationshipCandidateBuilder(ConstructionStore())
+        report = builder.build(project_key=project, lookback_days=lookback_days, dry_run=dry_run)
+        payload: Dict[str, Any] = {"command": "graph mail relationships", "ok": True, **report.model_dump()}
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail relationships",
+            "ok": False,
+            "dry_run": dry_run,
+            "status": "relationships_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
 
 
 @body_app.command("show")

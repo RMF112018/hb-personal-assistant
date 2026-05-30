@@ -35,6 +35,11 @@ from .project_matcher import (
     ProjectMatcher,
     load_pilot_project_descriptors,
 )
+from .relationship_builder import (
+    RelationshipCandidate,
+    RelationshipCandidateBuilder,
+    RelationshipReport,
+)
 
 __all__ = [
     "AttachmentAnalysis",
@@ -50,6 +55,9 @@ __all__ = [
     "ProjectEmailDiscovery",
     "ProjectMatchSummary",
     "ProjectMatcher",
+    "RelationshipCandidate",
+    "RelationshipCandidateBuilder",
+    "RelationshipReport",
     "analyze_attachment",
     "classify_text_sensitivity",
     "detect_drive_links",
