@@ -1,0 +1,139 @@
+{
+  "command": "hb-assistant procore live project-health",
+  "ok": true,
+  "phase": "Phase 06B Prompt 06",
+  "project_key": "tropical",
+  "generated_at": "2026-05-30T00:00:00+00:00",
+  "health_status": "review_recommended",
+  "status_reason": [
+    "review_required_records",
+    "high_importance_signals",
+    "safety_quality_compliance_signals",
+    "overdue_signals",
+    "stale_endpoints"
+  ],
+  "score_components": {
+    "freshness": {
+      "endpoints_with_data": 2,
+      "endpoints_synced": 2,
+      "stale_endpoints": 1,
+      "stale_threshold_days": 7
+    },
+    "open_work": {
+      "open_signals": 4,
+      "high_importance": 2
+    },
+    "review_required": {
+      "records": 1
+    },
+    "cost_exposure": {
+      "open_signals": 1
+    },
+    "schedule_exposure": {
+      "open_signals": 1
+    },
+    "safety_quality_compliance": {
+      "open_signals": 1
+    },
+    "overdue": {
+      "open_signals": 1
+    },
+    "relationship_quality": {
+      "records_missing_responsibility_edge": 1,
+      "distinct_responsible_parties": 1
+    }
+  },
+  "counts": {
+    "total_records": 2,
+    "review_required_records": 1,
+    "open_signals": 4,
+    "high_importance_signals": 2,
+    "endpoints_with_data": 2,
+    "financial_amount_facts": 0
+  },
+  "dimension_signal_breakdown": {
+    "cost_exposure": {
+      "rfi_cost_impact_flagged": 1
+    },
+    "schedule_exposure": {
+      "rfi_schedule_impact_flagged": 1
+    },
+    "safety_quality_compliance": {
+      "observation_open_safety": 1
+    },
+    "overdue": {
+      "rfi_overdue": 1
+    }
+  },
+  "top_risks": [
+    {
+      "signal_type": "observation_open_safety",
+      "endpoint_id": "rfis",
+      "record_key": "tropical|x||observation_open_safety",
+      "importance": "high",
+      "due_at_utc": null,
+      "dimensions": [
+        "safety_quality_compliance"
+      ],
+      "title_redacted": "observation_open_safety"
+    },
+    {
+      "signal_type": "rfi_overdue",
+      "endpoint_id": "rfis",
+      "record_key": "tropical|x||rfi_overdue",
+      "importance": "high",
+      "due_at_utc": null,
+      "dimensions": [
+        "overdue"
+      ],
+      "title_redacted": "rfi_overdue"
+    },
+    {
+      "signal_type": "rfi_cost_impact_flagged",
+      "endpoint_id": "rfis",
+      "record_key": "tropical|x||rfi_cost_impact_flagged",
+      "importance": "medium",
+      "due_at_utc": null,
+      "dimensions": [
+        "cost_exposure"
+      ],
+      "title_redacted": "rfi_cost_impact_flagged"
+    },
+    {
+      "signal_type": "rfi_schedule_impact_flagged",
+      "endpoint_id": "rfis",
+      "record_key": "tropical|x||rfi_schedule_impact_flagged",
+      "importance": "medium",
+      "due_at_utc": null,
+      "dimensions": [
+        "schedule_exposure"
+      ],
+      "title_redacted": "rfi_schedule_impact_flagged"
+    }
+  ],
+  "stale_endpoints": [
+    {
+      "endpoint_id": "rfis",
+      "last_success_at_utc": "2020-01-01T00:00:00+00:00",
+      "age_days": 2341,
+      "state": "stale"
+    }
+  ],
+  "review_required_items": [
+    {
+      "endpoint_id": "observations",
+      "procore_record_id": "55",
+      "sensitive_reason": "observation_safety",
+      "source_url_redacted": "/rest/v1.0/projects/2525840/observations/55"
+    }
+  ],
+  "review_required_items_truncated": false,
+  "evidence_references": {
+    "review_required_sources": [
+      "/rest/v1.0/projects/2525840/observations/55"
+    ]
+  },
+  "no_raw_values_persisted": true,
+  "no_live_call_performed": true,
+  "determinations_made": false
+}

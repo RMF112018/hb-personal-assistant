@@ -1432,6 +1432,26 @@ def live_actions(
     _emit(payload, json_out=json_out)
 
 
+@live_app.command("project-health")
+def live_project_health(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    stale_days: int = typer.Option(7, "--stale-days", min=1, help="Endpoint freshness threshold."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Deterministic project-health read model over local SQLite (Phase 06B Prompt 06).
+
+    Aggregates freshness, open work, review-required items, cost/schedule/safety-quality-
+    compliance signal counts, and relationship-quality indicators. Review-required and
+    high-risk facts are listed explicitly (never hidden behind a single score). Read-only;
+    no network, no DB writes, no raw values, no determinations."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_project_health import build_project_health
+
+    SQLiteMigrator().apply()
+    report = build_project_health(project, now_utc=_query_now().isoformat(), stale_days=stale_days)
+    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
+
+
 @live_app.command("coverage")
 def live_coverage(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key (contextual)."),
