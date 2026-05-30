@@ -31,3 +31,12 @@ Prompt 14 closeout must include:
 - no plaintext body leakage proof
 - encrypted body storage closeout proof
 - final validation closeout report with command matrix and known deferrals
+
+## Prompt 15 Operator Handoff Boundary
+
+Prompt 15 establishes the operator-facing execution boundary for Phase 06:
+- day-to-day and dry-run command procedures are centralized in `docs/runbooks/phase-06-operational-email-workflows.md`;
+- controlled decrypt-read usage is documented with explicit plaintext-handling constraints;
+- handoff status and validation outcomes are captured in `docs/evidence/construction-intelligence-phase-06-email/15-operator-runbook-and-handoff.md`.
+
+This does not expand Phase 06 scope or mutate API behavior; it formalizes operational usage and maintenance guardrails for Bobby and future local agents.
