@@ -1,0 +1,62 @@
+{
+  "command": "graph files onedrive",
+  "mode": "dry_run",
+  "note": "Deterministic mocked dry-run proof (live delegated token expired at capture time; live `graph files onedrive` degrades to a structured auth_required envelope). Drive ids/urls are synthetic-but-shaped; no tokens, signed URLs, delta links, or downloadUrl values are present.",
+  "onedrive": [
+    {
+      "source_id": "od_business_bobby_hedrickbrothers",
+      "kind": "onedrive_business_root",
+      "drive_id": "b!biz-drive-id",
+      "drive_type": "business",
+      "web_url": "https://hedrickbrotherscom-my.sharepoint.com/personal/bfetting/Documents",
+      "status": "resolved",
+      "resolution_status": "pending_drive_resolution",
+      "available_drives": [
+        {
+          "drive_id": "b!biz-drive-id",
+          "name": "OneDrive",
+          "web_url": "https://hedrickbrotherscom-my.sharepoint.com/personal/bfetting/Documents",
+          "drive_type": "business",
+          "list_id": null
+        }
+      ],
+      "note": "drive_type='business'",
+      "error_redacted": null,
+      "_capture_note": "/me/drive resolves drive_id; /me/drives enumeration populates available_drives and confirms driveType."
+    },
+    {
+      "source_id": "od_personal_bobby",
+      "kind": "onedrive_personal_root",
+      "drive_id": null,
+      "drive_type": null,
+      "web_url": null,
+      "status": "unavailable",
+      "resolution_status": "pending_drive_resolution",
+      "available_drives": [],
+      "note": "me_drive_unavailable_or_not_provisioned; me_drives_enumeration_failed: graph_404",
+      "error_redacted": null,
+      "_capture_note": "Illustrates the personal-OneDrive-not-provisioned (HTTP 404) -> unavailable mapping."
+    },
+    {
+      "source_id": "od_shared_libraries_cloudtemp",
+      "kind": "onedrive_shared_library",
+      "drive_id": null,
+      "drive_type": null,
+      "web_url": null,
+      "status": "requires_share_url",
+      "resolution_status": "pending_source_resolution",
+      "available_drives": [],
+      "note": "drive_id_resolution_requires_share_url_or_remote_item_lookup; not forced",
+      "error_redacted": null,
+      "_capture_note": "Shared library without a configured drive_id is represented as requires_share_url; resolution is NOT forced. See 18-shared-library-resolution-limitations.md."
+    }
+  ],
+  "status_taxonomy": ["pre_resolved", "resolved", "pending", "unavailable", "requires_share_url", "unsupported", "error"],
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true,
+    "content_crawl": "none",
+    "permission_tightening": "deferred"
+  }
+}

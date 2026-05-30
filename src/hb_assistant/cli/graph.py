@@ -529,6 +529,88 @@ def files_drives_cmd(
     raise typer.Exit(0)
 
 
+_ONEDRIVE_SOURCE_KINDS = {
+    "onedrive_personal",
+    "onedrive_personal_root",
+    "onedrive_business_root",
+    "onedrive_shared",
+    "onedrive_shared_library",
+}
+
+
+@files_app.command("onedrive")
+def files_onedrive_cmd(
+    source: Optional[str] = typer.Option(None, "--source", help="Resolve only this source key."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply persists discovery receipts."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Discover Bobby's business/personal OneDrive and represent shared libraries
+    with structured states (pre_resolved / resolved / pending / unavailable /
+    requires_share_url). Read-only, metadata-only; dry-run by default."""
+    try:
+        registry = load_source_registry()
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files onedrive", e, json_out)
+        return
+
+    targets = [
+        s
+        for s in registry.sources
+        if s.kind in _ONEDRIVE_SOURCE_KINDS and (source is None or s.source_key == source)
+    ]
+    if not targets:
+        payload = {
+            "command": "graph files onedrive",
+            "status": "not_found",
+            "requested": source,
+            "available": [
+                s.source_key for s in registry.sources if s.kind in _ONEDRIVE_SOURCE_KINDS
+            ],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+    if client is None:
+        payload = {
+            "command": "graph files onedrive",
+            "mode": "dry_run" if dry_run else "apply",
+            **auth_payload,
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+
+    try:
+        store = ConstructionStore() if not dry_run else None
+        discovery = SiteDriveDiscovery(client, store=store)
+        results = [discovery.discover_onedrive(s, apply=not dry_run) for s in targets]
+    finally:
+        client.close()
+
+    rows = [r.model_dump() for r in results]
+    summary = {
+        "total": len(rows),
+        "pre_resolved": sum(1 for r in results if r.status == "pre_resolved"),
+        "resolved": sum(1 for r in results if r.status == "resolved"),
+        "pending": sum(1 for r in results if r.status == "pending"),
+        "unavailable": sum(1 for r in results if r.status == "unavailable"),
+        "requires_share_url": sum(1 for r in results if r.status == "requires_share_url"),
+        "error": sum(1 for r in results if r.status == "error"),
+    }
+    payload = {
+        "command": "graph files onedrive",
+        "mode": "dry_run" if dry_run else "apply",
+        "ok": summary["error"] == 0,
+        "summary": summary,
+        "onedrive": rows,
+        "guardrails": _DISCOVERY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
 def _echo_files_error(command: str, exc: Exception, json_out: bool) -> None:
     """Emit a blocking JSON envelope for registry load/validation failures."""
     if isinstance(exc, ValidationError):

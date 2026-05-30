@@ -1,4 +1,4 @@
-"""Phase 06 (Files) — SharePoint site + drive discovery (metadata-only).
+"""Phase 06 (Files) — SharePoint + OneDrive source discovery (metadata-only).
 
 Resolves approved SharePoint sites and enumerates their document-library drives,
 matching a configured :class:`SourceLocation` to a concrete drive by ``drive_id``,
@@ -44,6 +44,13 @@ _SHAREPOINT_KINDS = {
     "sharepoint_project_drive_folder",
     "sharepoint_site_page",
 }
+_ONEDRIVE_ROOT_KINDS = {
+    "onedrive_personal",
+    "onedrive_personal_root",
+    "onedrive_business_root",
+}
+_ONEDRIVE_SHARED_KINDS = {"onedrive_shared", "onedrive_shared_library"}
+_ONEDRIVE_KINDS = _ONEDRIVE_ROOT_KINDS | _ONEDRIVE_SHARED_KINDS
 
 
 class SiteDiscoveryResult(BaseModel):
@@ -84,6 +91,22 @@ class DriveDiscoveryResult(BaseModel):
     candidates: list[DriveCandidate] = Field(default_factory=list)
     linked_sources: list[dict[str, Any]] = Field(default_factory=list)
     status: str  # matched | unmatched | pending | unsupported | error
+    note: Optional[str] = None
+    error_redacted: Optional[str] = None
+
+    model_config = {"extra": "forbid"}
+
+
+class OneDriveDiscoveryResult(BaseModel):
+    source_id: str
+    kind: str
+    drive_id: Optional[str] = None
+    drive_type: Optional[str] = None
+    web_url: Optional[str] = None
+    # pre_resolved | resolved | pending | unavailable | requires_share_url | unsupported | error
+    status: str
+    resolution_status: Optional[str] = None
+    available_drives: list[DriveCandidate] = Field(default_factory=list)
     note: Optional[str] = None
     error_redacted: Optional[str] = None
 
@@ -232,6 +255,101 @@ class SiteDriveDiscovery:
         )
         self._maybe_persist(result.source_id, "drive_discovery", result.status, result, apply)
         return result
+
+    # -- onedrive -----------------------------------------------------------
+
+    def discover_onedrive(
+        self, source: SourceLocation, *, apply: bool = False
+    ) -> OneDriveDiscoveryResult:
+        if source.kind not in _ONEDRIVE_KINDS:
+            return OneDriveDiscoveryResult(
+                source_id=source.source_key,
+                kind=source.kind,
+                status="unsupported",
+                note="not a OneDrive source kind",
+            )
+
+        # Shared libraries: pre_resolved when a drive_id is configured; otherwise
+        # represented as requires_share_url. Never force resolution / fabricate a URL.
+        if source.kind in _ONEDRIVE_SHARED_KINDS:
+            if source.drive_id:
+                result = OneDriveDiscoveryResult(
+                    source_id=source.source_key,
+                    kind=source.kind,
+                    drive_id=source.drive_id,
+                    web_url=source.folder_web_url or source.site_url,
+                    status="pre_resolved",
+                    resolution_status=source.resolution_status,
+                    note="canonical_drive_id_pre_populated",
+                )
+            else:
+                result = OneDriveDiscoveryResult(
+                    source_id=source.source_key,
+                    kind=source.kind,
+                    status="requires_share_url",
+                    resolution_status=source.resolution_status,
+                    note="drive_id_resolution_requires_share_url_or_remote_item_lookup; not forced",
+                )
+            self._maybe_persist(
+                result.source_id, "onedrive_discovery", result.status, result, apply
+            )
+            return result
+
+        # Personal/business root: resolve /me/drive (primary), then enumerate
+        # /me/drives (supplementary). A 404 on /me/drive => unavailable.
+        res = self._resolver.resolve(source)
+        status = res.status
+        note = res.note
+        error_redacted: Optional[str] = None
+        if res.status == "error":
+            if (res.error_redacted or "").startswith("graph_404"):
+                status = "unavailable"
+                note = "me_drive_unavailable_or_not_provisioned"
+            else:
+                error_redacted = res.error_redacted
+
+        available, enum_note = self._enumerate_me_drives()
+        drive_type: Optional[str] = None
+        for c in available:
+            if c.drive_id and c.drive_id == res.drive_id:
+                drive_type = c.drive_type
+                break
+
+        combined = "; ".join(n for n in (note, enum_note) if n) or None
+        result = OneDriveDiscoveryResult(
+            source_id=source.source_key,
+            kind=source.kind,
+            drive_id=res.drive_id,
+            drive_type=drive_type,
+            web_url=res.web_url,
+            status=status,
+            resolution_status=source.resolution_status,
+            available_drives=available,
+            note=combined,
+            error_redacted=error_redacted,
+        )
+        self._maybe_persist(result.source_id, "onedrive_discovery", result.status, result, apply)
+        return result
+
+    def _enumerate_me_drives(self) -> tuple[list[DriveCandidate], Optional[str]]:
+        path = "/me/drives"
+        # Read-only guard: refuse anything that is not an allowlisted GET before HTTP.
+        assert_files_request_allowed("GET", path)
+        try:
+            data = self._http.get(
+                path,
+                params={"$select": "id,name,driveType,webUrl"},
+                scopes=GRAPH_SCOPES,
+            )
+        except GraphHttpError as e:
+            return [], f"me_drives_enumeration_failed: graph_{e.status}"
+
+        candidates: list[DriveCandidate] = []
+        for entry in (data.get("value") or [])[:_DEFAULT_MAX_DRIVES]:
+            cand = _candidate_from_entry(entry)
+            if cand is not None:
+                candidates.append(cand)
+        return candidates, None
 
     def _enumerate_drives(self, site_id: str) -> tuple[list[DriveCandidate], Optional[str]]:
         path = f"/sites/{site_id}/drives"

@@ -81,6 +81,18 @@ discovery tables are deferred. The enumeration GET is asserted through `assert_f
 > highest. The discovery path is read-only by construction (GET-only) and covered by the
 > `test_mutation_lockout` static scan over `construction/graph/`.
 
+### OneDrive discovery & shared-library posture (Prompt 05) — `graph files onedrive`
+`SiteDriveDiscovery.discover_onedrive` extends the discovery service to OneDrive: business/personal
+roots resolve via the resolver's `/me/drive` plus a guard-asserted `/me/drives` enumeration
+(`available_drives`, drive_type), with a `404` mapped to **`unavailable`** (personal OneDrive not
+provisioned). Shared libraries are represented with structured states — `pre_resolved` (configured
+`drive_id`) or **`requires_share_url`** (no id; resolution is **not forced**, no share URL
+fabricated), carrying the registry `resolution_status` (`pending_source_resolution`). Status taxonomy:
+`pre_resolved | resolved | pending | unavailable | requires_share_url | unsupported | error`. The
+`graph files onedrive` command (dry-run default; `--apply` persists an `onedrive_discovery`
+`construction_processing_receipts` row — no new migration) degrades to `auth_required` without a
+token. Limitations recorded in `docs/evidence/.../18-shared-library-resolution-limitations.md`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and
