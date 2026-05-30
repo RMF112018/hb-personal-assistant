@@ -1,0 +1,109 @@
+# Phase 06A — File ingestion eligibility policy seed.
+#
+# Governs the per-file ingestion disposition assigned BEFORE any controlled
+# download or extraction (Prompt 11). Read-only behavior; metadata-only by
+# default; sensitive/large/low-confidence files never auto-extract. The locked
+# guardrail booleans use the model's defaults and cannot loosen download/extract
+# defaults without a code change.
+version: 1
+
+# Default disposition for any file with no stronger signal.
+default_disposition: metadata_only
+
+# Runtime gating guardrails (Prompt 11 honors these).
+require_explicit_download_flag: true
+require_explicit_extract_flag: true
+block_review_required_extraction: true
+
+# Document-type categories (matched against document_type_detected when present;
+# folder names in the source registry folder_policies are the primary signal).
+eligible_document_types:
+  - rfi
+  - submittal
+  - meeting_minutes
+  - daily_report
+  - drawing_pdf
+  - specification_pdf
+  - schedule_export
+  - project_register
+metadata_only_document_types:
+  - accounting
+  - change_order
+  - monthly_forecast
+  - estimate
+  - subcontractor
+  - photos
+  - aerials
+  - cad_native
+  - revit_native
+  - zip_package
+  - archive
+  - video
+  - temp_system
+review_required_document_types:
+  - contracts
+  - pay_applications
+  - invoices
+  - lien_releases
+  - claims
+  - notices
+  - legal
+  - privileged
+  - hr_personnel
+  - insurance_bonding
+  - safety_incident
+  - medical
+  - dispute
+  - cost_impact
+  - schedule_impact
+  - low_confidence_project_match
+  - large_file_manual_approval
+
+# Extension dispositions. Eligible extensions MAY extract (still gated by review +
+# size + project match); metadata-only extensions are never extracted; blocked
+# extensions are unsupported for ingestion.
+extension_dispositions:
+  eligible:
+    - pdf
+    - docx
+    - doc
+    - xlsx
+    - xls
+    - csv
+    - txt
+    - rtf
+  metadata_only:
+    - dwg
+    - dxf
+    - rvt
+    - nwd
+    - nwc
+    - ifc
+    - zip
+    - 7z
+    - rar
+    - mp4
+    - mov
+    - avi
+    - png
+    - jpg
+    - jpeg
+    - tif
+    - tiff
+    - heic
+  blocked:
+    - exe
+    - dll
+    - msi
+    - bat
+    - cmd
+    - com
+    - scr
+    - ps1
+
+# Large-file thresholds (bytes). Files in the warning band require manual
+# approval before extraction; files over the block threshold are never extracted
+# (metadata-only). Defaults; tune in a repo override if needed.
+large_file:
+  extract_warning_bytes: 26214400    # 25 MiB → manual_approval_required
+  block_extract_bytes: 104857600     # 100 MiB → blocked_too_large (metadata only)

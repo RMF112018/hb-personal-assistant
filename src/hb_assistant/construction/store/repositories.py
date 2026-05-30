@@ -1095,6 +1095,103 @@ class ConstructionStore:
             r["review_required"] = bool(r["review_required"])
         return rows
 
+    # --- file ingestion decisions (V18) -------------------------------------
+
+    def insert_file_ingestion_decision(
+        self,
+        *,
+        decision_id: str,
+        source_id: str,
+        drive_item_id: str,
+        drive_id: Optional[str] = None,
+        project_key: Optional[str] = None,
+        project_number_detected: Optional[str] = None,
+        document_type_detected: Optional[str] = None,
+        ingestion_disposition: str,
+        review_required: bool = False,
+        review_reason: Optional[str] = None,
+        extraction_allowed: bool = False,
+        download_allowed: bool = False,
+        reason_codes_json: Optional[str] = None,
+    ) -> None:
+        """Upsert one ingestion-eligibility decision. The schema CHECK rejects any
+        review-required row that also allows extraction."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO construction_file_ingestion_decisions
+                    (decision_id, source_id, drive_id, drive_item_id, project_key,
+                     project_number_detected, document_type_detected,
+                     ingestion_disposition, review_required, review_reason,
+                     extraction_allowed, download_allowed, reason_codes_json, decided_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source_id, drive_item_id) DO UPDATE SET
+                    drive_id = excluded.drive_id,
+                    project_key = excluded.project_key,
+                    project_number_detected = excluded.project_number_detected,
+                    document_type_detected = excluded.document_type_detected,
+                    ingestion_disposition = excluded.ingestion_disposition,
+                    review_required = excluded.review_required,
+                    review_reason = excluded.review_reason,
+                    extraction_allowed = excluded.extraction_allowed,
+                    download_allowed = excluded.download_allowed,
+                    reason_codes_json = excluded.reason_codes_json,
+                    decided_utc = excluded.decided_utc
+                """,
+                (
+                    decision_id, source_id, drive_id, drive_item_id, project_key,
+                    project_number_detected, document_type_detected,
+                    ingestion_disposition, 1 if review_required else 0, review_reason,
+                    1 if extraction_allowed else 0, 1 if download_allowed else 0,
+                    reason_codes_json, _utc_now(),
+                ),
+            )
+
+    def list_file_ingestion_decisions(
+        self,
+        *,
+        source_id: Optional[str] = None,
+        project_key: Optional[str] = None,
+        review_required: Optional[bool] = None,
+        disposition: Optional[str] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        conn = get_connection(self._db_path)
+        sql = (
+            "SELECT decision_id, source_id, drive_id, drive_item_id, project_key, "
+            "project_number_detected, document_type_detected, ingestion_disposition, "
+            "review_required, review_reason, extraction_allowed, download_allowed, "
+            "reason_codes_json, decided_utc "
+            "FROM construction_file_ingestion_decisions WHERE 1=1"
+        )
+        params: list[Any] = []
+        if source_id is not None:
+            sql += " AND source_id = ?"
+            params.append(source_id)
+        if project_key is not None:
+            sql += " AND project_key = ?"
+            params.append(project_key)
+        if review_required is not None:
+            sql += " AND review_required = ?"
+            params.append(1 if review_required else 0)
+        if disposition is not None:
+            sql += " AND ingestion_disposition = ?"
+            params.append(disposition)
+        sql += " ORDER BY drive_item_id LIMIT ?"
+        params.append(int(limit))
+        keys = (
+            "decision_id", "source_id", "drive_id", "drive_item_id", "project_key",
+            "project_number_detected", "document_type_detected", "ingestion_disposition",
+            "review_required", "review_reason", "extraction_allowed", "download_allowed",
+            "reason_codes_json", "decided_utc",
+        )
+        rows = [dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()]
+        for r in rows:
+            for b in ("review_required", "extraction_allowed", "download_allowed"):
+                r[b] = bool(r[b])
+        return rows
+
     # --- canonical project identity (V5) ------------------------------------
 
     def upsert_project_identity(

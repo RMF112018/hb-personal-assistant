@@ -40,6 +40,7 @@ from hb_assistant.construction.graph.baseline_crawler import BaselineCrawler
 from hb_assistant.construction.graph.delta_sync import DeltaSync
 from hb_assistant.construction.graph.drive_item_indexer import DriveItemIndexer
 from hb_assistant.construction.graph.file_project_matcher import FileProjectMatcher
+from hb_assistant.construction.graph.ingestion_eligibility import IngestionEligibilityEvaluator
 from hb_assistant.construction.graph.link_resolver import LinkResolver
 from hb_assistant.construction.graph.resolver import GRAPH_SCOPES as _FILES_GRAPH_SCOPES
 from hb_assistant.construction.graph.site_drive_discovery import SiteDriveDiscovery
@@ -902,6 +903,45 @@ def files_project_match_cmd(
             "writeback": "none",
             "graph_calls": "none",
             "review_routing": "review_required_flag",
+            "permission_tightening": "deferred",
+        },
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_app.command("ingestion-policy")
+def files_ingestion_policy_cmd(
+    source: Optional[str] = typer.Option(None, "--source", help="Limit to one source key."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply persists ingestion decisions."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Assign each indexed file an ingestion disposition (metadata_only / eligible /
+    manual_approval_required / review_required / blocked / low_confidence) BEFORE any
+    download or extraction. Sensitive/large/low-confidence files never auto-extract.
+    Offline (SQLite + policy); no Graph. Dry-run default."""
+    try:
+        load_source_registry()
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files ingestion-policy", e, json_out)
+        return
+
+    store = ConstructionStore()
+    report = IngestionEligibilityEvaluator(store).evaluate(source_id=source, dry_run=dry_run)
+    payload = {
+        "command": "graph files ingestion-policy",
+        "mode": report.mode,
+        "ok": True,
+        "result": report.model_dump(),
+        "guardrails": {
+            "external_systems": "read_only",
+            "writeback": "none",
+            "graph_calls": "none",
+            "download_default": "none",
+            "extract_default": "none",
+            "block_review_required_extraction": True,
             "permission_tightening": "deferred",
         },
     }

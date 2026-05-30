@@ -1895,6 +1895,41 @@ class SQLiteMigrator:
         "ON construction_drive_items(review_required)",
     ]
 
+    # v18 Phase 06A Prompt 10 file ingestion eligibility decisions. Additive
+    # CREATE TABLE only. One decision row per source file; the CHECK enforces the
+    # block_review_required_extraction guardrail at the DB layer (a review-required
+    # file can never carry extraction_allowed = 1). No content; no writeback.
+    V18_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS construction_file_ingestion_decisions (
+          decision_id TEXT PRIMARY KEY,
+          source_id TEXT NOT NULL,
+          drive_id TEXT,
+          drive_item_id TEXT NOT NULL,
+          project_key TEXT,
+          project_number_detected TEXT,
+          document_type_detected TEXT,
+          ingestion_disposition TEXT NOT NULL,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          review_reason TEXT,
+          extraction_allowed INTEGER NOT NULL DEFAULT 0,
+          download_allowed INTEGER NOT NULL DEFAULT 0,
+          reason_codes_json TEXT,
+          decided_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(source_id, drive_item_id),
+          CHECK(review_required = 0 OR extraction_allowed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_file_ingestion_decisions_source
+          ON construction_file_ingestion_decisions(source_id);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_file_ingestion_decisions_review
+          ON construction_file_ingestion_decisions(review_required);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -2102,6 +2137,18 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (17, 'v17_construction_drive_items_project_matching', ?)",
+                    (now,),
+                )
+
+            # v18 Phase 06A Prompt 10 file ingestion eligibility decisions
+            # (additive CREATE TABLE only; CHECK enforces no extraction for
+            # review-required files). V1-V17 untouched.
+            for stmt in self.V18_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 18")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (18, 'v18_construction_file_ingestion_decisions', ?)",
                     (now,),
                 )
 

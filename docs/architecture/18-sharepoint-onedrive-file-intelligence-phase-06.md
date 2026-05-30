@@ -176,6 +176,23 @@ version-gated; max 16 → 17) adds `project_key`, `match_confidence`, `match_sta
 is dry-run default (`--apply` writes the match fields), offline (no `auth_required` path). Evidence:
 `10-project-file-match-results.json`.
 
+### Ingestion eligibility policy (Phase 06A) — `graph files ingestion-policy` + schema V18
+`construction/policy/file_ingestion.py` (`FileIngestionPolicy` + `load_file_ingestion_policy`, seed at
+`resources/config/file_ingestion_policy.seed.yaml`; guardrail booleans `Literal`-locked) +
+`construction/graph/ingestion_eligibility.py` (`IngestionEligibilityEvaluator`) gate every indexed
+file with a disposition **before** any download/extraction (P11) — **offline: SQLite + policy +
+registry, no Graph, no content read**. Reuses the existing `ReviewPolicyEvaluator` +
+`review_required_rules.seed.yaml` for sensitive detection, the per-source `FolderPolicies`, and the
+V17 project match. Most-restrictive-wins precedence yields `blocked_unsupported_type` /
+`review_required` (sensitive) / `blocked_too_large` / `low_confidence` / `manual_approval_required`
+(large-file warning band) / `metadata_only` / `eligible`. **`extraction_allowed` = `download_allowed`
+= (disposition == eligible)**; everything else False. Schema **V18** adds
+`construction_file_ingestion_decisions` (additive CREATE TABLE; max 17 → 18) with
+`CHECK(review_required = 0 OR extraction_allowed = 0)` — a review-required file can never carry
+extraction at the DB layer. Large-file thresholds (warning 25 MiB / block 100 MiB) ensure large files
+never auto-extract. Dry-run default. Evidence: `11-ingestion-policy-proof.md`,
+`19-large-file-policy-proof.md`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and
