@@ -159,3 +159,33 @@ def test_graph_mail_classify_dry_run_still_initializes_model_client(
     payload = json.loads(res.output)
     assert payload["command"] == "graph mail classify"
     assert calls["client_init"] == 1
+
+
+def test_graph_mail_obsidian_parses(tmp_path: Path) -> None:
+    res = _invoke(
+        tmp_path,
+        "graph",
+        "mail",
+        "obsidian",
+        "--project",
+        "tropical",
+        "--include-encrypted-body-status",
+        "--dry-run",
+        "--json",
+    )
+    assert res.exit_code in (0, 1)
+    payload = json.loads(res.output)
+    assert payload["command"] == "graph mail obsidian"
+    if payload.get("ok"):
+        for key in (
+            "notes_planned",
+            "messages_referenced",
+            "encrypted_body_refs_referenced",
+            "encrypted_body_status_included",
+            "plaintext_body_written",
+        ):
+            assert key in payload
+        assert payload["plaintext_body_written"] is False
+    assert "access_token" not in res.output
+    assert "Bearer " not in res.output
+    assert "----- decrypted body" not in res.output

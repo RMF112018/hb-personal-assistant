@@ -33,6 +33,10 @@ from .message_indexer import (
     IndexResult,
     normalize_message,
 )
+from .obsidian_projection import (
+    EmailObsidianProjector,
+    EmailObsidianReport,
+)
 from .project_discovery import (
     DiscoveryReport,
     ProjectEmailDiscovery,
@@ -75,6 +79,8 @@ __all__ = [
     "EmailIntelligenceClassifier",
     "EmailMessageIndexer",
     "EmailModelOutput",
+    "EmailObsidianProjector",
+    "EmailObsidianReport",
     "FolderDiscoveryResult",
     "IndexResult",
     "IndexedFolder",

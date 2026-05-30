@@ -104,3 +104,51 @@ def test_evidence_dir_has_no_decrypted_body_markers() -> None:
         text = path.read_text(encoding="utf-8", errors="ignore")
         for tok in leak_markers:
             assert tok not in text, f"{path.name}: unexpected decrypted-body marker {tok!r}"
+
+
+def test_prompt12_obsidian_projection_fence_blocks_plaintext_markers(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("HB_APP_SUPPORT_DIR", str(tmp_path / "app-support"))
+    monkeypatch.setenv("HB_CONSTRUCTION_VAULT_ROOT", str(tmp_path / "vault"))
+    from hb_assistant.construction.email.obsidian_projection import EmailObsidianProjector
+    from hb_assistant.construction.store import ConstructionStore
+
+    store = ConstructionStore(str(tmp_path / "db.sqlite"))
+    store.upsert_email_source_location(
+        source_id="sx", mailbox_owner_hash="h", folder_role="inbox", folder_id="f1"
+    )
+    store.upsert_email_message(
+        message_id="m1",
+        thread_key="t1",
+        source_id="sx",
+        sender_domain="vendor.com",
+        subject_redacted="schedule update",
+        body_preview_excerpt_redacted="redacted preview only",
+    )
+    store.upsert_email_project_match(
+        match_id="pm1",
+        message_id="m1",
+        match_signal="project_name_in_subject",
+        confidence=0.95,
+        project_key="tropical",
+    )
+    report = EmailObsidianProjector(store).project(
+        project_key="tropical",
+        include_encrypted_body_status=True,
+        dry_run=False,
+    )
+    forbidden = (
+        "<html",
+        "<body",
+        "from:",
+        "to:",
+        "cc:",
+        "-----original message-----",
+        "full_body_plaintext",
+        "raw email body",
+    )
+    for path in report.paths:
+        text = Path(path).read_text(encoding="utf-8").lower()
+        for marker in forbidden:
+            assert marker not in text, f"{Path(path).name}: forbidden marker leaked: {marker!r}"

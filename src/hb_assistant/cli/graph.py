@@ -24,6 +24,7 @@ from hb_assistant.construction.email import (
     EmailFolderDiscovery,
     EmailIntelligenceClassifier,
     EmailMessageIndexer,
+    EmailObsidianProjector,
     ProjectEmailDiscovery,
     RelationshipCandidateBuilder,
     ReviewRouter,
@@ -506,6 +507,46 @@ def classify_cmd(
             "ok": False,
             "dry_run": dry_run,
             "status": "classify_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@mail_app.command("obsidian")
+def obsidian_cmd(
+    project: Optional[str] = typer.Option(None, "--project", help="Pilot project key"),
+    include_encrypted_body_status: bool = typer.Option(
+        False,
+        "--include-encrypted-body-status",
+        help="Include safe encrypted-body availability booleans/counts only (never plaintext/ref)",
+    ),
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run/--no-dry-run",
+        help="Preview planned notes without writing (default); --no-dry-run writes marker-bounded notes",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Build safe Prompt 12 email Obsidian projections (local-only, no plaintext body)."""
+    try:
+        projector = EmailObsidianProjector(ConstructionStore())
+        report = projector.project(
+            project_key=project,
+            include_encrypted_body_status=include_encrypted_body_status,
+            dry_run=dry_run,
+        )
+        payload: Dict[str, Any] = {"command": "graph mail obsidian", "ok": True, **report.model_dump()}
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail obsidian",
+            "ok": False,
+            "dry_run": dry_run,
+            "status": "obsidian_error",
             "error": str(e)[:200],
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
