@@ -1,0 +1,16 @@
+{
+  "id": 101,
+  "number": "RFI-001",
+  "subject": "SYNTH rfi subject",
+  "status": "open",
+  "assignee_id": 42,
+  "due_date": "2026-06-01",
+  "initiated_at": "2026-05-01T00:00:00Z",
+  "created_at": "2026-05-01T00:00:00Z",
+  "updated_at": "2026-05-02T00:00:00Z",
+  "full_number": "RFI-001",
+  "priority_name": "High",
+  "private": false,
+  "cost_impact": {"status": "yes_known", "value": "500.00"},
+  "schedule_impact": {"status": "yes_known", "value": "3"}
+}

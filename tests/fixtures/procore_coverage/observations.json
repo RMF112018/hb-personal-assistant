@@ -1,0 +1,13 @@
+{
+  "id": 301,
+  "name": "SYNTH observation title",
+  "status": "open",
+  "priority": "High",
+  "type": {"id": 1, "name": "Safety"},
+  "due_date": "2026-06-10",
+  "created_at": "2026-05-01T00:00:00Z",
+  "updated_at": "2026-05-02T00:00:00Z",
+  "description": "SYNTH observation description body that must be hashed only",
+  "assignee": {"id": 5, "login": "synth.assignee@example.test", "name": "SYNTH Assignee"},
+  "created_by": {"id": 6, "login": "synth.creator@example.test", "name": "SYNTH Creator"}
+}

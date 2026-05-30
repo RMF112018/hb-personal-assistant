@@ -1,0 +1,20 @@
+{
+  "id": 20160101,
+  "date": "2016-05-19",
+  "datetime": "2016-05-19T12:00:00Z",
+  "average": 50,
+  "sky": "Clear",
+  "ground": "Dry",
+  "wind": "Calm",
+  "temperature": "Hot",
+  "precipitation": true,
+  "is_weather_delay": 1,
+  "calamity": "Fire",
+  "comments": "SYNTH weather comment body that must be hashed only",
+  "created_by": {"id": 160586, "login": "synth.carl@example.test", "name": "SYNTH Carl"},
+  "vendor": {"id": 161072, "name": "SYNTH Architecture"},
+  "location": {"id": 15504, "name": "SYNTH Building", "node_name": "Closet", "parent_id": 788866},
+  "attachments": [{"id": 42, "name": "f", "filename": "synth.jpg",
+                   "url": "https://storage.procore.com/x?sig=SYNTHSIG"}],
+  "updated_at": "2012-10-24T21:39:40Z"
+}

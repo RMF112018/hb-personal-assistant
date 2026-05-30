@@ -1,0 +1,19 @@
+{
+  "id": 9001,
+  "position": 1,
+  "uom": "EA",
+  "extended_type": "amount",
+  "updated_at": "2026-05-28T10:00:00Z",
+  "amount": "100.00",
+  "unit_cost": "10.00",
+  "quantity": "10",
+  "extended_amount": "100.00",
+  "total_amount": "100.00",
+  "wbs_code": {"id": 3, "flat_code": "01-100", "description": "SYNTH wbs description"},
+  "cost_code_id": 555,
+  "line_item_type_id": 7,
+  "tax_code_id": 2,
+  "commitment_line_item_id": 9001,
+  "prime_line_item_id": 4001,
+  "description": "SYNTH commitment line item free-text body that must be hashed only"
+}

@@ -1468,6 +1468,30 @@ def live_coverage(
     _emit(payload, json_out=json_out)
 
 
+@live_app.command("coverage-matrix")
+def live_coverage_matrix(
+    payloads_dir: Optional[Path] = typer.Option(  # noqa: B008
+        None, "--payloads-dir",
+        help="Optional dir of local <endpoint_id>.json samples (e.g. `procore live inspect` "
+        "output). Read-only; never persisted. Endpoints with a sample get captured/hash-only/"
+        "omitted field NAMES; the rest are contract-only.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Endpoint coverage matrix by family (Phase 06B Prompt 05) — normalizer name/version,
+    projected entities/edges/signals, and (where a sample is supplied) captured / hash-only /
+    intentionally-omitted field names. Names/types/counts only; no raw values. No network, no DB."""
+    from hb_assistant.procore.coverage import build_coverage_matrix
+
+    if payloads_dir is not None and not payloads_dir.is_dir():
+        _emit({"command": "hb-assistant procore live coverage-matrix", "ok": False,
+               "phase": _QUERY_PHASE, "state": "fail_closed_unsupported",
+               "reason_codes": ["payloads_dir_not_found"]}, json_out=json_out, exit_code=3)
+        return
+    matrix = build_coverage_matrix(payloads_dir=payloads_dir, now_utc=_query_now().isoformat())
+    _emit({**matrix, "guardrails": _GUARDRAILS}, json_out=json_out)
+
+
 live_records_app = typer.Typer(help="Procore live SQLite record read-only commands.")
 live_app.add_typer(live_records_app, name="records")
 

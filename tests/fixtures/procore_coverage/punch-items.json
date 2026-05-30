@@ -1,0 +1,24 @@
+{
+  "id": 1001,
+  "name": "SYNTH punch title",
+  "status": "Open",
+  "priority": "High",
+  "due_date": "2026-06-30",
+  "created_at": "2026-05-28T10:00:00Z",
+  "updated_at": "2026-05-28T10:00:00Z",
+  "cost_impact": "yes_known",
+  "cost_impact_amount": "250.0",
+  "schedule_impact_days": 2,
+  "location": {"id": 50, "name": "SYNTH Floor 3"},
+  "trade": {"id": 7, "name": "SYNTH Electrical"},
+  "description": "SYNTH punch description body that must be hashed only",
+  "schedule_risk_reason": "SYNTH schedule risk reasoning that must be hashed only",
+  "ball_in_court": [{"id": 1, "name": "SYNTH Person Name"}],
+  "created_by": {"id": 2, "login": "synth.creator@example.test", "name": "SYNTH Creator"},
+  "assignees": [{"id": 3, "login": "synth.assignee@example.test", "name": "SYNTH Assignee"}],
+  "assignments": [
+    {"id": 99, "status": "unresolved", "comment": "SYNTH assignment comment",
+     "login_information": {"id": 3, "login": "synth.assignee@example.test"}}
+  ],
+  "custom_fields": {"custom_field_1": {"data_type": "string", "value": "SYNTH custom value"}}
+}

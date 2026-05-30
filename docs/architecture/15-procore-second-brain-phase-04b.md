@@ -10,6 +10,19 @@ action signals, text intelligence), read-only query commands, and a deterministi
 Obsidian register. Everything stays redacted — no raw payload bodies, no secrets,
 no signed-URL query strings.
 
+> **Endpoint coverage & payload contracts (Phase 06B Prompt 05).**
+> `procore/coverage.py` reports, per endpoint, what the normalizer does to a payload —
+> **names/types/counts only, never raw values**. `compute_payload_coverage` classifies the
+> canonical output into `captured_scalar_fields`, `hash_only_fields` (the `*_summary`/`*_ref`
+> redacted summaries), `projected_containers` (entities/edges/action_signals/text_intelligence),
+> and `intentionally_omitted_fields` (raw fields not carried into the row — some still feed
+> projections), and surfaces `normalizer_name` + `normalizer_version`
+> (`NORMALIZATION_SCHEMA_VERSION`). `build_coverage_matrix` (CLI `procore live coverage-matrix
+> [--payloads-dir]`) aggregates this **by endpoint family**: every endpoint emits a contract row
+> (normalizer meta + the documented `_FAMILY_PROJECTION` targets + sensitivity + held status), and
+> endpoints with a local sample are enriched with the field-name buckets above. Held endpoints
+> with no normalizer (e.g. `budget-details`) report `registered: false`. The matrix is structurally
+> raw-value-free, so no payload values ever reach SQLite, Obsidian, logs, or evidence.
 ## Schema (V7, additive)
 
 `store/migrator.py` V7 adds 18 tables (idempotent; `apply()` returns 7):

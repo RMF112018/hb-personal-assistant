@@ -1,0 +1,1844 @@
+{
+  "command": "hb-assistant procore live coverage-matrix",
+  "ok": true,
+  "phase": "Phase 06B Prompt 05",
+  "family_count": 17,
+  "endpoint_count": 59,
+  "fixture_sampled_count": 5,
+  "families": {
+    "billing": {
+      "endpoint_count": 1,
+      "endpoints": [
+        {
+          "endpoint_id": "billing-periods",
+          "family": "billing",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_billing_period",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_billing_periods"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        }
+      ]
+    },
+    "budget": {
+      "endpoint_count": 7,
+      "endpoints": [
+        {
+          "endpoint_id": "budget-change-history",
+          "family": "budget",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_budget_change_history",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_budget_views",
+              "procore_financial_budget_rows",
+              "procore_financial_budget_changes",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "budget-change-line-items",
+          "family": "budget",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": false,
+          "promotion_status": "held",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_budget_change_line_item",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_budget_views",
+              "procore_financial_budget_rows",
+              "procore_financial_budget_changes",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "budget-detail-columns",
+          "family": "budget",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_budget_detail_column",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_budget_views",
+              "procore_financial_budget_rows",
+              "procore_financial_budget_changes",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "budget-detail-rows",
+          "family": "budget",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_budget_detail_row",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_budget_views",
+              "procore_financial_budget_rows",
+              "procore_financial_budget_changes",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "budget-details",
+          "family": "budget",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": false,
+          "promotion_status": "held",
+          "normalizer": {
+            "registered": false,
+            "normalizer_name": null,
+            "normalizer_version": null
+          },
+          "projection": {
+            "entities": [],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_budget_views",
+              "procore_financial_budget_rows",
+              "procore_financial_budget_changes",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "budget-modifications",
+          "family": "budget",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_budget_modification",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_budget_views",
+              "procore_financial_budget_rows",
+              "procore_financial_budget_changes",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "budget-views",
+          "family": "budget",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_budget_view",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_budget_views",
+              "procore_financial_budget_rows",
+              "procore_financial_budget_changes",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        }
+      ]
+    },
+    "change_management": {
+      "endpoint_count": 5,
+      "endpoints": [
+        {
+          "endpoint_id": "change-event-comments",
+          "family": "change_management",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_change_event_comment",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_rfqs",
+              "procore_financial_change_events",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "change-events",
+          "family": "change_management",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_change_event",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_rfqs",
+              "procore_financial_change_events",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "rfq-quotes",
+          "family": "change_management",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_rfq_quote",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_rfqs",
+              "procore_financial_change_events",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "rfq-responses",
+          "family": "change_management",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_rfq_response",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_rfqs",
+              "procore_financial_change_events",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "rfqs",
+          "family": "change_management",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_rfq",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_rfqs",
+              "procore_financial_change_events",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        }
+      ]
+    },
+    "commitments": {
+      "endpoint_count": 6,
+      "endpoints": [
+        {
+          "endpoint_id": "commitment-attachments",
+          "family": "commitments",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_commitment_attachment",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_compliance_documents",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "commitment-change-order-line-items",
+          "family": "commitments",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_commitment_change_order_line_item",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_compliance_documents",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "commitment-change-orders",
+          "family": "commitments",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_commitment_change_order",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_compliance_documents",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "commitment-compliance",
+          "family": "commitments",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_commitment_compliance",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_compliance_documents",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "commitment-contracts",
+          "family": "commitments",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_commitment_contract",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_compliance_documents",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "commitment-line-items",
+          "family": "commitments",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_commitment_line_item",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_compliance_documents",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "fixture",
+          "coverage": {
+            "captured_scalar_fields": [
+              "amount",
+              "commitment_line_item_id",
+              "cost_code_id",
+              "extended_amount",
+              "extended_type",
+              "line_item_type_id",
+              "position",
+              "prime_line_item_id",
+              "quantity",
+              "tax_code_id",
+              "total_amount",
+              "unit_cost",
+              "uom",
+              "updated_at",
+              "wbs_code_id",
+              "wbs_description",
+              "wbs_flat_code"
+            ],
+            "hash_only_fields": [
+              "description_summary"
+            ],
+            "intentionally_omitted_fields": [],
+            "projected_containers": [],
+            "raw_field_count": 17,
+            "canonical_field_count": 18,
+            "entity_count": 0,
+            "edge_count": 0,
+            "action_signal_count": 0,
+            "no_raw_values_persisted": true
+          }
+        }
+      ]
+    },
+    "daily_logs": {
+      "endpoint_count": 11,
+      "endpoints": [
+        {
+          "endpoint_id": "daily-log-accident-review-routed",
+          "family": "daily_logs",
+          "sensitivity": "critical",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_daily_log_accident",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "location",
+              "attachments",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "daily-log-dcrs",
+          "family": "daily_logs",
+          "sensitivity": "medium",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_daily_log_dcr",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "location",
+              "attachments",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "daily-log-delays-review-routed",
+          "family": "daily_logs",
+          "sensitivity": "critical",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_daily_log_delay",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "location",
+              "attachments",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "daily-log-deliveries",
+          "family": "daily_logs",
+          "sensitivity": "medium",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_daily_log_deliveries",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "location",
+              "attachments",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "daily-log-dumpster",
+          "family": "daily_logs",
+          "sensitivity": "low",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_daily_log_dumpster",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "location",
+              "attachments",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "daily-log-inspections",
+          "family": "daily_logs",
+          "sensitivity": "medium",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_daily_log_inspection",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "location",
+              "attachments",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "daily-log-manpower",
+          "family": "daily_logs",
+          "sensitivity": "low",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_daily_log_manpower",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "location",
+              "attachments",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "daily-log-notes",
+          "family": "daily_logs",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_daily_log_notes",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "location",
+              "attachments",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "daily-log-safety-violation-review-routed",
+          "family": "daily_logs",
+          "sensitivity": "critical",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_daily_log_safety_violation",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "location",
+              "attachments",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "daily-log-visitor",
+          "family": "daily_logs",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_daily_log_visitor",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "location",
+              "attachments",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "daily-log-weather",
+          "family": "daily_logs",
+          "sensitivity": "low",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_daily_log_weather",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "location",
+              "attachments",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "fixture",
+          "coverage": {
+            "captured_scalar_fields": [
+              "average",
+              "calamity",
+              "date",
+              "datetime",
+              "ground",
+              "id",
+              "is_weather_delay",
+              "precipitation",
+              "sky",
+              "temperature",
+              "updated_at",
+              "wind"
+            ],
+            "hash_only_fields": [
+              "comments_summary"
+            ],
+            "intentionally_omitted_fields": [
+              "attachments",
+              "created_by",
+              "location",
+              "vendor"
+            ],
+            "projected_containers": [
+              "action_signals",
+              "edges",
+              "entities"
+            ],
+            "raw_field_count": 17,
+            "canonical_field_count": 13,
+            "entity_count": 2,
+            "edge_count": 4,
+            "action_signal_count": 1,
+            "no_raw_values_persisted": true
+          }
+        }
+      ]
+    },
+    "foundation": {
+      "endpoint_count": 1,
+      "endpoints": [
+        {
+          "endpoint_id": "projects",
+          "family": "foundation",
+          "sensitivity": "low",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "_normalize_project",
+            "normalizer_version": null
+          },
+          "projection": {
+            "entities": [],
+            "edges": false,
+            "action_signals": false,
+            "text_intelligence": false,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        }
+      ]
+    },
+    "inspections": {
+      "endpoint_count": 3,
+      "endpoints": [
+        {
+          "endpoint_id": "inspection-items",
+          "family": "inspections",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_inspection_item",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "inspection-sections",
+          "family": "inspections",
+          "sensitivity": "low",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_inspection_section",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "inspections",
+          "family": "inspections",
+          "sensitivity": "high",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_inspection",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        }
+      ]
+    },
+    "meetings": {
+      "endpoint_count": 3,
+      "endpoints": [
+        {
+          "endpoint_id": "meeting-detail",
+          "family": "meetings",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_meeting_detail",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "attachments"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "meeting-topics",
+          "family": "meetings",
+          "sensitivity": "medium",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_meeting_topic",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "attachments"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "meetings",
+          "family": "meetings",
+          "sensitivity": "medium",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_meeting",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "attachments"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        }
+      ]
+    },
+    "observations": {
+      "endpoint_count": 1,
+      "endpoints": [
+        {
+          "endpoint_id": "observations",
+          "family": "observations",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_observation",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "fixture",
+          "coverage": {
+            "captured_scalar_fields": [
+              "created_at",
+              "due_date",
+              "priority",
+              "status",
+              "type",
+              "updated_at"
+            ],
+            "hash_only_fields": [],
+            "intentionally_omitted_fields": [
+              "assignee",
+              "created_by",
+              "description",
+              "id",
+              "name"
+            ],
+            "projected_containers": [],
+            "raw_field_count": 11,
+            "canonical_field_count": 6,
+            "entity_count": 0,
+            "edge_count": 0,
+            "action_signal_count": 0,
+            "no_raw_values_persisted": true
+          }
+        }
+      ]
+    },
+    "owner_billing": {
+      "endpoint_count": 1,
+      "endpoints": [
+        {
+          "endpoint_id": "payment-applications",
+          "family": "owner_billing",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_payment_application",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        }
+      ]
+    },
+    "owner_contracts": {
+      "endpoint_count": 5,
+      "endpoints": [
+        {
+          "endpoint_id": "prime-change-order-line-items",
+          "family": "owner_contracts",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_prime_change_order_line_item",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "prime-change-orders",
+          "family": "owner_contracts",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_prime_change_order",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "prime-contract-attachments",
+          "family": "owner_contracts",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_prime_contract_attachment",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "prime-contract-line-items",
+          "family": "owner_contracts",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_prime_contract_line_item",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "prime-contracts",
+          "family": "owner_contracts",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_prime_contract",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        }
+      ]
+    },
+    "punch_items": {
+      "endpoint_count": 1,
+      "endpoints": [
+        {
+          "endpoint_id": "punch-items",
+          "family": "punch_items",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_punch_item",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "custom_fields",
+              "attachments"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "fixture",
+          "coverage": {
+            "captured_scalar_fields": [
+              "cost_impact",
+              "cost_impact_amount",
+              "created_at",
+              "due_date",
+              "id",
+              "location",
+              "name",
+              "priority",
+              "schedule_impact_days",
+              "status",
+              "trade",
+              "updated_at"
+            ],
+            "hash_only_fields": [
+              "assignees_summary",
+              "assignments_summary",
+              "ball_in_court_summary",
+              "closed_by_summary",
+              "created_by_summary",
+              "custom_fields_summary",
+              "description_summary",
+              "final_approver_summary",
+              "punch_item_manager_summary",
+              "schedule_risk_reason_summary"
+            ],
+            "intentionally_omitted_fields": [],
+            "projected_containers": [],
+            "raw_field_count": 19,
+            "canonical_field_count": 22,
+            "entity_count": 0,
+            "edge_count": 0,
+            "action_signal_count": 0,
+            "no_raw_values_persisted": true
+          }
+        }
+      ]
+    },
+    "purchase_orders": {
+      "endpoint_count": 3,
+      "endpoints": [
+        {
+          "endpoint_id": "purchase-order-contracts",
+          "family": "purchase_orders",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_purchase_order_contract",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "purchase-order-detail-line-items",
+          "family": "purchase_orders",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": false,
+          "promotion_status": "held",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_purchase_order_detail_line_item",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "purchase-order-line-items",
+          "family": "purchase_orders",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_purchase_order_line_item",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_contracts",
+              "procore_financial_line_items",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        }
+      ]
+    },
+    "rfis": {
+      "endpoint_count": 2,
+      "endpoints": [
+        {
+          "endpoint_id": "rfi-responses",
+          "family": "rfis",
+          "sensitivity": "medium",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_rfi_reply",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "rfis",
+          "family": "rfis",
+          "sensitivity": "medium",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_rfi",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "fixture",
+          "coverage": {
+            "captured_scalar_fields": [
+              "assignee_id",
+              "cost_impact_status",
+              "cost_impact_value",
+              "created_at",
+              "due_date",
+              "full_number",
+              "initiated_at",
+              "number",
+              "private",
+              "schedule_impact_status",
+              "schedule_impact_value",
+              "status",
+              "subject",
+              "updated_at"
+            ],
+            "hash_only_fields": [],
+            "intentionally_omitted_fields": [
+              "priority_name"
+            ],
+            "projected_containers": [],
+            "raw_field_count": 14,
+            "canonical_field_count": 14,
+            "entity_count": 0,
+            "edge_count": 0,
+            "action_signal_count": 0,
+            "no_raw_values_persisted": true
+          }
+        }
+      ]
+    },
+    "schedules": {
+      "endpoint_count": 2,
+      "endpoints": [
+        {
+          "endpoint_id": "activities",
+          "family": "schedules",
+          "sensitivity": "medium",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_activity",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "schedules",
+          "family": "schedules",
+          "sensitivity": "medium",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_schedule",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        }
+      ]
+    },
+    "subcontractor_invoices": {
+      "endpoint_count": 4,
+      "endpoints": [
+        {
+          "endpoint_id": "subcontractor-invoice-change-order-items",
+          "family": "subcontractor_invoices",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_subcontractor_invoice_change_order_item",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_subcontractor_invoices",
+              "procore_financial_invoice_items",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "subcontractor-invoice-contract-detail-items",
+          "family": "subcontractor_invoices",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_subcontractor_invoice_contract_detail_item",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_subcontractor_invoices",
+              "procore_financial_invoice_items",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "subcontractor-invoice-contract-items",
+          "family": "subcontractor_invoices",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_subcontractor_invoice_contract_item",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_subcontractor_invoices",
+              "procore_financial_invoice_items",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "subcontractor-invoices",
+          "family": "subcontractor_invoices",
+          "sensitivity": "high",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_subcontractor_invoice",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "company"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": false,
+            "financial_tables": [
+              "procore_financial_subcontractor_invoices",
+              "procore_financial_invoice_items",
+              "procore_financial_amount_facts"
+            ]
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        }
+      ]
+    },
+    "submittals": {
+      "endpoint_count": 3,
+      "endpoints": [
+        {
+          "endpoint_id": "submittal-packages",
+          "family": "submittals",
+          "sensitivity": "medium",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "_normalize_submittal_package_top_level",
+            "normalizer_version": null
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "submittal-responses",
+          "family": "submittals",
+          "sensitivity": "medium",
+          "review_required_default": true,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_submittal_response",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        },
+        {
+          "endpoint_id": "submittals",
+          "family": "submittals",
+          "sensitivity": "medium",
+          "review_required_default": false,
+          "live_verified": true,
+          "promotion_status": "promoted",
+          "normalizer": {
+            "registered": true,
+            "normalizer_name": "normalize_submittal",
+            "normalizer_version": 1
+          },
+          "projection": {
+            "entities": [
+              "people",
+              "company",
+              "custom_fields"
+            ],
+            "edges": true,
+            "action_signals": true,
+            "text_intelligence": true,
+            "financial_tables": []
+          },
+          "payload_source": "none",
+          "coverage": "contract_only"
+        }
+      ]
+    }
+  },
+  "no_raw_values_persisted": true,
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true,
+    "live_calls_disabled": true,
+    "correspondence_excluded": true,
+    "schedule_tasks_deferred": true
+  }
+}
