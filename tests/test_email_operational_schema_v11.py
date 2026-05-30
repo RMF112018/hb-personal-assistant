@@ -69,7 +69,7 @@ def _names(db: Path, kind: str) -> set[str]:
 
 def test_v11_applies_and_creates_tables_and_indexes() -> None:
     db = _temp_db()
-    assert _migrate(db) == 16
+    assert _migrate(db) == 17
     tables = _names(db, "table")
     assert not (_V11_TABLES - tables), f"V11 tables missing: {sorted(_V11_TABLES - tables)}"
     indexes = _names(db, "index")
@@ -89,8 +89,8 @@ def test_v11_preserves_v1_v10_and_deferred_state_table() -> None:
 
 def test_v11_is_idempotent() -> None:
     db = _temp_db()
-    assert _migrate(db) == 16
-    assert _migrate(db) == 16
+    assert _migrate(db) == 17
+    assert _migrate(db) == 17
     conn = sqlite3.connect(str(db))
     try:
         count = conn.execute(

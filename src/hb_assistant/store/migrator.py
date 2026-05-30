@@ -1876,6 +1876,25 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v17 Phase 06A Prompt 09 per-file project matching. Additive ADD COLUMN only:
+    # extends construction_drive_items with the project-match result fields so
+    # deterministic/heuristic matches (confidence/status/reason) and review routing
+    # are durable per file. No content; no writeback. V1-V16 untouched.
+    V17_STATEMENTS: list[str] = [
+        "ALTER TABLE construction_drive_items ADD COLUMN project_key TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN match_confidence TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN match_status TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN review_required INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE construction_drive_items ADD COLUMN review_reason TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN match_signals_json TEXT",
+        "CREATE INDEX IF NOT EXISTS ix_construction_drive_items_project_key "
+        "ON construction_drive_items(project_key)",
+        "CREATE INDEX IF NOT EXISTS ix_construction_drive_items_match_status "
+        "ON construction_drive_items(match_status)",
+        "CREATE INDEX IF NOT EXISTS ix_construction_drive_items_review_required "
+        "ON construction_drive_items(review_required)",
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -2071,6 +2090,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (16, 'v16_construction_graph_link_resolution', ?)",
+                    (now,),
+                )
+
+            # v17 Phase 06A Prompt 09 per-file project-match columns on
+            # construction_drive_items (additive ADD COLUMN only; gated like v15/v17
+            # because ALTER TABLE ADD COLUMN is not idempotent). V1-V16 untouched.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 17")
+            if cur.fetchone() is None:
+                for stmt in self.V17_STATEMENTS:
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (17, 'v17_construction_drive_items_project_matching', ?)",
                     (now,),
                 )
 

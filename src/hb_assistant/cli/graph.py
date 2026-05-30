@@ -39,6 +39,7 @@ from hb_assistant.construction.email.email_classifier import DEFAULT_MODEL_NAME
 from hb_assistant.construction.graph.baseline_crawler import BaselineCrawler
 from hb_assistant.construction.graph.delta_sync import DeltaSync
 from hb_assistant.construction.graph.drive_item_indexer import DriveItemIndexer
+from hb_assistant.construction.graph.file_project_matcher import FileProjectMatcher
 from hb_assistant.construction.graph.link_resolver import LinkResolver
 from hb_assistant.construction.graph.resolver import GRAPH_SCOPES as _FILES_GRAPH_SCOPES
 from hb_assistant.construction.graph.site_drive_discovery import SiteDriveDiscovery
@@ -864,6 +865,45 @@ def files_delta_cmd(
         "ok": report.status in {"ok", "partial", "requires_rebaseline"},
         "result": report.model_dump(),
         "guardrails": guardrails,
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_app.command("project-match")
+def files_project_match_cmd(
+    project: Optional[str] = typer.Option(None, "--project", help="Target project key to report."),
+    source: Optional[str] = typer.Option(None, "--source", help="Limit to one source key."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply writes match fields to SQLite."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Match indexed files to projects (deterministic + heuristic) with confidence/
+    status/reason, routing low-confidence and unmatched files to review. Operates on
+    already-indexed SQLite rows + the source registry — no Graph calls. Dry-run default."""
+    try:
+        load_source_registry()  # surface registry/schema errors early
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files project-match", e, json_out)
+        return
+
+    store = ConstructionStore()
+    report = FileProjectMatcher(store).match(
+        target_project=project, source_id=source, dry_run=dry_run
+    )
+    payload = {
+        "command": "graph files project-match",
+        "mode": report.mode,
+        "ok": True,
+        "result": report.model_dump(),
+        "guardrails": {
+            "external_systems": "read_only",
+            "writeback": "none",
+            "graph_calls": "none",
+            "review_routing": "review_required_flag",
+            "permission_tightening": "deferred",
+        },
     }
     typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
     raise typer.Exit(0)

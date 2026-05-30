@@ -1019,6 +1019,82 @@ class ConstructionStore:
             out.append(record)
         return out
 
+    # --- per-file project matching (V17) ------------------------------------
+
+    def update_drive_item_project_match(
+        self,
+        *,
+        source_id: str,
+        drive_item_id: str,
+        project_key: Optional[str] = None,
+        project_number_detected: Optional[str] = None,
+        match_confidence: Optional[str] = None,
+        match_status: Optional[str] = None,
+        review_required: bool = False,
+        review_reason: Optional[str] = None,
+        match_signals_json: Optional[str] = None,
+    ) -> None:
+        """Update the V17 project-match fields of an existing drive_item row."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                UPDATE construction_drive_items
+                   SET project_key = ?,
+                       project_number_detected = ?,
+                       match_confidence = ?,
+                       match_status = ?,
+                       review_required = ?,
+                       review_reason = ?,
+                       match_signals_json = ?,
+                       updated_utc = ?
+                 WHERE source_id = ? AND drive_item_id = ?
+                """,
+                (
+                    project_key, project_number_detected, match_confidence,
+                    match_status, 1 if review_required else 0, review_reason,
+                    match_signals_json, _utc_now(), source_id, drive_item_id,
+                ),
+            )
+
+    def list_drive_item_project_matches(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        source_id: Optional[str] = None,
+        review_required: Optional[bool] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """Report-only view of the V17 project-match fields per drive item."""
+        conn = get_connection(self._db_path)
+        sql = (
+            "SELECT source_id, drive_item_id, name, path, project_key, "
+            "project_number_detected, match_confidence, match_status, "
+            "review_required, review_reason, match_signals_json "
+            "FROM construction_drive_items WHERE 1=1"
+        )
+        params: list[Any] = []
+        if project_key is not None:
+            sql += " AND project_key = ?"
+            params.append(project_key)
+        if source_id is not None:
+            sql += " AND source_id = ?"
+            params.append(source_id)
+        if review_required is not None:
+            sql += " AND review_required = ?"
+            params.append(1 if review_required else 0)
+        sql += " ORDER BY drive_item_id LIMIT ?"
+        params.append(int(limit))
+        keys = (
+            "source_id", "drive_item_id", "name", "path", "project_key",
+            "project_number_detected", "match_confidence", "match_status",
+            "review_required", "review_reason", "match_signals_json",
+        )
+        rows = [dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()]
+        for r in rows:
+            r["review_required"] = bool(r["review_required"])
+        return rows
+
     # --- canonical project identity (V5) ------------------------------------
 
     def upsert_project_identity(

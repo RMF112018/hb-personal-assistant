@@ -158,6 +158,24 @@ token-bearing URL. A stale token / `410 Gone` → `requires_rebaseline` (token c
 (status=`partial`). No new migration (sync-state table is V5). Dry-run default; `auth_required`
 degradation. Evidence: `09-delta-sync-readiness-proof.md`, `21-delta-token-redaction-proof.md`.
 
+### Project-aware file matching (Phase 06A) — `graph files project-match` + schema V17
+`construction/graph/file_project_matcher.py` (`FileProjectMatcher`) assigns each indexed
+`construction_drive_items` file to a project with qualitative confidence (high|medium|low|none),
+status (matched|low_confidence|unmatched), and reason codes — **pure SQLite + source registry, no
+Graph calls / no token**. Signals: source-registry project binding (deterministic, high), exact HB
+project number `NN-NNN-NN` in path/name (high; reuses `email/project_matcher.HB_PROJECT_NUMBER_RE`),
+normalized project name in path/name (medium), literal Procore project id (medium). **False-positive
+prevention:** exact number equality only; ambiguous multi-project signals → `low_confidence` (never
+auto-picked); no signal → `unmatched` (never forced to the queried `--project`); a file carrying a
+*different* project's number matches *that* project, not the target. Low-confidence + unmatched route
+to review via the canonical `review_required`/`review_reason` drive-item fields (the
+`construction_review_queue` sensitive routing is Prompt 12). Schema **V17** (additive ALTER ADD COLUMN,
+version-gated; max 16 → 17) adds `project_key`, `match_confidence`, `match_status`, `review_required`,
+`review_reason`, `match_signals_json` (+ indexes); `update_drive_item_project_match` /
+`list_drive_item_project_matches` written without touching `list_drive_items`/`V5DriveItem`. The CLI
+is dry-run default (`--apply` writes the match fields), offline (no `auth_required` path). Evidence:
+`10-project-file-match-results.json`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and

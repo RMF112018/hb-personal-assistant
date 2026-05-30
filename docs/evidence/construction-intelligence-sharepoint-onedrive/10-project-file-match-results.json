@@ -1,0 +1,96 @@
+{
+  "command": "graph files project-match",
+  "mode": "dry_run",
+  "note": "Deterministic seeded proof (offline; no Graph). Synthetic indexed items demonstrate each signal + false-positive prevention. Project numbers/names are from the live source registry.",
+  "summary": {
+    "total_evaluated": 5,
+    "matched_high": 3,
+    "matched_medium": 0,
+    "low_confidence": 1,
+    "unmatched": 1,
+    "review_routed": 2
+  },
+  "items": [
+    {
+      "source_id": "sp_2023projects_23_435_01_tropical_sl",
+      "drive_item_id": "src_bound",
+      "name": "RFI Log.xlsx",
+      "project_key": "tropical",
+      "project_number_detected": "23-435-01",
+      "match_confidence": "high",
+      "match_status": "matched",
+      "review_required": false,
+      "review_reason": null,
+      "reason_codes": [
+        "source_registry_project_key"
+      ]
+    },
+    {
+      "source_id": "od_business_bobby_hedrickbrothers",
+      "drive_item_id": "ambiguous",
+      "name": "mix.pdf",
+      "project_key": null,
+      "project_number_detected": null,
+      "match_confidence": "low",
+      "match_status": "low_confidence",
+      "review_required": true,
+      "review_reason": "low_confidence_project_match",
+      "reason_codes": [
+        "ambiguous_multiple_project_numbers"
+      ]
+    },
+    {
+      "source_id": "od_business_bobby_hedrickbrothers",
+      "drive_item_id": "cross_proj",
+      "name": "doc.pdf",
+      "project_key": "the-wellington",
+      "project_number_detected": "25-244-01",
+      "match_confidence": "high",
+      "match_status": "matched",
+      "review_required": false,
+      "review_reason": null,
+      "reason_codes": [
+        "path_project_number"
+      ]
+    },
+    {
+      "source_id": "od_business_bobby_hedrickbrothers",
+      "drive_item_id": "no_signal",
+      "name": "misc.pdf",
+      "project_key": null,
+      "project_number_detected": null,
+      "match_confidence": "none",
+      "match_status": "unmatched",
+      "review_required": true,
+      "review_reason": "unmatched_no_project",
+      "reason_codes": []
+    },
+    {
+      "source_id": "od_business_bobby_hedrickbrothers",
+      "drive_item_id": "path_num",
+      "name": "log.xlsx",
+      "project_key": "tropical",
+      "project_number_detected": "23-435-01",
+      "match_confidence": "high",
+      "match_status": "matched",
+      "review_required": false,
+      "review_reason": null,
+      "reason_codes": [
+        "path_project_number"
+      ]
+    }
+  ],
+  "false_positive_prevention": {
+    "exact_number_equality_only": true,
+    "cross_project_number_matches_its_own_project_not_the_query": "cross_proj -> the-wellington",
+    "ambiguous_multiple_numbers": "ambiguous -> low_confidence (no auto-pick)",
+    "no_signal": "no_signal -> unmatched (never forced to a target)"
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "graph_calls": "none",
+    "review_routing": "review_required_flag",
+    "permission_tightening": "deferred"
+  }
+}
