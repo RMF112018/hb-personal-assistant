@@ -300,13 +300,20 @@ Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the fil
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and
 `AppConfig.security.microsoft_365_writeback_enabled == False`.
 
-## Forthcoming (later prompts)
-Canonical source-registry projection (P03); SharePoint site/drive + OneDrive discovery (P04–05);
-rich driveItem indexing (P06); baseline crawl + delta hardening (P07–08); project-aware matching
-(P09); ingestion eligibility + controlled bounded extraction + sensitive review routing (P10–12);
-source manifests / project file registers (P13); source-linked retrieval (P14); operational CLI +
-runbooks (P15); end-to-end pilot + no-writeback proof (P16); final closeout (P17). The guard wiring
-into the live files read client is part of P04.
+## Phase closeout (Prompt 17) — Closed (Prompts 00–17)
+All Phase 06A prompts are complete: canonical source-registry projection (P03); SharePoint site/drive
++ OneDrive discovery (P04–05); rich driveItem indexing (P06); baseline crawl + delta hardening
+(P07–08); project-aware matching (P09); ingestion eligibility + controlled bounded extraction +
+sensitive review routing (P10–12); source manifests / project file registers (P13); source-linked
+retrieval (P14); operational CLI + runbooks (P15); end-to-end pilot + no-writeback/no-secret proof
+(P16); final validation closeout (P17). The full validation matrix
+(`resources/json/phase_06a_files_validation_matrix.json`) was run end-to-end: pytest 1698 passed /
+2 skipped with **12 pre-existing email-track failures** (`upsert_email_model_classification` on
+`ConstructionStore`) that are out of scope for this files track and **0 Phase 06A files failures**;
+ruff clean; `mypy src` clean (142 files); compileall ok; `construction-agent validate` 4/4
+(schema **V19**, final); `no-writeback-proof` 19 mutation attempts blocked / 0 mutating calls across
+39 files. Broad `Files.ReadWrite.All` permission tightening stays **deferred** (documented risk). No
+new schema (stays V19). Evidence: `17-final-validation-closeout.md`.
 
 ## Guardrails (non-negotiable, enforced in code/tests)
 No M365 writeback; behaviorally read-only at four layers; dry-run default for any SQLite/cache/Obsidian
