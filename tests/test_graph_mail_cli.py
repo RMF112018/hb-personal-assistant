@@ -74,3 +74,12 @@ def test_graph_mail_index_parses(tmp_path: Path) -> None:
     assert payload["command"] == "graph mail index"
     assert "access_token" not in res.output
     assert "Bearer " not in res.output
+
+
+def test_graph_mail_discover_dry_run_parses(tmp_path: Path) -> None:
+    res = _invoke(tmp_path, "graph", "mail", "discover", "--project", "tropical", "--lookback-days", "30", "--dry-run", "--json")
+    assert res.exit_code in (0, 1)
+    payload = json.loads(res.output)
+    assert payload["command"] == "graph mail discover"
+    assert "access_token" not in res.output
+    assert "Bearer " not in res.output

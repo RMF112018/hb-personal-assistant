@@ -1,0 +1,145 @@
+{
+  "project_key": "tropical",
+  "project_number": "23-435-01",
+  "matcher": "ProjectMatcher (deterministic, in-memory)",
+  "confidence_bands": {
+    "hb_project_number_in_subject": 1.0,
+    "hb_project_number_in_body_preview": 0.95,
+    "sharepoint_or_onedrive_project_link": 0.9,
+    "procore_notification_identifier": 0.85,
+    "project_name_in_subject": 0.8,
+    "project_name_in_body_preview": 0.7,
+    "known_participant_domain_contact": 0.6,
+    "thread_continuation": 0.75
+  },
+  "total_cases": 8,
+  "passed": 8,
+  "all_passed": true,
+  "cases": [
+    {
+      "case": "number_in_subject",
+      "input_subject_present": true,
+      "expected": {
+        "signal": "hb_project_number_in_subject",
+        "confidence": 1.0,
+        "review_required": false
+      },
+      "actual_signals": [
+        {
+          "signal": "hb_project_number_in_subject",
+          "confidence": 1.0,
+          "review_required": false
+        }
+      ],
+      "passed": true
+    },
+    {
+      "case": "number_in_preview",
+      "input_subject_present": true,
+      "expected": {
+        "signal": "hb_project_number_in_body_preview",
+        "confidence": 0.95,
+        "review_required": true
+      },
+      "actual_signals": [
+        {
+          "signal": "hb_project_number_in_body_preview",
+          "confidence": 0.95,
+          "review_required": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "case": "name_in_subject",
+      "input_subject_present": true,
+      "expected": {
+        "signal": "project_name_in_subject",
+        "confidence": 0.8,
+        "review_required": false
+      },
+      "actual_signals": [
+        {
+          "signal": "project_name_in_subject",
+          "confidence": 0.8,
+          "review_required": false
+        }
+      ],
+      "passed": true
+    },
+    {
+      "case": "name_in_preview",
+      "input_subject_present": true,
+      "expected": {
+        "signal": "project_name_in_body_preview",
+        "confidence": 0.7,
+        "review_required": true
+      },
+      "actual_signals": [
+        {
+          "signal": "project_name_in_body_preview",
+          "confidence": 0.7,
+          "review_required": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "case": "procore_notification",
+      "input_subject_present": true,
+      "expected": {
+        "signal": "procore_notification_identifier",
+        "confidence": 0.85,
+        "review_required": false
+      },
+      "actual_signals": [
+        {
+          "signal": "procore_notification_identifier",
+          "confidence": 0.85,
+          "review_required": false
+        },
+        {
+          "signal": "project_name_in_subject",
+          "confidence": 0.8,
+          "review_required": false
+        }
+      ],
+      "passed": true
+    },
+    {
+      "case": "known_domain",
+      "input_subject_present": true,
+      "expected": {
+        "signal": "known_participant_domain_contact",
+        "confidence": 0.6,
+        "review_required": true
+      },
+      "actual_signals": [
+        {
+          "signal": "known_participant_domain_contact",
+          "confidence": 0.6,
+          "review_required": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "case": "no_match",
+      "input_subject_present": true,
+      "expected": {
+        "signal": null
+      },
+      "actual_signals": [],
+      "passed": true
+    },
+    {
+      "case": "other_project_number",
+      "input_subject_present": true,
+      "expected": {
+        "signal": null
+      },
+      "actual_signals": [],
+      "passed": true
+    }
+  ]
+}

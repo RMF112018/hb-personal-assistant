@@ -1,0 +1,72 @@
+{
+  "command": "graph mail discover",
+  "ok": true,
+  "op_id": "07df6a06-0318-491e-bcd3-db84c967f7de",
+  "requested_project": "tropical",
+  "pilot_projects": [
+    "tropical"
+  ],
+  "lookback_days": 30,
+  "received_after": "2026-04-30T07:33:01+00:00",
+  "dry_run": true,
+  "persisted": false,
+  "folders": [
+    {
+      "source_id": "outlook:69d7743a7435d27c:archive",
+      "folder_role": "archive",
+      "messages_seen": 2
+    },
+    {
+      "source_id": "outlook:69d7743a7435d27c:inbox",
+      "folder_role": "inbox",
+      "messages_seen": 100
+    },
+    {
+      "source_id": "outlook:69d7743a7435d27c:sent-items",
+      "folder_role": "sent",
+      "messages_seen": 100
+    }
+  ],
+  "messages_scanned": 202,
+  "matched_messages": 40,
+  "projects": [
+    {
+      "project_key": "tropical",
+      "project_number": "23-435-01",
+      "matched_messages": 40,
+      "review_required": 7,
+      "by_signal": {
+        "project_name_in_subject": 30,
+        "procore_notification_identifier": 6,
+        "project_name_in_body_preview": 7,
+        "hb_project_number_in_subject": 2,
+        "thread_continuation": 3
+      },
+      "best_confidence": 1.0
+    }
+  ],
+  "signal_counts": {
+    "project_name_in_subject": 30,
+    "procore_notification_identifier": 6,
+    "project_name_in_body_preview": 7,
+    "hb_project_number_in_subject": 2,
+    "thread_continuation": 3
+  },
+  "query_strategy": {
+    "folders": [
+      "outlook:69d7743a7435d27c:archive",
+      "outlook:69d7743a7435d27c:inbox",
+      "outlook:69d7743a7435d27c:sent-items"
+    ],
+    "lookback_days": 30,
+    "received_after": "2026-04-30T07:33:01+00:00",
+    "max_messages_per_folder": 100,
+    "filter": "receivedDateTime ge 2026-04-30T07:33:01+00:00"
+  },
+  "guardrails": {
+    "mailbox_read_only": true,
+    "full_body_persisted": false,
+    "attachment_content_retrieved": false,
+    "subject_matched_in_memory_only": true
+  }
+}

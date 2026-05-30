@@ -1,6 +1,6 @@
 # 17 — Operational Email Intelligence (Phase 06)
 
-Status: **in progress** · Phase 06 Prompts 00–06 landed · Migration **V11** (Prompt 03) · read-only mail client + endpoint guard (Prompt 04) · folder discovery + sync state (Prompt 05) · message metadata indexing (Prompt 06)
+Status: **in progress** · Phase 06 Prompts 00–07 landed · Migration **V11** (Prompt 03) · read-only mail client + endpoint guard (Prompt 04) · folder discovery + sync state (Prompt 05) · message metadata indexing (Prompt 06) · project-aware discovery (Prompt 07)
 
 Phase 06 turns the Phase 02 *deferred* email intelligence into operational, **read-only**,
 project-aware email workflows over the existing GET-only Graph stack. It is local-first: SQLite is
@@ -129,6 +129,29 @@ relate, and summarize).
 - **Contract fix** — removed `sensitivity` from the Prompt 01 `message_metadata_select` (not a valid
   Graph v1.0 `message` property; HTTP 400 on live select).
 - **Evidence** — `06-message-metadata-index.md` (live counts + idempotency proof).
+
+## Prompt 07 — project-aware discovery
+
+Matches the bounded message window to pilot projects, read-only, with subject matched in-memory.
+
+- **Matcher** — `construction/email/project_matcher.py`: pure `ProjectMatcher` scoring a message's
+  in-memory metadata against a `ProjectDescriptor` via weighted signals (`PROJECT_MATCH_SIGNALS`): HB
+  number in subject (1.00) / preview (0.95), SharePoint-OneDrive link (0.90), Procore notification
+  (0.85), name in subject (0.80) / preview (0.70), known domain (0.60, inert until configured), thread
+  continuation (0.75). Descriptors are built from the **seed registries** (`load_procore_projects` pilot
+  set + `load_source_registry` HB number/normalized name) — the DB `construction_project_identity` is
+  unseeded.
+- **Discovery** — `construction/email/project_discovery.py` (`ProjectEmailDiscovery`): reads the bounded
+  window live, matches each message × descriptor, runs a thread-continuation pass, and produces a
+  metadata-only `DiscoveryReport` (counts + signal histograms). `--no-dry-run` persists
+  `email_project_matches` (one row per signal) + the message verdict (`project_number_detected`,
+  `project_match_confidence`, `review_required`); the message is upserted first so the FK holds.
+- **CLI** — `graph mail discover --project … --lookback-days … [--dry-run/--no-dry-run] --json` (default
+  dry-run). Subject/bodyPreview matched in-memory, never persisted raw.
+- **Shared normalization** — `normalize_message` / `compute_thread_key` promoted from the indexer for
+  reuse by the discovery persist path.
+- **Evidence** — `07-project-aware-discovery.md` + `email-discovery-dry-run.json` (live: 202 scanned, 40
+  matched to tropical) + `email-project-match-test-results.json` (8/8 matcher fixtures pass).
 
 ### Five-layer read-only lock (defense in depth)
 

@@ -18,7 +18,11 @@ import typer
 from hb_assistant.auth.providers import DelegatedAuthProvider
 from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
-from hb_assistant.construction.email import EmailFolderDiscovery, EmailMessageIndexer
+from hb_assistant.construction.email import (
+    EmailFolderDiscovery,
+    EmailMessageIndexer,
+    ProjectEmailDiscovery,
+)
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
 from hb_assistant.graph.mail_endpoint_guard import (
@@ -280,6 +284,66 @@ def index_cmd(
             "ok": False,
             "dry_run": dry_run,
             "status": "index_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+    finally:
+        if client is not None:
+            client.close()
+
+
+@mail_app.command("discover")
+def discover_cmd(
+    project: Optional[str] = typer.Option(None, "--project", help="Pilot project key (omit to match all pilot projects)"),
+    lookback_days: int = typer.Option(30, "--lookback-days", help="Bounded lookback window in days (1-366)"),
+    max_messages: int = typer.Option(200, "--max-messages", help="Max messages scanned per folder (bounded)"),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--no-dry-run", help="Preview matches without persisting (default); --no-dry-run writes matches"
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Project-aware discovery: match the bounded message window to pilot projects, read-only.
+
+    Subject/bodyPreview are matched in-memory (never persisted raw). --dry-run previews;
+    --no-dry-run persists email_project_matches + the message project verdict.
+    """
+    client: Optional[GraphHttpClient] = None
+    try:
+        cfg = load_config()
+        pp = PathPolicy(cfg)
+        provider = DelegatedAuthProvider(
+            cfg.identity.tenant_id,
+            cfg.identity.client_id,
+            list(cfg.identity.delegated_scopes),
+            path_policy=pp,
+        )
+        contract = load_mail_endpoint_contract()
+
+        def token_getter(scopes: Optional[List[str]] = None) -> Dict[str, Any]:
+            return provider.get_token(scopes or ["Mail.Read"])
+
+        client = GraphHttpClient(token_getter)
+        reader = ReadOnlyMailClient(client, contract=contract)
+        discovery = ProjectEmailDiscovery(reader, ConstructionStore())
+        report = discovery.discover(
+            project_key=project,
+            lookback_days=lookback_days,
+            dry_run=dry_run,
+            max_messages_per_folder=max_messages,
+        )
+
+        payload: Dict[str, Any] = {"command": "graph mail discover", "ok": True, **report.model_dump()}
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail discover",
+            "ok": False,
+            "dry_run": dry_run,
+            "status": "discover_error",
             "error": str(e)[:200],
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))

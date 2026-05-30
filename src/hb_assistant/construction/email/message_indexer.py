@@ -60,6 +60,101 @@ def _domain(addr: Optional[str]) -> Optional[str]:
     return addr.split("@", 1)[1].lower()
 
 
+def compute_thread_key(
+    conversation_id: Optional[str],
+    internet_message_id: Optional[str],
+    subject: Optional[str],
+    domains: set[str],
+) -> str:
+    """Deterministic thread key: conversation_id, else a hash of the
+    internet message id, else the normalized subject + participant domains."""
+    if conversation_id:
+        return conversation_id
+    if internet_message_id:
+        return hash_value(internet_message_id) or internet_message_id
+    normalized_subject = (subject or "").strip().lower()
+    basis = normalized_subject + "|" + ",".join(sorted(d for d in domains if d))
+    return hash_value(basis) or basis
+
+
+def _recipient_row(
+    message_id: Optional[str], role: str, addr: str, owner_hash: Optional[str]
+) -> dict[str, Any]:
+    addr_hash = hash_value(addr)
+    return {
+        "message_id": message_id,
+        "recipient_role": role,
+        "address_hash": addr_hash,
+        "domain": _domain(addr),
+        "is_bobby": bool(owner_hash and addr_hash == owner_hash),
+    }
+
+
+def normalize_message(
+    msg: dict[str, Any],
+    owner_hash: Optional[str],
+    source_id: str,
+    folder_id: str,
+    role: str,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Normalize a raw Graph message into redacted `upsert_email_message` kwargs +
+    recipient rows. Shared by the indexer and the project-discovery persist path."""
+    message_id = msg.get("id")
+    subject = msg.get("subject")
+    conversation_id = msg.get("conversationId")
+    internet_message_id = msg.get("internetMessageId")
+    body_preview = msg.get("bodyPreview")
+
+    sender_addr = _address(msg.get("from") or msg.get("sender") or {})
+    to_list = msg.get("toRecipients") or []
+    cc_list = msg.get("ccRecipients") or []
+    bcc_list = msg.get("bccRecipients") or []
+
+    recipients: list[dict[str, Any]] = []
+    domains: set[str] = set()
+    if sender_addr:
+        domains.add(_domain(sender_addr) or "")
+        recipients.append(_recipient_row(message_id, "from", sender_addr, owner_hash))
+    for arr, role_name in _RECIPIENT_FIELDS:
+        for entry in msg.get(arr) or []:
+            addr = _address(entry)
+            if not addr:
+                continue
+            domains.add(_domain(addr) or "")
+            recipients.append(_recipient_row(message_id, role_name, addr, owner_hash))
+
+    thread_key = compute_thread_key(conversation_id, internet_message_id, subject, domains)
+
+    fields = {
+        "message_id": message_id,
+        "thread_key": thread_key,
+        "source_id": source_id,
+        "internet_message_id": internet_message_id,
+        "conversation_id": conversation_id,
+        "folder_id": folder_id,
+        "folder_display_name": role,
+        "subject_redacted": redact_subject(subject),
+        "subject_hash": hash_value(subject),
+        "sender_address_hash": hash_value(sender_addr),
+        "sender_domain": _domain(sender_addr),
+        "to_recipient_count": len(to_list),
+        "cc_recipient_count": len(cc_list),
+        "bcc_recipient_count": len(bcc_list),
+        "received_datetime": msg.get("receivedDateTime"),
+        "sent_datetime": msg.get("sentDateTime"),
+        "last_modified_datetime": msg.get("lastModifiedDateTime"),
+        "has_attachments": bool(msg.get("hasAttachments")),
+        "importance": msg.get("importance"),
+        "categories_metadata": msg.get("categories") or None,
+        "sensitivity_metadata": msg.get("sensitivity"),
+        "web_link": msg.get("webLink"),
+        "body_preview_hash": hash_value(body_preview),
+        "body_preview_excerpt_redacted": truncate_preview(body_preview, 120),
+        "extraction_policy": "metadata_only",
+    }
+    return fields, recipients
+
+
 class IndexedFolder(BaseModel):
     """Per-folder index counts (metadata only)."""
 
@@ -294,89 +389,4 @@ class EmailMessageIndexer:
         folder_id: str,
         role: str,
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-        message_id = msg.get("id")
-        subject = msg.get("subject")
-        conversation_id = msg.get("conversationId")
-        internet_message_id = msg.get("internetMessageId")
-        body_preview = msg.get("bodyPreview")
-
-        sender_addr = _address(msg.get("from") or msg.get("sender") or {})
-        to_list = msg.get("toRecipients") or []
-        cc_list = msg.get("ccRecipients") or []
-        bcc_list = msg.get("bccRecipients") or []
-
-        recipients: list[dict[str, Any]] = []
-        domains: set[str] = set()
-        if sender_addr:
-            domains.add(_domain(sender_addr) or "")
-            recipients.append(
-                self._recipient_row(message_id, "from", sender_addr, owner_hash)
-            )
-        for arr, role_name in _RECIPIENT_FIELDS:
-            for entry in msg.get(arr) or []:
-                addr = _address(entry)
-                if not addr:
-                    continue
-                domains.add(_domain(addr) or "")
-                recipients.append(
-                    self._recipient_row(message_id, role_name, addr, owner_hash)
-                )
-
-        thread_key = self._thread_key(conversation_id, internet_message_id, subject, domains)
-
-        fields = {
-            "message_id": message_id,
-            "thread_key": thread_key,
-            "source_id": source_id,
-            "internet_message_id": internet_message_id,
-            "conversation_id": conversation_id,
-            "folder_id": folder_id,
-            "folder_display_name": role,
-            "subject_redacted": redact_subject(subject),
-            "subject_hash": hash_value(subject),
-            "sender_address_hash": hash_value(sender_addr),
-            "sender_domain": _domain(sender_addr),
-            "to_recipient_count": len(to_list),
-            "cc_recipient_count": len(cc_list),
-            "bcc_recipient_count": len(bcc_list),
-            "received_datetime": msg.get("receivedDateTime"),
-            "sent_datetime": msg.get("sentDateTime"),
-            "last_modified_datetime": msg.get("lastModifiedDateTime"),
-            "has_attachments": bool(msg.get("hasAttachments")),
-            "importance": msg.get("importance"),
-            "categories_metadata": msg.get("categories") or None,
-            "sensitivity_metadata": msg.get("sensitivity"),
-            "web_link": msg.get("webLink"),
-            "body_preview_hash": hash_value(body_preview),
-            "body_preview_excerpt_redacted": truncate_preview(body_preview, 120),
-            "extraction_policy": "metadata_only",
-        }
-        return fields, recipients
-
-    @staticmethod
-    def _recipient_row(
-        message_id: Optional[str], role: str, addr: str, owner_hash: Optional[str]
-    ) -> dict[str, Any]:
-        addr_hash = hash_value(addr)
-        return {
-            "message_id": message_id,
-            "recipient_role": role,
-            "address_hash": addr_hash,
-            "domain": _domain(addr),
-            "is_bobby": bool(owner_hash and addr_hash == owner_hash),
-        }
-
-    @staticmethod
-    def _thread_key(
-        conversation_id: Optional[str],
-        internet_message_id: Optional[str],
-        subject: Optional[str],
-        domains: set[str],
-    ) -> str:
-        if conversation_id:
-            return conversation_id
-        if internet_message_id:
-            return hash_value(internet_message_id) or internet_message_id
-        normalized_subject = (subject or "").strip().lower()
-        basis = normalized_subject + "|" + ",".join(sorted(d for d in domains if d))
-        return hash_value(basis) or basis
+        return normalize_message(msg, owner_hash, source_id, folder_id, role)

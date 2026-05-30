@@ -16,13 +16,33 @@ from .message_indexer import (
     EmailMessageIndexer,
     IndexedFolder,
     IndexResult,
+    normalize_message,
+)
+from .project_discovery import (
+    DiscoveryReport,
+    ProjectEmailDiscovery,
+    ProjectMatchSummary,
+)
+from .project_matcher import (
+    MatchSignal,
+    ProjectDescriptor,
+    ProjectMatcher,
+    load_pilot_project_descriptors,
 )
 
 __all__ = [
     "DiscoveredFolder",
+    "DiscoveryReport",
     "EmailFolderDiscovery",
     "EmailMessageIndexer",
     "FolderDiscoveryResult",
     "IndexResult",
     "IndexedFolder",
+    "MatchSignal",
+    "ProjectDescriptor",
+    "ProjectEmailDiscovery",
+    "ProjectMatchSummary",
+    "ProjectMatcher",
+    "load_pilot_project_descriptors",
+    "normalize_message",
 ]
