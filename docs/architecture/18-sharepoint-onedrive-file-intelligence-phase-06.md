@@ -48,6 +48,19 @@ combines the guard self-test, a source static scan of `graph/` + `construction/g
 (zero mutating verb calls), a contract summary, and a redacted permission-posture section
 (scope NAMES only). Emits `permission_tightening: "deferred"`.
 
+### Canonical source-registry projection (Prompt 03) — `hb-assistant graph files sources [--apply]`
+Makes the pre-existing V5 projection (`construction/source_projection.py` →
+`project_registry_to_v5_source_locations`, backed by `ConstructionStore.upsert_source_location`)
+**operator-reachable**. A `dry_run` mode was added so dry-run (the default) classifies/validates the
+14 seed sources (enabled / pending / pre-resolved / matched-unmatched / review_required) and computes
+the projection plan with **zero** SQLite writes; `--apply` persists idempotently into
+`construction_source_locations` (re-apply keeps 14 rows, no duplicates). Read-only is enforced at
+three layers (model `Literal[True]`, store `ValueError`, SQLite `CHECK(read_only=1)`); invalid
+read_only / vault-copy / full-text / deep-index-of-review-required policy is rejected. No new
+migration — the V5 table already supports this; the package's proposed ingestion/download/extraction
+tables are deferred to later prompts. The resolver/crawler still write the V2 inventory shape;
+migrating those to V5 is later work.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and

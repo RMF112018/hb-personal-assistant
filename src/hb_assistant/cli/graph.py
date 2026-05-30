@@ -17,11 +17,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import typer
+from pydantic import ValidationError
 
 from hb_assistant.auth.providers import DelegatedAuthProvider
 from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.construction.classification.client import OllamaChatClient
+from hb_assistant.construction.config import load_source_registry
+from hb_assistant.construction.config.loader import SourceRegistryError
 from hb_assistant.construction.email import (
     EmailFolderDiscovery,
     EmailIntelligenceClassifier,
@@ -35,6 +38,9 @@ from hb_assistant.construction.email import (
 from hb_assistant.construction.email.email_classifier import DEFAULT_MODEL_NAME
 from hb_assistant.construction.policy.email_active import (
     load_email_intelligence_active_policy,
+)
+from hb_assistant.construction.source_projection import (
+    project_registry_to_v5_source_locations,
 )
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.files_endpoint_guard import (
@@ -280,6 +286,137 @@ def files_no_writeback_proof_cmd(
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(1) from None
+
+
+def _classify_source(src: Any) -> Dict[str, Any]:
+    """Read-only classification of one registry source for the projection plan.
+    No SQLite, no Graph — pure inspection of the loaded model."""
+    from hb_assistant.construction.source_projection import _infer_source_system
+
+    status = src.resolution_status or "pending"
+    pre_resolved = bool(src.site_id or src.drive_id or src.folder_item_id) or (
+        status in {"graph_delta_ready", "resolved"}
+    )
+    pending = (not pre_resolved) and status.startswith("pending")
+    unmatched = src.match_status == "unmatched"
+    matched = (src.match_status == "matched") or (src.project_key is not None and not unmatched)
+    return {
+        "source_id": src.source_key,
+        "source_system": src.source_system or _infer_source_system(src.kind),
+        "source_scope": src.kind,
+        "enabled": bool(src.enabled),
+        "resolution_status": status,
+        "pre_resolved": pre_resolved,
+        "pending": pending,
+        "matched": matched,
+        "unmatched": unmatched,
+        "project_key": src.project_key,
+        "review_required": bool(src.review_required),
+        "would_project": True,
+    }
+
+
+def _sources_summary(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Aggregate classification buckets for the projection plan summary."""
+
+    def _count(pred: Any) -> int:
+        return sum(1 for r in rows if pred(r))
+
+    by_system: Dict[str, int] = {}
+    by_scope: Dict[str, int] = {}
+    for r in rows:
+        by_system[r["source_system"]] = by_system.get(r["source_system"], 0) + 1
+        by_scope[r["source_scope"]] = by_scope.get(r["source_scope"], 0) + 1
+    return {
+        "total": len(rows),
+        "by_system": by_system,
+        "by_scope": by_scope,
+        "enabled": _count(lambda r: r["enabled"]),
+        "disabled": _count(lambda r: not r["enabled"]),
+        "pre_resolved": _count(lambda r: r["pre_resolved"]),
+        "pending": _count(lambda r: r["pending"]),
+        "matched": _count(lambda r: r["matched"]),
+        "unmatched": _count(lambda r: r["unmatched"]),
+        "review_required": _count(lambda r: r["review_required"]),
+    }
+
+
+@files_app.command("sources")
+def files_sources_cmd(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist the canonical V5 projection to SQLite (default: dry-run)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Project the SharePoint/OneDrive source registry into the canonical V5
+    ``construction_source_locations`` table.
+
+    Dry-run by default: classifies/validates every source (enabled / pending /
+    pre-resolved / unmatched) and computes the projection plan **without** any
+    SQLite write. ``--apply`` persists idempotently. Read-only against Microsoft
+    365; no Graph calls. Permission tightening remains deferred.
+    """
+    try:
+        registry = load_source_registry()
+    except SourceRegistryError as e:
+        payload = {
+            "command": "graph files sources",
+            "ok": False,
+            "error": "source_registry_unavailable",
+            "detail": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+    except ValidationError as e:
+        payload = {
+            "command": "graph files sources",
+            "ok": False,
+            "error": "schema_validation_failed",
+            "detail": e.errors(),
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+    rows = [_classify_source(s) for s in registry.sources]
+    summary = _sources_summary(rows)
+    all_read_only = all(s.read_only is True for s in registry.sources)
+
+    persisted_count: Optional[int] = None
+    if apply:
+        store = ConstructionStore()
+        report = project_registry_to_v5_source_locations(registry, store)
+        persisted_count = len(store.list_source_locations(limit=10000))
+    else:
+        report = project_registry_to_v5_source_locations(registry, dry_run=True)
+
+    summary["projected"] = report.projected
+    summary["compat_projected"] = report.compat_projected
+    summary["skipped"] = report.skipped
+
+    ok = bool(
+        all_read_only
+        and report.skipped == 0
+        and (report.projected + report.compat_projected) == summary["total"]
+        and (persisted_count is None or persisted_count >= summary["total"])
+    )
+
+    payload: Dict[str, Any] = {
+        "command": "graph files sources",
+        "mode": "apply" if apply else "dry_run",
+        "ok": ok,
+        "summary": summary,
+        "sources": rows,
+        "persisted_source_location_count": persisted_count,
+        "guardrails": {
+            "external_systems": "read_only",
+            "writeback": "none",
+            "metadata_only": True,
+            "all_read_only": all_read_only,
+            "permission_tightening": "deferred",
+        },
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0 if ok else 1)
 
 
 @mail_app.command("status")

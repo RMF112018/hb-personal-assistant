@@ -126,7 +126,9 @@ def _resolve_folder_web_url(src: SourceLocation) -> Optional[str]:
 
 def project_registry_to_v5_source_locations(
     registry: SourceRegistry,
-    store: ConstructionStore,
+    store: Optional[ConstructionStore] = None,
+    *,
+    dry_run: bool = False,
 ) -> ProjectionReport:
     """Project every source in ``registry`` into the V5
     ``construction_source_locations`` table via
@@ -137,16 +139,26 @@ def project_registry_to_v5_source_locations(
     enforces uniqueness, but this guards against synthesized registries
     bypassing the validator).
 
+    When ``dry_run`` is ``True`` the same :class:`ProjectionReport` is
+    computed (per-source mapping, by_scope, projected/compat counts) but
+    **no** SQLite write occurs — ``store`` may be ``None``. This backs the
+    dry-run-default ``graph files sources`` command. When ``dry_run`` is
+    ``False`` a ``store`` is required.
+
     Returns a :class:`ProjectionReport` summarizing per-source outcomes.
     Does NOT touch Microsoft 365, the Obsidian vault, or any tables
     besides ``construction_source_locations``.
     """
+    if not dry_run and store is None:
+        raise ValueError(
+            "project_registry_to_v5_source_locations requires a store when dry_run=False"
+        )
+
     seen: dict[str, str] = {}
     for src in registry.sources:
         if src.source_key in seen:
             raise ValueError(
-                f"duplicate source_id in projection input: "
-                f"{src.source_key!r} appears twice"
+                f"duplicate source_id in projection input: {src.source_key!r} appears twice"
             )
         seen[src.source_key] = src.source_key
 
@@ -170,31 +182,33 @@ def project_registry_to_v5_source_locations(
             else None
         )
 
-        store.upsert_source_location(
-            source_id=src.source_key,
-            source_system=source_system,
-            source_scope=src.kind,
-            source_name=src.display_name,
-            project_key=src.project_key,
-            project_number=src.project_number,
-            project_name=src.project_name,
-            tenant_id=src.tenant_id,
-            site_url=src.site_url,
-            site_id=src.site_id,
-            drive_id=src.drive_id,
-            folder_item_id=src.folder_item_id,
-            folder_path=src.root_path,
-            folder_web_url=_resolve_folder_web_url(src),
-            library_name=src.library_name,
-            list_id=src.list_id,
-            local_sync_path=src.local_sync_path,
-            sync_mode=src.sync_mode,
-            sync_frequency_minutes=src.sync_frequency_minutes,
-            enabled=src.enabled,
-            read_only=src.read_only,
-            baseline_policy=baseline_policy,
-            folder_policies=folder_policies,
-        )
+        if not dry_run:
+            assert store is not None  # guaranteed by the dry_run/store precheck above
+            store.upsert_source_location(
+                source_id=src.source_key,
+                source_system=source_system,
+                source_scope=src.kind,
+                source_name=src.display_name,
+                project_key=src.project_key,
+                project_number=src.project_number,
+                project_name=src.project_name,
+                tenant_id=src.tenant_id,
+                site_url=src.site_url,
+                site_id=src.site_id,
+                drive_id=src.drive_id,
+                folder_item_id=src.folder_item_id,
+                folder_path=src.root_path,
+                folder_web_url=_resolve_folder_web_url(src),
+                library_name=src.library_name,
+                list_id=src.list_id,
+                local_sync_path=src.local_sync_path,
+                sync_mode=src.sync_mode,
+                sync_frequency_minutes=src.sync_frequency_minutes,
+                enabled=src.enabled,
+                read_only=src.read_only,
+                baseline_policy=baseline_policy,
+                folder_policies=folder_policies,
+            )
 
         lossy = _lossy_fields_for(src)
         status: Literal["projected", "compat_projected", "skipped"] = (
