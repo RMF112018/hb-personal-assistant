@@ -1,0 +1,125 @@
+# Phase 06 (SharePoint/OneDrive Files) — Read-only Microsoft Graph file endpoint allowlist (GET-only).
+#
+# This is a static contract resource (no runtime loader yet; the loader + HTTP-guard
+# wiring land in Phase 06 (Files) Prompt 02, mirroring graph/mail_endpoint_guard.py).
+# It records exactly which Graph drive/site/driveItem read patterns the SharePoint /
+# OneDrive file-intelligence phase may use, the metadata-first $select discipline, and
+# the paging/throttling rules. Grounded in official Microsoft Graph docs (see
+# docs/evidence/construction-intelligence-sharepoint-onedrive/01-official-graph-files-research.md).
+#
+# Hard boundary: GET only. Source document content is NOT downloaded by default; the
+# `/content` paths are reached only under the controlled, flag-gated extraction path
+# (Prompt 11). A path here may also appear in the mutation blocklist; the HTTP *verb*
+# decides — GET allowed, mutating verbs forbidden.
+#
+# Permission tightening is DEFERRED for this phase: the tenant still consents broad
+# scopes (Files.ReadWrite.All, Sites.*). This allowlist constrains *behavior* to
+# read-only regardless of the granted scopes.
+version: 1
+permission_tightening: deferred
+
+allowed_methods:
+  - GET
+
+# Read patterns the files phase may issue. `provenance: repo_confirmed` marks patterns
+# already called by existing code (construction/graph/resolver.py,
+# construction/graph/delta_crawler.py, graph/drive_item_client.py); `forward_looking`
+# marks patterns sanctioned by the official contract for later prompts.
+allowed_paths:
+  # --- Drive / OneDrive roots ---
+  - path: /me/drive                                          # business/personal OneDrive root probe
+    provenance: repo_confirmed
+  - path: /me/drives                                         # enumerate caller drives
+    provenance: forward_looking
+  - path: /users/{userId}/drive                              # another user's default drive (delegated, if permitted)
+    provenance: forward_looking
+  - path: /users/{userId}/drives                             # another user's drives
+    provenance: forward_looking
+  # --- SharePoint sites ---
+  - path: /sites/{hostname}:/{server-relative-path}          # resolve site by server-relative URL
+    provenance: repo_confirmed
+  - path: /sites/{siteId}                                    # site metadata by id
+    provenance: forward_looking
+  - path: /sites/{siteId}/drive                              # site default document library
+    provenance: repo_confirmed
+  - path: /sites/{siteId}/drives                             # all document libraries on a site
+    provenance: repo_confirmed
+  - path: /sites/{siteId}/pages                              # site page enumeration (linked-library discovery; metadata only)
+    provenance: repo_confirmed
+  # --- Drives & driveItems ---
+  - path: /drives/{driveId}                                  # drive metadata
+    provenance: forward_looking
+  - path: /drives/{driveId}/root                             # drive root item
+    provenance: forward_looking
+  - path: /drives/{driveId}/root:/{itemPath}                 # resolve folder/item by path under a drive
+    provenance: repo_confirmed
+  - path: /drives/{driveId}/root/children                    # list root children
+    provenance: forward_looking
+  - path: /drives/{driveId}/items/{itemId}                   # single driveItem metadata
+    provenance: forward_looking
+  - path: /drives/{driveId}/items/{itemId}/children          # list folder children
+    provenance: forward_looking
+  - path: /me/drive/items/{itemId}                           # OneDrive single item metadata
+    provenance: repo_confirmed
+  - path: /me/drive/items/{itemId}/children                  # OneDrive folder children
+    provenance: repo_confirmed
+  # --- Delta (incremental change enumeration) ---
+  - path: /drives/{driveId}/root/delta                       # drive-root delta (SharePoint library / project drive)
+    provenance: repo_confirmed
+  - path: /drives/{driveId}/items/{itemId}/delta             # folder-scoped delta (project folder)
+    provenance: repo_confirmed
+  - path: /me/drive/root/delta                               # OneDrive root delta
+    provenance: repo_confirmed
+  # --- Content (controlled, flag-gated; NOT issued by default) ---
+  - path: /drives/{driveId}/items/{itemId}/content           # bounded streaming download (Prompt 11; --download/--extract gated)
+    provenance: forward_looking
+  - path: /me/drive/items/{itemId}/content                   # bounded streaming download (OneDrive; gated)
+    provenance: repo_confirmed
+
+# driveItem metadata $select — minimal, identity + facets, content-free.
+# See graph_files_drive_item_metadata_field_contract.yaml for the full field contract.
+drive_item_metadata_select:
+  - id
+  - name
+  - webUrl
+  - size
+  - createdDateTime
+  - lastModifiedDateTime
+  - eTag
+  - cTag
+  - parentReference
+  - file
+  - folder
+  - package
+  - remoteItem
+  - sharepointIds
+  - deleted
+
+paging:
+  follow: "@odata.nextLink"        # apply the whole nextLink URL verbatim
+  do_not_parse_skip_token: true    # never extract/manipulate $skiptoken from nextLink
+  store_delta_link: "@odata.deltaLink"   # persist for next sync; fingerprint only in Markdown/evidence
+  default_page_size: 200           # bounded page size for drive enumeration
+  max_pages_guard: true            # crawls bound pages via max_pages/max_items (graph/http_client.get_all_pages)
+
+throttling:
+  retry_statuses: [429, 500, 502, 503, 504]   # matches graph/http_client.GraphHttpClient
+  honor_retry_after: true
+  backoff: exponential
+  prefer_delta_after_baseline: true            # avoid repeated full crawls
+  record_redacted_errors_in_receipts: true
+
+delta:
+  start_without_token: true                    # initial enumeration has no delta token
+  follow_next_link_until_exhausted: true
+  store_delta_link_for_next_sync: true
+  handle_deleted_facet: true                   # items carrying `deleted` are marked, not removed in source
+  stale_token_status: 410                       # 410 Gone / resyncRequired → structured requires_rebaseline
+  on_stale_token: requires_rebaseline
+  never_render_raw_delta_links: true            # logs/Markdown/evidence carry a fingerprint, never the raw link
+
+notes:
+  - "Runtime is behaviorally read-only at four layers (YAML policy, scope minimization intent, Python clients, SQLite CHECK); permission tightening is deferred."
+  - "Source document content (/content paths) is NEVER downloaded by default; reached only under the Prompt 11 controlled, flag-gated extraction path."
+  - "@microsoft.graph.downloadUrl is short-lived and is never persisted or cached (see metadata field contract never_persist)."
+  - "Graph file search APIs are optional/supplemental only and must not replace source-of-truth inventory + delta indexing."

@@ -1,0 +1,53 @@
+# Phase 06 (SharePoint/OneDrive Files) — driveItem metadata field contract.
+#
+# Static contract resource. Defines the durable identity fields, the preferred
+# metadata fields to capture when present, and the values that must NEVER be
+# persisted or cached anywhere (SQLite, cache files, Obsidian, logs, evidence).
+# Consumed by the read allowlist $select discipline now and by the rich driveItem
+# indexing path (Prompt 06).
+#
+# Grounded in the official driveItem resource docs (see
+# docs/evidence/construction-intelligence-sharepoint-onedrive/01-official-graph-files-research.md).
+version: 1
+
+# Stable source identity. drive_id + drive_item_id is the canonical key; source_id
+# ties the item back to the registered SourceLocation. eTag/cTag are change tags.
+required_identity:
+  - source_id        # registered source registry key (local)
+  - drive_id         # Graph drive id
+  - drive_item_id    # Graph driveItem id
+
+# Captured when available. These are metadata/facets only — no file content.
+preferred_metadata:
+  - name
+  - webUrl
+  - size
+  - createdDateTime
+  - lastModifiedDateTime
+  - eTag
+  - cTag
+  - parentReference     # carries driveId + path; enables folder hierarchy
+  - sharepointIds       # listItemId / siteId / webId for SharePoint correlation
+  - file                # file facet (mimeType, hashes)
+  - folder              # folder facet (childCount)
+  - package             # package facet (e.g. OneNote)
+  - remoteItem          # shared/remote item pointer
+  - deleted             # deleted facet → mark item, do not delete in source
+  - quickXorHash        # file.hashes.quickXorHash when returned (SharePoint/OneDrive for Business)
+
+# Must NEVER be persisted or cached. @microsoft.graph.downloadUrl is short-lived,
+# pre-authenticated, and unsuitable as stable identity. Tokens / Authorization /
+# raw delta links are secret-shaped or replayable and are fingerprinted at most.
+never_persist:
+  - "@microsoft.graph.downloadUrl"   # short-lived signed URL; re-resolve per download, never store/cache
+  - Authorization                    # request header
+  - access_token
+  - refresh_token
+  - id_token
+  - "@odata.deltaLink"               # raw delta link; store a fingerprint only
+  - "@odata.nextLink"                # raw paging link; never rendered in Markdown/evidence
+
+notes:
+  - "Persist durable metadata only; full source document text is never stored in Obsidian and only bounded redacted excerpts are produced under controlled extraction."
+  - "@microsoft.graph.downloadUrl is resolved per controlled download and discarded immediately; it is never written to SQLite, cache index, Obsidian, logs, or evidence."
+  - "Delta links are persisted to SQLite sync state for resync but appear only as a fingerprint in Markdown/logs/evidence."

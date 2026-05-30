@@ -1,0 +1,73 @@
+# Phase 06 (SharePoint/OneDrive Files) — Microsoft Graph file mutation blocklist.
+#
+# Static contract resource (no runtime loader yet; enforcement wiring lands in
+# Phase 06 (Files) Prompt 02, mirroring graph/mail_endpoint_guard.py). Records the
+# file-mutating verbs, endpoint paths, and operation keywords the file-intelligence
+# phase must reject *before* any HTTP request. Even though the tenant has consented
+# broad write-capable scopes (Files.ReadWrite.All, Sites.ReadWrite.All,
+# Sites.Manage.All, Sites.FullControl.All), this phase is strictly read-only.
+#
+# Method/path interaction: some base paths (e.g. /drives/{driveId}/items/{itemId})
+# also appear in graph_files_read_endpoint_allowlist.yaml. The HTTP *verb* decides —
+# GET is allowed for reading metadata; the verbs/paths below are forbidden. The
+# Prompt 02 enforcement keys on (method, path) together.
+version: 1
+
+forbidden_methods:
+  - POST
+  - PUT
+  - PATCH
+  - DELETE
+
+forbidden_paths:
+  - path: /drives/{driveId}/items/{itemId}/children       # POST create child / folder
+    operation: create
+  - path: /drives/{driveId}/items/{itemId}/content        # PUT upload / replace content
+    operation: upload
+  - path: /drives/{driveId}/items/{itemId}                # PATCH update metadata / DELETE item
+    operation: update_or_delete
+  - path: /drives/{driveId}/items/{itemId}/copy           # POST copy
+    operation: copy
+  - path: /drives/{driveId}/items/{itemId}/move           # PATCH/move parent reference
+    operation: move
+  - path: /drives/{driveId}/items/{itemId}/createLink     # POST create sharing link
+    operation: share
+  - path: /drives/{driveId}/items/{itemId}/invite         # POST grant permissions / invite
+    operation: permission_change
+  - path: /drives/{driveId}/items/{itemId}/permissions    # POST/PATCH/DELETE permissions
+    operation: permission_change
+  - path: /drives/{driveId}/items/{itemId}/createUploadSession  # POST resumable upload session
+    operation: upload_session
+  - path: /drives/{driveId}/items/{itemId}/checkout       # POST checkout
+    operation: checkout
+  - path: /drives/{driveId}/items/{itemId}/checkin        # POST checkin
+    operation: checkin
+  - path: /drives/{driveId}/items/{itemId}/discardCheckout  # POST discard checkout
+    operation: discard_checkout
+  - path: /drives/{driveId}/items/{itemId}/restore        # POST restore from recycle
+    operation: restore
+  - path: /drives/{driveId}/items/{itemId}/retentionLabel # POST/PATCH/DELETE retention label
+    operation: label
+  - path: /drives/{driveId}/items/{itemId}/assignSensitivityLabel  # POST sensitivity label
+    operation: label
+
+# Substring/verb keywords that must never appear in a constructed file operation,
+# covering the forbidden behaviors enumerated in the package Hard Boundaries.
+forbidden_operation_keywords:
+  - createUploadSession
+  - createLink
+  - invite
+  - copy
+  - move
+  - checkout
+  - checkin
+  - discardCheckout
+  - permissions
+  - delete
+  - restore
+  - retentionLabel
+  - sensitivityLabel
+  - assignSensitivityLabel
+  - upload
+
+on_match: "raise a FileMutationBlockedError before HTTP request; write a blocked processing receipt; stop workflow"
