@@ -5,6 +5,19 @@ IDs. Composes the existing live-readiness gate, GET-only HTTP client, OAuth
 access-token provider, paginator, and per-endpoint normalizers into a single
 end-to-end chain that lands in local SQLite only.
 
+> **Path/query construction (Phase 06B Prompt 02 hardening).** Request building
+> keys off the endpoint *template*, never the resolved path. `project_id` is sent
+> as a query param **only when `{project_id}` is not a path segment** in the
+> template (`_project_id_query_params`); path-scoped (`/projects/{project_id}/...`)
+> and v2.0 company/project endpoints carry it in the path, so no redundant
+> `?project_id=` is emitted. N+1 children resolve `{project_id}`/`{company_id}` plus
+> the parent token via `_resolve_child_path`, with parent-derived extras
+> (rfq children → `contract_id`) added by `_child_query_params`. Each run receipt
+> carries a secret-free, template-derived `request_classification` (api_version,
+> path_scope, project_id_param, n_plus_1, redacted template); raw URLs/query
+> strings are never persisted. Inline-extracted child records store the *resolved*
+> child path (not the placeholder template) in `source_url_redacted`.
+
 ## One-command operator surface
 
 ```bash

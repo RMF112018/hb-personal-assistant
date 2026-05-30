@@ -1,0 +1,90 @@
+{
+  "command": "phase-06b prompt-02 path/query param construction proof",
+  "ok": true,
+  "live_call_performed": false,
+  "synthetic_ids": {
+    "project_id": "2525840",
+    "parent_record_id": "456"
+  },
+  "scenario_count": 5,
+  "scenarios": [
+    {
+      "scenario": "path_contains_project_id",
+      "endpoint_id": "rfis",
+      "path_template": "/rest/v1.0/projects/{project_id}/rfis",
+      "api_version": "v1.0",
+      "resolved_path": "/rest/v1.0/projects/2525840/rfis",
+      "query_params": {},
+      "expectation": "project_id substituted into path; NOT added as query param",
+      "pass": true
+    },
+    {
+      "scenario": "flat_endpoint_project_id_query",
+      "endpoint_id": "punch-items",
+      "path_template": "/rest/v1.1/punch_items",
+      "api_version": "v1.1",
+      "resolved_path": "/rest/v1.1/punch_items",
+      "query_params": {
+        "project_id": "2525840"
+      },
+      "expectation": "no {project_id} in template; project_id sent as query param",
+      "pass": true
+    },
+    {
+      "scenario": "v2_company_project_path",
+      "endpoint_id": "schedules",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/schedules",
+      "api_version": "v2.0",
+      "resolved_path": "/rest/v2.0/companies/5280/projects/2525840/schedules",
+      "query_params": {},
+      "expectation": "company_id + project_id substituted in path; no redundant query param",
+      "pass": true
+    },
+    {
+      "scenario": "n1_child_path_with_parent_id",
+      "endpoint_id": "rfi-responses",
+      "path_template": "/rest/v1.0/projects/{project_id}/rfis/{rfi_id}/replies",
+      "api_version": "v1.0",
+      "resolved_path": "/rest/v1.0/projects/2525840/rfis/456/replies",
+      "query_params": null,
+      "expectation": "project_id + parent token (rfi_id) substituted into child path",
+      "pass": true
+    },
+    {
+      "scenario": "child_extra_parent_derived_query",
+      "endpoint_id": "rfq-responses",
+      "path_template": "/rest/v1.0/rfqs/{rfq_id}/responses",
+      "api_version": "v1.0",
+      "resolved_path": "/rest/v1.0/rfqs/456/responses",
+      "query_params": {
+        "project_id": "2525840",
+        "contract_id": "701973"
+      },
+      "expectation": "contract_id sourced from parent commitment_contract_id (+ project_id, flat template)",
+      "pass": true
+    }
+  ],
+  "sample_request_classification": {
+    "rfis": {
+      "api_version": "v1.0",
+      "path_scope": "project",
+      "project_id_param": "path",
+      "n_plus_1": false,
+      "path_template_redacted": "/rest/v1.0/projects/{project_id}/rfis"
+    },
+    "punch-items": {
+      "api_version": "v1.1",
+      "path_scope": "flat",
+      "project_id_param": "query",
+      "n_plus_1": false,
+      "path_template_redacted": "/rest/v1.1/punch_items"
+    },
+    "schedules": {
+      "api_version": "v2.0",
+      "path_scope": "company_project",
+      "project_id_param": "path",
+      "n_plus_1": false,
+      "path_template_redacted": "/rest/v2.0/companies/{company_id}/projects/{project_id}/schedules"
+    }
+  }
+}

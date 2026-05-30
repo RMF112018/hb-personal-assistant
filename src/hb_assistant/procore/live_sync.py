@@ -14,6 +14,7 @@ touched and no DB row is written.
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -445,6 +446,73 @@ def _resolve_child_path(adapter: EndpointAdapter, procore_project_id: str, paren
     return path
 
 
+def _project_id_query_params(path_template: str, procore_project_id: str) -> Dict[str, str]:
+    """project_id as a query param iff it is NOT a path segment in the *template*.
+
+    The decision keys off the original template, never the resolved path: once the
+    placeholder is substituted the literal ``{project_id}`` is gone, so checking the
+    resolved path would always (wrongly) add a redundant query param to path-scoped
+    endpoints. Flat lists (e.g. ``/punch_items``, ``/payment_applications``) keep
+    project_id as a query param; path-scoped (``/projects/{project_id}/...``) and v2.0
+    company/project endpoints carry it in the path.
+    """
+    if "{project_id}" in path_template:
+        return {}
+    return {"project_id": str(procore_project_id)}
+
+
+def _child_query_params(
+    adapter: EndpointAdapter, procore_project_id: str, parent_summary: Dict[str, Any]
+) -> Optional[Dict[str, str]]:
+    """Query params for an N+1 child GET: project_id (when the child template is flat)
+    plus any extra parent-derived param (e.g. rfq children need the parent's contract_id,
+    else Procore 404s)."""
+    params: Dict[str, str] = _project_id_query_params(adapter.path_template, procore_project_id)
+    extra = _N1_CHILD_EXTRA_PARENT_PARAMS.get(adapter.endpoint_id)
+    if extra:
+        qname, pfield = extra
+        pval = parent_summary.get(pfield)
+        if pval is not None and pval != "":
+            params[qname] = str(pval)
+    return params or None
+
+
+def _api_version(path_template: str) -> str:
+    """Procore REST API version embedded in the path template (v1.0 / v1.1 / v2.0)."""
+    if path_template.startswith("unresolved:"):
+        return "unresolved"
+    match = re.match(r"/rest/(v\d+\.\d+)/", path_template)
+    return match.group(1) if match else "unknown"
+
+
+def _request_classification(adapter: Optional[EndpointAdapter]) -> Optional[Dict[str, Any]]:
+    """Redacted, secret-free request classification for the run receipt.
+
+    Derived from the endpoint template only — no resolved ids, tokens, query values, or
+    response bodies. ``project_id_param`` mirrors the actual query-construction rule:
+    project_id travels in the path when the template contains ``{project_id}``, otherwise
+    it is sent as a query param.
+    """
+    if adapter is None:
+        return None
+    template = adapter.path_template
+    has_company = "{company_id}" in template
+    has_project = "{project_id}" in template
+    if has_company and has_project:
+        path_scope = "company_project"
+    elif has_project:
+        path_scope = "project"
+    else:
+        path_scope = "flat"
+    return {
+        "api_version": _api_version(template),
+        "path_scope": path_scope,
+        "project_id_param": "path" if has_project else "query",
+        "n_plus_1": adapter.endpoint_id in _N1_CHILD_ENDPOINTS,
+        "path_template_redacted": redact_source_url(template),
+    }
+
+
 def _build_receipt(
     *,
     receipt_id: str,
@@ -495,6 +563,7 @@ def _build_receipt(
         "procore_project_id": procore_project_id,
         "endpoint_family": adapter.family if adapter else None,
         "http_method": "GET",
+        "request_classification": _request_classification(adapter),
         "request_count": request_count,
         "attempt_count": attempt_count,
         "retry_count": retry_count,
@@ -773,18 +842,21 @@ def run_live_sync(
         adapter.endpoint_id in ("meeting-detail", "activities")
         or adapter.endpoint_id in _N1_CHILD_ENDPOINTS
     ) and adapter.parent_path_template:
-        path = adapter.parent_path_template.replace(
-            "{project_id}", str(procore_project_id)
-        ).replace("{company_id}", COMPANY_ID)
+        path_template_used = adapter.parent_path_template
+        path = path_template_used.replace("{project_id}", str(procore_project_id)).replace(
+            "{company_id}", COMPANY_ID
+        )
     else:
+        path_template_used = adapter.path_template
         path = _resolve_path(adapter, str(procore_project_id))
 
-    # Build query params: project_id (when not already a path segment) plus an
-    # optional date window (daily-log endpoints default to a narrow/empty window
-    # and need a date filter to return historical rows).
-    get_params: Dict[str, str] = {}
-    if "{project_id}" not in path:
-        get_params["project_id"] = str(procore_project_id)
+    # Build query params: project_id (only when it is NOT a path segment in the
+    # template — see _project_id_query_params) plus an optional date window (daily-log
+    # endpoints default to a narrow/empty window and need a date filter to return
+    # historical rows).
+    get_params: Dict[str, str] = _project_id_query_params(
+        path_template_used, str(procore_project_id)
+    )
     if start_date:
         get_params["start_date"] = str(start_date)
     if end_date:
@@ -1034,18 +1106,9 @@ def run_live_sync(
             child_path = _resolve_child_path(adapter, str(procore_project_id), str(parent_id))
             # v1.0 child endpoints (e.g. /rest/v1.0/requisitions/{id}/contract_items) carry
             # no {project_id} path segment and require it as a query param; v2.0 children
-            # already embed /projects/{project_id}/ in the path.
-            child_params = (
-                {"project_id": str(procore_project_id)}
-                if "{project_id}" not in adapter.path_template
-                else None
-            )
-            extra = _N1_CHILD_EXTRA_PARENT_PARAMS.get(adapter.endpoint_id)
-            if extra:
-                qname, pfield = extra
-                pval = parent_summary.get(pfield)
-                if pval is not None and pval != "":
-                    child_params = {**(child_params or {}), qname: str(pval)}
+            # already embed /projects/{project_id}/ in the path. RFQ children also need the
+            # parent-derived contract_id (see _child_query_params).
+            child_params = _child_query_params(adapter, str(procore_project_id), parent_summary)
             try:
                 child_iter = list(
                     client.paginate(
@@ -1451,7 +1514,9 @@ def run_live_sync(
                     normalized_fields=child_record["canonical_fields"],
                     review_required=bool(child_record.get("review_required", True)),
                     sensitive_reason=child_record.get("routing_reason"),
-                    source_url_redacted=redact_source_url(child_adapter.path_template),
+                    source_url_redacted=redact_source_url(
+                        _resolve_child_path(child_adapter, str(procore_project_id), str(record_id))
+                    ),
                     last_sync_run_id=sync_run_id,
                     now_utc=fetched_at,
                     db_path=db_path,
