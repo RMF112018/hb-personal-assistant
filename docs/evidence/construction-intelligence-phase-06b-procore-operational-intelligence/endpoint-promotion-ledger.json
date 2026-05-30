@@ -1,0 +1,609 @@
+{
+  "command": "hb-assistant procore live endpoints ledger",
+  "ok": true,
+  "phase": "Phase 06B Prompt 01",
+  "registry_endpoint_count": 59,
+  "ledger_row_count": 59,
+  "promoted_count": 56,
+  "held_count": 3,
+  "ledger": [
+    {
+      "endpoint_id": "activities",
+      "family": "schedules",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-28:6956f007_list_plus_n_per_schedule_notes_hashed",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "billing-periods",
+      "family": "billing",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "budget-change-history",
+      "family": "budget",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "budget-change-line-items",
+      "family": "budget",
+      "live_verified": false,
+      "promotion_status": "held",
+      "verification_reason": "phase05_shell_pending_live_smoke",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": null,
+      "next_step": "operator-run bounded live smoke to verify before promotion; remains fail-closed until verified"
+    },
+    {
+      "endpoint_id": "budget-detail-columns",
+      "family": "budget",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "budget-detail-rows",
+      "family": "budget",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "budget-details",
+      "family": "budget",
+      "live_verified": false,
+      "promotion_status": "held",
+      "verification_reason": "phase05_unresolved_path_fail_closed_prompt00-3.2",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": null,
+      "next_step": "resolve API path and obtain permission grant before any live smoke; remains fail-closed until verified"
+    },
+    {
+      "endpoint_id": "budget-modifications",
+      "family": "budget",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "budget-views",
+      "family": "budget",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "change-event-comments",
+      "family": "change_management",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "change-events",
+      "family": "change_management",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "commitment-attachments",
+      "family": "commitments",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "commitment-change-order-line-items",
+      "family": "commitments",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "commitment-change-orders",
+      "family": "commitments",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "commitment-compliance",
+      "family": "commitments",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "commitment-contracts",
+      "family": "commitments",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "commitment-line-items",
+      "family": "commitments",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "daily-log-accident-review-routed",
+      "family": "daily_logs",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-29:b9538451_safety_routed",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "daily-log-dcrs",
+      "family": "daily_logs",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-29:95f5a809",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "daily-log-delays-review-routed",
+      "family": "daily_logs",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-29:c31a788f_safety_routed",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "daily-log-deliveries",
+      "family": "daily_logs",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-29:ec249d59",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "daily-log-dumpster",
+      "family": "daily_logs",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-29:7a99ff77",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "daily-log-inspections",
+      "family": "daily_logs",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-29:6ea9b013",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "daily-log-manpower",
+      "family": "daily_logs",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-29:22391cff_contact_pii_hashed",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "daily-log-notes",
+      "family": "daily_logs",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-29:f5e0e409_comment_hashed",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "daily-log-safety-violation-review-routed",
+      "family": "daily_logs",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-29:1cc4bd61_safety_routed",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "daily-log-visitor",
+      "family": "daily_logs",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-29:e968273f_subject_pii_hashed",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "daily-log-weather",
+      "family": "daily_logs",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-29:26762b35_v1.1_daily_logs_path",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "inspection-items",
+      "family": "inspections",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "operator_supplied_list_endpoint_2026-05-29:v1.1",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "inspection-sections",
+      "family": "inspections",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "operator_supplied_list_endpoint_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "inspections",
+      "family": "inspections",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "operator_supplied_schema_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "meeting-detail",
+      "family": "meetings",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-28:7eaf5ae6_list_plus_n_detail_with_pii_hashed_summaries",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "meeting-topics",
+      "family": "meetings",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-28:a0499320_max_per_page_10_server_500_at_100",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "meetings",
+      "family": "meetings",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-28:452d9421",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "observations",
+      "family": "observations",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-28:2d0a091f",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "payment-applications",
+      "family": "owner_billing",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "prime-change-order-line-items",
+      "family": "owner_contracts",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "prime-change-orders",
+      "family": "owner_contracts",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "prime-contract-attachments",
+      "family": "owner_contracts",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "prime-contract-line-items",
+      "family": "owner_contracts",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "prime-contracts",
+      "family": "owner_contracts",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "projects",
+      "family": "foundation",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-28:7703b766",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "punch-items",
+      "family": "punch_items",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-28:0277eee6_pii_hashed_free_text_summaries",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "purchase-order-contracts",
+      "family": "purchase_orders",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "purchase-order-detail-line-items",
+      "family": "purchase_orders",
+      "live_verified": false,
+      "promotion_status": "held",
+      "verification_reason": "phase05_shell_pending_live_smoke",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": null,
+      "next_step": "operator-run bounded live smoke to verify before promotion; remains fail-closed until verified"
+    },
+    {
+      "endpoint_id": "purchase-order-line-items",
+      "family": "purchase_orders",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "rfi-responses",
+      "family": "rfis",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_apply_n_plus_1_passed_via_rfis_parent_2026-05-28",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "rfis",
+      "family": "rfis",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-28:09113b6d",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "rfq-quotes",
+      "family": "change_management",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "rfq-responses",
+      "family": "change_management",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "rfqs",
+      "family": "change_management",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "schedules",
+      "family": "schedules",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-28:980e7fb0_v2_data_envelope",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "subcontractor-invoice-change-order-items",
+      "family": "subcontractor_invoices",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "subcontractor-invoice-contract-detail-items",
+      "family": "subcontractor_invoices",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "subcontractor-invoice-contract-items",
+      "family": "subcontractor_invoices",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "subcontractor-invoices",
+      "family": "subcontractor_invoices",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-05-financials/",
+      "last_verified_date": "2026-05-29",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "submittal-packages",
+      "family": "submittals",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-28:7b9077ee",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "submittal-responses",
+      "family": "submittals",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "populated_via_submittals_inline_extraction_2026-05-28",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    },
+    {
+      "endpoint_id": "submittals",
+      "family": "submittals",
+      "live_verified": true,
+      "promotion_status": "promoted",
+      "verification_reason": "live_smoke_passed_2026-05-28:d9506311",
+      "evidence_path": "docs/evidence/construction-intelligence-phase-04a/",
+      "last_verified_date": "2026-05-28",
+      "next_step": "none \u2014 live-verified; monitor for drift"
+    }
+  ],
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true,
+    "live_calls_disabled": true,
+    "correspondence_excluded": true,
+    "schedule_tasks_deferred": true
+  }
+}

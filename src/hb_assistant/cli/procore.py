@@ -868,6 +868,22 @@ def live_endpoints_list(
     _emit(payload, json_out=json_out)
 
 
+@live_endpoints_app.command("ledger")
+def live_endpoints_ledger(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Machine-readable endpoint promotion ledger (Phase 06B Prompt 01).
+
+    Deterministic projection of the canonical registry: promotion status,
+    evidence path, last-verified date, and next step per endpoint. Read-only;
+    no live Procore call.
+    """
+    from hb_assistant.procore.endpoint_ledger import build_promotion_ledger
+
+    payload = {**build_promotion_ledger(), "guardrails": _GUARDRAILS}
+    _emit(payload, json_out=json_out)
+
+
 @live_app.command("sync")
 def live_sync(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
