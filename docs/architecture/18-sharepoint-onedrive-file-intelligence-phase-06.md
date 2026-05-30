@@ -228,6 +228,24 @@ that every routed item's V18 decision keeps `extraction_allowed = false` and rep
 (schema stays at version 19); offline (no Graph); dry-run default. Evidence:
 `14-sensitive-file-review-routing-proof.md`.
 
+### Obsidian source manifests & project file registers (Phase 06A) — `graph files obsidian` (no new schema)
+`construction/graph/file_obsidian_projection.py` (`FileObsidianProjector`) projects the V5 files SQLite
+state into **grouped, low-noise** marker-bounded Obsidian notes under
+`Work/HB Personal Assistant/07_File_Intelligence/`: a per-source **Source Manifest** (scope/site/drive
+ids, item counts, last sync, and a **SHA-256 delta-link fingerprint only**), a per-project **File
+Register** (counts by match status + ingestion disposition and a ≤50-row metadata table), a per-project
+**File Review Summary** (the sensitive files Prompt 12 routed into `construction_review_queue`), and a
+per-run **File Processing Receipt** (crawl + download/extraction counts with no-full-text / no-vault-
+copy / no-signed-URL / no-raw-delta attestations). It mirrors `EmailObsidianProjector` — its own grouped
+`_FileArtifact` list, marker-bounded `_write_artifact` (`<!-- HB-FILES-<KIND>:START/END -->`, regex
+DOTALL in-place replace, idempotent), dry-run-default `project()`, and a Pydantic `FileObsidianReport` —
+and **reuses** `delta_link_fingerprint`. An **output fence** (`_assert_output_fence`, run at build time
+so dry-run previews are validated) raises on any raw delta token / signed-URL param / Graph downloadUrl
+/ auth material / PEM block / full-text marker; it never creates one note per file. Offline (SQLite; no
+Graph), no writeback, **no new migration** (schema stays at version 19). The V2 `ManifestService`
+(construction-agent/email track) is intentionally untouched (parallel path). Evidence:
+`13-obsidian-source-manifest-preview.md`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and

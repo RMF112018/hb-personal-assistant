@@ -40,6 +40,7 @@ from hb_assistant.construction.graph.baseline_crawler import BaselineCrawler
 from hb_assistant.construction.graph.controlled_extraction import ControlledExtractor
 from hb_assistant.construction.graph.delta_sync import DeltaSync
 from hb_assistant.construction.graph.drive_item_indexer import DriveItemIndexer
+from hb_assistant.construction.graph.file_obsidian_projection import FileObsidianProjector
 from hb_assistant.construction.graph.file_project_matcher import FileProjectMatcher
 from hb_assistant.construction.graph.file_review_router import FileReviewRouter
 from hb_assistant.construction.graph.ingestion_eligibility import IngestionEligibilityEvaluator
@@ -1088,6 +1089,40 @@ def files_review_queue_cmd(
             "queue_idempotent": True,
             "permission_tightening": "deferred",
         },
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_app.command("obsidian")
+def files_obsidian_cmd(
+    source: Optional[str] = typer.Option(None, "--source", help="Limit to one source key."),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to one project key."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run (preview paths); --apply writes notes."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Generate low-noise Obsidian notes from indexed SQLite state: per-source manifests,
+    per-project file registers, sensitive-file review summaries, and a processing receipt.
+    Marker-bounded + idempotent; never one note per file; no raw delta links, tokens, signed
+    URLs, or full document text (output-fenced). Offline (SQLite); no Graph. Dry-run default."""
+    try:
+        load_source_registry()  # surface registry/schema errors early
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files obsidian", e, json_out)
+        return
+
+    store = ConstructionStore()
+    report = FileObsidianProjector(store).project(
+        source_id=source, project_key=project, dry_run=dry_run
+    )
+    payload = {
+        "command": "graph files obsidian",
+        "mode": "dry_run" if dry_run else "apply",
+        "ok": True,
+        "result": report.model_dump(),
+        "guardrails": report.guardrails,
     }
     typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
     raise typer.Exit(0)
