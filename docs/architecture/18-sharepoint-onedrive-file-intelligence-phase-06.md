@@ -262,6 +262,22 @@ and drive items in the open review queue (Prompt 12) are excluded (`review_route
 package + `hb-assistant search` remain the embeddings home and are untouched. Evidence:
 `15-source-linked-retrieval-proof.md`.
 
+### Operational CLI surface & runbook (Phase 06A) — `graph files status` + help hardening (no new schema)
+The operator surface is finalized: a new read-only `graph files status` command (offline; constructs no
+Graph client and acquires no token) reports the delegated-auth posture (scope NAMES only, no tokens),
+source registry counts (by system / resolution status / enabled), the V5 projection count, the open
+review-queue size, and the standing no-writeback / deferred-permission guardrails — and is the
+`status` entry in the Prompt 17 validation matrix. The `files_app` group help is hardened into an
+operator summary stating the **dry-run-default + explicit-opt-in-side-effect-flag** contract: every
+write-capable command defaults to dry-run; `--apply` persists (SQLite / discovery receipts / driveItem
+index / sync state / ingestion decisions / review-queue rows / Obsidian notes), `--download` performs a
+controlled content fetch, and `--extract` (requires `--download`) does a bounded redacted parse. The
+operator workflow is documented end-to-end in
+`docs/runbooks/phase-06a-operational-sharepoint-onedrive-workflows.md` (status → discovery → index/sync
+→ match/policy → controlled extract → review routing → Obsidian → retrieval → no-writeback proof).
+Offline; no writeback; **no new migration** (schema stays at version 19); permission tightening
+deferred. Evidence: `15-operator-command-proof.md`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and

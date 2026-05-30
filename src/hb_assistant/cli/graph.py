@@ -78,7 +78,20 @@ mail_app = typer.Typer(help="Read-only Outlook/Exchange mail intelligence (Phase
 app.add_typer(mail_app, name="mail")
 body_app = typer.Typer(help="Controlled decrypt read for encrypted email bodies (local-only).")
 mail_app.add_typer(body_app, name="body")
-files_app = typer.Typer(help="Read-only SharePoint/OneDrive file intelligence (Phase 06).")
+files_app = typer.Typer(
+    help=(
+        "Read-only SharePoint/OneDrive file intelligence (Phase 06A). "
+        "DRY-RUN IS THE DEFAULT for every command that could write SQLite, a cache file, or an "
+        "Obsidian note. Side effects require explicit opt-in flags: --apply (persist discovery "
+        "receipts / driveItem index / sync state / ingestion decisions / review-queue rows / "
+        "Obsidian notes), --download (controlled content fetch to a cache outside the repo+vault, "
+        "deleted after parse), and --extract (bounded redacted parse; requires --download). "
+        "Read-only against Microsoft 365: no upload, create, update, delete, relocate, duplicate, "
+        "share, label, check-in/out, or permission change; no full document text, signed URLs, "
+        "download URLs, or raw delta links are ever persisted. Broad Graph file permission tightening is deferred "
+        "(documented risk). Start with `status`; end with `no-writeback-proof`."
+    )
+)
 app.add_typer(files_app, name="files")
 files_site_app = typer.Typer(help="SharePoint site resolution (read-only, metadata-only).")
 files_app.add_typer(files_site_app, name="site")
@@ -309,6 +322,88 @@ def files_no_writeback_proof_cmd(
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(1) from None
+
+
+@files_app.command("status")
+def files_status_cmd(
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Operator status dashboard for the SharePoint/OneDrive file surface.
+
+    Offline and read-only: reports the delegated-auth posture (scope NAMES only, no tokens; no
+    interactive login — a live token is acquired only by --apply/--download workflows), source
+    registry counts (by system, by resolution status, enabled), the V5 projection count, the open
+    review-queue size, and the standing no-writeback / deferred-permission guardrails. Constructs no
+    Graph client and writes nothing.
+    """
+    try:
+        registry = load_source_registry()
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files status", e, json_out)
+        return
+
+    by_system: Dict[str, int] = {}
+    by_resolution: Dict[str, int] = {}
+    enabled = 0
+    for src in registry.sources:
+        system = "sharepoint" if str(src.kind).startswith("sharepoint") else "onedrive"
+        by_system[system] = by_system.get(system, 0) + 1
+        by_resolution[src.resolution_status] = by_resolution.get(src.resolution_status, 0) + 1
+        if src.enabled:
+            enabled += 1
+    resolved = sum(
+        n for s, n in by_resolution.items() if s in {"resolved", "graph_delta_ready"}
+    )
+
+    # Lightweight store reads only (no heavy V5 table scans); resilient to an empty store.
+    projected_v5 = 0
+    review_queue_open = 0
+    try:
+        store = ConstructionStore()
+        projected_v5 = len(store.list_source_locations(limit=100000))
+        review_queue_open = store.count_review_queue(status="open")
+    except Exception as e:  # pragma: no cover - defensive; status must stay offline-safe
+        store_error = str(e)[:150]
+    else:
+        store_error = None
+
+    payload: Dict[str, Any] = {
+        "command": "graph files status",
+        "ok": True,
+        "delegated_auth": {
+            "mode": "delegated",
+            "token_acquisition": "on_demand",
+            "note": "Offline status; a live token is acquired only by --apply/--download workflows.",
+            **_files_auth_posture(),
+        },
+        "sources": {
+            "registry_total": len(registry.sources),
+            "by_system": by_system,
+            "enabled": enabled,
+            "by_resolution_status": by_resolution,
+            "resolved": resolved,
+            "pending": len(registry.sources) - resolved,
+            "projected_v5": projected_v5,
+        },
+        "operational": {
+            "review_queue_open": review_queue_open,
+            "store_error": store_error,
+        },
+        "guardrails": {
+            "external_systems": "read_only",
+            "writeback": "none",
+            "graph_calls": "none",
+            "microsoft_365_writeback_enabled": False,
+            "dry_run_default": True,
+            "permission_tightening": "deferred",
+            "broad_consent_note": (
+                "Files.ReadWrite.All consent retained at tenant; runtime read-only; "
+                "tightening deferred (documented risk)."
+            ),
+        },
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
 
 
 _DISCOVERY_GUARDRAILS = {
