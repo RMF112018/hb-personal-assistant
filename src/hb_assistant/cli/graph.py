@@ -41,10 +41,16 @@ from hb_assistant.construction.graph.controlled_extraction import ControlledExtr
 from hb_assistant.construction.graph.delta_sync import DeltaSync
 from hb_assistant.construction.graph.drive_item_indexer import DriveItemIndexer
 from hb_assistant.construction.graph.file_project_matcher import FileProjectMatcher
+from hb_assistant.construction.graph.file_review_router import FileReviewRouter
 from hb_assistant.construction.graph.ingestion_eligibility import IngestionEligibilityEvaluator
 from hb_assistant.construction.graph.link_resolver import LinkResolver
 from hb_assistant.construction.graph.resolver import GRAPH_SCOPES as _FILES_GRAPH_SCOPES
 from hb_assistant.construction.graph.site_drive_discovery import SiteDriveDiscovery
+from hb_assistant.construction.policy import (
+    ReviewPolicyEvaluator,
+    ReviewRulesError,
+    load_review_rules,
+)
 from hb_assistant.construction.policy.email_active import (
     load_email_intelligence_active_policy,
 )
@@ -1036,6 +1042,50 @@ def files_extract_cmd(
             "source_copied_to_vault": False,
             "cache_outside_repo_and_vault": True,
             "block_review_required_extraction": True,
+            "permission_tightening": "deferred",
+        },
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_app.command("review-queue")
+def files_review_queue_cmd(
+    source: Optional[str] = typer.Option(
+        None, "--source", help="Limit to one source key (default: every registry source)."
+    ),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply enqueues review rows."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Route construction-sensitive files (contracts, financials, claims, notices, legal,
+    HR/personnel, insurance/bonding, safety, medical, disputes, cost/schedule impact) and
+    low-confidence project matches into the review queue before any extraction. Idempotent
+    (re-running never duplicates rows). Offline (SQLite + rules); no Graph. Dry-run default.
+    Review-routed files cannot extract (enforced by the V18 ingestion CHECK; verified here)."""
+    try:
+        load_source_registry()  # surface registry/schema errors early
+        rules = load_review_rules()
+    except (SourceRegistryError, ReviewRulesError, ValidationError) as e:
+        _echo_files_error("graph files review-queue", e, json_out)
+        return
+
+    store = ConstructionStore()
+    router = FileReviewRouter(store, ReviewPolicyEvaluator(rules))
+    results = router.route(source_id=source, dry_run=dry_run)
+    all_blocked = all(r.extraction_blocked_for_all_routed for r in results)
+    payload = {
+        "command": "graph files review-queue",
+        "mode": "dry_run" if dry_run else "apply",
+        "ok": True,
+        "results": [r.model_dump() for r in results],
+        "guardrails": {
+            "external_systems": "read_only",
+            "writeback": "none",
+            "graph_calls": "none",
+            "review_routed_cannot_extract": all_blocked,
+            "queue_idempotent": True,
             "permission_tightening": "deferred",
         },
     }

@@ -162,3 +162,88 @@ rules:
     classification_label: pii_personal_financial
     reason: "document name contains a personal-financial marker"
     suggested_action: controller_review
+
+  # ---- Phase 06 construction-sensitive file categories -----------------
+  # Extend the file review router (SharePoint / OneDrive driveItems) to cover
+  # the remaining construction-sensitive categories beyond the protected six.
+  # Name/folder only — no content inspection; every match routes to
+  # controller_review and (per the V18 CHECK) blocks extraction.
+
+  # claim
+  - rule_id: folder-claims
+    kind: folder_path
+    pattern: "(^|/)claims?(/|$)"
+    sensitivity: high
+    classification_label: claim
+    reason: "item lives under a claims folder"
+    suggested_action: controller_review
+
+  - rule_id: term-claim
+    kind: risk_term
+    pattern: "claim,request for equitable adjustment,rea"
+    sensitivity: high
+    classification_label: claim
+    reason: "document name contains a claim-related term"
+    suggested_action: controller_review
+
+  # notice
+  - rule_id: doc-notice
+    kind: document_name
+    pattern: "notice\\s*(to\\s*proceed|of\\s*delay|of\\s*claim)|stop[\\s_\\-]*work|cure\\s*notice|default\\s*notice"
+    sensitivity: high
+    classification_label: notice
+    reason: "document name indicates a formal notice"
+    suggested_action: controller_review
+
+  # insurance_bonding
+  - rule_id: folder-insurance-bonding
+    kind: folder_path
+    pattern: "(^|/)(insurance|bonds?|bonding|surety)(/|$)"
+    sensitivity: high
+    classification_label: insurance_bonding
+    reason: "item lives under an insurance/bonding folder"
+    suggested_action: controller_review
+
+  - rule_id: doc-insurance-bonding
+    kind: document_name
+    pattern: "certificate\\s*of\\s*insurance|(^|[\\s_\\-])coi([\\s_\\-]|$)|payment\\s*bond|performance\\s*bond|surety"
+    sensitivity: high
+    classification_label: insurance_bonding
+    reason: "document name indicates an insurance certificate or bond"
+    suggested_action: controller_review
+
+  # medical
+  - rule_id: term-medical
+    kind: risk_term
+    pattern: "medical,first aid,first-aid,treatment,clinic,doctor"
+    sensitivity: critical
+    classification_label: medical
+    reason: "document name contains a medical-related term"
+    suggested_action: controller_review
+
+  # dispute
+  - rule_id: term-dispute
+    kind: risk_term
+    pattern: "dispute,mediation,arbitration,litigation,lien,demand letter,subpoena"
+    sensitivity: high
+    classification_label: dispute
+    reason: "document name contains a dispute-related term"
+    suggested_action: controller_review
+
+  # cost_impact
+  - rule_id: term-cost-impact
+    kind: risk_term
+    pattern: "cost impact,backcharge,back charge,overrun,construction change directive,ccd,potential change order,pco"
+    sensitivity: high
+    classification_label: cost_impact
+    reason: "document name indicates a cost impact"
+    suggested_action: controller_review
+
+  # schedule_impact
+  - rule_id: term-schedule-impact
+    kind: risk_term
+    pattern: "schedule impact,time extension,delay,acceleration,time impact analysis,tia"
+    sensitivity: medium
+    classification_label: schedule_impact
+    reason: "document name indicates a schedule impact"
+    suggested_action: controller_review

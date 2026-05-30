@@ -210,6 +210,24 @@ basename only; `@microsoft.graph.downloadUrl` is never used or cached. Dry-run d
 `auth_required` degradation. Evidence: `12-controlled-download-and-extraction-proof.md`,
 `20-cache-retention-proof.md`.
 
+### Sensitive file review routing (Phase 06A) — `graph files review-queue` (no new schema)
+`construction/graph/file_review_router.py` (`FileReviewRouter`) routes construction-sensitive
+SharePoint/OneDrive driveItems into the existing `construction_review_queue` (V3) **before** any
+extraction. It is the V5 `construction_drive_items` counterpart to the V2-inventory
+`ReviewQueueRouter`, reusing the same deterministic `ReviewPolicyEvaluator` (driveItem `name` +
+`parent_path` only — no content body) and the idempotent `enqueue_review_item` (`INSERT OR IGNORE` on
+`(source_key, item_id, rule_id)` — re-running never duplicates). The shared rule seed
+(`resources/config/review_required_rules.seed.yaml`) grows from 16 → 25 rules, extending coverage
+beyond the protected six (contract/financial/legal/incident/injury/personnel) to **claim, notice,
+insurance_bonding, medical, dispute, cost_impact, schedule_impact**; the Pydantic validator still
+passes (protected six intact, rule_ids unique). Low-confidence / unmatched project matches (V17
+`match_status`) route via a synthetic `low-confidence-project-match` rule. The router cross-checks
+that every routed item's V18 decision keeps `extraction_allowed = false` and reports
+`extraction_blocked_for_all_routed`; the no-extraction guarantee itself is enforced by the V18 CHECK
+(`review_required = 0 OR extraction_allowed = 0`) + the Prompt 11 extractor gate. **No new migration**
+(schema stays at version 19); offline (no Graph); dry-run default. Evidence:
+`14-sensitive-file-review-routing-proof.md`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and
