@@ -53,3 +53,15 @@ def test_graph_mail_status_no_probe_marks_probe_not_attempted(tmp_path: Path) ->
     res = _invoke(tmp_path, "graph", "mail", "status", "--json", "--no-probe")
     payload = json.loads(res.output)
     assert payload["mail_probe"]["attempted"] is False
+
+
+def test_graph_mail_folders_dry_run_parses(tmp_path: Path) -> None:
+    # No token in the isolated env, so this resolves to an error envelope, but the
+    # command must parse, stay read-only, and never leak a token.
+    res = _invoke(tmp_path, "graph", "mail", "folders", "--dry-run", "--json")
+    assert res.exit_code in (0, 1)
+    payload = json.loads(res.output)
+    assert payload["command"] == "graph mail folders"
+    assert payload["dry_run"] is True
+    assert "access_token" not in res.output
+    assert "Bearer " not in res.output

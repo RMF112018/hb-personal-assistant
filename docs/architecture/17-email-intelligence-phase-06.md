@@ -1,6 +1,6 @@
 # 17 — Operational Email Intelligence (Phase 06)
 
-Status: **in progress** · Phase 06 Prompts 00–04 landed · Migration **V11** (Prompt 03) · read-only mail client + endpoint guard (Prompt 04)
+Status: **in progress** · Phase 06 Prompts 00–05 landed · Migration **V11** (Prompt 03) · read-only mail client + endpoint guard (Prompt 04) · folder discovery + sync state (Prompt 05)
 
 Phase 06 turns the Phase 02 *deferred* email intelligence into operational, **read-only**,
 project-aware email workflows over the existing GET-only Graph stack. It is local-first: SQLite is
@@ -85,6 +85,27 @@ Makes the mail read path operational while keeping the mailbox read-only at the 
 - **Evidence** — `docs/evidence/construction-intelligence-phase-06-email/`
   `04-readonly-graph-client-and-auth-status.md` + captured `graph-mail-auth-status.json` (live: guard
   self-test passed, probe 200, all guardrails true, no token leaked).
+
+## Prompt 05 — folder discovery + sync state
+
+Resolves the policy-driven mailbox registry against the live mailbox and initializes per-folder sync
+state, all read-only.
+
+- **Service** — `construction/email/folder_discovery.py` (`EmailFolderDiscovery`,
+  `FolderDiscoveryResult`, `DiscoveredFolder`), the first module in the new `construction/email/`
+  package (higher layer: imports the `graph/` read client + the `construction/store` helpers).
+  **List-then-match**: one `get_me` + one `list_mail_folders` GET, the Prompt 02 registry
+  (`build_mailbox_source_registry`) resolved to live folders by display name. Unmatched policy folders
+  (e.g. a mailbox with no Archive) are reported, not persisted.
+- **Persistence** — for each matched folder `upsert_email_source_location` (resolved `folder_id`, owner
+  sha256[:16] hash, `include_in_sync` per policy); for each **included** matched folder
+  `upsert_email_sync_state` (`bounded_lookback`, `default_lookback_days`, `pending`). Excluded folders
+  (Deleted Items / Junk Email / Drafts) are recorded with `include_in_sync=0` and **no** sync cursor.
+- **CLI** — `graph mail folders [--json] [--dry-run/--no-dry-run]` (default dry-run previews; `--no-dry-run`
+  commits). JSON surfaces owner hash, per-folder roles/counts, and `folder_id_fingerprint`s (never raw
+  ids/tokens).
+- **Evidence** — `05-folder-discovery-dry-run.md` (live: all 6 policy folders resolved against Bobby's
+  mailbox; 6 source rows + 3 included sync cursors persisted; excluded folders carry no cursor).
 
 ### Five-layer read-only lock (defense in depth)
 

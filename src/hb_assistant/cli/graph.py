@@ -18,6 +18,8 @@ import typer
 from hb_assistant.auth.providers import DelegatedAuthProvider
 from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
+from hb_assistant.construction.email import EmailFolderDiscovery
+from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
 from hb_assistant.graph.mail_endpoint_guard import (
     MailboxMutationBlockedError,
@@ -170,3 +172,57 @@ def status_cmd(
         payload = {"command": "graph mail status", "ok": False, "status": "status_error", "error": str(e)[:200]}
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(1) from None
+
+
+@mail_app.command("folders")
+def folders_cmd(
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run/--no-dry-run",
+        help="Preview without persisting (default); --no-dry-run writes source/sync rows",
+    ),
+) -> None:
+    """Discover Inbox / Sent Items / Archive (excluding Deleted Items / Junk Email / Drafts).
+
+    Resolves the policy folder registry against the live mailbox (read-only) and,
+    unless --dry-run, persists email_source_locations + email_sync_state.
+    """
+    client: Optional[GraphHttpClient] = None
+    try:
+        cfg = load_config()
+        pp = PathPolicy(cfg)
+        provider = DelegatedAuthProvider(
+            cfg.identity.tenant_id,
+            cfg.identity.client_id,
+            list(cfg.identity.delegated_scopes),
+            path_policy=pp,
+        )
+        contract = load_mail_endpoint_contract()
+
+        def token_getter(scopes: Optional[List[str]] = None) -> Dict[str, Any]:
+            return provider.get_token(scopes or ["Mail.Read"])
+
+        client = GraphHttpClient(token_getter)
+        reader = ReadOnlyMailClient(client, contract=contract)
+        discovery = EmailFolderDiscovery(reader, ConstructionStore())
+        result = discovery.discover(dry_run=dry_run)
+
+        payload: Dict[str, Any] = {"command": "graph mail folders", "ok": True, **result.model_dump()}
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail folders",
+            "ok": False,
+            "dry_run": dry_run,
+            "status": "folders_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+    finally:
+        if client is not None:
+            client.close()
