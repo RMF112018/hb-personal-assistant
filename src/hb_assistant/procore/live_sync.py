@@ -133,6 +133,12 @@ from hb_assistant.store.procore_submittal_projection import project_submittal
 COMPANY_ID = "5280"
 EVIDENCE_DIR_REL = "docs/evidence/construction-intelligence-phase-04a"
 
+# Default bound on N+1 child GETs per sync run (one GET per parent). Caps rate-limit /
+# long-run exposure for endpoints that fan out over a parent list; operators may lower
+# it via `--max-child-requests`. When reached, remaining parents are skipped and a later
+# run backfills idempotently (see run_live_sync N+1 fan-out).
+DEFAULT_MAX_CHILD_REQUESTS = 50
+
 
 def _now_utc() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -549,6 +555,7 @@ def _build_receipt(
     child_upserted_count: int = 0,
     child_errors_count: int = 0,
     projection_error_count: int = 0,
+    n1_fanout: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     return {
         "receipt_id": receipt_id,
@@ -591,6 +598,7 @@ def _build_receipt(
         "child_upserted_count": child_upserted_count,
         "child_errors_count": child_errors_count,
         "projection_error_count": projection_error_count,
+        "n1_fanout": n1_fanout,
     }
 
 
@@ -603,6 +611,7 @@ def run_live_sync(
     confirm_live_get: bool,
     max_pages: int = 3,
     max_items: int = 100,
+    max_child_requests: int = DEFAULT_MAX_CHILD_REQUESTS,
     mode_hint: Optional[str] = None,
     db_path: Optional[Path] = None,
     transport: Optional[Any] = None,
@@ -1094,14 +1103,30 @@ def run_live_sync(
     # id substituted into the child token, tag each child with the parent id (so the
     # financial projection receives parent_procore_id), and REPLACE items with the flat
     # child list. Per-parent transport errors are recorded and the loop continues.
+    n1_fanout: Optional[Dict[str, Any]] = None
     if adapter.endpoint_id in _N1_CHILD_ENDPOINTS and items:
         token = adapter.parent_record_id_field or "id"
+        parent_count = len(items)
         child_records: List[Dict[str, Any]] = []
-        for parent_summary in items:
+        child_request_count = 0
+        child_skipped_count = 0
+        child_error_count = 0
+        cap_reached = False
+        for idx, parent_summary in enumerate(items):
+            # Bounded fan-out: cap the number of child GETs to limit rate-limit /
+            # long-run exposure. When the cap is hit the remaining parents are counted
+            # as skipped and the loop stops; a later run (or a higher --max-child-requests)
+            # backfills idempotently — no upsert key or parent/child linkage changes.
+            if child_request_count >= max_child_requests:
+                cap_reached = True
+                child_skipped_count += parent_count - idx
+                break
             if not isinstance(parent_summary, dict):
+                child_skipped_count += 1
                 continue
             parent_id = parent_summary.get("id")
             if parent_id is None or parent_id == "":
+                child_skipped_count += 1
                 continue
             child_path = _resolve_child_path(adapter, str(procore_project_id), str(parent_id))
             # v1.0 child endpoints (e.g. /rest/v1.0/requisitions/{id}/contract_items) carry
@@ -1109,6 +1134,7 @@ def run_live_sync(
             # already embed /projects/{project_id}/ in the path. RFQ children also need the
             # parent-derived contract_id (see _child_query_params).
             child_params = _child_query_params(adapter, str(procore_project_id), parent_summary)
+            child_request_count += 1  # counted even on error (a GET was attempted)
             try:
                 child_iter = list(
                     client.paginate(
@@ -1120,11 +1146,13 @@ def run_live_sync(
                     )
                 )
             except ProcoreAPIError as exc:
+                child_error_count += 1
                 redacted_errors.append(
                     {"detail_transport_error": exc.code, "status": exc.status, token: parent_id}
                 )
                 continue
             except Exception:  # noqa: BLE001
+                child_error_count += 1
                 redacted_errors.append({"detail_transport_error": "unexpected", token: parent_id})
                 continue
             for child_raw in child_iter:
@@ -1132,9 +1160,22 @@ def run_live_sync(
                     child_raw[_PARENT_ID_KEY] = str(parent_id)
                     child_records.append(child_raw)
             if len(child_records) >= max_items:
+                # Record cap hit: remaining unvisited parents are skipped this run.
+                child_skipped_count += parent_count - idx - 1
                 break
         items = child_records[:max_items]
         retrieved_count = len(items)
+        if cap_reached:
+            reason_codes.append("n1_child_cap_reached")
+        n1_fanout = {
+            "is_n1": True,
+            "parent_count": parent_count,
+            "child_request_count": child_request_count,
+            "child_skipped_count": child_skipped_count,
+            "child_error_count": child_error_count,
+            "cap": max_child_requests,
+            "cap_reached": cap_reached,
+        }
 
     # Normalize + upsert. After each parent upsert, perform an N+1 child GET if
     # the registry contains a child adapter for this parent (its
@@ -1613,6 +1654,7 @@ def run_live_sync(
         child_upserted_count=child_upserted_count,
         child_errors_count=child_errors_count,
         projection_error_count=projection_error_count,
+        n1_fanout=n1_fanout,
     )
 
 

@@ -446,6 +446,41 @@ hb-assistant procore tools catalog --json --no-include-ineligible
 The shipped snapshot is at
 `docs/evidence/construction-intelligence-phase-04/03-endpoint-catalog-validation.json`.
 
+## Rate-limit cadence & N+1 fan-out (Phase 06B Prompt 03)
+
+**What the client already does.** The HTTP paginator handles HTTP 429 and 5xx with
+exponential backoff (5 retries, 1–60s, jitter) and honors the `Retry-After` header. You do
+not script sleeps; transient rate-limits are absorbed transparently per page.
+
+**N+1 cost model.** Child endpoints that fan out over a parent list (commitments,
+prime/PO/subcontractor-invoice line items, rfq responses/quotes, change-event comments,
+budget detail columns/rows) issue **one child GET per parent**. A project with many parents
+therefore drives many requests in a single run — the rate-limit and long-run risk.
+
+**Bounded fan-out cap.** `procore live sync` accepts `--max-child-requests` (default **50**),
+which bounds the number of child GETs per run. When the cap is reached the run stops fanning
+out, the remaining parents are counted as skipped, and the receipt records:
+
+```
+"n1_fanout": { "is_n1": true, "parent_count": N, "child_request_count": C,
+               "child_skipped_count": S, "child_error_count": E,
+               "cap": 50, "cap_reached": true|false }
+```
+
+with `reason_codes` containing `n1_child_cap_reached` when the cap fired.
+
+**Recommended cadence.**
+- Start conservative: small `--max-pages` / `--max-items`, and a `--max-child-requests`
+  matched to the project's parent volume (e.g. 25–50).
+- Treat `cap_reached: true` as *"more data remains"*, not an error. Re-run the same endpoint
+  (optionally with a higher cap) — children upsert **idempotently** by record id and parents
+  re-resolve, so reruns backfill without duplicates and preserve `parent_procore_id` linkage.
+- Run financial N+1 endpoints incrementally rather than all-at-once when first onboarding a
+  large project, to stay well inside the tenant rate-limit budget.
+
+`--max-child-requests` only bounds live fan-out; the dry-run posture and all other guardrails
+are unchanged.
+
 ## Live-test mode
 
 No live Procore tests ship in this MVP. The `live` pytest marker is reserved

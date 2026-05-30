@@ -1,0 +1,71 @@
+{
+  "command": "phase-06b prompt-03 n+1 cadence proof",
+  "ok": true,
+  "live_call_performed": false,
+  "default_max_child_requests": 50,
+  "scenario_count": 3,
+  "scenarios": [
+    {
+      "scenario": "bounded_fanout_cap_below_parents",
+      "max_child_requests": 2,
+      "n1_fanout": {
+        "is_n1": true,
+        "parent_count": 5,
+        "child_request_count": 2,
+        "child_skipped_count": 3,
+        "child_error_count": 0,
+        "cap": 2,
+        "cap_reached": true
+      },
+      "reason_codes": [
+        "n1_child_cap_reached"
+      ],
+      "persisted_child_rows": 2,
+      "linked_parent_ids": [
+        "501",
+        "502"
+      ],
+      "idempotent_second_run_rows": 2,
+      "idempotent_same_record_ids": true
+    },
+    {
+      "scenario": "uncapped_parents_below_limit",
+      "max_child_requests": 50,
+      "n1_fanout": {
+        "is_n1": true,
+        "parent_count": 3,
+        "child_request_count": 3,
+        "child_skipped_count": 0,
+        "child_error_count": 0,
+        "cap": 50,
+        "cap_reached": false
+      },
+      "reason_codes": [],
+      "persisted_child_rows": 3
+    },
+    {
+      "scenario": "partial_success_child_error",
+      "max_child_requests": 50,
+      "n1_fanout": {
+        "is_n1": true,
+        "parent_count": 3,
+        "child_request_count": 3,
+        "child_skipped_count": 0,
+        "child_error_count": 1,
+        "cap": 50,
+        "cap_reached": false
+      },
+      "state": "partial_success",
+      "redacted_error_keys": [
+        "commitment_contract_id",
+        "detail_transport_error"
+      ],
+      "raw_error_string_present_anywhere": false,
+      "persisted_child_rows": 2,
+      "linked_parent_ids": [
+        "501",
+        "502"
+      ]
+    }
+  ]
+}

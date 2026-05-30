@@ -18,6 +18,16 @@ end-to-end chain that lands in local SQLite only.
 > strings are never persisted. Inline-extracted child records store the *resolved*
 > child path (not the placeholder template) in `source_url_redacted`.
 
+> **N+1 fan-out cap (Phase 06B Prompt 03).** N+1 child sync (one child GET per
+> parent) is bounded by `--max-child-requests` (default 50). When the cap is hit,
+> remaining parents are skipped and the run stops fanning out; the receipt's
+> additive `n1_fanout` block records parent_count / child_request_count /
+> child_skipped_count / child_error_count / cap / cap_reached, and `reason_codes`
+> gains `n1_child_cap_reached`. Per-parent errors are captured (redacted) and the
+> run continues (partial success). The cap touches no upsert key or parent/child
+> linkage, so a rerun (or higher cap) backfills idempotently. This layers on top
+> of the paginator's existing 429/Retry-After exponential backoff.
+
 ## One-command operator surface
 
 ```bash

@@ -892,6 +892,11 @@ def live_sync(
     sqlite_only: bool = typer.Option(True, "--sqlite-only", help="Required guardrail; no source-system mutation."),
     max_pages: int = typer.Option(3, "--max-pages", min=1),
     max_items: int = typer.Option(100, "--max-items", min=1),
+    max_child_requests: int = typer.Option(
+        50, "--max-child-requests", min=1,
+        help="Bounded N+1 fan-out: max child GETs per run (one per parent). When reached, "
+        "remaining parents are skipped and a later run backfills idempotently.",
+    ),
     confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
     start_date: Optional[str] = typer.Option(None, "--start-date", help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections)."),
     end_date: Optional[str] = typer.Option(None, "--end-date", help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections)."),
@@ -917,6 +922,7 @@ def live_sync(
         confirm_live_get=confirm_live_get,
         max_pages=max_pages,
         max_items=max_items,
+        max_child_requests=max_child_requests,
         mode_hint="live_apply" if apply else "live_dry_run",
         evidence_path="docs/evidence/construction-intelligence-phase-04a/02-endpoint-command-matrix.md",
         start_date=start_date,
