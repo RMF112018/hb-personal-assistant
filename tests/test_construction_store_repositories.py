@@ -231,9 +231,9 @@ def test_v5_migration_is_idempotent(db_path: str) -> None:
     m = SQLiteMigrator(db_path)
     # Latest schema version is 10 after the Phase 06 active-policy + mailbox
     # source registry migration.
-    assert m.apply() == 13
-    assert m.apply() == 13
-    assert m.current_version() == 13
+    assert m.apply() == 14
+    assert m.apply() == 14
+    assert m.current_version() == 14
 
 
 def test_no_body_or_text_columns_in_drive_items(db_path: str) -> None:

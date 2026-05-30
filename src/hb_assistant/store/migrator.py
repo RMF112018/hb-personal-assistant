@@ -1767,6 +1767,51 @@ class SQLiteMigrator:
         "ALTER TABLE email_review_queue ADD COLUMN body_capture_decision_json TEXT",
     ]
 
+    # v14 Phase 06 Prompt 11 advisory Ollama email-classification read model.
+    # Additive only: a durable, idempotent, queryable home for the structured,
+    # redacted advisory model output (Prompt 12 / Obsidian read from it; receipts
+    # remain the per-run audit trail). Advisory only — never a legal/contractual/
+    # claims/financial/personnel/entitlement determination. CHECK constraints lock
+    # advisory_only=1 and plaintext-body / raw-prompt / raw-response persistence to 0
+    # (defense in depth: no decrypted body, no full-body plaintext, no raw prompt,
+    # no raw model response is ever stored). V1-V13 untouched; CREATE TABLE only.
+    V14_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS email_model_classifications (
+          classification_id TEXT PRIMARY KEY,
+          message_id TEXT NOT NULL REFERENCES email_messages(message_id) ON DELETE CASCADE,
+          conversation_id TEXT,
+          project_key TEXT,
+          model_name TEXT NOT NULL,
+          model_version TEXT,
+          schema_version TEXT NOT NULL,
+          classification_status TEXT NOT NULL,
+          project_match_confidence REAL,
+          topic_labels_json TEXT,
+          relationship_candidates_json TEXT,
+          risk_flags_json TEXT,
+          sensitive_categories_json TEXT,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          review_reasons_json TEXT,
+          advisory_only INTEGER NOT NULL DEFAULT 1 CHECK(advisory_only = 1),
+          plaintext_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(plaintext_body_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(message_id, model_name, schema_version)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_email_model_classifications_project
+          ON email_model_classifications(project_key);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_email_model_classifications_review
+          ON email_model_classifications(review_required);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -1927,6 +1972,18 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (13, 'v13_email_review_body_capture_decision', ?)",
+                    (now,),
+                )
+
+            # v14 Phase 06 Prompt 11 advisory Ollama email-classification read model
+            # (additive CREATE TABLE only; does not touch V1-V13).
+            for stmt in self.V14_STATEMENTS:
+                conn.execute(stmt)
+
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 14")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (14, 'v14_email_model_classifications', ?)",
                     (now,),
                 )
 
