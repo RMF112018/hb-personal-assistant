@@ -278,6 +278,23 @@ operator workflow is documented end-to-end in
 Offline; no writeback; **no new migration** (schema stays at version 19); permission tightening
 deferred. Evidence: `15-operator-command-proof.md`.
 
+### End-to-end pilot & no-writeback/no-secret proof (Phase 06A) — validation matrix (no new schema)
+The phase validation matrix is committed at `resources/json/phase_06a_files_validation_matrix.json`
+(19 `required_commands` + a `user_provided_link_resolution` additional-validation block) — the
+artifact Prompt 17 gates on and that the Prompt 16 pilot runs. The pilot exercises the full
+`graph files` surface end-to-end: offline/read-only commands (`status`, `sources`, `project-match`,
+`ingestion-policy`, `obsidian`, `retrieve`) return `ok` with `graph_calls=none`; the five
+Graph-discovery dry-runs (`sites`, `drives`, `onedrive`, `crawl`, `delta`) degrade to `auth_required`
+(exit 0, no live call) absent a files-scoped delegated token. `no-writeback-proof` reports the
+endpoint-guard self-test (24 GET paths allowed, 19 mutation attempts blocked, 0 anomalies) and a
+source static scan (39 files across `graph/`, `construction/graph/`, `files/`; 0 mutation method
+calls). The no-secret posture is the bounded, redacted `diagnostics scan-sensitive` (1034 files
+scanned; indicators only — *no matched secret values emitted*; hits are test fixtures + prior doc
+text). No-vault-copy / no-leak is enforced by the V19 `CHECK(source_file_copied_to_vault=0)` /
+`CHECK(full_text_persisted=0)` / `CHECK(raw_download_url_persisted=0)` constraints and the Obsidian
+output-fence. Offline; no writeback; **no new migration** (schema stays at version 19); permission
+tightening deferred. Evidence: `16-no-secret-no-writeback-proof.md`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and

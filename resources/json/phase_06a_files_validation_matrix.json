@@ -1,0 +1,39 @@
+{
+  "required_commands": [
+    "python -m pytest -q --no-header",
+    "ruff check .",
+    "mypy src",
+    "python -m compileall src tests",
+    "hb-assistant diagnostics graph --safe --json",
+    "hb-assistant auth status --json",
+    "construction-agent validate --json",
+    "hb-assistant graph files status --json",
+    "hb-assistant graph files sources --json",
+    "hb-assistant graph files sites --dry-run --json",
+    "hb-assistant graph files drives --source sp_2023projects_23_435_01_tropical_sl --dry-run --json",
+    "hb-assistant graph files onedrive --source od_business_bobby_hedrickbrothers --dry-run --json",
+    "hb-assistant graph files crawl --source sp_2023projects_23_435_01_tropical_sl --dry-run --json",
+    "hb-assistant graph files delta --source sp_2023projects_23_435_01_tropical_sl --dry-run --json",
+    "hb-assistant graph files project-match --project tropical --dry-run --json",
+    "hb-assistant graph files ingestion-policy --source sp_2023projects_23_435_01_tropical_sl --dry-run --json",
+    "hb-assistant graph files obsidian --source sp_2023projects_23_435_01_tropical_sl --dry-run --json",
+    "hb-assistant graph files retrieve --project tropical --query \"RFI submittal meeting minutes\" --json",
+    "hb-assistant graph files no-writeback-proof --json"
+  ],
+  "additional_validations": [
+    {
+      "id": "user_provided_link_resolution",
+      "description": "Resolve pasted SharePoint/OneDrive folder/root/file links into canonical Graph IDs without persisting raw tokenized URLs or mutating Microsoft 365.",
+      "evidence": "05a-user-provided-link-resolution-proof.json",
+      "required_tests": [
+        "encode_sharing_url_unpadded_base64url",
+        "resolve_shares_driveItem_folder",
+        "resolve_shares_driveItem_file",
+        "business_onedrive_root_fallback",
+        "malformed_url_no_graph_call",
+        "no_redeemSharingLink_by_default",
+        "no_raw_url_or_share_token_persistence"
+      ]
+    }
+  ]
+}
