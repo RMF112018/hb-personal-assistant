@@ -94,3 +94,18 @@ def test_graph_mail_relationships_parses(tmp_path: Path) -> None:
     assert payload.get("disclaimer", "").find("not determinations") >= 0 or payload.get("ok") is False
     assert "access_token" not in res.output
     assert "Bearer " not in res.output
+
+
+def test_graph_mail_review_queue_parses(tmp_path: Path) -> None:
+    # Local-only command (no Graph); evidence-safe dry-run preview.
+    res = _invoke(tmp_path, "graph", "mail", "review-queue", "--project", "tropical", "--lookback-days", "30", "--dry-run", "--json")
+    assert res.exit_code in (0, 1)
+    payload = json.loads(res.output)
+    assert payload["command"] == "graph mail review-queue"
+    if payload.get("ok"):
+        assert payload["dry_run"] is True
+        assert "messages_considered" in payload
+    # never leak a token or a decrypted body
+    assert "access_token" not in res.output
+    assert "Bearer " not in res.output
+    assert "----- decrypted body" not in res.output

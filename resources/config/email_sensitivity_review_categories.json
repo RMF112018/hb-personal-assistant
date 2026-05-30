@@ -1,0 +1,327 @@
+{
+  "categories": [
+    {
+      "id": "legal_correspondence",
+      "label": "Legal correspondence",
+      "trigger_terms": [
+        "legal",
+        "attorney",
+        "counsel",
+        "litigation"
+      ],
+      "sensitivity_level": "high",
+      "recommended_review_action": "route_to_legal_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible legal correspondence; review before relying on content"
+    },
+    {
+      "id": "privileged_or_confidential_markers",
+      "label": "Privileged / confidential markers",
+      "trigger_terms": [
+        "privileged",
+        "confidential",
+        "do not distribute",
+        "nda"
+      ],
+      "sensitivity_level": "high",
+      "recommended_review_action": "treat_as_privileged_route_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible privileged/confidential marking; restrict and review"
+    },
+    {
+      "id": "claims",
+      "label": "Claims",
+      "trigger_terms": [
+        "claim"
+      ],
+      "sensitivity_level": "high",
+      "recommended_review_action": "route_to_review_no_determination",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible claim language; not a determination, review required"
+    },
+    {
+      "id": "default_or_termination_language",
+      "label": "Default / termination language",
+      "trigger_terms": [
+        "termination",
+        "default notice",
+        "cure notice",
+        "notice to cure"
+      ],
+      "sensitivity_level": "high",
+      "recommended_review_action": "escalate_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible default/termination language; review before acting"
+    },
+    {
+      "id": "disputes",
+      "label": "Disputes",
+      "trigger_terms": [
+        "dispute"
+      ],
+      "sensitivity_level": "high",
+      "recommended_review_action": "route_to_review_no_determination",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible dispute language; review required"
+    },
+    {
+      "id": "injuries",
+      "label": "Injuries",
+      "trigger_terms": [
+        "injury",
+        "injuries",
+        "accident",
+        "osha"
+      ],
+      "sensitivity_level": "high",
+      "recommended_review_action": "route_to_safety_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible injury/safety content; route to safety review"
+    },
+    {
+      "id": "incidents",
+      "label": "Incidents",
+      "trigger_terms": [
+        "incident"
+      ],
+      "sensitivity_level": "high",
+      "recommended_review_action": "route_to_safety_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible incident content; route to review"
+    },
+    {
+      "id": "medical_detail",
+      "label": "Medical detail",
+      "trigger_terms": [
+        "medical",
+        "health record"
+      ],
+      "sensitivity_level": "high",
+      "recommended_review_action": "restrict_and_route_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible medical detail; restrict and review"
+    },
+    {
+      "id": "personnel_or_hr",
+      "label": "Personnel / HR",
+      "trigger_terms": [
+        "payroll",
+        "ssn",
+        "w-2",
+        "w2 ",
+        "1099",
+        "offer letter",
+        "personnel"
+      ],
+      "sensitivity_level": "high",
+      "recommended_review_action": "restrict_and_route_to_hr_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible personnel/HR detail; restrict and review"
+    },
+    {
+      "id": "liquidated_damages",
+      "label": "Liquidated damages",
+      "trigger_terms": [
+        "liquidated damages"
+      ],
+      "sensitivity_level": "high",
+      "recommended_review_action": "escalate_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible liquidated-damages language; review before acting"
+    },
+    {
+      "id": "contracts",
+      "label": "Contracts",
+      "trigger_terms": [
+        "contract",
+        "agreement",
+        "subcontract"
+      ],
+      "sensitivity_level": "medium",
+      "recommended_review_action": "route_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible contract-related content; review required"
+    },
+    {
+      "id": "change_orders",
+      "label": "Change orders",
+      "trigger_terms": [
+        "change order",
+        "changeorder"
+      ],
+      "sensitivity_level": "medium",
+      "recommended_review_action": "route_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible change-order content; review required"
+    },
+    {
+      "id": "notices",
+      "label": "Notices",
+      "trigger_terms": [
+        "notice"
+      ],
+      "sensitivity_level": "medium",
+      "recommended_review_action": "route_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible formal notice; review required"
+    },
+    {
+      "id": "insurance_or_bonding",
+      "label": "Insurance / bonding",
+      "trigger_terms": [
+        "insurance",
+        "certificate of insurance",
+        "coi",
+        "bond"
+      ],
+      "sensitivity_level": "medium",
+      "recommended_review_action": "route_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible insurance/bonding content; review required"
+    },
+    {
+      "id": "pay_applications",
+      "label": "Pay applications",
+      "trigger_terms": [
+        "pay app",
+        "payapp",
+        "payment application",
+        "g702",
+        "g703"
+      ],
+      "sensitivity_level": "medium",
+      "recommended_review_action": "route_to_financial_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible pay-application content; route to financial review"
+    },
+    {
+      "id": "invoices",
+      "label": "Invoices",
+      "trigger_terms": [
+        "invoice"
+      ],
+      "sensitivity_level": "medium",
+      "recommended_review_action": "route_to_financial_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible invoice content; route to financial review"
+    },
+    {
+      "id": "lien_releases",
+      "label": "Lien releases",
+      "trigger_terms": [
+        "lien",
+        "lien release",
+        "lien waiver"
+      ],
+      "sensitivity_level": "medium",
+      "recommended_review_action": "route_to_financial_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible lien/release content; review required"
+    },
+    {
+      "id": "delay_or_time_extension_language",
+      "label": "Delay / time extension",
+      "trigger_terms": [
+        "delay",
+        "time extension"
+      ],
+      "sensitivity_level": "medium",
+      "recommended_review_action": "route_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible delay/time-extension language; review required"
+    },
+    {
+      "id": "additional_compensation_language",
+      "label": "Additional compensation",
+      "trigger_terms": [
+        "additional compensation",
+        "extra work"
+      ],
+      "sensitivity_level": "medium",
+      "recommended_review_action": "route_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible additional-compensation language; review required"
+    },
+    {
+      "id": "confidential_bid_or_estimate",
+      "label": "Confidential bid / estimate",
+      "trigger_terms": [
+        "confidential bid",
+        "bid tab",
+        "estimate",
+        "estimating",
+        "proposal pricing"
+      ],
+      "sensitivity_level": "high",
+      "recommended_review_action": "restrict_and_route_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible confidential bid/estimate content; restrict and review"
+    },
+    {
+      "id": "owner_directive",
+      "label": "Owner directive",
+      "trigger_terms": [
+        "owner directive",
+        "owner direction",
+        "construction directive",
+        "owner instruction"
+      ],
+      "sensitivity_level": "medium",
+      "recommended_review_action": "route_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible owner directive; review before acting"
+    },
+    {
+      "id": "subcontractor_default",
+      "label": "Subcontractor default",
+      "trigger_terms": [
+        "subcontractor default",
+        "default of subcontractor",
+        "sub default",
+        "failure to perform"
+      ],
+      "sensitivity_level": "high",
+      "recommended_review_action": "escalate_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible subcontractor-default language; not a determination, review required"
+    },
+    {
+      "id": "schedule_recovery_or_acceleration",
+      "label": "Schedule recovery / acceleration",
+      "trigger_terms": [
+        "recovery schedule",
+        "schedule recovery",
+        "acceleration",
+        "accelerate the work"
+      ],
+      "sensitivity_level": "medium",
+      "recommended_review_action": "route_to_review",
+      "encrypted_body_capture_allowed": true,
+      "encrypted_body_capture_requires_review_first": true,
+      "evidence_safe_explanation": "possible schedule-recovery/acceleration language; review required"
+    }
+  ],
+  "route_to_review_by_default": true
+}

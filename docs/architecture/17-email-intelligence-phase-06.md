@@ -238,3 +238,37 @@ new `email_intelligence/` package (which may emerge as later modules land). Evid
 `docs/evidence/construction-intelligence-phase-06-email/` (`00`/`01`/`02` numbered docs,
 `mail-permission-readiness-proof.md`, `mailbox-source-registry-proof.md`,
 `mailbox-readonly-guardrail-proof.md`, and the endpoint-contract research doc).
+
+## Prompt 10 — Review routing, sensitive categories & encrypted-body eligibility (schema V13)
+
+Adds the review-routing / eligibility layer over the already-indexed, project-matched
+email. **Local-only** (no Graph, no mailbox): reads persisted `email_project_matches` +
+`email_messages` (bounded, redacted previews) and decides, per message, (1) which
+sensitive categories apply, (2) whether the message is eligible for a read-only full-body
+fetch and encrypted-at-rest storage, and (3) whether it must be routed to review before
+any body-derived intelligence is trusted.
+
+- **`construction/email/review_categories.py`** — authoritative 23-category registry
+  (`ReviewCategory` + `REVIEW_CATEGORIES` + `classify_review_categories`). Reproduces the
+  19 legacy `attachment_analyzer` categories exactly and adds
+  `confidential_bid_or_estimate`, `owner_directive`, `subcontractor_default`,
+  `schedule_recovery_or_acceleration`. Mirrored to
+  `resources/config/email_sensitivity_review_categories.json` (drift-guarded by test).
+- **`construction/email/review_router.py`** — `ReviewRouter` + `EmailBodyCaptureDecision`.
+  Eligibility is policy-gated (`full_body_storage_allowed`, mode `encrypted_text_vault`),
+  folder-scoped (excludes deleted/junk/drafts), per-run capped
+  (`max_full_body_fetch_per_run`), and lookback-bounded. Sensitive / low-confidence
+  (`< low_confidence_threshold` 0.75) messages route to `email_review_queue`. Plaintext
+  body persistence is never represented as allowed.
+- **Migration V13** (`v13_email_review_body_capture_decision`) — additive
+  `ALTER TABLE email_review_queue ADD COLUMN` × 4: `body_capture_eligible`,
+  `encrypted_body_capture_allowed`, `review_required_before_body_use`,
+  `body_capture_decision_json`. ADD COLUMN only (gated behind the version row so re-apply
+  is safe); no plaintext-body column.
+- **CLI** — `graph mail review-queue --project … [--lookback-days N] [--max-messages N]
+  [--dry-run/--no-dry-run] --json` (local-only; default dry-run preview, evidence-safe).
+
+Guardrails unchanged: read-only mailbox, no mutation path, no full-body plaintext in
+SQLite/Obsidian/evidence/logs/CLI JSON. Evidence:
+`docs/evidence/construction-intelligence-phase-06-email/10-review-routing-and-encrypted-body-eligibility.md`
++ `email-review-routing-proof.md` + `email-review-routing-dry-run.json`.

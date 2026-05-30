@@ -1,0 +1,128 @@
+{
+  "command": "graph mail review-queue",
+  "ok": true,
+  "project_key": "tropical",
+  "project_number": "23-435-01",
+  "lookback_days": 30,
+  "received_after": "2026-04-30T09:19:40+00:00",
+  "dry_run": true,
+  "persisted": false,
+  "policy_version": "phase06-email-active-v1",
+  "messages_considered": 40,
+  "routed_to_review": 7,
+  "review_items_enqueued": 7,
+  "body_capture_eligible_count": 40,
+  "encrypted_body_storage_eligible_count": 40,
+  "review_required_before_body_use_count": 7,
+  "categories_seen": {
+    "contracts": 3,
+    "privileged_or_confidential_markers": 1
+  },
+  "queue_open": 6,
+  "queue_resolved": 0,
+  "samples": [
+    {
+      "message_ref": "46389cde01f4d6be",
+      "project_match_confidence": "medium",
+      "sensitivity_categories": [],
+      "review_required": false,
+      "body_capture_eligible": true,
+      "encrypted_body_capture_allowed": true,
+      "encrypted_storage_mode": "encrypted_text_vault",
+      "plaintext_body_persistence_allowed": false
+    },
+    {
+      "message_ref": "e1f51c7fcc84ffdd",
+      "project_match_confidence": "medium",
+      "sensitivity_categories": [],
+      "review_required": false,
+      "body_capture_eligible": true,
+      "encrypted_body_capture_allowed": true,
+      "encrypted_storage_mode": "encrypted_text_vault",
+      "plaintext_body_persistence_allowed": false
+    },
+    {
+      "message_ref": "f9a1ffa84bfe2eee",
+      "project_match_confidence": "medium",
+      "sensitivity_categories": [],
+      "review_required": false,
+      "body_capture_eligible": true,
+      "encrypted_body_capture_allowed": true,
+      "encrypted_storage_mode": "encrypted_text_vault",
+      "plaintext_body_persistence_allowed": false
+    },
+    {
+      "message_ref": "bb49a8810bc40bb9",
+      "project_match_confidence": "medium",
+      "sensitivity_categories": [],
+      "review_required": false,
+      "body_capture_eligible": true,
+      "encrypted_body_capture_allowed": true,
+      "encrypted_storage_mode": "encrypted_text_vault",
+      "plaintext_body_persistence_allowed": false
+    },
+    {
+      "message_ref": "b103d9233b1ff585",
+      "project_match_confidence": "medium",
+      "sensitivity_categories": [],
+      "review_required": false,
+      "body_capture_eligible": true,
+      "encrypted_body_capture_allowed": true,
+      "encrypted_storage_mode": "encrypted_text_vault",
+      "plaintext_body_persistence_allowed": false
+    },
+    {
+      "message_ref": "a4e6b53cd45358db",
+      "project_match_confidence": "medium",
+      "sensitivity_categories": [],
+      "review_required": false,
+      "body_capture_eligible": true,
+      "encrypted_body_capture_allowed": true,
+      "encrypted_storage_mode": "encrypted_text_vault",
+      "plaintext_body_persistence_allowed": false
+    },
+    {
+      "message_ref": "95661a1c5d6f9606",
+      "project_match_confidence": "medium",
+      "sensitivity_categories": [],
+      "review_required": false,
+      "body_capture_eligible": true,
+      "encrypted_body_capture_allowed": true,
+      "encrypted_storage_mode": "encrypted_text_vault",
+      "plaintext_body_persistence_allowed": false
+    },
+    {
+      "message_ref": "ddd9cbe5012e7bcc",
+      "project_match_confidence": "medium",
+      "sensitivity_categories": [],
+      "review_required": false,
+      "body_capture_eligible": true,
+      "encrypted_body_capture_allowed": true,
+      "encrypted_storage_mode": "encrypted_text_vault",
+      "plaintext_body_persistence_allowed": false
+    },
+    {
+      "message_ref": "55fca14ed992389c",
+      "project_match_confidence": "medium",
+      "sensitivity_categories": [
+        "contracts"
+      ],
+      "review_required": true,
+      "body_capture_eligible": true,
+      "encrypted_body_capture_allowed": true,
+      "encrypted_storage_mode": "encrypted_text_vault",
+      "plaintext_body_persistence_allowed": false
+    },
+    {
+      "message_ref": "f76046178903d29c",
+      "project_match_confidence": "low",
+      "sensitivity_categories": [],
+      "review_required": true,
+      "body_capture_eligible": true,
+      "encrypted_body_capture_allowed": true,
+      "encrypted_storage_mode": "encrypted_text_vault",
+      "plaintext_body_persistence_allowed": false
+    }
+  ],
+  "disclaimer": "routing is conservative; categories are signals not determinations; plaintext body is never persisted"
+}

@@ -1752,6 +1752,21 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v13 Phase 06 Prompt 10 email review routing + encrypted-body eligibility.
+    # Additive only: extends the existing V11 email_review_queue with the per-message
+    # encrypted-body capture decision metadata (eligibility flags + the redacted
+    # decision JSON). No plaintext body column is added; ADD COLUMN only — V1-V12
+    # tables are untouched and no destructive ALTER/DROP is performed.
+    V13_STATEMENTS: list[str] = [
+        "ALTER TABLE email_review_queue ADD COLUMN body_capture_eligible "
+        "INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE email_review_queue ADD COLUMN encrypted_body_capture_allowed "
+        "INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE email_review_queue ADD COLUMN review_required_before_body_use "
+        "INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE email_review_queue ADD COLUMN body_capture_decision_json TEXT",
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -1900,6 +1915,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (12, 'v12_email_encrypted_body_vault_refs', ?)",
+                    (now,),
+                )
+
+            # v13 Phase 06 Prompt 10 review-routing decision metadata (additive
+            # ADD COLUMN only). Unlike CREATE TABLE IF NOT EXISTS, ALTER TABLE ADD
+            # COLUMN is not idempotent, so it is gated behind the version row.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 13")
+            if cur.fetchone() is None:
+                for stmt in self.V13_STATEMENTS:
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (13, 'v13_email_review_body_capture_decision', ?)",
                     (now,),
                 )
 

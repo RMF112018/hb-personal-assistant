@@ -24,6 +24,7 @@ from hb_assistant.construction.email import (
     EmailMessageIndexer,
     ProjectEmailDiscovery,
     RelationshipCandidateBuilder,
+    ReviewRouter,
 )
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
@@ -392,6 +393,50 @@ def relationships_cmd(
             "ok": False,
             "dry_run": dry_run,
             "status": "relationships_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@mail_app.command("review-queue")
+def review_queue_cmd(
+    project: Optional[str] = typer.Option(None, "--project", help="Pilot project key"),
+    lookback_days: int = typer.Option(30, "--lookback-days", help="Bounded lookback window in days (1-366)"),
+    max_messages: int = typer.Option(200, "--max-messages", help="Max matched messages routed (bounded)"),
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run/--no-dry-run",
+        help="Preview routing decisions without persisting (default); --no-dry-run enqueues review items",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Route sensitive/low-confidence email to review + compute encrypted-body eligibility.
+
+    Local-only (NO Graph, NO mailbox): reads stored project matches + bounded redacted
+    previews, classifies sensitive categories, and decides body-capture eligibility.
+    --dry-run previews evidence-safe decisions; --no-dry-run enqueues email_review_queue
+    rows with the decision metadata. Full body plaintext is never fetched or emitted.
+    """
+    try:
+        router = ReviewRouter(ConstructionStore())
+        report = router.route(
+            project_key=project,
+            lookback_days=lookback_days,
+            dry_run=dry_run,
+            max_messages=max_messages,
+        )
+        payload: Dict[str, Any] = {"command": "graph mail review-queue", "ok": True, **report.model_dump()}
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail review-queue",
+            "ok": False,
+            "dry_run": dry_run,
+            "status": "review_queue_error",
             "error": str(e)[:200],
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))

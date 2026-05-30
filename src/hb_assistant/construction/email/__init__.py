@@ -40,11 +40,25 @@ from .relationship_builder import (
     RelationshipCandidateBuilder,
     RelationshipReport,
 )
+from .review_categories import (
+    REVIEW_CATEGORIES,
+    ReviewCategory,
+    classify_review_categories,
+    get_review_category,
+)
+from .review_router import (
+    EmailBodyCaptureDecision,
+    ReviewRouter,
+    ReviewRoutingReport,
+    ReviewRoutingSample,
+)
 
 __all__ = [
+    "REVIEW_CATEGORIES",
     "AttachmentAnalysis",
     "DiscoveredFolder",
     "DiscoveryReport",
+    "EmailBodyCaptureDecision",
     "EmailFolderDiscovery",
     "EmailMessageIndexer",
     "FolderDiscoveryResult",
@@ -58,9 +72,15 @@ __all__ = [
     "RelationshipCandidate",
     "RelationshipCandidateBuilder",
     "RelationshipReport",
+    "ReviewCategory",
+    "ReviewRouter",
+    "ReviewRoutingReport",
+    "ReviewRoutingSample",
     "analyze_attachment",
+    "classify_review_categories",
     "classify_text_sensitivity",
     "detect_drive_links",
+    "get_review_category",
     "load_pilot_project_descriptors",
     "normalize_message",
 ]

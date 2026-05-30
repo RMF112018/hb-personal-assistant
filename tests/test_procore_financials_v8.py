@@ -63,7 +63,7 @@ def _names(db: Path, kind: str) -> set[str]:
 
 def test_v8_applies_from_empty_db_and_creates_all_tables() -> None:
     db = _temp_db()
-    assert _migrate(db) == 12  # full migrator now reaches v12 (Phase 06)
+    assert _migrate(db) == 13  # full migrator now reaches v12 (Phase 06)
     tables = _names(db, "table")
     missing = _V8_TABLES - tables
     assert not missing, f"V8 tables missing: {sorted(missing)}"
@@ -74,7 +74,7 @@ def test_v8_applies_from_empty_db_and_creates_all_tables() -> None:
 
 def test_v8_leaves_v1_v7_tables_intact() -> None:
     db = _temp_db()
-    assert _migrate(db) == 12  # full migrator now reaches v12 (Phase 06)
+    assert _migrate(db) == 13  # full migrator now reaches v12 (Phase 06)
     tables = _names(db, "table")
     # V1 core, V6 live-sync, V7 history all still present alongside V8.
     assert "source_records" in tables
@@ -84,8 +84,8 @@ def test_v8_leaves_v1_v7_tables_intact() -> None:
 
 def test_v8_is_idempotent() -> None:
     db = _temp_db()
-    assert _migrate(db) == 12  # full migrator now reaches v12 (Phase 06)
-    assert _migrate(db) == 12  # full migrator now reaches v12 (Phase 06)
+    assert _migrate(db) == 13  # full migrator now reaches v12 (Phase 06)
+    assert _migrate(db) == 13  # full migrator now reaches v12 (Phase 06)
     conn = sqlite3.connect(str(db))
     try:
         count = conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 8").fetchone()[

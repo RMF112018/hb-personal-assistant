@@ -31,7 +31,7 @@ def _store_with_message(db: str) -> ConstructionStore:
 
 def test_v12_applies_and_creates_vault_table() -> None:
     db = _tmp_db()
-    assert SQLiteMigrator(db_path=db).apply() == 12
+    assert SQLiteMigrator(db_path=db).apply() == 13
     conn = sqlite3.connect(db)
     try:
         assert conn.execute(

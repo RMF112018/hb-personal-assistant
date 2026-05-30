@@ -2388,11 +2388,16 @@ class ConstructionStore:
         confidence: float,
         project_key: Optional[str] = None,
         status: str = "open",
+        body_capture_eligible: bool = False,
+        encrypted_body_capture_allowed: bool = False,
+        review_required_before_body_use: bool = False,
+        body_capture_decision_json: Optional[str] = None,
     ) -> bool:
         """Idempotent enqueue keyed by (message_id, category, reason).
 
         Returns True if a new review item was inserted, False if it already
-        existed (INSERT OR IGNORE on the UNIQUE constraint).
+        existed (INSERT OR IGNORE on the UNIQUE constraint). The V13 body-capture
+        decision columns are written too (no plaintext body — refs/flags only).
         """
         conn = get_connection(self._db_path)
         with transaction(conn):
@@ -2400,8 +2405,10 @@ class ConstructionStore:
                 """
                 INSERT OR IGNORE INTO email_review_queue
                     (review_id, message_id, project_key, category, sensitivity,
-                     reason, suggested_action, confidence, status, routed_utc)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     reason, suggested_action, confidence, status, routed_utc,
+                     body_capture_eligible, encrypted_body_capture_allowed,
+                     review_required_before_body_use, body_capture_decision_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     review_id,
@@ -2414,6 +2421,10 @@ class ConstructionStore:
                     confidence,
                     status,
                     _utc_now(),
+                    1 if body_capture_eligible else 0,
+                    1 if encrypted_body_capture_allowed else 0,
+                    1 if review_required_before_body_use else 0,
+                    body_capture_decision_json,
                 ),
             )
             return cur.rowcount > 0
@@ -2428,7 +2439,13 @@ class ConstructionStore:
         keys = (
             "review_id", "message_id", "project_key", "category", "sensitivity",
             "reason", "suggested_action", "confidence", "status", "routed_utc",
-            "resolved_utc",
+            "resolved_utc", "body_capture_eligible", "encrypted_body_capture_allowed",
+            "review_required_before_body_use", "body_capture_decision_json",
+        )
+        bool_keys = (
+            "body_capture_eligible",
+            "encrypted_body_capture_allowed",
+            "review_required_before_body_use",
         )
         clauses: list[str] = []
         params: list[Any] = []
@@ -2446,7 +2463,13 @@ class ConstructionStore:
             "ORDER BY routed_utc DESC, review_id LIMIT ?",
             tuple(params),
         )
-        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            for bk in bool_keys:
+                record[bk] = bool(record[bk])
+            results.append(record)
+        return results
 
     def count_email_review_queue(
         self,
