@@ -37,6 +37,7 @@ from hb_assistant.construction.email import (
 )
 from hb_assistant.construction.email.email_classifier import DEFAULT_MODEL_NAME
 from hb_assistant.construction.graph.baseline_crawler import BaselineCrawler
+from hb_assistant.construction.graph.delta_sync import DeltaSync
 from hb_assistant.construction.graph.drive_item_indexer import DriveItemIndexer
 from hb_assistant.construction.graph.link_resolver import LinkResolver
 from hb_assistant.construction.graph.resolver import GRAPH_SCOPES as _FILES_GRAPH_SCOPES
@@ -796,6 +797,71 @@ def files_crawl_cmd(
         "source": source,
         "mode": "dry_run" if dry_run else "apply",
         "ok": report.status in {"ok", "partial"},
+        "result": report.model_dump(),
+        "guardrails": guardrails,
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_app.command("delta")
+def files_delta_cmd(
+    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply persists sync state + driveItems."
+    ),
+    max_pages: int = typer.Option(50, "--max-pages", help="Hard cap on delta pages."),
+    max_items: int = typer.Option(5000, "--max-items", help="Hard cap on items."),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Hardened incremental delta sync into the V5 canonical layer: follows nextLink,
+    captures the deltaLink (SQLite-only; rendered as a fingerprint), handles the
+    deleted facet, and recovers a stale token (410) as requires_rebaseline. Read-only;
+    metadata only; dry-run default."""
+    try:
+        registry = load_source_registry()
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files delta", e, json_out)
+        return
+
+    matching = [s for s in registry.sources if s.source_key == source]
+    if not matching:
+        payload = {
+            "command": "graph files delta",
+            "status": "not_found",
+            "requested": source,
+            "available": [s.source_key for s in registry.sources],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+    if client is None:
+        payload = {
+            "command": "graph files delta",
+            "source": source,
+            "mode": "dry_run" if dry_run else "apply",
+            **auth_payload,
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+
+    try:
+        # Store passed always: delta must READ prior sync state; writes gated by dry_run.
+        store = ConstructionStore()
+        delta = DeltaSync(client, store=store)
+        report = delta.sync(matching[0], dry_run=dry_run, max_pages=max_pages, max_items=max_items)
+    finally:
+        client.close()
+
+    guardrails = dict(_DISCOVERY_GUARDRAILS)
+    guardrails["delta_token_storage"] = "sqlite_only"
+    guardrails["delta_link_rendered"] = "fingerprint_only"
+    payload = {
+        "command": "graph files delta",
+        "source": source,
+        "mode": "dry_run" if dry_run else "apply",
+        "ok": report.status in {"ok", "partial", "requires_rebaseline"},
         "result": report.model_dump(),
         "guardrails": guardrails,
     }

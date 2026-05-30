@@ -142,6 +142,22 @@ delta-token persistence + 410 rebaseline are P08) and a `baseline_crawl` process
 migration** (the crawl-runs table is V5). Dry-run default; degrades to `auth_required` without a
 token. Evidence: `08-baseline-crawl-proof.json`.
 
+### Delta sync hardening (Phase 06A) — `graph files delta`
+`construction/graph/delta_sync.py` (`DeltaSync`) is the hardened **incremental** sync into the V5
+canonical layer (the V2 `ConstructionDeltaCrawler` is left unchanged as the parallel path). It reads
+the prior `construction_source_sync_state.delta_link` and starts incrementally (`started_from=
+stored_delta`) or from the initial delta endpoint (`initial`), follows `@odata.nextLink` to
+exhaustion, captures the final `@odata.deltaLink`, and on `--apply` persists it to SQLite **only**
+(plus `delta_link_fingerprint`, last_successful/attempted, last_change_count, sync_status) via
+`upsert_source_sync_state`, + a crawl-run row + a `delta_sync` receipt; the deleted facet upserts
+`deleted=True`. **Raw-link redaction is the headline guardrail**: the raw delta/next links (and the
+stored prior deltaLink used as the request path) live in SQLite only — the report/CLI/evidence carry
+only `sha256:<12>` fingerprints, and the report `endpoint` is the logical delta template, never the
+token-bearing URL. A stale token / `410 Gone` → `requires_rebaseline` (token cleared, status recorded
+— never silently discarded). Truncation (max_pages/max_items) preserves the prior token
+(status=`partial`). No new migration (sync-state table is V5). Dry-run default; `auth_required`
+degradation. Evidence: `09-delta-sync-readiness-proof.md`, `21-delta-token-redaction-proof.md`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and
