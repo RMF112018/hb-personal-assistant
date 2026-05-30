@@ -19,12 +19,18 @@ import typer
 from hb_assistant.auth.providers import DelegatedAuthProvider
 from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
+from hb_assistant.construction.classification.client import OllamaChatClient
 from hb_assistant.construction.email import (
     EmailFolderDiscovery,
+    EmailIntelligenceClassifier,
     EmailMessageIndexer,
     ProjectEmailDiscovery,
     RelationshipCandidateBuilder,
     ReviewRouter,
+)
+from hb_assistant.construction.email.email_classifier import DEFAULT_MODEL_NAME
+from hb_assistant.construction.policy.email_active import (
+    load_email_intelligence_active_policy,
 )
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
@@ -437,6 +443,69 @@ def review_queue_cmd(
             "ok": False,
             "dry_run": dry_run,
             "status": "review_queue_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@mail_app.command("classify")
+def classify_cmd(
+    project: Optional[str] = typer.Option(None, "--project", help="Pilot project key"),
+    lookback_days: int = typer.Option(30, "--lookback-days", help="Bounded lookback window in days (1-366)"),
+    max_messages: int = typer.Option(200, "--max-messages", help="Max matched messages classified (bounded)"),
+    use_encrypted_body_context: bool = typer.Option(
+        False,
+        "--use-encrypted-body-context",
+        help="Decrypt stored bodies in-memory for model context (discarded; never persisted)",
+    ),
+    mock_output: Optional[str] = typer.Option(
+        None, "--mock-output", help="Raw model JSON for offline/testing (bypasses Ollama)", hidden=True
+    ),
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run/--no-dry-run",
+        help="Preview classifications without persisting (default); --no-dry-run writes the V14 read model",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Advisory local-model (Ollama) email classification, local-only.
+
+    Reads stored project matches + bounded redacted previews (and, with
+    --use-encrypted-body-context, the encrypted body decrypted IN MEMORY only), runs the
+    local model, strictly validates the JSON, and persists ONLY structured advisory output
+    (V14 email_model_classifications) + review routing. The model is advisory; deterministic
+    review rules govern. NO Graph call, NO mailbox mutation, NO body plaintext emitted.
+    """
+    try:
+        store = ConstructionStore()
+        policy = load_email_intelligence_active_policy()
+        client = None
+        if mock_output is None and policy.ollama_enabled_for_email_intelligence:
+            try:
+                client = OllamaChatClient(DEFAULT_MODEL_NAME)
+            except Exception:
+                client = None
+        classifier = EmailIntelligenceClassifier(store, policy=policy, client=client)
+        report = classifier.classify(
+            project_key=project,
+            lookback_days=lookback_days,
+            use_encrypted_body_context=use_encrypted_body_context,
+            dry_run=dry_run,
+            max_messages=max_messages,
+            mock_output=mock_output,
+        )
+        payload: Dict[str, Any] = {"command": "graph mail classify", "ok": True, **report.model_dump()}
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail classify",
+            "ok": False,
+            "dry_run": dry_run,
+            "status": "classify_error",
             "error": str(e)[:200],
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))

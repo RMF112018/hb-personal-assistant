@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OllamaEmailIntelligenceClassification",
+  "type": "object",
+  "required": [
+    "message_id",
+    "classification_version",
+    "project_match_suggestions",
+    "relationship_candidates",
+    "risk_flags",
+    "review_recommendation",
+    "confidence"
+  ],
+  "properties": {
+    "message_id": {
+      "type": "string"
+    },
+    "classification_version": {
+      "type": "string"
+    },
+    "project_match_suggestions": {
+      "type": "array"
+    },
+    "relationship_candidates": {
+      "type": "array"
+    },
+    "risk_flags": {
+      "type": "array"
+    },
+    "review_recommendation": {
+      "type": "object"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "not": {
+    "anyOf": [
+      {
+        "required": ["body"]
+      },
+      {
+        "required": ["body_text"]
+      },
+      {
+        "required": ["body_html"]
+      },
+      {
+        "required": ["raw_email"]
+      },
+      {
+        "required": ["plain_text"]
+      },
+      {
+        "required": ["legal_determination"]
+      },
+      {
+        "required": ["contractual_determination"]
+      },
+      {
+        "required": ["financial_determination"]
+      },
+      {
+        "required": ["personnel_determination"]
+      }
+    ]
+  },
+  "additionalProperties": false
+}

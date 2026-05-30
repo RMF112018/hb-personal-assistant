@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import hb_assistant.cli.graph as graph_cli
 from typer.testing import CliRunner
 
 from hb_assistant.cli.main import app
@@ -109,3 +110,52 @@ def test_graph_mail_review_queue_parses(tmp_path: Path) -> None:
     assert "access_token" not in res.output
     assert "Bearer " not in res.output
     assert "----- decrypted body" not in res.output
+
+
+def test_graph_mail_classify_parses(tmp_path: Path) -> None:
+    # Local-only advisory classification; evidence-safe dry-run preview.
+    res = _invoke(
+        tmp_path, "graph", "mail", "classify", "--project", "tropical",
+        "--lookback-days", "30", "--use-encrypted-body-context", "--dry-run", "--json",
+    )
+    assert res.exit_code in (0, 1)
+    payload = json.loads(res.output)
+    assert payload["command"] == "graph mail classify"
+    if payload.get("ok"):
+        assert payload["plaintext_persisted"] is False
+        assert payload["dry_run"] is True
+        for key in ("messages_considered", "encrypted_body_context_used_count",
+                    "model_outputs_valid", "review_required_count"):
+            assert key in payload
+    assert "access_token" not in res.output
+    assert "Bearer " not in res.output
+    assert "----- decrypted body" not in res.output
+
+
+def test_graph_mail_classify_dry_run_still_initializes_model_client(
+    tmp_path: Path, monkeypatch
+) -> None:
+    calls: dict[str, int] = {"client_init": 0}
+
+    class _FakeClient:
+        def __init__(self, model_name: str) -> None:
+            calls["client_init"] += 1
+
+    monkeypatch.setattr(graph_cli, "OllamaChatClient", _FakeClient)
+
+    res = _invoke(
+        tmp_path,
+        "graph",
+        "mail",
+        "classify",
+        "--project",
+        "tropical",
+        "--lookback-days",
+        "30",
+        "--dry-run",
+        "--json",
+    )
+    assert res.exit_code in (0, 1)
+    payload = json.loads(res.output)
+    assert payload["command"] == "graph mail classify"
+    assert calls["client_init"] == 1

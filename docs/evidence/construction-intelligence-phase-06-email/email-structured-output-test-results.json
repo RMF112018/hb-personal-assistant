@@ -1,0 +1,47 @@
+{
+  "prompt": 11,
+  "title": "Ollama Structured Email Intelligence with Encrypted Body Context",
+  "timestamp_utc": "2026-05-30T00:00:00Z",
+  "results": [
+    {
+      "command": ".venv/bin/python -m pytest -q --no-header",
+      "ok": false,
+      "exit_code": 1,
+      "summary": "Suite failed with pre-existing workspace failures; includes unrelated automation/network tests and existing store/mypy drift.",
+      "notable_failures": [
+        "tests/test_email_body_security.py: token-scan flagged literal forbidden key names in email_classifier.py (fixed in this run)",
+        "tests/test_email_classifier.py and tests/test_email_model_classifications_schema_v14.py: existing ConstructionStore method-availability mismatch in current worktree",
+        "tests/test_graph_mail_cli.py mail status assertions fail in network-restricted environment"
+      ]
+    },
+    {
+      "command": ".venv/bin/ruff check .",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "command": ".venv/bin/mypy .",
+      "ok": false,
+      "exit_code": 1,
+      "summary": "Pre-existing repository typing baseline contains multiple unrelated errors."
+    },
+    {
+      "command": ".venv/bin/python -m compileall src tests",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "command": ".venv/bin/hb-assistant graph mail classify --project tropical --lookback-days 30 --use-encrypted-body-context --dry-run --json",
+      "ok": false,
+      "exit_code": 1,
+      "summary": "Command executed and returned safe error envelope due missing local operational DB path; no plaintext emitted.",
+      "output_excerpt": {
+        "command": "graph mail classify",
+        "ok": false,
+        "dry_run": true,
+        "status": "classify_error",
+        "error": "Database unavailable at /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite"
+      }
+    }
+  ]
+}

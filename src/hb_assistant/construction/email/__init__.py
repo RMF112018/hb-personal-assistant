@@ -13,6 +13,15 @@ from .attachment_analyzer import (
     classify_text_sensitivity,
     detect_drive_links,
 )
+from .email_classifier import (
+    CLASSIFICATION_VERSION,
+    EmailClassificationReport,
+    EmailClassificationResult,
+    EmailIntelligenceClassifier,
+    EmailModelOutput,
+    InvalidEmailModelOutputError,
+    parse_and_validate_email_output,
+)
 from .folder_discovery import (
     DiscoveredFolder,
     EmailFolderDiscovery,
@@ -54,16 +63,22 @@ from .review_router import (
 )
 
 __all__ = [
+    "CLASSIFICATION_VERSION",
     "REVIEW_CATEGORIES",
     "AttachmentAnalysis",
     "DiscoveredFolder",
     "DiscoveryReport",
     "EmailBodyCaptureDecision",
+    "EmailClassificationReport",
+    "EmailClassificationResult",
     "EmailFolderDiscovery",
+    "EmailIntelligenceClassifier",
     "EmailMessageIndexer",
+    "EmailModelOutput",
     "FolderDiscoveryResult",
     "IndexResult",
     "IndexedFolder",
+    "InvalidEmailModelOutputError",
     "MatchSignal",
     "ProjectDescriptor",
     "ProjectEmailDiscovery",
@@ -83,4 +98,5 @@ __all__ = [
     "get_review_category",
     "load_pilot_project_descriptors",
     "normalize_message",
+    "parse_and_validate_email_output",
 ]
