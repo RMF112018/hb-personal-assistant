@@ -1,0 +1,344 @@
+{
+  "command": "hb-assistant procore validate",
+  "schema_version": 1,
+  "started_at": "2026-05-30T20:55:52.855841+00:00",
+  "completed_at": "2026-05-30T20:55:52.953737+00:00",
+  "strict": false,
+  "ok": true,
+  "summary": {
+    "total": 28,
+    "passed": 28,
+    "failed": 0
+  },
+  "checks": [
+    {
+      "name": "seed_endpoint_contract_loadable",
+      "ok": true,
+      "detail": {
+        "company_id": "5280",
+        "endpoint_count": 16
+      }
+    },
+    {
+      "name": "seed_projects_loadable",
+      "ok": true,
+      "detail": {
+        "company_id": "5280",
+        "project_count": 4
+      }
+    },
+    {
+      "name": "mapping_consistent",
+      "ok": true,
+      "detail": {
+        "by_status": {
+          "pilot": 4
+        },
+        "total": 4
+      }
+    },
+    {
+      "name": "app_profile_loadable",
+      "ok": true,
+      "detail": {
+        "environment": "production",
+        "redirect_uri_kind": "oob",
+        "company_id": 5280
+      }
+    },
+    {
+      "name": "auth_status_present",
+      "ok": true,
+      "detail": {
+        "status": "env_present",
+        "env_keys_present_count": 0,
+        "env_keys_missing_count": 3,
+        "token_cache_present": true,
+        "ready_for_live_calls": true
+      }
+    },
+    {
+      "name": "redaction_module_importable",
+      "ok": true,
+      "detail": {
+        "redact_headers": true,
+        "redact_body": true,
+        "redact_request": true,
+        "redact_response": true
+      }
+    },
+    {
+      "name": "obsidian_templates_resolvable",
+      "ok": true,
+      "detail": {
+        "resolved": {
+          "project_card": true,
+          "rfi_register": true,
+          "submittal_register": true,
+          "observation_register": true,
+          "meeting_register": true,
+          "daily_log_index": true,
+          "financial_snapshot": true,
+          "sync_receipt": true,
+          "endpoint_audit": true,
+          "review_required_note": true
+        }
+      }
+    },
+    {
+      "name": "obsidian_routing_rules_loadable",
+      "ok": true,
+      "detail": {
+        "rule_groups": [
+          "rules",
+          "version"
+        ]
+      }
+    },
+    {
+      "name": "vault_root_configurable",
+      "ok": true,
+      "detail": {
+        "configured": false
+      }
+    },
+    {
+      "name": "sqlite_schema_at_expected_version",
+      "ok": true,
+      "detail": {
+        "current_version": 19,
+        "expected_minimum": 5
+      }
+    },
+    {
+      "name": "procore_tables_present",
+      "ok": true,
+      "detail": {
+        "tables": {
+          "procore_sync_runs": false,
+          "procore_sync_errors": false,
+          "procore_synced_entities": false,
+          "procore_sync_watermarks": false
+        },
+        "all_present": false,
+        "note": "Procore tables are created on demand by the sync coordinator; absence is expected on a fresh checkout."
+      }
+    },
+    {
+      "name": "http_client_demands_access_token",
+      "ok": true,
+      "detail": {
+        "fail_closed": true
+      }
+    },
+    {
+      "name": "sync_pagination_method_aligned",
+      "ok": true,
+      "detail": {
+        "paginate": true,
+        "legacy_get_paginated": false
+      }
+    },
+    {
+      "name": "pending_projects_not_default_target",
+      "ok": true,
+      "detail": {
+        "default_keys": [
+          "tropical",
+          "pga-modern-garage",
+          "alton-hilltop-pbg",
+          "the-wellington"
+        ],
+        "leaked_pending": []
+      }
+    },
+    {
+      "name": "token_provider_default_chain_shape",
+      "ok": true,
+      "detail": {
+        "expected": [
+          "env_or_keychain",
+          "oauth_refreshing",
+          "missing"
+        ],
+        "actual": [
+          "env_or_keychain",
+          "oauth_refreshing",
+          "missing"
+        ]
+      }
+    },
+    {
+      "name": "oauth_acquisition_path_present",
+      "ok": true,
+      "detail": {
+        "build_authorization_url": true,
+        "exchange_authorization_code": true,
+        "refresh_access_token": true,
+        "refreshing_provider_kind": true
+      }
+    },
+    {
+      "name": "endpoint_verification_metadata_complete",
+      "ok": true,
+      "detail": {
+        "total_phase_01_included": 13,
+        "incomplete": []
+      }
+    },
+    {
+      "name": "live_eligibility_blocks_ineligible",
+      "ok": true,
+      "detail": {
+        "live_eligible_count": 10,
+        "leaked_ineligible": []
+      }
+    },
+    {
+      "name": "procore_init_exports_complete",
+      "ok": true,
+      "detail": {
+        "required": [
+          "EnvOrKeychainTokenProvider",
+          "LocalOAuthCacheTokenProvider",
+          "MissingTokenProvider",
+          "ProcoreAuthRequired",
+          "ProcoreMappingUnavailable",
+          "ProcoreOAuthClient",
+          "ProcoreOAuthError",
+          "ProcorePendingProjectRejected",
+          "ProcoreSyncCoordinator",
+          "ProcoreTokenProvider",
+          "RefreshingOAuthTokenProvider",
+          "SyncReceipt",
+          "TokenSet",
+          "clear_token_cache",
+          "default_procore_token_provider",
+          "run_sync",
+          "write_token_cache"
+        ],
+        "missing": []
+      }
+    },
+    {
+      "name": "rfi_normalizer_dispatch_present",
+      "ok": true,
+      "detail": {
+        "rfi_endpoint_id": "list-rfis",
+        "dispatch_present": true,
+        "schema_version": 1
+      }
+    },
+    {
+      "name": "submittal_normalizer_dispatch_present",
+      "ok": true,
+      "detail": {
+        "submittal_endpoint_id": "list-submittals",
+        "dispatch_present": true,
+        "schema_version": 1
+      }
+    },
+    {
+      "name": "observation_normalizer_dispatch_present",
+      "ok": true,
+      "detail": {
+        "observation_endpoint_id": "list-observations",
+        "dispatch_present": true,
+        "schema_version": 1
+      }
+    },
+    {
+      "name": "meeting_normalizer_dispatch_present",
+      "ok": true,
+      "detail": {
+        "meeting_endpoint_id": "list-meetings",
+        "meeting_topic_endpoint_id": "list-meeting-topics",
+        "meeting_dispatch_present": true,
+        "meeting_topic_dispatch_present": true,
+        "schema_version": 1
+      }
+    },
+    {
+      "name": "daily_log_selection_and_dispatch_present",
+      "ok": true,
+      "detail": {
+        "daily_log_endpoint_id": "list-daily-logs",
+        "dispatch_present": true,
+        "selected_section_count": 5,
+        "review_only_section_count": 1,
+        "routed_to_review_section_count": 4,
+        "selection_version": 1
+      }
+    },
+    {
+      "name": "sensitive_routing_rules_cover_phase_04_families",
+      "ok": true,
+      "detail": {
+        "rule_ids": [
+          "procore-financial-summary",
+          "procore-contractual-records",
+          "procore-incident-injury-personnel",
+          "procore-daily-log-delays",
+          "procore-rfi-legal-or-contractual",
+          "procore-submittal-financial-or-legal",
+          "procore-observation-safety",
+          "procore-meeting-sensitive-topic",
+          "procore-daily-log-personnel-pii"
+        ],
+        "families_covered": {
+          "rfi": true,
+          "submittal": true,
+          "observation": true,
+          "meeting": true,
+          "daily-log": true
+        }
+      }
+    },
+    {
+      "name": "obsidian_renderer_phase_04_register_coverage",
+      "ok": true,
+      "detail": {
+        "builders": {
+          "build_rfi_register": true,
+          "build_submittal_register": true,
+          "build_observation_register": true,
+          "build_meeting_register": true,
+          "build_daily_log_index": true
+        }
+      }
+    },
+    {
+      "name": "live_env_gate_module_present",
+      "ok": true,
+      "detail": {
+        "module": "hb_assistant.procore.live_gate",
+        "required": [
+          "LiveEnvNotSet",
+          "live_env_active",
+          "require_live_env"
+        ],
+        "missing": []
+      }
+    },
+    {
+      "name": "live_commands_require_env_var",
+      "ok": true,
+      "detail": {
+        "cli_path": "/Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/cli/procore.py",
+        "targets": [
+          "audit_execute",
+          "sync_run"
+        ],
+        "missing": []
+      }
+    }
+  ],
+  "guardrails": {
+    "external_systems_called": false,
+    "writeback": false,
+    "redaction_applied": true,
+    "secrets_in_output": false,
+    "local_only": true,
+    "read_only": true
+  }
+}
