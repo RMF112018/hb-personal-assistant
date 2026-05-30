@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import typer
@@ -35,6 +37,10 @@ from hb_assistant.construction.policy.email_active import (
     load_email_intelligence_active_policy,
 )
 from hb_assistant.construction.store import ConstructionStore
+from hb_assistant.graph.files_endpoint_guard import (
+    load_files_endpoint_contract,
+    run_files_no_writeback_self_test,
+)
 from hb_assistant.graph.http_client import GraphHttpClient, GraphHttpError
 from hb_assistant.graph.mail_endpoint_guard import (
     MailboxMutationBlockedError,
@@ -49,6 +55,28 @@ mail_app = typer.Typer(help="Read-only Outlook/Exchange mail intelligence (Phase
 app.add_typer(mail_app, name="mail")
 body_app = typer.Typer(help="Controlled decrypt read for encrypted email bodies (local-only).")
 mail_app.add_typer(body_app, name="body")
+files_app = typer.Typer(help="Read-only SharePoint/OneDrive file intelligence (Phase 06).")
+app.add_typer(files_app, name="files")
+
+# Write-capable Graph file/site scopes whose presence is the known DEFERRED
+# over-broad posture (documented, not tightened in this phase).
+_BROAD_FILE_WRITE_SCOPES = (
+    "Files.ReadWrite.All",
+    "Files.ReadWrite",
+    "Sites.ReadWrite.All",
+    "Sites.Manage.All",
+    "Sites.FullControl.All",
+    "AllSites.FullControl",
+)
+
+# Source trees that issue (or will issue) Graph SharePoint/OneDrive reads. The
+# no-writeback static scan asserts none contain a mutating HTTP verb call.
+_FILE_SERVICE_DIRS = (
+    "src/hb_assistant/graph",
+    "src/hb_assistant/construction/graph",
+    "src/hb_assistant/files",
+)
+_WRITE_VERB_CALL_RE = re.compile(r"\.(post|put|patch|delete)\s*\(")
 
 # Mail write scopes that must never be requested at runtime (mirrors the
 # mutation-lockout regression set). Read-only Phase 06 requests Mail.Read only.
@@ -107,6 +135,7 @@ def _guard_self_test(contract: MailEndpointContract) -> Dict[str, Any]:
 
 def _mail_probe(provider: DelegatedAuthProvider, contract: MailEndpointContract) -> Dict[str, Any]:
     """One bounded, read-only probe (`/me/mailFolders`) through the guarded client."""
+
     def token_getter(scopes: Optional[List[str]] = None) -> Dict[str, Any]:
         return provider.get_token(scopes or ["Mail.Read"])
 
@@ -122,7 +151,12 @@ def _mail_probe(provider: DelegatedAuthProvider, contract: MailEndpointContract)
             "folder_sample_count": len(folders),
         }
     except GraphHttpError as e:
-        return {"attempted": True, "path": "/me/mailFolders", "status": e.status, "error": e.message[:150]}
+        return {
+            "attempted": True,
+            "path": "/me/mailFolders",
+            "status": e.status,
+            "error": e.message[:150],
+        }
     except MailboxMutationBlockedError as e:  # pragma: no cover - read path is allowlisted
         return {"attempted": True, "path": e.path, "status": "blocked", "error": e.reason}
     except Exception as e:
@@ -132,10 +166,128 @@ def _mail_probe(provider: DelegatedAuthProvider, contract: MailEndpointContract)
             client.close()
 
 
+def _files_static_scan(repo_root: Path) -> Dict[str, Any]:
+    """Scan the Graph file-service source trees for any mutating HTTP verb call.
+    Expect zero — file access is read-only (GET/stream) by construction."""
+    files_scanned = 0
+    violations: List[str] = []
+    for rel in _FILE_SERVICE_DIRS:
+        base = repo_root / rel
+        if not base.exists():
+            continue
+        for py in sorted(base.rglob("*.py")):
+            files_scanned += 1
+            for n, line in enumerate(py.read_text(encoding="utf-8").splitlines(), start=1):
+                if _WRITE_VERB_CALL_RE.search(line):
+                    violations.append(f"{py.relative_to(repo_root)}:{n}")
+    return {
+        "dirs_scanned": list(_FILE_SERVICE_DIRS),
+        "files_scanned": files_scanned,
+        "mutation_method_calls_found": len(violations),
+        "violations": violations,
+    }
+
+
+def _files_auth_posture() -> Dict[str, Any]:
+    """Best-effort, redacted permission posture (scope NAMES only, no tokens).
+    Tolerant of an absent token cache so the proof stays deterministic/offline."""
+    try:
+        cfg = load_config()
+        pp = PathPolicy(cfg)
+        configured = list(cfg.identity.delegated_scopes)
+        provider = DelegatedAuthProvider(
+            cfg.identity.tenant_id, cfg.identity.client_id, configured, path_policy=pp
+        )
+        info = provider.status_info()  # safe: no tokens, redacted claims
+        cached_scopes = info.get("scopes") or []
+        broad = {b.lower() for b in _BROAD_FILE_WRITE_SCOPES}
+        present = sorted({s for s in list(configured) + list(cached_scopes) if s.lower() in broad})
+        return {
+            "available": True,
+            "token_type": info.get("token_type"),
+            "classification": info.get("classification"),
+            "configured_delegated_scopes": configured,
+            "broad_file_write_scopes_present": present,
+            "permission_tightening": "deferred",
+        }
+    except Exception as e:  # pragma: no cover - defensive; proof must not depend on auth
+        return {"available": False, "error": str(e)[:150], "permission_tightening": "deferred"}
+
+
+@files_app.command("no-writeback-proof")
+def files_no_writeback_proof_cmd(
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)"),
+) -> None:
+    """Prove behavior-level no-writeback for SharePoint/OneDrive file access.
+
+    Combines an in-process endpoint-guard self-test (every allowlisted GET
+    permitted; every mutation verb/path refused before HTTP), a source static
+    scan of the Graph file-service trees (zero mutating verb calls), and a
+    contract summary. Offline and deterministic. Permission tightening remains
+    deferred; no scopes are changed or inspected for write capability removal.
+    """
+    try:
+        contract = load_files_endpoint_contract()
+        guard = run_files_no_writeback_self_test(contract)
+        repo_root = PathPolicy().resolve_repo_root()
+        scan = _files_static_scan(repo_root)
+        auth = _files_auth_posture()
+
+        metadata_select_lower = {f.lower() for f in contract.drive_item_metadata_select}
+        guardrails = {
+            "microsoft_365_writeback": "none",
+            "file_mutation_endpoints_blocked": guard["passed"],
+            "no_mutation_method_calls_in_file_services": scan["mutation_method_calls_found"] == 0,
+            "metadata_only_select": "content" not in metadata_select_lower,
+            "download_url_never_persisted": any(
+                "downloadurl" in n.lower() for n in contract.never_persist
+            ),
+            "permission_tightening": "deferred",
+        }
+        ok = bool(
+            guard["passed"]
+            and scan["mutation_method_calls_found"] == 0
+            and guardrails["download_url_never_persisted"]
+        )
+
+        payload: Dict[str, Any] = {
+            "command": "graph files no-writeback-proof",
+            "ok": ok,
+            "permission_tightening": "deferred",
+            "auth": auth,
+            "guard_self_test": guard,
+            "static_scan": scan,
+            "contract": {
+                "allowed_methods": sorted(contract.allowed_methods),
+                "allowed_paths_count": len(contract.allowed_paths),
+                "forbidden_methods": sorted(contract.forbidden_methods),
+                "forbidden_paths_count": len(contract.forbidden_paths),
+                "forbidden_keywords_count": len(contract.forbidden_operation_keywords),
+                "never_persist_count": len(contract.never_persist),
+            },
+            "guardrails": guardrails,
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0 if ok else 1)
+    except typer.Exit:
+        raise
+    except Exception as e:  # pragma: no cover - defensive envelope
+        payload = {
+            "command": "graph files no-writeback-proof",
+            "ok": False,
+            "status": "proof_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @mail_app.command("status")
 def status_cmd(
     json_out: bool = typer.Option(False, "--json", help="Output JSON"),
-    probe: bool = typer.Option(True, "--probe/--no-probe", help="Issue one bounded read-only Graph probe"),
+    probe: bool = typer.Option(
+        True, "--probe/--no-probe", help="Issue one bounded read-only Graph probe"
+    ),
 ) -> None:
     """Report mail read-only readiness: auth, scopes, endpoint-guard, and a bounded probe."""
     try:
@@ -161,9 +313,12 @@ def status_cmd(
             "mutation_endpoints_blocked": guard["passed"],
             "no_mail_write_scopes_requested": not forbidden_present,
             "metadata_only_select": "body" not in contract.message_metadata_select,
-            "attachment_content_excluded": "contentBytes" not in contract.attachment_metadata_select,
+            "attachment_content_excluded": "contentBytes"
+            not in contract.attachment_metadata_select,
         }
-        ok = bool(mail_read_present and guardrails["no_mail_write_scopes_requested"] and guard["passed"])
+        ok = bool(
+            mail_read_present and guardrails["no_mail_write_scopes_requested"] and guard["passed"]
+        )
 
         payload: Dict[str, Any] = {
             "command": "graph mail status",
@@ -186,7 +341,12 @@ def status_cmd(
     except typer.Exit:
         raise
     except Exception as e:  # pragma: no cover - defensive envelope
-        payload = {"command": "graph mail status", "ok": False, "status": "status_error", "error": str(e)[:200]}
+        payload = {
+            "command": "graph mail status",
+            "ok": False,
+            "status": "status_error",
+            "error": str(e)[:200],
+        }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(1) from None
 
@@ -225,7 +385,11 @@ def folders_cmd(
         discovery = EmailFolderDiscovery(reader, ConstructionStore())
         result = discovery.discover(dry_run=dry_run)
 
-        payload: Dict[str, Any] = {"command": "graph mail folders", "ok": True, **result.model_dump()}
+        payload: Dict[str, Any] = {
+            "command": "graph mail folders",
+            "ok": True,
+            **result.model_dump(),
+        }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(0)
     except typer.Exit:
@@ -247,16 +411,24 @@ def folders_cmd(
 
 @mail_app.command("index")
 def index_cmd(
-    project: Optional[str] = typer.Option(None, "--project", help="Project key label for this crawl run"),
-    lookback_days: int = typer.Option(30, "--lookback-days", help="Bounded lookback window in days (1-366)"),
-    max_messages: int = typer.Option(200, "--max-messages", help="Max messages indexed per folder (bounded)"),
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Project key label for this crawl run"
+    ),
+    lookback_days: int = typer.Option(
+        30, "--lookback-days", help="Bounded lookback window in days (1-366)"
+    ),
+    max_messages: int = typer.Option(
+        200, "--max-messages", help="Max messages indexed per folder (bounded)"
+    ),
     include_encrypted_body: bool = typer.Option(
         False,
         "--include-encrypted-body",
         help="Also capture full bodies ENCRYPTED at rest (policy-gated; no plaintext persisted)",
     ),
     dry_run: bool = typer.Option(
-        False, "--dry-run/--no-dry-run", help="Preview without writing message rows (default: persist)"
+        False,
+        "--dry-run/--no-dry-run",
+        help="Preview without writing message rows (default: persist)",
     ),
     json_out: bool = typer.Option(False, "--json", help="Output JSON"),
 ) -> None:
@@ -314,11 +486,19 @@ def index_cmd(
 
 @mail_app.command("discover")
 def discover_cmd(
-    project: Optional[str] = typer.Option(None, "--project", help="Pilot project key (omit to match all pilot projects)"),
-    lookback_days: int = typer.Option(30, "--lookback-days", help="Bounded lookback window in days (1-366)"),
-    max_messages: int = typer.Option(200, "--max-messages", help="Max messages scanned per folder (bounded)"),
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Pilot project key (omit to match all pilot projects)"
+    ),
+    lookback_days: int = typer.Option(
+        30, "--lookback-days", help="Bounded lookback window in days (1-366)"
+    ),
+    max_messages: int = typer.Option(
+        200, "--max-messages", help="Max messages scanned per folder (bounded)"
+    ),
     dry_run: bool = typer.Option(
-        True, "--dry-run/--no-dry-run", help="Preview matches without persisting (default); --no-dry-run writes matches"
+        True,
+        "--dry-run/--no-dry-run",
+        help="Preview matches without persisting (default); --no-dry-run writes matches",
     ),
     json_out: bool = typer.Option(False, "--json", help="Output JSON"),
 ) -> None:
@@ -352,7 +532,11 @@ def discover_cmd(
             max_messages_per_folder=max_messages,
         )
 
-        payload: Dict[str, Any] = {"command": "graph mail discover", "ok": True, **report.model_dump()}
+        payload: Dict[str, Any] = {
+            "command": "graph mail discover",
+            "ok": True,
+            **report.model_dump(),
+        }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(0)
     except typer.Exit:
@@ -375,9 +559,13 @@ def discover_cmd(
 @mail_app.command("relationships")
 def relationships_cmd(
     project: Optional[str] = typer.Option(None, "--project", help="Pilot project key"),
-    lookback_days: int = typer.Option(30, "--lookback-days", help="Bounded lookback window in days (1-366)"),
+    lookback_days: int = typer.Option(
+        30, "--lookback-days", help="Bounded lookback window in days (1-366)"
+    ),
     dry_run: bool = typer.Option(
-        False, "--dry-run/--no-dry-run", help="Preview without persisting (default: persist candidates)"
+        False,
+        "--dry-run/--no-dry-run",
+        help="Preview without persisting (default: persist candidates)",
     ),
     json_out: bool = typer.Option(False, "--json", help="Output JSON"),
 ) -> None:
@@ -390,7 +578,11 @@ def relationships_cmd(
     try:
         builder = RelationshipCandidateBuilder(ConstructionStore())
         report = builder.build(project_key=project, lookback_days=lookback_days, dry_run=dry_run)
-        payload: Dict[str, Any] = {"command": "graph mail relationships", "ok": True, **report.model_dump()}
+        payload: Dict[str, Any] = {
+            "command": "graph mail relationships",
+            "ok": True,
+            **report.model_dump(),
+        }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(0)
     except typer.Exit:
@@ -410,8 +602,12 @@ def relationships_cmd(
 @mail_app.command("review-queue")
 def review_queue_cmd(
     project: Optional[str] = typer.Option(None, "--project", help="Pilot project key"),
-    lookback_days: int = typer.Option(30, "--lookback-days", help="Bounded lookback window in days (1-366)"),
-    max_messages: int = typer.Option(200, "--max-messages", help="Max matched messages routed (bounded)"),
+    lookback_days: int = typer.Option(
+        30, "--lookback-days", help="Bounded lookback window in days (1-366)"
+    ),
+    max_messages: int = typer.Option(
+        200, "--max-messages", help="Max matched messages routed (bounded)"
+    ),
     dry_run: bool = typer.Option(
         True,
         "--dry-run/--no-dry-run",
@@ -434,7 +630,11 @@ def review_queue_cmd(
             dry_run=dry_run,
             max_messages=max_messages,
         )
-        payload: Dict[str, Any] = {"command": "graph mail review-queue", "ok": True, **report.model_dump()}
+        payload: Dict[str, Any] = {
+            "command": "graph mail review-queue",
+            "ok": True,
+            **report.model_dump(),
+        }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(0)
     except typer.Exit:
@@ -454,15 +654,22 @@ def review_queue_cmd(
 @mail_app.command("classify")
 def classify_cmd(
     project: Optional[str] = typer.Option(None, "--project", help="Pilot project key"),
-    lookback_days: int = typer.Option(30, "--lookback-days", help="Bounded lookback window in days (1-366)"),
-    max_messages: int = typer.Option(200, "--max-messages", help="Max matched messages classified (bounded)"),
+    lookback_days: int = typer.Option(
+        30, "--lookback-days", help="Bounded lookback window in days (1-366)"
+    ),
+    max_messages: int = typer.Option(
+        200, "--max-messages", help="Max matched messages classified (bounded)"
+    ),
     use_encrypted_body_context: bool = typer.Option(
         False,
         "--use-encrypted-body-context",
         help="Decrypt stored bodies in-memory for model context (discarded; never persisted)",
     ),
     mock_output: Optional[str] = typer.Option(
-        None, "--mock-output", help="Raw model JSON for offline/testing (bypasses Ollama)", hidden=True
+        None,
+        "--mock-output",
+        help="Raw model JSON for offline/testing (bypasses Ollama)",
+        hidden=True,
     ),
     dry_run: bool = typer.Option(
         True,
@@ -497,7 +704,11 @@ def classify_cmd(
             max_messages=max_messages,
             mock_output=mock_output,
         )
-        payload: Dict[str, Any] = {"command": "graph mail classify", "ok": True, **report.model_dump()}
+        payload: Dict[str, Any] = {
+            "command": "graph mail classify",
+            "ok": True,
+            **report.model_dump(),
+        }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(0)
     except typer.Exit:
@@ -537,7 +748,11 @@ def obsidian_cmd(
             include_encrypted_body_status=include_encrypted_body_status,
             dry_run=dry_run,
         )
-        payload: Dict[str, Any] = {"command": "graph mail obsidian", "ok": True, **report.model_dump()}
+        payload: Dict[str, Any] = {
+            "command": "graph mail obsidian",
+            "ok": True,
+            **report.model_dump(),
+        }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(0)
     except typer.Exit:
@@ -600,12 +815,20 @@ def operational_validate_cmd(
 
 @body_app.command("show")
 def body_show_cmd(
-    message_id: str = typer.Option(..., "--message-id", help="Indexed message id whose encrypted body to read"),
-    reason: str = typer.Option(..., "--reason", help="Operator reason for the decrypt (audited locally)"),
-    show_plaintext: bool = typer.Option(
-        False, "--show-plaintext", help="Print the decrypted body to THIS terminal only (never to disk/log/evidence)"
+    message_id: str = typer.Option(
+        ..., "--message-id", help="Indexed message id whose encrypted body to read"
     ),
-    json_out: bool = typer.Option(False, "--json", help="Output JSON (redacted summary; never plaintext)"),
+    reason: str = typer.Option(
+        ..., "--reason", help="Operator reason for the decrypt (audited locally)"
+    ),
+    show_plaintext: bool = typer.Option(
+        False,
+        "--show-plaintext",
+        help="Print the decrypted body to THIS terminal only (never to disk/log/evidence)",
+    ),
+    json_out: bool = typer.Option(
+        False, "--json", help="Output JSON (redacted summary; never plaintext)"
+    ),
 ) -> None:
     """Controlled, local-only read of an encrypted email body (no Graph call).
 
@@ -619,7 +842,12 @@ def body_show_cmd(
         store = ConstructionStore()
         record = store.get_email_body_vault_ref(message_id)
         if record is None:
-            payload = {"command": "graph mail body show", "ok": True, "found": False, "message_id": message_id}
+            payload = {
+                "command": "graph mail body show",
+                "ok": True,
+                "found": False,
+                "message_id": message_id,
+            }
             typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
             raise typer.Exit(0)
 
@@ -667,6 +895,11 @@ def body_show_cmd(
     except typer.Exit:
         raise
     except Exception as e:
-        payload = {"command": "graph mail body show", "ok": False, "status": "body_show_error", "error": str(e)[:200]}
+        payload = {
+            "command": "graph mail body show",
+            "ok": False,
+            "status": "body_show_error",
+            "error": str(e)[:200],
+        }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(1) from None

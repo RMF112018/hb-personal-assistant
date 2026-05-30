@@ -292,3 +292,63 @@ def test_graph_clients_do_not_contain_mailbox_mutation_endpoints() -> None:
         "source — Phase 02 requires mailbox read-only behavior:\n"
         + "\n".join(violations)
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 06 (SharePoint/OneDrive Files) additions: no-writeback static scan over
+# the Graph file-service source trees + files endpoint-contract lockout.
+# ---------------------------------------------------------------------------
+
+# File-service trees that issue (or will issue) Graph SharePoint/OneDrive reads.
+# NOT all of construction/ (which legitimately POSTs to local Ollama).
+_FILE_SERVICE_DIRS = (
+    "src/hb_assistant/graph",
+    "src/hb_assistant/construction/graph",
+    "src/hb_assistant/files",
+)
+
+
+def test_no_file_mutation_apis_in_graph_and_construction_clients():
+    """Static analysis: no Graph write verbs invoked from any file-service tree.
+    SharePoint/OneDrive access is read-only (GET / bounded streaming) only."""
+    root = Path(__file__).resolve().parents[1]
+    pattern = r"\.(post|put|patch|delete)\s*\("
+    violations: list[str] = []
+    for rel in _FILE_SERVICE_DIRS:
+        base = root / rel
+        if not base.exists():
+            continue
+        result = subprocess.run(
+            ["grep", "-rnE", pattern, str(base)],
+            capture_output=True,
+            text=True,
+        )
+        if result.stdout.strip():
+            violations.append(result.stdout.strip())
+    assert not violations, (
+        "Graph write calls detected in file-service source (no-writeback "
+        "violation) — SharePoint/OneDrive access must stay read-only:\n"
+        + "\n".join(violations)
+    )
+
+
+def test_graph_files_endpoint_contract_locks_write_verbs():
+    """The Phase 06 files mutation blocklist must forbid every write verb and the
+    read allowlist must be GET-only (behavior-level no-writeback contract)."""
+    from hb_assistant.graph.files_endpoint_guard import load_files_endpoint_contract
+
+    contract = load_files_endpoint_contract(refresh=True)
+    assert contract.allowed_methods == frozenset({"GET"})
+    assert contract.forbidden_methods == frozenset({"POST", "PUT", "PATCH", "DELETE"})
+    # The download URL is never persistable (short-lived signed URL).
+    assert any("downloadurl" in n.lower() for n in contract.never_persist)
+
+
+def test_graph_files_guard_blocks_all_mutation_verbs():
+    """Runtime guard self-test: every allowlisted GET allowed, every mutation
+    attempt blocked, with zero anomalies."""
+    from hb_assistant.graph.files_endpoint_guard import run_files_no_writeback_self_test
+
+    result = run_files_no_writeback_self_test()
+    assert result["passed"] is True, result["anomalies"]
+    assert result["mutation_attempts_blocked"] > 0
