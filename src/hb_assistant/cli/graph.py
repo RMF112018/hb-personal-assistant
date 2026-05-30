@@ -36,6 +36,7 @@ from hb_assistant.construction.email import (
     run_operational_validation,
 )
 from hb_assistant.construction.email.email_classifier import DEFAULT_MODEL_NAME
+from hb_assistant.construction.graph.baseline_crawler import BaselineCrawler
 from hb_assistant.construction.graph.drive_item_indexer import DriveItemIndexer
 from hb_assistant.construction.graph.link_resolver import LinkResolver
 from hb_assistant.construction.graph.resolver import GRAPH_SCOPES as _FILES_GRAPH_SCOPES
@@ -722,6 +723,82 @@ def files_link_resolve_cmd(
     if not graph_available and auth_payload is not None:
         # Shares-API resolution was skipped (no token); registry/parse fallbacks ran.
         payload["auth"] = auth_payload
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_app.command("crawl")
+def files_crawl_cmd(
+    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply persists crawl run + driveItems."
+    ),
+    max_pages: int = typer.Option(5, "--max-pages", help="Hard cap on pages read."),
+    max_items: int = typer.Option(500, "--max-items", help="Hard cap on items read."),
+    max_seconds: int = typer.Option(300, "--max-seconds", help="Wall-clock budget (seconds)."),
+    children: bool = typer.Option(
+        False,
+        "--children/--no-children",
+        help="Children traversal (diagnostics only; default delta).",
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Run a bounded, metadata-only baseline crawl for a source (delta-initial by
+    default; --children for targeted diagnostics). Records a crawl run + receipt on
+    --apply. Read-only; no content; no delta token stored. Dry-run default."""
+    try:
+        registry = load_source_registry()
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files crawl", e, json_out)
+        return
+
+    matching = [s for s in registry.sources if s.source_key == source]
+    if not matching:
+        payload = {
+            "command": "graph files crawl",
+            "status": "not_found",
+            "requested": source,
+            "available": [s.source_key for s in registry.sources],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+    if client is None:
+        payload = {
+            "command": "graph files crawl",
+            "source": source,
+            "mode": "dry_run" if dry_run else "apply",
+            **auth_payload,
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+
+    try:
+        store = ConstructionStore() if not dry_run else None
+        crawler = BaselineCrawler(client, store=store)
+        report = crawler.crawl(
+            matching[0],
+            dry_run=dry_run,
+            max_pages=max_pages,
+            max_items=max_items,
+            max_seconds=max_seconds,
+            children=children,
+        )
+    finally:
+        client.close()
+
+    guardrails = dict(_DISCOVERY_GUARDRAILS)
+    guardrails["traversal"] = report.traversal
+    guardrails["delta_token_recorded"] = False
+    payload = {
+        "command": "graph files crawl",
+        "source": source,
+        "mode": "dry_run" if dry_run else "apply",
+        "ok": report.status in {"ok", "partial"},
+        "result": report.model_dump(),
+        "guardrails": guardrails,
+    }
     typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
     raise typer.Exit(0)
 

@@ -1,0 +1,75 @@
+{
+  "command": "graph files crawl",
+  "source": "sp_2023projects_23_435_01_tropical_sl",
+  "mode": "dry_run",
+  "note": "Deterministic mocked baseline crawl (live degrades to auth_required: token expired). Metadata only; no document content; no delta token persisted (delta_link_recorded=false). Item ids/paths synthetic.",
+  "result": {
+    "run_id": "4611b2de-12fc-409f-a70b-64af992226fc",
+    "source_id": "sp_2023projects_23_435_01_tropical_sl",
+    "kind": "sharepoint_project_drive_folder",
+    "scope": "sharepoint_project_drive_folder",
+    "mode": "dry_run",
+    "traversal": "delta",
+    "endpoint": "/drives/b!tropical-drive/items/01TROPICALFOLDER/delta",
+    "status": "ok",
+    "pages_seen": 1,
+    "items_seen": 3,
+    "items_in_scope": 2,
+    "items_out_of_scope_filtered": 1,
+    "items_persisted": 0,
+    "max_pages": 5,
+    "max_items": 500,
+    "max_seconds": 300,
+    "truncated_by": "none",
+    "delta_link_recorded": false,
+    "sample": [
+      {
+        "drive_item_id": "01RFI",
+        "name": "23-435-01 RFI Log.xlsx",
+        "is_file": true,
+        "is_folder": false,
+        "is_package": false,
+        "deleted": false,
+        "size_bytes": 48213,
+        "file_extension": "xlsx",
+        "last_modified_datetime": "2026-05-20T09:30:00Z",
+        "parent_reference_path": "/drive/root:/23-435-01Tropical -S L/07-RFI"
+      },
+      {
+        "drive_item_id": "07RFI",
+        "name": "07-RFI",
+        "is_file": false,
+        "is_folder": true,
+        "is_package": false,
+        "deleted": false,
+        "size_bytes": null,
+        "file_extension": null,
+        "last_modified_datetime": null,
+        "parent_reference_path": "/drive/root:/23-435-01Tropical -S L"
+      },
+      {
+        "drive_item_id": "01DEL",
+        "name": "obsolete.pdf",
+        "is_file": false,
+        "is_folder": false,
+        "is_package": false,
+        "deleted": true,
+        "size_bytes": null,
+        "file_extension": null,
+        "last_modified_datetime": null,
+        "parent_reference_path": "/drive/root:/23-435-01Tropical -S L"
+      }
+    ],
+    "note": null,
+    "error_redacted": null
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true,
+    "content_crawl": "none",
+    "traversal": "delta",
+    "delta_token_recorded": false,
+    "permission_tightening": "deferred"
+  }
+}

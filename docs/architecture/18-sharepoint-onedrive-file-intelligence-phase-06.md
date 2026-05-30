@@ -127,6 +127,21 @@ dry-run default (`--apply` persists a redacted row), degrading to `auth_required
 offline fallbacks). Evidence: `05a-user-provided-link-resolution-proof.json`; research addendum §11
 in `01-official-graph-files-research.md`.
 
+### Baseline crawl workflow (Phase 06A) — `graph files crawl`
+`construction/graph/baseline_crawler.py` (`BaselineCrawler`) runs a bounded, **metadata-only** first
+enumeration: prefers **delta-initial** traversal (`/drives/{id}/items/{folder}/delta` → `/root/delta`
+→ `/me/drive/root/delta`), with an opt-in `--children` **non-recursive** traversal
+(`/drives/{id}/items/{folder}/children` or `/root/children`) for *targeted diagnostics only*. Bounded
+by `max_pages` (5), `max_items` (500), and a `max_seconds` (300) wall-clock budget via a custom
+page-level loop (so `pages_seen` is counted and each page path — incl. `@odata.nextLink` — is
+guard-asserted); `truncated_by` records which bound stopped it. Counts split `items_in_scope`
+(normalized, non-deleted) vs `items_out_of_scope_filtered` (deleted tombstones / id-less). Reuses the
+P06 `normalize_drive_item` + `upsert_drive_item`. On `--apply` it persists a
+`construction_source_crawl_runs` row (`delta_link_recorded = False` — **baseline stores no token**;
+delta-token persistence + 410 rebaseline are P08) and a `baseline_crawl` processing receipt — **no new
+migration** (the crawl-runs table is V5). Dry-run default; degrades to `auth_required` without a
+token. Evidence: `08-baseline-crawl-proof.json`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and
