@@ -1624,3 +1624,876 @@ class ConstructionStore:
                 record[bool_field] = bool(record[bool_field])
             results.append(record)
         return results
+
+    # --- V11 operational email intelligence (Phase 06) ----------------------
+    # Read-only, metadata-only data plane the email pipeline writes to. Every
+    # mutating helper raises ValueError before SQL on any no-mutation /
+    # no-full-body / no-attachment-content-download flag (defense in depth
+    # beneath the V11 CHECK constraints). No full email body is ever stored.
+
+    def upsert_email_sync_state(
+        self,
+        *,
+        source_id: str,
+        folder_id: str,
+        sync_mode: str,
+        lookback_days: int = 30,
+        last_successful_sync_utc: Optional[str] = None,
+        last_attempted_sync_utc: Optional[str] = None,
+        latest_received_datetime: Optional[str] = None,
+        latest_sent_datetime: Optional[str] = None,
+        delta_token_fingerprint: Optional[str] = None,
+        delta_token_supported: bool = False,
+        sync_status: str = "pending",
+        error_redacted: Optional[str] = None,
+    ) -> None:
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_sync_state
+                    (source_id, folder_id, sync_mode, lookback_days,
+                     last_successful_sync_utc, last_attempted_sync_utc,
+                     latest_received_datetime, latest_sent_datetime,
+                     delta_token_fingerprint, delta_token_supported, sync_status,
+                     error_redacted)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source_id, folder_id) DO UPDATE SET
+                    sync_mode = excluded.sync_mode,
+                    lookback_days = excluded.lookback_days,
+                    last_successful_sync_utc = excluded.last_successful_sync_utc,
+                    last_attempted_sync_utc = excluded.last_attempted_sync_utc,
+                    latest_received_datetime = excluded.latest_received_datetime,
+                    latest_sent_datetime = excluded.latest_sent_datetime,
+                    delta_token_fingerprint = excluded.delta_token_fingerprint,
+                    delta_token_supported = excluded.delta_token_supported,
+                    sync_status = excluded.sync_status,
+                    error_redacted = excluded.error_redacted
+                """,
+                (
+                    source_id,
+                    folder_id,
+                    sync_mode,
+                    lookback_days,
+                    last_successful_sync_utc,
+                    last_attempted_sync_utc,
+                    latest_received_datetime,
+                    latest_sent_datetime,
+                    delta_token_fingerprint,
+                    1 if delta_token_supported else 0,
+                    sync_status,
+                    error_redacted,
+                ),
+            )
+
+    def get_email_sync_state(
+        self, *, source_id: str, folder_id: str
+    ) -> Optional[dict[str, Any]]:
+        keys = (
+            "source_id", "folder_id", "sync_mode", "lookback_days",
+            "last_successful_sync_utc", "last_attempted_sync_utc",
+            "latest_received_datetime", "latest_sent_datetime",
+            "delta_token_fingerprint", "delta_token_supported", "sync_status",
+            "error_redacted",
+        )
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_sync_state "
+            "WHERE source_id = ? AND folder_id = ?",
+            (source_id, folder_id),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        record = dict(zip(keys, row, strict=True))
+        record["delta_token_supported"] = bool(record["delta_token_supported"])
+        return record
+
+    def insert_email_crawl_run(
+        self,
+        *,
+        run_id: str,
+        source_id: str,
+        mode: str,
+        lookback_days: int,
+        started_utc: Optional[str] = None,
+        status: str = "running",
+        project_key: Optional[str] = None,
+        project_number: Optional[str] = None,
+        dry_run: bool = True,
+        mailbox_mutation_attempted: bool = False,
+        full_body_persisted: bool = False,
+        attachment_content_downloaded: bool = False,
+    ) -> None:
+        self._reject_email_mutation_flags(
+            mailbox_mutation_attempted=mailbox_mutation_attempted,
+            full_body_persisted=full_body_persisted,
+            attachment_content_downloaded=attachment_content_downloaded,
+        )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_crawl_runs
+                    (run_id, source_id, project_key, project_number, mode, dry_run,
+                     lookback_days, started_utc, mailbox_mutation_attempted,
+                     full_body_persisted, attachment_content_downloaded, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)
+                """,
+                (
+                    run_id,
+                    source_id,
+                    project_key,
+                    project_number,
+                    mode,
+                    1 if dry_run else 0,
+                    lookback_days,
+                    started_utc or _utc_now(),
+                    status,
+                ),
+            )
+
+    def complete_email_crawl_run(
+        self,
+        *,
+        run_id: str,
+        status: str,
+        completed_utc: Optional[str] = None,
+        folders_seen: int = 0,
+        messages_seen: int = 0,
+        messages_in_scope: int = 0,
+        messages_indexed: int = 0,
+        messages_skipped: int = 0,
+        relationship_candidates_created: int = 0,
+        review_items_created: int = 0,
+        error_redacted: Optional[str] = None,
+    ) -> bool:
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                UPDATE email_crawl_runs SET
+                    status = ?,
+                    completed_utc = ?,
+                    folders_seen = ?,
+                    messages_seen = ?,
+                    messages_in_scope = ?,
+                    messages_indexed = ?,
+                    messages_skipped = ?,
+                    relationship_candidates_created = ?,
+                    review_items_created = ?,
+                    error_redacted = ?
+                WHERE run_id = ?
+                """,
+                (
+                    status,
+                    completed_utc or _utc_now(),
+                    folders_seen,
+                    messages_seen,
+                    messages_in_scope,
+                    messages_indexed,
+                    messages_skipped,
+                    relationship_candidates_created,
+                    review_items_created,
+                    error_redacted,
+                    run_id,
+                ),
+            )
+            return cur.rowcount > 0
+
+    @staticmethod
+    def _email_message_keys() -> tuple[str, ...]:
+        return (
+            "message_id", "internet_message_id", "conversation_id", "thread_key",
+            "source_id", "folder_id", "folder_display_name", "subject_redacted",
+            "subject_hash", "sender_name_redacted", "sender_address_hash",
+            "sender_domain", "to_recipient_count", "cc_recipient_count",
+            "bcc_recipient_count", "received_datetime", "sent_datetime",
+            "last_modified_datetime", "has_attachments", "importance",
+            "categories_metadata_json", "sensitivity_metadata", "web_link",
+            "body_preview_hash", "body_preview_excerpt_redacted", "body_checked",
+            "body_mention_detected", "project_number_detected",
+            "project_match_confidence", "sensitivity_classification",
+            "extraction_policy", "review_required", "full_body_persisted",
+            "mailbox_mutation_allowed", "indexed_utc", "updated_utc",
+        )
+
+    def upsert_email_message(
+        self,
+        *,
+        message_id: str,
+        thread_key: str,
+        source_id: str,
+        internet_message_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        folder_id: Optional[str] = None,
+        folder_display_name: Optional[str] = None,
+        subject_redacted: Optional[str] = None,
+        subject_hash: Optional[str] = None,
+        sender_name_redacted: Optional[str] = None,
+        sender_address_hash: Optional[str] = None,
+        sender_domain: Optional[str] = None,
+        to_recipient_count: int = 0,
+        cc_recipient_count: int = 0,
+        bcc_recipient_count: int = 0,
+        received_datetime: Optional[str] = None,
+        sent_datetime: Optional[str] = None,
+        last_modified_datetime: Optional[str] = None,
+        has_attachments: bool = False,
+        importance: Optional[str] = None,
+        categories_metadata: Optional[list[Any]] = None,
+        sensitivity_metadata: Optional[str] = None,
+        web_link: Optional[str] = None,
+        body_preview_hash: Optional[str] = None,
+        body_preview_excerpt_redacted: Optional[str] = None,
+        body_checked: bool = False,
+        body_mention_detected: bool = False,
+        project_number_detected: Optional[str] = None,
+        project_match_confidence: Optional[float] = None,
+        sensitivity_classification: Optional[str] = None,
+        extraction_policy: str = "metadata_only",
+        review_required: bool = False,
+        full_body_persisted: bool = False,
+        mailbox_mutation_allowed: bool = False,
+    ) -> None:
+        if full_body_persisted is not False:
+            raise ValueError(
+                "email_messages.full_body_persisted must be False — Phase 06 "
+                "never persists full email bodies"
+            )
+        if mailbox_mutation_allowed is not False:
+            raise ValueError(
+                "email_messages.mailbox_mutation_allowed must be False — Phase 06 "
+                "mailbox stays read-only"
+            )
+        if extraction_policy != "metadata_only":
+            raise ValueError(
+                "email_messages.extraction_policy must be 'metadata_only' in Phase 06"
+            )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_messages
+                    (message_id, internet_message_id, conversation_id, thread_key,
+                     source_id, folder_id, folder_display_name, subject_redacted,
+                     subject_hash, sender_name_redacted, sender_address_hash,
+                     sender_domain, to_recipient_count, cc_recipient_count,
+                     bcc_recipient_count, received_datetime, sent_datetime,
+                     last_modified_datetime, has_attachments, importance,
+                     categories_metadata_json, sensitivity_metadata, web_link,
+                     body_preview_hash, body_preview_excerpt_redacted, body_checked,
+                     body_mention_detected, project_number_detected,
+                     project_match_confidence, sensitivity_classification,
+                     extraction_policy, review_required, full_body_persisted,
+                     mailbox_mutation_allowed, indexed_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'metadata_only', ?, 0, 0, ?, ?)
+                ON CONFLICT(message_id) DO UPDATE SET
+                    internet_message_id = excluded.internet_message_id,
+                    conversation_id = excluded.conversation_id,
+                    thread_key = excluded.thread_key,
+                    source_id = excluded.source_id,
+                    folder_id = excluded.folder_id,
+                    folder_display_name = excluded.folder_display_name,
+                    subject_redacted = excluded.subject_redacted,
+                    subject_hash = excluded.subject_hash,
+                    sender_name_redacted = excluded.sender_name_redacted,
+                    sender_address_hash = excluded.sender_address_hash,
+                    sender_domain = excluded.sender_domain,
+                    to_recipient_count = excluded.to_recipient_count,
+                    cc_recipient_count = excluded.cc_recipient_count,
+                    bcc_recipient_count = excluded.bcc_recipient_count,
+                    received_datetime = excluded.received_datetime,
+                    sent_datetime = excluded.sent_datetime,
+                    last_modified_datetime = excluded.last_modified_datetime,
+                    has_attachments = excluded.has_attachments,
+                    importance = excluded.importance,
+                    categories_metadata_json = excluded.categories_metadata_json,
+                    sensitivity_metadata = excluded.sensitivity_metadata,
+                    web_link = excluded.web_link,
+                    body_preview_hash = excluded.body_preview_hash,
+                    body_preview_excerpt_redacted = excluded.body_preview_excerpt_redacted,
+                    body_checked = excluded.body_checked,
+                    body_mention_detected = excluded.body_mention_detected,
+                    project_number_detected = excluded.project_number_detected,
+                    project_match_confidence = excluded.project_match_confidence,
+                    sensitivity_classification = excluded.sensitivity_classification,
+                    review_required = excluded.review_required,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    message_id,
+                    internet_message_id,
+                    conversation_id,
+                    thread_key,
+                    source_id,
+                    folder_id,
+                    folder_display_name,
+                    subject_redacted,
+                    subject_hash,
+                    sender_name_redacted,
+                    sender_address_hash,
+                    sender_domain,
+                    to_recipient_count,
+                    cc_recipient_count,
+                    bcc_recipient_count,
+                    received_datetime,
+                    sent_datetime,
+                    last_modified_datetime,
+                    1 if has_attachments else 0,
+                    importance,
+                    self._dump_json(categories_metadata),
+                    sensitivity_metadata,
+                    web_link,
+                    body_preview_hash,
+                    body_preview_excerpt_redacted,
+                    1 if body_checked else 0,
+                    1 if body_mention_detected else 0,
+                    project_number_detected,
+                    project_match_confidence,
+                    sensitivity_classification,
+                    1 if review_required else 0,
+                    _utc_now(),
+                    _utc_now(),
+                ),
+            )
+
+    def get_email_message(self, message_id: str) -> Optional[dict[str, Any]]:
+        keys = self._email_message_keys()
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_messages WHERE message_id = ?",
+            (message_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        return self._email_message_row_to_record(keys, row)
+
+    def list_email_messages(
+        self,
+        *,
+        project_number_detected: Optional[str] = None,
+        review_required: Optional[bool] = None,
+        thread_key: Optional[str] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        keys = self._email_message_keys()
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_number_detected is not None:
+            clauses.append("project_number_detected = ?")
+            params.append(project_number_detected)
+        if review_required is not None:
+            clauses.append("review_required = ?")
+            params.append(1 if review_required else 0)
+        if thread_key is not None:
+            clauses.append("thread_key = ?")
+            params.append(thread_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_messages {where} "
+            "ORDER BY received_datetime DESC, message_id LIMIT ?",
+            tuple(params),
+        )
+        return [self._email_message_row_to_record(keys, row) for row in cur.fetchall()]
+
+    @staticmethod
+    def _email_message_row_to_record(
+        keys: tuple[str, ...], row: Any
+    ) -> dict[str, Any]:
+        record = dict(zip(keys, row, strict=True))
+        record["categories_metadata"] = ConstructionStore._load_json(
+            record.pop("categories_metadata_json")
+        )
+        for bool_field in (
+            "has_attachments", "body_checked", "body_mention_detected",
+            "review_required", "full_body_persisted", "mailbox_mutation_allowed",
+        ):
+            record[bool_field] = bool(record[bool_field])
+        return record
+
+    def add_email_message_recipient(
+        self,
+        *,
+        message_id: str,
+        recipient_role: str,
+        address_hash: Optional[str] = None,
+        display_name_redacted: Optional[str] = None,
+        domain: Optional[str] = None,
+        is_bobby: bool = False,
+        known_project_participant: bool = False,
+    ) -> bool:
+        """Idempotent insert keyed by (message_id, recipient_role, address_hash).
+
+        Returns True if a new recipient row was inserted, False if it already
+        existed (INSERT OR IGNORE on the UNIQUE constraint). Recipient identity
+        is fully determined by the hashed address + role, so re-seeing the same
+        recipient is a no-op rather than an update.
+        """
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                INSERT OR IGNORE INTO email_message_recipients
+                    (message_id, recipient_role, display_name_redacted, address_hash,
+                     domain, is_bobby, known_project_participant, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    message_id,
+                    recipient_role,
+                    display_name_redacted,
+                    address_hash,
+                    domain,
+                    1 if is_bobby else 0,
+                    1 if known_project_participant else 0,
+                    _utc_now(),
+                ),
+            )
+            return cur.rowcount > 0
+
+    def list_email_message_recipients(
+        self, message_id: str
+    ) -> list[dict[str, Any]]:
+        keys = (
+            "id", "message_id", "recipient_role", "display_name_redacted",
+            "address_hash", "domain", "is_bobby", "known_project_participant",
+            "created_utc",
+        )
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_message_recipients "
+            "WHERE message_id = ? ORDER BY recipient_role, id",
+            (message_id,),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            record["is_bobby"] = bool(record["is_bobby"])
+            record["known_project_participant"] = bool(
+                record["known_project_participant"]
+            )
+            results.append(record)
+        return results
+
+    def upsert_email_message_attachment(
+        self,
+        *,
+        attachment_key: str,
+        message_id: str,
+        attachment_id: Optional[str] = None,
+        name_redacted: Optional[str] = None,
+        name_hash: Optional[str] = None,
+        content_type: Optional[str] = None,
+        size_bytes: Optional[int] = None,
+        is_inline: bool = False,
+        sharepoint_or_onedrive_link_detected: bool = False,
+        linked_drive_item_id: Optional[str] = None,
+        sensitivity_hint: Optional[str] = None,
+        review_required: bool = False,
+        metadata_only: bool = True,
+        content_downloaded: bool = False,
+    ) -> None:
+        if metadata_only is not True:
+            raise ValueError(
+                "email_message_attachments.metadata_only must be True in Phase 06"
+            )
+        if content_downloaded is not False:
+            raise ValueError(
+                "email_message_attachments.content_downloaded must be False — "
+                "Phase 06 never downloads attachment content by default"
+            )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_message_attachments
+                    (attachment_key, message_id, attachment_id, name_redacted,
+                     name_hash, content_type, size_bytes, is_inline, metadata_only,
+                     content_downloaded, sharepoint_or_onedrive_link_detected,
+                     linked_drive_item_id, sensitivity_hint, review_required,
+                     created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?, ?, ?, ?)
+                ON CONFLICT(attachment_key) DO UPDATE SET
+                    message_id = excluded.message_id,
+                    attachment_id = excluded.attachment_id,
+                    name_redacted = excluded.name_redacted,
+                    name_hash = excluded.name_hash,
+                    content_type = excluded.content_type,
+                    size_bytes = excluded.size_bytes,
+                    is_inline = excluded.is_inline,
+                    sharepoint_or_onedrive_link_detected =
+                        excluded.sharepoint_or_onedrive_link_detected,
+                    linked_drive_item_id = excluded.linked_drive_item_id,
+                    sensitivity_hint = excluded.sensitivity_hint,
+                    review_required = excluded.review_required
+                """,
+                (
+                    attachment_key,
+                    message_id,
+                    attachment_id,
+                    name_redacted,
+                    name_hash,
+                    content_type,
+                    size_bytes,
+                    1 if is_inline else 0,
+                    1 if sharepoint_or_onedrive_link_detected else 0,
+                    linked_drive_item_id,
+                    sensitivity_hint,
+                    1 if review_required else 0,
+                    _utc_now(),
+                ),
+            )
+
+    def upsert_email_project_match(
+        self,
+        *,
+        match_id: str,
+        message_id: str,
+        match_signal: str,
+        confidence: float,
+        project_key: Optional[str] = None,
+        project_number: Optional[str] = None,
+        project_name_normalized: Optional[str] = None,
+        match_value_hash: Optional[str] = None,
+        review_required: bool = False,
+        evidence_redacted: Optional[str] = None,
+    ) -> None:
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_project_matches
+                    (match_id, message_id, project_key, project_number,
+                     project_name_normalized, match_signal, match_value_hash,
+                     confidence, review_required, evidence_redacted, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(message_id, project_key, match_signal) DO UPDATE SET
+                    project_number = excluded.project_number,
+                    project_name_normalized = excluded.project_name_normalized,
+                    match_value_hash = excluded.match_value_hash,
+                    confidence = excluded.confidence,
+                    review_required = excluded.review_required,
+                    evidence_redacted = excluded.evidence_redacted
+                """,
+                (
+                    match_id,
+                    message_id,
+                    project_key,
+                    project_number,
+                    project_name_normalized,
+                    match_signal,
+                    match_value_hash,
+                    confidence,
+                    1 if review_required else 0,
+                    evidence_redacted,
+                    _utc_now(),
+                ),
+            )
+
+    def upsert_email_relationship_candidate(
+        self,
+        *,
+        candidate_id: str,
+        message_id: str,
+        candidate_type: str,
+        match_signal: str,
+        confidence: float,
+        project_key: Optional[str] = None,
+        target_source_system: Optional[str] = None,
+        target_table: Optional[str] = None,
+        target_key: Optional[str] = None,
+        review_required: bool = False,
+        evidence_redacted: Optional[str] = None,
+    ) -> None:
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_relationship_candidates
+                    (candidate_id, message_id, project_key, candidate_type,
+                     target_source_system, target_table, target_key, match_signal,
+                     confidence, evidence_redacted, review_required, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(message_id, candidate_type, target_table, target_key,
+                            match_signal) DO UPDATE SET
+                    project_key = excluded.project_key,
+                    target_source_system = excluded.target_source_system,
+                    confidence = excluded.confidence,
+                    evidence_redacted = excluded.evidence_redacted,
+                    review_required = excluded.review_required
+                """,
+                (
+                    candidate_id,
+                    message_id,
+                    project_key,
+                    candidate_type,
+                    target_source_system,
+                    target_table,
+                    target_key,
+                    match_signal,
+                    confidence,
+                    evidence_redacted,
+                    1 if review_required else 0,
+                    _utc_now(),
+                ),
+            )
+
+    def upsert_email_thread_summary(
+        self,
+        *,
+        thread_key: str,
+        project_key: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        message_count: int = 0,
+        first_message_datetime: Optional[str] = None,
+        last_message_datetime: Optional[str] = None,
+        participants_hash: Optional[list[Any]] = None,
+        summary_redacted: Optional[str] = None,
+        summary_policy: str = "metadata_and_preview_only",
+        review_required: bool = False,
+        model_used: Optional[str] = None,
+        model_output_validated: bool = False,
+    ) -> None:
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_thread_summaries
+                    (thread_key, project_key, conversation_id, message_count,
+                     first_message_datetime, last_message_datetime,
+                     participants_hash_json, summary_redacted, summary_policy,
+                     review_required, model_used, model_output_validated,
+                     generated_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(thread_key) DO UPDATE SET
+                    project_key = excluded.project_key,
+                    conversation_id = excluded.conversation_id,
+                    message_count = excluded.message_count,
+                    first_message_datetime = excluded.first_message_datetime,
+                    last_message_datetime = excluded.last_message_datetime,
+                    participants_hash_json = excluded.participants_hash_json,
+                    summary_redacted = excluded.summary_redacted,
+                    summary_policy = excluded.summary_policy,
+                    review_required = excluded.review_required,
+                    model_used = excluded.model_used,
+                    model_output_validated = excluded.model_output_validated,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    thread_key,
+                    project_key,
+                    conversation_id,
+                    message_count,
+                    first_message_datetime,
+                    last_message_datetime,
+                    self._dump_json(participants_hash),
+                    summary_redacted,
+                    summary_policy,
+                    1 if review_required else 0,
+                    model_used,
+                    1 if model_output_validated else 0,
+                    _utc_now(),
+                    _utc_now(),
+                ),
+            )
+
+    def enqueue_email_review_item(
+        self,
+        *,
+        review_id: str,
+        message_id: str,
+        category: str,
+        sensitivity: str,
+        reason: str,
+        suggested_action: str,
+        confidence: float,
+        project_key: Optional[str] = None,
+        status: str = "open",
+    ) -> bool:
+        """Idempotent enqueue keyed by (message_id, category, reason).
+
+        Returns True if a new review item was inserted, False if it already
+        existed (INSERT OR IGNORE on the UNIQUE constraint).
+        """
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                INSERT OR IGNORE INTO email_review_queue
+                    (review_id, message_id, project_key, category, sensitivity,
+                     reason, suggested_action, confidence, status, routed_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    review_id,
+                    message_id,
+                    project_key,
+                    category,
+                    sensitivity,
+                    reason,
+                    suggested_action,
+                    confidence,
+                    status,
+                    _utc_now(),
+                ),
+            )
+            return cur.rowcount > 0
+
+    def list_email_review_queue(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        status: Optional[str] = "open",
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        keys = (
+            "review_id", "message_id", "project_key", "category", "sensitivity",
+            "reason", "suggested_action", "confidence", "status", "routed_utc",
+            "resolved_utc",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if status is not None:
+            clauses.append("status = ?")
+            params.append(status)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_review_queue {where} "
+            "ORDER BY routed_utc DESC, review_id LIMIT ?",
+            tuple(params),
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    def count_email_review_queue(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        status: Optional[str] = "open",
+    ) -> int:
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if status is not None:
+            clauses.append("status = ?")
+            params.append(status)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT COUNT(*) FROM email_review_queue {where}", tuple(params)
+        )
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
+    def insert_email_processing_receipt(
+        self,
+        *,
+        receipt_id: str,
+        operation: str,
+        status: str,
+        run_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+        project_key: Optional[str] = None,
+        detail: Optional[dict[str, Any]] = None,
+        mailbox_mutation_attempted: bool = False,
+        full_body_persisted: bool = False,
+        attachment_content_downloaded: bool = False,
+    ) -> None:
+        self._reject_email_mutation_flags(
+            mailbox_mutation_attempted=mailbox_mutation_attempted,
+            full_body_persisted=full_body_persisted,
+            attachment_content_downloaded=attachment_content_downloaded,
+        )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_processing_receipts
+                    (receipt_id, run_id, message_id, project_key, operation, status,
+                     detail_json, mailbox_mutation_attempted, full_body_persisted,
+                     attachment_content_downloaded, generated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)
+                """,
+                (
+                    receipt_id,
+                    run_id,
+                    message_id,
+                    project_key,
+                    operation,
+                    status,
+                    self._dump_json(detail),
+                    _utc_now(),
+                ),
+            )
+
+    def list_email_processing_receipts(
+        self,
+        *,
+        run_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        keys = (
+            "receipt_id", "run_id", "message_id", "project_key", "operation",
+            "status", "detail_json", "mailbox_mutation_attempted",
+            "full_body_persisted", "attachment_content_downloaded", "generated_utc",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if run_id is not None:
+            clauses.append("run_id = ?")
+            params.append(run_id)
+        if message_id is not None:
+            clauses.append("message_id = ?")
+            params.append(message_id)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_processing_receipts {where} "
+            "ORDER BY generated_utc DESC, receipt_id LIMIT ?",
+            tuple(params),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            record["detail"] = self._load_json(record.pop("detail_json"))
+            for bool_field in (
+                "mailbox_mutation_attempted", "full_body_persisted",
+                "attachment_content_downloaded",
+            ):
+                record[bool_field] = bool(record[bool_field])
+            results.append(record)
+        return results
+
+    @staticmethod
+    def _reject_email_mutation_flags(
+        *,
+        mailbox_mutation_attempted: bool,
+        full_body_persisted: bool,
+        attachment_content_downloaded: bool,
+    ) -> None:
+        if mailbox_mutation_attempted is not False:
+            raise ValueError(
+                "mailbox_mutation_attempted must be False — Phase 06 mailbox is read-only"
+            )
+        if full_body_persisted is not False:
+            raise ValueError(
+                "full_body_persisted must be False — Phase 06 never persists full bodies"
+            )
+        if attachment_content_downloaded is not False:
+            raise ValueError(
+                "attachment_content_downloaded must be False — Phase 06 never "
+                "downloads attachment content by default"
+            )

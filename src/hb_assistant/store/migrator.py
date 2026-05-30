@@ -1479,6 +1479,242 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v11 = Phase 06 operational email-intelligence data schema: the tables the
+    # read-only pipeline writes to (sync state, crawl-run receipts, message
+    # metadata + recipients + attachment metadata, project matches, relationship
+    # candidates, thread summaries, review queue, processing receipts).
+    # Additive only; never touches V1-V10 (in particular the V10 email policy +
+    # source-registry tables and the V5 deferred-state row are left intact).
+    # email_source_locations is NOT re-declared here — it already exists in V10
+    # and the foreign keys below reference that existing table. Hard CHECK
+    # constraints lock no-mutation / no-full-body-persistence / no-attachment-
+    # content-download / metadata-only at the schema level (defense in depth
+    # beneath the adapter ValueError guards). No full email body is stored: only
+    # a bounded, redacted preview excerpt + hashes.
+    V11_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS email_sync_state (
+          source_id TEXT NOT NULL REFERENCES email_source_locations(source_id),
+          folder_id TEXT NOT NULL,
+          sync_mode TEXT NOT NULL,
+          lookback_days INTEGER NOT NULL DEFAULT 30,
+          last_successful_sync_utc TEXT,
+          last_attempted_sync_utc TEXT,
+          latest_received_datetime TEXT,
+          latest_sent_datetime TEXT,
+          delta_token_fingerprint TEXT,
+          delta_token_supported INTEGER NOT NULL DEFAULT 0,
+          sync_status TEXT NOT NULL DEFAULT 'pending',
+          error_redacted TEXT,
+          PRIMARY KEY (source_id, folder_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_crawl_runs (
+          run_id TEXT PRIMARY KEY,
+          source_id TEXT NOT NULL REFERENCES email_source_locations(source_id),
+          project_key TEXT,
+          project_number TEXT,
+          mode TEXT NOT NULL,
+          dry_run INTEGER NOT NULL DEFAULT 1,
+          lookback_days INTEGER NOT NULL,
+          started_utc TEXT NOT NULL,
+          completed_utc TEXT,
+          folders_seen INTEGER NOT NULL DEFAULT 0,
+          messages_seen INTEGER NOT NULL DEFAULT 0,
+          messages_in_scope INTEGER NOT NULL DEFAULT 0,
+          messages_indexed INTEGER NOT NULL DEFAULT 0,
+          messages_skipped INTEGER NOT NULL DEFAULT 0,
+          relationship_candidates_created INTEGER NOT NULL DEFAULT 0,
+          review_items_created INTEGER NOT NULL DEFAULT 0,
+          mailbox_mutation_attempted INTEGER NOT NULL DEFAULT 0 CHECK(mailbox_mutation_attempted = 0),
+          full_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(full_body_persisted = 0),
+          attachment_content_downloaded INTEGER NOT NULL DEFAULT 0 CHECK(attachment_content_downloaded = 0),
+          status TEXT NOT NULL,
+          error_redacted TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_messages (
+          message_id TEXT PRIMARY KEY,
+          internet_message_id TEXT,
+          conversation_id TEXT,
+          thread_key TEXT NOT NULL,
+          source_id TEXT NOT NULL REFERENCES email_source_locations(source_id),
+          folder_id TEXT,
+          folder_display_name TEXT,
+          subject_redacted TEXT,
+          subject_hash TEXT,
+          sender_name_redacted TEXT,
+          sender_address_hash TEXT,
+          sender_domain TEXT,
+          to_recipient_count INTEGER NOT NULL DEFAULT 0,
+          cc_recipient_count INTEGER NOT NULL DEFAULT 0,
+          bcc_recipient_count INTEGER NOT NULL DEFAULT 0,
+          received_datetime TEXT,
+          sent_datetime TEXT,
+          last_modified_datetime TEXT,
+          has_attachments INTEGER NOT NULL DEFAULT 0,
+          importance TEXT,
+          categories_metadata_json TEXT,
+          sensitivity_metadata TEXT,
+          web_link TEXT,
+          body_preview_hash TEXT,
+          body_preview_excerpt_redacted TEXT,
+          body_checked INTEGER NOT NULL DEFAULT 0,
+          body_mention_detected INTEGER NOT NULL DEFAULT 0,
+          project_number_detected TEXT,
+          project_match_confidence REAL,
+          sensitivity_classification TEXT,
+          extraction_policy TEXT NOT NULL DEFAULT 'metadata_only',
+          review_required INTEGER NOT NULL DEFAULT 0,
+          full_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(full_body_persisted = 0),
+          mailbox_mutation_allowed INTEGER NOT NULL DEFAULT 0 CHECK(mailbox_mutation_allowed = 0),
+          indexed_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_email_messages_thread ON email_messages(thread_key);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_email_messages_project ON email_messages(project_number_detected);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_email_messages_received ON email_messages(received_datetime);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_email_messages_review ON email_messages(review_required);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_message_recipients (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          message_id TEXT NOT NULL REFERENCES email_messages(message_id) ON DELETE CASCADE,
+          recipient_role TEXT NOT NULL,
+          display_name_redacted TEXT,
+          address_hash TEXT,
+          domain TEXT,
+          is_bobby INTEGER NOT NULL DEFAULT 0,
+          known_project_participant INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(message_id, recipient_role, address_hash)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_message_attachments (
+          attachment_key TEXT PRIMARY KEY,
+          message_id TEXT NOT NULL REFERENCES email_messages(message_id) ON DELETE CASCADE,
+          attachment_id TEXT,
+          name_redacted TEXT,
+          name_hash TEXT,
+          content_type TEXT,
+          size_bytes INTEGER,
+          is_inline INTEGER NOT NULL DEFAULT 0,
+          metadata_only INTEGER NOT NULL DEFAULT 1 CHECK(metadata_only = 1),
+          content_downloaded INTEGER NOT NULL DEFAULT 0 CHECK(content_downloaded = 0),
+          sharepoint_or_onedrive_link_detected INTEGER NOT NULL DEFAULT 0,
+          linked_drive_item_id TEXT,
+          sensitivity_hint TEXT,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_project_matches (
+          match_id TEXT PRIMARY KEY,
+          message_id TEXT NOT NULL REFERENCES email_messages(message_id) ON DELETE CASCADE,
+          project_key TEXT,
+          project_number TEXT,
+          project_name_normalized TEXT,
+          match_signal TEXT NOT NULL,
+          match_value_hash TEXT,
+          confidence REAL NOT NULL,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          evidence_redacted TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(message_id, project_key, match_signal)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_relationship_candidates (
+          candidate_id TEXT PRIMARY KEY,
+          message_id TEXT NOT NULL REFERENCES email_messages(message_id) ON DELETE CASCADE,
+          project_key TEXT,
+          candidate_type TEXT NOT NULL,
+          target_source_system TEXT,
+          target_table TEXT,
+          target_key TEXT,
+          match_signal TEXT NOT NULL,
+          confidence REAL NOT NULL,
+          evidence_redacted TEXT,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(message_id, candidate_type, target_table, target_key, match_signal)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_thread_summaries (
+          thread_key TEXT PRIMARY KEY,
+          project_key TEXT,
+          conversation_id TEXT,
+          message_count INTEGER NOT NULL DEFAULT 0,
+          first_message_datetime TEXT,
+          last_message_datetime TEXT,
+          participants_hash_json TEXT,
+          summary_redacted TEXT,
+          summary_policy TEXT NOT NULL DEFAULT 'metadata_and_preview_only',
+          review_required INTEGER NOT NULL DEFAULT 0,
+          model_used TEXT,
+          model_output_validated INTEGER NOT NULL DEFAULT 0,
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_review_queue (
+          review_id TEXT PRIMARY KEY,
+          message_id TEXT NOT NULL REFERENCES email_messages(message_id) ON DELETE CASCADE,
+          project_key TEXT,
+          category TEXT NOT NULL,
+          sensitivity TEXT NOT NULL,
+          reason TEXT NOT NULL,
+          suggested_action TEXT NOT NULL,
+          confidence REAL NOT NULL,
+          status TEXT NOT NULL DEFAULT 'open',
+          routed_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          resolved_utc TEXT,
+          UNIQUE(message_id, category, reason)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_processing_receipts (
+          receipt_id TEXT PRIMARY KEY,
+          run_id TEXT,
+          message_id TEXT,
+          project_key TEXT,
+          operation TEXT NOT NULL,
+          status TEXT NOT NULL,
+          detail_json TEXT,
+          mailbox_mutation_attempted INTEGER NOT NULL DEFAULT 0 CHECK(mailbox_mutation_attempted = 0),
+          full_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(full_body_persisted = 0),
+          attachment_content_downloaded INTEGER NOT NULL DEFAULT 0 CHECK(attachment_content_downloaded = 0),
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_email_review_queue_status
+          ON email_review_queue(status);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_email_review_queue_project
+          ON email_review_queue(project_key);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_email_processing_receipts_run
+          ON email_processing_receipts(run_id);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -1603,6 +1839,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (10, 'v10_email_intelligence_active_policy_and_mailbox_source_registry', ?)",
+                    (now,),
+                )
+
+            # v11 Phase 06 operational email-intelligence data schema (additive
+            # only; does not touch V1-V10, references the V10 email_source_locations).
+            for stmt in self.V11_STATEMENTS:
+                conn.execute(stmt)
+
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 11")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (11, 'v11_email_operational_intelligence_schema', ?)",
                     (now,),
                 )
 

@@ -1,6 +1,6 @@
 # 17 — Operational Email Intelligence (Phase 06)
 
-Status: **in progress** · Phase 06 Prompts 00–02 landed · Migration **V10** (Prompt 02)
+Status: **in progress** · Phase 06 Prompts 00–03 landed · Migration **V11** (Prompt 03)
 
 Phase 06 turns the Phase 02 *deferred* email intelligence into operational, **read-only**,
 project-aware email workflows over the existing GET-only Graph stack. It is local-first: SQLite is
@@ -40,6 +40,29 @@ Activates email intelligence **alongside** the preserved Phase 02 deferred polic
   historical evidence). The package's remaining operational tables are **Prompt 03 (V11)**.
 - **Store adapter** — `ConstructionStore.set/get_email_intelligence_active_policy` and
   `upsert/get/list_email_source_location`, each raising `ValueError` on a lock violation before SQL.
+
+## Prompt 03 — operational email data schema (Migration V11)
+
+Adds the read-only, metadata-only **data plane** the pipeline writes to, on top of the V10 policy +
+source registry. The package SQL re-declared `email_source_locations` (already identical in V10);
+V11 adds only the **10 new tables** and references the existing V10 table via foreign keys —
+additive `CREATE TABLE IF NOT EXISTS` only, V1–V10 and the V5 deferred-state row untouched.
+
+- **Tables (V11)** — `email_sync_state` (per-folder bounded-lookback cursor), `email_crawl_runs`
+  (run receipts), `email_messages` (message **metadata**; no full body — only a bounded redacted
+  `body_preview_excerpt_redacted` + hash), `email_message_recipients` (hashed addresses),
+  `email_message_attachments` (metadata only), `email_project_matches`,
+  `email_relationship_candidates` (cross-system link candidates), `email_thread_summaries`,
+  `email_review_queue`, `email_processing_receipts`. CHECK constraints lock
+  `full_body_persisted=0` / `mailbox_mutation_*=0` / `attachment_content_downloaded=0` /
+  `content_downloaded=0` / `metadata_only=1` at the database layer.
+- **Store adapter** — `ConstructionStore` gains upsert/get/list helpers for each table plus
+  idempotent `add_email_message_recipient` and `enqueue_email_review_item` (INSERT OR IGNORE on
+  their UNIQUE keys), `list/count_email_review_queue`, and crawl-run + processing receipts. Every
+  mutating helper raises `ValueError` on a no-mutation / no-full-body / no-attachment-content flag
+  before any SQL runs.
+- **Evidence** — `docs/evidence/construction-intelligence-phase-06-email/`
+  `03-email-schema-and-migrations.md` + captured `email-schema-validation.txt`.
 
 ### Four-layer read-only lock (defense in depth)
 

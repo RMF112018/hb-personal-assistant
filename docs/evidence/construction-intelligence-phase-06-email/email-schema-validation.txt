@@ -1,0 +1,66 @@
+Phase 06 Prompt 03 — Email Schema and Migrations (V11) validation
+Generated against a fresh SQLite DB via SQLiteMigrator.apply().
+======================================================================
+fresh-DB SQLiteMigrator.apply() -> max schema version: 11
+
+V11 operational email tables present:
+  [OK] email_sync_state
+  [OK] email_crawl_runs
+  [OK] email_messages
+  [OK] email_message_recipients
+  [OK] email_message_attachments
+  [OK] email_project_matches
+  [OK] email_relationship_candidates
+  [OK] email_thread_summaries
+  [OK] email_review_queue
+  [OK] email_processing_receipts
+
+V10 tables preserved: email_intelligence_active_policy=present, email_source_locations=present
+V5 deferred-state row preserved: present
+schema_migrations rows (version, name):
+  v1  v1_initial_schema
+  v2  v2_construction_delta
+  v3  v3_construction_review_queue
+  v4  v4_construction_model_decisions
+  v5  v5_construction_canonical_alignment
+  v6  v6_procore_live_sync
+  v7  v7_procore_history_and_enrichment
+  v8  v8_procore_financials
+  v9  v9_procore_billing_and_subcontractor_invoices
+  v10 v10_email_intelligence_active_policy_and_mailbox_source_registry
+  v11 v11_email_operational_intelligence_schema
+
+Database-layer CHECK guardrails (raw sqlite3, no adapter) — expect IntegrityError:
+  [OK IntegrityError] email_messages.full_body_persisted=1 -> CHECK constraint failed: full_body_persisted = 0
+  [OK IntegrityError] email_messages.mailbox_mutation_allowed=1 -> CHECK constraint failed: mailbox_mutation_allowed = 0
+  [OK IntegrityError] email_message_attachments.content_downloaded=1 -> CHECK constraint failed: content_downloaded = 0
+  [OK IntegrityError] email_message_attachments.metadata_only=0 -> CHECK constraint failed: metadata_only = 1
+  [OK IntegrityError] email_crawl_runs.mailbox_mutation_attempted=1 -> CHECK constraint failed: mailbox_mutation_attempted = 0
+  [OK IntegrityError] email_processing_receipts.full_body_persisted=1 -> CHECK constraint failed: full_body_persisted = 0
+
+Adapter-layer ValueError guards (raise before SQL):
+  [OK ValueError] upsert_email_message(full_body_persisted=True) -> email_messages.full_body_persisted must be False — Phase 06 never persists full email bodies
+  [OK ValueError] upsert_email_message(extraction_policy='full_body') -> email_messages.extraction_policy must be 'metadata_only' in Phase 06
+  [OK ValueError] upsert_email_message_attachment(content_downloaded=True) -> email_message_attachments.content_downloaded must be False — Phase 06 never downloads attachment content by default
+  [OK ValueError] insert_email_processing_receipt(mailbox_mutation_attempted=True) -> mailbox_mutation_attempted must be False — Phase 06 mailbox is read-only
+
+Adapter round-trip + idempotency (read-only, metadata-only):
+  email_messages round-trip: full_body_persisted=False mailbox_mutation_allowed=False extraction_policy='metadata_only'
+  add_email_message_recipient idempotency: first_insert=True duplicate_insert=False
+  enqueue_email_review_item idempotency: duplicate_inserted=False open_count=1
+  processing receipts for run-1: 1
+
+email_messages columns (confirm NO full-body column; bounded preview only):
+  forbidden full-body columns present: none
+  bounded preview column present: True
+
+======================================================================
+pytest (targeted V11 schema test): tests/test_email_operational_schema_v11.py -> 27 passed
+pytest (touched migration-version tests bumped 10->11): test_email_registry_migration_v10 / test_construction_store_repositories / test_procore_financials_v8 / _v9 / test_procore_history_migration_v7 -> green
+ruff check .  -> All checks passed!
+mypy src      -> Success: no issues found in 117 source files
+python -m compileall -q src tests -> OK
+Full safe subset (not integration/live/manual) -> green, except 4 pre-existing
+  weekend-driven failures in tests/test_automation.py (today is Saturday;
+  orchestrator skips weekends) — confirmed unrelated: they persist with the
+  V11 source changes stashed and reference no email/migrator code.
