@@ -28,6 +28,7 @@ from hb_assistant.construction.email import (
     ProjectEmailDiscovery,
     RelationshipCandidateBuilder,
     ReviewRouter,
+    run_operational_validation,
 )
 from hb_assistant.construction.email.email_classifier import DEFAULT_MODEL_NAME
 from hb_assistant.construction.policy.email_active import (
@@ -547,6 +548,50 @@ def obsidian_cmd(
             "ok": False,
             "dry_run": dry_run,
             "status": "obsidian_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@mail_app.command("operational-validate")
+def operational_validate_cmd(
+    project: str = typer.Option("tropical", "--project", help="Pilot project key"),
+    lookback_days: int = typer.Option(30, "--lookback-days", help="Pilot lookback days"),
+    include_live_index: bool = typer.Option(
+        True,
+        "--include-live-index/--no-live-index",
+        help="Include required non-dry-run index call in the validation chain",
+    ),
+    write_evidence: bool = typer.Option(
+        True,
+        "--write-evidence/--no-write-evidence",
+        help="Write Prompt 13 evidence artifacts to docs/evidence",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Run Prompt 13 command-chain validation + aggregate operational metrics."""
+    try:
+        report = run_operational_validation(
+            project_key=project,
+            lookback_days=lookback_days,
+            include_live_index=include_live_index,
+            write_evidence=write_evidence,
+        )
+        payload: Dict[str, Any] = {
+            "command": "graph mail operational-validate",
+            "ok": bool(report.metrics.validation_ok),
+            **report.model_dump(),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0 if payload["ok"] else 1)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail operational-validate",
+            "ok": False,
+            "status": "operational_validate_error",
             "error": str(e)[:200],
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))

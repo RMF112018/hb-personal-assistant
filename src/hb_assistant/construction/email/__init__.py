@@ -37,6 +37,10 @@ from .obsidian_projection import (
     EmailObsidianProjector,
     EmailObsidianReport,
 )
+from .operational_validation import (
+    OperationalValidationReport,
+    run_operational_validation,
+)
 from .project_discovery import (
     DiscoveryReport,
     ProjectEmailDiscovery,
@@ -81,6 +85,7 @@ __all__ = [
     "EmailModelOutput",
     "EmailObsidianProjector",
     "EmailObsidianReport",
+    "OperationalValidationReport",
     "FolderDiscoveryResult",
     "IndexResult",
     "IndexedFolder",
@@ -105,4 +110,5 @@ __all__ = [
     "load_pilot_project_descriptors",
     "normalize_message",
     "parse_and_validate_email_output",
+    "run_operational_validation",
 ]

@@ -1,0 +1,254 @@
+{
+  "prompt": 13,
+  "generated_at": "2026-05-30T10:46:25+00:00",
+  "project_key": "tropical",
+  "lookback_days": 30,
+  "command_receipts": [
+    {
+      "name": "diagnostics_graph",
+      "argv": [
+        "hb-assistant",
+        "diagnostics",
+        "graph",
+        "--safe",
+        "--json"
+      ],
+      "exit_code": 0,
+      "ok": true,
+      "payload": {
+        "ok": true,
+        "command": "diagnostics_graph"
+      },
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
+    },
+    {
+      "name": "auth_status",
+      "argv": [
+        "hb-assistant",
+        "auth",
+        "status",
+        "--json"
+      ],
+      "exit_code": 0,
+      "ok": true,
+      "payload": {
+        "ok": true,
+        "command": "auth_status"
+      },
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
+    },
+    {
+      "name": "mail_status",
+      "argv": [
+        "hb-assistant",
+        "graph",
+        "mail",
+        "status",
+        "--json"
+      ],
+      "exit_code": 0,
+      "ok": true,
+      "payload": {
+        "ok": true,
+        "command": "mail_status",
+        "guard_self_test": {
+          "passed": true,
+          "mutation_attempts_blocked": 6
+        },
+        "guardrails": {
+          "no_mail_write_scopes_requested": true
+        },
+        "forbidden_mail_scopes_requested": []
+      },
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
+    },
+    {
+      "name": "mail_folders",
+      "argv": [
+        "hb-assistant",
+        "graph",
+        "mail",
+        "folders",
+        "--dry-run",
+        "--json"
+      ],
+      "exit_code": 0,
+      "ok": true,
+      "payload": {
+        "ok": true,
+        "command": "mail_folders"
+      },
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
+    },
+    {
+      "name": "mail_discover_dry",
+      "argv": [
+        "hb-assistant",
+        "graph",
+        "mail",
+        "discover",
+        "--project",
+        "tropical",
+        "--lookback-days",
+        "30",
+        "--dry-run",
+        "--json"
+      ],
+      "exit_code": 0,
+      "ok": true,
+      "payload": {
+        "ok": true,
+        "command": "mail_discover_dry",
+        "messages_scanned": 1
+      },
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
+    },
+    {
+      "name": "mail_index_dry",
+      "argv": [
+        "hb-assistant",
+        "graph",
+        "mail",
+        "index",
+        "--project",
+        "tropical",
+        "--lookback-days",
+        "30",
+        "--include-encrypted-body",
+        "--dry-run",
+        "--json"
+      ],
+      "exit_code": 0,
+      "ok": true,
+      "payload": {
+        "ok": true,
+        "command": "mail_index_dry"
+      },
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
+    },
+    {
+      "name": "mail_index_live",
+      "argv": [
+        "hb-assistant",
+        "graph",
+        "mail",
+        "index",
+        "--project",
+        "tropical",
+        "--lookback-days",
+        "30",
+        "--include-encrypted-body",
+        "--json"
+      ],
+      "exit_code": 0,
+      "ok": true,
+      "payload": {
+        "ok": true,
+        "command": "mail_index_live"
+      },
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
+    },
+    {
+      "name": "mail_classify_dry",
+      "argv": [
+        "hb-assistant",
+        "graph",
+        "mail",
+        "classify",
+        "--project",
+        "tropical",
+        "--lookback-days",
+        "30",
+        "--use-encrypted-body-context",
+        "--dry-run",
+        "--json"
+      ],
+      "exit_code": 0,
+      "ok": true,
+      "payload": {
+        "ok": true,
+        "command": "mail_classify_dry"
+      },
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
+    },
+    {
+      "name": "mail_review_queue_dry",
+      "argv": [
+        "hb-assistant",
+        "graph",
+        "mail",
+        "review-queue",
+        "--dry-run",
+        "--json"
+      ],
+      "exit_code": 0,
+      "ok": true,
+      "payload": {
+        "ok": true,
+        "command": "mail_review_queue_dry"
+      },
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
+    },
+    {
+      "name": "mail_obsidian_dry",
+      "argv": [
+        "hb-assistant",
+        "graph",
+        "mail",
+        "obsidian",
+        "--project",
+        "tropical",
+        "--include-encrypted-body-status",
+        "--dry-run",
+        "--json"
+      ],
+      "exit_code": 0,
+      "ok": true,
+      "payload": {
+        "ok": true,
+        "command": "mail_obsidian_dry",
+        "notes_written": 5
+      },
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
+    }
+  ],
+  "endpoint_methods_used": [
+    "GET"
+  ],
+  "endpoint_path_families": [
+    "/me",
+    "/me/mailFolders",
+    "/me/messages",
+    "/me/messages/*/attachments"
+  ],
+  "runtime_no_mutation_proof": {
+    "mailbox_mutation_endpoints_blocked": true,
+    "mutation_attempts_blocked_count": 6,
+    "forbidden_mail_scopes_requested": [],
+    "no_mail_write_scopes_requested": true
+  },
+  "scopes_requested": [],
+  "metrics": {
+    "folders_discovered": 1,
+    "messages_discovered": 1,
+    "messages_indexed": 1,
+    "messages_with_encrypted_body_ref": 0,
+    "plaintext_bodies_persisted": 0,
+    "attachment_contents_downloaded": 0,
+    "mailbox_mutations_attempted": 0,
+    "review_queue_items_created": 1,
+    "relationship_candidates_created": 1,
+    "obsidian_notes_generated": 5,
+    "validation_ok": true
+  }
+}
