@@ -1,0 +1,137 @@
+{
+  "command": "hb-assistant procore live stale",
+  "ok": true,
+  "phase": "Phase 06B Prompt 07",
+  "project_key": "tropical",
+  "generated_at": "2026-05-30T00:00:00+00:00",
+  "stale_threshold_days": 7,
+  "summary": {
+    "current": 1,
+    "stale": 1,
+    "never_synced": 53,
+    "fail_closed": 3,
+    "unknown": 1,
+    "operational_total": 56
+  },
+  "endpoints": [
+    {
+      "endpoint_id": "budget-change-line-items",
+      "family": "budget",
+      "live_verified": false,
+      "record_count": 0,
+      "status": "fail_closed",
+      "last_success_at_utc": null,
+      "age_days": null,
+      "source": "none",
+      "recommended_sync_command": null
+    },
+    {
+      "endpoint_id": "budget-details",
+      "family": "budget",
+      "live_verified": false,
+      "record_count": 0,
+      "status": "fail_closed",
+      "last_success_at_utc": null,
+      "age_days": null,
+      "source": "none",
+      "recommended_sync_command": null
+    },
+    {
+      "endpoint_id": "meetings",
+      "family": "meetings",
+      "live_verified": true,
+      "record_count": 0,
+      "status": "unknown",
+      "last_success_at_utc": null,
+      "age_days": null,
+      "source": "none",
+      "recommended_sync_command": null
+    },
+    {
+      "endpoint_id": "observations",
+      "family": "observations",
+      "live_verified": true,
+      "record_count": 0,
+      "status": "never_synced",
+      "last_success_at_utc": null,
+      "age_days": null,
+      "source": "none",
+      "recommended_sync_command": "HB_PROCORE_LIVE=1 hb-assistant procore live sync --project tropical --endpoint observations --apply --sqlite-only --max-pages 3 --max-items 100 --confirm-live-get --json"
+    },
+    {
+      "endpoint_id": "purchase-order-detail-line-items",
+      "family": "purchase_orders",
+      "live_verified": false,
+      "record_count": 0,
+      "status": "fail_closed",
+      "last_success_at_utc": null,
+      "age_days": null,
+      "source": "none",
+      "recommended_sync_command": null
+    },
+    {
+      "endpoint_id": "rfis",
+      "family": "rfis",
+      "live_verified": true,
+      "record_count": 0,
+      "status": "current",
+      "last_success_at_utc": "2026-05-30T00:00:00+00:00",
+      "age_days": 0,
+      "source": "watermark",
+      "recommended_sync_command": null
+    },
+    {
+      "endpoint_id": "submittals",
+      "family": "submittals",
+      "live_verified": true,
+      "record_count": 0,
+      "status": "stale",
+      "last_success_at_utc": "2020-01-01T00:00:00+00:00",
+      "age_days": 2341,
+      "source": "watermark",
+      "recommended_sync_command": "HB_PROCORE_LIVE=1 hb-assistant procore live sync --project tropical --endpoint submittals --apply --sqlite-only --max-pages 3 --max-items 100 --confirm-live-get --json"
+    }
+  ],
+  "stale_endpoints": [
+    {
+      "endpoint_id": "billing-periods",
+      "family": "billing",
+      "status": "never_synced",
+      "age_days": null,
+      "recommended_sync_command": "HB_PROCORE_LIVE=1 hb-assistant procore live sync --project tropical --endpoint billing-periods --apply --sqlite-only --max-pages 3 --max-items 100 --confirm-live-get --json"
+    },
+    {
+      "endpoint_id": "budget-change-history",
+      "family": "budget",
+      "status": "never_synced",
+      "age_days": null,
+      "recommended_sync_command": "HB_PROCORE_LIVE=1 hb-assistant procore live sync --project tropical --endpoint budget-change-history --apply --sqlite-only --max-pages 3 --max-items 100 --confirm-live-get --json"
+    },
+    {
+      "endpoint_id": "budget-detail-columns",
+      "family": "budget",
+      "status": "never_synced",
+      "age_days": null,
+      "recommended_sync_command": "HB_PROCORE_LIVE=1 hb-assistant procore live sync --project tropical --endpoint budget-detail-columns --apply --sqlite-only --max-pages 3 --max-items 100 --confirm-live-get --json"
+    },
+    {
+      "endpoint_id": "budget-detail-rows",
+      "family": "budget",
+      "status": "never_synced",
+      "age_days": null,
+      "recommended_sync_command": "HB_PROCORE_LIVE=1 hb-assistant procore live sync --project tropical --endpoint budget-detail-rows --apply --sqlite-only --max-pages 3 --max-items 100 --confirm-live-get --json"
+    },
+    {
+      "endpoint_id": "budget-modifications",
+      "family": "budget",
+      "status": "never_synced",
+      "age_days": null,
+      "recommended_sync_command": "HB_PROCORE_LIVE=1 hb-assistant procore live sync --project tropical --endpoint budget-modifications --apply --sqlite-only --max-pages 3 --max-items 100 --confirm-live-get --json"
+    }
+  ],
+  "no_live_call_performed": true,
+  "no_raw_values_persisted": true,
+  "determinations_made": false,
+  "endpoints_note": "per-endpoint list trimmed to a representative sample for readability; summary counts are over all 59 endpoints",
+  "stale_endpoints_note": "trimmed to first 5 for readability"
+}

@@ -1452,6 +1452,24 @@ def live_project_health(
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
 
+@live_app.command("stale")
+def live_stale(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    stale_days: int = typer.Option(7, "--stale-days", min=1, help="Endpoint freshness threshold."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Endpoint/project freshness — current / stale / never_synced / fail_closed / unknown per
+    endpoint, with recommended sync commands for stale operational endpoints (Phase 06B Prompt 07).
+    Read-only over local SQLite (watermarks / sync runs / record timestamps); no network, no writes.
+    Held (fail-closed) endpoints are never counted as stale operational endpoints."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_freshness import build_freshness_report
+
+    SQLiteMigrator().apply()
+    report = build_freshness_report(project, now_utc=_query_now().isoformat(), stale_days=stale_days)
+    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
+
+
 @live_app.command("coverage")
 def live_coverage(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key (contextual)."),

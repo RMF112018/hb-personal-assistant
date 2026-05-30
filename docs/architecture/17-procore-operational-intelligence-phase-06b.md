@@ -43,3 +43,29 @@ hidden behind the `health_status` label (a triage aid, not a determination). `de
 false`, `no_live_call_performed: true`, `no_raw_values_persisted: true`. The command is read-only;
 no snapshot is persisted (no new migration). Evidence:
 `docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/06-project-health-read-model-proof.json`.
+
+## Freshness / stale-data read model (Prompt 07)
+
+`store/procore_freshness.py::build_freshness_report(project_key, *, now_utc, stale_days=7,
+db_path=None)` — deterministic, read-only. Surfaced by
+`hb-assistant procore live stale --project KEY [--stale-days N] --json`.
+
+It classifies **every** registry endpoint (`endpoints.list_all()`, 59) for the project:
+- **fail_closed** — held (`live_verified=False`) endpoints (the 3). Reported but **excluded** from
+  the operational current/stale tally and the stale list, and never given a recommended sync command.
+- live-verified endpoints resolve a freshness timestamp by source priority — all written only on a
+  successful sync — **watermark** (`procore_live_sync_watermarks.last_success_at_utc`) → latest
+  successful **sync run** (`procore_live_sync_runs.completed_at_utc`, state success/partial_success)
+  → **record recency** (`max procore_live_records.last_seen_at_utc`):
+  - **current** (age ≤ `stale_days`) / **stale** (age > `stale_days`) when a timestamp resolves,
+  - **never_synced** when no signal exists at all,
+  - **unknown** when a signal row exists but no usable timestamp and no records.
+
+For **stale** + **never_synced** operational endpoints it emits a `recommended_sync_command` (a
+string, never executed): `HB_PROCORE_LIVE=1 hb-assistant procore live sync --project {p} --endpoint
+{id} --apply --sqlite-only --max-pages 3 --max-items 100 --confirm-live-get --json`. Output carries
+`summary` (per-status counts + `operational_total` excluding fail_closed), per-endpoint rows
+(status / source / age_days / record_count), `stale_endpoints`, and `no_live_call_performed` /
+`no_raw_values_persisted` / `determinations_made: false`. Read-only — no `procore_endpoint_freshness`
+table is persisted (no new migration); freshness is derived on demand. Evidence:
+`docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/07-freshness-and-stale-data-proof.json`.
