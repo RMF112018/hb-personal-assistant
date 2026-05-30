@@ -1192,6 +1192,146 @@ class ConstructionStore:
                 r[b] = bool(r[b])
         return rows
 
+    # --- controlled download + extraction receipts (V19) --------------------
+
+    def insert_download_receipt(
+        self,
+        *,
+        receipt_id: str,
+        source_id: str,
+        drive_item_id: str,
+        drive_id: Optional[str] = None,
+        project_key: Optional[str] = None,
+        mode: str,
+        download_attempted: bool = False,
+        download_completed: bool = False,
+        bytes_written: Optional[int] = None,
+        sha256: Optional[str] = None,
+        cache_path_redacted: Optional[str] = None,
+        cache_deleted_after_parse: bool = False,
+        status: str,
+        error_redacted: Optional[str] = None,
+    ) -> None:
+        """Persist a controlled-download receipt. The schema CHECK forbids a raw
+        download URL or a vault-copied source file (both locked to 0)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO construction_graph_download_receipts
+                    (receipt_id, source_id, drive_id, drive_item_id, project_key, mode,
+                     download_attempted, download_completed, bytes_written, sha256,
+                     cache_path_redacted, cache_deleted_after_parse, status,
+                     error_redacted, created_utc, raw_download_url_persisted,
+                     source_file_copied_to_vault)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
+                """,
+                (
+                    receipt_id, source_id, drive_id, drive_item_id, project_key, mode,
+                    1 if download_attempted else 0, 1 if download_completed else 0,
+                    bytes_written, sha256, cache_path_redacted,
+                    1 if cache_deleted_after_parse else 0, status, error_redacted,
+                    _utc_now(),
+                ),
+            )
+
+    def list_download_receipts(
+        self, *, source_id: Optional[str] = None, limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        conn = get_connection(self._db_path)
+        sql = (
+            "SELECT receipt_id, source_id, drive_id, drive_item_id, project_key, mode, "
+            "download_attempted, download_completed, bytes_written, sha256, "
+            "cache_path_redacted, cache_deleted_after_parse, status, error_redacted, "
+            "created_utc, raw_download_url_persisted, source_file_copied_to_vault "
+            "FROM construction_graph_download_receipts WHERE 1=1"
+        )
+        params: list[Any] = []
+        if source_id is not None:
+            sql += " AND source_id = ?"
+            params.append(source_id)
+        sql += " ORDER BY created_utc DESC LIMIT ?"
+        params.append(int(limit))
+        keys = (
+            "receipt_id", "source_id", "drive_id", "drive_item_id", "project_key", "mode",
+            "download_attempted", "download_completed", "bytes_written", "sha256",
+            "cache_path_redacted", "cache_deleted_after_parse", "status", "error_redacted",
+            "created_utc", "raw_download_url_persisted", "source_file_copied_to_vault",
+        )
+        rows = [dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()]
+        for r in rows:
+            for b in ("download_attempted", "download_completed", "cache_deleted_after_parse",
+                      "raw_download_url_persisted", "source_file_copied_to_vault"):
+                r[b] = bool(r[b])
+        return rows
+
+    def insert_file_extraction_run(
+        self,
+        *,
+        extraction_id: str,
+        source_id: str,
+        drive_item_id: str,
+        drive_id: Optional[str] = None,
+        project_key: Optional[str] = None,
+        parser_name: str,
+        parser_version: str,
+        content_hash: Optional[str] = None,
+        extraction_status: str,
+        text_excerpt_redacted: Optional[str] = None,
+        char_count: int = 0,
+        review_required: bool = False,
+        error_redacted: Optional[str] = None,
+    ) -> None:
+        """Persist a bounded-extraction run. The schema CHECK forbids full source
+        text (full_text_persisted locked to 0); only a redacted excerpt is stored."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO construction_file_extraction_runs
+                    (extraction_id, source_id, drive_id, drive_item_id, project_key,
+                     parser_name, parser_version, content_hash, extraction_status,
+                     text_excerpt_redacted, char_count, full_text_persisted,
+                     review_required, error_redacted, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+                """,
+                (
+                    extraction_id, source_id, drive_id, drive_item_id, project_key,
+                    parser_name, parser_version, content_hash, extraction_status,
+                    text_excerpt_redacted, char_count, 1 if review_required else 0,
+                    error_redacted, _utc_now(),
+                ),
+            )
+
+    def list_file_extraction_runs(
+        self, *, source_id: Optional[str] = None, limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        conn = get_connection(self._db_path)
+        sql = (
+            "SELECT extraction_id, source_id, drive_id, drive_item_id, project_key, "
+            "parser_name, parser_version, content_hash, extraction_status, "
+            "text_excerpt_redacted, char_count, full_text_persisted, review_required, "
+            "error_redacted, created_utc "
+            "FROM construction_file_extraction_runs WHERE 1=1"
+        )
+        params: list[Any] = []
+        if source_id is not None:
+            sql += " AND source_id = ?"
+            params.append(source_id)
+        sql += " ORDER BY created_utc DESC LIMIT ?"
+        params.append(int(limit))
+        keys = (
+            "extraction_id", "source_id", "drive_id", "drive_item_id", "project_key",
+            "parser_name", "parser_version", "content_hash", "extraction_status",
+            "text_excerpt_redacted", "char_count", "full_text_persisted", "review_required",
+            "error_redacted", "created_utc",
+        )
+        rows = [dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()]
+        for r in rows:
+            r["full_text_persisted"] = bool(r["full_text_persisted"])
+            r["review_required"] = bool(r["review_required"])
+        return rows
+
     # --- canonical project identity (V5) ------------------------------------
 
     def upsert_project_identity(

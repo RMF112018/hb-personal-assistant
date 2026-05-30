@@ -1930,6 +1930,66 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v19 Phase 06A Prompt 11 controlled download + bounded extraction receipts.
+    # Additive CREATE TABLE only. Hard CHECKs enforce the content-safety invariants
+    # at the DB layer: a download receipt can NEVER record a persisted raw download
+    # URL or a source file copied to the vault, and an extraction run can NEVER
+    # record full source text persisted. Only redacted bounded excerpts + hashes +
+    # redacted cache basenames are stored. V1-V18 untouched.
+    V19_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS construction_graph_download_receipts (
+          receipt_id TEXT PRIMARY KEY,
+          source_id TEXT NOT NULL,
+          drive_id TEXT,
+          drive_item_id TEXT NOT NULL,
+          project_key TEXT,
+          mode TEXT NOT NULL,
+          download_attempted INTEGER NOT NULL DEFAULT 0,
+          download_completed INTEGER NOT NULL DEFAULT 0,
+          bytes_written INTEGER,
+          sha256 TEXT,
+          cache_path_redacted TEXT,
+          cache_deleted_after_parse INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL,
+          error_redacted TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_download_url_persisted INTEGER NOT NULL DEFAULT 0
+            CHECK(raw_download_url_persisted = 0),
+          source_file_copied_to_vault INTEGER NOT NULL DEFAULT 0
+            CHECK(source_file_copied_to_vault = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_file_extraction_runs (
+          extraction_id TEXT PRIMARY KEY,
+          source_id TEXT NOT NULL,
+          drive_id TEXT,
+          drive_item_id TEXT NOT NULL,
+          project_key TEXT,
+          parser_name TEXT NOT NULL,
+          parser_version TEXT NOT NULL,
+          content_hash TEXT,
+          extraction_status TEXT NOT NULL,
+          text_excerpt_redacted TEXT,
+          char_count INTEGER NOT NULL DEFAULT 0,
+          full_text_persisted INTEGER NOT NULL DEFAULT 0
+            CHECK(full_text_persisted = 0),
+          review_required INTEGER NOT NULL DEFAULT 0,
+          error_redacted TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_graph_download_receipts_item
+          ON construction_graph_download_receipts(source_id, drive_item_id);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_construction_file_extraction_runs_item
+          ON construction_file_extraction_runs(source_id, drive_item_id);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -2149,6 +2209,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (18, 'v18_construction_file_ingestion_decisions', ?)",
+                    (now,),
+                )
+
+            # v19 Phase 06A Prompt 11 controlled download + extraction receipts
+            # (additive CREATE TABLE only; CHECKs forbid raw download URL / vault
+            # copy / full-text persistence). V1-V18 untouched.
+            for stmt in self.V19_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 19")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (19, 'v19_construction_download_and_extraction_receipts', ?)",
                     (now,),
                 )
 

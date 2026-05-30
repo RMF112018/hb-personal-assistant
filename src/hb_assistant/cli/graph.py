@@ -37,6 +37,7 @@ from hb_assistant.construction.email import (
 )
 from hb_assistant.construction.email.email_classifier import DEFAULT_MODEL_NAME
 from hb_assistant.construction.graph.baseline_crawler import BaselineCrawler
+from hb_assistant.construction.graph.controlled_extraction import ControlledExtractor
 from hb_assistant.construction.graph.delta_sync import DeltaSync
 from hb_assistant.construction.graph.drive_item_indexer import DriveItemIndexer
 from hb_assistant.construction.graph.file_project_matcher import FileProjectMatcher
@@ -941,6 +942,99 @@ def files_ingestion_policy_cmd(
             "graph_calls": "none",
             "download_default": "none",
             "extract_default": "none",
+            "block_review_required_extraction": True,
+            "permission_tightening": "deferred",
+        },
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_app.command("extract")
+def files_extract_cmd(
+    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run (plan only; no download/parse/SQLite)."
+    ),
+    download: bool = typer.Option(
+        False, "--download/--no-download", help="Explicitly enable controlled content download."
+    ),
+    extract: bool = typer.Option(
+        False,
+        "--extract/--no-extract",
+        help="Explicitly enable bounded parse (requires --download).",
+    ),
+    retain_cache: bool = typer.Option(
+        False,
+        "--retain-cache",
+        help="Debug: keep the downloaded cache file (default: delete after parse).",
+    ),
+    max_bytes: int = typer.Option(26214400, "--max-bytes", help="Download size cap (bytes)."),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Controlled, drive-aware download + bounded redacted extraction for files the
+    ingestion policy marked eligible. Review-required/blocked files are skipped.
+    Download/extract require explicit flags; dry-run default. Cache lives outside the
+    repo/vault and is deleted after parse; no full text persisted; downloadUrl never used."""
+    try:
+        registry = load_source_registry()
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files extract", e, json_out)
+        return
+
+    matching = [s for s in registry.sources if s.source_key == source]
+    if not matching:
+        payload = {
+            "command": "graph files extract",
+            "status": "not_found",
+            "requested": source,
+            "available": [s.source_key for s in registry.sources],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    client: Optional[GraphHttpClient] = None
+    auth_payload: Optional[Dict[str, Any]] = None
+    # A Graph client is only needed when actually downloading (apply + --download).
+    if not dry_run and download:
+        client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+        if client is None:
+            payload = {
+                "command": "graph files extract",
+                "source": source,
+                "mode": "apply",
+                **auth_payload,
+            }
+            typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+            raise typer.Exit(0)
+
+    try:
+        store = ConstructionStore()
+        report = ControlledExtractor(client, store).run(
+            source,
+            dry_run=dry_run,
+            do_download=download,
+            do_extract=extract,
+            retain_cache=retain_cache,
+            max_bytes=max_bytes,
+        )
+    finally:
+        if client is not None:
+            client.close()
+
+    payload = {
+        "command": "graph files extract",
+        "source": source,
+        "mode": report.mode,
+        "ok": True,
+        "result": report.model_dump(),
+        "guardrails": {
+            "external_systems": "read_only",
+            "writeback": "none",
+            "download_url_cached": False,
+            "full_text_persisted": False,
+            "source_copied_to_vault": False,
+            "cache_outside_repo_and_vault": True,
             "block_review_required_extraction": True,
             "permission_tightening": "deferred",
         },

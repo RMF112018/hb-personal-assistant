@@ -193,6 +193,23 @@ extraction at the DB layer. Large-file thresholds (warning 25 MiB / block 100 Mi
 never auto-extract. Dry-run default. Evidence: `11-ingestion-policy-proof.md`,
 `19-large-file-policy-proof.md`.
 
+### Controlled download & bounded extraction (Phase 06A) — `graph files extract` + schema V19
+`construction/graph/controlled_extraction.py` (`ControlledExtractor`) is the **only** place file
+content is fetched. It gates strictly on the V18 ingestion decisions — only `extraction_allowed`
+(eligible, non-review) items proceed; review-required/blocked/etc. are skipped (`blocked_*`), a
+runtime re-check on top of the DB CHECK. Download/extract require explicit `--download`/`--extract`
+flags and are off in dry-run (plan only). It guard-asserts + `GET /drives/{drive_id}/items/{item_id}/
+content` (drive-aware), streams bounded (`--max-bytes`) to a cache **outside repo/vault**
+(`PathPolicy.get_cache_dir`), hashes (sha256), parses via the files `ParserRouter` into a **bounded
+redacted** excerpt (emails/phones/long tokens masked; ≤ a char cap), and **deletes the cache after
+parse** unless `--retain-cache`. Schema **V19** adds `construction_graph_download_receipts`
+(CHECK `raw_download_url_persisted = 0`, `source_file_copied_to_vault = 0`) +
+`construction_file_extraction_runs` (CHECK `full_text_persisted = 0`) — full text, raw download URLs,
+and vault copies are forbidden at the DB layer (max 18 → 19). `cache_path_redacted` stores the
+basename only; `@microsoft.graph.downloadUrl` is never used or cached. Dry-run default;
+`auth_required` degradation. Evidence: `12-controlled-download-and-extraction-proof.md`,
+`20-cache-retention-proof.md`.
+
 ### Read-only enforcement layers (defense-in-depth, scope-independent)
 Source policy (`SourceLocation.read_only`), SQLite `CHECK(read_only=1)`, the files endpoint guard,
 the extended `test_mutation_lockout.py` + `test_graph_files_endpoint_{contract,guard}.py`, and
