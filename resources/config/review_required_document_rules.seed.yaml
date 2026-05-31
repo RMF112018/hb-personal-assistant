@@ -1,0 +1,25 @@
+version: phase07c-review-required-document-rules-v1
+review_required_when:
+  document_type:
+    - contract
+    - change_order
+    - pay_application
+    - inspection_report
+    - warranty_closeout
+    - unknown_needs_review
+  confidence_class:
+    - moderate_heuristic
+    - weak_heuristic
+    - model_proposed
+    - unknown
+  flags:
+    - sensitive
+    - high_impact
+    - conflicting_project_signals
+    - stale_source_metadata
+    - source_scope_non_compliant
+    - extraction_policy_blocked
+rules:
+  no_auto_promotion_for_sensitive: true
+  no_auto_promotion_for_model_only: true
+  no_final_legal_contractual_claim_personnel_safety_financial_determination: true

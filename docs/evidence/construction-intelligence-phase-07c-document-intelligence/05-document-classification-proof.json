@@ -1,0 +1,61 @@
+{
+  "phase": "construction-intelligence-phase-07c-document-intelligence",
+  "prompt": "05-document-type-classification",
+  "generated_utc": "2026-05-31",
+  "repo_sha_parent": "3123e16c537cf1d026fea6289003ddbc3b3bd9e6",
+  "schema_version": 24,
+  "package_version": "1.3.0",
+  "leak_safe": "counts by type/signal/confidence + gate statuses only; no raw filenames, paths, web URLs, tokens, prompts, responses, or per-card identifiers",
+  "command": "hb-assistant graph files classify-document-cards --apply --json",
+  "mode": "apply",
+  "exit_code": 0,
+  "ok": true,
+  "policy_version": "phase07c-document-type-classification-policy-v1",
+  "deterministic": "verified identical by_document_type across PYTHONHASHSEED 1/2/3",
+  "summary": {
+    "cards_total": 283,
+    "classified": 283,
+    "review_required": 236,
+    "by_document_type": {
+      "addenda": 7,
+      "change_order": 2,
+      "contract": 12,
+      "daily_report": 1,
+      "drawings": 26,
+      "photo_media": 2,
+      "rfi": 8,
+      "schedule": 9,
+      "unknown_needs_review": 216
+    },
+    "by_signal_class": { "deterministic": 67, "heuristic": 216 },
+    "by_confidence_class": { "deterministic": 42, "high_heuristic": 25, "unknown": 216 }
+  },
+  "idempotent": {
+    "reapply_candidate_count": 283,
+    "live_candidate_count_after_reapply": 283
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "graph_calls": "none",
+    "model_invoked": false,
+    "deterministic_first": true,
+    "raw_document_text_persisted": false,
+    "raw_prompt_or_response_persisted": false,
+    "auto_promotion": false,
+    "card_mutated": false,
+    "candidate_guard_check_columns_all_zero": true
+  },
+  "post_apply_gates": {
+    "document_card_population_status": "pass",
+    "raw_content_leakage_scan": "pass",
+    "external_writeback_scan": "pass",
+    "meeting_prep_ready": false,
+    "risk_digest_readiness_claim": "blocked",
+    "no_writeback_proof_passed": true
+  },
+  "leak_scan": {
+    "live_candidate_rows_scanned": 283,
+    "url_email_ical_pattern_hits": 0
+  },
+  "outcome": "283 advisory document-type classification candidates written (deterministic-first; model not invoked). 67 deterministically classified (drawings/contract/schedule/rfi/addenda/change_order/photo_media/daily_report), 216 unknown_needs_review correctly routed to review; 236 review-required. Cards left unchanged (candidates-only); sensitive/high-impact types and weak/unknown route to review; nothing auto-promoted. No raw content or unsafe identifiers persisted; no readiness overstated (meeting-prep still blocked)."
+}

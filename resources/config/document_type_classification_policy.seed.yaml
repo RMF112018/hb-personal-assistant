@@ -1,0 +1,32 @@
+version: phase07c-document-type-classification-policy-v1
+classification_order:
+  - deterministic_source_context
+  - deterministic_record_number
+  - folder_token_hashes
+  - filename_token_hashes
+  - extension_mime
+  - heuristic_rules
+  - model_proposed_advisory_only
+document_types:
+  drawings: [drawing, plan, sheet]
+  specifications: [specification, spec]
+  addenda: [addendum, addenda]
+  rfi: [rfi]
+  submittal: [submittal]
+  meeting_minutes: [meeting, minutes]
+  contract: [contract, agreement]
+  change_order: [change, order]
+  pay_application: [pay, application]
+  schedule: [schedule, programme]
+  daily_report: [daily, report]
+  inspection_report: [inspection]
+  warranty_closeout: [warranty, closeout]
+  photo_media: [photo, image, media]
+  unknown_needs_review: []
+review_required_types:
+  - contract
+  - change_order
+  - pay_application
+  - inspection_report
+  - warranty_closeout
+  - unknown_needs_review

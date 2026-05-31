@@ -34,6 +34,7 @@ from hb_assistant.construction.config import load_source_registry
 from hb_assistant.construction.config.loader import SourceRegistryError
 from hb_assistant.construction.correspondence import CorrespondenceReviewBuilder
 from hb_assistant.construction.document import (
+    classify_document_cards,
     evaluate_source_scope_compliance,
     materialize_document_cards,
 )
@@ -565,6 +566,31 @@ def files_materialize_document_cards_cmd(
     """
     store = ConstructionStore()
     report = materialize_document_cards(store, apply=apply)
+    typer.echo(json.dumps(report, indent=2) if json_out else str(report))
+    raise typer.Exit(0 if report["ok"] else 1)
+
+
+@files_app.command("classify-document-cards")
+def files_classify_document_cards_cmd(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist classification candidates to SQLite (default: dry-run)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Classify document cards into construction document types (deterministic-first).
+
+    Dry-run by default: computes the type/signal/confidence breakdown without any
+    SQLite write; ``--apply`` persists one advisory candidate per card to
+    construction_document_classification_candidates. Deterministic signals first
+    (record number -> folder token hashes -> filename token hashes -> extension/mime);
+    model output is advisory-only and NOT invoked. Sensitive/high-impact types and
+    weak/unknown results route to review; nothing is auto-promoted and the card is
+    left unchanged. Only hashed/typed signal evidence is stored — never raw filenames,
+    paths, prompts, or responses. Read-only against Microsoft 365 (no token, no Graph
+    call).
+    """
+    store = ConstructionStore()
+    report = classify_document_cards(store, apply=apply)
     typer.echo(json.dumps(report, indent=2) if json_out else str(report))
     raise typer.Exit(0 if report["ok"] else 1)
 

@@ -12,6 +12,7 @@ persisted — only hashed / redacted / bounded fields guarded by CHECK(... = 0) 
 from __future__ import annotations
 
 from hb_assistant.construction.document.card_materializer import materialize_document_cards
+from hb_assistant.construction.document.classifier import classify_document_cards
 from hb_assistant.construction.document.contracts import (
     DOCUMENT_CONTRACT_FILES,
     load_all_document_contracts,
@@ -29,4 +30,5 @@ __all__ = [
     "evaluate_source_scope_compliance",
     "non_compliant_source_keys",
     "materialize_document_cards",
+    "classify_document_cards",
 ]

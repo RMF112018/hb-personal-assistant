@@ -2069,6 +2069,83 @@ class ConstructionStore:
         )
         return [r[0] for r in cur.fetchall()]
 
+    def list_document_cards(self) -> list[dict[str, Any]]:
+        """List the safe fields of every document card (for classification/matching)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT card_id, document_card_id, source_id, drive_item_id, file_extension,
+                   mime_type, project_key, document_type, source_path_token_hashes_json,
+                   review_status, review_required
+            FROM construction_document_cards
+            ORDER BY card_id
+            """
+        )
+        keys = (
+            "card_id", "document_card_id", "source_id", "drive_item_id", "file_extension",
+            "mime_type", "project_key", "document_type", "source_path_token_hashes_json",
+            "review_status", "review_required",
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    # --- Phase 07C document classification candidates (V24) -----------------
+
+    def upsert_document_classification_candidate(
+        self,
+        *,
+        candidate_id: str,
+        document_card_id: str,
+        document_type: str,
+        classifier_name: str,
+        signal_class: str,
+        confidence: float,
+        confidence_class: str,
+        signals_json: Optional[str] = None,
+        review_required: bool = False,
+        promotion_status: str = "candidate",
+    ) -> None:
+        """Upsert an advisory document classification candidate (V24). Idempotent by
+        candidate_id. The raw_document_text / raw_prompt / raw_response /
+        external_writeback guard CHECK columns are never written here — the schema
+        defaults (all 0) hold. No raw document text/prompt/response is accepted; only
+        the document type, signal class, confidence, and hashed/typed signal evidence
+        round-trip through ``signals_json``.
+        """
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO construction_document_classification_candidates
+                    (candidate_id, document_card_id, document_type, classifier_name,
+                     signal_class, confidence, confidence_class, signals_json,
+                     review_required, promotion_status, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(candidate_id) DO UPDATE SET
+                    document_card_id = excluded.document_card_id,
+                    document_type = excluded.document_type,
+                    classifier_name = excluded.classifier_name,
+                    signal_class = excluded.signal_class,
+                    confidence = excluded.confidence,
+                    confidence_class = excluded.confidence_class,
+                    signals_json = excluded.signals_json,
+                    review_required = excluded.review_required,
+                    promotion_status = excluded.promotion_status
+                """,
+                (
+                    candidate_id, document_card_id, document_type, classifier_name,
+                    signal_class, confidence, confidence_class, signals_json,
+                    1 if review_required else 0, promotion_status, _utc_now(),
+                ),
+            )
+
+    def count_document_classification_candidates(self) -> int:
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            "SELECT COUNT(*) FROM construction_document_classification_candidates"
+        )
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
     # --- canonical processing receipts (V5) ---------------------------------
 
     def insert_processing_receipt(
