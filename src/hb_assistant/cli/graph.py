@@ -34,6 +34,7 @@ from hb_assistant.construction.config import load_source_registry
 from hb_assistant.construction.config.loader import SourceRegistryError
 from hb_assistant.construction.correspondence import CorrespondenceReviewBuilder
 from hb_assistant.construction.document import (
+    build_document_intelligence_previews,
     build_document_relationship_candidates,
     classify_document_cards,
     evaluate_extraction_eligibility,
@@ -670,6 +671,31 @@ def files_build_document_relationships_cmd(
     """
     store = ConstructionStore()
     report = build_document_relationship_candidates(store, apply=apply)
+    typer.echo(json.dumps(report, indent=2) if json_out else str(report))
+    raise typer.Exit(0 if report["ok"] else 1)
+
+
+@files_app.command("build-document-previews")
+def files_build_document_previews_cmd(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist project document previews to SQLite (default: dry-run)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Build project-level document-intelligence previews (review-controlled rollup).
+
+    Dry-run by default: computes the per-project rollup without any SQLite write;
+    ``--apply`` persists one preview per project to
+    construction_document_intelligence_previews. Each preview is a bounded, counts-only
+    redacted summary of the project's document corpus (types, confidence, extraction
+    dispositions, relationship candidates, review state) with a rolled-up confidence
+    class and a warnings list — never a raw name, path, URL, or excerpt, and no
+    legal/claim/financial/personnel/safety conclusion. Review states are visible and a
+    source reference (project + document + source counts) is carried. Read-only; no card
+    mutation, no auto-promotion, no external writeback.
+    """
+    store = ConstructionStore()
+    report = build_document_intelligence_previews(store, apply=apply)
     typer.echo(json.dumps(report, indent=2) if json_out else str(report))
     raise typer.Exit(0 if report["ok"] else 1)
 

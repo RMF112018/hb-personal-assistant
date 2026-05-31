@@ -2291,6 +2291,94 @@ class ConstructionStore:
         row = cur.fetchone()
         return int(row[0]) if row else 0
 
+    def list_document_project_match_candidates(self) -> list[dict[str, Any]]:
+        """List the safe fields of every document->project match candidate (V24)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT candidate_id, document_card_id, project_key, candidate_type,
+                   confidence_class, review_required
+            FROM construction_document_project_match_candidates
+            ORDER BY candidate_id
+            """
+        )
+        keys = (
+            "candidate_id", "document_card_id", "project_key", "candidate_type",
+            "confidence_class", "review_required",
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    def list_document_relationship_candidates(self) -> list[dict[str, Any]]:
+        """List the safe fields of every document->record relationship candidate (V24)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT candidate_id, document_card_id, target_system, target_record_type,
+                   candidate_type, confidence_class, review_required
+            FROM construction_document_relationship_candidates
+            ORDER BY candidate_id
+            """
+        )
+        keys = (
+            "candidate_id", "document_card_id", "target_system", "target_record_type",
+            "candidate_type", "confidence_class", "review_required",
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    # --- Phase 07C document intelligence previews (V24) --------------------
+
+    def upsert_document_intelligence_preview(
+        self,
+        *,
+        preview_id: str,
+        project_key: Optional[str],
+        preview_kind: str,
+        confidence_class: str,
+        preview_redacted: Optional[str] = None,
+        warnings_json: Optional[str] = None,
+        document_card_id: Optional[str] = None,
+        review_required: bool = False,
+    ) -> None:
+        """Upsert a project-level document-intelligence preview (V24). Idempotent by
+        preview_id. The raw_document_text / raw_prompt / raw_response / external_writeback
+        guard CHECK columns are never written here — the schema defaults (all 0) hold.
+        ``preview_redacted`` must be a bounded, counts-only summary; no raw document text,
+        name, path, URL, prompt, or response is accepted.
+        """
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO construction_document_intelligence_previews
+                    (preview_id, project_key, document_card_id, preview_kind,
+                     preview_redacted, warnings_json, confidence_class, review_required,
+                     generated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(preview_id) DO UPDATE SET
+                    project_key = excluded.project_key,
+                    document_card_id = excluded.document_card_id,
+                    preview_kind = excluded.preview_kind,
+                    preview_redacted = excluded.preview_redacted,
+                    warnings_json = excluded.warnings_json,
+                    confidence_class = excluded.confidence_class,
+                    review_required = excluded.review_required,
+                    generated_utc = excluded.generated_utc
+                """,
+                (
+                    preview_id, project_key, document_card_id, preview_kind,
+                    preview_redacted, warnings_json, confidence_class,
+                    1 if review_required else 0, _utc_now(),
+                ),
+            )
+
+    def count_document_intelligence_previews(self) -> int:
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            "SELECT COUNT(*) FROM construction_document_intelligence_previews"
+        )
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
     def count_procore_live_records(self, *, project_key: str, endpoint_id: str) -> int:
         """Read-only count of canonical Procore live records for a project + endpoint.
 

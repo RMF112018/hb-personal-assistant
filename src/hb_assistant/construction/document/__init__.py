@@ -21,6 +21,9 @@ from hb_assistant.construction.document.contracts import (
 from hb_assistant.construction.document.extraction_eligibility import (
     evaluate_extraction_eligibility,
 )
+from hb_assistant.construction.document.preview_builder import (
+    build_document_intelligence_previews,
+)
 from hb_assistant.construction.document.project_matcher import match_document_projects
 from hb_assistant.construction.document.relationship_builder import (
     build_document_relationship_candidates,
@@ -41,4 +44,5 @@ __all__ = [
     "match_document_projects",
     "evaluate_extraction_eligibility",
     "build_document_relationship_candidates",
+    "build_document_intelligence_previews",
 ]
