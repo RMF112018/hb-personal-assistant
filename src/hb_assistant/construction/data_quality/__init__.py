@@ -2,7 +2,7 @@
 
 Local-only builders and CLI surfaces for project identity backfill (Prompt 02),
 source-system record mapping (Prompt 03), relationship diagnostics (Prompt 04),
-agent-ready query marts and indexes (Prompt 05), gates and phase go/no-go (Prompt 07), and Obsidian marker-bounded data-quality outputs (Prompt 06). All operations are
+agent-ready query marts and indexes (Prompt 05), gates and phase go/no-go (Prompt 07), Obsidian marker-bounded data-quality outputs (Prompt 06), and no-writeback / no-secret / no-raw-body safety proof (Prompt 08). All operations are
 read-only against external systems by default; writes require explicit --apply
 and are limited to local SQLite metadata (no raw bodies, tokens, or external
 writeback).
@@ -24,6 +24,9 @@ from .obsidian import (
 from .gates import (
     evaluate_data_quality_gates,
     GateEvaluator,
+)
+from .safety import (
+    build_data_quality_no_writeback_proof,
 )
 from .project_identity import (
     ProjectIdentityBackfill,
@@ -52,4 +55,5 @@ __all__ = [
     "render_data_quality_obsidian_outputs",
     "evaluate_data_quality_gates",
     "GateEvaluator",
+    "build_data_quality_no_writeback_proof",
 ]

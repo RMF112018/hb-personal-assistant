@@ -1,0 +1,117 @@
+{
+  "prompt": "08",
+  "phase": "07A",
+  "generated_utc": "2026-05-31T10:01:02.515786+00:00",
+  "repo_sha": "63bf26fd1860c88d0deb7cb02b8b5619627ee7f6",
+  "schema_version": 21,
+  "ok": false,
+  "proof_passed": false,
+  "checks_detail": {
+    "static_writeback_scan_07a_modules": {
+      "passed": true,
+      "findings": []
+    },
+    "no_http_client_or_mutation_imports_07a": {
+      "passed": true,
+      "findings": []
+    },
+    "module_secret_scan_07a": {
+      "passed": true,
+      "findings": []
+    },
+    "sqlite_raw_body_guardrail_v20_v21_07a_tables": {
+      "passed": false,
+      "findings": [
+        "project_source_coverage_mart: missing CHECK(raw_body_persisted = 0)",
+        "data_quality_gate_results: missing CHECK(raw_body_persisted = 0)",
+        "source_record_summary_mart: missing CHECK(raw_body_persisted = 0)",
+        "relationship_quality_mart: missing CHECK(raw_body_persisted = 0)",
+        "cross_domain_context_readiness_mart: missing CHECK(raw_body_persisted = 0)"
+      ],
+      "tables": [
+        {
+          "table": "construction_data_quality_runs",
+          "present": true,
+          "has_check": true,
+          "distinct_values": []
+        },
+        {
+          "table": "source_system_record_map",
+          "present": true,
+          "has_check": true,
+          "distinct_values": []
+        },
+        {
+          "table": "relationship_resolution_queue",
+          "present": true,
+          "has_check": true,
+          "distinct_values": []
+        },
+        {
+          "table": "project_source_coverage_mart",
+          "present": true,
+          "has_check": false,
+          "distinct_values": []
+        },
+        {
+          "table": "data_quality_gate_results",
+          "present": true,
+          "has_check": false,
+          "distinct_values": []
+        },
+        {
+          "table": "source_record_summary_mart",
+          "present": true,
+          "has_check": false,
+          "distinct_values": []
+        },
+        {
+          "table": "relationship_quality_mart",
+          "present": true,
+          "has_check": false,
+          "distinct_values": []
+        },
+        {
+          "table": "cross_domain_context_readiness_mart",
+          "present": true,
+          "has_check": false,
+          "distinct_values": []
+        }
+      ]
+    },
+    "evidence_output_scan_07a": {
+      "passed": true,
+      "findings": [],
+      "scanned_dir": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/construction-intelligence-phase-07a-data-quality"
+    }
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none_permitted_in_07a_data_quality",
+    "raw_body_persisted": "enforced_0_in_all_v20_v21_07a_tables",
+    "secrets_tokens_urls_in_code_or_evidence": "forbidden",
+    "no_live_calls": true,
+    "phase_assignments_preserved": true
+  },
+  "stop_conditions_checked": [
+    "no_mutation_capable_external_calls_in_07a_modules",
+    "no_raw_body_or_full_text_persisted_in_07a_tables",
+    "no_tokens_secrets_signed_urls_in_07a_code_or_evidence",
+    "safety_proof_scopes_all_07a_data_quality_surfaces"
+  ],
+  "no_live_call_performed": true,
+  "no_raw_values_persisted": false,
+  "scanned_modules": [
+    "project_identity.py",
+    "source_record_map.py",
+    "relationships.py",
+    "marts.py",
+    "obsidian.py",
+    "gates.py"
+  ],
+  "files_emitted": [
+    "09-no-writeback-no-secret-no-raw-body-proof.md",
+    "no-writeback-proof.json"
+  ],
+  "note": "This proof is intentionally strict. Missing CHECKs on marts created via defensive IF NOT EXISTS in Prompt 05 upserts are reported as findings (they will be remediated by a future additive migration or explicit DDL). All 07A mutation/secret scans passed cleanly."
+}

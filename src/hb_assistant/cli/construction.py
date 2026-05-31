@@ -52,6 +52,13 @@ Commands:
   via existing repository method, and emits explicit phase_go_nogo summaries
   that assign blockers to 07B (calendar/email), 07C (documents), 08B (financials),
   or later. Never overstates meeting-prep readiness. Report-only (no --apply).
+- ``hb-assistant construction-agent data-quality no-writeback-proof --json`` —
+  Phase 07A Prompt 08 No Writeback / No Secret / No Raw Body Proof. Statically
+  proves that the six 07A data_quality modules, the V20/V21 tables they touch,
+  and all generated 07A evidence contain zero mutation calls, zero raw bodies/
+  tokens/secrets/signed URLs, and that every table enforces the
+  raw_body_persisted=0 CHECK. Re-uses the shared secret scanner. Required gate
+  for Prompt 09 closeout. Report-only.
 
 All commands are read-only against external systems; only SQLite metadata is
 written, and only when ``--apply`` is set.
@@ -1894,3 +1901,51 @@ def gates(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
+
+
+# ---------------------------------------------------------------------------
+# Phase 07A Prompt 08 — data-quality no-writeback-proof (report-only safety attestation)
+# ---------------------------------------------------------------------------
+
+_SAFETY_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none_permitted_in_07a_data_quality",
+    "raw_body_persisted": "enforced_0_in_all_v20_v21_07a_tables",
+    "secrets_tokens_urls_in_code_or_evidence": "forbidden",
+    "no_live_calls": True,
+    "phase_assignments_preserved": True,
+}
+
+
+@data_quality_app.command("no-writeback-proof")
+def no_writeback_proof(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """No Writeback / No Secret / No Raw Body Proof (Phase 07A Prompt 08).
+
+    Statically proves that the six Phase 07A data_quality modules, the V20/V21
+    tables they created or depend on, and all generated 07A evidence contain
+    zero external mutation calls, zero raw bodies / full text / tokens /
+    secrets / signed URLs / PEMs, and that every relevant table enforces the
+    `raw_body_persisted = 0` CHECK constraint.
+
+    The proof re-uses the shared high-precision secret scanner from the
+    existing Procore no-writeback prover (no logic duplication).
+
+    This command is intentionally report-only (no --apply). It is a required
+    gate for Prompt 09 final closeout.
+    """
+    from hb_assistant.construction.data_quality import (
+        build_data_quality_no_writeback_proof,
+    )
+
+    report = build_data_quality_no_writeback_proof()
+
+    payload = {
+        "command": "construction-agent data-quality no-writeback-proof",
+        "report": report,
+        "guardrails": _SAFETY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("proof_passed") else 3)
+

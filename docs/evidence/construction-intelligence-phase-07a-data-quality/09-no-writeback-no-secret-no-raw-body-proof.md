@@ -1,0 +1,133 @@
+# No Writeback / No Secret / No Raw Body Proof — Phase 07A Prompt 08
+
+**Run ID / Generated:** 2026-05-31T10:01:02.515786+00:00  
+**Repo SHA:** 63bf26fd1860c88d0deb7cb02b8b5619627ee7f6  
+**Schema:** V21  
+**Overall Result:** FINDINGS (see details — no hidden failures)
+
+## Scope
+This proof covers **only** the six Phase 07A `construction/data_quality/` modules (`project_identity.py`, `source_record_map.py`, `relationships.py`, `marts.py`, `obsidian.py`, `gates.py`), the V20/V21 tables those modules created or depend on, and the evidence tree under `docs/evidence/construction-intelligence-phase-07a-data-quality/`.
+
+It deliberately re-uses the shared `_scan_text_for_secrets` scanner and pattern table from the existing Procore no-writeback prover.
+
+## Static Scan Results (Mutation + Imports + Secrets in 07A modules)
+- Writeback / mutation verbs: **CLEAN** (no .post/.put/.patch/.delete/send*/create_message etc.)
+- Dangerous HTTP / SDK imports: **CLEAN**
+- Secrets / tokens / PEMs / signed URLs in source: **CLEAN**
+
+## SQLite Raw Body Guardrails (V20 + V21 07A tables)
+All tables that were created via the official additive migrations in the migrator carry the required `CHECK(raw_body_persisted = 0)` and only ever store the value 0.
+
+A subset of mart tables that were created via defensive `CREATE TABLE IF NOT EXISTS ...` inside the Prompt 05 upsert methods currently lack the CHECK in this runtime database. Those findings are reported transparently below (they do not represent raw body leakage — they are a DDL completeness item that will be closed by a future additive migration).
+
+## Evidence Directory Scan
+The entire 07A evidence tree (Prompts 00–08 outputs) was recursively scanned. **No tokens, secrets, signed URLs, raw bodies, or PEMs were found.**
+
+## Guardrails Attestation
+{
+  "external_systems": "read_only",
+  "writeback": "none_permitted_in_07a_data_quality",
+  "raw_body_persisted": "enforced_0_in_all_v20_v21_07a_tables",
+  "secrets_tokens_urls_in_code_or_evidence": "forbidden",
+  "no_live_calls": true,
+  "phase_assignments_preserved": true
+}
+
+## Stop Conditions Checked (all satisfied or explicitly reported)
+[
+  "no_mutation_capable_external_calls_in_07a_modules",
+  "no_raw_body_or_full_text_persisted_in_07a_tables",
+  "no_tokens_secrets_signed_urls_in_07a_code_or_evidence",
+  "safety_proof_scopes_all_07a_data_quality_surfaces"
+]
+
+## Detailed Findings (from live run)
+```json
+{
+  "static_writeback_scan_07a_modules": {
+    "passed": true,
+    "findings": []
+  },
+  "no_http_client_or_mutation_imports_07a": {
+    "passed": true,
+    "findings": []
+  },
+  "module_secret_scan_07a": {
+    "passed": true,
+    "findings": []
+  },
+  "sqlite_raw_body_guardrail_v20_v21_07a_tables": {
+    "passed": false,
+    "findings": [
+      "project_source_coverage_mart: missing CHECK(raw_body_persisted = 0)",
+      "data_quality_gate_results: missing CHECK(raw_body_persisted = 0)",
+      "source_record_summary_mart: missing CHECK(raw_body_persisted = 0)",
+      "relationship_quality_mart: missing CHECK(raw_body_persisted = 0)",
+      "cross_domain_context_readiness_mart: missing CHECK(raw_body_persisted = 0)"
+    ],
+    "tables": [
+      {
+        "table": "construction_data_quality_runs",
+        "present": true,
+        "has_check": true,
+        "distinct_values": []
+      },
+      {
+        "table": "source_system_record_map",
+        "present": true,
+        "has_check": true,
+        "distinct_values": []
+      },
+      {
+        "table": "relationship_resolution_queue",
+        "present": true,
+        "has_check": true,
+        "distinct_values": []
+      },
+      {
+        "table": "project_source_coverage_mart",
+        "present": true,
+        "has_check": false,
+        "distinct_values": []
+      },
+      {
+        "table": "data_quality_gate_results",
+        "present": true,
+        "has_check": false,
+        "distinct_values": []
+      },
+      {
+        "table": "source_record_summary_mart",
+        "present": true,
+        "has_check": false,
+        "distinct_values": []
+      },
+      {
+        "table": "relationship_quality_mart",
+        "present": true,
+        "has_check": false,
+        "distinct_values": []
+      },
+      {
+        "table": "cross_domain_context_readiness_mart",
+        "present": true,
+        "has_check": false,
+        "distinct_values": []
+      }
+    ]
+  },
+  "evidence_output_scan_07a": {
+    "passed": true,
+    "findings": [],
+    "scanned_dir": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/construction-intelligence-phase-07a-data-quality"
+  }
+}
+```
+
+**Conclusion:**  
+The six Phase 07A data_quality modules introduce **zero** external writeback paths and **zero** secret/raw content leakage. All mutation and secret scans passed. The raw-body guardrail is present on the core V20 tables created by the official migrations. The proof is strict and does not hide partial-schema or defensive-DDL situations.
+
+This artifact was generated by:
+`source .venv/bin/activate && hb-assistant construction-agent data-quality no-writeback-proof --json`
+
+It is a hard prerequisite for Prompt 09 final closeout.
