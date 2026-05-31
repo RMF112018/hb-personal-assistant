@@ -1,0 +1,29 @@
+{
+  "prompt": "04",
+  "phase": "07A",
+  "generated_at": "2026-05-31T09:25:00Z",
+  "baseline": {
+    "head": "159ba6d71932c8bf1ddc8eac8404c57a79580476",
+    "schema_version": 20,
+    "venv_active": true,
+    "note": "All commands with source .venv/bin/activate"
+  },
+  "command": "hb-assistant construction-agent data-quality relationships --json",
+  "exit_code": 0,
+  "summary": {
+    "deterministic_orphan_rate": 0.0,
+    "candidate_orphan_rate": 0.0,
+    "model_proposed_never_promoted": true,
+    "sensitive_never_promoted": true,
+    "note": "Rates separate; guards active on real pilot data."
+  },
+  "final_validation_run_utc": "2026-05-31T09:24:17.494757Z",
+  "validation_matrix": {
+    "pytest": "2 passed (model never promoted + separate rates + CLI guards)",
+    "cli": "rates keys + model_proposed_always_review + no_auto_promotion + separate_rates all true",
+    "ruff": "style notes only (pre-existing I001 + new-test SIM105/F841; functional green)",
+    "mypy": "clean on new/edited",
+    "overall": "All functional requirements green under exact venv-prefixed matrix per plan"
+  },
+  "guardrail_attestation": "No model-proposed ever promoted. Sensitive always review. Rates separate. No raw content. Local only."
+}

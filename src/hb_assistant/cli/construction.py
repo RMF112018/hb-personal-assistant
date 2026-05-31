@@ -20,6 +20,14 @@ Commands:
   V20 source_system_record_map using deterministic canonical IDs + Prompt 02 identities.
   Always emits unmapped active-pilot records with reason codes (never silent).
   Explicit --dry-run (default) / --apply; mutual exclusion enforced.
+- ``hb-assistant construction-agent data-quality relationships --json``
+  — Phase 07A local-only relationship orphan and confidence diagnostics (Prompt 04).
+  Scans Procore edges (action_signals + timeline/change events), email relationship
+  candidates, Graph file/project matches, and source-record-map cross links.
+  Classifies per 08_ categories; assigns confidence from policy JSON; computes
+  separate deterministic_orphan_rate and candidate_orphan_rate (never combined).
+  Model-proposed / weak / sensitive relationships always review_required=1 and
+  never auto-promoted (enforced + proven in test). Report-focused (dry-run semantics).
 
 All commands are read-only against external systems; only SQLite metadata is
 written, and only when ``--apply`` is set.
@@ -53,6 +61,7 @@ from hb_assistant.construction.config.loader import SourceRegistryError
 from hb_assistant.construction.data_quality import (
     ProjectIdentityBackfill,
     SourceRecordMapBuilder,
+    RelationshipDiagnostics,
 )
 
 from hb_assistant.construction.fixtures import (
@@ -1647,6 +1656,46 @@ def source_record_map(
         "apply": apply,
         "report": report,
         "guardrails": _DATA_QUALITY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+# ---------------------------------------------------------------------------
+# Phase 07A Prompt 04 — data-quality relationships (report-focused diagnostics)
+# ---------------------------------------------------------------------------
+
+_RELATIONSHIP_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "local_sqlite_queue_only_for_review_candidates",
+    "no_raw_content": True,
+    "model_proposed_always_review": True,
+    "sensitive_always_review": True,
+    "separate_orphan_rates": True,
+    "no_auto_promotion": True,
+}
+
+
+@data_quality_app.command("relationships")
+def relationships(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Local-only relationship orphan and confidence diagnostics (Phase 07A Prompt 04).
+
+    Scans Procore edges (action signals + timeline/change events), email relationship
+    candidates, Graph file/project matches, and source-record-map cross links.
+    Resolves via Prompt 02/03 artifacts. Classifies per 08_ categories and policy JSON.
+    Always emits separate deterministic_orphan_rate and candidate_orphan_rate.
+    Model-proposed, weak, and sensitive relationships are always review-required and
+    never auto-promoted (hard guard in builder + CLI).
+    """
+    diag = RelationshipDiagnostics()
+    report = diag.run(dry_run=True)  # report mode per spec validation example
+
+    payload = {
+        "command": "construction-agent data-quality relationships",
+        "report": report,
+        "guardrails": _RELATIONSHIP_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)

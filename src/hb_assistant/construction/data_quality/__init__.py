@@ -23,6 +23,10 @@ from .source_record_map import (
     SourceRecordMapBuilder,
     build_source_record_map,
 )
+from .relationships import (
+    RelationshipDiagnostics,
+    diagnose_relationships,
+)
 
 __all__ = [
     "ProjectIdentityBackfill",
@@ -30,4 +34,6 @@ __all__ = [
     "load_pilot_project_descriptors",
     "SourceRecordMapBuilder",
     "build_source_record_map",
+    "RelationshipDiagnostics",
+    "diagnose_relationships",
 ]
