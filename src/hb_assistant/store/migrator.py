@@ -11,6 +11,11 @@ from datetime import datetime, timezone
 
 from .connection import get_connection, transaction
 
+# Single source of truth for the head schema version. Bump this with every new
+# migration block in apply(). Tests should assert against this constant rather
+# than hard-coding a literal so version bumps do not break unrelated tests.
+LATEST_SCHEMA_VERSION = 22
+
 
 class SQLiteMigrator:
     """Manages schema migrations for the local store."""
@@ -2197,6 +2202,18 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v22 Phase 07B Prompt 01 — close the V21 mart raw-body guardrail gap. The five
+    # V21 marts were created without the standard CHECK(raw_body_persisted = 0) that
+    # the V20 tables carry. v22 adds the column + CHECK additively via ALTER TABLE
+    # (SQLite rewrites sqlite_master.sql so the no-writeback prover detects it).
+    V22_MART_TABLES: list[str] = [
+        "project_source_coverage_mart",
+        "data_quality_gate_results",
+        "source_record_summary_mart",
+        "relationship_quality_mart",
+        "cross_domain_context_readiness_mart",
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -2450,6 +2467,25 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (21, 'v21_agent_ready_query_marts', ?)",
+                    (now,),
+                )
+
+            # v22 Phase 07B Prompt 01 — additive raw-body guardrail on the five V21
+            # marts. Idempotent: only ALTER a table that is missing the column. The
+            # marts exist by now (V21 CREATE IF NOT EXISTS ran above). V1-V21 untouched.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 22")
+            if cur.fetchone() is None:
+                for table in self.V22_MART_TABLES:
+                    cols = {
+                        row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+                    }
+                    if "raw_body_persisted" not in cols:
+                        conn.execute(
+                            f"ALTER TABLE {table} ADD COLUMN raw_body_persisted "
+                            "INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0)"
+                        )
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (22, 'v22_mart_raw_body_guardrail', ?)",
                     (now,),
                 )
 

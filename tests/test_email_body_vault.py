@@ -13,7 +13,7 @@ import pytest
 
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.security.text_vault import decrypt_text, encrypt_text
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 _SYNTHETIC = "Synthetic non-sensitive body text for testing only."
 
@@ -31,7 +31,7 @@ def _store_with_message(db: str) -> ConstructionStore:
 
 def test_v12_applies_and_creates_vault_table() -> None:
     db = _tmp_db()
-    assert SQLiteMigrator(db_path=db).apply() == 19
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)
     try:
         assert conn.execute(

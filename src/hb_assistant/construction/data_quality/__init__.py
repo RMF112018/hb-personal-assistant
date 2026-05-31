@@ -14,19 +14,16 @@ See package policy in the Phase 07A implementation docs for matching rules,
 confidence classes, and review-required conventions.
 """
 
+from .gates import (
+    GateEvaluator,
+    evaluate_data_quality_gates,
+)
 from .marts import (
     MartBuilder,
     populate_agent_ready_query_marts,
 )
 from .obsidian import (
     render_data_quality_obsidian_outputs,
-)
-from .gates import (
-    evaluate_data_quality_gates,
-    GateEvaluator,
-)
-from .safety import (
-    build_data_quality_no_writeback_proof,
 )
 from .project_identity import (
     ProjectIdentityBackfill,
@@ -37,9 +34,15 @@ from .relationships import (
     RelationshipDiagnostics,
     diagnose_relationships,
 )
+from .safety import (
+    build_data_quality_no_writeback_proof,
+)
 from .source_record_map import (
     SourceRecordMapBuilder,
     build_source_record_map,
+)
+from .table_inventory import (
+    build_table_inventory_report,
 )
 
 __all__ = [
@@ -56,4 +59,5 @@ __all__ = [
     "evaluate_data_quality_gates",
     "GateEvaluator",
     "build_data_quality_no_writeback_proof",
+    "build_table_inventory_report",
 ]

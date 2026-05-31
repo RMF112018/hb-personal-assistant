@@ -14,6 +14,7 @@ All tests are local, offline, and respect global guardrails.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
 import sys
@@ -29,10 +30,9 @@ def _fresh_db_with_v21() -> str:
     import os
 
     os.close(fd)
-    try:
+    # partial schema is acceptable; evaluator is fully defensive
+    with contextlib.suppress(Exception):
         SQLiteMigrator(db_path=str(db_path)).apply()
-    except Exception:
-        pass  # partial schema is acceptable; evaluator is fully defensive
     return db_path
 
 
@@ -76,7 +76,7 @@ def test_gates_meeting_prep_claim_is_blocked_when_calendar_or_doc_gates_are_not_
         # Explicit stop-condition: we never claim "ready" while dependent gates are not pass
         if claim == "ready":
             # This would be a violation
-            assert False, "Stop condition violated: meeting_prep claimed ready while calendar/email/doc gates not all pass"
+            raise AssertionError("Stop condition violated: meeting_prep claimed ready while calendar/email/doc gates not all pass")
     finally:
         Path(db_path).unlink(missing_ok=True)
 

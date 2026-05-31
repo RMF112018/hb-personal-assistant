@@ -12,10 +12,10 @@ Covers:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 from hb_assistant.construction.store import ConstructionStore
@@ -45,20 +45,16 @@ def test_source_record_map_dry_run_no_writes_and_unmapped(tmp_path: Path) -> Non
 
     # Insert representative rows (guarded: tables may not exist in minimal V20 temp DB)
     conn = __import__("hb_assistant.store.connection", fromlist=["get_connection"]).get_connection()
-    try:
+    with contextlib.suppress(Exception):
         conn.execute(
             "INSERT INTO procore_live_records (project_key, procore_project_id, endpoint_id, parent_procore_id, procore_record_id, first_seen_at_utc, last_seen_at_utc, last_sync_run_id, canonical_json_redacted) VALUES (?,?,?,?,?,?,?,?,?)",
             ("tropical", "p1", "live", "", "REC-XYZ-001", "2026-01-01", "2026-01-01", "run1", "{}"),
         )
-    except Exception:
-        pass
-    try:
+    with contextlib.suppress(Exception):
         conn.execute(
             "INSERT INTO email_messages (message_id, thread_key, subject_redacted, from_address_redacted, first_seen_utc, last_seen_utc, full_body_persisted, mailbox_mutation_allowed) VALUES (?,?,?,?,?,?,0,0)",
             ("msg-unmapped-1", "th1", "Subject", "from@redacted", "2026-01-01", "2026-01-01"),
         )
-    except Exception:
-        pass
     conn.commit()
 
     from hb_assistant.construction.data_quality import build_source_record_map
@@ -88,13 +84,11 @@ def test_source_record_map_apply_populates_and_idempotent(tmp_path: Path) -> Non
 
     # Insert a mappable row (with project_key) - guarded for minimal temp DB
     conn = __import__("hb_assistant.store.connection", fromlist=["get_connection"]).get_connection()
-    try:
+    with contextlib.suppress(Exception):
         conn.execute(
             "INSERT INTO procore_financial_contracts (record_key, project_key, endpoint_id, contract_id, contract_family, title_redacted, first_seen_at_utc, last_seen_at_utc) VALUES (?,?,?,?,?,?,?,?)",
             ("fin-001", "tropical", "live", "C-1", "prime", "Contract 1", "2026-01-01", "2026-01-01"),
         )
-    except Exception:
-        pass
     conn.commit()
 
     from hb_assistant.construction.data_quality import build_source_record_map

@@ -36,6 +36,7 @@ Guardrails (enforced):
 
 from __future__ import annotations
 
+import contextlib
 import time
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -134,7 +135,7 @@ class MartBuilder:
         # --- Source record summary mart (new) ---
         def _populate_source_summary():
             # Defensive: ensure table exists even if V21 migration not yet applied to this DB
-            try:
+            with contextlib.suppress(Exception):
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS source_record_summary_mart (
                       summary_id TEXT PRIMARY KEY,
@@ -151,8 +152,6 @@ class MartBuilder:
                       created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
-            except Exception:
-                pass
             try:
                 cur = conn.execute(
                     """
@@ -166,7 +165,7 @@ class MartBuilder:
                 )
                 for pk, sys, tbl, tot, clean, rev in cur.fetchall():
                     sid = f"{pk}:{sys}:{tbl}:summary"
-                    try:
+                    with contextlib.suppress(Exception):
                         store.upsert_source_record_summary({
                             "summary_id": sid,
                             "run_id": f"prompt05-{now[:10]}",
@@ -180,8 +179,6 @@ class MartBuilder:
                             "stale_count": 0,
                             "quality_status": "partial" if (clean or 0) > 0 else "needs_review",
                         })
-                    except Exception:
-                        pass
             except Exception:
                 pass
 
@@ -201,7 +198,7 @@ class MartBuilder:
                 )
                 for pk, rtype, conf, status, cnt, rev in cur.fetchall():
                     rid = f"{pk}:{rtype}:{conf}:{status}:relq"
-                    try:
+                    with contextlib.suppress(Exception):
                         store.upsert_relationship_quality({
                             "quality_id": rid,
                             "run_id": f"prompt05-{now[:10]}",
@@ -214,8 +211,6 @@ class MartBuilder:
                             "orphan_count": 1 if status == "orphaned" else 0,
                             "quality_status": "needs_review" if (rev or 0) > 0 else "ok",
                         })
-                    except Exception:
-                        pass
             except Exception:
                 pass
 
@@ -223,7 +218,7 @@ class MartBuilder:
 
         # --- Cross-domain readiness mart (new, combines signals) ---
         def _populate_readiness():
-            try:
+            with contextlib.suppress(Exception):
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS cross_domain_context_readiness_mart (
                       readiness_id TEXT PRIMARY KEY,
@@ -237,8 +232,6 @@ class MartBuilder:
                       created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
-            except Exception:
-                pass
             try:
                 # Simple heuristic: presence of coverage + low orphan + gate pass
                 cur = conn.execute(
@@ -253,7 +246,7 @@ class MartBuilder:
                 for pk, has_mapped, orphans in cur.fetchall():
                     ready = bool(has_mapped and orphans == 0)
                     rid = f"{pk}:readiness"
-                    try:
+                    with contextlib.suppress(Exception):
                         store.upsert_cross_domain_readiness({
                             "readiness_id": rid,
                             "run_id": f"prompt05-{now[:10]}",
@@ -264,8 +257,6 @@ class MartBuilder:
                             "blocking_reasons_json": None if ready else '["relationship_orphans_or_missing_coverage"]',
                             "overall_status": "ready" if ready else "blocked",
                         })
-                    except Exception:
-                        pass
             except Exception:
                 pass
 
@@ -285,19 +276,15 @@ class MartBuilder:
 
         # Direct timing for a couple of realistic agent queries
         def _time_unmapped():
-            try:
+            with contextlib.suppress(Exception):
                 conn.execute("SELECT project_key, COUNT(*) FROM source_system_record_map WHERE review_required=1 GROUP BY project_key").fetchall()
-            except Exception:
-                pass
         res_un, unm = self._measure("unmapped_direct", _time_unmapped)
         latency["unmapped_records_by_project"] = round(unm, 3)
 
         # Simple gate status timing
         def _time_gates():
-            try:
+            with contextlib.suppress(Exception):
                 conn.execute("SELECT gate_name, gate_status FROM data_quality_gate_results ORDER BY created_utc DESC LIMIT 20").fetchall()
-            except Exception:
-                pass
         _, g = self._measure("gate_status_direct", _time_gates)
         latency["gate_status_by_phase_run"] = round(g, 3)
 

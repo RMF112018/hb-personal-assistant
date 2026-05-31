@@ -1,0 +1,816 @@
+{
+  "schema": "table_lifecycle_status_contract/v1",
+  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01).",
+  "statuses": [
+    "operational_populated",
+    "operational_empty_expected",
+    "operational_empty_blocking",
+    "placeholder_deferred",
+    "legacy_superseded",
+    "evidence_only",
+    "unknown_requires_audit"
+  ],
+  "required_fields": [
+    "table_name",
+    "table_family",
+    "lifecycle_status",
+    "expected_population_status",
+    "phase_owner",
+    "blocking_for_phase"
+  ],
+  "table_count": 88,
+  "tables": {
+    "source_records": {
+      "table_family": "core_source_v1",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "core",
+      "blocking_for_phase": "none",
+      "v": "V1",
+      "notes": "canonical root; source traceability"
+    },
+    "emails": {
+      "table_family": "core_source_v1",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "core/06",
+      "blocking_for_phase": "none",
+      "v": "V1",
+      "notes": "metadata active per report"
+    },
+    "calendar_events": {
+      "table_family": "core_source_v1",
+      "lifecycle_status": "operational_empty_blocking",
+      "expected_population_status": "empty",
+      "phase_owner": "core",
+      "blocking_for_phase": "07B",
+      "v": "V1",
+      "notes": "explicit empty in 02_/03_; meeting prep blocker"
+    },
+    "attachments": {
+      "table_family": "core_source_v1",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "core",
+      "blocking_for_phase": "none",
+      "v": "V1",
+      "notes": ""
+    },
+    "files": {
+      "table_family": "core_source_v1",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "core/06A",
+      "blocking_for_phase": "none",
+      "v": "V1",
+      "notes": "graph files"
+    },
+    "parser_outputs": {
+      "table_family": "core_source_v1",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "core",
+      "blocking_for_phase": "none",
+      "v": "V1",
+      "notes": ""
+    },
+    "action_items": {
+      "table_family": "core_source_v1",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "core",
+      "blocking_for_phase": "none",
+      "v": "V1",
+      "notes": "deterministic extraction"
+    },
+    "source_links": {
+      "table_family": "core_source_v1",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "core",
+      "blocking_for_phase": "none",
+      "v": "V1",
+      "notes": "provenance"
+    },
+    "assistant_runs": {
+      "table_family": "misc_evidence_audit",
+      "lifecycle_status": "evidence_only",
+      "expected_population_status": "populated",
+      "phase_owner": "core",
+      "blocking_for_phase": "none",
+      "v": "V1",
+      "notes": "run ledger"
+    },
+    "sync_state": {
+      "table_family": "core_source_v1",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "core",
+      "blocking_for_phase": "none",
+      "v": "V1",
+      "notes": ""
+    },
+    "content_embeddings": {
+      "table_family": "embeddings",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "retrieval",
+      "blocking_for_phase": "09",
+      "v": "V1",
+      "notes": "explicit empty; defer per 03_"
+    },
+    "construction_source_resolutions": {
+      "table_family": "construction_early_v2v4",
+      "lifecycle_status": "legacy_superseded",
+      "expected_population_status": "populated",
+      "phase_owner": "01/02",
+      "blocking_for_phase": "none",
+      "v": "V2",
+      "notes": "superseded by V5 construction_source_locations"
+    },
+    "construction_delta_tokens": {
+      "table_family": "construction_early_v2v4",
+      "lifecycle_status": "legacy_superseded",
+      "expected_population_status": "populated",
+      "phase_owner": "01/02",
+      "blocking_for_phase": "none",
+      "v": "V2",
+      "notes": "superseded by V5 sync state"
+    },
+    "construction_drive_item_inventory": {
+      "table_family": "construction_early_v2v4",
+      "lifecycle_status": "legacy_superseded",
+      "expected_population_status": "populated",
+      "phase_owner": "01/02",
+      "blocking_for_phase": "none",
+      "v": "V2",
+      "notes": "superseded by V5 construction_drive_items"
+    },
+    "construction_crawl_receipts": {
+      "table_family": "construction_early_v2v4",
+      "lifecycle_status": "evidence_only",
+      "expected_population_status": "populated",
+      "phase_owner": "01/02",
+      "blocking_for_phase": "none",
+      "v": "V2",
+      "notes": "early receipts; V5 has crawl_runs"
+    },
+    "construction_review_queue": {
+      "table_family": "construction_early_v2v4",
+      "lifecycle_status": "legacy_superseded",
+      "expected_population_status": "populated",
+      "phase_owner": "01/02",
+      "blocking_for_phase": "none",
+      "v": "V3",
+      "notes": "V3; superseded by email review + later"
+    },
+    "construction_model_decisions": {
+      "table_family": "construction_early_v2v4",
+      "lifecycle_status": "evidence_only",
+      "expected_population_status": "populated",
+      "phase_owner": "01/02",
+      "blocking_for_phase": "none",
+      "v": "V4",
+      "notes": "ollama audit decisions"
+    },
+    "construction_source_locations": {
+      "table_family": "construction_canonical_v5",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "02/06A",
+      "blocking_for_phase": "none",
+      "v": "V5",
+      "notes": ""
+    },
+    "construction_source_sync_state": {
+      "table_family": "construction_canonical_v5",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "02/06A",
+      "blocking_for_phase": "none",
+      "v": "V5",
+      "notes": ""
+    },
+    "construction_source_crawl_runs": {
+      "table_family": "construction_canonical_v5",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "02/06A",
+      "blocking_for_phase": "none",
+      "v": "V5",
+      "notes": "receipts"
+    },
+    "construction_drive_items": {
+      "table_family": "construction_canonical_v5",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "02/06A",
+      "blocking_for_phase": "none",
+      "v": "V5 + ALTER V15-17",
+      "notes": "rich metadata post 06A"
+    },
+    "construction_project_identity": {
+      "table_family": "construction_canonical_v5",
+      "lifecycle_status": "operational_empty_blocking",
+      "expected_population_status": "empty",
+      "phase_owner": "02/07A",
+      "blocking_for_phase": "07A",
+      "v": "V5",
+      "notes": "explicit empty in 02_/03_; canonical identity blocker; 07A backfill target"
+    },
+    "construction_project_source_matches": {
+      "table_family": "construction_canonical_v5",
+      "lifecycle_status": "operational_empty_blocking",
+      "expected_population_status": "empty",
+      "phase_owner": "02/07A",
+      "blocking_for_phase": "07A",
+      "v": "V5",
+      "notes": "explicit empty; source-record map foundation"
+    },
+    "construction_document_cards": {
+      "table_family": "construction_canonical_v5",
+      "lifecycle_status": "operational_empty_blocking",
+      "expected_population_status": "empty",
+      "phase_owner": "02",
+      "blocking_for_phase": "07A",
+      "v": "V5",
+      "notes": "explicit empty in 02_"
+    },
+    "construction_processing_receipts": {
+      "table_family": "misc_evidence_audit",
+      "lifecycle_status": "evidence_only",
+      "expected_population_status": "populated",
+      "phase_owner": "02/06A",
+      "blocking_for_phase": "none",
+      "v": "V5",
+      "notes": ""
+    },
+    "construction_sync_errors": {
+      "table_family": "misc_evidence_audit",
+      "lifecycle_status": "evidence_only",
+      "expected_population_status": "populated",
+      "phase_owner": "02",
+      "blocking_for_phase": "none",
+      "v": "V5",
+      "notes": ""
+    },
+    "construction_email_intelligence_deferred_state": {
+      "table_family": "construction_canonical_v5",
+      "lifecycle_status": "evidence_only",
+      "expected_population_status": "populated",
+      "phase_owner": "02",
+      "blocking_for_phase": "none",
+      "v": "V5",
+      "notes": "historical policy lock record (V10 active supersedes)"
+    },
+    "procore_live_sync_runs": {
+      "table_family": "procore_live_v6",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04A/06B",
+      "blocking_for_phase": "none",
+      "v": "V6",
+      "notes": "strong per report"
+    },
+    "procore_live_records": {
+      "table_family": "procore_live_v6",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04A/06B",
+      "blocking_for_phase": "none",
+      "v": "V6",
+      "notes": "canonical per-endpoint latest"
+    },
+    "procore_live_sync_watermarks": {
+      "table_family": "procore_live_v6",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04A",
+      "blocking_for_phase": "none",
+      "v": "V6",
+      "notes": ""
+    },
+    "procore_live_record_state_index": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "procore_live_record_snapshots": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": "historical snapshots"
+    },
+    "procore_live_record_change_events": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": "field-level changes"
+    },
+    "procore_record_timeline_events": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "procore_people_entities": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": "cross-cutting"
+    },
+    "procore_company_entities": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "procore_location_entities": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "procore_attachment_refs": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "procore_custom_field_values": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "procore_record_edges": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": "relationship edges"
+    },
+    "procore_action_signals": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B/06B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": "06B action queue"
+    },
+    "procore_text_intelligence": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "procore_inspection_records": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "procore_inspection_sections": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "procore_inspection_items": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "procore_inspection_response_sets": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "procore_inspection_response_options": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "procore_inspection_evidence_rules": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": ""
+    },
+    "v_procore_open_action_signals": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": "view"
+    },
+    "v_procore_inspection_unanswered_items": {
+      "table_family": "procore_history_enrich_v7",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "04B",
+      "blocking_for_phase": "none",
+      "v": "V7",
+      "notes": "view"
+    },
+    "procore_financial_contracts": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8",
+      "notes": "dense facts"
+    },
+    "procore_financial_line_items": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8",
+      "notes": ""
+    },
+    "procore_financial_change_orders": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8",
+      "notes": ""
+    },
+    "procore_financial_payment_applications": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8",
+      "notes": ""
+    },
+    "procore_financial_invoice_items": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8",
+      "notes": ""
+    },
+    "procore_financial_rfqs": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8",
+      "notes": ""
+    },
+    "procore_financial_change_events": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8",
+      "notes": ""
+    },
+    "procore_financial_budget_views": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8",
+      "notes": ""
+    },
+    "procore_financial_budget_rows": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8",
+      "notes": ""
+    },
+    "procore_financial_amount_facts": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8",
+      "notes": "dense but uneven per 03_"
+    },
+    "procore_financial_change_order_line_items": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8 ext",
+      "notes": "HB extension"
+    },
+    "procore_financial_budget_changes": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8 ext",
+      "notes": ""
+    },
+    "procore_financial_compliance_documents": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V8 ext",
+      "notes": ""
+    },
+    "procore_financial_billing_periods": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V9",
+      "notes": ""
+    },
+    "procore_financial_subcontractor_invoices": {
+      "table_family": "procore_financial_v8v9",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "05",
+      "blocking_for_phase": "none",
+      "v": "V9",
+      "notes": ""
+    },
+    "procore_sync_runs": {
+      "table_family": "procore_legacy_pilot",
+      "lifecycle_status": "legacy_superseded",
+      "expected_population_status": "populated",
+      "phase_owner": "03/Prompt09",
+      "blocking_for_phase": "none",
+      "v": "legacy (repositories.py)",
+      "notes": "pilot sync; replaced by procore_live_sync_runs V6"
+    },
+    "procore_sync_errors": {
+      "table_family": "procore_legacy_pilot",
+      "lifecycle_status": "legacy_superseded",
+      "expected_population_status": "populated",
+      "phase_owner": "03/Prompt09",
+      "blocking_for_phase": "none",
+      "v": "legacy",
+      "notes": "replaced by V6/V7"
+    },
+    "procore_synced_entities": {
+      "table_family": "procore_legacy_pilot",
+      "lifecycle_status": "legacy_superseded",
+      "expected_population_status": "populated",
+      "phase_owner": "03/Prompt09",
+      "blocking_for_phase": "none",
+      "v": "legacy",
+      "notes": "replaced by procore_live_records"
+    },
+    "procore_sync_watermarks": {
+      "table_family": "procore_legacy_pilot",
+      "lifecycle_status": "legacy_superseded",
+      "expected_population_status": "populated",
+      "phase_owner": "03/Prompt09",
+      "blocking_for_phase": "none",
+      "v": "legacy",
+      "notes": "replaced by procore_live_sync_watermarks"
+    },
+    "email_intelligence_active_policy": {
+      "table_family": "email_policy_v10",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06",
+      "blocking_for_phase": "none",
+      "v": "V10",
+      "notes": "singleton policy (read-only locked)"
+    },
+    "email_source_locations": {
+      "table_family": "email_policy_v10",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06",
+      "blocking_for_phase": "none",
+      "v": "V10",
+      "notes": "mailbox + folder registry"
+    },
+    "email_sync_state": {
+      "table_family": "email_operational_v11v14",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06",
+      "blocking_for_phase": "none",
+      "v": "V11",
+      "notes": ""
+    },
+    "email_crawl_runs": {
+      "table_family": "email_operational_v11v14",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06",
+      "blocking_for_phase": "none",
+      "v": "V11",
+      "notes": "receipts"
+    },
+    "email_messages": {
+      "table_family": "email_operational_v11v14",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06",
+      "blocking_for_phase": "none",
+      "v": "V11",
+      "notes": "metadata active"
+    },
+    "email_message_recipients": {
+      "table_family": "email_operational_v11v14",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06",
+      "blocking_for_phase": "none",
+      "v": "V11",
+      "notes": ""
+    },
+    "email_message_attachments": {
+      "table_family": "email_operational_v11v14",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06",
+      "blocking_for_phase": "none",
+      "v": "V11",
+      "notes": "metadata only"
+    },
+    "email_project_matches": {
+      "table_family": "email_operational_v11v14",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06",
+      "blocking_for_phase": "none",
+      "v": "V11",
+      "notes": ""
+    },
+    "email_relationship_candidates": {
+      "table_family": "email_operational_v11v14",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06/07A",
+      "blocking_for_phase": "none",
+      "v": "V11",
+      "notes": "07A source-record map input"
+    },
+    "email_thread_summaries": {
+      "table_family": "email_operational_v11v14",
+      "lifecycle_status": "operational_empty_blocking",
+      "expected_population_status": "empty",
+      "phase_owner": "06",
+      "blocking_for_phase": "07B",
+      "v": "V11",
+      "notes": "explicit empty; meeting prep blocker per 03_"
+    },
+    "email_review_queue": {
+      "table_family": "email_operational_v11v14",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06",
+      "blocking_for_phase": "none",
+      "v": "V11 + V13 cols",
+      "notes": "review routing + body capture decisions"
+    },
+    "email_processing_receipts": {
+      "table_family": "misc_evidence_audit",
+      "lifecycle_status": "evidence_only",
+      "expected_population_status": "populated",
+      "phase_owner": "06",
+      "blocking_for_phase": "none",
+      "v": "V11",
+      "notes": ""
+    },
+    "email_message_body_vault_refs": {
+      "table_family": "email_operational_v11v14",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06",
+      "blocking_for_phase": "none",
+      "v": "V12",
+      "notes": "encrypted refs only; no plaintext"
+    },
+    "email_model_classifications": {
+      "table_family": "email_operational_v11v14",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06",
+      "blocking_for_phase": "07B",
+      "v": "V14",
+      "notes": "advisory; known repository-method gap from 02_ closeout"
+    },
+    "construction_graph_link_resolution": {
+      "table_family": "file_intelligence_v15v19",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06A",
+      "blocking_for_phase": "none",
+      "v": "V16",
+      "notes": "duplicate for completeness"
+    },
+    "construction_file_ingestion_decisions": {
+      "table_family": "file_intelligence_v15v19",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "06A",
+      "blocking_for_phase": "none",
+      "v": "V18",
+      "notes": "CHECK review_required => no extract"
+    },
+    "construction_graph_download_receipts": {
+      "table_family": "file_intelligence_v15v19",
+      "lifecycle_status": "evidence_only",
+      "expected_population_status": "populated",
+      "phase_owner": "06A",
+      "blocking_for_phase": "none",
+      "v": "V19",
+      "notes": "bounded; no raw URL / vault copy"
+    },
+    "construction_file_extraction_runs": {
+      "table_family": "file_intelligence_v15v19",
+      "lifecycle_status": "evidence_only",
+      "expected_population_status": "populated",
+      "phase_owner": "06A",
+      "blocking_for_phase": "none",
+      "v": "V19",
+      "notes": "bounded redacted excerpts only"
+    },
+    "schema_migrations": {
+      "table_family": "internal",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "core",
+      "blocking_for_phase": "none",
+      "v": "V1+",
+      "notes": "migration ledger; not user table"
+    }
+  }
+}

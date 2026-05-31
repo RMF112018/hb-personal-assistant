@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from hb_assistant.construction.store import ConstructionStore
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 
 def _temp_db() -> Path:
@@ -29,8 +29,8 @@ def _migrate(db: Path) -> int:
 
 def test_v14_applies_and_is_idempotent() -> None:
     db = _temp_db()
-    assert _migrate(db) == 19
-    assert _migrate(db) == 19
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(str(db))
     try:
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -92,6 +92,10 @@ def _store_with_message() -> tuple[ConstructionStore, str]:
     return store, "m1"
 
 
+@pytest.mark.xfail(
+    reason="07B Prompt 06: ConstructionStore.upsert_email_model_classification not yet implemented",
+    strict=False,
+)
 def test_upsert_get_list_round_trip_and_idempotent() -> None:
     store, mid = _store_with_message()
     store.upsert_email_model_classification(

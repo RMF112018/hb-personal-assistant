@@ -14,6 +14,7 @@ All tests respect global guardrails (no external calls, no raw bodies).
 
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
 import sys
@@ -30,12 +31,10 @@ def _fresh_db_with_v21() -> str:
     import os
 
     os.close(fd)
-    # Apply up to latest (V21 includes the marts used by obsidian renderer)
-    try:
+    # Apply up to latest (V21 includes the marts used by obsidian renderer).
+    # Partial schema is acceptable; renderer is defensive.
+    with contextlib.suppress(Exception):
         SQLiteMigrator(db_path=str(db_path)).apply()
-    except Exception:
-        # Partial schema is acceptable; renderer is defensive
-        pass
     return db_path
 
 

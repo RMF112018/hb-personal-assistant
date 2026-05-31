@@ -1949,3 +1949,44 @@ def no_writeback_proof(
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if report.get("proof_passed") else 3)
 
+
+# ---------------------------------------------------------------------------
+# Phase 07B Prompt 01 — data-quality table-inventory (read-only lifecycle report)
+# ---------------------------------------------------------------------------
+
+_TABLE_INVENTORY_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "no_raw_content": True,
+    "introspection_only": True,
+}
+
+
+@data_quality_app.command("table-inventory")
+def table_inventory(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Table lifecycle inventory and reconciliation (Phase 07B Prompt 01).
+
+    Operationalizes the previously-manual Phase 07A table lifecycle inventory.
+    Introspects the live SQLite schema (authoritative current truth) and
+    reconciles it against the canonical lifecycle contract
+    (resources/json/table_lifecycle_status_contract.json): tables present in the
+    DB but absent from the contract are classified unknown_requires_audit;
+    contract tables absent from the DB are surfaced separately.
+
+    Read-only and offline (no --apply, no writes, no external calls, no raw
+    content). Safe against an empty (migrated-only) store.
+    """
+    from hb_assistant.construction.data_quality import build_table_inventory_report
+
+    report = build_table_inventory_report()
+
+    payload = {
+        "command": "construction-agent data-quality table-inventory",
+        "report": report,
+        "guardrails": _TABLE_INVENTORY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+

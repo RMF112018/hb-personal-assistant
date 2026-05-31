@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from hb_assistant.construction.store import ConstructionStore
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 
 def _migrate(db_path: str | Path) -> int:
@@ -63,7 +63,7 @@ def test_v20_applies_and_creates_tables_and_indexes() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "v20.db"
         version = _migrate(db)
-        assert version == 20
+        assert version == LATEST_SCHEMA_VERSION
         tables, indexes = _get_tables_and_indexes(db)
         assert not (_V20_TABLES - tables), f"V20 tables missing: {sorted(_V20_TABLES - tables)}"
         assert not (_V20_INDEXES - indexes), f"V20 indexes missing: {sorted(_V20_INDEXES - indexes)}"
@@ -91,7 +91,7 @@ def test_v20_is_idempotent() -> None:
         db = Path(td) / "v20.db"
         v1 = _migrate(db)
         v2 = _migrate(db)
-        assert v1 == 20 and v2 == 20
+        assert v1 == LATEST_SCHEMA_VERSION and v2 == LATEST_SCHEMA_VERSION
         # schema_migrations should have exactly one row for v20
         conn = sqlite3.connect(str(db))
         try:
@@ -226,4 +226,4 @@ def test_construction_agent_validate_reports_v20() -> None:
     # We just ensure the migrator reports 20; full CLI exercised in the proof run.
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "v20.db"
-        assert _migrate(db) == 20
+        assert _migrate(db) == LATEST_SCHEMA_VERSION

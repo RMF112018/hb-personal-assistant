@@ -14,6 +14,7 @@ All tests are local, offline, and respect the global guardrails.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
 import sys
@@ -32,10 +33,8 @@ def _fresh_db_with_v21() -> str:
     import os
 
     os.close(fd)
-    try:
+    with contextlib.suppress(Exception):  # defensive
         SQLiteMigrator(db_path=str(db_path)).apply()
-    except Exception:
-        pass  # defensive
     return db_path
 
 
@@ -89,14 +88,14 @@ def test_safety_proof_all_07a_tables_have_raw_body_check_and_zero():
         raw = report["checks_detail"]["sqlite_raw_body_guardrail_v20_v21_07a_tables"]
         # On a properly migrated V21 DB the tables exist with the CHECK
         # Core V20 tables created by official migration DDL must have the CHECK
-        core_v20 = {"construction_data_quality_runs", "source_system_record_map", "relationship_resolution_queue"}
+        # As of V22 (Phase 07B Prompt 01) every present 07A table — core V20 tables and
+        # the five V21 marts (whose CHECK is added additively via ALTER TABLE) — carries
+        # the CHECK(raw_body_persisted = 0) guardrail and stores only 0.
         for t in raw.get("tables", []):
-            if t.get("present") and t["table"] in core_v20:
+            if t.get("present"):
                 assert t.get("has_check") is True, f"{t['table']} missing CHECK"
                 vals = t.get("distinct_values") or []
                 assert all(v == 0 for v in vals), f"{t['table']} has non-zero raw_body_persisted"
-        # Marts created via defensive IF NOT EXISTS in Prompt 05 may lack the CHECK in the current DB;
-        # the prover correctly reports this as a finding (see the no-writeback-proof evidence).
     finally:
         Path(db_path).unlink(missing_ok=True)
 

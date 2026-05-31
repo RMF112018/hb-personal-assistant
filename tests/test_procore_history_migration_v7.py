@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 _HISTORY_TABLES = {
     "procore_live_record_state_index",
@@ -72,7 +72,7 @@ def _names(db: Path, kind: str) -> set[str]:
 
 def test_v7_creates_all_history_enrichment_inspection_tables() -> None:
     db = _temp_db()
-    assert _migrate(db) == 19  # full migrator now reaches v15 (Phase 06 files)
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
     tables = _names(db, "table")
     missing = _V7_TABLES - tables
     assert not missing, f"V7 tables missing: {sorted(missing)}"
@@ -95,8 +95,8 @@ def test_v7_creates_convenience_views() -> None:
 
 def test_v7_is_idempotent() -> None:
     db = _temp_db()
-    assert _migrate(db) == 19  # full migrator now reaches v15 (Phase 06 files)
-    assert _migrate(db) == 19  # full migrator now reaches v15 (Phase 06 files)
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(str(db))
     try:
         count = conn.execute(
@@ -151,7 +151,7 @@ def test_existing_migrations_still_run_from_empty_db() -> None:
     V6 tables — i.e. later migrations are purely additive and do not break the
     earlier ones."""
     db = _temp_db()
-    assert _migrate(db) == 19  # full migrator now reaches v15 (Phase 06 files)
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
     tables = _names(db, "table")
     # V1 core + V6 Procore live records must still exist alongside the V7 tables.
     assert "source_records" in tables

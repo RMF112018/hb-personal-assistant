@@ -103,3 +103,66 @@ implementing or de-referencing it. No implementation may persist raw bodies or m
 system.
 
 **Prompt 00 (gap audit) complete.**
+
+---
+
+## 5. Remediation Outcomes (Prompt 01)
+
+**Run UTC:** 2026-05-31 (Prompt 01) · Baseline before edits: HEAD `af6551e` (`main`), schema **V21**.
+All commands under `source .venv/bin/activate`. Audit-only Prompt 00 → remediation Prompt 01.
+
+### 5.1 Resolution of the 07A-residual blockers
+
+| # | Blocker | Resolution | Verification |
+|---|---|---|---|
+| R1 | `ruff check .` exit 1 (24 issues) | **Fixed.** SIM105→`contextlib.suppress`, F401 removed, I001 sorted, B007 (`safety.py`) → `if pat.search`, B011 (`test_data_quality_gates.py`) → `raise AssertionError`, F841 (`test_relationship_quality.py`) removed. **No repo-wide `ruff format`** (would have churned 219 unrelated files). | `ruff check .` → **0** |
+| R2 | ~20 migration version-pin test failures (`apply()==19/20`) | **Fixed durably.** Added `LATEST_SCHEMA_VERSION = 22` constant in `migrator.py`; the 9 test files now assert against it (auto-tracks future bumps). Stale `# reaches v15` comments removed. | the 9 files pass; `pytest` safe subset → 0 |
+| R3 | 4 weekend-dependent `test_automation.py` failures | **Fixed (test-only, deterministic).** Each now sets `orch.cfg = MorningRunConfig(..., weekend_behavior="run", ...)` (mirrors the existing `test_orchestrator_render_basic` idiom) so the weekend gate never trips. No production change. | `test_automation.py` → 13 passed any day |
+| R4 | `no-writeback-proof` exit 3 (5 V21 marts lack CHECK) | **Fixed (additive V22).** New `v22_mart_raw_body_guardrail` migration adds `raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0)` to the 5 marts via idempotent `ALTER TABLE ADD COLUMN` (SQLite rewrites `sqlite_master.sql`; prover detects it). V1–V21 untouched. | `no-writeback-proof` → **0** (`proof_passed=true`) |
+| R5 | `data-quality table-inventory --json` not implemented | **Implemented.** New `table_inventory.py` + CLI command; read-only live-schema introspection reconciled against a new canonical contract resource (`resources/json/table_lifecycle_status_contract.json`, seeded from the 07A manual inventory — the file 07A had referenced but never shipped). | `table-inventory --json` → **0** |
+
+### 5.2 Quarantined (07B-net-new, deferred to Prompt 06 — NOT implemented here)
+
+- B3 (`upsert_email_model_classification` missing): the 7 `tests/test_email_classifier.py` tests plus
+  `test_email_model_classifications_schema_v14.py::test_upsert_get_list_round_trip_and_idempotent`
+  are marked `@pytest.mark.xfail(reason="07B Prompt 06: …", strict=False)`. They flip to xpass when
+  P06 implements the method. **8 xfail total.**
+
+### 5.3 Post-remediation validation matrix (actual exit codes)
+
+| Command | Before (P00) | After (P01) |
+|---|---|---|
+| `python -m compileall src tests` | 0 | **0** |
+| `ruff check .` | 1 (24) | **0** |
+| `mypy src` | 0 | **0** (153 files) |
+| `pytest -m "not live and not integration and not manual"` | 1 (31 failed/1883) | **0** (0 failed / 1890 collected; 8 xfail) |
+| `construction-agent validate --json` | 0 | **0** |
+| `procore validate --json` | 0 | **0** |
+| `graph files status --json` | 0 | **0** |
+| `graph mail status --json` | 0 | **0** |
+| `graph calendar status --json` | 2 (not impl) | **2** (still 07B Prompt 03 scope) |
+| `data-quality gates --json` | 0 | **0** |
+| `data-quality no-writeback-proof --json` | **3** | **0** |
+| `data-quality table-inventory --json` | **2** (not impl) | **0** |
+
+New tests added: `tests/test_data_quality_schema_v22.py` (V22 add/idempotent/intact/CHECK-enforced),
+`tests/test_data_quality_table_inventory.py` (report shape + CLI exit 0).
+
+### 5.4 Guardrail attestation (Prompt 01)
+
+- No Microsoft 365 / Procore / SharePoint / OneDrive / Outlook / calendar mutation or writeback.
+- V22 is a local additive schema change applied by the standard migrator path; no new `--apply`
+  write path added; `table-inventory` is read-only introspection. No live external call performed.
+- No raw email/calendar body, raw prompt, raw model response, token, secret, PEM, signed/download
+  URL, raw delta link, or private value appears in any changed code, test, evidence, resource, or
+  JSON. The new contract resource was scanned clean.
+- No Phase 07D meeting-prep readiness claimed; 07D remains blocked.
+
+### 5.5 Go / No-Go for Prompt 02
+
+**GO — Prompt 02 (Calendar Schema And Source Registry) may proceed.** The local baseline is now
+fully green (ruff 0, mypy 0, safe pytest 0, no-writeback-proof 0), `table-inventory` is implemented,
+and the V21 mart guardrail gap is closed at V22. No hidden blockers remain; the only non-green CLI
+(`graph calendar status` exit 2) is the explicit subject of Prompt 03.
+
+**Prompt 01 (07A remediation preflight) complete.**

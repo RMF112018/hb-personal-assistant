@@ -11,6 +11,7 @@ Covers:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
 import sys
@@ -33,8 +34,8 @@ def _seed_identity_and_map(store: ConstructionStore) -> None:
         match_status="matched",
         match_confidence="high",
     )
-    # Minimal source record map entry for resolution
-    try:
+    # Minimal source record map entry for resolution (table may be partial in some test envs)
+    with contextlib.suppress(Exception):
         store.upsert_source_system_record({
             "canonical_record_id": "procore:procore_live_records:REC-001",
             "project_key": "tropical",
@@ -45,8 +46,6 @@ def _seed_identity_and_map(store: ConstructionStore) -> None:
             "confidence_class": "deterministic_exact_id",
             "review_required": False,
         })
-    except Exception:
-        pass  # table may be partial in some test envs
 
 
 def test_relationship_diagnostics_separate_rates_and_model_never_promoted(tmp_path: Path) -> None:
@@ -57,22 +56,18 @@ def test_relationship_diagnostics_separate_rates_and_model_never_promoted(tmp_pa
 
     # Insert a deterministic Procore action (good)
     conn = __import__("hb_assistant.store.connection", fromlist=["get_connection"]).get_connection()
-    try:
+    with contextlib.suppress(Exception):
         conn.execute(
             "INSERT INTO procore_action_signals (action_signal_id, project_key, record_key, endpoint_id, signal_type, signal_status, importance, owner_entity_key, title_redacted) VALUES (?,?,?,?,?,?,?,?,?)",
             ("sig-det-1", "tropical", "REC-001", "daily-logs", "normal", "open", "medium", "ent-1", "Log entry"),
         )
-    except Exception:
-        pass
 
     # Insert a model-proposed weak candidate (must never promote)
-    try:
+    with contextlib.suppress(Exception):
         conn.execute(
             "INSERT INTO email_relationship_candidates (candidate_id, message_id, related_entity_key, candidate_type, confidence, project_key, review_required) VALUES (?,?,?,?,?,?,?)",
             ("cand-model-1", "msg-xyz", "person-42", "model_only", 0.45, "tropical", 1),
         )
-    except Exception:
-        pass
 
     conn.commit()
 
@@ -93,10 +88,8 @@ def test_relationship_diagnostics_separate_rates_and_model_never_promoted(tmp_pa
     assert r2["dry_run"] is False
     # The model row must appear with review_required and not_promoted (we check report samples or queue if written)
     # In this minimal DB the queue insert may be skipped, but the classification in report must reflect the guard
-    found_model = False
     for s in r2.get("samples", []):
         if "model" in (s.get("confidence_class") or "").lower() or "weak" in (s.get("reason") or "").lower():
-            found_model = True
             assert s.get("review_required") is True
             assert s.get("promotion_status") in ("not_promoted", None)
     # If no model row was present in this tiny DB, the guard is still proven by the builder code + other tests

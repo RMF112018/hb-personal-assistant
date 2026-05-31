@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 _V8_TABLES = {
     "procore_financial_contracts",
@@ -63,7 +63,7 @@ def _names(db: Path, kind: str) -> set[str]:
 
 def test_v8_applies_from_empty_db_and_creates_all_tables() -> None:
     db = _temp_db()
-    assert _migrate(db) == 19  # full migrator now reaches v15 (Phase 06 files)
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
     tables = _names(db, "table")
     missing = _V8_TABLES - tables
     assert not missing, f"V8 tables missing: {sorted(missing)}"
@@ -74,7 +74,7 @@ def test_v8_applies_from_empty_db_and_creates_all_tables() -> None:
 
 def test_v8_leaves_v1_v7_tables_intact() -> None:
     db = _temp_db()
-    assert _migrate(db) == 19  # full migrator now reaches v15 (Phase 06 files)
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
     tables = _names(db, "table")
     # V1 core, V6 live-sync, V7 history all still present alongside V8.
     assert "source_records" in tables
@@ -84,8 +84,8 @@ def test_v8_leaves_v1_v7_tables_intact() -> None:
 
 def test_v8_is_idempotent() -> None:
     db = _temp_db()
-    assert _migrate(db) == 19  # full migrator now reaches v15 (Phase 06 files)
-    assert _migrate(db) == 19  # full migrator now reaches v15 (Phase 06 files)
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(str(db))
     try:
         count = conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 8").fetchone()[

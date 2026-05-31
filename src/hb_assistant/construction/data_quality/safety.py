@@ -30,8 +30,6 @@ Guardrails and stop conditions are embedded in every report.
 from __future__ import annotations
 
 import ast
-import contextlib
-import json
 import os
 import re
 import subprocess
@@ -119,11 +117,11 @@ def _scan_module_for_mutation_and_imports(src: str, rel_path: str) -> Dict[str, 
     writeback: List[str] = []
     bad_imports: List[str] = []
 
-    # Regex first (fast, catches dynamic / string cases)
+    # Regex first (fast, catches dynamic / string cases). One hit per pattern
+    # per file is enough for the proof.
     for pat in _WRITEBACK_PATTERNS:
-        for m in pat.finditer(src):
+        if pat.search(src):
             writeback.append(f"{rel_path}: {pat.pattern}")
-            break  # one hit per pattern per file is enough for the proof
 
     for pat in _BAD_IMPORTS:
         for m in pat.finditer(src):

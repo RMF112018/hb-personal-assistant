@@ -136,6 +136,8 @@ def test_orchestrator_isolates_stage_failure(tmp_path):
     dbp = tmp_path / "iso.sqlite"
     store = Store(db_path=str(dbp))
     orch = MorningRunOrchestrator(store=store)
+    # Deterministic: bypass the weekend gate so this stage-isolation test runs any day
+    orch.cfg = MorningRunConfig(time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True)
 
     with patch("hb_assistant.retrieval.context.WorkstreamContextBuilder", side_effect=RuntimeError("boom")):
         res = orch.run(dry_run=True)
@@ -191,6 +193,8 @@ def test_orchestrator_05_stages_and_blocker_classification_dry_run(tmp_path):
     dbp = tmp_path / "p07.sqlite"
     store = Store(db_path=str(dbp))
     orch = MorningRunOrchestrator(store=store)
+    # Deterministic: bypass the weekend gate so the 05-stage flow runs any day
+    orch.cfg = MorningRunConfig(time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True)
     res = orch.run(dry_run=True)
     assert "blocker_classification" in res
     stages = res.get("stages", [])
@@ -211,6 +215,8 @@ def test_graph_consent_blocked_local_stages_continue(tmp_path):
     dbp = tmp_path / "p07-graph.sqlite"
     store = Store(db_path=str(dbp))
     orch = MorningRunOrchestrator(store=store)
+    # Deterministic: bypass the weekend gate so local stages run any day
+    orch.cfg = MorningRunConfig(time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True)
     # Force a no-token simulation by patching the auth probe inside the run (if present) or rely on natural behavior
     res = orch.run(dry_run=True)
     stages = res.get("stages", [])
@@ -229,6 +235,8 @@ def test_dry_run_05_outputs_no_mutation(tmp_path):
     dbp = tmp_path / "p07-dry.sqlite"
     store = Store(db_path=str(dbp))
     orch = MorningRunOrchestrator(store=store)
+    # Deterministic: bypass the weekend gate so the dry-run flow runs any day
+    orch.cfg = MorningRunConfig(time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True)
     before = store.get_summary().get("action_items", 0) if hasattr(store, "get_summary") else 0
     before_links = store.get_summary().get("source_links", 0) if hasattr(store, "get_summary") else 0
     res = orch.run(dry_run=True)

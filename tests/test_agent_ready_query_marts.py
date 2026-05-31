@@ -10,6 +10,7 @@ Covers:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
 import sys
@@ -31,7 +32,7 @@ def _seed_minimal(store: ConstructionStore) -> None:
         match_status="matched",
         match_confidence="high",
     )
-    try:
+    with contextlib.suppress(Exception):
         store.upsert_source_system_record({
             "canonical_record_id": "procore:procore_live_records:REC-001",
             "project_key": "tropical",
@@ -41,8 +42,6 @@ def _seed_minimal(store: ConstructionStore) -> None:
             "confidence_class": "deterministic_exact_id",
             "review_required": False,
         })
-    except Exception:
-        pass
 
 
 def test_marts_populate_and_latency_keys(tmp_path: Path) -> None:

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from hb_assistant.construction.store import ConstructionStore
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 
 @pytest.fixture
@@ -231,9 +231,9 @@ def test_v5_migration_is_idempotent(db_path: str) -> None:
     m = SQLiteMigrator(db_path)
     # Latest schema version is 10 after the Phase 06 active-policy + mailbox
     # source registry migration.
-    assert m.apply() == 19
-    assert m.apply() == 19
-    assert m.current_version() == 19
+    assert m.apply() == LATEST_SCHEMA_VERSION
+    assert m.apply() == LATEST_SCHEMA_VERSION
+    assert m.current_version() == LATEST_SCHEMA_VERSION
 
 
 def test_no_body_or_text_columns_in_drive_items(db_path: str) -> None:

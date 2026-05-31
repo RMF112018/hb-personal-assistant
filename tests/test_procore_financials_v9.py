@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 _V9_TABLES = {
     "procore_financial_billing_periods",
@@ -47,7 +47,7 @@ def _names(db: Path, kind: str) -> set[str]:
 
 def test_v9_applies_from_empty_db_and_creates_billing_tables() -> None:
     db = _temp_db()
-    assert _migrate(db) == 19  # full migrator now reaches v15 (Phase 06 files)
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
     tables = _names(db, "table")
     assert not (_V9_TABLES - tables), f"V9 tables missing: {sorted(_V9_TABLES - tables)}"
     indexes = _names(db, "index")
@@ -56,7 +56,7 @@ def test_v9_applies_from_empty_db_and_creates_billing_tables() -> None:
 
 def test_v9_leaves_v1_v8_tables_intact() -> None:
     db = _temp_db()
-    assert _migrate(db) == 19  # full migrator now reaches v15 (Phase 06 files)
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
     tables = _names(db, "table")
     assert "source_records" in tables  # V1 core
     assert {"procore_live_records", "procore_action_signals"} <= tables  # V6/V7
@@ -66,8 +66,8 @@ def test_v9_leaves_v1_v8_tables_intact() -> None:
 
 def test_v9_is_idempotent() -> None:
     db = _temp_db()
-    assert _migrate(db) == 19  # full migrator now reaches v15 (Phase 06 files)
-    assert _migrate(db) == 19  # full migrator now reaches v15 (Phase 06 files)
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(str(db))
     try:
         count = conn.execute(
