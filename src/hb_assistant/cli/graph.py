@@ -63,6 +63,7 @@ from hb_assistant.construction.policy import (
 from hb_assistant.construction.policy.email_active import (
     load_email_intelligence_active_policy,
 )
+from hb_assistant.construction.relationships import MeetingEmailCandidateBuilder
 from hb_assistant.construction.source_projection import (
     project_registry_to_v5_source_locations,
 )
@@ -1817,6 +1818,72 @@ def calendar_project_match_cmd(
             "ok": False,
             "mode": "dry_run" if dry_run else "apply",
             "status": "match_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@calendar_app.command("meeting-email-candidates")
+def calendar_meeting_email_candidates_cmd(
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Target project key (limits threads)."
+    ),
+    source: Optional[str] = typer.Option(None, "--source", help="Limit to one calendar source id."),
+    time_window_hours: int = typer.Option(
+        72, "--time-window-hours", help="Hours used to record time-window margin."
+    ),
+    max_candidates: int = typer.Option(
+        1000, "--max-candidates", help="Max candidates generated per run (bounded)."
+    ),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply writes candidates to SQLite."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Generate calendar event → email thread relationship candidates over the redacted
+    index, writing candidates only.
+
+    Scores (event, thread) pairs on time-window overlap and organizer-domain overlap
+    (strong/moderate/weak). No auto-promotion: candidates persist with
+    promotion_status='candidate'; the calendar/thread rows are never written. Pure local
+    SQLite — no Graph calls, no token. Dry-run is the default; --apply writes
+    meeting_email_relationship_candidates. moderate/weak candidates route to review.
+    """
+    try:
+        store = ConstructionStore()
+        report = MeetingEmailCandidateBuilder(store).build(
+            target_project=project,
+            source_id=source,
+            time_window_hours=time_window_hours,
+            max_candidates=max_candidates,
+            dry_run=dry_run,
+        )
+        payload: Dict[str, Any] = {
+            "command": "graph calendar meeting-email-candidates",
+            "ok": True,
+            "mode": report.mode,
+            "result": report.model_dump(),
+            "guardrails": {
+                "external_systems": "read_only",
+                "writeback": "none",
+                "graph_calls": "none",
+                "auto_promotion": False,
+                "microsoft_365_writeback_enabled": False,
+                "dry_run_default": True,
+                "review_routing": "review_required_flag",
+            },
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph calendar meeting-email-candidates",
+            "ok": False,
+            "mode": "dry_run" if dry_run else "apply",
+            "status": "candidate_error",
             "error": str(e)[:200],
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))

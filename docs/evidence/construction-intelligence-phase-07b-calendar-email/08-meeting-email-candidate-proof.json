@@ -1,0 +1,73 @@
+{
+  "phase": "07B",
+  "prompt": "08 — Meeting Email Relationship Candidates",
+  "generated_utc": "2026-05-31",
+  "repo_sha_at_start": "9c9b138",
+  "branch": "main",
+  "package_version": "1.3.0",
+  "schema_version": 23,
+  "contract_version": "phase07b-meeting-email-candidate-v1",
+  "summary": "Adds MeetingEmailCandidateBuilder (new construction/relationships package) that pairs indexed calendar events with materialized email threads and persists confidence-labeled candidates to the V23 meeting_email_relationship_candidates table. Local-only, Graph-free, candidates-only (promotion_status='candidate', no auto-promotion). Signals: time-window overlap + organizer-domain overlap, with domain matches gated on temporal relevance.",
+  "files_changed": [
+    "src/hb_assistant/construction/relationships/__init__.py (new)",
+    "src/hb_assistant/construction/relationships/meeting_email_candidates.py (new — builder + Pydantic report/sample)",
+    "src/hb_assistant/construction/store/repositories.py (upsert_/list_meeting_email_relationship_candidate; list_calendar_event_index extended with start/end datetimes)",
+    "src/hb_assistant/cli/graph.py (graph calendar meeting-email-candidates command + import)",
+    "tests/test_meeting_email_relationship_candidates.py (new — 4 tests)",
+    "docs/architecture/25-phase-07b-meeting-email-candidates.md (new)",
+    "docs/evidence/construction-intelligence-phase-07b-calendar-email/08-meeting-email-candidate-proof.json (this file)"
+  ],
+  "preflight": [
+    {"command": "git rev-parse HEAD", "exit_code": 0, "result": "9c9b138"},
+    {"command": "git status --short", "exit_code": 0, "result": "clean except untracked .claude/"},
+    {"command": "python -m compileall -q src tests", "exit_code": 0},
+    {"command": "ruff check .", "exit_code": 0, "result": "All checks passed!"},
+    {"command": "mypy src", "exit_code": 0, "result": "Success: 161 source files"},
+    {"command": "pytest -m 'not live and not integration and not manual'", "exit_code": 0}
+  ],
+  "post_implementation_validation": [
+    {"command": "python -m compileall -q src tests", "exit_code": 0},
+    {"command": "ruff check .", "exit_code": 0, "result": "All checks passed!"},
+    {"command": "mypy src", "exit_code": 0, "result": "Success: no issues found in 161 source files"},
+    {"command": "pytest tests/test_meeting_email_relationship_candidates.py -v", "exit_code": 0, "result": "4 passed"},
+    {"command": "pytest -m 'not live and not integration and not manual'", "exit_code": 0, "result": "0 failed"},
+    {"command": "pytest tests/test_mutation_lockout.py", "exit_code": 0, "result": "graph/ static no-write scan clean"},
+    {"command": "hb-assistant construction-agent validate --json", "exit_code": 0},
+    {"command": "hb-assistant procore validate --json", "exit_code": 0},
+    {"command": "hb-assistant graph files status --json", "exit_code": 0},
+    {"command": "hb-assistant graph mail status --json", "exit_code": 0},
+    {"command": "hb-assistant graph calendar status --json", "exit_code": 0},
+    {"command": "hb-assistant graph calendar meeting-email-candidates --json", "exit_code": 0, "result": "dry-run default; 117 candidates computed (13 strong / 75 moderate / 29 weak)"},
+    {"command": "hb-assistant construction-agent data-quality gates --json", "exit_code": 0},
+    {"command": "hb-assistant construction-agent data-quality no-writeback-proof --json", "exit_code": 0, "result": "proof_passed=true, no_raw_values_persisted=true"}
+  ],
+  "ruff_format_note": "ruff format is NOT enforced repo-wide (222/341 files would reformat); ruff check . is the authoritative lint gate and passes. ruff format was not run.",
+  "design_note": "Initial unconditional domain matching produced ~960 near-cartesian candidates against the real store (the GC's own org domain appears as both organizer and sender across nearly every event/thread pair). The scoring was refined so a domain match must also be temporally relevant (within the time window), reducing the live candidate set to 117 (75 moderate) — a defensible, bounded set.",
+  "live_real_store_proof": {
+    "command": "graph calendar meeting-email-candidates --project tropical --apply --json (Graph-free)",
+    "events_evaluated": 108,
+    "threads_evaluated": 19,
+    "pairs_evaluated": 2052,
+    "candidates_created": 117,
+    "by_class": {"strong": 13, "moderate": 75, "weak": 29},
+    "review_routed": 104,
+    "no_auto_promotion": "0 rows with promotion_status != 'candidate'; all 108 calendar_event_index.project_key remain NULL after apply",
+    "guard_columns_sum": {"raw_body_persisted": 0, "raw_prompt_persisted": 0, "raw_response_persisted": 0, "external_writeback_performed": 0},
+    "leak_scan": {"raw_email_at": 0, "http_url": 0, "raw_domain_or_dotcom_in_participant_signal": 0},
+    "idempotency": "re-apply left the candidate count at 117 (stable candidate_id)",
+    "no_writeback_proof_after_write": {"proof_passed": true, "no_raw_values_persisted": true}
+  },
+  "guardrails_proven": {
+    "no_m365_mutation": "builder is Graph-free; mutation lockout scan clean",
+    "no_raw_values_persisted": "signals/source_reference carry hashes/bools/datetimes/counts only; live leak scan = 0",
+    "candidates_only_no_auto_promotion": "promotion_status='candidate', model_proposed=False; event/thread rows never written",
+    "dry_run_default": "build() dry_run defaults True; persist only on --apply; dry-run test persists 0 rows",
+    "review_routing": "moderate/weak route to review (review_required=True); strong does not",
+    "no_07d_readiness_claim": "no Phase 07D meeting-prep readiness claimed"
+  },
+  "remaining_gaps": [
+    "no-writeback / no-raw-body prover (data_quality/safety.py) still scans only the Phase 07A V20/V21 tables; extending it to the V23 meeting_email_relationship_candidates and the V11/V14 email tables is deferred to Phase 07B Prompt 12.",
+    "subject-topic overlap signal is not computable (thread summaries expose no subject word-token hashes); subject_topic_signal is left null."
+  ],
+  "next_prompt_may_proceed": true
+}

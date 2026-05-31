@@ -923,6 +923,7 @@ class ConstructionStore:
         conn = get_connection(self._db_path)
         sql = (
             "SELECT event_index_id, source_id, subject_token_hashes_json, organizer_domain,"
+            " start_datetime_utc, end_datetime_utc,"
             " is_private, is_cancelled, project_key, project_match_method,"
             " project_match_confidence, review_required, review_reasons_json"
             " FROM calendar_event_index"
@@ -935,6 +936,7 @@ class ConstructionStore:
         params = (*params, limit)
         keys = (
             "event_index_id", "source_id", "subject_token_hashes_json", "organizer_domain",
+            "start_datetime_utc", "end_datetime_utc",
             "is_private", "is_cancelled", "project_key", "project_match_method",
             "project_match_confidence", "review_required", "review_reasons_json",
         )
@@ -996,6 +998,119 @@ class ConstructionStore:
                     promotion_status, _utc_now(),
                 ),
             )
+
+    def upsert_meeting_email_relationship_candidate(
+        self,
+        *,
+        candidate_id: str,
+        event_index_id: str,
+        thread_key_hash: str,
+        candidate_type: str,
+        source_reference_json: str,
+        confidence: float,
+        confidence_class: str,
+        project_key: Optional[str] = None,
+        time_window_signal: Optional[str] = None,
+        participant_signal: Optional[str] = None,
+        subject_topic_signal: Optional[str] = None,
+        deterministic: bool = False,
+        model_proposed: bool = False,
+        review_required: bool = True,
+        promotion_status: str = "candidate",
+    ) -> None:
+        """Upsert a calendar event → email thread relationship candidate (V23).
+        Candidates only — ``promotion_status`` defaults to 'candidate' (no
+        auto-promotion); the calendar/thread rows are never written. Idempotent by
+        candidate_id. The signal / source_reference JSON must carry safe values only
+        (hashes/bools/datetimes/counts); the raw_body / raw_prompt / raw_response /
+        external_writeback CHECK columns remain 0."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO meeting_email_relationship_candidates
+                    (candidate_id, event_index_id, thread_key_hash, project_key,
+                     candidate_type, time_window_signal, participant_signal,
+                     subject_topic_signal, source_reference_json, confidence,
+                     confidence_class, deterministic, model_proposed, review_required,
+                     promotion_status, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(candidate_id) DO UPDATE SET
+                    event_index_id = excluded.event_index_id,
+                    thread_key_hash = excluded.thread_key_hash,
+                    project_key = excluded.project_key,
+                    candidate_type = excluded.candidate_type,
+                    time_window_signal = excluded.time_window_signal,
+                    participant_signal = excluded.participant_signal,
+                    subject_topic_signal = excluded.subject_topic_signal,
+                    source_reference_json = excluded.source_reference_json,
+                    confidence = excluded.confidence,
+                    confidence_class = excluded.confidence_class,
+                    deterministic = excluded.deterministic,
+                    model_proposed = excluded.model_proposed,
+                    review_required = excluded.review_required,
+                    promotion_status = excluded.promotion_status
+                """,
+                (
+                    candidate_id, event_index_id, thread_key_hash, project_key,
+                    candidate_type, time_window_signal, participant_signal,
+                    subject_topic_signal, source_reference_json, confidence,
+                    confidence_class, 1 if deterministic else 0, 1 if model_proposed else 0,
+                    1 if review_required else 0, promotion_status, _utc_now(),
+                ),
+            )
+
+    _MEETING_EMAIL_CANDIDATE_KEYS: tuple[str, ...] = (
+        "candidate_id", "event_index_id", "thread_key_hash", "project_key",
+        "candidate_type", "time_window_signal", "participant_signal",
+        "subject_topic_signal", "source_reference_json", "confidence",
+        "confidence_class", "deterministic", "model_proposed", "review_required",
+        "promotion_status", "created_utc",
+    )
+
+    def list_meeting_email_relationship_candidates(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        event_index_id: Optional[str] = None,
+        review_required: Optional[bool] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """List calendar event → email thread relationship candidates (V23) with
+        optional filters. Signal / source_reference JSON columns are decoded; the
+        boolean flags are returned as booleans."""
+        keys = self._MEETING_EMAIL_CANDIDATE_KEYS
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if event_index_id is not None:
+            clauses.append("event_index_id = ?")
+            params.append(event_index_id)
+        if review_required is not None:
+            clauses.append("review_required = ?")
+            params.append(1 if review_required else 0)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM meeting_email_relationship_candidates "
+            f"{where} ORDER BY confidence DESC, candidate_id LIMIT ?",
+            tuple(params),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            for json_field in (
+                "time_window_signal", "participant_signal", "subject_topic_signal",
+                "source_reference_json",
+            ):
+                record[json_field] = self._load_json(record[json_field])
+            for bool_field in ("deterministic", "model_proposed", "review_required"):
+                record[bool_field] = bool(record[bool_field])
+            results.append(record)
+        return results
 
     def get_source_location(self, source_id: str) -> Optional[dict[str, Any]]:
         conn = get_connection(self._db_path)
