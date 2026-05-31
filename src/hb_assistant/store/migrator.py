@@ -1990,6 +1990,150 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v20 Phase 07A Prompt 01 — data quality, canonical source-record map,
+    # relationship resolution queue, project coverage mart, and gate results.
+    # Additive only; V1-V19 tables untouched. All tables include the Phase 07A
+    # guardrail CHECKs (raw_body_persisted=0, external_writeback_performed=0,
+    # and full_text_persisted=0 where applicable). Source: package
+    # 05_SCHEMA_AND_DATA_MODEL.md + resources/sql/phase_07a_data_quality_schema_proposal.sql.
+    V20_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS construction_data_quality_runs (
+          run_id TEXT PRIMARY KEY,
+          phase TEXT NOT NULL,
+          started_utc TEXT NOT NULL,
+          completed_utc TEXT,
+          status TEXT NOT NULL,
+          repo_sha TEXT,
+          schema_version INTEGER,
+          summary_json TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_table_lifecycle_registry (
+          table_name TEXT PRIMARY KEY,
+          table_family TEXT NOT NULL,
+          lifecycle_status TEXT NOT NULL,
+          expected_population_status TEXT NOT NULL,
+          phase_owner TEXT,
+          blocking_for_phase TEXT,
+          notes_redacted TEXT,
+          last_audited_run_id TEXT,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS source_system_record_map (
+          canonical_record_id TEXT PRIMARY KEY,
+          project_key TEXT,
+          project_number TEXT,
+          source_system TEXT NOT NULL,
+          source_table TEXT NOT NULL,
+          source_primary_key TEXT NOT NULL,
+          record_type TEXT,
+          record_status TEXT,
+          title_redacted TEXT,
+          source_url_redacted TEXT,
+          first_seen_utc TEXT,
+          last_seen_utc TEXT,
+          source_updated_utc TEXT,
+          confidence_class TEXT NOT NULL,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          mapping_signals_json TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          full_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(full_text_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          UNIQUE(source_system, source_table, source_primary_key)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS relationship_resolution_queue (
+          relationship_id TEXT PRIMARY KEY,
+          from_canonical_record_id TEXT,
+          to_canonical_record_id TEXT,
+          from_source_system TEXT NOT NULL,
+          to_source_system TEXT,
+          relationship_type TEXT NOT NULL,
+          relationship_status TEXT NOT NULL,
+          confidence_class TEXT NOT NULL,
+          confidence REAL,
+          evidence_redacted TEXT,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          promotion_status TEXT NOT NULL DEFAULT 'not_promoted',
+          rejection_reason TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          full_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(full_text_persisted = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS project_source_coverage_mart (
+          coverage_id TEXT PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          project_number TEXT,
+          source_domain TEXT NOT NULL,
+          record_count INTEGER NOT NULL DEFAULT 0,
+          mapped_count INTEGER NOT NULL DEFAULT 0,
+          unmapped_count INTEGER NOT NULL DEFAULT 0,
+          relationship_count INTEGER NOT NULL DEFAULT 0,
+          orphan_count INTEGER NOT NULL DEFAULT 0,
+          quality_status TEXT NOT NULL,
+          blocking_reasons_json TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS data_quality_gate_results (
+          gate_result_id TEXT PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          gate_name TEXT NOT NULL,
+          gate_status TEXT NOT NULL,
+          threshold_json TEXT,
+          observed_json TEXT,
+          blocking INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_source_record_map_project_system
+          ON source_system_record_map(project_key, source_system);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_source_record_map_source_key
+          ON source_system_record_map(source_system, source_table, source_primary_key);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_source_record_map_type_status
+          ON source_system_record_map(record_type, record_status);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_relationship_resolution_status_confidence
+          ON relationship_resolution_queue(relationship_status, confidence_class);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_relationship_resolution_from
+          ON relationship_resolution_queue(from_canonical_record_id);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_relationship_resolution_to
+          ON relationship_resolution_queue(to_canonical_record_id);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_project_source_coverage_project_domain
+          ON project_source_coverage_mart(project_key, source_domain);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_data_quality_gate_results_run_status
+          ON data_quality_gate_results(run_id, gate_status, blocking);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -2221,6 +2365,17 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (19, 'v19_construction_download_and_extraction_receipts', ?)",
+                    (now,),
+                )
+
+            # v20 Phase 07A Prompt 01 data-quality + source-record-map tables
+            # (additive CREATE TABLE + INDEX only; CHECK guardrails; V1-V19 untouched).
+            for stmt in self.V20_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 20")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (20, 'v20_data_quality_and_source_record_map', ?)",
                     (now,),
                 )
 

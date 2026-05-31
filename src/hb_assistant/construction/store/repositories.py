@@ -3126,3 +3126,220 @@ class ConstructionStore:
         ):
             record[bool_field] = bool(record[bool_field])
         return record
+
+    # -------------------------------------------------------------------------
+    # V20 Phase 07A Prompt 01 — Data Quality + Canonical Source-Record Map
+    # All adapters enforce the guardrail flags=False at the Python layer (defense
+    # in depth with the schema CHECKs). No raw bodies, full text, or writeback.
+    # -------------------------------------------------------------------------
+
+    def insert_data_quality_run(
+        self,
+        *,
+        run_id: str,
+        phase: str,
+        started_utc: str,
+        status: str,
+        repo_sha: Optional[str] = None,
+        schema_version: Optional[int] = None,
+        summary_json: Optional[str] = None,
+    ) -> None:
+        """Record a data-quality evaluation run (idempotent on run_id)."""
+        if not run_id:
+            raise ValueError("run_id is required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO construction_data_quality_runs
+                (run_id, phase, started_utc, completed_utc, status, repo_sha, schema_version, summary_json,
+                 raw_body_persisted, external_writeback_performed)
+                VALUES (?, ?, ?, NULL, ?, ?, ?, ?, 0, 0)
+                """,
+                (run_id, phase, started_utc, status, repo_sha, schema_version, summary_json),
+            )
+
+    def upsert_table_lifecycle_registry(self, row: dict[str, Any]) -> None:
+        """Upsert a table lifecycle classification row (PK = table_name)."""
+        table_name = row.get("table_name")
+        if not table_name:
+            raise ValueError("table_name is required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO construction_table_lifecycle_registry
+                (table_name, table_family, lifecycle_status, expected_population_status,
+                 phase_owner, blocking_for_phase, notes_redacted, last_audited_run_id, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    table_name,
+                    row.get("table_family"),
+                    row.get("lifecycle_status"),
+                    row.get("expected_population_status"),
+                    row.get("phase_owner"),
+                    row.get("blocking_for_phase"),
+                    row.get("notes_redacted"),
+                    row.get("last_audited_run_id"),
+                    _utc_now(),
+                ),
+            )
+
+    def upsert_source_system_record(self, rec: dict[str, Any]) -> str:
+        """Upsert a canonical source-system record. Returns canonical_record_id.
+        Adapter-enforced: raw_body_persisted=0, full_text_persisted=0, external_writeback=0.
+        """
+        for flag in ("raw_body_persisted", "full_text_persisted", "external_writeback_performed"):
+            if rec.get(flag) not in (None, False, 0):
+                raise ValueError(f"{flag} must be False — Phase 07A source_system_record_map never persists raw content or performs writeback")
+        canonical_id = rec.get("canonical_record_id")
+        if not canonical_id:
+            raise ValueError("canonical_record_id is required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO source_system_record_map
+                (canonical_record_id, project_key, project_number, source_system, source_table,
+                 source_primary_key, record_type, record_status, title_redacted, source_url_redacted,
+                 first_seen_utc, last_seen_utc, source_updated_utc, confidence_class, review_required,
+                 mapping_signals_json, raw_body_persisted, full_text_persisted, external_writeback_performed,
+                 created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?)
+                ON CONFLICT(source_system, source_table, source_primary_key) DO UPDATE SET
+                    project_key=excluded.project_key,
+                    project_number=excluded.project_number,
+                    record_type=excluded.record_type,
+                    record_status=excluded.record_status,
+                    title_redacted=excluded.title_redacted,
+                    source_url_redacted=excluded.source_url_redacted,
+                    last_seen_utc=excluded.last_seen_utc,
+                    source_updated_utc=excluded.source_updated_utc,
+                    confidence_class=excluded.confidence_class,
+                    review_required=excluded.review_required,
+                    mapping_signals_json=excluded.mapping_signals_json,
+                    updated_utc=excluded.updated_utc
+                """,
+                (
+                    canonical_id,
+                    rec.get("project_key"),
+                    rec.get("project_number"),
+                    rec.get("source_system"),
+                    rec.get("source_table"),
+                    rec.get("source_primary_key"),
+                    rec.get("record_type"),
+                    rec.get("record_status"),
+                    rec.get("title_redacted"),
+                    rec.get("source_url_redacted"),
+                    rec.get("first_seen_utc"),
+                    rec.get("last_seen_utc"),
+                    rec.get("source_updated_utc"),
+                    rec.get("confidence_class"),
+                    1 if rec.get("review_required") else 0,
+                    rec.get("mapping_signals_json"),
+                    _utc_now(),
+                    _utc_now(),
+                ),
+            )
+        return canonical_id
+
+    def insert_relationship_resolution_candidate(self, rel: dict[str, Any]) -> str:
+        """Insert (or upsert) a relationship candidate/queue row. Returns relationship_id.
+        Enforces guardrail flags at adapter layer.
+        """
+        for flag in ("raw_body_persisted", "full_text_persisted"):
+            if rel.get(flag) not in (None, False, 0):
+                raise ValueError(f"{flag} must be False — Phase 07A relationship_resolution_queue never persists raw content")
+        relationship_id = rel.get("relationship_id")
+        if not relationship_id:
+            raise ValueError("relationship_id is required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO relationship_resolution_queue
+                (relationship_id, from_canonical_record_id, to_canonical_record_id,
+                 from_source_system, to_source_system, relationship_type, relationship_status,
+                 confidence_class, confidence, evidence_redacted, review_required,
+                 promotion_status, rejection_reason, raw_body_persisted, full_text_persisted,
+                 created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
+                """,
+                (
+                    relationship_id,
+                    rel.get("from_canonical_record_id"),
+                    rel.get("to_canonical_record_id"),
+                    rel.get("from_source_system"),
+                    rel.get("to_source_system"),
+                    rel.get("relationship_type"),
+                    rel.get("relationship_status"),
+                    rel.get("confidence_class"),
+                    rel.get("confidence"),
+                    rel.get("evidence_redacted"),
+                    1 if rel.get("review_required") else 0,
+                    rel.get("promotion_status") or "not_promoted",
+                    rel.get("rejection_reason"),
+                    _utc_now(),
+                    _utc_now(),
+                ),
+            )
+        return relationship_id
+
+    def upsert_project_source_coverage(self, cov: dict[str, Any]) -> None:
+        """Upsert a project source coverage mart row (PK coverage_id)."""
+        coverage_id = cov.get("coverage_id")
+        if not coverage_id:
+            raise ValueError("coverage_id is required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO project_source_coverage_mart
+                (coverage_id, run_id, project_key, project_number, source_domain,
+                 record_count, mapped_count, unmapped_count, relationship_count, orphan_count,
+                 quality_status, blocking_reasons_json, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    coverage_id,
+                    cov.get("run_id"),
+                    cov.get("project_key"),
+                    cov.get("project_number"),
+                    cov.get("source_domain"),
+                    cov.get("record_count", 0),
+                    cov.get("mapped_count", 0),
+                    cov.get("unmapped_count", 0),
+                    cov.get("relationship_count", 0),
+                    cov.get("orphan_count", 0),
+                    cov.get("quality_status"),
+                    cov.get("blocking_reasons_json"),
+                    _utc_now(),
+                ),
+            )
+
+    def insert_data_quality_gate_result(self, gate: dict[str, Any]) -> None:
+        """Insert a gate result row (idempotent on gate_result_id)."""
+        gate_result_id = gate.get("gate_result_id")
+        if not gate_result_id:
+            raise ValueError("gate_result_id is required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO data_quality_gate_results
+                (gate_result_id, run_id, gate_name, gate_status, threshold_json, observed_json,
+                 blocking, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    gate_result_id,
+                    gate.get("run_id"),
+                    gate.get("gate_name"),
+                    gate.get("gate_status"),
+                    gate.get("threshold_json"),
+                    gate.get("observed_json"),
+                    1 if gate.get("blocking") else 0,
+                    _utc_now(),
+                ),
+            )
