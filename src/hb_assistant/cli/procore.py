@@ -1530,6 +1530,43 @@ def live_coverage_matrix(
     _emit({**matrix, "guardrails": _GUARDRAILS}, json_out=json_out)
 
 
+@live_app.command("overdue")
+def live_overdue(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    importance: Optional[str] = typer.Option(
+        None, "--importance", help="Optional importance filter (high/medium/low)."
+    ),
+    endpoint: Optional[str] = typer.Option(None, "--endpoint", help="Optional endpoint filter."),
+    dimension: Optional[str] = typer.Option(
+        None, "--dimension",
+        help="Optional dimension filter "
+        "(cost_exposure/schedule_exposure/safety_quality_compliance/overdue).",
+    ),
+    max_items: int = typer.Option(50, "--max-items", min=1, help="Max queue rows returned."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Operational overdue/action queue across controls, financials, schedule, safety/quality,
+    and review-required signals (Phase 06B Prompt 08). Each row carries endpoint, record key,
+    due date + overdue status, importance, owner/responsible-party key, review flag, reason
+    codes, dimensions, and exposure-fact NAMES. Read-only over local SQLite; no network, no DB
+    writes, no raw values, no determinations."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_action_queue import build_overdue_queue
+
+    endpoint_id, reasons = _resolve_endpoint_id(endpoint)
+    if reasons:
+        _emit({"command": "hb-assistant procore live overdue", "ok": False, "phase": _QUERY_PHASE,
+               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": reasons},
+              json_out=json_out, exit_code=3)
+        return
+    SQLiteMigrator().apply()
+    report = build_overdue_queue(
+        project, now_utc=_query_now().isoformat(),
+        importance=importance, endpoint_id=endpoint_id, dimension=dimension, max_items=max_items,
+    )
+    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
+
+
 live_records_app = typer.Typer(help="Procore live SQLite record read-only commands.")
 live_app.add_typer(live_records_app, name="records")
 

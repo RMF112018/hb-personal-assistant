@@ -1,0 +1,155 @@
+{
+  "command": "hb-assistant procore live overdue",
+  "ok": true,
+  "phase": "Phase 06B Prompt 08",
+  "project_key": "tropical",
+  "generated_at": "2026-05-30T00:00:00+00:00",
+  "filters": {
+    "importance": null,
+    "endpoint_id": null,
+    "dimension": null
+  },
+  "summary": {
+    "total_open": 5,
+    "overdue": 2,
+    "upcoming": 1,
+    "no_due_date": 2,
+    "high_importance": 3,
+    "review_required": 1,
+    "by_dimension": {
+      "cost_exposure": 1,
+      "overdue": 1,
+      "safety_quality_compliance": 1,
+      "schedule_exposure": 1
+    }
+  },
+  "queue": [
+    {
+      "signal_type": "rfi_response_due",
+      "endpoint_id": "rfis",
+      "record_key": "tropical|rfis||1",
+      "due_at_utc": "2026-04-15T00:00:00+00:00",
+      "status": "overdue",
+      "days_overdue": 45,
+      "importance": "medium",
+      "owner_entity_key": null,
+      "review_required": false,
+      "reason_codes": [
+        "past_due_date"
+      ],
+      "dimensions": [],
+      "title_redacted": "rfi_response_due",
+      "source_url_redacted": "/rest/v1.0/projects/2525840/rfis/1",
+      "exposure_present": false,
+      "exposure_amount_names": [],
+      "exposure_fact_count": 0
+    },
+    {
+      "signal_type": "rfi_overdue",
+      "endpoint_id": "rfis",
+      "record_key": "tropical|rfis||1",
+      "due_at_utc": "2026-05-01T00:00:00+00:00",
+      "status": "overdue",
+      "days_overdue": 29,
+      "importance": "high",
+      "owner_entity_key": "user:pm1",
+      "review_required": false,
+      "reason_codes": [
+        "overdue_signal_type",
+        "past_due_date"
+      ],
+      "dimensions": [
+        "overdue"
+      ],
+      "title_redacted": "rfi_overdue",
+      "source_url_redacted": "/rest/v1.0/projects/2525840/rfis/1",
+      "exposure_present": false,
+      "exposure_amount_names": [],
+      "exposure_fact_count": 0
+    },
+    {
+      "signal_type": "delivery_due",
+      "endpoint_id": "deliveries",
+      "record_key": "tropical|deliveries||3",
+      "due_at_utc": "2026-12-01T00:00:00+00:00",
+      "status": "upcoming",
+      "days_overdue": null,
+      "importance": "medium",
+      "owner_entity_key": null,
+      "review_required": false,
+      "reason_codes": [],
+      "dimensions": [
+        "schedule_exposure"
+      ],
+      "title_redacted": "delivery_due",
+      "source_url_redacted": null,
+      "exposure_present": false,
+      "exposure_amount_names": [],
+      "exposure_fact_count": 0
+    },
+    {
+      "signal_type": "commitment_cost_impact_flagged",
+      "endpoint_id": "commitments",
+      "record_key": "tropical|commitments||9",
+      "due_at_utc": null,
+      "status": "no_due_date",
+      "days_overdue": null,
+      "importance": "high",
+      "owner_entity_key": null,
+      "review_required": false,
+      "reason_codes": [
+        "no_due_date_high_importance"
+      ],
+      "dimensions": [
+        "cost_exposure"
+      ],
+      "title_redacted": "commitment_cost_impact_flagged",
+      "source_url_redacted": null,
+      "exposure_present": true,
+      "exposure_amount_names": [
+        "estimated_cost"
+      ],
+      "exposure_fact_count": 1
+    },
+    {
+      "signal_type": "observation_open_safety",
+      "endpoint_id": "observations",
+      "record_key": "tropical|observations||55",
+      "due_at_utc": null,
+      "status": "no_due_date",
+      "days_overdue": null,
+      "importance": "high",
+      "owner_entity_key": null,
+      "review_required": true,
+      "reason_codes": [
+        "no_due_date_high_importance",
+        "review_required_record"
+      ],
+      "dimensions": [
+        "safety_quality_compliance"
+      ],
+      "title_redacted": "observation_open_safety",
+      "source_url_redacted": "/rest/v1.0/projects/2525840/observations/55",
+      "exposure_present": false,
+      "exposure_amount_names": [],
+      "exposure_fact_count": 0
+    }
+  ],
+  "queue_truncated": false,
+  "unsupported_due_date_endpoints": [
+    "commitments",
+    "observations"
+  ],
+  "no_live_call_performed": true,
+  "no_raw_values_persisted": true,
+  "determinations_made": false,
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true,
+    "live_calls_disabled": true,
+    "correspondence_excluded": true,
+    "schedule_tasks_deferred": true
+  },
+  "queue_note": "synthetic 6-signal fixture (1 resolved excluded); rows ordered overdue-first. due dates / owner / source links / exposure names are illustrative."
+}

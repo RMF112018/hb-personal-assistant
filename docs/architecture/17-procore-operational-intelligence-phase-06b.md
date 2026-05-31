@@ -69,3 +69,44 @@ string, never executed): `HB_PROCORE_LIVE=1 hb-assistant procore live sync --pro
 `no_raw_values_persisted` / `determinations_made: false`. Read-only — no `procore_endpoint_freshness`
 table is persisted (no new migration); freshness is derived on demand. Evidence:
 `docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/07-freshness-and-stale-data-proof.json`.
+
+## Overdue & action queue (Prompt 08)
+
+`store/procore_action_queue.py::build_overdue_queue(project_key, *, now_utc, importance=None,
+endpoint_id=None, dimension=None, max_items=50, db_path=None)` — deterministic, read-only.
+Surfaced by `hb-assistant procore live overdue --project KEY [--importance I] [--endpoint E]
+[--dimension D] [--max-items N] --json`. It reuses
+`procore_enrichment.get_procore_action_signals` and the Prompt 06 helpers `_dimensions_for` /
+`_parse_iso` (`_DIMENSION_KEYWORDS`) from `procore_project_health`.
+
+**Inputs → one operational queue** (all `project_key`-scoped):
+- **open work** — every OPEN `procore_action_signals` row (the queue spine), carrying
+  `signal_type`, `importance`, `due_at_utc`, `owner_entity_key` (owner/responsible-party),
+  `record_key`, `endpoint_id`, and the signal's own `reason_codes`.
+- **due dates** — the signal's normalized `due_at_utc` first; when absent, a best-effort
+  fallback reads one normalized date from the canonical record (`procore_live_records.
+  canonical_json_redacted`) via an explicit `_DUE_DATE_FIELDS` allowlist (only the normalized
+  ISO date is re-emitted — never the raw field value). Each row gets a `status`
+  (`overdue` / `upcoming` / `no_due_date`) and, when overdue, `days_overdue`.
+- **review flag + source link** — joined from `procore_live_records` on `record_key`
+  (`review_required`, `source_url_redacted`); signals with no matching live record degrade
+  gracefully (`review_required: false`, `source_url_redacted: null`).
+- **exposure (where available)** — `procore_financial_amount_facts` joined on `record_key`,
+  surfaced as `exposure_present` + `exposure_amount_names` (distinct NAMES) + `exposure_fact_count`.
+  **Amount values are never emitted.**
+- **dimensions** — each row classified via `_dimensions_for` (cost / schedule / safety-quality-
+  compliance / overdue lenses).
+
+**Output:** `summary` (total_open / overdue / upcoming / no_due_date / high_importance /
+review_required / by_dimension), a deterministically ordered `queue` (overdue-first, then
+most-overdue, importance, due date, key) with the per-row fields above + derived
+`reason_codes` (`past_due_date`, `no_due_date_high_importance`, `overdue_signal_type`,
+`review_required_record`), `queue_truncated`, and `unsupported_due_date_endpoints` (endpoints
+for which no queued item carried a normalizable due date — the documented stop-condition
+surface).
+
+**Guardrail posture:** intelligence/review aid only — no legal/claims/financial/safety/
+entitlement/schedule determination (`determinations_made: false`), `no_live_call_performed:
+true`, `no_raw_values_persisted: true`. Read-only; no migration/persistence (consistent with
+Prompts 06/07). Evidence:
+`docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/08-overdue-and-action-queue-proof.json`.
