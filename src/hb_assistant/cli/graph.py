@@ -33,6 +33,7 @@ from hb_assistant.construction.classification.client import OllamaChatClient
 from hb_assistant.construction.config import load_source_registry
 from hb_assistant.construction.config.loader import SourceRegistryError
 from hb_assistant.construction.correspondence import CorrespondenceReviewBuilder
+from hb_assistant.construction.document import evaluate_source_scope_compliance
 from hb_assistant.construction.email import (
     EmailFolderDiscovery,
     EmailIntelligenceClassifier,
@@ -61,6 +62,10 @@ from hb_assistant.construction.policy import (
     ReviewPolicyEvaluator,
     ReviewRulesError,
     load_review_rules,
+)
+from hb_assistant.construction.policy.document_source_policy import (
+    DocumentSourcePolicyError,
+    load_document_source_policy,
 )
 from hb_assistant.construction.policy.email_active import (
     load_email_intelligence_active_policy,
@@ -504,6 +509,36 @@ def files_status_cmd(
             ),
         },
     }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@files_app.command("scope-compliance")
+def files_scope_compliance_cmd(
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Verify SharePoint/OneDrive source-scope compliance before document-card promotion.
+
+    Offline and read-only: loads the source registry + the Phase 07C document-source
+    policy and classifies every ENABLED source. SharePoint approved drive / project-drive
+    scopes are compliant; OneDrive sources are compliant only with an explicit
+    selected-folder allowlist (root-wide OneDrive indexing is not allowed). Non-compliant
+    sources are reported with action ``block_document_card_promotion`` — the blocking
+    signal the materializer honors. Constructs no Graph client, acquires no token, and
+    writes nothing.
+    """
+    try:
+        registry = load_source_registry()
+    except (SourceRegistryError, ValidationError) as e:
+        _echo_files_error("graph files scope-compliance", e, json_out)
+        return
+    try:
+        policy = load_document_source_policy()
+    except DocumentSourcePolicyError as e:
+        _echo_files_error("graph files scope-compliance", e, json_out)
+        return
+
+    payload = evaluate_source_scope_compliance(registry, policy)
     typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
     raise typer.Exit(0)
 

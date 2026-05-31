@@ -1,0 +1,18 @@
+version: phase07c-document-source-policy-v1
+defaults:
+  read_only: true
+  external_writeback_allowed: false
+  copy_originals_to_vault: false
+  persist_raw_paths_in_outputs: false
+  persist_signed_or_download_urls: false
+sharepoint:
+  intended_scope: approved_drive_or_approved_project_drive_scope
+  include_nested_folders: true
+  require_delta_or_baseline_receipt: true
+  non_compliant_action: block_document_card_promotion
+onedrive:
+  intended_scope: selected_folders_only
+  include_nested_folders_under_selected_folders: true
+  root_wide_indexing_allowed: false
+  require_selected_folder_allowlist: true
+  non_compliant_action: block_document_card_promotion

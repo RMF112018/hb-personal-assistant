@@ -281,6 +281,10 @@ class SourceLocation(BaseModel):
     list_id: str | None = None
     page_url: str | None = None
     local_sync_path: str | None = None
+    # Phase 07C OneDrive selected-folder allowlist (drive-item ids). A OneDrive
+    # source is scope-compliant only when this is non-empty; root-wide OneDrive
+    # indexing is not allowed by the 07C document-source policy.
+    selected_folder_item_ids: list[str] | None = None
 
     # Crawl + match descriptors.
     sync_mode: str | None = None

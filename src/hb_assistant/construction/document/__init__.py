@@ -16,9 +16,15 @@ from hb_assistant.construction.document.contracts import (
     load_all_document_contracts,
     load_document_contract,
 )
+from hb_assistant.construction.document.source_scope import (
+    evaluate_source_scope_compliance,
+    non_compliant_source_keys,
+)
 
 __all__ = [
     "DOCUMENT_CONTRACT_FILES",
     "load_document_contract",
     "load_all_document_contracts",
+    "evaluate_source_scope_compliance",
+    "non_compliant_source_keys",
 ]
