@@ -1,0 +1,68 @@
+{
+  "phase": "07B",
+  "prompt": "11 — 07B Data Quality Gates",
+  "generated_utc": "2026-05-31",
+  "repo_sha_at_start": "a721b55",
+  "branch": "main",
+  "package_version": "1.3.0",
+  "schema_version": 23,
+  "manifest_version": "phase07b-data-quality-gates-v1",
+  "summary": "Added an authoritative phase_07b_data_quality_gates.json manifest that drives four 07B presence gates (calendar/email-classifier/thread-summary/meeting-email-candidate readiness), fixing the calendar gate's table bug (calendar_events -> calendar_event_index) and adding the two missing gates. A structured meeting_prep_readiness block keeps Phase 07D blocked until every prerequisite (07B + 07C + relationship + safety) passes; auto_readiness_allowed=false. Read-only; the only SQLite write is the gates' own result rows.",
+  "files_changed": [
+    "src/hb_assistant/resources/json/phase_07b_data_quality_gates.json (new — 07B gate manifest + meeting-prep prerequisites)",
+    "src/hb_assistant/construction/data_quality/gates.py (manifest loader; _gate_phase_07b_presence loop replacing the two stubs; meeting_prep_readiness; gate-name/phase lists)",
+    "tests/test_phase07b_gates.py (new — 3 tests)",
+    "docs/architecture/28-phase-07b-data-quality-gates.md (new)",
+    "docs/evidence/construction-intelligence-phase-07b-calendar-email/11-data-quality-gates.json (this file)"
+  ],
+  "preflight": [
+    {"command": "git rev-parse HEAD", "exit_code": 0, "result": "a721b55"},
+    {"command": "git status --short", "exit_code": 0, "result": "clean except untracked .claude/"},
+    {"command": "python -m compileall -q src tests", "exit_code": 0},
+    {"command": "ruff check .", "exit_code": 0, "result": "All checks passed!"},
+    {"command": "mypy src", "exit_code": 0, "result": "Success: 164 source files"},
+    {"command": "pytest tests/test_data_quality_gates.py", "exit_code": 0, "result": "5 passed (existing gates test unaffected)"},
+    {"command": "pytest -m 'not live and not integration and not manual'", "exit_code": 0}
+  ],
+  "post_implementation_validation": [
+    {"command": "python -m compileall -q src tests", "exit_code": 0},
+    {"command": "ruff check .", "exit_code": 0, "result": "All checks passed!"},
+    {"command": "mypy src", "exit_code": 0, "result": "Success: no issues found in 164 source files"},
+    {"command": "pytest tests/test_phase07b_gates.py tests/test_data_quality_gates.py -v", "exit_code": 0, "result": "8 passed (3 new + 5 existing)"},
+    {"command": "pytest -m 'not live and not integration and not manual'", "exit_code": 0, "result": "0 failed"},
+    {"command": "pytest tests/test_mutation_lockout.py", "exit_code": 0},
+    {"command": "hb-assistant construction-agent validate --json", "exit_code": 0},
+    {"command": "hb-assistant procore validate --json", "exit_code": 0},
+    {"command": "hb-assistant graph files status --json", "exit_code": 0},
+    {"command": "hb-assistant graph mail status --json", "exit_code": 0},
+    {"command": "hb-assistant graph calendar status --json", "exit_code": 0},
+    {"command": "hb-assistant construction-agent data-quality gates --json", "exit_code": 0},
+    {"command": "hb-assistant construction-agent data-quality no-writeback-proof --json", "exit_code": 0, "result": "proof_passed=true, no_raw_values_persisted=true"}
+  ],
+  "ruff_format_note": "ruff format is NOT enforced repo-wide; ruff check . is the authoritative lint gate and passes. ruff format was not run.",
+  "live_real_store_gate_status": {
+    "calendar_population_status": "pass",
+    "email_classifier_persistence_status": "pass",
+    "email_thread_summary_population_status": "pass",
+    "meeting_email_candidate_population_status": "pass",
+    "document_card_population_status": "deferred_not_blocking",
+    "total_gates": 15
+  },
+  "live_meeting_prep_readiness": {
+    "ready": false,
+    "blocked_by": ["document_card_population_status", "review_required_routing_presence"],
+    "auto_readiness_allowed": false,
+    "meeting_prep_readiness_claim": "blocked"
+  },
+  "regression_fixed": "calendar_population_status now reads calendar_event_index (108 live rows -> pass); under the prior calendar_events bug it always deferred despite live data.",
+  "guardrails_proven": {
+    "no_m365_mutation": "gates Graph-free; mutation lockout scan clean",
+    "no_raw_values": "gate report emits names/counts/statuses only; live JSON has no raw subjects/addresses",
+    "only_sqlite_write_is_gate_results": "insert_data_quality_gate_result (persist=True) — established gates behavior; no external writeback",
+    "no_07d_auto_readiness": "meeting_prep_readiness.ready=false with auto_readiness_allowed=false; claim never 'ready'"
+  },
+  "remaining_gaps": [
+    "The no-writeback / no-raw-body prover (data_quality/safety.py) still scans only the Phase 07A V20/V21 tables; extending it to the V11/V14/V23 calendar/email tables is deferred to Phase 07B Prompt 12."
+  ],
+  "next_prompt_may_proceed": true
+}

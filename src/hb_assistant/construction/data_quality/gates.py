@@ -62,6 +62,8 @@ _CORE_GATE_NAMES = [
     "candidate_orphan_rate",
     "email_classifier_persistence_status",
     "calendar_population_status",
+    "email_thread_summary_population_status",
+    "meeting_email_candidate_population_status",
     "document_card_population_status",
     "financial_amount_parseability",
     "financial_currency_completeness",
@@ -75,6 +77,8 @@ _CORE_GATE_NAMES = [
 _PHASE_ASSIGNMENTS = {
     "calendar_population_status": "07B",
     "email_classifier_persistence_status": "07B",
+    "email_thread_summary_population_status": "07B",
+    "meeting_email_candidate_population_status": "07B",
     "document_card_population_status": "07C",
     "financial_amount_parseability": "08B",
     "financial_currency_completeness": "08B",
@@ -139,6 +143,50 @@ def _load_thresholds() -> dict[str, float]:
         }
 
 
+def _load_phase_07b_gate_manifest() -> dict[str, Any]:
+    """Load the authoritative Phase 07B gate manifest (gates + meeting-prep prerequisites).
+
+    Prefers package resources; falls back to the filesystem and finally to an in-code copy
+    so the evaluator never crashes on a partial install."""
+    pkg = "hb_assistant.resources.json"
+    filename = "phase_07b_data_quality_gates.json"
+    try:
+        if hasattr(importlib_resources, "files"):
+            text = (importlib_resources.files(pkg) / filename).read_text(encoding="utf-8")
+        else:
+            text = importlib_resources.read_text(pkg, filename, encoding="utf-8")
+        return json.loads(text)
+    except Exception:
+        candidate = (
+            Path(__file__).resolve().parents[4]
+            / "src" / "hb_assistant" / "resources" / "json" / filename
+        )
+        if candidate.exists():
+            return json.loads(candidate.read_text(encoding="utf-8"))
+        return {
+            "version": "phase07b-data-quality-gates-v1",
+            "gates": [
+                {"name": "calendar_population_status", "phase": "07B", "kind": "presence",
+                 "table": "calendar_event_index"},
+                {"name": "email_classifier_persistence_status", "phase": "07B",
+                 "kind": "presence", "table": "email_model_classifications"},
+                {"name": "email_thread_summary_population_status", "phase": "07B",
+                 "kind": "presence", "table": "email_thread_summaries"},
+                {"name": "meeting_email_candidate_population_status", "phase": "07B",
+                 "kind": "presence", "table": "meeting_email_relationship_candidates"},
+            ],
+            "meeting_prep_prerequisites": [
+                "calendar_population_status", "email_classifier_persistence_status",
+                "email_thread_summary_population_status",
+                "meeting_email_candidate_population_status",
+                "document_card_population_status", "deterministic_orphan_rate",
+                "candidate_orphan_rate", "review_required_routing_presence",
+                "raw_content_leakage_scan", "external_writeback_scan",
+            ],
+            "auto_readiness_allowed": False,
+        }
+
+
 def _safe_select(conn, sql: str, params: tuple = ()) -> list[dict[str, Any]]:
     try:
         cur = conn.execute(sql, params)
@@ -170,6 +218,7 @@ class GateEvaluator:
         self.generated_utc = _now()
         self.run_id = f"phase07a-gates-{self.generated_utc[:19].replace(':','-')}"
         self.thresholds = _load_thresholds()
+        self.phase_07b_manifest = _load_phase_07b_gate_manifest()
         self.results: list[dict[str, Any]] = []
         self.review_items: list[str] = []  # populated only for high-impact items needing human attention
 
@@ -326,17 +375,26 @@ class GateEvaluator:
             future_phase=None,
         )
 
-    def _gate_email_classifier_persistence(self) -> dict[str, Any]:
-        # The gate is "status" – presence of the upsert path + non-zero rows in a classification table if it exists.
+    def _gate_phase_07b_presence(self) -> None:
+        """Manifest-driven Phase 07B presence gates (calendar / email-classifier /
+        thread-summary / meeting-email-candidate readiness). Each gate passes when its
+        redacted read-model table holds at least one row, else defers to 07B. Table names
+        come from the trusted in-package manifest, not user input."""
         conn = get_connection(self.db_path)
-        # We treat absence of the table or zero rows as deferred (email thread intelligence is 07B)
-        count = _safe_scalar(conn, "SELECT COUNT(*) FROM email_model_classifications") if self._table_exists(conn, "email_model_classifications") else 0
-        return self._classify("email_classifier_persistence_status", count > 0, None, is_boolean=True, future_phase="07B")
-
-    def _gate_calendar_population(self) -> dict[str, Any]:
-        conn = get_connection(self.db_path)
-        count = _safe_scalar(conn, "SELECT COUNT(*) FROM calendar_events") if self._table_exists(conn, "calendar_events") else 0
-        return self._classify("calendar_population_status", count > 0, None, is_boolean=True, future_phase="07B")
+        for gate in self.phase_07b_manifest.get("gates", []):
+            table = gate["table"]
+            count = (
+                _safe_scalar(conn, f"SELECT COUNT(*) FROM {table}")
+                if self._table_exists(conn, table)
+                else 0
+            )
+            self._classify(
+                gate["name"],
+                bool(count and int(count) > 0),
+                None,
+                is_boolean=True,
+                future_phase=gate.get("phase", "07B"),
+            )
 
     def _gate_document_card_population(self) -> dict[str, Any]:
         conn = get_connection(self.db_path)
@@ -427,8 +485,7 @@ class GateEvaluator:
         self._gate_source_record_map_coverage()
         self._gate_deterministic_orphan_rate()
         self._gate_candidate_orphan_rate()
-        self._gate_email_classifier_persistence()
-        self._gate_calendar_population()
+        self._gate_phase_07b_presence()
         self._gate_document_card_population()
         self._gate_financial_amount_parseability()
         self._gate_financial_currency_completeness()
@@ -464,6 +521,23 @@ class GateEvaluator:
         meeting_prep_claim = "blocked" if any(b["future_phase"] in ("07B", "07C") for b in self.results if b["gate_status"] not in ("pass",)) else "needs_07b_07c_data"
         financial_claim = "blocked" if any(b["future_phase"] == "08B" for b in self.results if b["gate_status"] not in ("pass",)) else "needs_financial_data"
 
+        # Structured meeting-prep (07D) prerequisite check driven by the 07B manifest:
+        # readiness requires EVERY prerequisite gate (07B + 07C + relationship + safety) to
+        # pass; auto_readiness_allowed stays false so 07D is never auto-claimed.
+        prereqs = self.phase_07b_manifest.get("meeting_prep_prerequisites", [])
+        by_name = {r["gate_name"]: r for r in self.results}
+        meeting_prep_blocked_by = [
+            n for n in prereqs if (by_name.get(n) or {}).get("gate_status") != "pass"
+        ]
+        meeting_prep_readiness = {
+            "ready": len(meeting_prep_blocked_by) == 0,
+            "blocked_by": meeting_prep_blocked_by,
+            "prerequisites": prereqs,
+            "auto_readiness_allowed": bool(
+                self.phase_07b_manifest.get("auto_readiness_allowed", False)
+            ),
+        }
+
         report = {
             "command": "construction-agent data-quality gates",
             "run_id": self.run_id,
@@ -487,6 +561,7 @@ class GateEvaluator:
                 },
                 "07D": {
                     "relationship_quality_ready": len(phase_07d_readiness) >= 2,
+                    "meeting_prep_readiness": meeting_prep_readiness,
                     "notes": "07D can proceed on deterministic relationships even if candidate rates are warnings.",
                 },
                 "08B": {

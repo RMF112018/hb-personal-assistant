@@ -1,0 +1,47 @@
+{
+  "version": "phase07b-data-quality-gates-v1",
+  "description": "Phase 07B calendar/email/thread/candidate readiness gates and the prerequisites that must all pass before any Phase 07D meeting-prep readiness can be claimed. Gates are presence checks over redacted local read models; no raw values are read or emitted.",
+  "gates": [
+    {
+      "name": "calendar_population_status",
+      "phase": "07B",
+      "kind": "presence",
+      "table": "calendar_event_index",
+      "description": "redacted calendar events indexed (V23)"
+    },
+    {
+      "name": "email_classifier_persistence_status",
+      "phase": "07B",
+      "kind": "presence",
+      "table": "email_model_classifications",
+      "description": "advisory email model classifications persisted (V14)"
+    },
+    {
+      "name": "email_thread_summary_population_status",
+      "phase": "07B",
+      "kind": "presence",
+      "table": "email_thread_summaries",
+      "description": "metadata-only email thread summaries materialized (V11)"
+    },
+    {
+      "name": "meeting_email_candidate_population_status",
+      "phase": "07B",
+      "kind": "presence",
+      "table": "meeting_email_relationship_candidates",
+      "description": "calendar event to email thread relationship candidates generated (V23)"
+    }
+  ],
+  "meeting_prep_prerequisites": [
+    "calendar_population_status",
+    "email_classifier_persistence_status",
+    "email_thread_summary_population_status",
+    "meeting_email_candidate_population_status",
+    "document_card_population_status",
+    "deterministic_orphan_rate",
+    "candidate_orphan_rate",
+    "review_required_routing_presence",
+    "raw_content_leakage_scan",
+    "external_writeback_scan"
+  ],
+  "auto_readiness_allowed": false
+}
