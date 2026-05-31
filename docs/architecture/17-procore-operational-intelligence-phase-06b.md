@@ -110,3 +110,52 @@ entitlement/schedule determination (`determinations_made: false`), `no_live_call
 true`, `no_raw_values_persisted: true`. Read-only; no migration/persistence (consistent with
 Prompts 06/07). Evidence:
 `docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/08-overdue-and-action-queue-proof.json`.
+
+## Cost exposure model (Prompt 09)
+
+`store/procore_cost_exposure.py::build_cost_exposure(project_key, *, now_utc, exposure_type=None,
+importance=None, max_items=100, db_path=None)` — deterministic, read-only. Surfaced by
+`hb-assistant procore live financial exposure --project KEY [--type T] [--importance I]
+[--max-items N] --json` (a new verb in the Phase 05 `live financial` group). It reuses
+`procore_enrichment.get_procore_action_signals` and the Phase 05 read helpers
+`procore_financials.read_financial_amount_facts` / `read_financial_budget_changes`.
+
+**Inputs → exposure types** (all `project_key`-scoped). Open `procore_action_signals` are mapped to
+exposure types by an explicit, auditable `signal_type → type` table (`_EXPOSURE_SIGNAL_MAP`); only
+cost/financial signal types are mapped (others are skipped). A separate `amount_changed` lens is
+read straight from `procore_financial_budget_changes`:
+- **pending_change** — `change_event_pending` / `change_event_rom_cost_exposure` /
+  `change_event_schedule_impact`.
+- **unapproved_change** — `commitment_unexecuted` / `commitment_change_order_unexecuted` /
+  `commitment_change_order_unpaid` / `contract_unexecuted`.
+- **budget_movement** — `budget_change_posted` / `budget_modification_posted` /
+  `budget_variance_negative` / `budget_forecast_exceeds_budget` / `budget_actual_exceeds_budget`.
+- **invoice_retainage_risk** — `invoice_approved_not_paid` / `invoice_payment_due` /
+  `invoice_retainage_held` / `invoice_pending_approval` / `billing_period_due_soon`.
+- **rfq_quote_pending** — `rfq_estimated_cost_exposure` / `rfq_under_review` / `rfq_overdue` /
+  `rfq_no_intent_to_quote` / `rfq_estimated_schedule_impact`.
+- **compliance_risk** — `commitment_compliance_document_expiring` / `commitment_non_compliant` /
+  `commitment_insurance_not_compliant`.
+- **amount_changed** — each `procore_financial_budget_changes` row carrying an `adjustment_amount`
+  or both `from_amount`/`to_amount` (decimal-safe strings, never differenced).
+
+Each item is enriched from `procore_financial_amount_facts` (by `record_key`) with `amounts`
+(`amount_name` / `amount_value` / `currency_iso_code`) and from `procore_live_records` (by
+`record_key`) with `source_url_redacted` + `review_required`.
+
+**Output:** `summary` (total / review_required / `by_type` — all seven types keyed / `by_importance`
+/ distinct `currencies`), a deterministically ordered `exposure` list (importance → type →
+record_key) with per-item `exposure_type`, `source` (`action_signal`|`budget_change`),
+`signal_type`, `endpoint_id`, `record_key`, `importance`, `review_required`, `reason_codes`,
+`due_at_utc`, `title_redacted`, `source_url_redacted`, and the decimal-safe `amounts`;
+`exposure_truncated`; and `amounts_are_strings: true`.
+
+**Guardrail posture:** advisory / review aid only — **no entitlement, liability, claims, or
+contractual determination** (`determinations_made: false`); amount values stay verbatim
+decimal-safe strings and are **never summed or differenced** (a total would read as a financial
+determination — the stop-condition guard). `review_required` is a documented triage label
+(high-importance signal OR high-sensitivity type: compliance / unapproved-change /
+invoice-retainage), not a decision. `no_live_call_performed: true`, `no_raw_values_persisted:
+true`. Read-only; no migration/persistence (schema V19; consistent with Prompts 06/07/08).
+Evidence:
+`docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/09-cost-exposure-proof.json`.

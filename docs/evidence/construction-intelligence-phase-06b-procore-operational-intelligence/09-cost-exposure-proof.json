@@ -1,0 +1,288 @@
+{
+  "command": "hb-assistant procore live financial exposure",
+  "ok": true,
+  "phase": "Phase 06B Prompt 09",
+  "project_key": "tropical",
+  "generated_at": "2026-05-29T00:00:00Z",
+  "filters": {
+    "exposure_type": null,
+    "importance": null
+  },
+  "summary": {
+    "total": 10,
+    "review_required": 5,
+    "by_type": {
+      "pending_change": 2,
+      "unapproved_change": 1,
+      "budget_movement": 1,
+      "invoice_retainage_risk": 3,
+      "rfq_quote_pending": 2,
+      "compliance_risk": 0,
+      "amount_changed": 1
+    },
+    "by_importance": {
+      "high": 4,
+      "medium": 6,
+      "low": 0
+    },
+    "currencies": []
+  },
+  "exposure": [
+    {
+      "exposure_type": "invoice_retainage_risk",
+      "source": "action_signal",
+      "signal_type": "invoice_approved_not_paid",
+      "endpoint_id": "subcontractor-invoices",
+      "record_key": "tropical|subcontractor-invoices||40",
+      "importance": "high",
+      "review_required": true,
+      "due_at_utc": null,
+      "title_redacted": "invoice_approved_not_paid",
+      "reason_codes": [
+        "review_required_high_sensitivity"
+      ],
+      "source_url_redacted": null,
+      "amounts": [
+        {
+          "amount_name": "current_payment_due",
+          "amount_value": "100000.00",
+          "currency_iso_code": null
+        },
+        {
+          "amount_name": "total_retainage",
+          "amount_value": "5000.00",
+          "currency_iso_code": null
+        }
+      ]
+    },
+    {
+      "exposure_type": "invoice_retainage_risk",
+      "source": "action_signal",
+      "signal_type": "invoice_payment_due",
+      "endpoint_id": "subcontractor-invoices",
+      "record_key": "tropical|subcontractor-invoices||40",
+      "importance": "high",
+      "review_required": true,
+      "due_at_utc": null,
+      "title_redacted": "invoice_payment_due",
+      "reason_codes": [
+        "review_required_high_sensitivity"
+      ],
+      "source_url_redacted": null,
+      "amounts": [
+        {
+          "amount_name": "current_payment_due",
+          "amount_value": "100000.00",
+          "currency_iso_code": null
+        },
+        {
+          "amount_name": "total_retainage",
+          "amount_value": "5000.00",
+          "currency_iso_code": null
+        }
+      ]
+    },
+    {
+      "exposure_type": "pending_change",
+      "source": "action_signal",
+      "signal_type": "change_event_rom_cost_exposure",
+      "endpoint_id": "change-events",
+      "record_key": "tropical|change-events||77",
+      "importance": "high",
+      "review_required": true,
+      "due_at_utc": null,
+      "title_redacted": "change_event_rom_cost_exposure",
+      "reason_codes": [
+        "review_required_high_sensitivity"
+      ],
+      "source_url_redacted": null,
+      "amounts": [
+        {
+          "amount_name": "estimated_cost",
+          "amount_value": "250000.00",
+          "currency_iso_code": null
+        }
+      ]
+    },
+    {
+      "exposure_type": "unapproved_change",
+      "source": "action_signal",
+      "signal_type": "commitment_unexecuted",
+      "endpoint_id": "commitment-contracts",
+      "record_key": "tropical|commitment-contracts||2",
+      "importance": "high",
+      "review_required": true,
+      "due_at_utc": null,
+      "title_redacted": "commitment_unexecuted",
+      "reason_codes": [
+        "review_required_high_sensitivity"
+      ],
+      "source_url_redacted": null,
+      "amounts": [
+        {
+          "amount_name": "grand_total",
+          "amount_value": "500000.00",
+          "currency_iso_code": null
+        }
+      ]
+    },
+    {
+      "exposure_type": "amount_changed",
+      "source": "budget_change",
+      "signal_type": null,
+      "endpoint_id": "change_history",
+      "record_key": "tropical|budget-change-history||62b8aa1d2df83a87",
+      "importance": "medium",
+      "review_required": false,
+      "due_at_utc": null,
+      "title_redacted": null,
+      "reason_codes": [
+        "budget_amount_movement"
+      ],
+      "source_url_redacted": null,
+      "amounts": [
+        {
+          "amount_name": "adjustment_amount",
+          "amount_value": "50.00",
+          "currency_iso_code": null
+        },
+        {
+          "amount_name": "from_amount",
+          "amount_value": "100.00",
+          "currency_iso_code": null
+        },
+        {
+          "amount_name": "to_amount",
+          "amount_value": "150.00",
+          "currency_iso_code": null
+        }
+      ]
+    },
+    {
+      "exposure_type": "budget_movement",
+      "source": "action_signal",
+      "signal_type": "budget_change_posted",
+      "endpoint_id": "budget-change-history",
+      "record_key": "tropical|budget-change-history||62b8aa1d2df83a87",
+      "importance": "medium",
+      "review_required": false,
+      "due_at_utc": null,
+      "title_redacted": "budget_change_posted",
+      "reason_codes": [],
+      "source_url_redacted": null,
+      "amounts": [
+        {
+          "amount_name": "from_amount",
+          "amount_value": "100.00",
+          "currency_iso_code": null
+        },
+        {
+          "amount_name": "to_amount",
+          "amount_value": "150.00",
+          "currency_iso_code": null
+        }
+      ]
+    },
+    {
+      "exposure_type": "invoice_retainage_risk",
+      "source": "action_signal",
+      "signal_type": "invoice_retainage_held",
+      "endpoint_id": "subcontractor-invoices",
+      "record_key": "tropical|subcontractor-invoices||40",
+      "importance": "medium",
+      "review_required": true,
+      "due_at_utc": null,
+      "title_redacted": "invoice_retainage_held",
+      "reason_codes": [
+        "review_required_high_sensitivity"
+      ],
+      "source_url_redacted": null,
+      "amounts": [
+        {
+          "amount_name": "current_payment_due",
+          "amount_value": "100000.00",
+          "currency_iso_code": null
+        },
+        {
+          "amount_name": "total_retainage",
+          "amount_value": "5000.00",
+          "currency_iso_code": null
+        }
+      ]
+    },
+    {
+      "exposure_type": "pending_change",
+      "source": "action_signal",
+      "signal_type": "change_event_pending",
+      "endpoint_id": "change-events",
+      "record_key": "tropical|change-events||77",
+      "importance": "medium",
+      "review_required": false,
+      "due_at_utc": null,
+      "title_redacted": "change_event_pending",
+      "reason_codes": [],
+      "source_url_redacted": null,
+      "amounts": [
+        {
+          "amount_name": "estimated_cost",
+          "amount_value": "250000.00",
+          "currency_iso_code": null
+        }
+      ]
+    },
+    {
+      "exposure_type": "rfq_quote_pending",
+      "source": "action_signal",
+      "signal_type": "rfq_estimated_cost_exposure",
+      "endpoint_id": "rfqs",
+      "record_key": "tropical|rfqs||10",
+      "importance": "medium",
+      "review_required": false,
+      "due_at_utc": null,
+      "title_redacted": "rfq_estimated_cost_exposure",
+      "reason_codes": [],
+      "source_url_redacted": null,
+      "amounts": [
+        {
+          "amount_name": "estimated_amount",
+          "amount_value": "50000.00",
+          "currency_iso_code": null
+        }
+      ]
+    },
+    {
+      "exposure_type": "rfq_quote_pending",
+      "source": "action_signal",
+      "signal_type": "rfq_under_review",
+      "endpoint_id": "rfqs",
+      "record_key": "tropical|rfqs||10",
+      "importance": "medium",
+      "review_required": false,
+      "due_at_utc": null,
+      "title_redacted": "rfq_under_review",
+      "reason_codes": [],
+      "source_url_redacted": null,
+      "amounts": [
+        {
+          "amount_name": "estimated_amount",
+          "amount_value": "50000.00",
+          "currency_iso_code": null
+        }
+      ]
+    }
+  ],
+  "exposure_truncated": false,
+  "amounts_are_strings": true,
+  "no_live_call_performed": true,
+  "no_raw_values_persisted": true,
+  "determinations_made": false,
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true,
+    "live_calls_disabled": true,
+    "correspondence_excluded": true,
+    "schedule_tasks_deferred": true
+  },
+  "exposure_note": "synthetic fixture: 1 commitment (unexecuted), 1 approved-unpaid subcontractor invoice with retainage, 1 open RFQ, 1 open change event, 1 budget change. Amounts are decimal-safe strings carried verbatim; never summed."
+}

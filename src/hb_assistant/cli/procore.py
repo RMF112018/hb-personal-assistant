@@ -1791,6 +1791,37 @@ def live_financial_risk(
     _emit(payload, json_out=json_out)
 
 
+@live_financial_app.command("exposure")
+def live_financial_exposure(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    exposure_type: Optional[str] = typer.Option(
+        None, "--type",
+        help="Optional exposure-type filter (pending_change/unapproved_change/budget_movement/"
+        "invoice_retainage_risk/rfq_quote_pending/compliance_risk/amount_changed).",
+    ),
+    importance: Optional[str] = typer.Option(
+        None, "--importance", help="Optional importance filter (high/medium/low)."
+    ),
+    max_items: int = typer.Option(100, "--max-items", min=1, help="Max exposure rows returned."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Cost/financial exposure model (Phase 06B Prompt 09) — classifies open financial signals
+    + budget changes into pending-change / unapproved-change / budget-movement / invoice-retainage
+    / RFQ-quote-pending / compliance-risk / amount-changed exposure, each with decimal-safe string
+    amounts, source link, and a review-required flag on high-sensitivity items. Advisory/review aid
+    only — no entitlement/liability/contractual determinations; amounts are never summed. Read-only
+    over local SQLite; no network, no DB writes, no raw values."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_cost_exposure import build_cost_exposure
+
+    SQLiteMigrator().apply()
+    report = build_cost_exposure(
+        project, now_utc=_query_now().isoformat(),
+        exposure_type=exposure_type, importance=importance, max_items=max_items,
+    )
+    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
+
+
 @live_financial_app.command("coverage")
 def live_financial_coverage(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
