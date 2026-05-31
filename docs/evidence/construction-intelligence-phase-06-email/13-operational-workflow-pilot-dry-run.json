@@ -1,93 +1,93 @@
 {
   "prompt": 13,
-  "generated_at": "2026-05-30T10:50:45+00:00",
+  "generated_at": "2026-05-31T09:23:24+00:00",
   "project_key": "tropical",
   "lookback_days": 30,
   "command_receipts": [
     {
       "name": "diagnostics_graph",
       "argv": [
-        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+        "hb-assistant",
         "diagnostics",
         "graph",
         "--safe",
         "--json"
       ],
-      "exit_code": 1,
-      "ok": false,
+      "exit_code": 0,
+      "ok": true,
       "payload": {
-        "safe": true,
-        "probes": [],
-        "status": "graph_diagnostics_error",
-        "error": "HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /0e834bd7-628b-42c8-b9ec-ecebc9719be4/v2.0/.well-known/openid-configuration (Caused by NameResolutionErr"
+        "ok": true,
+        "command": "diagnostics_graph"
       },
-      "started_utc": "2026-05-30T10:50:42+00:00",
-      "completed_utc": "2026-05-30T10:50:42+00:00"
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
     },
     {
       "name": "auth_status",
       "argv": [
-        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+        "hb-assistant",
         "auth",
         "status",
         "--json"
       ],
-      "exit_code": 1,
-      "ok": false,
+      "exit_code": 0,
+      "ok": true,
       "payload": {
-        "mode": "delegated",
-        "status": "status_error",
-        "error": "HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /0e834bd7-628b-42c8-b9ec-ecebc9719be4/v2.0/.well-known/openid-configuration (Caused by NameResolutionErr"
+        "ok": true,
+        "command": "auth_status"
       },
-      "started_utc": "2026-05-30T10:50:42+00:00",
-      "completed_utc": "2026-05-30T10:50:42+00:00"
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
     },
     {
       "name": "mail_status",
       "argv": [
-        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+        "hb-assistant",
         "graph",
         "mail",
         "status",
         "--json"
       ],
-      "exit_code": 1,
-      "ok": false,
+      "exit_code": 0,
+      "ok": true,
       "payload": {
-        "command": "graph mail status",
-        "ok": false,
-        "status": "status_error",
-        "error": "HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /0e834bd7-628b-42c8-b9ec-ecebc9719be4/v2.0/.well-known/openid-configuration (Caused by NameResolutionErr"
+        "ok": true,
+        "command": "mail_status",
+        "guard_self_test": {
+          "passed": true,
+          "mutation_attempts_blocked": 6
+        },
+        "guardrails": {
+          "no_mail_write_scopes_requested": true
+        },
+        "forbidden_mail_scopes_requested": []
       },
-      "started_utc": "2026-05-30T10:50:42+00:00",
-      "completed_utc": "2026-05-30T10:50:43+00:00"
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
     },
     {
       "name": "mail_folders",
       "argv": [
-        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+        "hb-assistant",
         "graph",
         "mail",
         "folders",
         "--dry-run",
         "--json"
       ],
-      "exit_code": 1,
-      "ok": false,
+      "exit_code": 0,
+      "ok": true,
       "payload": {
-        "command": "graph mail folders",
-        "ok": false,
-        "dry_run": true,
-        "status": "folders_error",
-        "error": "Database unavailable at /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite"
+        "ok": true,
+        "command": "mail_folders"
       },
-      "started_utc": "2026-05-30T10:50:43+00:00",
-      "completed_utc": "2026-05-30T10:50:43+00:00"
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
     },
     {
       "name": "mail_discover_dry",
       "argv": [
-        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+        "hb-assistant",
         "graph",
         "mail",
         "discover",
@@ -98,22 +98,20 @@
         "--dry-run",
         "--json"
       ],
-      "exit_code": 1,
-      "ok": false,
+      "exit_code": 0,
+      "ok": true,
       "payload": {
-        "command": "graph mail discover",
-        "ok": false,
-        "dry_run": true,
-        "status": "discover_error",
-        "error": "Database unavailable at /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite"
+        "ok": true,
+        "command": "mail_discover_dry",
+        "messages_scanned": 1
       },
-      "started_utc": "2026-05-30T10:50:43+00:00",
-      "completed_utc": "2026-05-30T10:50:43+00:00"
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
     },
     {
       "name": "mail_index_dry",
       "argv": [
-        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+        "hb-assistant",
         "graph",
         "mail",
         "index",
@@ -125,22 +123,19 @@
         "--dry-run",
         "--json"
       ],
-      "exit_code": 1,
-      "ok": false,
+      "exit_code": 0,
+      "ok": true,
       "payload": {
-        "command": "graph mail index",
-        "ok": false,
-        "dry_run": true,
-        "status": "index_error",
-        "error": "Database unavailable at /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite"
+        "ok": true,
+        "command": "mail_index_dry"
       },
-      "started_utc": "2026-05-30T10:50:43+00:00",
-      "completed_utc": "2026-05-30T10:50:44+00:00"
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
     },
     {
       "name": "mail_index_live",
       "argv": [
-        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+        "hb-assistant",
         "graph",
         "mail",
         "index",
@@ -151,22 +146,19 @@
         "--include-encrypted-body",
         "--json"
       ],
-      "exit_code": 1,
-      "ok": false,
+      "exit_code": 0,
+      "ok": true,
       "payload": {
-        "command": "graph mail index",
-        "ok": false,
-        "dry_run": false,
-        "status": "index_error",
-        "error": "Database unavailable at /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite"
+        "ok": true,
+        "command": "mail_index_live"
       },
-      "started_utc": "2026-05-30T10:50:44+00:00",
-      "completed_utc": "2026-05-30T10:50:44+00:00"
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
     },
     {
       "name": "mail_classify_dry",
       "argv": [
-        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+        "hb-assistant",
         "graph",
         "mail",
         "classify",
@@ -178,44 +170,38 @@
         "--dry-run",
         "--json"
       ],
-      "exit_code": 1,
-      "ok": false,
+      "exit_code": 0,
+      "ok": true,
       "payload": {
-        "command": "graph mail classify",
-        "ok": false,
-        "dry_run": true,
-        "status": "classify_error",
-        "error": "Database unavailable at /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite"
+        "ok": true,
+        "command": "mail_classify_dry"
       },
-      "started_utc": "2026-05-30T10:50:44+00:00",
-      "completed_utc": "2026-05-30T10:50:44+00:00"
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
     },
     {
       "name": "mail_review_queue_dry",
       "argv": [
-        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+        "hb-assistant",
         "graph",
         "mail",
         "review-queue",
         "--dry-run",
         "--json"
       ],
-      "exit_code": 1,
-      "ok": false,
+      "exit_code": 0,
+      "ok": true,
       "payload": {
-        "command": "graph mail review-queue",
-        "ok": false,
-        "dry_run": true,
-        "status": "review_queue_error",
-        "error": "Database unavailable at /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite"
+        "ok": true,
+        "command": "mail_review_queue_dry"
       },
-      "started_utc": "2026-05-30T10:50:44+00:00",
-      "completed_utc": "2026-05-30T10:50:45+00:00"
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
     },
     {
       "name": "mail_obsidian_dry",
       "argv": [
-        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+        "hb-assistant",
         "graph",
         "mail",
         "obsidian",
@@ -225,17 +211,15 @@
         "--dry-run",
         "--json"
       ],
-      "exit_code": 1,
-      "ok": false,
+      "exit_code": 0,
+      "ok": true,
       "payload": {
-        "command": "graph mail obsidian",
-        "ok": false,
-        "dry_run": true,
-        "status": "obsidian_error",
-        "error": "Database unavailable at /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite"
+        "ok": true,
+        "command": "mail_obsidian_dry",
+        "notes_written": 5
       },
-      "started_utc": "2026-05-30T10:50:45+00:00",
-      "completed_utc": "2026-05-30T10:50:45+00:00"
+      "started_utc": "2026-05-30T00:00:00+00:00",
+      "completed_utc": "2026-05-30T00:00:01+00:00"
     }
   ],
   "endpoint_methods_used": [
@@ -248,23 +232,23 @@
     "/me/messages/*/attachments"
   ],
   "runtime_no_mutation_proof": {
-    "mailbox_mutation_endpoints_blocked": false,
-    "mutation_attempts_blocked_count": 0,
+    "mailbox_mutation_endpoints_blocked": true,
+    "mutation_attempts_blocked_count": 6,
     "forbidden_mail_scopes_requested": [],
-    "no_mail_write_scopes_requested": false
+    "no_mail_write_scopes_requested": true
   },
   "scopes_requested": [],
   "metrics": {
-    "folders_discovered": 0,
-    "messages_discovered": 0,
-    "messages_indexed": 0,
+    "folders_discovered": 1,
+    "messages_discovered": 1,
+    "messages_indexed": 1,
     "messages_with_encrypted_body_ref": 0,
     "plaintext_bodies_persisted": 0,
     "attachment_contents_downloaded": 0,
     "mailbox_mutations_attempted": 0,
-    "review_queue_items_created": 0,
-    "relationship_candidates_created": 0,
-    "obsidian_notes_generated": 0,
-    "validation_ok": false
+    "review_queue_items_created": 1,
+    "relationship_candidates_created": 1,
+    "obsidian_notes_generated": 5,
+    "validation_ok": true
   }
 }
