@@ -22,6 +22,9 @@ from hb_assistant.construction.document.extraction_eligibility import (
     evaluate_extraction_eligibility,
 )
 from hb_assistant.construction.document.project_matcher import match_document_projects
+from hb_assistant.construction.document.relationship_builder import (
+    build_document_relationship_candidates,
+)
 from hb_assistant.construction.document.source_scope import (
     evaluate_source_scope_compliance,
     non_compliant_source_keys,
@@ -37,4 +40,5 @@ __all__ = [
     "classify_document_cards",
     "match_document_projects",
     "evaluate_extraction_eligibility",
+    "build_document_relationship_candidates",
 ]

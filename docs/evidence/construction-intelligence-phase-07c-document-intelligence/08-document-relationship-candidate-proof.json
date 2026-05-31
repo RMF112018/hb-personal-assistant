@@ -1,0 +1,57 @@
+{
+  "phase": "construction-intelligence-phase-07c-document-intelligence",
+  "prompt": "08-document-relationship-candidates",
+  "generated_utc": "2026-05-31",
+  "repo_sha_parent": "08916bdc99ef15ac80e45a65c54466a7c705fd34",
+  "schema_version": 24,
+  "package_version": "1.3.0",
+  "contract_version": "phase07c-v1",
+  "leak_safe": "counts by target_system/target_record_type/candidate_type/confidence_class + gate statuses only; no per-card identifiers, and no raw filenames, paths, web URLs, record bodies, tokens, or secrets. signals_json/source_reference_json carry only hashes and safe enums/keys (project_key, document_type, target_record_type).",
+  "command": "hb-assistant graph files build-document-relationships --apply --json",
+  "mode": "apply",
+  "exit_code": 0,
+  "ok": true,
+  "deterministic": "verified identical by_target_record_type/by_candidate_type across PYTHONHASHSEED 1/2/3",
+  "summary": {
+    "cards_total": 283,
+    "candidates": 23,
+    "review_required": 23,
+    "unmatched_skipped": 260,
+    "by_target_system": { "procore": 23 },
+    "by_target_record_type": { "change_order": 2, "contract": 12, "daily_log": 1, "rfi": 8 },
+    "by_candidate_type": { "heuristic": 23 },
+    "by_confidence_class": { "moderate_heuristic": 23 }
+  },
+  "idempotent": {
+    "reapply_candidate_count": 23,
+    "live_candidate_count_after_reapply": 23
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "graph_calls": "none",
+    "model_invoked": false,
+    "deterministic_first": true,
+    "raw_document_text_persisted": false,
+    "raw_path_or_url_persisted": false,
+    "external_writeback": false,
+    "auto_promotion": false,
+    "card_mutated": false,
+    "candidate_guard_check_columns_all_zero": true,
+    "deferred_target_systems": ["email", "calendar"]
+  },
+  "post_apply_gates": {
+    "document_card_population_status": "pass",
+    "raw_content_leakage_scan": "pass",
+    "external_writeback_scan": "pass",
+    "meeting_prep_ready": false,
+    "no_writeback_proof_passed": true
+  },
+  "leak_scan": {
+    "live_candidate_rows_scanned": 23,
+    "url_email_ical_token_pattern_hits": 0,
+    "candidate_type_all_in_contract_enum": true,
+    "all_review_required": true
+  },
+  "deferred_disclosure": "Email and calendar target arms are deferred: their live records are not yet project-key-aligned to the documents (calendar project_key is null; email has no project_key column), so emitting candidates there would be speculative. Record-level deterministic linking (document record number to a specific Procore record) is also deferred — cards persist no raw record number. The V24 satellite tables (incl. relationship) remain outside the no-writeback-proof static-scan scope (deferred to Prompt 12).",
+  "outcome": "23 advisory document->record relationship candidates written (heuristic; model not invoked), all to Procore via shared project + classified document-type alignment: contract 12, rfi 8, change_order 2, daily_log 1. 260 cards skipped (unaligned type, no Procore records of the aligned type, or no project). All review-required, candidate-only, never auto-promoted; the card is unchanged. Procore was read-only (a count of canonical records); no raw record payload, document text, path, or URL persisted. A scan of all 23 rows found 0 URL/token patterns and the four guard CHECK columns all 0. No readiness overstated (meeting-prep still blocked)."
+}

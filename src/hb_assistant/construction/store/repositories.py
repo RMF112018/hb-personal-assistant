@@ -2208,6 +2208,103 @@ class ConstructionStore:
         row = cur.fetchone()
         return int(row[0]) if row else 0
 
+    def list_document_classification_candidates(self) -> list[dict[str, Any]]:
+        """List the safe fields of every document classification candidate (V24)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT candidate_id, document_card_id, document_type, confidence_class,
+                   review_required, promotion_status
+            FROM construction_document_classification_candidates
+            ORDER BY candidate_id
+            """
+        )
+        keys = (
+            "candidate_id", "document_card_id", "document_type", "confidence_class",
+            "review_required", "promotion_status",
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    # --- Phase 07C document->record relationship candidates (V24) -----------
+
+    def upsert_document_relationship_candidate(
+        self,
+        *,
+        candidate_id: str,
+        document_card_id: str,
+        target_system: str,
+        target_record_type: str,
+        target_record_key_hash: str,
+        relationship_type: str,
+        candidate_type: str,
+        confidence: float,
+        confidence_class: str,
+        source_reference_json: Optional[str] = None,
+        signals_json: Optional[str] = None,
+        review_required: bool = True,
+        promotion_status: str = "candidate",
+    ) -> None:
+        """Upsert an advisory document->record relationship candidate (V24). Idempotent
+        by candidate_id. The raw_document_text / raw_prompt / raw_response /
+        external_writeback guard CHECK columns are never written here — the schema
+        defaults (all 0) hold. No raw document text / path / URL / record body is
+        accepted; the target record is identified only by a hashed key, and only
+        hashed/typed evidence round-trips through signals_json / source_reference_json.
+        """
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO construction_document_relationship_candidates
+                    (candidate_id, document_card_id, target_system, target_record_type,
+                     target_record_key_hash, relationship_type, candidate_type,
+                     confidence, confidence_class, source_reference_json, signals_json,
+                     review_required, promotion_status, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(candidate_id) DO UPDATE SET
+                    document_card_id = excluded.document_card_id,
+                    target_system = excluded.target_system,
+                    target_record_type = excluded.target_record_type,
+                    target_record_key_hash = excluded.target_record_key_hash,
+                    relationship_type = excluded.relationship_type,
+                    candidate_type = excluded.candidate_type,
+                    confidence = excluded.confidence,
+                    confidence_class = excluded.confidence_class,
+                    source_reference_json = excluded.source_reference_json,
+                    signals_json = excluded.signals_json,
+                    review_required = excluded.review_required,
+                    promotion_status = excluded.promotion_status
+                """,
+                (
+                    candidate_id, document_card_id, target_system, target_record_type,
+                    target_record_key_hash, relationship_type, candidate_type,
+                    confidence, confidence_class, source_reference_json, signals_json,
+                    1 if review_required else 0, promotion_status, _utc_now(),
+                ),
+            )
+
+    def count_document_relationship_candidates(self) -> int:
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            "SELECT COUNT(*) FROM construction_document_relationship_candidates"
+        )
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
+    def count_procore_live_records(self, *, project_key: str, endpoint_id: str) -> int:
+        """Read-only count of canonical Procore live records for a project + endpoint.
+
+        Thin delegate to the Procore repository (same SQLite DB) so the document
+        relationship builder can gate candidates on the project actually having
+        records of the aligned record type — without reaching across to raw Procore
+        payloads.
+        """
+        from hb_assistant.store import procore_repositories
+
+        return procore_repositories.count_procore_live_records(
+            project_key=project_key, endpoint_id=endpoint_id, db_path=self._db_path
+        )
+
     # --- Phase 07C controlled extraction eligibility (V24 card column) ------
 
     def update_document_card_extraction_eligibility(

@@ -34,6 +34,7 @@ from hb_assistant.construction.config import load_source_registry
 from hb_assistant.construction.config.loader import SourceRegistryError
 from hb_assistant.construction.correspondence import CorrespondenceReviewBuilder
 from hb_assistant.construction.document import (
+    build_document_relationship_candidates,
     classify_document_cards,
     evaluate_extraction_eligibility,
     evaluate_source_scope_compliance,
@@ -644,6 +645,31 @@ def files_evaluate_extraction_eligibility_cmd(
     """
     store = ConstructionStore()
     report = evaluate_extraction_eligibility(store, apply=apply)
+    typer.echo(json.dumps(report, indent=2) if json_out else str(report))
+    raise typer.Exit(0 if report["ok"] else 1)
+
+
+@files_app.command("build-document-relationships")
+def files_build_document_relationships_cmd(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist relationship candidates to SQLite (default: dry-run)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Build advisory document->record relationship candidates (candidates-only).
+
+    Dry-run by default: computes the target-system / record-type / candidate breakdown
+    without any SQLite write; ``--apply`` persists one advisory candidate per aligned
+    card to construction_document_relationship_candidates. Links each document to its
+    project's Procore record type via shared project + classified document-type
+    alignment (heuristic; review-required). Procore is read-only (a count of canonical
+    live records); no raw record payload, document text, path, or URL is read or stored
+    — the target is referenced only by a hashed key. Email and calendar targets are
+    deferred (their live records are not yet project-key-aligned). Nothing is
+    auto-promoted and the card is left unchanged. Read-only against Microsoft 365.
+    """
+    store = ConstructionStore()
+    report = build_document_relationship_candidates(store, apply=apply)
     typer.echo(json.dumps(report, indent=2) if json_out else str(report))
     raise typer.Exit(0 if report["ok"] else 1)
 
