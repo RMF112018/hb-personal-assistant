@@ -22,7 +22,10 @@ from pydantic import ValidationError
 from hb_assistant.auth.providers import DelegatedAuthProvider
 from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
-from hb_assistant.construction.calendar import load_calendar_source_policy
+from hb_assistant.construction.calendar import (
+    load_calendar_source_policy,
+    load_email_thread_summary_policy,
+)
 from hb_assistant.construction.calendar.event_indexer import CalendarEventIndexer
 from hb_assistant.construction.calendar.project_matcher import CalendarProjectMatcher
 from hb_assistant.construction.classification.client import OllamaChatClient
@@ -33,6 +36,7 @@ from hb_assistant.construction.email import (
     EmailIntelligenceClassifier,
     EmailMessageIndexer,
     EmailObsidianProjector,
+    EmailThreadSummaryMaterializer,
     ProjectEmailDiscovery,
     RelationshipCandidateBuilder,
     ReviewRouter,
@@ -2231,6 +2235,68 @@ def obsidian_cmd(
             "ok": False,
             "dry_run": dry_run,
             "status": "obsidian_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@mail_app.command("thread-summary")
+def thread_summary_cmd(
+    project: Optional[str] = typer.Option(None, "--project", help="Pilot project key"),
+    lookback_days: int = typer.Option(
+        30, "--lookback-days", help="Bounded lookback window in days (1-366)"
+    ),
+    max_threads: int = typer.Option(
+        200, "--max-threads", help="Max threads materialized per run (bounded)"
+    ),
+    use_encrypted_body_context: bool = typer.Option(
+        False,
+        "--use-encrypted-body-context",
+        help="Decrypt stored bodies in-memory to improve review-category recall "
+        "(discarded; never persisted; also gated by policy)",
+    ),
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run/--no-dry-run",
+        help="Preview thread summaries without persisting (default); --no-dry-run writes "
+        "the V11 metadata-only thread summaries + V23 run receipt",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Materialize redacted, metadata-only email thread summaries, local-only.
+
+    Groups indexed, project-matched email by thread, writes a metadata-only summary
+    (counts, time window, detected review-category ids — no subject, preview, or body
+    text), and routes sensitive/high-impact threads to human review. NO Graph call, NO
+    mailbox mutation, NO plaintext body emitted or persisted.
+    """
+    try:
+        materializer = EmailThreadSummaryMaterializer(
+            ConstructionStore(), policy=load_email_thread_summary_policy()
+        )
+        report = materializer.materialize(
+            project_key=project,
+            lookback_days=lookback_days,
+            use_encrypted_body_context=use_encrypted_body_context,
+            dry_run=dry_run,
+            max_threads=max_threads,
+        )
+        payload: Dict[str, Any] = {
+            "command": "graph mail thread-summary",
+            "ok": True,
+            **report.model_dump(),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail thread-summary",
+            "ok": False,
+            "dry_run": dry_run,
+            "status": "thread_summary_error",
             "error": str(e)[:200],
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))

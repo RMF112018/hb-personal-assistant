@@ -69,6 +69,11 @@ from .review_router import (
     ReviewRoutingReport,
     ReviewRoutingSample,
 )
+from .thread_summary import (
+    EmailThreadSummaryMaterializer,
+    ThreadSummaryReport,
+    ThreadSummarySample,
+)
 
 __all__ = [
     "CLASSIFICATION_VERSION",
@@ -85,6 +90,7 @@ __all__ = [
     "EmailModelOutput",
     "EmailObsidianProjector",
     "EmailObsidianReport",
+    "EmailThreadSummaryMaterializer",
     "OperationalValidationReport",
     "FolderDiscoveryResult",
     "IndexResult",
@@ -102,6 +108,8 @@ __all__ = [
     "ReviewRouter",
     "ReviewRoutingReport",
     "ReviewRoutingSample",
+    "ThreadSummaryReport",
+    "ThreadSummarySample",
     "analyze_attachment",
     "classify_review_categories",
     "classify_text_sensitivity",

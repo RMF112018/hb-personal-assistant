@@ -3331,6 +3331,117 @@ class ConstructionStore:
                 ),
             )
 
+    _EMAIL_THREAD_SUMMARY_KEYS: tuple[str, ...] = (
+        "thread_key", "project_key", "conversation_id", "message_count",
+        "first_message_datetime", "last_message_datetime", "participants_hash_json",
+        "summary_redacted", "summary_policy", "review_required", "model_used",
+        "model_output_validated", "generated_utc", "updated_utc",
+    )
+
+    @staticmethod
+    def _email_thread_summary_row_to_record(row: Any) -> dict[str, Any]:
+        keys = ConstructionStore._EMAIL_THREAD_SUMMARY_KEYS
+        record = dict(zip(keys, row, strict=True))
+        record["participants_hash"] = ConstructionStore._load_json(
+            record.pop("participants_hash_json")
+        )
+        for bool_field in ("review_required", "model_output_validated"):
+            record[bool_field] = bool(record[bool_field])
+        return record
+
+    def get_email_thread_summary(self, thread_key: str) -> Optional[dict[str, Any]]:
+        """Fetch a single email thread summary by thread_key; None if absent.
+        JSON columns are decoded and bool flags returned as booleans."""
+        keys = self._EMAIL_THREAD_SUMMARY_KEYS
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_thread_summaries WHERE thread_key = ?",
+            (thread_key,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        return self._email_thread_summary_row_to_record(row)
+
+    def list_email_thread_summaries(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        review_required: Optional[bool] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """List email thread summaries (newest first) with optional filters."""
+        keys = self._EMAIL_THREAD_SUMMARY_KEYS
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if review_required is not None:
+            clauses.append("review_required = ?")
+            params.append(1 if review_required else 0)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_thread_summaries {where} "
+            "ORDER BY last_message_datetime DESC, thread_key LIMIT ?",
+            tuple(params),
+        )
+        return [self._email_thread_summary_row_to_record(row) for row in cur.fetchall()]
+
+    def insert_email_thread_summary_materialization_run(
+        self,
+        *,
+        run_id: str,
+        mode: str,
+        project_key: Optional[str] = None,
+        started_at_utc: Optional[str] = None,
+        status: str = "running",
+    ) -> None:
+        """Open a Phase 07B thread-summary materialization run receipt (V23). The
+        raw_body / raw_prompt / raw_response / external_writeback CHECK columns stay
+        at their 0 default."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_thread_summary_materialization_runs
+                    (run_id, mode, started_at_utc, project_key, status)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (run_id, mode, started_at_utc or _utc_now(), project_key, status),
+            )
+
+    def complete_email_thread_summary_materialization_run(
+        self,
+        *,
+        run_id: str,
+        status: str,
+        completed_at_utc: Optional[str] = None,
+        threads_considered: int = 0,
+        threads_summarized: int = 0,
+        review_required_count: int = 0,
+        error_redacted: Optional[str] = None,
+    ) -> bool:
+        """Finalize a thread-summary materialization run receipt with counters
+        (redacted error only)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                UPDATE email_thread_summary_materialization_runs SET
+                    status = ?, completed_at_utc = ?, threads_considered = ?,
+                    threads_summarized = ?, review_required_count = ?, error_redacted = ?
+                WHERE run_id = ?
+                """,
+                (
+                    status, completed_at_utc or _utc_now(), threads_considered,
+                    threads_summarized, review_required_count, error_redacted, run_id,
+                ),
+            )
+            return cur.rowcount > 0
+
     def enqueue_email_review_item(
         self,
         *,
