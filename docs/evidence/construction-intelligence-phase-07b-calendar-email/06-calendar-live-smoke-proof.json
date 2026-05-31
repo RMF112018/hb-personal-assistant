@@ -1,0 +1,108 @@
+{
+  "phase": "07B",
+  "title": "Live end-to-end calendar smoke (status / index / project-match)",
+  "generated_utc": "2026-05-31T12:58:30Z",
+  "repo_sha_at_run": "2038d89785e365383135bcc49faa0db974c41e5a",
+  "schema_version": 23,
+  "account": "<delegated-user>",
+  "tenant": "<tenant-guid>",
+  "summary": "First LIVE run of the Phase 07B calendar pipeline against real Microsoft Graph (delegated, read-only) with persistence to the real local store. A scope-consent fix was required first (the calendar token-getter hardcoded the never-consented Calendars.Read scope); it now requests the configured Calendars.ReadWrite.Shared scope while the endpoint guard keeps every request read-only (GET-only; no mutation reaches HTTP).",
+  "precondition": {
+    "auth_login": "hb-assistant auth login --json -> status: login_success (silent refresh), account <delegated-user>",
+    "auth_status": "token_type=delegated, classification=delegated, expires_in present"
+  },
+  "code_fix": {
+    "file": "src/hb_assistant/cli/graph.py",
+    "change": "_configured_calendar_scopes(configured) picks the configured Calendars.* scope; used by _calendar_probe and calendar index token-getters instead of a hardcoded ['Calendars.Read'].",
+    "root_cause": "Calendars.Read was never consented; only Calendars.ReadWrite.Shared is. Silent token acquisition for Calendars.Read failed (NoTokenError). Acquiring Calendars.ReadWrite.Shared succeeds; the read-only endpoint guard is unchanged, so behavior stays read-only (deferred-tightening posture, same as Files.ReadWrite.All).",
+    "diagnostic": {
+      "User.Read": "token OK",
+      "Calendars.Read": "FAIL (not consented)",
+      "Calendars.ReadWrite.Shared": "token OK"
+    }
+  },
+  "command_receipts": [
+    {
+      "step": 1,
+      "argv": "hb-assistant graph calendar status --json",
+      "exit_code": 0,
+      "ok": true,
+      "redacted_payload": {
+        "ok": true,
+        "auth": { "token_type": "delegated", "classification": "delegated", "expires_in_present": true },
+        "calendar_probe": { "attempted": true, "path": "/me/calendarView", "status": 200, "event_sample_count": 1 },
+        "guard_self_test": { "passed": true, "read_paths_allowed": 11, "mutation_attempts_blocked": 16, "anomalies": [] },
+        "guardrails": { "calendar_read_only": true, "mutation_endpoints_blocked": true, "event_body_excluded": true, "join_url_excluded": true, "permission_tightening": "deferred", "guardrail_status": "passed" }
+      }
+    },
+    {
+      "step": 2,
+      "argv": "hb-assistant graph calendar index --json",
+      "exit_code": 0,
+      "ok": true,
+      "redacted_payload": { "dry_run": true, "source": "primary_calendar", "events_seen": 108, "status": "completed", "persisted": false }
+    },
+    {
+      "step": 3,
+      "argv": "hb-assistant graph calendar index --apply --json",
+      "exit_code": 0,
+      "ok": true,
+      "redacted_payload": { "dry_run": false, "source": "primary_calendar", "events_seen": 108, "events_indexed": 108, "events_private": 0, "events_cancelled": 2, "events_review_required": 0, "status": "completed", "persisted": true }
+    },
+    {
+      "step": 4,
+      "argv": "hb-assistant graph calendar project-match --json",
+      "exit_code": 0,
+      "ok": true,
+      "redacted_payload": { "mode": "dry_run", "summary": { "events_evaluated": 108, "events_matched": 8, "events_unmatched": 100, "candidates_created": 8, "deterministic": 0, "moderate": 0, "weak": 8, "review_routed": 8, "conflicting": 0 } }
+    },
+    {
+      "step": 5,
+      "argv": "hb-assistant graph calendar project-match --apply --json",
+      "exit_code": 0,
+      "ok": true,
+      "redacted_payload": { "mode": "apply", "summary": { "events_evaluated": 108, "events_matched": 8, "events_unmatched": 100, "candidates_created": 8, "deterministic": 0, "moderate": 0, "weak": 8, "review_routed": 8, "conflicting": 0 } }
+    }
+  ],
+  "metrics": {
+    "events_indexed": 108,
+    "events_private": 0,
+    "events_cancelled": 2,
+    "project_match_candidates_created": 8,
+    "deterministic_candidates": 0,
+    "weak_candidates": 8,
+    "review_routed": 8,
+    "mutations_attempted": 0,
+    "event_body_persisted": false,
+    "join_url_persisted": false,
+    "external_writeback_performed": false
+  },
+  "persistence_snapshot_read_only": {
+    "db": "<app-support>/db/hb-personal-assistant.sqlite",
+    "row_counts": {
+      "calendar_event_index": 108,
+      "calendar_event_attendees": 1250,
+      "calendar_crawl_runs": 1,
+      "calendar_sync_state": 1,
+      "calendar_project_match_candidates": 8
+    },
+    "check_guardrail_sums": {
+      "calendar_event_index_raw_body_full_text_external_writeback": [0, 0, 0],
+      "calendar_crawl_runs_raw_body_full_text_external_writeback": [0, 0, 0],
+      "calendar_project_match_candidates_raw_body_external_writeback": [0, 0]
+    }
+  },
+  "guardrail_reproof": {
+    "no_writeback_proof": { "argv": "construction-agent data-quality no-writeback-proof --json", "exit_code": 0, "proof_passed": true },
+    "table_inventory": { "argv": "construction-agent data-quality table-inventory --json", "exit_code": 0 }
+  },
+  "redaction_attestation": {
+    "raw_email_addresses_in_calendar_tables": 0,
+    "http_urls_in_calendar_tables": 0,
+    "non_redacted_subject_rows": 0,
+    "subject_form": "[redacted:<16-hex>]",
+    "attendees_stored_as": "attendee_hash + bare attendee_domain (no '@', no raw address)",
+    "note": "Read-only scan over calendar_event_index/_attendees/_project_match_candidates/_crawl_runs found no raw subject, organizer/attendee email, location, body, or join URL. No token/UPN/tenant GUID/cache path is included in this committed artifact (redacted to structural facts)."
+  },
+  "stop_conditions": "none triggered — external Microsoft 365 read-only (GET only, guard-enforced); local writes only via explicit --apply; no mutation attempted; no raw/private value or token in this artifact; no-writeback proof_passed=true and all CHECK columns 0 after the live writes; no 07D readiness claimed."
+}

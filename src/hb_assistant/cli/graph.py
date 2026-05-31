@@ -267,8 +267,21 @@ def _files_static_scan(repo_root: Path) -> Dict[str, Any]:
     }
 
 
+def _configured_calendar_scopes(configured: List[str]) -> List[str]:
+    """Token scope(s) to request for calendar reads: the configured/consented
+    ``Calendars.*`` scope (e.g. ``Calendars.ReadWrite.Shared``), falling back to
+    ``Calendars.Read``. A read-only ``Calendars.Read`` token is only issuable if
+    that exact scope was consented; requesting the configured scope avoids a
+    silent-acquire miss. The endpoint guard enforces read-only behavior regardless
+    of the token's scope (deferred-tightening posture)."""
+    cal = [s for s in configured if s.lower().startswith("calendars.")]
+    return cal or ["Calendars.Read"]
+
+
 def _calendar_probe(
-    provider: DelegatedAuthProvider, contract: CalendarEndpointContract
+    provider: DelegatedAuthProvider,
+    contract: CalendarEndpointContract,
+    scopes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """One bounded, read-only probe (`/me/calendarView`) through the guarded client.
 
@@ -277,8 +290,8 @@ def _calendar_probe(
     non-fatal and reported as a readiness status.
     """
 
-    def token_getter(scopes: Optional[List[str]] = None) -> Dict[str, Any]:
-        return provider.get_token(scopes or ["Calendars.Read"])
+    def token_getter(requested: Optional[List[str]] = None) -> Dict[str, Any]:
+        return provider.get_token(requested or scopes or ["Calendars.Read"])
 
     # Bounded, fixed window (no Date.now in evidence); read-only by construction.
     window_start = "2026-01-01T00:00:00Z"
@@ -1594,7 +1607,11 @@ def calendar_status_cmd(
 
         auth_info = provider.status_info()  # safe: no tokens, redacted claims
         guard = run_calendar_no_writeback_self_test(contract)
-        calendar_probe = _calendar_probe(provider, contract) if probe else {"attempted": False}
+        calendar_probe = (
+            _calendar_probe(provider, contract, _configured_calendar_scopes(configured))
+            if probe
+            else {"attempted": False}
+        )
 
         mutation_blocked = bool(guard["passed"])
         guardrails = {
@@ -1683,9 +1700,10 @@ def calendar_index_cmd(
             path_policy=pp,
         )
         contract = load_calendar_endpoint_contract()
+        calendar_scopes = _configured_calendar_scopes(list(cfg.identity.delegated_scopes))
 
         def token_getter(scopes: Optional[List[str]] = None) -> Dict[str, Any]:
-            return provider.get_token(scopes or ["Calendars.Read"])
+            return provider.get_token(scopes or calendar_scopes)
 
         client = GraphHttpClient(token_getter)
         reader = ReadOnlyCalendarClient(client, contract=contract)

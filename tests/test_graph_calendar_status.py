@@ -77,3 +77,14 @@ def test_graph_calendar_status_no_probe_marks_probe_not_attempted(tmp_path: Path
     res = _invoke(tmp_path, "graph", "calendar", "status", "--json", "--no-probe")
     payload = json.loads(res.output)
     assert payload["calendar_probe"]["attempted"] is False
+
+
+def test_configured_calendar_scopes_prefers_consented_scope() -> None:
+    # The calendar token-getter must request the CONFIGURED Calendars.* scope, not a
+    # hardcoded Calendars.Read that may never have been consented.
+    from hb_assistant.cli.graph import _configured_calendar_scopes
+
+    configured = ["User.Read", "Mail.Read", "Calendars.ReadWrite.Shared", "Files.ReadWrite.All"]
+    assert _configured_calendar_scopes(configured) == ["Calendars.ReadWrite.Shared"]
+    # Fallback only when no Calendars.* scope is configured.
+    assert _configured_calendar_scopes(["User.Read"]) == ["Calendars.Read"]
