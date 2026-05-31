@@ -2075,16 +2075,16 @@ class ConstructionStore:
         cur = conn.execute(
             """
             SELECT card_id, document_card_id, source_id, drive_item_id, file_extension,
-                   mime_type, project_key, document_type, source_path_token_hashes_json,
-                   review_status, review_required
+                   mime_type, project_key, project_number_hash, document_type,
+                   source_path_token_hashes_json, review_status, review_required
             FROM construction_document_cards
             ORDER BY card_id
             """
         )
         keys = (
             "card_id", "document_card_id", "source_id", "drive_item_id", "file_extension",
-            "mime_type", "project_key", "document_type", "source_path_token_hashes_json",
-            "review_status", "review_required",
+            "mime_type", "project_key", "project_number_hash", "document_type",
+            "source_path_token_hashes_json", "review_status", "review_required",
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
@@ -2142,6 +2142,66 @@ class ConstructionStore:
         conn = get_connection(self._db_path)
         cur = conn.execute(
             "SELECT COUNT(*) FROM construction_document_classification_candidates"
+        )
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
+    # --- Phase 07C document project match candidates (V24) ------------------
+
+    def upsert_document_project_match_candidate(
+        self,
+        *,
+        candidate_id: str,
+        document_card_id: str,
+        project_key: str,
+        candidate_type: str,
+        confidence: float,
+        confidence_class: str,
+        signals_json: Optional[str] = None,
+        deterministic: bool = False,
+        model_proposed: bool = False,
+        review_required: bool = True,
+        promotion_status: str = "candidate",
+    ) -> None:
+        """Upsert an advisory document->project match candidate (V24). Idempotent by
+        candidate_id. The raw_document_text / external_writeback guard CHECK columns
+        are never written here — the schema defaults (both 0) hold. No raw path/name/URL
+        is accepted; only the project key, candidate type, confidence, and
+        hashed/typed signal evidence round-trip through ``signals_json``.
+        """
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO construction_document_project_match_candidates
+                    (candidate_id, document_card_id, project_key, candidate_type,
+                     confidence, confidence_class, deterministic, model_proposed,
+                     review_required, promotion_status, signals_json, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(candidate_id) DO UPDATE SET
+                    document_card_id = excluded.document_card_id,
+                    project_key = excluded.project_key,
+                    candidate_type = excluded.candidate_type,
+                    confidence = excluded.confidence,
+                    confidence_class = excluded.confidence_class,
+                    deterministic = excluded.deterministic,
+                    model_proposed = excluded.model_proposed,
+                    review_required = excluded.review_required,
+                    promotion_status = excluded.promotion_status,
+                    signals_json = excluded.signals_json
+                """,
+                (
+                    candidate_id, document_card_id, project_key, candidate_type,
+                    confidence, confidence_class, 1 if deterministic else 0,
+                    1 if model_proposed else 0, 1 if review_required else 0,
+                    promotion_status, signals_json, _utc_now(),
+                ),
+            )
+
+    def count_document_project_match_candidates(self) -> int:
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            "SELECT COUNT(*) FROM construction_document_project_match_candidates"
         )
         row = cur.fetchone()
         return int(row[0]) if row else 0

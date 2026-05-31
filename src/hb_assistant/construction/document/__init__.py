@@ -18,6 +18,7 @@ from hb_assistant.construction.document.contracts import (
     load_all_document_contracts,
     load_document_contract,
 )
+from hb_assistant.construction.document.project_matcher import match_document_projects
 from hb_assistant.construction.document.source_scope import (
     evaluate_source_scope_compliance,
     non_compliant_source_keys,
@@ -31,4 +32,5 @@ __all__ = [
     "non_compliant_source_keys",
     "materialize_document_cards",
     "classify_document_cards",
+    "match_document_projects",
 ]

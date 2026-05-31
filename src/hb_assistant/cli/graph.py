@@ -36,6 +36,7 @@ from hb_assistant.construction.correspondence import CorrespondenceReviewBuilder
 from hb_assistant.construction.document import (
     classify_document_cards,
     evaluate_source_scope_compliance,
+    match_document_projects,
     materialize_document_cards,
 )
 from hb_assistant.construction.email import (
@@ -591,6 +592,31 @@ def files_classify_document_cards_cmd(
     """
     store = ConstructionStore()
     report = classify_document_cards(store, apply=apply)
+    typer.echo(json.dumps(report, indent=2) if json_out else str(report))
+    raise typer.Exit(0 if report["ok"] else 1)
+
+
+@files_app.command("match-document-projects")
+def files_match_document_projects_cmd(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist project-match candidates to SQLite (default: dry-run)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Match document cards to projects (deterministic-first; candidates-only).
+
+    Dry-run by default: computes the project-key / candidate-type / confidence
+    breakdown without any SQLite write; ``--apply`` persists one advisory candidate
+    per matchable card to construction_document_project_match_candidates. Uses the
+    deterministic binding the card already carries (source-location project key +
+    full project-number hash) corroborated against the project registry; no Graph
+    call, no model, no re-parse of raw paths/names. A project-number-hash that
+    disagrees with the registry routes to review as a ``conflict`` candidate; nothing
+    is auto-promoted and the card is left unchanged. Only hashed/typed signal evidence
+    is stored — never raw names, paths, or URLs. Read-only against Microsoft 365.
+    """
+    store = ConstructionStore()
+    report = match_document_projects(store, apply=apply)
     typer.echo(json.dumps(report, indent=2) if json_out else str(report))
     raise typer.Exit(0 if report["ok"] else 1)
 

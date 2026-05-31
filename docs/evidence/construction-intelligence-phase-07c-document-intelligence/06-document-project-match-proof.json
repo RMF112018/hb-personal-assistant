@@ -1,0 +1,53 @@
+{
+  "phase": "construction-intelligence-phase-07c-document-intelligence",
+  "prompt": "06-document-project-matching",
+  "generated_utc": "2026-05-31",
+  "repo_sha_parent": "b84a48fc5eadcc182f671cb4f59768590d53293b",
+  "schema_version": 24,
+  "package_version": "1.3.0",
+  "leak_safe": "counts by project_key/confidence_class/candidate_type + gate statuses only; no per-card identifiers, no raw filenames, paths, web URLs, project numbers, tokens, or secrets",
+  "command": "hb-assistant graph files match-document-projects --apply --json",
+  "mode": "apply",
+  "exit_code": 0,
+  "ok": true,
+  "deterministic": "verified identical by_project_key/by_confidence_class/by_candidate_type across PYTHONHASHSEED 1/2/3",
+  "summary": {
+    "cards_total": 283,
+    "matched": 283,
+    "deterministic": 283,
+    "review_required": 0,
+    "conflict": 0,
+    "unmatched_skipped": 0,
+    "by_project_key": { "tropical": 283 },
+    "by_confidence_class": { "deterministic": 283 },
+    "by_candidate_type": { "deterministic": 283 }
+  },
+  "idempotent": {
+    "reapply_candidate_count": 283,
+    "live_candidate_count_after_reapply": 283
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "graph_calls": "none",
+    "model_invoked": false,
+    "deterministic_first": true,
+    "raw_document_text_persisted": false,
+    "raw_path_or_url_persisted": false,
+    "auto_promotion": false,
+    "card_mutated": false,
+    "candidate_guard_check_columns_all_zero": true
+  },
+  "post_apply_gates": {
+    "document_card_population_status": "pass",
+    "raw_content_leakage_scan": "pass",
+    "external_writeback_scan": "pass",
+    "meeting_prep_ready": false,
+    "no_writeback_proof_passed": true
+  },
+  "leak_scan": {
+    "live_candidate_rows_scanned": 283,
+    "url_email_ical_token_pattern_hits": 0
+  },
+  "deferred_disclosure": "V24 satellite tables (incl. construction_document_project_match_candidates) are not yet in the no-writeback-proof static-scan scope; that coverage is deferred to Prompt 12 and is not claimed here.",
+  "outcome": "283 advisory document->project match candidates written (deterministic-first; model not invoked). All 283 bound to project 'tropical' via the source-location project key corroborated by the full project-number hash the card already carries; 0 conflicts, 0 review-required, 0 unmatched/skipped. Cards left unchanged (candidates-only); nothing auto-promoted. A scan of all 283 candidate rows found 0 URL/email/iCal/token patterns and confirmed the guard CHECK columns (raw_document_text_persisted, external_writeback_performed) all 0. No raw content or unsafe identifiers persisted; no readiness overstated (meeting-prep still blocked on review_required_routing_presence; project matching is not a prerequisite)."
+}
