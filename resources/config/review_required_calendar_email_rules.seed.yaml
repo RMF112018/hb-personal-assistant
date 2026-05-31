@@ -1,0 +1,23 @@
+version: phase07b-review-required-calendar-email-rules-v1
+rules:
+  - id: private_calendar_event
+    when: event.is_private == true
+    action: review_required
+  - id: sensitive_calendar_or_thread
+    categories: [legal, contract, claim, safety, personnel, financial, insurance, delay, notice]
+    action: review_required
+  - id: weak_or_model_candidate
+    confidence_classes: [moderate, weak, model_proposed, sensitive]
+    action: review_required
+  - id: invalid_model_output
+    when: model.status == invalid
+    action: review_required
+  - id: encrypted_body_context_used
+    when: summary.encrypted_body_context_used == true
+    action: review_required
+prohibited:
+  auto_promote_model_only: true
+  persist_raw_body: true
+  persist_raw_prompt: true
+  persist_raw_response: true
+  persist_join_url: true

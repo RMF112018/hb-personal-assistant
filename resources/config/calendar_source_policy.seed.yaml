@@ -1,0 +1,15 @@
+version: phase07b-calendar-source-policy-v1
+defaults:
+  enabled: true
+  read_only: true
+  lookback_days: 14
+  lookahead_days: 30
+  max_items_per_run: 250
+  persist_event_body: false
+  persist_join_url: false
+  private_event_policy: metadata_minimal_review_required
+sources:
+  - source_id: primary_calendar
+    mailbox_owner: current_user_hash_only
+    calendar_role: primary
+    policy_id: default_calendar_readonly

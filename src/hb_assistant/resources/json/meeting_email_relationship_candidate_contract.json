@@ -1,0 +1,36 @@
+{
+  "version": "phase07b-meeting-email-candidate-v1",
+  "signals": [
+    "project_key",
+    "participant_overlap",
+    "domain_overlap",
+    "time_window",
+    "subject_topic_similarity",
+    "source_reference_overlap",
+    "model_advisory"
+  ],
+  "candidate_classes": [
+    "deterministic",
+    "strong",
+    "moderate",
+    "weak",
+    "model_proposed",
+    "sensitive"
+  ],
+  "auto_promotion_allowed": false,
+  "review_required_classes": [
+    "moderate",
+    "weak",
+    "model_proposed",
+    "sensitive"
+  ],
+  "required_fields": [
+    "candidate_id",
+    "event_index_id",
+    "thread_key_hash",
+    "confidence",
+    "confidence_class",
+    "review_required",
+    "source_reference_json"
+  ]
+}

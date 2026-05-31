@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 88,
+  "table_count": 96,
   "tables": {
     "source_records": {
       "table_family": "core_source_v1",
@@ -811,6 +811,78 @@
       "blocking_for_phase": "none",
       "v": "V1+",
       "notes": "migration ledger; not user table"
+    },
+    "calendar_source_locations": {
+      "table_family": "phase07b_calendar_v23",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07B",
+      "blocking_for_phase": "none",
+      "v": "V23",
+      "notes": "Phase 07B calendar/email-thread intelligence (V23)"
+    },
+    "calendar_sync_state": {
+      "table_family": "phase07b_calendar_v23",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07B",
+      "blocking_for_phase": "none",
+      "v": "V23",
+      "notes": "Phase 07B calendar/email-thread intelligence (V23)"
+    },
+    "calendar_crawl_runs": {
+      "table_family": "phase07b_calendar_v23",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07B",
+      "blocking_for_phase": "none",
+      "v": "V23",
+      "notes": "Phase 07B calendar/email-thread intelligence (V23)"
+    },
+    "calendar_event_index": {
+      "table_family": "phase07b_calendar_v23",
+      "lifecycle_status": "operational_empty_blocking",
+      "expected_population_status": "empty",
+      "phase_owner": "07B",
+      "blocking_for_phase": "07D",
+      "v": "V23",
+      "notes": "Phase 07B calendar/email-thread intelligence (V23)"
+    },
+    "calendar_event_attendees": {
+      "table_family": "phase07b_calendar_v23",
+      "lifecycle_status": "operational_empty_blocking",
+      "expected_population_status": "empty",
+      "phase_owner": "07B",
+      "blocking_for_phase": "07D",
+      "v": "V23",
+      "notes": "Phase 07B calendar/email-thread intelligence (V23)"
+    },
+    "calendar_project_match_candidates": {
+      "table_family": "phase07b_calendar_v23",
+      "lifecycle_status": "operational_empty_blocking",
+      "expected_population_status": "empty",
+      "phase_owner": "07B",
+      "blocking_for_phase": "07D",
+      "v": "V23",
+      "notes": "Phase 07B calendar/email-thread intelligence (V23)"
+    },
+    "meeting_email_relationship_candidates": {
+      "table_family": "phase07b_calendar_v23",
+      "lifecycle_status": "operational_empty_blocking",
+      "expected_population_status": "empty",
+      "phase_owner": "07B",
+      "blocking_for_phase": "07D",
+      "v": "V23",
+      "notes": "Phase 07B calendar/email-thread intelligence (V23)"
+    },
+    "email_thread_summary_materialization_runs": {
+      "table_family": "phase07b_calendar_v23",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07B",
+      "blocking_for_phase": "none",
+      "v": "V23",
+      "notes": "Phase 07B calendar/email-thread intelligence (V23)"
     }
   }
 }

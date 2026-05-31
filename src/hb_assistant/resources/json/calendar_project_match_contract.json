@@ -1,0 +1,36 @@
+{
+  "version": "phase07b-calendar-project-match-v1",
+  "candidate_types": [
+    "project_number",
+    "source_location_context",
+    "participant_domain",
+    "project_name_tokens",
+    "email_thread_context",
+    "model_proposed"
+  ],
+  "confidence_classes": {
+    "deterministic": 0.95,
+    "strong": 0.8,
+    "moderate": 0.6,
+    "weak": 0.0
+  },
+  "auto_promotion_allowed": false,
+  "review_required_when": [
+    "weak",
+    "moderate",
+    "model_proposed",
+    "sensitive",
+    "private_event",
+    "conflicting_project_signals"
+  ],
+  "forbidden_persistence": [
+    "raw_subject",
+    "raw_location",
+    "raw_organizer",
+    "raw_attendee_email",
+    "event_body",
+    "join_url",
+    "token",
+    "signed_url"
+  ]
+}

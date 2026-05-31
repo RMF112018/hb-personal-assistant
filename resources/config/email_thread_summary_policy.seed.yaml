@@ -1,0 +1,11 @@
+version: phase07b-email-thread-summary-policy-v1
+defaults:
+  summary_mode: metadata_only
+  allow_encrypted_body_context: false
+  allow_local_model_advisory: true
+  persist_decrypted_body: false
+  persist_raw_prompt: false
+  persist_raw_response: false
+  max_summary_chars: 900
+  route_sensitive_to_review: true
+  route_high_impact_to_review: true

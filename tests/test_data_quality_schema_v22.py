@@ -48,7 +48,7 @@ def _table_sql(conn: sqlite3.Connection, table: str) -> str:
 def test_v22_adds_raw_body_guardrail_to_all_marts() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "v22.db"
-        assert _migrate(db) == LATEST_SCHEMA_VERSION == 22
+        assert _migrate(db) == LATEST_SCHEMA_VERSION
         conn = sqlite3.connect(str(db))
         for mart in _V22_MARTS:
             cols = _columns(conn, mart)
@@ -60,8 +60,8 @@ def test_v22_adds_raw_body_guardrail_to_all_marts() -> None:
 def test_v22_is_idempotent() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "v22.db"
-        assert _migrate(db) == 22
-        assert _migrate(db) == 22  # second apply is a no-op
+        assert _migrate(db) == LATEST_SCHEMA_VERSION
+        assert _migrate(db) == LATEST_SCHEMA_VERSION  # second apply is a no-op
         conn = sqlite3.connect(str(db))
         # exactly one schema_migrations row for v22
         n = conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 22").fetchone()[0]

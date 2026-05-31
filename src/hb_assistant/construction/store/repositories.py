@@ -646,6 +646,96 @@ class ConstructionStore:
                 ),
             )
 
+    def upsert_calendar_source_location(
+        self,
+        *,
+        source_id: str,
+        mailbox_owner_hash: str,
+        mailbox_owner_domain: Optional[str] = None,
+        calendar_id_hash: Optional[str] = None,
+        calendar_role: str = "primary",
+        calendar_display_name_hash: Optional[str] = None,
+        enabled: bool = True,
+        read_only: bool = True,
+        lookback_days: int = 14,
+        lookahead_days: int = 30,
+        max_items_per_run: int = 250,
+        policy_id: Optional[str] = None,
+    ) -> None:
+        """Upsert a Phase 07B calendar source-registry entry (read-only only)."""
+        if read_only is not True:
+            raise ValueError(
+                "calendar_source_locations.read_only must be True (no calendar writeback path)"
+            )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO calendar_source_locations
+                    (source_id, mailbox_owner_hash, mailbox_owner_domain, calendar_id_hash,
+                     calendar_role, calendar_display_name_hash, enabled, read_only,
+                     lookback_days, lookahead_days, max_items_per_run, policy_id,
+                     created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source_id) DO UPDATE SET
+                    mailbox_owner_hash = excluded.mailbox_owner_hash,
+                    mailbox_owner_domain = excluded.mailbox_owner_domain,
+                    calendar_id_hash = excluded.calendar_id_hash,
+                    calendar_role = excluded.calendar_role,
+                    calendar_display_name_hash = excluded.calendar_display_name_hash,
+                    enabled = excluded.enabled,
+                    lookback_days = excluded.lookback_days,
+                    lookahead_days = excluded.lookahead_days,
+                    max_items_per_run = excluded.max_items_per_run,
+                    policy_id = excluded.policy_id,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    source_id, mailbox_owner_hash, mailbox_owner_domain, calendar_id_hash,
+                    calendar_role, calendar_display_name_hash, 1 if enabled else 0,
+                    lookback_days, lookahead_days, max_items_per_run, policy_id,
+                    _utc_now(), _utc_now(),
+                ),
+            )
+
+    def upsert_calendar_sync_state(
+        self,
+        *,
+        source_id: str,
+        last_successful_sync_utc: Optional[str] = None,
+        last_attempted_sync_utc: Optional[str] = None,
+        window_start_utc: Optional[str] = None,
+        window_end_utc: Optional[str] = None,
+        last_event_count: int = 0,
+        sync_status: str = "pending",
+        error_redacted: Optional[str] = None,
+    ) -> None:
+        """Upsert bounded calendar sync state (redacted error text only)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO calendar_sync_state
+                    (source_id, last_successful_sync_utc, last_attempted_sync_utc,
+                     window_start_utc, window_end_utc, last_event_count, sync_status,
+                     error_redacted)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source_id) DO UPDATE SET
+                    last_successful_sync_utc = excluded.last_successful_sync_utc,
+                    last_attempted_sync_utc = excluded.last_attempted_sync_utc,
+                    window_start_utc = excluded.window_start_utc,
+                    window_end_utc = excluded.window_end_utc,
+                    last_event_count = excluded.last_event_count,
+                    sync_status = excluded.sync_status,
+                    error_redacted = excluded.error_redacted
+                """,
+                (
+                    source_id, last_successful_sync_utc, last_attempted_sync_utc,
+                    window_start_utc, window_end_utc, last_event_count, sync_status,
+                    error_redacted,
+                ),
+            )
+
     def get_source_location(self, source_id: str) -> Optional[dict[str, Any]]:
         conn = get_connection(self._db_path)
         cur = conn.execute(

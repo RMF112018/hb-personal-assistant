@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 22
+LATEST_SCHEMA_VERSION = 23
 
 
 class SQLiteMigrator:
@@ -2214,6 +2214,199 @@ class SQLiteMigrator:
         "cross_domain_context_readiness_mart",
     ]
 
+    # v23 Phase 07B Prompt 02 — calendar + email-thread intelligence foundation.
+    # Additive only (CREATE TABLE/INDEX IF NOT EXISTS); V1-V22 untouched. Every
+    # event/candidate/run table carries the standard no-raw-body / no-full-text /
+    # no-raw-prompt / no-raw-response / no-external-writeback CHECK guardrails, and
+    # the calendar source registry is immutable read-only (CHECK(read_only = 1)).
+    # Subjects/organizers/locations/attendees/web links/iCal UIDs/thread keys are
+    # stored hashed or redacted only.
+    V23_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS calendar_source_locations (
+          source_id TEXT PRIMARY KEY,
+          mailbox_owner_hash TEXT NOT NULL,
+          mailbox_owner_domain TEXT,
+          calendar_id_hash TEXT,
+          calendar_role TEXT NOT NULL DEFAULT 'primary',
+          calendar_display_name_hash TEXT,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          read_only INTEGER NOT NULL DEFAULT 1 CHECK(read_only = 1),
+          lookback_days INTEGER NOT NULL DEFAULT 14,
+          lookahead_days INTEGER NOT NULL DEFAULT 30,
+          max_items_per_run INTEGER NOT NULL DEFAULT 250,
+          policy_id TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS calendar_sync_state (
+          source_id TEXT PRIMARY KEY REFERENCES calendar_source_locations(source_id),
+          last_successful_sync_utc TEXT,
+          last_attempted_sync_utc TEXT,
+          window_start_utc TEXT,
+          window_end_utc TEXT,
+          last_event_count INTEGER NOT NULL DEFAULT 0,
+          sync_status TEXT NOT NULL DEFAULT 'pending',
+          error_redacted TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS calendar_crawl_runs (
+          run_id TEXT PRIMARY KEY,
+          source_id TEXT NOT NULL REFERENCES calendar_source_locations(source_id),
+          mode TEXT NOT NULL,
+          started_at_utc TEXT NOT NULL,
+          completed_at_utc TEXT,
+          window_start_utc TEXT,
+          window_end_utc TEXT,
+          events_seen INTEGER NOT NULL DEFAULT 0,
+          events_indexed INTEGER NOT NULL DEFAULT 0,
+          events_private INTEGER NOT NULL DEFAULT 0,
+          events_cancelled INTEGER NOT NULL DEFAULT 0,
+          events_review_required INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL,
+          error_redacted TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          full_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(full_text_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS calendar_event_index (
+          event_index_id TEXT PRIMARY KEY,
+          source_id TEXT NOT NULL REFERENCES calendar_source_locations(source_id),
+          graph_event_id_hash TEXT NOT NULL,
+          ical_uid_hash TEXT,
+          series_master_id_hash TEXT,
+          web_link_hash TEXT,
+          subject_hash TEXT,
+          subject_redacted TEXT,
+          subject_token_hashes_json TEXT,
+          organizer_hash TEXT,
+          organizer_domain TEXT,
+          location_hash TEXT,
+          location_redacted TEXT,
+          start_datetime_utc TEXT NOT NULL,
+          end_datetime_utc TEXT NOT NULL,
+          timezone TEXT,
+          is_cancelled INTEGER NOT NULL DEFAULT 0,
+          is_private INTEGER NOT NULL DEFAULT 0,
+          is_online_meeting INTEGER NOT NULL DEFAULT 0,
+          online_meeting_provider TEXT,
+          has_attachments INTEGER NOT NULL DEFAULT 0,
+          project_key TEXT,
+          project_match_method TEXT,
+          project_match_confidence REAL,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          review_reasons_json TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          full_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(full_text_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          UNIQUE(source_id, graph_event_id_hash)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS calendar_event_attendees (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event_index_id TEXT NOT NULL REFERENCES calendar_event_index(event_index_id),
+          attendee_hash TEXT NOT NULL,
+          attendee_domain TEXT,
+          attendee_role TEXT,
+          response_status TEXT,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          UNIQUE(event_index_id, attendee_hash)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS calendar_project_match_candidates (
+          candidate_id TEXT PRIMARY KEY,
+          event_index_id TEXT NOT NULL REFERENCES calendar_event_index(event_index_id),
+          project_key TEXT NOT NULL,
+          candidate_type TEXT NOT NULL,
+          signals_json TEXT NOT NULL,
+          confidence REAL NOT NULL,
+          confidence_class TEXT NOT NULL,
+          deterministic INTEGER NOT NULL DEFAULT 0,
+          model_proposed INTEGER NOT NULL DEFAULT 0,
+          review_required INTEGER NOT NULL DEFAULT 1,
+          promotion_status TEXT NOT NULL DEFAULT 'candidate',
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS meeting_email_relationship_candidates (
+          candidate_id TEXT PRIMARY KEY,
+          event_index_id TEXT NOT NULL REFERENCES calendar_event_index(event_index_id),
+          thread_key_hash TEXT NOT NULL,
+          project_key TEXT,
+          candidate_type TEXT NOT NULL,
+          time_window_signal TEXT,
+          participant_signal TEXT,
+          subject_topic_signal TEXT,
+          source_reference_json TEXT NOT NULL,
+          confidence REAL NOT NULL,
+          confidence_class TEXT NOT NULL,
+          deterministic INTEGER NOT NULL DEFAULT 0,
+          model_proposed INTEGER NOT NULL DEFAULT 0,
+          review_required INTEGER NOT NULL DEFAULT 1,
+          promotion_status TEXT NOT NULL DEFAULT 'candidate',
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_thread_summary_materialization_runs (
+          run_id TEXT PRIMARY KEY,
+          mode TEXT NOT NULL,
+          started_at_utc TEXT NOT NULL,
+          completed_at_utc TEXT,
+          project_key TEXT,
+          threads_considered INTEGER NOT NULL DEFAULT 0,
+          threads_summarized INTEGER NOT NULL DEFAULT 0,
+          review_required_count INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL,
+          error_redacted TEXT,
+          raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_calendar_event_index_source_start
+          ON calendar_event_index(source_id, start_datetime_utc);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_calendar_event_index_project_start
+          ON calendar_event_index(project_key, start_datetime_utc);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_calendar_event_index_review
+          ON calendar_event_index(review_required);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_calendar_project_candidates_project
+          ON calendar_project_match_candidates(project_key, confidence_class);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_meeting_email_candidates_project_event
+          ON meeting_email_relationship_candidates(project_key, event_index_id);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_meeting_email_candidates_review
+          ON meeting_email_relationship_candidates(review_required);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -2486,6 +2679,17 @@ class SQLiteMigrator:
                         )
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (22, 'v22_mart_raw_body_guardrail', ?)",
+                    (now,),
+                )
+
+            # v23 Phase 07B Prompt 02 — calendar + email-thread intelligence schema
+            # (additive CREATE TABLE/INDEX only; CHECK guardrails; V1-V22 untouched).
+            for stmt in self.V23_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 23")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (23, 'v23_calendar_email_thread_intelligence', ?)",
                     (now,),
                 )
 

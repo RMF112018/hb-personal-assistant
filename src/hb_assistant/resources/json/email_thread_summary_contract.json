@@ -1,0 +1,36 @@
+{
+  "version": "phase07b-email-thread-summary-v1",
+  "summary_modes": [
+    "metadata_only",
+    "metadata_preview",
+    "controlled_encrypted_body_context",
+    "local_model_advisory"
+  ],
+  "default_mode": "metadata_only",
+  "persisted_fields": [
+    "thread_key_hash",
+    "project_key",
+    "summary_redacted",
+    "topic_labels",
+    "risk_flags",
+    "review_required",
+    "review_reasons",
+    "source_refs"
+  ],
+  "forbidden_persistence": [
+    "raw_body",
+    "decrypted_body",
+    "raw_prompt",
+    "raw_response",
+    "token",
+    "secret",
+    "signed_url"
+  ],
+  "review_required_when": [
+    "sensitive_category",
+    "low_project_confidence",
+    "invalid_model_output",
+    "encrypted_body_context_used",
+    "high_impact_category"
+  ]
+}
