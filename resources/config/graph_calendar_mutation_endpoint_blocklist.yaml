@@ -1,0 +1,52 @@
+# Phase 07B — Microsoft Graph calendar mutation blocklist.
+#
+# Static contract resource consumed by graph/calendar_endpoint_guard.py. Records
+# the calendar-mutating verbs, endpoint paths, and operation keywords that Phase
+# 07B must reject *before* any HTTP request. Even though the tenant has consented
+# Calendars.ReadWrite.Shared, Phase 07B runtime is strictly read-only.
+# Mirrors graph_mail_mutation_endpoint_blocklist.yaml.
+#
+# Method/path interaction: some paths (e.g. /me/events, /me/events/{id}) also
+# appear in graph_calendar_read_endpoint_allowlist.yaml. The HTTP *verb* decides —
+# GET is allowed for reading metadata; the verbs below are forbidden on the same
+# path. Enforcement keys on (method, path) together, positive-allowlist-first.
+version: 1
+
+forbidden_methods:
+  - POST
+  - PATCH
+  - DELETE
+  - PUT
+
+forbidden_paths:
+  - /me/events                                   # POST create event
+  - /me/events/{id}                              # PATCH update / DELETE event
+  - /me/calendar/events                          # POST create on default calendar
+  - /me/calendars/{id}/events                    # POST create on named calendar
+  - /me/calendars                                # POST create calendar
+  - /me/events/{id}/accept                       # POST attendee response (accept)
+  - /me/events/{id}/decline                      # POST attendee response (decline)
+  - /me/events/{id}/tentativelyAccept            # POST attendee response (tentative)
+  - /me/events/{id}/cancel                       # POST organizer cancel
+  - /me/events/{id}/forward                      # POST forward event
+  - /me/events/{id}/snoozeReminder               # POST reminder mutation
+  - /me/events/{id}/dismissReminder              # POST reminder mutation
+
+# Substring/verb keywords that must never appear in a constructed calendar
+# operation, covering the forbidden behaviors enumerated in the package boundaries.
+forbidden_operation_keywords:
+  - accept
+  - decline
+  - tentativelyAccept
+  - cancel
+  - forward
+  - snoozeReminder
+  - dismissReminder
+  - send
+  - create
+  - update
+  - delete
+  - move
+  - copy
+
+on_match: "raise CalendarMutationBlockedError before HTTP request; stop workflow"

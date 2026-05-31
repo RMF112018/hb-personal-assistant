@@ -60,6 +60,13 @@ from hb_assistant.construction.source_projection import (
     project_registry_to_v5_source_locations,
 )
 from hb_assistant.construction.store import ConstructionStore
+from hb_assistant.graph.calendar_endpoint_guard import (
+    CalendarEndpointContract,
+    CalendarMutationBlockedError,
+    load_calendar_endpoint_contract,
+    run_calendar_no_writeback_self_test,
+)
+from hb_assistant.graph.calendar_readonly_client import ReadOnlyCalendarClient
 from hb_assistant.graph.files_endpoint_guard import (
     load_files_endpoint_contract,
     run_files_no_writeback_self_test,
@@ -99,6 +106,19 @@ files_link_app = typer.Typer(
     help="Resolve a user-provided OneDrive/SharePoint link to canonical IDs."
 )
 files_app.add_typer(files_link_app, name="link")
+calendar_app = typer.Typer(
+    help=(
+        "Read-only Outlook/Exchange calendar intelligence (Phase 07B). "
+        "Read-only against Microsoft 365: no event create/update/delete, attendee "
+        "accept/decline/tentative response, organizer cancel, forward, or reminder "
+        "change; no event body/description or online-meeting join URL is requested "
+        "or persisted. The write-capable Calendars.ReadWrite.Shared scope is "
+        "consented at the tenant; scope tightening is DEFERRED (documented residual "
+        "risk) — the calendar endpoint guard enforces read-only regardless. Start "
+        "with `status`."
+    )
+)
+app.add_typer(calendar_app, name="calendar")
 
 # Write-capable Graph file/site scopes whose presence is the known DEFERRED
 # over-broad posture (documented, not tightened in this phase).
@@ -128,6 +148,20 @@ _FORBIDDEN_MAIL_SCOPES = (
     "Mail.ReadWrite.Shared",
     "Mail.Send",
     "Mail.Send.Shared",
+)
+
+# Calendar scopes. Read-only Phase 07B needs read capability — Calendars.Read or
+# the broader Calendars.ReadWrite.Shared (which also grants read). The write-
+# capable scopes below are reported as a DEFERRED tightening posture (documented
+# residual risk); the calendar endpoint guard enforces read-only regardless.
+_WRITE_CAPABLE_CALENDAR_SCOPES = (
+    "Calendars.ReadWrite",
+    "Calendars.ReadWrite.Shared",
+    "Calendars.ReadWrite.All",
+)
+_READ_CALENDAR_SCOPES = (
+    "Calendars.Read",
+    "Calendars.Read.Shared",
 )
 
 
@@ -228,6 +262,51 @@ def _files_static_scan(repo_root: Path) -> Dict[str, Any]:
         "mutation_method_calls_found": len(violations),
         "violations": violations,
     }
+
+
+def _calendar_probe(
+    provider: DelegatedAuthProvider, contract: CalendarEndpointContract
+) -> Dict[str, Any]:
+    """One bounded, read-only probe (`/me/calendarView`) through the guarded client.
+
+    Surfaces only an event *count* — never any subject, organizer, attendee,
+    location, body, or join URL. Any failure (including no cached token) is
+    non-fatal and reported as a readiness status.
+    """
+
+    def token_getter(scopes: Optional[List[str]] = None) -> Dict[str, Any]:
+        return provider.get_token(scopes or ["Calendars.Read"])
+
+    # Bounded, fixed window (no Date.now in evidence); read-only by construction.
+    window_start = "2026-01-01T00:00:00Z"
+    window_end = "2026-12-31T23:59:59Z"
+    client: Optional[GraphHttpClient] = None
+    try:
+        client = GraphHttpClient(token_getter)
+        reader = ReadOnlyCalendarClient(client, contract=contract)
+        events = reader.list_calendar_view(
+            start=window_start, end=window_end, top=1, max_items=1
+        )
+        return {
+            "attempted": True,
+            "path": "/me/calendarView",
+            "status": 200,
+            "event_sample_count": len(events),
+        }
+    except GraphHttpError as e:
+        return {
+            "attempted": True,
+            "path": "/me/calendarView",
+            "status": e.status,
+            "error": e.message[:150],
+        }
+    except CalendarMutationBlockedError as e:  # pragma: no cover - read path is allowlisted
+        return {"attempted": True, "path": e.path, "status": "blocked", "error": e.reason}
+    except Exception as e:
+        return {"attempted": True, "path": "/me/calendarView", "error": str(e)[:150]}
+    finally:
+        if client is not None:
+            client.close()
 
 
 def _files_auth_posture() -> Dict[str, Any]:
@@ -1470,6 +1549,89 @@ def status_cmd(
     except Exception as e:  # pragma: no cover - defensive envelope
         payload = {
             "command": "graph mail status",
+            "ok": False,
+            "status": "status_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@calendar_app.command("status")
+def calendar_status_cmd(
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+    probe: bool = typer.Option(
+        True, "--probe/--no-probe", help="Issue one bounded read-only Graph probe"
+    ),
+) -> None:
+    """Report calendar read-only readiness: auth, scopes, endpoint-guard, and a bounded probe.
+
+    The write-capable ``Calendars.ReadWrite.Shared`` scope, when configured, is
+    reported as a DEFERRED tightening posture (documented residual risk), not a
+    failure: the calendar endpoint guard enforces read-only behavior regardless of
+    the granted scope. ``ok`` is driven by the in-process mutation-lockout proof
+    plus calendar read capability; the probe is non-fatal.
+    """
+    try:
+        cfg = load_config()
+        pp = PathPolicy(cfg)
+        configured = list(cfg.identity.delegated_scopes)
+        provider = DelegatedAuthProvider(
+            cfg.identity.tenant_id, cfg.identity.client_id, configured, path_policy=pp
+        )
+        contract = load_calendar_endpoint_contract()
+
+        read_capable = {s.lower() for s in _READ_CALENDAR_SCOPES} | {
+            s.lower() for s in _WRITE_CAPABLE_CALENDAR_SCOPES
+        }
+        calendar_read_capability_present = any(s.lower() in read_capable for s in configured)
+        write_capable_present = [
+            s for s in configured if s.lower() in {x.lower() for x in _WRITE_CAPABLE_CALENDAR_SCOPES}
+        ]
+
+        auth_info = provider.status_info()  # safe: no tokens, redacted claims
+        guard = run_calendar_no_writeback_self_test(contract)
+        calendar_probe = _calendar_probe(provider, contract) if probe else {"attempted": False}
+
+        mutation_blocked = bool(guard["passed"])
+        guardrails = {
+            "calendar_read_only": True,
+            "mutation_endpoints_blocked": mutation_blocked,
+            "event_body_excluded": "body" not in contract.event_metadata_select
+            and "bodyPreview" not in contract.event_metadata_select,
+            "join_url_excluded": "onlineMeeting" not in contract.event_metadata_select,
+            "permission_tightening": "deferred",
+            "residual_risk": (
+                "write-capable scope configured; runtime calendar endpoint guard "
+                "enforces read-only behavior"
+            ),
+            "guardrail_status": "passed" if mutation_blocked else "failed",
+        }
+        ok = bool(mutation_blocked and calendar_read_capability_present)
+
+        payload: Dict[str, Any] = {
+            "command": "graph calendar status",
+            "ok": ok,
+            "calendar_read_capability_present": calendar_read_capability_present,
+            "write_capable_calendar_scopes_present": write_capable_present,
+            "auth": auth_info,
+            "guard_self_test": guard,
+            "calendar_probe": calendar_probe,
+            "guardrails": guardrails,
+            "contract": {
+                "allowed_methods": sorted(contract.allowed_methods),
+                "allowed_paths_count": len(contract.allowed_paths),
+                "forbidden_methods": sorted(contract.forbidden_methods),
+                "forbidden_paths_count": len(contract.forbidden_paths),
+            },
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0 if ok else 1)
+    except typer.Exit:
+        raise
+    except Exception as e:  # pragma: no cover - defensive envelope
+        payload = {
+            "command": "graph calendar status",
             "ok": False,
             "status": "status_error",
             "error": str(e)[:200],

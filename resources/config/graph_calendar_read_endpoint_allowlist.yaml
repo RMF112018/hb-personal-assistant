@@ -1,0 +1,74 @@
+# Phase 07B — Read-only Microsoft Graph calendar endpoint allowlist (GET-only).
+#
+# Static contract resource consumed by graph/calendar_endpoint_guard.py +
+# graph/calendar_readonly_client.py. Records exactly which Graph calendar read
+# patterns Phase 07B may use and the metadata-first $select set for event reads.
+# Mirrors graph_mail_read_endpoint_allowlist.yaml.
+#
+# Hard boundary: GET only. The event body/description and the online-meeting join
+# URL are NOT requested (no `body`, no `bodyPreview`, no `onlineMeeting`/joinUrl).
+# A path here may also appear in the mutation blocklist (e.g. /me/events/{id});
+# the HTTP *verb* decides — GET allowed, mutating verbs forbidden.
+version: 1
+
+allowed_methods:
+  - GET
+
+# Read patterns Phase 07B may issue. calendarView (bounded by a start/end window)
+# is the preferred entry; single-event and calendar-list reads are metadata-only.
+allowed_paths:
+  - /me                                          # identity / mailbox owner probe
+  - /me/calendar                                 # default calendar metadata
+  - /me/calendars                                # calendar discovery
+  - /me/calendars/{id}                           # single calendar metadata
+  - /me/calendarView                             # preferred: windowed event listing
+  - /me/calendar/calendarView                    # default-calendar windowed listing
+  - /me/calendars/{id}/calendarView              # named-calendar windowed listing
+  - /me/events                                    # mailbox-wide event listing (bounded)
+  - /me/events/{id}                               # single event metadata
+  - /me/calendar/events                           # default-calendar event listing
+  - /me/calendars/{id}/events                     # named-calendar event listing
+
+# Per-request header to stabilize IDs across calendar/series changes.
+prefer_headers:
+  - 'IdType="ImmutableId"'
+
+# Event metadata $select — body-free. `body`/`bodyPreview` are intentionally
+# absent (event description never requested). `onlineMeeting` (which carries the
+# join URL) is intentionally absent; only the safe `onlineMeetingProvider` flag is
+# read. `sensitivity` IS a valid property on the Graph v1.0 `event` entity (unlike
+# `message`) and drives private-event handling. Subject/organizer/attendees/
+# location are read only to be hashed/redacted downstream (Prompt 04) and are
+# never persisted raw.
+event_metadata_select:
+  - id
+  - iCalUId
+  - seriesMasterId
+  - type
+  - subject
+  - organizer
+  - attendees
+  - start
+  - end
+  - location
+  - isCancelled
+  - isAllDay
+  - isOnlineMeeting
+  - onlineMeetingProvider
+  - sensitivity
+  - showAs
+  - hasAttachments
+  - webLink
+  - lastModifiedDateTime
+
+paging:
+  follow: "@odata.nextLink"        # apply the whole nextLink URL verbatim
+  do_not_parse_skip_token: true    # never extract/manipulate $skip from nextLink
+  default_page_size: 25            # conservative bounded page
+  max_top: 1000                    # $top valid range is 1..1000
+
+notes:
+  - "Runtime calendar scope is currently Calendars.ReadWrite.Shared (consented); this guard constrains behavior to read-only regardless of the granted scope. Scope tightening is DEFERRED (documented residual risk)."
+  - "Event body/description ($select=body) is NOT requested; no in-memory body capture in Phase 07B."
+  - "Online-meeting join URL (onlineMeeting.joinUrl) is NOT requested or persisted; only onlineMeetingProvider is read."
+  - "Bounded calendarView window (startDateTime/endDateTime) is used instead of a full-calendar backfill."
