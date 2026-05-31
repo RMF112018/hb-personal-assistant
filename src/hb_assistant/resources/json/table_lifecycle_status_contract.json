@@ -1,6 +1,6 @@
 {
   "schema": "table_lifecycle_status_contract/v1",
-  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01).",
+  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation).",
   "statuses": [
     "operational_populated",
     "operational_empty_expected",
@@ -18,8 +18,89 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 96,
+  "table_count": 105,
   "tables": {
+    "construction_data_quality_runs": {
+      "table_family": "data_quality_v20v21",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07A",
+      "blocking_for_phase": "none",
+      "v": "V20",
+      "notes": "data-quality run ledger; fills when gates run with persistence"
+    },
+    "data_quality_gate_results": {
+      "table_family": "data_quality_v20v21",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "07A",
+      "blocking_for_phase": "none",
+      "v": "V20",
+      "notes": "persisted gate results from data-quality runs"
+    },
+    "construction_table_lifecycle_registry": {
+      "table_family": "data_quality_v20v21",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07A",
+      "blocking_for_phase": "none",
+      "v": "V20",
+      "notes": "table lifecycle registry; operational read model"
+    },
+    "source_system_record_map": {
+      "table_family": "data_quality_v20v21",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07A",
+      "blocking_for_phase": "none",
+      "v": "V20",
+      "notes": "07A canonical source-system record map"
+    },
+    "relationship_resolution_queue": {
+      "table_family": "data_quality_v20v21",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07A",
+      "blocking_for_phase": "none",
+      "v": "V20",
+      "notes": "relationship review-routing queue; review_required rows"
+    },
+    "project_source_coverage_mart": {
+      "table_family": "data_quality_v20v21",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07A",
+      "blocking_for_phase": "none",
+      "v": "V20",
+      "notes": "materialised read model; refreshed by data-quality marts build"
+    },
+    "source_record_summary_mart": {
+      "table_family": "data_quality_v20v21",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07A",
+      "blocking_for_phase": "none",
+      "v": "V21",
+      "notes": "materialised read model; refreshed by data-quality marts build"
+    },
+    "relationship_quality_mart": {
+      "table_family": "data_quality_v20v21",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07A",
+      "blocking_for_phase": "none",
+      "v": "V21",
+      "notes": "materialised read model; refreshed by data-quality marts build"
+    },
+    "cross_domain_context_readiness_mart": {
+      "table_family": "data_quality_v20v21",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07A",
+      "blocking_for_phase": "none",
+      "v": "V21",
+      "notes": "materialised read model; refreshed by data-quality marts build"
+    },
     "source_records": {
       "table_family": "core_source_v1",
       "lifecycle_status": "operational_populated",

@@ -66,6 +66,37 @@ def test_v22_marts_are_classified_from_contract_or_unmapped() -> None:
         Path(db_path).unlink(missing_ok=True)
 
 
+def test_v20_v21_data_quality_tables_are_mapped_not_unmapped() -> None:
+    """Phase 07C Prompt 01 remediation: the nine V20/V21 Phase 07A data-quality and
+    relationship tables — created after the pre-V20 manual inventory seed — must now be
+    classified from the lifecycle contract (not left unmapped / unknown_requires_audit)
+    so the inventory is complete before 07C adds document tables."""
+    db_path = _fresh_db()
+    try:
+        report = build_table_inventory_report(db_path=db_path)
+        assert report["contract_table_count"] == 105
+        v20_v21 = {
+            "construction_data_quality_runs",
+            "data_quality_gate_results",
+            "construction_table_lifecycle_registry",
+            "source_system_record_map",
+            "relationship_resolution_queue",
+            "project_source_coverage_mart",
+            "source_record_summary_mart",
+            "relationship_quality_mart",
+            "cross_domain_context_readiness_mart",
+        }
+        by_name = {t["table_name"]: t for t in report["tables"]}
+        for name in v20_v21:
+            assert name in by_name, f"{name} not present in migrated DB"
+            assert by_name[name]["source"] == "contract", f"{name} left unmapped"
+            assert by_name[name]["lifecycle_status"] != "unknown_requires_audit"
+        # none of the nine remain in the unmapped reconciliation direction
+        assert not (v20_v21 & set(report["reconciliation"]["in_db_not_in_contract"]))
+    finally:
+        Path(db_path).unlink(missing_ok=True)
+
+
 def test_cli_subprocess_json_exit_zero() -> None:
     cmd = [
         sys.executable,

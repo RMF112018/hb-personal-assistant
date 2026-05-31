@@ -135,6 +135,23 @@ _PHASE_07B_TABLES: List[str] = list(_PHASE_07B_TABLE_GUARDS)
 
 _PHASE_07B_EVIDENCE_SUBDIR = "construction-intelligence-phase-07b-calendar-email"
 
+# Raw-by-design staging layers that are OUTSIDE the scope of this no-raw-persistence
+# proof. The Phase 06A file-intelligence inventory intentionally stores raw drive-item
+# metadata (file name / web URL / parent path) and is NOT scanned here (its web_url
+# legitimately holds "https://" by design, so scanning would fail a correct proof).
+# Disclosed explicitly so the generically named ``no_raw_values_persisted`` flag is not
+# read as covering these layers: Phase 07C must hash/redact these values before any
+# document-card, evidence, or Obsidian output. Identifier names only — never raw values.
+_RAW_STAGING_LAYERS_OUT_OF_SCOPE: List[Dict[str, str]] = [
+    {
+        "table": "construction_drive_item_inventory",
+        "raw_columns": "name, web_url, parent_path",
+        "origin_phase": "06A",
+        "scope": "out_of_scope_for_this_proof",
+        "required_handling": "hash_or_redact_before_07c_document_card_evidence_or_obsidian",
+    },
+]
+
 # Raw-leakage patterns for scanning persisted DB *values* (in addition to the
 # shared secret scanner): generic URLs, raw email addresses, and iCal blocks.
 # These are intentionally NOT run over module/evidence prose (which legitimately
@@ -541,12 +558,20 @@ def build_data_quality_no_writeback_proof(
         "stop_conditions_checked": _STOP_CONDITIONS_CHECKED,
         "no_live_call_performed": True,
         "no_raw_values_persisted": raw_body_ok and guards_07b_ok and content_07b_ok,
+        "no_raw_values_persisted_scope": (
+            "phase_07a_data_quality_and_phase_07b_calendar_email_thread_candidate_surfaces_only"
+        ),
+        "raw_staging_layers_out_of_scope": _RAW_STAGING_LAYERS_OUT_OF_SCOPE,
         "note": (
             "Formal no-writeback / no-secret / no-raw-body proof for Phase 07A data-quality "
             "surfaces AND Phase 07B calendar/email/thread/candidate surfaces (modules + "
             "V11/V14/V23 guard CHECK columns + persisted-content scan + evidence). Re-uses the "
             "shared secret scanner from the Procore no-writeback prover; findings are pattern "
-            "labels and table.column locations only (never the value). Read-only, fail-closed."
+            "labels and table.column locations only (never the value). Read-only, fail-closed. "
+            "This proof does NOT cover the Phase 06A raw file-intelligence staging layer "
+            "(construction_drive_item_inventory: name/web_url/parent_path), which is raw-by-design "
+            "and must be hashed/redacted before any Phase 07C document-card, evidence, or Obsidian "
+            "output — see raw_staging_layers_out_of_scope."
         ),
     }
     return report

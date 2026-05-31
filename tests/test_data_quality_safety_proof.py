@@ -100,6 +100,36 @@ def test_safety_proof_all_07a_tables_have_raw_body_check_and_zero():
         Path(db_path).unlink(missing_ok=True)
 
 
+def test_safety_proof_discloses_raw_staging_layer_out_of_scope():
+    """Phase 07C Prompt 01 remediation: the proof must explicitly disclose that the
+    Phase 06A raw file-intelligence staging layer (construction_drive_item_inventory)
+    is out of scope (not scanned), so the generically named ``no_raw_values_persisted``
+    flag is not misread as global. The disclosure itself must be identifier-only — no
+    raw values, URLs, emails, or secrets."""
+    db_path = _fresh_db_with_v21()
+    try:
+        report = build_data_quality_no_writeback_proof(db_path=db_path)
+        assert report["no_raw_values_persisted_scope"] == (
+            "phase_07a_data_quality_and_phase_07b_calendar_email_thread_candidate_surfaces_only"
+        )
+        disclosed = report["raw_staging_layers_out_of_scope"]
+        assert isinstance(disclosed, list) and disclosed
+        assert {d["table"] for d in disclosed} >= {"construction_drive_item_inventory"}
+        # entries are identifier-only: fixed key set, no raw URLs / emails / secrets
+        allowed_keys = {"table", "raw_columns", "origin_phase", "scope", "required_handling"}
+        for entry in disclosed:
+            assert set(entry) == allowed_keys
+            blob = " ".join(entry.values())
+            assert "http://" not in blob and "https://" not in blob
+            assert "@" not in blob
+            assert _scan_text_for_secrets(blob) == []
+        # purely descriptive — it must not change the verdict's type/shape
+        assert isinstance(report["proof_passed"], bool)
+        assert isinstance(report["no_raw_values_persisted"], bool)
+    finally:
+        Path(db_path).unlink(missing_ok=True)
+
+
 def test_safety_cli_subprocess_json():
     cmd = [
         sys.executable,

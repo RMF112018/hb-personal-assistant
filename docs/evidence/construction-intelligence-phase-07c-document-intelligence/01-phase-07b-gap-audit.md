@@ -97,3 +97,51 @@ exist" overstatement corrected in §2. No gate overstates readiness.
 Scanned before commit: no raw document text, file names, web URLs, parent paths, signed/download/
 tokenized URLs, tokens, secrets, PEMs, raw email bodies, calendar payloads, model prompts/responses,
 tenant GUIDs, or UPNs. Counts and table/column identifiers only.
+
+## 9. Prompt 01 — Remediation Applied
+
+The Prompt 01 preflight applied **two additive truthfulness fixes** (no schema/CLI/gate change; proof
+stays green). Gates were verified honest and left untouched.
+
+**Fix 1 — No-raw proof scope made explicit (`construction/data_quality/safety.py`).** The generically
+named `no_raw_values_persisted` flag is scoped to 07A data-quality + 07B calendar/email/thread/candidate
+surfaces and does not scan the Phase 06A `construction_drive_item_inventory` (raw `name`/`web_url`/
+`parent_path`, 401 rows) that 07C promotes from. Scanning it would be wrong (its `web_url` holds
+`https://` by design → would fail a correct proof), so the fix is **disclosure**: new
+`no_raw_values_persisted_scope` string + `raw_staging_layers_out_of_scope` list (identifier-only, names
+the layer + the redact-before-07C obligation) + tightened note. Resolves the over-broad-reading risk in
+§4/G4 of this audit.
+
+**Fix 2 — Lifecycle contract refreshed (`resources/json/table_lifecycle_status_contract.json`).** Mapped
+the 9 V20/V21 Phase 07A data-quality/relationship tables that post-dated the pre-V20 seed (family
+`data_quality_v20v21`, `phase_owner=07A`); `table_count` 96→105. The 4 `procore_sync_*`
+`in_contract_not_in_db` entries are real schema tables not materialized locally — left intact. Resolves
+§3/G7.
+
+Focused tests added first: `test_safety_proof_discloses_raw_staging_layer_out_of_scope`,
+`test_v20_v21_data_quality_tables_are_mapped_not_unmapped`.
+
+### Re-run validation matrix
+
+Validations ran against working tree at parent commit `94bf8cae2542d8998a4fba17a1c0b635b333150f`
+(this preflight's changes applied); schema version `23` (unchanged — no migration). Landing commit is the
+child of that parent.
+
+| Command | Exit | Result |
+|---|---:|---|
+| `python -m compileall src tests` | 0 | clean |
+| `ruff check .` | 0 | `All checks passed!` |
+| `mypy src` | 0 | `Success: no issues found in 164 source files` |
+| focused: `pytest test_data_quality_safety_proof.py test_data_quality_table_inventory.py` | 0 | 10 passed (incl. 2 new) |
+| `pytest -m "not live and not integration and not manual"` | 0 | `1987 passed, 1 deselected` (+2 vs Prompt 00) |
+| `construction-agent data-quality no-writeback-proof --json` | 0 | `proof_passed=true`; `no_raw_values_persisted=true`; new `no_raw_values_persisted_scope` + `raw_staging_layers_out_of_scope` present |
+| `construction-agent data-quality table-inventory --json` | 0 | `contract_table_count=105`; `in_db_not_in_contract=[]`; `in_contract_not_in_db`=4 `procore_sync_*` |
+| `construction-agent data-quality gates --json` | 0 | unchanged: `meeting_prep`/`risk_digest`=`blocked`; 07C `blocked_by document_card_population_status` |
+| `construction-agent validate` / `procore validate` / `graph files status` / `graph files no-writeback-proof` / `graph calendar status` / `graph mail status` (all `--json`) | 0 | green |
+
+### Outcome
+
+07B proof is now unambiguously truthful about its boundary and the lifecycle inventory is complete. No
+stop condition triggered; no readiness overstated. **07C is cleared to proceed to Prompt 02 (Document
+Schema and Card Contracts).** Appended content re-scanned: identifiers/counts only — no raw values, URLs,
+tokens, secrets, GUIDs, or UPNs.
