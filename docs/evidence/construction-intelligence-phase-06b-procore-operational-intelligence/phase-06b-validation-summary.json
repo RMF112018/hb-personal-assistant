@@ -1,0 +1,118 @@
+{
+  "phase": "Phase 06B — Procore Operational Intelligence",
+  "prompt": "16 — Final Validation & Closeout",
+  "generated_at": "2026-05-31",
+  "parent_head": "f065e65",
+  "schema_version": "V19 (unchanged — Phase 06B added no migration; all read models derive on demand)",
+  "phase_closed": true,
+  "gates": [
+    {
+      "name": "pytest_full_suite",
+      "command": "pytest -q",
+      "status": "pass_with_documented_unrelated_failures",
+      "detail": {
+        "passed": 1836,
+        "failed": 28,
+        "skipped": 1,
+        "phase_06b_operational_failures": 0,
+        "phase_06b_operational_tests_passed": "100/100 across the 10 operational read-model/CLI/obsidian/proof test files",
+        "failure_classification": {
+          "concurrent_v20_migration_version_assertions": {
+            "count": 17,
+            "files": [
+              "test_construction_store_repositories.py (v5)",
+              "test_email_body_vault.py (v12)",
+              "test_email_model_classifications_schema_v14.py",
+              "test_email_operational_schema_v11.py",
+              "test_email_registry_migration_v10.py",
+              "test_procore_financials_v8.py",
+              "test_procore_financials_v9.py",
+              "test_procore_history_migration_v7.py"
+            ],
+            "root_cause": "A concurrent project_identity / data-quality workstream committed a V20 schema migration to main after the Phase 06B Prompt 15 commit; these tests hardcode the expected migrator version (19) and now assert 20 == 19. Phase 06B is read-only and added no migration (schema stays V19). These passed during every Phase 06B per-prompt run.",
+            "phase_06b_related": false
+          },
+          "preexisting_email_track": {
+            "count": 7,
+            "files": ["test_email_classifier.py"],
+            "root_cause": "AttributeError: 'ConstructionStore' object has no attribute 'upsert_email_model_classification' — the exact pre-existing email-track failures documented in the Phase 06A closeout (P17). Out of scope for the Procore track.",
+            "phase_06b_related": false
+          },
+          "date_dependent_automation": {
+            "count": 4,
+            "files": ["test_automation.py"],
+            "root_cause": "The morning orchestrator's weekend_behavior is manual_only; the run date 2026-05-31 is a weekend, so stages are skipped and the tests' weekday assumptions fail. Pre-existing date-dependent brittleness, unrelated to Phase 06B.",
+            "phase_06b_related": false
+          }
+        }
+      }
+    },
+    {
+      "name": "ruff",
+      "command": "ruff check . (Phase 06B + tracked surface)",
+      "status": "pass",
+      "detail": "All checks passed on the full Phase 06B source/test surface and every tracked file. Two pre-existing E702 semicolon-compound lints in Phase 06B's own P06/P07 test files were fixed in this closeout. Transient whole-repo `ruff check .` findings appear only in an actively-changing concurrent project_identity/source-record workstream's uncommitted files (not Phase 06B, excluded from this commit)."
+    },
+    {
+      "name": "mypy",
+      "command": "mypy src",
+      "status": "pass",
+      "detail": "Success: no issues found (148 source files)."
+    },
+    {
+      "name": "compileall",
+      "command": "python -m compileall -q src tests",
+      "status": "pass",
+      "detail": "Clean."
+    },
+    {
+      "name": "procore_validate",
+      "command": "hb-assistant procore validate --json",
+      "status": "pass",
+      "detail": "28 / 28 passed."
+    },
+    {
+      "name": "required_commands_operational",
+      "command": "procore live endpoints list/ledger, project-health, stale, digest, no-writeback-proof, + risks/overdue/responsible-party-gaps/relationship-quality/financial exposure/schedule exposure/retrieval-ready",
+      "status": "pass",
+      "detail": "All operational commands return well-formed JSON. endpoints list = 59 endpoints; endpoints ledger ok; project-health = review_recommended; stale ok; digest ok (now accepts optional --since adding changes_in_window); no-writeback-proof proof_passed=true exit 0."
+    },
+    {
+      "name": "held_endpoint_dispositions",
+      "command": "evidence: held-endpoint-disposition.json (Prompt 04)",
+      "status": "pass",
+      "detail": "All three Phase 05 held endpoints explicitly preserved fail-closed with final dispositions."
+    },
+    {
+      "name": "endpoint_ledger_current",
+      "command": "hb-assistant procore live endpoints ledger --json + endpoint-promotion-ledger.json (Prompt 01)",
+      "status": "pass",
+      "detail": "Promotion ledger is current and machine-readable."
+    },
+    {
+      "name": "obsidian_outputs_marker_bounded",
+      "command": "procore obsidian project-health / meeting-prep / daily-digest (Prompt 13)",
+      "status": "pass",
+      "detail": "Decision-useful, marker-bounded notes; dry-run default; review-flagged content diverted to warnings; no raw bodies/secrets (obsidian-operational-dry-run.json scanned clean)."
+    },
+    {
+      "name": "no_writeback_no_secret_no_raw_body_proof",
+      "command": "hb-assistant procore live no-writeback-proof --json (Prompt 15)",
+      "status": "pass",
+      "detail": "proof_passed=true; 5/5 checks pass — static writeback scan (8 modules), no HTTP-client imports, module secret scan, sqlite raw_body_persisted guardrail (24 tables, distinct ⊆ {0}), evidence output scan. See no-writeback-proof.json."
+    }
+  ],
+  "closeout_changes": [
+    "Reconciliation: wired an optional --since into `procore live digest` (adds headline.changes_in_window) so the documented validation command works literally.",
+    "Hygiene: fixed E702 semicolon-compound lines in tests/test_procore_freshness.py + tests/test_procore_project_health.py (Phase 06B P06/P07 test files).",
+    "Hygiene: allowlisted the benign planted-secret fixtures in tests/test_procore_no_writeback_proof.py within tests/test_repo_sensitive_scan.py (sanctioned _ALLOWED_PREFIXES_BY_RULE mechanism)."
+  ],
+  "guardrails": {
+    "no_microsoft_365_writeback": true,
+    "no_procore_writeback": true,
+    "no_raw_body_persistence": true,
+    "no_secret_leakage": true,
+    "no_determinations": true,
+    "dry_run_default_for_writes": true
+  }
+}

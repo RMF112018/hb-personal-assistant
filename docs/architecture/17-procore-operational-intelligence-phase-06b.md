@@ -1,6 +1,6 @@
 # 17 — Procore Operational Intelligence (Phase 06B)
 
-Status: **current** · Phase 06B (hardening + project-health) · read-only over local SQLite
+Status: **closed (Prompts 00–16)** · Phase 06B (hardening + project-health) · read-only over local SQLite
 
 Phase 06B turns the Procore sync/projection layer (Phases 04A/04B/05) into end-user
 **operational intelligence**: deterministic, read-only read models over the existing local
@@ -373,3 +373,22 @@ headers" / "tokens" in prose. `_scan_text_for_secrets` is unit-tested against pl
 prose so the proof is not vacuous. Evidence:
 `docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/no-writeback-proof.json`
 + `15-no-writeback-no-secret-no-raw-body-proof.md`.
+
+## Phase 06B closeout (Prompt 16)
+
+Phase 06B is **closed**. The full validation matrix ran end-to-end: `pytest` **1836 passed / 28
+failed / 1 skipped** with the Phase 06B operational read-model/CLI/Obsidian/proof tests **100/100
+green** and all 28 failures documented as **unrelated** — 17 migration version-assertions broken by a
+concurrent `project_identity`/data-quality **V20** migration committed to `main` after the P15 commit
+(Phase 06B is read-only and added no migration — schema stays **V19**), 7 pre-existing email-track
+failures (`upsert_email_model_classification`, per the Phase 06A closeout), and 4 date-dependent
+automation tests (weekend `manual_only` skip). `ruff check .` clean on the Phase 06B + tracked
+surface; `mypy src` clean; `compileall` clean; `procore validate` 28/28; the operator commands
+(`endpoints list`/`ledger`, `project-health`, `stale`, `digest` — now with an optional `--since`
+adding `changes_in_window`, `no-writeback-proof` `proof_passed: true`) all operational; held-endpoint
+dispositions final (3 preserved fail-closed); endpoint ledger current; Obsidian outputs marker-bounded
+and dry-run-default. No M365/Procore writeback; no raw bodies/secrets; no determinations. Operator
+runbook: `docs/runbooks/phase-06b-operational-procore-workflows.md`. Closeout evidence:
+`docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/`
+(`16-final-validation-closeout.md`, `phase-06b-validation-summary.json`,
+`phase-06b-commit-message.txt`).

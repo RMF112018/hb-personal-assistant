@@ -110,6 +110,26 @@ def test_digest_json_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
         assert key in payload, f"missing {key}"
     assert payload["headline"]["overdue"] >= 1
     assert payload["determinations_made"] is False
+    assert "changes_in_window" not in payload["headline"]  # omitted without --since
+
+
+def test_digest_since_window(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    db = tmp_path / "ds.sqlite"
+    SQLiteMigrator(db_path=str(db)).apply()
+    _seed(db)
+    _patch_conn(monkeypatch, db)
+    res = _invoke(["procore", "live", "digest", "--project", "tropical",
+                   "--since", "24 hours ago", "--json"])
+    assert res.exit_code == 0, res.output
+    payload = json.loads(res.output)
+    assert payload["since_utc"] is not None
+    assert "changes_in_window" in payload["headline"]
+    assert isinstance(payload["headline"]["changes_in_window"], int)
+    # unparseable --since fails closed
+    bad = _invoke(["procore", "live", "digest", "--project", "tropical",
+                   "--since", "not-a-date", "--json"])
+    assert bad.exit_code == 3
+    assert "since_unparseable" in json.loads(bad.output)["reason_codes"]
 
 
 def test_risks_json_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

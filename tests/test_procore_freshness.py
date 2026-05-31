@@ -85,7 +85,8 @@ def _by_id(report):
 
 
 def test_each_status_classified() -> None:
-    db = _db(); _seed(db)
+    db = _db()
+    _seed(db)
     by = _by_id(_report(db))
     assert by["rfis"]["status"] == "current" and by["rfis"]["age_days"] == 0
     assert by["rfis"]["source"] == "watermark" and by["rfis"]["record_count"] == 1
@@ -97,7 +98,8 @@ def test_each_status_classified() -> None:
 
 
 def test_fail_closed_endpoints_are_not_stale_operational() -> None:
-    db = _db(); _seed(db)
+    db = _db()
+    _seed(db)
     r = _report(db)
     stale_ids = {s["endpoint_id"] for s in r["stale_endpoints"]}
     assert not (_HELD & stale_ids)  # validation: held never appears as stale operational
@@ -107,7 +109,8 @@ def test_fail_closed_endpoints_are_not_stale_operational() -> None:
 
 
 def test_recommended_sync_commands() -> None:
-    db = _db(); _seed(db)
+    db = _db()
+    _seed(db)
     by = _by_id(_report(db))
     cmd = by["submittals"]["recommended_sync_command"]
     assert cmd is not None
@@ -121,7 +124,8 @@ def test_recommended_sync_commands() -> None:
 
 
 def test_no_raw_values_or_secrets() -> None:
-    db = _db(); _seed(db)
+    db = _db()
+    _seed(db)
     r = _report(db)
     blob = json.dumps(r)
     assert _SECRET_TITLE not in blob

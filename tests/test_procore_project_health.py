@@ -102,7 +102,8 @@ def _health(db: Path):
 
 
 def test_dimension_score_components() -> None:
-    db = _db(); _seed(db)
+    db = _db()
+    _seed(db)
     sc = _health(db)["score_components"]
     assert sc["open_work"] == {"open_signals": 4, "high_importance": 2}
     assert sc["cost_exposure"]["open_signals"] == 1
@@ -113,7 +114,8 @@ def test_dimension_score_components() -> None:
 
 
 def test_review_required_and_top_risks_not_hidden() -> None:
-    db = _db(); _seed(db)
+    db = _db()
+    _seed(db)
     r = _health(db)
     # the stop condition: review-required + high-risk facts are explicit, not collapsed.
     assert r["health_status"] == "review_recommended"
@@ -126,7 +128,8 @@ def test_review_required_and_top_risks_not_hidden() -> None:
 
 
 def test_freshness_detects_stale_endpoint() -> None:
-    db = _db(); _seed(db)
+    db = _db()
+    _seed(db)
     stale = _health(db)["stale_endpoints"]
     ids = {s["endpoint_id"]: s for s in stale}
     assert "rfis" in ids and ids["rfis"]["state"] == "stale" and ids["rfis"]["age_days"] > 7
@@ -134,7 +137,8 @@ def test_freshness_detects_stale_endpoint() -> None:
 
 
 def test_relationship_quality_missing_responsibility_edge() -> None:
-    db = _db(); _seed(db)
+    db = _db()
+    _seed(db)
     rq = _health(db)["score_components"]["relationship_quality"]
     # observations||55 has no responsibility edge; rfis||1 has one.
     assert rq["records_missing_responsibility_edge"] == 1
@@ -142,7 +146,8 @@ def test_relationship_quality_missing_responsibility_edge() -> None:
 
 
 def test_no_raw_values_or_secrets_in_output() -> None:
-    db = _db(); _seed(db)
+    db = _db()
+    _seed(db)
     blob = json.dumps(_health(db))
     assert _SECRET_TITLE not in blob
     assert _health(db)["no_raw_values_persisted"] is True

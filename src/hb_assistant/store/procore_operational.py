@@ -97,9 +97,14 @@ def build_operational_digest(
     project_key: str,
     *,
     now_utc: str,
+    since_utc: Optional[str] = None,
     db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Compact operator digest — headline numbers composed from the Phase 06B read models."""
+    """Compact operator digest — headline numbers composed from the Phase 06B read models.
+
+    When ``since_utc`` is given, the headline also carries ``changes_in_window`` (the count of
+    field-level change events detected at/after the window start).
+    """
     from .procore_action_queue import build_overdue_queue
     from .procore_cost_exposure import build_cost_exposure
     from .procore_project_health import build_project_health
@@ -116,29 +121,42 @@ def build_operational_digest(
     gaps = build_responsible_party_gaps(project_key, now_utc=now_utc, db_path=db_path)
     rel = build_relationship_quality(project_key, now_utc=now_utc, db_path=db_path)
 
+    changes_in_window: Optional[int] = None
+    if since_utc is not None:
+        from .procore_history import get_procore_changes
+        changes_in_window = sum(
+            1 for c in get_procore_changes(project_key=project_key, db_path=db_path)
+            if (c.get("detected_at_utc") or "") >= since_utc
+        )
+
     hc = health["counts"]
+    headline = {
+        "total_records": hc["total_records"],
+        "open_signals": hc["open_signals"],
+        "high_importance_signals": hc["high_importance_signals"],
+        "review_required_records": hc["review_required_records"],
+        "stale_endpoints": health["score_components"]["freshness"]["stale_endpoints"],
+        "overdue": overdue["summary"]["overdue"],
+        "upcoming": overdue["summary"]["upcoming"],
+        "cost_exposure": cost["summary"]["total"],
+        "schedule_exposure": schedule["summary"]["total"],
+        "responsibility_partial_gaps": gaps["summary"]["partial_gap_relationships"],
+        "orphan_records": rel["summary"]["orphan_records"],
+        "duplicate_warnings": rel["summary"]["duplicate_warnings"],
+    }
+    if changes_in_window is not None:
+        headline["changes_in_window"] = changes_in_window
+
     return {
         "command": "hb-assistant procore live digest",
         "ok": True,
         "phase": _PHASE,
         "project_key": project_key,
         "generated_at": now_utc,
+        "since_utc": since_utc,
         "health_status": health["health_status"],
         "status_reason": health["status_reason"],
-        "headline": {
-            "total_records": hc["total_records"],
-            "open_signals": hc["open_signals"],
-            "high_importance_signals": hc["high_importance_signals"],
-            "review_required_records": hc["review_required_records"],
-            "stale_endpoints": health["score_components"]["freshness"]["stale_endpoints"],
-            "overdue": overdue["summary"]["overdue"],
-            "upcoming": overdue["summary"]["upcoming"],
-            "cost_exposure": cost["summary"]["total"],
-            "schedule_exposure": schedule["summary"]["total"],
-            "responsibility_partial_gaps": gaps["summary"]["partial_gap_relationships"],
-            "orphan_records": rel["summary"]["orphan_records"],
-            "duplicate_warnings": rel["summary"]["duplicate_warnings"],
-        },
+        "headline": headline,
         "sources": {
             "project_health": health["phase"],
             "overdue": overdue["phase"],

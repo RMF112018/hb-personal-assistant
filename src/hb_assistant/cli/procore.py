@@ -1613,17 +1613,31 @@ def live_relationship_quality(
 @live_app.command("digest")
 def live_digest(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    since: Optional[str] = typer.Option(
+        None, "--since", help="Optional window; adds changes_in_window to the headline."
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Operator digest (Phase 06B Prompt 12) — one compact roll-up of health status plus headline
     counts composed from the project-health, overdue, cost/schedule-exposure, responsible-party-gaps,
-    and relationship-quality read models. Local SQLite only; read-only; no live call, no DB writes,
-    no raw values, no determinations."""
+    and relationship-quality read models. Optional --since adds a windowed changes count. Local
+    SQLite only; read-only; no live call, no DB writes, no raw values, no determinations."""
+    from hb_assistant.procore.time_window import parse_since
     from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_operational import build_operational_digest
 
+    cmd = "hb-assistant procore live digest"
+    since_utc: Optional[str] = None
+    if since is not None:
+        try:
+            since_utc = parse_since(since, now=datetime.now(timezone.utc))
+        except ValueError:
+            _emit({"command": cmd, "ok": False, "phase": _QUERY_PHASE, "project_key": project,
+                   "state": "fail_closed_unsupported", "reason_codes": ["since_unparseable"]},
+                  json_out=json_out, exit_code=3)
+            return
     SQLiteMigrator().apply()
-    report = build_operational_digest(project, now_utc=_query_now().isoformat())
+    report = build_operational_digest(project, now_utc=_query_now().isoformat(), since_utc=since_utc)
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
 

@@ -1,0 +1,50 @@
+phase-06b prompt-16: final validation & closeout
+
+Close Phase 06B (Procore Operational Intelligence Hardening & Project
+Health). All acceptance gates met; schema unchanged at V19 (every read
+model derives on demand — Phase 06B added no migration, no writeback).
+
+Validation matrix (real results):
+- pytest: 1836 passed, 28 failed (all documented unrelated), 1 skipped;
+  Phase 06B operational tests 100/100 green.
+- ruff check . clean on the full Phase 06B + tracked surface; mypy src
+  clean (148 files); compileall clean.
+- procore validate 28/28; endpoints list (59) + ledger current;
+  project-health / stale / digest operational; no-writeback-proof
+  proof_passed=true (5/5 checks), exit 0.
+
+Failure disposition (28, none Phase 06B):
+- 17 migration version-assertions (assert ==19, now 20) — a concurrent
+  project_identity/data-quality workstream committed a V20 migration to
+  main after the Phase 06B P15 commit; these tests hardcode the migrator
+  version. Phase 06B is read-only / V19. Not Phase 06B.
+- 7 pre-existing email-track (upsert_email_model_classification on
+  ConstructionStore) — the exact failures documented in the Phase 06A
+  closeout. Not Phase 06B.
+- 4 date-dependent automation (weekend manual_only skip; 2026-05-31 is a
+  weekend). Pre-existing brittleness. Not Phase 06B.
+
+Closeout reconciliation:
+- Wired an optional --since into `procore live digest` (adds
+  headline.changes_in_window) so the documented validation command runs
+  literally; the no---since form is unchanged.
+- Fixed 9 pre-existing E702 semicolon-compound lints in the Phase 06B
+  P06/P07 test files.
+- Allowlisted the benign planted-secret fixtures in
+  test_procore_no_writeback_proof.py via the sanctioned
+  _ALLOWED_PREFIXES_BY_RULE mechanism in test_repo_sensitive_scan.py.
+
+Docs: README Repository Status gains a Phase 06B — Closed paragraph;
+docs/architecture/17-procore-operational-intelligence-phase-06b.md gains
+a closeout section; docs/runbooks/phase-06b-operational-procore-
+workflows.md added (operator reference). Closeout evidence:
+docs/evidence/construction-intelligence-phase-06b-procore-operational-
+intelligence/ (16-final-validation-closeout.md,
+phase-06b-validation-summary.json, phase-06b-commit-message.txt).
+
+Guardrails: no Microsoft 365 writeback; no Procore writeback; no raw
+payload bodies persisted; no tokens/secrets/signed-URLs/PEMs; no
+legal/claims/financial/safety/entitlement/schedule determinations;
+dry-run default for every write-capable workflow; all state local.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
