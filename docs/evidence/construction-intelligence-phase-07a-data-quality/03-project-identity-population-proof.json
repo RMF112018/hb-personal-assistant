@@ -1,0 +1,150 @@
+{
+  "prompt": "02",
+  "phase": "07A",
+  "generated_at": "2026-05-31T09:08:00Z",
+  "baseline": {
+    "head": "4904f9a8878d8aa9a83aa173a7f4a17f63bddd9a",
+    "branch": "main",
+    "schema_version": 20,
+    "package_version": "1.3.0",
+    "venv_active": true,
+    "note": "All commands in this proof executed with source .venv/bin/activate"
+  },
+  "command": "hb-assistant construction-agent data-quality project-coverage --json",
+  "exit_code": 0,
+  "cli_output": {
+    "command": "construction-agent data-quality project-coverage",
+    "apply": false,
+    "filter": {"project": null},
+    "report": {
+      "dry_run": true,
+      "run_utc": "2026-05-31T09:07:19.160109+00:00",
+      "repo_sha": "4904f9a8878d8aa9a83aa173a7f4a17f63bddd9a",
+      "schema_version": 20,
+      "populated_identities": 0,
+      "populated_matches": 0,
+      "conflicts": [],
+      "coverage_matrix": {
+        "projects": [
+          {
+            "project_key": "tropical",
+            "project_number": "Tropical - S L",
+            "source_domains": {
+              "procore": {"record_count": 1780, "mapped_count": 1780, "quality": "partial"},
+              "email": {"record_count": 48, "mapped_count": 48, "quality": "partial"},
+              "graph_files": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "calendar": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+              "obsidian": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+              "financials": {"record_count": 74, "mapped_count": 74, "quality": "partial"}
+            },
+            "phase_07d_meeting_prep_ready": false,
+            "blocking_reasons": ["calendar", "email_thread_summaries", "content_embeddings"]
+          },
+          {
+            "project_key": "hilltop",
+            "project_number": "hilltop",
+            "source_domains": {
+              "procore": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "email": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "graph_files": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "calendar": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+              "obsidian": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+              "financials": {"record_count": 0, "mapped_count": 0, "quality": "unknown"}
+            },
+            "phase_07d_meeting_prep_ready": false,
+            "blocking_reasons": ["calendar", "email_thread_summaries", "content_embeddings"]
+          },
+          {
+            "project_key": "pga-modern-garage",
+            "project_number": "PGA The Modern & Garage",
+            "source_domains": {
+              "procore": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "email": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "graph_files": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "calendar": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+              "obsidian": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+              "financials": {"record_count": 0, "mapped_count": 0, "quality": "unknown"}
+            },
+            "phase_07d_meeting_prep_ready": false,
+            "blocking_reasons": ["calendar", "email_thread_summaries", "content_embeddings"]
+          },
+          {
+            "project_key": "alton-hilltop-pbg",
+            "project_number": "Alton Hilltop at PBG",
+            "source_domains": {
+              "procore": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "email": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "graph_files": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "calendar": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+              "obsidian": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+              "financials": {"record_count": 0, "mapped_count": 0, "quality": "unknown"}
+            },
+            "phase_07d_meeting_prep_ready": false,
+            "blocking_reasons": ["calendar", "email_thread_summaries", "content_embeddings"]
+          },
+          {
+            "project_key": "the-wellington",
+            "project_number": "The Wellington",
+            "source_domains": {
+              "procore": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "email": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "graph_files": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "calendar": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+              "obsidian": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+              "financials": {"record_count": 0, "mapped_count": 0, "quality": "unknown"}
+            },
+            "phase_07d_meeting_prep_ready": false,
+            "blocking_reasons": ["calendar", "email_thread_summaries", "content_embeddings"]
+          },
+          {
+            "project_key": "hilltop-gardens",
+            "project_number": "hilltop-gardens",
+            "source_domains": {
+              "procore": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "email": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "graph_files": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+              "calendar": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+              "obsidian": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+              "financials": {"record_count": 0, "mapped_count": 0, "quality": "unknown"}
+            },
+            "phase_07d_meeting_prep_ready": false,
+            "blocking_reasons": ["calendar", "email_thread_summaries", "content_embeddings"]
+          }
+        ],
+        "summary": {
+          "total_projects": 6,
+          "phase_07d_meeting_prep_ready": false,
+          "blocking_reasons": ["calendar", "email_thread_summaries", "content_embeddings"]
+        }
+      },
+      "guardrails": {
+        "local_only": true,
+        "no_raw_content": true,
+        "no_destructive_changes": true,
+        "conflicts_require_review": true
+      }
+    },
+    "guardrails": {
+      "external_systems": "read_only",
+      "writeback": "local_sqlite_only_on_apply",
+      "no_raw_content": true,
+      "conflicts_require_review": true
+    }
+  },
+  "summary": {
+    "populated_identities_dry_run": 0,
+    "conflicts": 0,
+    "matrix_projects": 6,
+    "note": "Dry-run output shown; --apply would populate identities/matches from the 6 pilot seeds + cross-signal counts already present in the DB (tropical dominant). No conflicts on current data. All guardrails satisfied."
+  },
+  "test_results": "pytest tests/test_project_identity_population.py : 5 passed (under venv)",
+  "validation": {
+    "ruff": "clean on new/edited files (after auto-fix + manual unused-var removal)",
+    "mypy": "clean (pre-existing notes only; no new errors from Prompt 02)",
+    "pytest_new_test": "5 passed under venv",
+    "cli": "hb-assistant ... project-coverage --json emitted 6 projects, 0 conflicts",
+    "construction-agent validate --json": "4/4, schema_version=20 (pre-existing from Prompt 01)"
+  },
+  "final_validation_run_utc": "2026-05-31T09:10:00Z",
+  "note": "All four validation commands executed exactly as 'source .venv/bin/activate && ...' per plan and workspace rule. No pre-existing M/?? files touched."
+}

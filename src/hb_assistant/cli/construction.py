@@ -11,6 +11,9 @@ Commands:
 - ``hb-assistant construction-agent graph delta --source KEY [--dry-run |
   --apply] [--max-pages N] [--json]`` — read-only Graph delta crawler
   (Phase 01 Step 4).
+- ``hb-assistant construction-agent data-quality project-coverage [--json] [--apply]``
+  — Phase 07A local-only canonical project identity backfill + coverage matrix
+  (dry-run default; --apply writes to V5 identity/match tables).
 
 All commands are read-only against external systems; only SQLite metadata is
 written, and only when ``--apply`` is set.
@@ -41,6 +44,7 @@ from hb_assistant.construction.config import (
     load_source_registry,
 )
 from hb_assistant.construction.config.loader import SourceRegistryError
+from hb_assistant.construction.data_quality import ProjectIdentityBackfill
 from hb_assistant.construction.fixtures import (
     KIND_ALIASES as FIXTURE_KIND_ALIASES,
 )
@@ -80,6 +84,10 @@ review_app = typer.Typer(help="Review-queue policy evaluation and inspection.")
 classify_app = typer.Typer(help="Ollama-backed classification (recommendation-only).")
 ollama_app = typer.Typer(help="Ollama daemon readiness (read-only; no inference).")
 fixtures_app = typer.Typer(help="Canonical fixture inventory + validation harness (read-only).")
+data_quality_app = typer.Typer(
+    help="Data quality, canonical identity, source-record map, and gates (Phase 07A). "
+    "Dry-run safe by default; --apply for local SQLite writes only."
+)
 app.add_typer(sources_app, name="sources")
 app.add_typer(graph_app, name="graph")
 graph_app.add_typer(graph_sources_app, name="sources")
@@ -88,6 +96,7 @@ app.add_typer(review_app, name="review")
 app.add_typer(classify_app, name="classify")
 app.add_typer(ollama_app, name="ollama")
 app.add_typer(fixtures_app, name="fixtures")
+app.add_typer(data_quality_app, name="data-quality")
 
 
 def _build_report(registry: SourceRegistry) -> dict[str, Any]:
@@ -1527,3 +1536,51 @@ def fixtures_validate(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if report.ok else 1)
+
+
+# ---------------------------------------------------------------------------
+# Phase 07A Prompt 02 — data-quality subgroup (first command: project-coverage)
+# ---------------------------------------------------------------------------
+
+_DATA_QUALITY_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "local_sqlite_only_on_apply",
+    "no_raw_content": True,
+    "conflicts_require_review": True,
+}
+
+
+@data_quality_app.command("project-coverage")
+def project_coverage(
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Perform the identity backfill upserts (default is dry-run / report only).",
+    ),
+    project: Optional[str] = typer.Option(
+        None,
+        "--project",
+        help="Limit to a single project_key (for focused runs).",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Local-only canonical project identity backfill + coverage matrix (Phase 07A).
+
+    Dry-run by default: computes signals from local seeds + SQLite, emits the
+    project coverage matrix and any conflicts (never auto-resolves conflicts).
+    With --apply: writes to construction_project_identity and _source_matches
+    (V5 tables) via idempotent upserts. All writes are local metadata only.
+    """
+    builder = ProjectIdentityBackfill()
+    report = builder.run(dry_run=not apply, project_filter=project)
+
+    payload = {
+        "command": "construction-agent data-quality project-coverage",
+        "apply": apply,
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _DATA_QUALITY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    # Non-zero only on internal error (not on dry-run or conflicts)
+    raise typer.Exit(0)

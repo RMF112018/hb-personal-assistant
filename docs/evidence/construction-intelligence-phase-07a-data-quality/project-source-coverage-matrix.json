@@ -1,0 +1,14 @@
+{
+  "project_key": "tropical",
+  "project_number": "23-435-01",
+  "source_domains": {
+    "procore": {"record_count": 1780, "mapped_count": 1780, "quality": "partial"},
+    "email": {"record_count": 48, "mapped_count": 48, "quality": "partial"},
+    "graph_files": {"record_count": 0, "mapped_count": 0, "quality": "unknown"},
+    "calendar": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+    "obsidian": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
+    "financials": {"record_count": 74, "mapped_count": 74, "quality": "partial"}
+  },
+  "phase_07d_meeting_prep_ready": false,
+  "blocking_reasons": ["calendar", "email_thread_summaries", "content_embeddings"]
+}
