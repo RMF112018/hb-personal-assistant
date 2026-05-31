@@ -28,6 +28,7 @@ from hb_assistant.construction.calendar import (
 )
 from hb_assistant.construction.calendar.event_indexer import CalendarEventIndexer
 from hb_assistant.construction.calendar.project_matcher import CalendarProjectMatcher
+from hb_assistant.construction.calendar_email_obsidian import CalendarEmailObsidianProjector
 from hb_assistant.construction.classification.client import OllamaChatClient
 from hb_assistant.construction.config import load_source_registry
 from hb_assistant.construction.config.loader import SourceRegistryError
@@ -1885,6 +1886,53 @@ def calendar_meeting_email_candidates_cmd(
             "ok": False,
             "mode": "dry_run" if dry_run else "apply",
             "status": "candidate_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@calendar_app.command("obsidian")
+def calendar_obsidian_cmd(
+    project: Optional[str] = typer.Option(None, "--project", help="Pilot project key"),
+    max_rows: int = typer.Option(
+        25, "--max-rows", help="Max rows per register table (bounded)."
+    ),
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run/--no-dry-run",
+        help="Preview the planned register without writing (default); --no-dry-run writes the "
+        "marker-bounded register note",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Render a marker-bounded, redacted calendar/email register note (local-only).
+
+    Combines the email correspondence warnings/previews with the calendar↔email relationship
+    candidates and bounded calendar counts into ONE register note per project (never one note
+    per event/email). Hashes/counts/datetimes only — no raw subject, body, address, organizer,
+    attendee, location, event id, iCal UID, or join/web URL; a self leak-scan runs before any
+    write. NO Graph call, NO mailbox/calendar mutation, NO SQLite writes.
+    """
+    try:
+        report = CalendarEmailObsidianProjector(ConstructionStore()).project(
+            project_key=project, dry_run=dry_run, max_rows=max_rows
+        )
+        payload: Dict[str, Any] = {
+            "command": "graph calendar obsidian",
+            "ok": True,
+            **report.model_dump(),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph calendar obsidian",
+            "ok": False,
+            "dry_run": dry_run,
+            "status": "obsidian_error",
             "error": str(e)[:200],
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
