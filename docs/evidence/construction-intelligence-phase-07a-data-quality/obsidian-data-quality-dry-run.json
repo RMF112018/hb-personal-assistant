@@ -1,0 +1,34 @@
+{
+  "prompt": "06",
+  "phase": "07A",
+  "generated_utc": "2026-05-31T09:47:29.985270+00:00",
+  "repo_sha": "ff047028a7edb8085e5fc0bdf76a776aa6764095",
+  "schema_version": 0,
+  "dry_run": true,
+  "apply": false,
+  "row_counts": {
+    "source_records": 0,
+    "relationship_candidates": 0,
+    "projects_in_coverage": 0
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "local_vault_only_on_apply",
+    "raw_body_persisted": false,
+    "raw_document_text_persisted": false,
+    "tokens_or_urls_in_output": false,
+    "source_file_copies": false,
+    "candidate_relationships_promoted": false,
+    "human_review_required_for_sensitive": true,
+    "marker_bounded": true,
+    "frontmatter_complete": true
+  },
+  "no_raw_body_persisted": true,
+  "no_source_file_copies": true,
+  "applied_to_vault": false,
+  "marker_bounded": true,
+  "files_emitted": [
+    "07-obsidian-output-preview.md",
+    "obsidian-data-quality-dry-run.json"
+  ]
+}

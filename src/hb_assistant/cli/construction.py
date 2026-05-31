@@ -33,6 +33,16 @@ Commands:
   summary, relationship quality, cross-domain readiness) + measured latency for
   the 8 target local-agent queries (target 500 ms). Populates the four V20/V21
   marts from prior canonical artifacts. Additive only.
+- ``hb-assistant construction-agent data-quality obsidian --dry-run --json``
+  and optional ``--apply`` — Phase 07A Prompt 06 Obsidian data-quality outputs.
+  Renders 4 marker-bounded, source-linked notes (Project Data Quality Summary,
+  Source Record Map Register, Relationship Diagnostics Register, Phase Gate
+  Summary / readiness snapshot) using only redacted fields from V20/V21 marts +
+  source_system_record_map + relationship_resolution_queue. Dry-run default
+  (writes evidence preview + proof JSON to repo docs/evidence/). --apply writes
+  the 4 notes to the configured local vault under "Construction Intelligence/
+  Phase 07A Data Quality/" using atomic marker-bounded replace (preserves user
+  content outside markers). Zero raw content, zero external writeback.
 
 All commands are read-only against external systems; only SQLite metadata is
 written, and only when ``--apply`` is set.
@@ -65,10 +75,9 @@ from hb_assistant.construction.config import (
 from hb_assistant.construction.config.loader import SourceRegistryError
 from hb_assistant.construction.data_quality import (
     ProjectIdentityBackfill,
-    SourceRecordMapBuilder,
     RelationshipDiagnostics,
+    SourceRecordMapBuilder,
 )
-
 from hb_assistant.construction.fixtures import (
     KIND_ALIASES as FIXTURE_KIND_ALIASES,
 )
@@ -1738,6 +1747,88 @@ def marts(
         "command": "construction-agent data-quality marts",
         "report": report,
         "guardrails": _MARTS_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+# ---------------------------------------------------------------------------
+# Phase 07A Prompt 06 — data-quality obsidian (marker-bounded Obsidian outputs)
+# ---------------------------------------------------------------------------
+
+_OBSIDIAN_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "local_vault_only_on_apply",
+    "raw_body_persisted": False,
+    "raw_document_text_persisted": False,
+    "tokens_or_urls_in_output": False,
+    "source_file_copies": False,
+    "candidate_relationships_promoted": False,
+    "marker_bounded": True,
+    "frontmatter_complete": True,
+}
+
+
+@data_quality_app.command("obsidian")
+def obsidian(
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview only (no vault writes). Default when neither flag given. Always emits repo evidence preview + proof JSON.",
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="EXPLICIT opt-in. Writes 4 marker-bounded data-quality notes to the local vault (if configured).",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Obsidian data-quality outputs (Phase 07A Prompt 06).
+
+    Renders four marker-bounded, source-linked notes from local V20/V21 marts +
+    source_system_record_map + relationship_resolution_queue (redacted fields only):
+    Project Data Quality Summary, Source Record Map Register, Relationship
+    Diagnostics Register, and Phase Gate Summary (readiness snapshot).
+
+    Dry-run (default or explicit --dry-run): writes 07-obsidian-output-preview.md
+    and obsidian-data-quality-dry-run.json to docs/evidence/... (repo). No vault
+    writes, no side effects on external systems.
+
+    --apply: additionally writes the four notes to the configured Obsidian vault
+    root under "Construction Intelligence/Phase 07A Data Quality/" using the
+    established atomic + marker-bounded replace pattern (user content outside the
+    HB-DATA-QUALITY-* markers is preserved verbatim on re-runs).
+
+    Never emits raw bodies, full document text, tokens, signed URLs, or source
+    file copies. Model/weak/sensitive relationships are surfaced only with
+    review_required and are never presented as authoritative.
+
+    Explicit --dry-run / --apply with mutual-exclusion (same pattern as
+    source-record-map).
+    """
+    if dry_run and apply:
+        payload = {
+            "command": "construction-agent data-quality obsidian",
+            "status": "invalid_flags",
+            "error": "--dry-run and --apply are mutually exclusive",
+            "hint": "Use --dry-run (or no flag) for preview/evidence or --apply to write to vault.",
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(2)
+
+    if not dry_run and not apply:
+        dry_run = True  # default to dry-run (evidence only)
+
+    from hb_assistant.construction.data_quality import render_data_quality_obsidian_outputs
+
+    report = render_data_quality_obsidian_outputs(dry_run=dry_run, apply=apply)
+
+    payload = {
+        "command": "construction-agent data-quality obsidian",
+        "dry_run": dry_run and not apply,
+        "apply": apply,
+        "report": report,
+        "guardrails": _OBSIDIAN_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
