@@ -1,0 +1,263 @@
+{
+  "command": "hb-assistant procore live schedule exposure",
+  "determinations_made": false,
+  "exposure": [
+    {
+      "days_overdue": 28,
+      "dimensions": [
+        "overdue"
+      ],
+      "due_at_utc": "2026-05-01T00:00:00+00:00",
+      "endpoint_id": "rfis",
+      "exposure_category": "overdue_rfi",
+      "importance": "high",
+      "owner_entity_key": null,
+      "reason_codes": [
+        "overdue_signal_type",
+        "past_due_date",
+        "review_required_high_sensitivity",
+        "review_required_record"
+      ],
+      "record_key": "tropical|rfis||101",
+      "review_required": true,
+      "signal_type": "rfi_overdue",
+      "source_url_redacted": "https://app.procore.com/REDACTED",
+      "status": "overdue",
+      "title_redacted": "rfi_overdue"
+    },
+    {
+      "days_overdue": 28,
+      "dimensions": [
+        "overdue"
+      ],
+      "due_at_utc": "2026-05-01T00:00:00Z",
+      "endpoint_id": "punch-items",
+      "exposure_category": "inspection_punch_blocking",
+      "importance": "high",
+      "owner_entity_key": null,
+      "reason_codes": [
+        "overdue_signal_type",
+        "past_due_date",
+        "review_required_high_sensitivity"
+      ],
+      "record_key": "tropical|punch-items||108",
+      "review_required": true,
+      "signal_type": "punch_overdue",
+      "source_url_redacted": null,
+      "status": "overdue",
+      "title_redacted": "punch_overdue"
+    },
+    {
+      "days_overdue": 28,
+      "dimensions": [
+        "overdue"
+      ],
+      "due_at_utc": "2026-05-01T00:00:00Z",
+      "endpoint_id": "inspections",
+      "exposure_category": "inspection_punch_blocking",
+      "importance": "medium",
+      "owner_entity_key": null,
+      "reason_codes": [
+        "overdue_signal_type",
+        "past_due_date",
+        "review_required_high_sensitivity"
+      ],
+      "record_key": "tropical|inspections||106",
+      "review_required": true,
+      "signal_type": "inspection_overdue",
+      "source_url_redacted": null,
+      "status": "overdue",
+      "title_redacted": "inspection_overdue"
+    },
+    {
+      "days_overdue": 28,
+      "dimensions": [
+        "overdue"
+      ],
+      "due_at_utc": "2026-05-01T00:00:00Z",
+      "endpoint_id": "submittals",
+      "exposure_category": "overdue_submittal",
+      "importance": "medium",
+      "owner_entity_key": null,
+      "reason_codes": [
+        "overdue_signal_type",
+        "past_due_date",
+        "review_required_high_sensitivity"
+      ],
+      "record_key": "tropical|submittals||102",
+      "review_required": true,
+      "signal_type": "submittal_overdue",
+      "source_url_redacted": null,
+      "status": "overdue",
+      "title_redacted": "submittal_overdue"
+    },
+    {
+      "days_overdue": null,
+      "dimensions": [],
+      "due_at_utc": "2026-06-30T00:00:00Z",
+      "endpoint_id": "punch-items",
+      "exposure_category": "inspection_punch_blocking",
+      "importance": "medium",
+      "owner_entity_key": null,
+      "reason_codes": [
+        "review_required_high_sensitivity"
+      ],
+      "record_key": "tropical|punch-items||107",
+      "review_required": true,
+      "signal_type": "punch_due_tomorrow",
+      "source_url_redacted": null,
+      "status": "upcoming",
+      "title_redacted": "punch_due_tomorrow"
+    },
+    {
+      "days_overdue": null,
+      "dimensions": [
+        "schedule_exposure"
+      ],
+      "due_at_utc": "2026-06-30T00:00:00Z",
+      "endpoint_id": "purchase-orders",
+      "exposure_category": "schedule_impact_flag",
+      "importance": "medium",
+      "owner_entity_key": null,
+      "reason_codes": [],
+      "record_key": "tropical|purchase-orders||111",
+      "review_required": false,
+      "signal_type": "purchase_order_delivery_due",
+      "source_url_redacted": null,
+      "status": "upcoming",
+      "title_redacted": "purchase_order_delivery_due"
+    },
+    {
+      "days_overdue": null,
+      "dimensions": [],
+      "due_at_utc": null,
+      "endpoint_id": "meetings",
+      "exposure_category": "meeting_action_topic",
+      "importance": "high",
+      "owner_entity_key": null,
+      "reason_codes": [
+        "no_due_date_high_importance",
+        "review_required_high_sensitivity"
+      ],
+      "record_key": "tropical|meetings||105",
+      "review_required": true,
+      "signal_type": "meeting_topic_open_high_priority",
+      "source_url_redacted": null,
+      "status": "no_due_date",
+      "title_redacted": "meeting_topic_open_high_priority"
+    },
+    {
+      "days_overdue": null,
+      "dimensions": [
+        "schedule_exposure"
+      ],
+      "due_at_utc": null,
+      "endpoint_id": "schedule-activities",
+      "exposure_category": "critical_or_low_float_activity",
+      "importance": "high",
+      "owner_entity_key": null,
+      "reason_codes": [
+        "no_due_date_high_importance",
+        "review_required_high_sensitivity"
+      ],
+      "record_key": "tropical|schedule-activities||103",
+      "review_required": true,
+      "signal_type": "activity_zero_float",
+      "source_url_redacted": null,
+      "status": "no_due_date",
+      "title_redacted": "activity_zero_float"
+    },
+    {
+      "days_overdue": null,
+      "dimensions": [],
+      "due_at_utc": null,
+      "endpoint_id": "observations",
+      "exposure_category": "inspection_punch_blocking",
+      "importance": "medium",
+      "owner_entity_key": null,
+      "reason_codes": [
+        "review_required_high_sensitivity"
+      ],
+      "record_key": "tropical|observations||109",
+      "review_required": true,
+      "signal_type": "observation_high_priority",
+      "source_url_redacted": null,
+      "status": "no_due_date",
+      "title_redacted": "observation_high_priority"
+    },
+    {
+      "days_overdue": null,
+      "dimensions": [
+        "schedule_exposure"
+      ],
+      "due_at_utc": null,
+      "endpoint_id": "rfis",
+      "exposure_category": "schedule_impact_flag",
+      "importance": "medium",
+      "owner_entity_key": null,
+      "reason_codes": [],
+      "record_key": "tropical|rfis||110",
+      "review_required": false,
+      "signal_type": "rfi_schedule_impact_flagged",
+      "source_url_redacted": null,
+      "status": "no_due_date",
+      "title_redacted": "rfi_schedule_impact_flagged"
+    },
+    {
+      "days_overdue": null,
+      "dimensions": [
+        "schedule_exposure"
+      ],
+      "due_at_utc": null,
+      "endpoint_id": "schedule-activities",
+      "exposure_category": "critical_or_low_float_activity",
+      "importance": "medium",
+      "owner_entity_key": null,
+      "reason_codes": [
+        "review_required_high_sensitivity"
+      ],
+      "record_key": "tropical|schedule-activities||104",
+      "review_required": true,
+      "signal_type": "activity_critical",
+      "source_url_redacted": null,
+      "status": "no_due_date",
+      "title_redacted": "activity_critical"
+    }
+  ],
+  "exposure_truncated": false,
+  "filters": {
+    "exposure_category": null,
+    "importance": null
+  },
+  "generated_at": "2026-05-29T00:00:00Z",
+  "no_live_call_performed": true,
+  "no_raw_values_persisted": true,
+  "ok": true,
+  "phase": "Phase 06B Prompt 10",
+  "project_key": "tropical",
+  "summary": {
+    "by_category": {
+      "critical_or_low_float_activity": 2,
+      "daily_log_delay": 0,
+      "inspection_punch_blocking": 4,
+      "meeting_action_topic": 1,
+      "overdue_rfi": 1,
+      "overdue_submittal": 1,
+      "schedule_impact_flag": 2
+    },
+    "by_importance": {
+      "high": 4,
+      "low": 0,
+      "medium": 7
+    },
+    "overdue": 4,
+    "review_required": 9,
+    "total": 11
+  },
+  "unsupported_categories": [
+    {
+      "category": "daily_log_delay",
+      "reason": "no daily_log action signals emitted by current projections"
+    }
+  ]
+}

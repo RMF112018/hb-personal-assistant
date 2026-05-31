@@ -1899,6 +1899,46 @@ def live_financial_coverage(
     _emit(payload, json_out=json_out)
 
 
+live_schedule_app = typer.Typer(
+    help="Phase 06B schedule exposure queries (RFIs, submittals, activities, meetings, punch, "
+    "observations, inspections). Local SQLite only — never calls Procore."
+)
+live_app.add_typer(live_schedule_app, name="schedule")
+
+
+@live_schedule_app.command("exposure")
+def live_schedule_exposure(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    exposure_category: Optional[str] = typer.Option(
+        None, "--type",
+        help="Optional category filter (overdue_rfi/overdue_submittal/"
+        "critical_or_low_float_activity/meeting_action_topic/inspection_punch_blocking/"
+        "schedule_impact_flag).",
+    ),
+    importance: Optional[str] = typer.Option(
+        None, "--importance", help="Optional importance filter (high/medium/low)."
+    ),
+    max_items: int = typer.Option(50, "--max-items", min=1, help="Max exposure rows returned."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Schedule exposure model (Phase 06B Prompt 10) — classifies open schedule-domain signals
+    (overdue RFIs/submittals, low-float/critical activities, meeting action topics,
+    inspection/punch/observation completion blockers, and schedule-impact flags) into exposure
+    categories, each with reason codes, source link, due date + overdue status, and a
+    review-required flag on high-sensitivity items. Advisory/review aid only — never asserts delay
+    entitlement, responsibility, or schedule-impact determinations. Read-only over local SQLite;
+    no network, no DB writes, no raw values."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_schedule_exposure import build_schedule_exposure
+
+    SQLiteMigrator().apply()
+    report = build_schedule_exposure(
+        project, now_utc=_query_now().isoformat(),
+        exposure_category=exposure_category, importance=importance, max_items=max_items,
+    )
+    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
+
+
 @live_records_app.command("count")
 def live_records_count(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),

@@ -159,3 +159,56 @@ invoice-retainage), not a decision. `no_live_call_performed: true`, `no_raw_valu
 true`. Read-only; no migration/persistence (schema V19; consistent with Prompts 06/07/08).
 Evidence:
 `docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/09-cost-exposure-proof.json`.
+
+## Schedule exposure model (Prompt 10)
+
+`store/procore_schedule_exposure.py::build_schedule_exposure(project_key, *, now_utc,
+exposure_category=None, importance=None, max_items=50, db_path=None)` — deterministic, read-only.
+Surfaced by `hb-assistant procore live schedule exposure --project KEY [--type C] [--importance I]
+[--max-items N] --json` (a new `live schedule` sub-group). It reuses
+`procore_enrichment.get_procore_action_signals`, `procore_project_health._dimensions_for` /
+`_parse_iso`, and `procore_action_queue._due_status` / `_canonical_due` / `_record_key` — no new
+table or migration (schema stays V19, consistent with Prompts 06–09).
+
+**Inputs → exposure categories** (all `project_key`-scoped). Open `procore_action_signals` from the
+schedule-bearing domains are mapped by an explicit, auditable `signal_type → category` table
+(`_SCHEDULE_EXPOSURE_SIGNAL_MAP`); signal types absent from it are skipped:
+- **overdue_rfi** — `rfi_overdue`. **overdue_submittal** — `submittal_overdue`.
+- **critical_or_low_float_activity** — `activity_critical` / `activity_zero_float` /
+  `activity_constrained` / `activity_deadline_variance`.
+- **meeting_action_topic** — `meeting_topic_open_high_priority`.
+- **inspection_punch_blocking** — `inspection_overdue` / `inspection_has_deficient_items` /
+  `inspection_has_unanswered_items` / `inspection_open_safety` / `punch_overdue` /
+  `punch_due_tomorrow` / `punch_assignment_waiting` / `punch_unresolved_response` /
+  `observation_open_safety` / `observation_high_priority`.
+- **schedule_impact_flag** — `rfi_schedule_impact_flagged` /
+  `submittal_required_on_site_date_near` / `purchase_order_delivery_due` / `observation_due_soon`.
+
+**Due dates** come from the signal's normalized `due_at_utc` first, falling back to a normalized
+date extracted from the live record's `canonical_json_redacted` (never the raw field value); each
+item is classified `overdue` / `upcoming` / `no_due_date` with `days_overdue` for overdue items.
+Each item is enriched from `procore_live_records` (by `record_key`) with `source_url_redacted` +
+`review_required`, and carries `dimensions` (`_dimensions_for`).
+
+**Repo-truth note (daily logs):** the package brief lists daily logs in the join set, but no
+daily-log projection emits action signals in this repo. Rather than fabricate, `daily_log_delay`
+is a declared canonical category (always 0) and is echoed under `unsupported_categories` with a
+reason string — the same stop-condition surface style as the overdue model's
+`unsupported_due_date_endpoints`.
+
+**Output:** `summary` (total / review_required / overdue / `by_category` — all seven categories
+keyed incl. `daily_log_delay` / `by_importance`), a deterministically ordered `exposure` list
+(overdue-first → most-overdue → importance → due → record_key → signal_type) with per-item
+`exposure_category`, `signal_type`, `endpoint_id`, `record_key`, `due_at_utc`, `status`,
+`days_overdue`, `importance`, `owner_entity_key`, `review_required`, `reason_codes`, `dimensions`,
+`title_redacted`, `source_url_redacted`; `exposure_truncated`; and `unsupported_categories`.
+
+**Guardrail posture:** advisory / review aid only — **no delay, entitlement, responsibility,
+claims, liability, or schedule-impact determination** (`determinations_made: false`). The model
+surfaces that a signal *exists*; it never asserts who caused a delay, how many days are owed, or
+that a deadline was breached (the stop-condition guard). `review_required` is a documented triage
+label (high-importance signal OR high-sensitivity category: overdue RFI/submittal,
+critical/low-float activity, inspection/punch/observation blocker, OR a record review flag), not a
+decision. `no_live_call_performed: true`, `no_raw_values_persisted: true`. Read-only; no
+migration. Evidence:
+`docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/10-schedule-exposure-proof.json`.
