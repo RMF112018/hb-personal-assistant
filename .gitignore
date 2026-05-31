@@ -182,3 +182,5 @@ cython_debug/
 .tmp-app-support-remediation/evidence/phase-12-runs/morning-orchestrator-20260525-073921.json
 .tmp-app-support-remediation/evidence/phase-12-runs/morning-orchestrator-20260525-073826.json
 .tmp-app-support-remediation/db/hb-personal-assistant.sqlite
+.code-graph/daemon.pid
+.code-graph/graph.bin
