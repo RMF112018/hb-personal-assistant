@@ -1952,6 +1952,29 @@ class ConstructionStore:
         confidence: Optional[float] = None,
         needs_review: bool = True,
         card_path: Optional[str] = None,
+        # Phase 07C (V24) safe fields — hashed/redacted/bounded only. The six
+        # raw/url/payload/copy/writeback guard columns are never written here and
+        # stay at their CHECK(... = 0) defaults. NOT-NULL V24 columns default to
+        # their schema defaults so legacy callers are unaffected.
+        document_card_id: Optional[str] = None,
+        drive_id_hash: Optional[str] = None,
+        drive_item_id_hash: Optional[str] = None,
+        project_number_hash: Optional[str] = None,
+        title_hash: Optional[str] = None,
+        title_redacted: Optional[str] = None,
+        file_extension: Optional[str] = None,
+        mime_type: Optional[str] = None,
+        size_class: str = "unknown",
+        source_path_hash: Optional[str] = None,
+        source_path_token_hashes_json: Optional[str] = None,
+        last_modified_datetime: Optional[str] = None,
+        source_reference_json: Optional[str] = None,
+        review_status: str = "pending",
+        review_required: bool = False,
+        review_reasons_json: Optional[str] = None,
+        extraction_eligibility: str = "not_evaluated",
+        confidence_class: str = "unknown",
+        guardrail_flags_json: Optional[str] = None,
     ) -> None:
         conn = get_connection(self._db_path)
         with transaction(conn):
@@ -1960,8 +1983,16 @@ class ConstructionStore:
                 INSERT INTO construction_document_cards
                     (card_id, source_id, drive_item_id, project_key,
                      document_type, status, confidence, needs_review, card_path,
-                     created_utc, updated_utc)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     created_utc, updated_utc,
+                     document_card_id, drive_id_hash, drive_item_id_hash,
+                     project_number_hash, title_hash, title_redacted, file_extension,
+                     mime_type, size_class, source_path_hash,
+                     source_path_token_hashes_json, last_modified_datetime,
+                     source_reference_json, review_status, review_required,
+                     review_reasons_json, extraction_eligibility, confidence_class,
+                     guardrail_flags_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(card_id) DO UPDATE SET
                     source_id = excluded.source_id,
                     drive_item_id = excluded.drive_item_id,
@@ -1971,39 +2002,72 @@ class ConstructionStore:
                     confidence = excluded.confidence,
                     needs_review = excluded.needs_review,
                     card_path = excluded.card_path,
-                    updated_utc = excluded.updated_utc
+                    updated_utc = excluded.updated_utc,
+                    document_card_id = excluded.document_card_id,
+                    drive_id_hash = excluded.drive_id_hash,
+                    drive_item_id_hash = excluded.drive_item_id_hash,
+                    project_number_hash = excluded.project_number_hash,
+                    title_hash = excluded.title_hash,
+                    title_redacted = excluded.title_redacted,
+                    file_extension = excluded.file_extension,
+                    mime_type = excluded.mime_type,
+                    size_class = excluded.size_class,
+                    source_path_hash = excluded.source_path_hash,
+                    source_path_token_hashes_json = excluded.source_path_token_hashes_json,
+                    last_modified_datetime = excluded.last_modified_datetime,
+                    source_reference_json = excluded.source_reference_json,
+                    review_status = excluded.review_status,
+                    review_required = excluded.review_required,
+                    review_reasons_json = excluded.review_reasons_json,
+                    extraction_eligibility = excluded.extraction_eligibility,
+                    confidence_class = excluded.confidence_class,
+                    guardrail_flags_json = excluded.guardrail_flags_json
                 """,
                 (
                     card_id, source_id, drive_item_id, project_key,
                     document_type, status, confidence,
                     1 if needs_review else 0, card_path,
                     _utc_now(), _utc_now(),
+                    document_card_id, drive_id_hash, drive_item_id_hash,
+                    project_number_hash, title_hash, title_redacted, file_extension,
+                    mime_type, size_class, source_path_hash,
+                    source_path_token_hashes_json, last_modified_datetime,
+                    source_reference_json, review_status,
+                    1 if review_required else 0,
+                    review_reasons_json, extraction_eligibility, confidence_class,
+                    guardrail_flags_json,
                 ),
             )
 
     def get_document_card(self, card_id: str) -> Optional[dict[str, Any]]:
         conn = get_connection(self._db_path)
         cur = conn.execute(
-            """
-            SELECT card_id, source_id, drive_item_id, project_key,
-                   document_type, status, confidence, needs_review, card_path,
-                   created_utc, updated_utc
-            FROM construction_document_cards
-            WHERE card_id = ?
-            """,
+            "SELECT * FROM construction_document_cards WHERE card_id = ?",
             (card_id,),
         )
         row = cur.fetchone()
         if row is None:
             return None
-        keys = (
-            "card_id", "source_id", "drive_item_id", "project_key",
-            "document_type", "status", "confidence", "needs_review", "card_path",
-            "created_utc", "updated_utc",
-        )
+        keys = [d[0] for d in cur.description]
         record = dict(zip(keys, row, strict=True))
-        record["needs_review"] = bool(record["needs_review"])
+        if "needs_review" in record:
+            record["needs_review"] = bool(record["needs_review"])
+        if "review_required" in record:
+            record["review_required"] = bool(record["review_required"])
         return record
+
+    def count_document_cards(self) -> int:
+        conn = get_connection(self._db_path)
+        cur = conn.execute("SELECT COUNT(*) FROM construction_document_cards")
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
+    def distinct_inventory_source_keys(self) -> list[str]:
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            "SELECT DISTINCT source_key FROM construction_drive_item_inventory ORDER BY source_key"
+        )
+        return [r[0] for r in cur.fetchall()]
 
     # --- canonical processing receipts (V5) ---------------------------------
 

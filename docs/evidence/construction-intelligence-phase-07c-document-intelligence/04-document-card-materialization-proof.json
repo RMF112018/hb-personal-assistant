@@ -1,0 +1,69 @@
+{
+  "phase": "construction-intelligence-phase-07c-document-intelligence",
+  "prompt": "04-document-card-materialization",
+  "generated_utc": "2026-05-31",
+  "repo_sha_parent": "34304f5596ed6bd75ed8775c9693e7c38616350c",
+  "schema_version": 24,
+  "package_version": "1.3.0",
+  "leak_safe": "counts and gate statuses only; no raw source keys, file names, paths, web URLs, tokens, or secrets",
+  "command": "hb-assistant graph files materialize-document-cards --apply --json",
+  "mode": "apply",
+  "exit_code": 0,
+  "ok": true,
+  "summary": {
+    "inventory_rows": 401,
+    "folders_skipped": 118,
+    "deleted_skipped": 0,
+    "unknown_source_skipped": 0,
+    "blocked_source_skipped": 0,
+    "considered": 283,
+    "cards_written": 283,
+    "review_required": 283
+  },
+  "by_system": { "sharepoint": 283 },
+  "blocked_source_count": 4,
+  "idempotent": {
+    "reapply_cards_written": 283,
+    "live_card_count_after_two_applies": 283
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "microsoft_365_writeback": "none",
+    "graph_calls": "none",
+    "local_sqlite_write": true,
+    "raw_document_text_persisted": false,
+    "raw_path_or_url_persisted": false,
+    "hashed_identity": true,
+    "auto_promotion": false,
+    "guard_check_columns_all_zero": true
+  },
+  "post_apply_gates": {
+    "document_card_population_status": "pass",
+    "document_card_population_observed": true,
+    "raw_content_leakage_scan": "pass",
+    "external_writeback_scan": "pass",
+    "phase_07c_blocked_by": [],
+    "meeting_prep_ready": false,
+    "meeting_prep_blocked_by": ["review_required_routing_presence"],
+    "risk_digest_readiness_claim": "blocked"
+  },
+  "no_writeback_proof_passed": true,
+  "leak_scan": {
+    "live_card_rows_scanned": 283,
+    "url_email_ical_pattern_hits": 0,
+    "sample_card_fields": {
+      "document_card_id": "<sha256:16 hex>",
+      "title_hash": "<sha256:16 hex>",
+      "title_redacted": "[redacted:<hash16>]",
+      "file_extension": "pdf",
+      "size_class": "small",
+      "source_path_hash": "<sha256:16 hex>",
+      "review_status": "pending",
+      "review_required": true,
+      "document_type": "unknown",
+      "confidence_class": "unknown",
+      "extraction_eligibility": "not_evaluated"
+    }
+  },
+  "outcome": "283 review-required candidate document cards materialized from the single compliant SharePoint project-drive source (folders/deleted/blocked-OneDrive excluded). Card population is real 07C progress; meeting-prep readiness remains False (blocked by review_required_routing_presence). No readiness overstated; no raw content or unsafe identifiers persisted."
+}

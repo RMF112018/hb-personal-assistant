@@ -33,7 +33,10 @@ from hb_assistant.construction.classification.client import OllamaChatClient
 from hb_assistant.construction.config import load_source_registry
 from hb_assistant.construction.config.loader import SourceRegistryError
 from hb_assistant.construction.correspondence import CorrespondenceReviewBuilder
-from hb_assistant.construction.document import evaluate_source_scope_compliance
+from hb_assistant.construction.document import (
+    evaluate_source_scope_compliance,
+    materialize_document_cards,
+)
 from hb_assistant.construction.email import (
     EmailFolderDiscovery,
     EmailIntelligenceClassifier,
@@ -541,6 +544,29 @@ def files_scope_compliance_cmd(
     payload = evaluate_source_scope_compliance(registry, policy)
     typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
     raise typer.Exit(0)
+
+
+@files_app.command("materialize-document-cards")
+def files_materialize_document_cards_cmd(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist document cards to SQLite (default: dry-run)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Materialize construction_document_cards from the indexed drive-item inventory.
+
+    Dry-run by default: computes how many cards would be written (one per active
+    file-like drive item from a scope-compliant source) without any SQLite write.
+    ``--apply`` persists idempotently. Only SAFE fields are stored — hashed identity,
+    redacted title, bounded metadata; raw file names / web URLs / parent paths are
+    never copied, and the card guard columns stay 0. Cards materialize as
+    review-required candidates (type/match/extraction are deferred). Read-only
+    against Microsoft 365 (reads already-indexed inventory; no token, no Graph call).
+    """
+    store = ConstructionStore()
+    report = materialize_document_cards(store, apply=apply)
+    typer.echo(json.dumps(report, indent=2) if json_out else str(report))
+    raise typer.Exit(0 if report["ok"] else 1)
 
 
 _DISCOVERY_GUARDRAILS = {
