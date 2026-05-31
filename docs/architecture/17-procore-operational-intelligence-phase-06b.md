@@ -212,3 +212,45 @@ critical/low-float activity, inspection/punch/observation blocker, OR a record r
 decision. `no_live_call_performed: true`, `no_raw_values_persisted: true`. Read-only; no
 migration. Evidence:
 `docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/10-schedule-exposure-proof.json`.
+
+## Responsible party & relationship quality (Prompt 11)
+
+`store/procore_relationship_quality.py` — two deterministic, read-only read models surfaced as two
+top-level `live` verbs:
+- `build_responsible_party_gaps(project_key, *, now_utc, endpoint_id=None, db_path=None)` →
+  `hb-assistant procore live responsible-party-gaps --project KEY [--endpoint E] --json`.
+- `build_relationship_quality(project_key, *, now_utc, max_items=50, db_path=None)` →
+  `hb-assistant procore live relationship-quality --project KEY [--max-items N] --json`.
+
+It reuses `procore_action_queue._record_key`, `procore_commitment_projection._commitment_exists`,
+and the relationship edges emitted by `procore_enrichment.emit_record_edge` /
+`procore_financial_projection.link_record_entities`. No new table or migration (schema stays V19).
+
+**Relationship edge map** (operator label → concrete `procore_record_edges.edge_type`,
+`_RELATIONSHIP_EDGE_TYPES`): `owner → created_by`, `assignee → assignee`,
+`ball_in_court → ball_in_court`, `responsible_contractor → responsible_contractor`,
+`vendor → vendor`, `location → at_location`. There is no dedicated Procore "owner" edge; `created_by`
+is the concrete owner-proxy and the `owner` label is surfaced explicitly so it never overclaims.
+
+**Responsible-party-gaps** — for each endpoint present in `procore_live_records` (optionally one),
+for each relationship: `records`, `records_with_edge` (records whose `record_key` is the
+`from_record_key` of ≥1 edge of that type), `missing`, `coverage_pct`, and `status`. Non-guessing
+rule: `not_observed` when **no** record carries the edge (the relationship is not asserted to apply);
+`partial_gap` only when **some** records carry it and others do not; `covered` when all do. Only
+`partial_gap` rows feed `summary.partial_gap_relationships` / `missing_total` — `not_observed` is
+never counted as a fabricated gap (stop-condition guard).
+
+**Relationship-quality** — three structural lenses: (1) **orphans** — child records
+(`parent_procore_id != ''`) whose `parent_procore_id` is not the `procore_record_id` of any record in
+the project, with per-endpoint counts and a capped refs-only sample; (2) **linkage** — `child_records`
+/ `children_with_resolved_parent` / `linkage_pct`, reported `unknown` when there are no child records
+(never guessed); (3) **duplicate_warnings** — `purchase_order`-family contracts whose `contract_id`
+already exists as a `commitment` (via `_commitment_exists`), the only repo-supported dedupe surface.
+
+**Guardrail posture:** data-quality / review aid only — structural metadata, counts, and refs; **no
+legal/claims/safety/entitlement determination** (`determinations_made: false`), and linkage that
+cannot be inferred is `unknown` rather than guessed. `no_live_call_performed: true`,
+`no_raw_values_persisted: true`. Read-only; required-work item 5's optional
+`procore_relationship_quality_metrics` persistence is **not** implemented — metrics are derived on
+demand (schema stays V19, consistent with Prompts 06–10). Evidence:
+`docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/11-responsible-party-and-relationship-quality-proof.json`.

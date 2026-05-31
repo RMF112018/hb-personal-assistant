@@ -1,0 +1,341 @@
+{
+  "relationship_quality": {
+    "command": "hb-assistant procore live relationship-quality",
+    "determinations_made": false,
+    "duplicate_warnings": [
+      {
+        "contract_id": "55",
+        "duplicate_of": "commitment",
+        "endpoint_id": "purchase-order-contracts",
+        "record_key": "tropical|purchase-order-contracts||55"
+      }
+    ],
+    "generated_at": "2026-05-29T00:00:00Z",
+    "linkage": {
+      "child_records": 2,
+      "children_with_resolved_parent": 1,
+      "linkage_pct": 50.0,
+      "linkage_status": "partial"
+    },
+    "no_live_call_performed": true,
+    "no_raw_values_persisted": true,
+    "ok": true,
+    "orphans": {
+      "by_endpoint": {
+        "meeting-topics": 1
+      },
+      "orphan_count": 1,
+      "sample": [
+        {
+          "endpoint_id": "meeting-topics",
+          "parent_procore_id": "999",
+          "procore_record_id": "201"
+        }
+      ],
+      "sample_truncated": false
+    },
+    "phase": "Phase 06B Prompt 11",
+    "project_key": "tropical",
+    "summary": {
+      "child_records": 2,
+      "duplicate_warnings": 1,
+      "linkage_pct": 50.0,
+      "orphan_records": 1,
+      "total_records": 6
+    }
+  },
+  "responsible_party_gaps": {
+    "command": "hb-assistant procore live responsible-party-gaps",
+    "coverage": [
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "assignee",
+        "endpoint_id": "commitment-contracts",
+        "missing": 1,
+        "records": 1,
+        "records_with_edge": 0,
+        "relationship": "assignee",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "ball_in_court",
+        "endpoint_id": "commitment-contracts",
+        "missing": 1,
+        "records": 1,
+        "records_with_edge": 0,
+        "relationship": "ball_in_court",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "at_location",
+        "endpoint_id": "commitment-contracts",
+        "missing": 1,
+        "records": 1,
+        "records_with_edge": 0,
+        "relationship": "location",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "created_by",
+        "endpoint_id": "commitment-contracts",
+        "missing": 1,
+        "records": 1,
+        "records_with_edge": 0,
+        "relationship": "owner",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 100.0,
+        "edge_type": "responsible_contractor",
+        "endpoint_id": "commitment-contracts",
+        "missing": 0,
+        "records": 1,
+        "records_with_edge": 1,
+        "relationship": "responsible_contractor",
+        "status": "covered"
+      },
+      {
+        "coverage_pct": 100.0,
+        "edge_type": "vendor",
+        "endpoint_id": "commitment-contracts",
+        "missing": 0,
+        "records": 1,
+        "records_with_edge": 1,
+        "relationship": "vendor",
+        "status": "covered"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "assignee",
+        "endpoint_id": "meeting-topics",
+        "missing": 2,
+        "records": 2,
+        "records_with_edge": 0,
+        "relationship": "assignee",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "ball_in_court",
+        "endpoint_id": "meeting-topics",
+        "missing": 2,
+        "records": 2,
+        "records_with_edge": 0,
+        "relationship": "ball_in_court",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "at_location",
+        "endpoint_id": "meeting-topics",
+        "missing": 2,
+        "records": 2,
+        "records_with_edge": 0,
+        "relationship": "location",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "created_by",
+        "endpoint_id": "meeting-topics",
+        "missing": 2,
+        "records": 2,
+        "records_with_edge": 0,
+        "relationship": "owner",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "responsible_contractor",
+        "endpoint_id": "meeting-topics",
+        "missing": 2,
+        "records": 2,
+        "records_with_edge": 0,
+        "relationship": "responsible_contractor",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "vendor",
+        "endpoint_id": "meeting-topics",
+        "missing": 2,
+        "records": 2,
+        "records_with_edge": 0,
+        "relationship": "vendor",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "assignee",
+        "endpoint_id": "meetings",
+        "missing": 1,
+        "records": 1,
+        "records_with_edge": 0,
+        "relationship": "assignee",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "ball_in_court",
+        "endpoint_id": "meetings",
+        "missing": 1,
+        "records": 1,
+        "records_with_edge": 0,
+        "relationship": "ball_in_court",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "at_location",
+        "endpoint_id": "meetings",
+        "missing": 1,
+        "records": 1,
+        "records_with_edge": 0,
+        "relationship": "location",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "created_by",
+        "endpoint_id": "meetings",
+        "missing": 1,
+        "records": 1,
+        "records_with_edge": 0,
+        "relationship": "owner",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "responsible_contractor",
+        "endpoint_id": "meetings",
+        "missing": 1,
+        "records": 1,
+        "records_with_edge": 0,
+        "relationship": "responsible_contractor",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "vendor",
+        "endpoint_id": "meetings",
+        "missing": 1,
+        "records": 1,
+        "records_with_edge": 0,
+        "relationship": "vendor",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 50.0,
+        "edge_type": "assignee",
+        "endpoint_id": "rfis",
+        "missing": 1,
+        "records": 2,
+        "records_with_edge": 1,
+        "relationship": "assignee",
+        "status": "partial_gap"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "ball_in_court",
+        "endpoint_id": "rfis",
+        "missing": 2,
+        "records": 2,
+        "records_with_edge": 0,
+        "relationship": "ball_in_court",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "at_location",
+        "endpoint_id": "rfis",
+        "missing": 2,
+        "records": 2,
+        "records_with_edge": 0,
+        "relationship": "location",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 50.0,
+        "edge_type": "created_by",
+        "endpoint_id": "rfis",
+        "missing": 1,
+        "records": 2,
+        "records_with_edge": 1,
+        "relationship": "owner",
+        "status": "partial_gap"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "responsible_contractor",
+        "endpoint_id": "rfis",
+        "missing": 2,
+        "records": 2,
+        "records_with_edge": 0,
+        "relationship": "responsible_contractor",
+        "status": "not_observed"
+      },
+      {
+        "coverage_pct": 0.0,
+        "edge_type": "vendor",
+        "endpoint_id": "rfis",
+        "missing": 2,
+        "records": 2,
+        "records_with_edge": 0,
+        "relationship": "vendor",
+        "status": "not_observed"
+      }
+    ],
+    "determinations_made": false,
+    "filters": {
+      "endpoint_id": null
+    },
+    "generated_at": "2026-05-29T00:00:00Z",
+    "no_live_call_performed": true,
+    "no_raw_values_persisted": true,
+    "ok": true,
+    "phase": "Phase 06B Prompt 11",
+    "project_key": "tropical",
+    "relationship_edge_map": {
+      "assignee": "assignee",
+      "ball_in_court": "ball_in_court",
+      "location": "at_location",
+      "owner": "created_by",
+      "responsible_contractor": "responsible_contractor",
+      "vendor": "vendor"
+    },
+    "summary": {
+      "by_relationship": {
+        "assignee": {
+          "missing": 1,
+          "partial_gap_endpoints": 1
+        },
+        "ball_in_court": {
+          "missing": 0,
+          "partial_gap_endpoints": 0
+        },
+        "location": {
+          "missing": 0,
+          "partial_gap_endpoints": 0
+        },
+        "owner": {
+          "missing": 1,
+          "partial_gap_endpoints": 1
+        },
+        "responsible_contractor": {
+          "missing": 0,
+          "partial_gap_endpoints": 0
+        },
+        "vendor": {
+          "missing": 0,
+          "partial_gap_endpoints": 0
+        }
+      },
+      "endpoints": 4,
+      "missing_total": 2,
+      "partial_gap_relationships": 2
+    }
+  }
+}

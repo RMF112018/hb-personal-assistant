@@ -1567,6 +1567,49 @@ def live_overdue(
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
 
+@live_app.command("responsible-party-gaps")
+def live_responsible_party_gaps(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    endpoint: Optional[str] = typer.Option(
+        None, "--endpoint", help="Optional canonical endpoint_id filter."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Per-endpoint responsibility-edge coverage (Phase 06B Prompt 11) — owner (created_by),
+    assignee, ball-in-court, responsible-contractor, vendor, and location. Reports covered /
+    partial_gap / not_observed per (endpoint, relationship); a relationship never seen on an
+    endpoint is not_observed (never a fabricated gap). Read-only over local SQLite; no network,
+    no DB writes, no raw values, no determinations."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_relationship_quality import build_responsible_party_gaps
+
+    SQLiteMigrator().apply()
+    report = build_responsible_party_gaps(
+        project, now_utc=_query_now().isoformat(), endpoint_id=endpoint,
+    )
+    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
+
+
+@live_app.command("relationship-quality")
+def live_relationship_quality(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    max_items: int = typer.Option(50, "--max-items", min=1, help="Max orphan sample rows."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Relationship-quality diagnostics (Phase 06B Prompt 11) — orphaned child records, parent/child
+    linkage coverage, and commitment/PO duplicate warnings. Linkage that cannot be inferred is
+    reported unknown (never guessed); dedupe covers only repo-supported commitment/PO surfaces.
+    Read-only over local SQLite; no network, no DB writes, no raw values, no determinations."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_relationship_quality import build_relationship_quality
+
+    SQLiteMigrator().apply()
+    report = build_relationship_quality(
+        project, now_utc=_query_now().isoformat(), max_items=max_items,
+    )
+    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
+
+
 live_records_app = typer.Typer(help="Procore live SQLite record read-only commands.")
 live_app.add_typer(live_records_app, name="records")
 
