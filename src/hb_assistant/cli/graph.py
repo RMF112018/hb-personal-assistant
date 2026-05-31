@@ -31,6 +31,7 @@ from hb_assistant.construction.calendar.project_matcher import CalendarProjectMa
 from hb_assistant.construction.classification.client import OllamaChatClient
 from hb_assistant.construction.config import load_source_registry
 from hb_assistant.construction.config.loader import SourceRegistryError
+from hb_assistant.construction.correspondence import CorrespondenceReviewBuilder
 from hb_assistant.construction.email import (
     EmailFolderDiscovery,
     EmailIntelligenceClassifier,
@@ -2364,6 +2365,54 @@ def thread_summary_cmd(
             "ok": False,
             "dry_run": dry_run,
             "status": "thread_summary_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@mail_app.command("correspondence")
+def correspondence_cmd(
+    project: Optional[str] = typer.Option(None, "--project", help="Pilot project key"),
+    lookback_days: int = typer.Option(
+        30, "--lookback-days", help="Bounded lookback window in days (1-3660)"
+    ),
+    max_previews: int = typer.Option(
+        10, "--max-previews", help="Max redacted thread previews in the report."
+    ),
+    max_warnings: int = typer.Option(
+        50, "--max-warnings", help="Max aggregated review warnings in the report."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Project-level correspondence preview + review warnings (read-only, advisory).
+
+    Aggregates the redacted, metadata-only thread summaries and the open review queue into
+    project previews and category-level review warnings. Read-only on every layer — no Graph
+    calls, no token, no SQLite writes. Warnings/previews are advisory signals, never final
+    determinations; sensitive/high-impact items route to human review.
+    """
+    try:
+        report = CorrespondenceReviewBuilder(ConstructionStore()).review(
+            project_key=project,
+            lookback_days=lookback_days,
+            max_previews=max_previews,
+            max_warnings=max_warnings,
+        )
+        payload: Dict[str, Any] = {
+            "command": "graph mail correspondence",
+            "ok": True,
+            **report.model_dump(),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail correspondence",
+            "ok": False,
+            "status": "correspondence_error",
             "error": str(e)[:200],
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
