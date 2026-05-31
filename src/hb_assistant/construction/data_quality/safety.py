@@ -73,6 +73,78 @@ _PHASE_07A_TABLES: List[str] = [
 # Evidence directory produced by Prompts 00-07 (and this proof itself).
 _PHASE_07A_EVIDENCE_SUBDIR = "construction-intelligence-phase-07a-data-quality"
 
+# ---------------------------------------------------------------------------
+# Phase 07B scope (calendar / email / thread / candidate surfaces, Prompt 12)
+# ---------------------------------------------------------------------------
+
+# Source modules created across Phase 07B (relative to src/hb_assistant/).
+_PHASE_07B_MODULES: List[str] = [
+    "construction/calendar/event_indexer.py",
+    "construction/calendar/project_matcher.py",
+    "construction/calendar/policy.py",
+    "construction/calendar/contracts.py",
+    "construction/email/thread_summary.py",
+    "construction/relationships/meeting_email_candidates.py",
+    "construction/correspondence/correspondence_review.py",
+    "construction/calendar_email_obsidian.py",
+    "graph/calendar_endpoint_guard.py",
+    "graph/calendar_readonly_client.py",
+]
+
+# Phase 07B tables -> the guard CHECK columns each declares and the value each
+# must hold. Tables with an empty map are metadata-only (no raw-flag columns);
+# they are covered by the module + content scans rather than a CHECK probe.
+_PHASE_07B_TABLE_GUARDS: Dict[str, Dict[str, int]] = {
+    "email_model_classifications": {
+        "advisory_only": 1,
+        "plaintext_body_persisted": 0,
+        "raw_prompt_persisted": 0,
+        "raw_response_persisted": 0,
+    },
+    "email_thread_summary_materialization_runs": {
+        "raw_body_persisted": 0,
+        "raw_prompt_persisted": 0,
+        "raw_response_persisted": 0,
+        "external_writeback_performed": 0,
+    },
+    "calendar_crawl_runs": {
+        "raw_body_persisted": 0,
+        "full_text_persisted": 0,
+        "external_writeback_performed": 0,
+    },
+    "calendar_event_index": {
+        "raw_body_persisted": 0,
+        "full_text_persisted": 0,
+        "external_writeback_performed": 0,
+    },
+    "calendar_project_match_candidates": {
+        "raw_body_persisted": 0,
+        "external_writeback_performed": 0,
+    },
+    "meeting_email_relationship_candidates": {
+        "raw_body_persisted": 0,
+        "raw_prompt_persisted": 0,
+        "raw_response_persisted": 0,
+        "external_writeback_performed": 0,
+    },
+    "email_thread_summaries": {},
+    "calendar_event_attendees": {},
+}
+
+_PHASE_07B_TABLES: List[str] = list(_PHASE_07B_TABLE_GUARDS)
+
+_PHASE_07B_EVIDENCE_SUBDIR = "construction-intelligence-phase-07b-calendar-email"
+
+# Raw-leakage patterns for scanning persisted DB *values* (in addition to the
+# shared secret scanner): generic URLs, raw email addresses, and iCal blocks.
+# These are intentionally NOT run over module/evidence prose (which legitimately
+# mentions "https://" etc.) — only over stored column values.
+_RAW_LEAK_PATTERNS = (
+    ("http_url", re.compile(r"https?://", re.IGNORECASE)),
+    ("raw_email_address", re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")),
+    ("ical_block", re.compile(r"BEGIN:V(EVENT|CALENDAR)", re.IGNORECASE)),
+)
+
 # Reuse / adapt the same high-precision patterns from the procore prover
 # (imported _scan_text_for_secrets already embodies the secret patterns).
 # We keep a local copy of the mutation / bad-import patterns for the 07A scan
@@ -184,10 +256,10 @@ def _probe_raw_body_guardrails_07a(conn: Any) -> Dict[str, Any]:
 
     return {"tables": tables, "violations": violations}
 
-def _scan_07a_evidence_outputs(repo_root: Path) -> Dict[str, Any]:
-    """Recursively scan the Phase 07A evidence directory for secrets / tokens."""
+def _scan_evidence_outputs(repo_root: Path, subdir: str) -> Dict[str, Any]:
+    """Recursively scan an evidence directory for secrets / tokens (read-only)."""
     findings: List[str] = []
-    evidence_dir = repo_root / "docs" / "evidence" / _PHASE_07A_EVIDENCE_SUBDIR
+    evidence_dir = repo_root / "docs" / "evidence" / subdir
     if not evidence_dir.exists():
         return {"scanned_dir": str(evidence_dir), "findings": findings, "note": "evidence dir not present"}
 
@@ -203,6 +275,113 @@ def _scan_07a_evidence_outputs(repo_root: Path) -> Dict[str, Any]:
                 except Exception:
                     pass
     return {"scanned_dir": str(evidence_dir), "findings": findings}
+
+
+def _scan_07a_evidence_outputs(repo_root: Path) -> Dict[str, Any]:
+    """Recursively scan the Phase 07A evidence directory for secrets / tokens."""
+    return _scan_evidence_outputs(repo_root, _PHASE_07A_EVIDENCE_SUBDIR)
+
+
+def _scan_module_set(repo_root: Path, src_relative_paths: List[str]) -> Dict[str, Dict[str, Any]]:
+    """Static mutation/import/secret scan over a set of modules (relative to
+    src/hb_assistant/). Reuses the shared per-module scanner."""
+    base = repo_root / "src" / "hb_assistant"
+    results: Dict[str, Dict[str, Any]] = {}
+    for rel in src_relative_paths:
+        p = base / rel
+        if not p.exists():
+            results[rel] = {"present": False}
+            continue
+        try:
+            src = p.read_text(encoding="utf-8")
+            res = _scan_module_for_mutation_and_imports(src, rel)
+            secret_hits = _scan_text_for_secrets(src)
+            if secret_hits:
+                res.setdefault("secrets", []).extend(secret_hits)
+            results[rel] = res
+        except Exception as e:  # pragma: no cover - defensive
+            results[rel] = {"error": str(e)[:120]}
+    return results
+
+
+def _probe_table_guards(
+    conn: Any, table_guard_map: Dict[str, Dict[str, int]]
+) -> Dict[str, Any]:
+    """Confirm each table declares its guard CHECK columns and stores only the
+    required constant. Tables with no guard columns are recorded present (not a
+    violation); they are covered by the content + module scans."""
+    tables: List[Dict[str, Any]] = []
+    violations: List[str] = []
+    for name, guards in table_guard_map.items():
+        try:
+            row = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (name,)
+            ).fetchone()
+            if not row:
+                tables.append({"table": name, "present": False})
+                continue
+            sql_nospace = (row[0] or "").replace(" ", "")
+            checked: List[Dict[str, Any]] = []
+            for col, const in guards.items():
+                has_check = f"CHECK({col}={const})" in sql_nospace
+                distinct: List[int] = []
+                try:
+                    distinct = sorted(
+                        r[0]
+                        for r in conn.execute(
+                            f"SELECT DISTINCT {col} FROM {name}"  # noqa: S608
+                        ).fetchall()
+                        if r[0] is not None
+                    )
+                except Exception:
+                    distinct = []
+                if not has_check:
+                    violations.append(f"{name}.{col}: missing CHECK({col} = {const})")
+                if any(v != const for v in distinct):
+                    violations.append(f"{name}.{col}: distinct = {distinct} (expected {const})")
+                checked.append({"column": col, "has_check": has_check, "distinct_values": distinct})
+            tables.append({"table": name, "present": True, "guard_columns": checked})
+        except Exception as e:
+            violations.append(f"{name}: probe error ({type(e).__name__})")
+            tables.append({"table": name, "present": False, "error": str(e)[:100]})
+    return {"tables": tables, "violations": violations}
+
+
+def _scan_text_for_raw_leakage(text: str) -> List[str]:
+    """Return leak labels for a stored value: shared secret patterns plus URL /
+    raw-email / iCal patterns. Returns labels only — never the value."""
+    hits = list(_scan_text_for_secrets(text))
+    hits.extend(label for label, pat in _RAW_LEAK_PATTERNS if pat.search(text))
+    return hits
+
+
+def _scan_table_contents(conn: Any, tables: List[str]) -> Dict[str, Any]:
+    """Content-scan every string cell of each table for raw leakage. Findings are
+    ``table.column: label`` only (never the offending value)."""
+    findings: List[str] = []
+    scanned: List[str] = []
+    for name in tables:
+        try:
+            if not conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)
+            ).fetchone():
+                continue
+            cur = conn.execute(f"SELECT * FROM {name}")  # noqa: S608
+            cols = [d[0] for d in cur.description] if cur.description else []
+            scanned.append(name)
+            seen: set[str] = set()
+            for row in cur.fetchall():
+                for col, value in zip(cols, row, strict=False):
+                    if not isinstance(value, str):
+                        continue
+                    for label in _scan_text_for_raw_leakage(value):
+                        key = f"{name}.{col}: {label}"
+                        if key not in seen:
+                            seen.add(key)
+                            findings.append(key)
+        except Exception as e:  # pragma: no cover - defensive
+            findings.append(f"{name}: content-scan error ({type(e).__name__})")
+    return {"findings": findings, "scanned": scanned}
 
 _SAFETY_GUARDRAILS = {
     "external_systems": "read_only",
@@ -263,13 +442,36 @@ def build_data_quality_no_writeback_proof(
     evidence = _scan_07a_evidence_outputs(repo_root)
     no_evidence_secrets = not evidence["findings"]
 
-    # Overall verdict
+    # 4. Phase 07B surfaces — modules, V11/V14/V23 tables (guard CHECK columns +
+    #    persisted content), and the 07B evidence tree. Fail-closed.
+    b_modules = _scan_module_set(repo_root, _PHASE_07B_MODULES)
+    scanned_07b_modules = [m for m, r in b_modules.items() if r.get("present") is not False]
+    any_07b_writeback = any(r.get("writeback") for r in b_modules.values())
+    any_07b_bad_imports = any(r.get("bad_imports") for r in b_modules.values())
+    any_07b_module_secrets = any(r.get("secrets") for r in b_modules.values())
+
+    guards_07b = _probe_table_guards(conn, _PHASE_07B_TABLE_GUARDS)
+    guards_07b_ok = not guards_07b["violations"]
+
+    content_07b = _scan_table_contents(conn, _PHASE_07B_TABLES)
+    content_07b_ok = not content_07b["findings"]
+
+    evidence_07b = _scan_evidence_outputs(repo_root, _PHASE_07B_EVIDENCE_SUBDIR)
+    no_07b_evidence_secrets = not evidence_07b["findings"]
+
+    # Overall verdict (07A AND 07B; any finding fails the proof closed)
     proof_passed = (
         not any_writeback
         and not any_bad_imports
         and not any_module_secrets
         and raw_body_ok
         and no_evidence_secrets
+        and not any_07b_writeback
+        and not any_07b_bad_imports
+        and not any_07b_module_secrets
+        and guards_07b_ok
+        and content_07b_ok
+        and no_07b_evidence_secrets
     )
 
     checks_detail = {
@@ -295,26 +497,56 @@ def build_data_quality_no_writeback_proof(
             "findings": evidence["findings"],
             "scanned_dir": evidence["scanned_dir"],
         },
+        "static_writeback_scan_07b_modules": {
+            "passed": not any_07b_writeback,
+            "findings": [f for r in b_modules.values() for f in (r.get("writeback") or [])],
+        },
+        "no_http_client_or_mutation_imports_07b": {
+            "passed": not any_07b_bad_imports,
+            "findings": [f for r in b_modules.values() for f in (r.get("bad_imports") or [])],
+        },
+        "module_secret_scan_07b": {
+            "passed": not any_07b_module_secrets,
+            "findings": [f for r in b_modules.values() for f in (r.get("secrets") or [])],
+        },
+        "sqlite_guardrail_07b_tables": {
+            "passed": guards_07b_ok,
+            "findings": guards_07b["violations"],
+            "tables": guards_07b["tables"],
+        },
+        "sqlite_content_leak_scan_07b_tables": {
+            "passed": content_07b_ok,
+            "findings": content_07b["findings"],
+            "scanned_tables": content_07b["scanned"],
+        },
+        "evidence_output_scan_07b": {
+            "passed": no_07b_evidence_secrets,
+            "findings": evidence_07b["findings"],
+            "scanned_dir": evidence_07b["scanned_dir"],
+        },
     }
 
     report: Dict[str, Any] = {
         "command": "construction-agent data-quality no-writeback-proof",
         "ok": proof_passed,
         "proof_passed": proof_passed,
-        "phase": "Phase 07A Prompt 08",
+        "phase": "Phase 07A Prompt 08 + Phase 07B Prompt 12",
         "generated_utc": generated_utc,
         "repo_sha": sha,
         "schema_version": schema_version,
         "scanned_modules": scanned_modules,
+        "scanned_modules_07b": scanned_07b_modules,
         "checks_detail": checks_detail,
         "guardrails": _SAFETY_GUARDRAILS,
         "stop_conditions_checked": _STOP_CONDITIONS_CHECKED,
         "no_live_call_performed": True,
-        "no_raw_values_persisted": raw_body_ok,
+        "no_raw_values_persisted": raw_body_ok and guards_07b_ok and content_07b_ok,
         "note": (
-            "Formal no-writeback / no-secret / no-raw-body proof for Phase 07A data-quality surfaces only. "
-            "Re-uses the shared secret scanner from the Procore no-writeback prover. "
-            "Static analysis + SQLite schema + evidence directory scan. Read-only."
+            "Formal no-writeback / no-secret / no-raw-body proof for Phase 07A data-quality "
+            "surfaces AND Phase 07B calendar/email/thread/candidate surfaces (modules + "
+            "V11/V14/V23 guard CHECK columns + persisted-content scan + evidence). Re-uses the "
+            "shared secret scanner from the Procore no-writeback prover; findings are pattern "
+            "labels and table.column locations only (never the value). Read-only, fail-closed."
         ),
     }
     return report
