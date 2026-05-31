@@ -1,0 +1,55 @@
+{
+  "phase": "07B",
+  "prompt": "06 — Email Classifier Persistence Remediation",
+  "generated_utc": "2026-05-31",
+  "repo_sha_at_start": "9fb1c2a",
+  "branch": "main",
+  "package_version": "1.3.0",
+  "schema_version": 23,
+  "classification_version": "phase06-email-ollama-v1",
+  "summary": "Added the three missing ConstructionStore V14 helpers (upsert/get/list email_model_classifications) and removed the 8 xfail markers that were blocked on them. Guard columns advisory_only/plaintext_body_persisted/raw_prompt_persisted/raw_response_persisted are never written by the upsert (schema defaults hold them). No raw body/prompt/response is accepted or persisted. No Microsoft 365 mutation; classifier path is Graph-free.",
+  "files_changed": [
+    "src/hb_assistant/construction/store/repositories.py (added upsert_email_model_classification, get_email_model_classification, list_email_model_classifications)",
+    "tests/test_email_classifier.py (removed 7 xfail markers)",
+    "tests/test_email_model_classifications_schema_v14.py (removed 1 xfail marker)",
+    "docs/architecture/23-phase-07b-email-classifier-persistence.md (new)",
+    "docs/evidence/construction-intelligence-phase-07b-calendar-email/06-email-classifier-persistence-proof.json (this file)",
+    "docs/evidence/construction-intelligence-phase-07b-calendar-email/06-email-classifier-persistence-proof.md (live proof)"
+  ],
+  "preflight": [
+    {"command": "git rev-parse --abbrev-ref HEAD", "exit_code": 0, "result": "main"},
+    {"command": "git rev-parse HEAD", "exit_code": 0, "result": "9fb1c2a"},
+    {"command": "git status --short", "exit_code": 0, "result": "clean except untracked .claude/"},
+    {"command": "python -m compileall -q src tests", "exit_code": 0},
+    {"command": "ruff check .", "exit_code": 0, "result": "All checks passed!"},
+    {"command": "mypy src", "exit_code": 0, "result": "Success: no issues found in 158 source files"},
+    {"command": "pytest -m 'not live and not integration and not manual'", "exit_code": 0, "result": "0 failed (baseline included 8 xfail)"}
+  ],
+  "post_implementation_validation": [
+    {"command": "python -m compileall -q src tests", "exit_code": 0},
+    {"command": "ruff check .", "exit_code": 0, "result": "All checks passed!"},
+    {"command": "mypy src", "exit_code": 0, "result": "Success: no issues found in 158 source files"},
+    {"command": "pytest tests/test_email_classifier.py tests/test_email_model_classifications_schema_v14.py -v", "exit_code": 0, "result": "23 passed (previously-xfail tests now pass, no xpass)"},
+    {"command": "pytest -m 'not live and not integration and not manual'", "exit_code": 0, "result": "0 failed"},
+    {"command": "pytest tests/test_mutation_lockout.py", "exit_code": 0, "result": "graph/ static no-write-verb scan clean"},
+    {"command": "hb-assistant construction-agent validate --json", "exit_code": 0},
+    {"command": "hb-assistant procore validate --json", "exit_code": 0},
+    {"command": "hb-assistant graph files status --json", "exit_code": 0},
+    {"command": "hb-assistant graph mail status --json", "exit_code": 0},
+    {"command": "hb-assistant graph calendar status --json", "exit_code": 0},
+    {"command": "hb-assistant construction-agent data-quality gates --json", "exit_code": 0},
+    {"command": "hb-assistant construction-agent data-quality no-writeback-proof --json", "exit_code": 0, "result": "proof_passed=true, no_raw_values_persisted=true"}
+  ],
+  "ruff_format_note": "ruff format is NOT enforced repo-wide (222 of 341 files would reformat, including the three pristine pre-existing files touched here). The authoritative lint gate is `ruff check .`, which passes. `ruff format` was intentionally NOT run to avoid massive unrelated churn.",
+  "guardrails_proven": {
+    "no_m365_mutation": "classifier path is Graph-free; mutation lockout scan clean",
+    "no_raw_body_prompt_response_persisted": "guard CHECK columns never written by upsert; live guard-column sums plaintext/raw_prompt/raw_response = 0",
+    "advisory_only": "advisory_only column never loosened; defaults to 1 with CHECK(advisory_only=1)",
+    "dry_run_default": "classify() dry_run defaults True; persist only on dry_run=False; test_dry_run_persists_nothing passes",
+    "no_07d_readiness_claim": "no Phase 07D meeting-prep readiness claimed"
+  },
+  "remaining_gaps": [
+    "no-writeback / no-raw-body prover (data_quality/safety.py) still scans only Phase 07A V20/V21 tables; extending it to V14 email_model_classifications and the V23 calendar tables is deferred to Phase 07B Prompt 12."
+  ],
+  "next_prompt_may_proceed": true
+}

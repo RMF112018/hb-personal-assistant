@@ -2807,6 +2807,170 @@ class ConstructionStore:
             record[bool_field] = bool(record[bool_field])
         return record
 
+    # --- advisory email model classifications (V14) -------------------------
+
+    def upsert_email_model_classification(
+        self,
+        *,
+        classification_id: str,
+        message_id: str,
+        model_name: str,
+        schema_version: str,
+        classification_status: str,
+        conversation_id: Optional[str] = None,
+        project_key: Optional[str] = None,
+        model_version: Optional[str] = None,
+        project_match_confidence: Optional[float] = None,
+        topic_labels: Optional[list[str]] = None,
+        relationship_candidates: Optional[list[dict[str, Any]]] = None,
+        risk_flags: Optional[list[str]] = None,
+        sensitive_categories: Optional[list[str]] = None,
+        review_required: bool = False,
+        review_reasons: Optional[list[str]] = None,
+    ) -> None:
+        """Upsert an advisory email model classification (V14). Idempotent by
+        (message_id, model_name, schema_version). Model output is advisory-only:
+        the advisory_only / plaintext_body_persisted / raw_prompt_persisted /
+        raw_response_persisted CHECK columns are never written here — schema
+        defaults (1/0/0/0) hold them. No raw body, prompt, or response is
+        accepted; only labels/flags/hashes round-trip through the *_json
+        columns."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_model_classifications
+                    (classification_id, message_id, conversation_id, project_key,
+                     model_name, model_version, schema_version, classification_status,
+                     project_match_confidence, topic_labels_json,
+                     relationship_candidates_json, risk_flags_json,
+                     sensitive_categories_json, review_required, review_reasons_json,
+                     created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(message_id, model_name, schema_version) DO UPDATE SET
+                    classification_id = excluded.classification_id,
+                    conversation_id = excluded.conversation_id,
+                    project_key = excluded.project_key,
+                    model_version = excluded.model_version,
+                    classification_status = excluded.classification_status,
+                    project_match_confidence = excluded.project_match_confidence,
+                    topic_labels_json = excluded.topic_labels_json,
+                    relationship_candidates_json = excluded.relationship_candidates_json,
+                    risk_flags_json = excluded.risk_flags_json,
+                    sensitive_categories_json = excluded.sensitive_categories_json,
+                    review_required = excluded.review_required,
+                    review_reasons_json = excluded.review_reasons_json,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    classification_id,
+                    message_id,
+                    conversation_id,
+                    project_key,
+                    model_name,
+                    model_version,
+                    schema_version,
+                    classification_status,
+                    project_match_confidence,
+                    self._dump_json(topic_labels),
+                    self._dump_json(relationship_candidates),
+                    self._dump_json(risk_flags),
+                    self._dump_json(sensitive_categories),
+                    1 if review_required else 0,
+                    self._dump_json(review_reasons),
+                    _utc_now(),
+                    _utc_now(),
+                ),
+            )
+
+    _EMAIL_MODEL_CLASSIFICATION_KEYS: tuple[str, ...] = (
+        "classification_id", "message_id", "conversation_id", "project_key",
+        "model_name", "model_version", "schema_version", "classification_status",
+        "project_match_confidence", "topic_labels_json",
+        "relationship_candidates_json", "risk_flags_json",
+        "sensitive_categories_json", "review_required", "review_reasons_json",
+        "advisory_only", "plaintext_body_persisted", "raw_prompt_persisted",
+        "raw_response_persisted", "created_utc", "updated_utc",
+    )
+
+    @staticmethod
+    def _email_model_classification_row_to_record(row: Any) -> dict[str, Any]:
+        keys = ConstructionStore._EMAIL_MODEL_CLASSIFICATION_KEYS
+        record = dict(zip(keys, row, strict=True))
+        for json_field, out_field in (
+            ("topic_labels_json", "topic_labels"),
+            ("relationship_candidates_json", "relationship_candidates"),
+            ("risk_flags_json", "risk_flags"),
+            ("sensitive_categories_json", "sensitive_categories"),
+            ("review_reasons_json", "review_reasons"),
+        ):
+            record[out_field] = ConstructionStore._load_json(record.pop(json_field))
+        for bool_field in (
+            "review_required", "advisory_only", "plaintext_body_persisted",
+            "raw_prompt_persisted", "raw_response_persisted",
+        ):
+            record[bool_field] = bool(record[bool_field])
+        return record
+
+    def get_email_model_classification(
+        self,
+        *,
+        message_id: str,
+        model_name: str,
+        schema_version: str,
+    ) -> Optional[dict[str, Any]]:
+        """Fetch a single advisory email model classification by its unique key
+        (message_id, model_name, schema_version). JSON columns are decoded to
+        lists/dicts and the advisory/guard flags returned as booleans. Returns
+        None if absent."""
+        keys = self._EMAIL_MODEL_CLASSIFICATION_KEYS
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_model_classifications "
+            "WHERE message_id = ? AND model_name = ? AND schema_version = ?",
+            (message_id, model_name, schema_version),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        return self._email_model_classification_row_to_record(row)
+
+    def list_email_model_classifications(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        message_id: Optional[str] = None,
+        review_required: Optional[bool] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """List advisory email model classifications (V14), newest first, with
+        optional project/message/review filters. Same decoding as
+        get_email_model_classification."""
+        keys = self._EMAIL_MODEL_CLASSIFICATION_KEYS
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if message_id is not None:
+            clauses.append("message_id = ?")
+            params.append(message_id)
+        if review_required is not None:
+            clauses.append("review_required = ?")
+            params.append(1 if review_required else 0)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM email_model_classifications {where} "
+            "ORDER BY created_utc DESC, classification_id LIMIT ?",
+            tuple(params),
+        )
+        return [
+            self._email_model_classification_row_to_record(row)
+            for row in cur.fetchall()
+        ]
+
     def add_email_message_recipient(
         self,
         *,

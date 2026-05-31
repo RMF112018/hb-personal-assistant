@@ -92,10 +92,6 @@ def _store_with_message() -> tuple[ConstructionStore, str]:
     return store, "m1"
 
 
-@pytest.mark.xfail(
-    reason="07B Prompt 06: ConstructionStore.upsert_email_model_classification not yet implemented",
-    strict=False,
-)
 def test_upsert_get_list_round_trip_and_idempotent() -> None:
     store, mid = _store_with_message()
     store.upsert_email_model_classification(
