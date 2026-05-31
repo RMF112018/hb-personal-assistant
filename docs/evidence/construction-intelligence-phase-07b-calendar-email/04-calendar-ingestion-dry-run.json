@@ -1,0 +1,100 @@
+{
+  "phase": "07B",
+  "prompt": "04 — Calendar Event Indexing (bounded calendarView → redacted SQLite)",
+  "head_before": "742b95f8a81add94a6d9c1d12aa777c93ed1b684",
+  "summary": "graph calendar index added (dry-run default, --apply persists redacted/hashed metadata into V23 calendar_event_index/_attendees/_crawl_runs). Read-only external posture; no event body/description or join URL fetched or stored.",
+  "preflight": {
+    "branch": "main",
+    "head": "742b95f8a81add94a6d9c1d12aa777c93ed1b684",
+    "git_status_short": "?? .claude/ (untracked, not committed)",
+    "compileall": 0,
+    "ruff_check": 0,
+    "mypy": 0,
+    "pytest_safe_subset": "0 failed / 8 xfail",
+    "graph_calendar_index_before": 2
+  },
+  "dry_run_envelope": {
+    "note": "Live `hb-assistant graph calendar index --json` (dry-run). Counts-only; no raw values. run_id is a per-run UUID. The delegated token is expired in this environment, so the read is a non-fatal failure status (sanitized message; no token value) — dry-run never persists and ok stays true / exit 0.",
+    "command": "graph calendar index",
+    "ok": true,
+    "dry_run": true,
+    "project_label": null,
+    "sources": [
+      {
+        "source_id": "primary_calendar",
+        "mode": "dry_run",
+        "dry_run": true,
+        "persisted": false,
+        "window_start_utc": "<redacted:utc-window-start>",
+        "window_end_utc": "<redacted:utc-window-end>",
+        "lookback_days": 14,
+        "lookahead_days": 30,
+        "max_items": 250,
+        "events_seen": 0,
+        "events_indexed": 0,
+        "events_private": 0,
+        "events_cancelled": 0,
+        "events_review_required": 0,
+        "status": "failed",
+        "sample": [],
+        "error_redacted": "NoTokenError: Failed to acquire delegated token (expired or revoked). Re-login required."
+      }
+    ],
+    "guardrails": {
+      "external_systems": "read_only",
+      "writeback": "none",
+      "microsoft_365_writeback_enabled": false,
+      "dry_run_default": true,
+      "event_body_persisted": false,
+      "join_url_persisted": false,
+      "permission_tightening": "deferred"
+    }
+  },
+  "apply_smoke_temp_db": {
+    "note": "Persistence + idempotency proven against a throwaway temp SQLite DB using a FakeCalendarClient (3 canned events: normal+online, private, cancelled). The real Application Support store is NOT written by this proof.",
+    "apply_run_1": {
+      "events_seen": 3,
+      "events_indexed": 3,
+      "events_private": 1,
+      "events_cancelled": 1,
+      "events_review_required": 1,
+      "persisted": true,
+      "status": "completed"
+    },
+    "rows_after_two_applies": {
+      "calendar_event_index": 3,
+      "calendar_event_attendees": 1,
+      "calendar_crawl_runs": 2,
+      "calendar_sync_state": 1
+    },
+    "guard_check_columns_sum_raw_body_full_text_external_writeback": [0, 0, 0],
+    "idempotent_event_rows_stable": true,
+    "private_event": "minimal metadata only (subject/organizer/location NULL, no attendee rows), review_required=1, reasons=[\"private_event\"]"
+  },
+  "redaction_attestation": {
+    "raw_subject_in_db": false,
+    "raw_organizer_email_in_db": false,
+    "raw_attendee_email_in_db": false,
+    "raw_location_in_db": false,
+    "join_url_in_db": false,
+    "subject_redacted_form": "[redacted:<16-hex>]",
+    "note": "DB scan over calendar_event_index + calendar_event_attendees confirmed no raw subject/organizer/attendee/location/join-URL string is stored; all identifying values are 16-char sha256 hashes or [redacted:...]."
+  },
+  "validation_matrix_after": {
+    "python -m compileall src tests": 0,
+    "ruff check .": 0,
+    "mypy src": 0,
+    "pytest tests/test_calendar_event_indexing.py": "8 passed",
+    "pytest tests/test_mutation_lockout.py": 0,
+    "pytest -m not-live-integration-manual": "0 failed / 8 xfail",
+    "construction-agent validate --json": 0,
+    "procore validate --json": 0,
+    "graph files status --json": 0,
+    "graph mail status --json": 0,
+    "graph calendar status --json": 0,
+    "graph calendar index --json": 0,
+    "construction-agent data-quality gates --json": 0,
+    "construction-agent data-quality no-writeback-proof --json": 0
+  },
+  "stop_conditions": "none triggered — no mutation/writeback required, no raw/private values persisted or surfaced, no validation failure hidden, no 07D readiness claimed."
+}

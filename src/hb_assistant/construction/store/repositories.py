@@ -736,6 +736,185 @@ class ConstructionStore:
                 ),
             )
 
+    def insert_calendar_crawl_run(
+        self,
+        *,
+        run_id: str,
+        source_id: str,
+        mode: str,
+        started_at_utc: Optional[str] = None,
+        window_start_utc: Optional[str] = None,
+        window_end_utc: Optional[str] = None,
+        status: str = "running",
+    ) -> None:
+        """Open a Phase 07B calendar crawl-run receipt (V23). The raw_body /
+        full_text / external_writeback CHECK columns stay at their 0 default."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO calendar_crawl_runs
+                    (run_id, source_id, mode, started_at_utc, window_start_utc,
+                     window_end_utc, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    run_id, source_id, mode, started_at_utc or _utc_now(),
+                    window_start_utc, window_end_utc, status,
+                ),
+            )
+
+    def complete_calendar_crawl_run(
+        self,
+        *,
+        run_id: str,
+        status: str,
+        completed_at_utc: Optional[str] = None,
+        events_seen: int = 0,
+        events_indexed: int = 0,
+        events_private: int = 0,
+        events_cancelled: int = 0,
+        events_review_required: int = 0,
+        error_redacted: Optional[str] = None,
+    ) -> bool:
+        """Finalize a calendar crawl-run receipt with counters (redacted error only)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                UPDATE calendar_crawl_runs SET
+                    status = ?, completed_at_utc = ?, events_seen = ?,
+                    events_indexed = ?, events_private = ?, events_cancelled = ?,
+                    events_review_required = ?, error_redacted = ?
+                WHERE run_id = ?
+                """,
+                (
+                    status, completed_at_utc or _utc_now(), events_seen,
+                    events_indexed, events_private, events_cancelled,
+                    events_review_required, error_redacted, run_id,
+                ),
+            )
+            return cur.rowcount > 0
+
+    def upsert_calendar_event_index(
+        self,
+        *,
+        event_index_id: str,
+        source_id: str,
+        graph_event_id_hash: str,
+        start_datetime_utc: str,
+        end_datetime_utc: str,
+        ical_uid_hash: Optional[str] = None,
+        series_master_id_hash: Optional[str] = None,
+        web_link_hash: Optional[str] = None,
+        subject_hash: Optional[str] = None,
+        subject_redacted: Optional[str] = None,
+        subject_token_hashes_json: Optional[str] = None,
+        organizer_hash: Optional[str] = None,
+        organizer_domain: Optional[str] = None,
+        location_hash: Optional[str] = None,
+        location_redacted: Optional[str] = None,
+        timezone: Optional[str] = None,
+        is_cancelled: bool = False,
+        is_private: bool = False,
+        is_online_meeting: bool = False,
+        online_meeting_provider: Optional[str] = None,
+        has_attachments: bool = False,
+        project_key: Optional[str] = None,
+        project_match_method: Optional[str] = None,
+        project_match_confidence: Optional[float] = None,
+        review_required: bool = False,
+        review_reasons_json: Optional[str] = None,
+    ) -> None:
+        """Upsert a redacted calendar event index row (V23). Idempotent by
+        (source_id, graph_event_id_hash). Stores hashes/redactions only; the
+        raw_body / full_text / external_writeback CHECK columns remain 0."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO calendar_event_index
+                    (event_index_id, source_id, graph_event_id_hash, ical_uid_hash,
+                     series_master_id_hash, web_link_hash, subject_hash, subject_redacted,
+                     subject_token_hashes_json, organizer_hash, organizer_domain,
+                     location_hash, location_redacted, start_datetime_utc, end_datetime_utc,
+                     timezone, is_cancelled, is_private, is_online_meeting,
+                     online_meeting_provider, has_attachments, project_key,
+                     project_match_method, project_match_confidence, review_required,
+                     review_reasons_json, created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source_id, graph_event_id_hash) DO UPDATE SET
+                    ical_uid_hash = excluded.ical_uid_hash,
+                    series_master_id_hash = excluded.series_master_id_hash,
+                    web_link_hash = excluded.web_link_hash,
+                    subject_hash = excluded.subject_hash,
+                    subject_redacted = excluded.subject_redacted,
+                    subject_token_hashes_json = excluded.subject_token_hashes_json,
+                    organizer_hash = excluded.organizer_hash,
+                    organizer_domain = excluded.organizer_domain,
+                    location_hash = excluded.location_hash,
+                    location_redacted = excluded.location_redacted,
+                    start_datetime_utc = excluded.start_datetime_utc,
+                    end_datetime_utc = excluded.end_datetime_utc,
+                    timezone = excluded.timezone,
+                    is_cancelled = excluded.is_cancelled,
+                    is_private = excluded.is_private,
+                    is_online_meeting = excluded.is_online_meeting,
+                    online_meeting_provider = excluded.online_meeting_provider,
+                    has_attachments = excluded.has_attachments,
+                    project_key = excluded.project_key,
+                    project_match_method = excluded.project_match_method,
+                    project_match_confidence = excluded.project_match_confidence,
+                    review_required = excluded.review_required,
+                    review_reasons_json = excluded.review_reasons_json,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    event_index_id, source_id, graph_event_id_hash, ical_uid_hash,
+                    series_master_id_hash, web_link_hash, subject_hash, subject_redacted,
+                    subject_token_hashes_json, organizer_hash, organizer_domain,
+                    location_hash, location_redacted, start_datetime_utc, end_datetime_utc,
+                    timezone, 1 if is_cancelled else 0, 1 if is_private else 0,
+                    1 if is_online_meeting else 0, online_meeting_provider,
+                    1 if has_attachments else 0, project_key, project_match_method,
+                    project_match_confidence, 1 if review_required else 0,
+                    review_reasons_json, _utc_now(), _utc_now(),
+                ),
+            )
+
+    def upsert_calendar_event_attendee(
+        self,
+        *,
+        event_index_id: str,
+        attendee_hash: str,
+        attendee_domain: Optional[str] = None,
+        attendee_role: Optional[str] = None,
+        response_status: Optional[str] = None,
+        review_required: bool = False,
+    ) -> None:
+        """Upsert an attendee row (hash/domain only). Idempotent by
+        (event_index_id, attendee_hash). No raw addresses stored."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO calendar_event_attendees
+                    (event_index_id, attendee_hash, attendee_domain, attendee_role,
+                     response_status, review_required)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(event_index_id, attendee_hash) DO UPDATE SET
+                    attendee_domain = excluded.attendee_domain,
+                    attendee_role = excluded.attendee_role,
+                    response_status = excluded.response_status,
+                    review_required = excluded.review_required
+                """,
+                (
+                    event_index_id, attendee_hash, attendee_domain, attendee_role,
+                    response_status, 1 if review_required else 0,
+                ),
+            )
+
     def get_source_location(self, source_id: str) -> Optional[dict[str, Any]]:
         conn = get_connection(self._db_path)
         cur = conn.execute(

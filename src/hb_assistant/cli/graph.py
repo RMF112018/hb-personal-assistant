@@ -22,6 +22,8 @@ from pydantic import ValidationError
 from hb_assistant.auth.providers import DelegatedAuthProvider
 from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
+from hb_assistant.construction.calendar import load_calendar_source_policy
+from hb_assistant.construction.calendar.event_indexer import CalendarEventIndexer
 from hb_assistant.construction.classification.client import OllamaChatClient
 from hb_assistant.construction.config import load_source_registry
 from hb_assistant.construction.config.loader import SourceRegistryError
@@ -1638,6 +1640,110 @@ def calendar_status_cmd(
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(1) from None
+
+
+@calendar_app.command("index")
+def calendar_index_cmd(
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Optional crawl-run label (project matching is a later prompt)"
+    ),
+    lookback_days: Optional[int] = typer.Option(
+        None, "--lookback-days", help="Past window in days (default: calendar source policy)"
+    ),
+    lookahead_days: Optional[int] = typer.Option(
+        None, "--lookahead-days", help="Future window in days (default: calendar source policy)"
+    ),
+    max_items: Optional[int] = typer.Option(
+        None, "--max-items", help="Max events indexed per source (default: calendar source policy)"
+    ),
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run/--apply",
+        help="Default dry-run (preview); --apply persists redacted rows + crawl receipt.",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Index a bounded calendarView window into local SQLite (read-only, redacted).
+
+    Reads events via the guarded calendar client and persists only hashed/redacted
+    metadata. The event body/description and online-meeting join URL are never
+    fetched or stored. Dry-run is the default; --apply writes
+    calendar_event_index / calendar_event_attendees / calendar_crawl_runs. Private
+    events store minimal metadata only and are flagged for review. Idempotent.
+    """
+    client: Optional[GraphHttpClient] = None
+    try:
+        cfg = load_config()
+        pp = PathPolicy(cfg)
+        provider = DelegatedAuthProvider(
+            cfg.identity.tenant_id,
+            cfg.identity.client_id,
+            list(cfg.identity.delegated_scopes),
+            path_policy=pp,
+        )
+        contract = load_calendar_endpoint_contract()
+
+        def token_getter(scopes: Optional[List[str]] = None) -> Dict[str, Any]:
+            return provider.get_token(scopes or ["Calendars.Read"])
+
+        client = GraphHttpClient(token_getter)
+        reader = ReadOnlyCalendarClient(client, contract=contract)
+        indexer = CalendarEventIndexer(reader, ConstructionStore())
+
+        policy = load_calendar_source_policy()
+        defaults = policy.defaults
+        lb = lookback_days if lookback_days is not None else defaults.lookback_days
+        la = lookahead_days if lookahead_days is not None else defaults.lookahead_days
+        mx = max_items if max_items is not None else defaults.max_items_per_run
+
+        results: List[Dict[str, Any]] = []
+        if defaults.enabled:
+            for src in policy.sources:
+                result = indexer.index(
+                    source_id=src.source_id,
+                    mailbox_owner=src.mailbox_owner,
+                    calendar_role=src.calendar_role,
+                    policy_id=src.policy_id,
+                    lookback_days=lb,
+                    lookahead_days=la,
+                    max_items=mx,
+                    dry_run=dry_run,
+                )
+                results.append(result.model_dump())
+
+        payload: Dict[str, Any] = {
+            "command": "graph calendar index",
+            "ok": True,
+            "dry_run": dry_run,
+            "project_label": project,
+            "sources": results,
+            "guardrails": {
+                "external_systems": "read_only",
+                "writeback": "none",
+                "microsoft_365_writeback_enabled": False,
+                "dry_run_default": True,
+                "event_body_persisted": False,
+                "join_url_persisted": False,
+                "permission_tightening": "deferred",
+            },
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph calendar index",
+            "ok": False,
+            "dry_run": dry_run,
+            "status": "index_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+    finally:
+        if client is not None:
+            client.close()
 
 
 @mail_app.command("folders")
