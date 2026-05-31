@@ -1,0 +1,57 @@
+{
+  "prompt": "05",
+  "phase": "07A",
+  "generated_at": "2026-05-31T09:34:38.957067Z",
+  "baseline": {
+    "head": "5b3d3c62a59b9b6bcdb8139b031f4e221414fcb3",
+    "schema_version": 21,
+    "venv_active": true
+  },
+  "command": "hb-assistant construction-agent data-quality marts --json",
+  "report": {
+    "run_utc": "2026-05-31T09:34:36.151243+00:00",
+    "repo_sha": "5b3d3c62a59b9b6bcdb8139b031f4e221414fcb3",
+    "schema_version": 21,
+    "marts": {
+      "project_source_coverage_mart": {
+        "populated": true,
+        "latency_ms": 0.22
+      },
+      "source_record_summary_mart": {
+        "populated": true,
+        "latency_ms": 0.021
+      },
+      "relationship_quality_mart": {
+        "populated": true,
+        "latency_ms": 0.013
+      },
+      "cross_domain_context_readiness_mart": {
+        "populated": true,
+        "latency_ms": 0.168
+      }
+    },
+    "latency_ms": {
+      "project_coverage": 0.22,
+      "unmapped_records_by_project": 0.021,
+      "relationship_orphans_by_project": 0.013,
+      "review_candidates_by_project": 0.013,
+      "procore_record_context_by_project_endpoint": 0.0,
+      "email_records_by_project_thread": 0.0,
+      "graph_documents_by_project_document_type": 0.0,
+      "gate_status_by_phase_run": 0.019
+    },
+    "guardrails": {
+      "local_only": true,
+      "no_raw_content": true,
+      "additive_only": true,
+      "review_required_visible": true,
+      "latency_measured": true
+    }
+  },
+  "validation_matrix": {
+    "pytest": "2 passed",
+    "cli": "4 marts + 8 latencies + guards (schema 21)",
+    "ruff": "style notes only",
+    "mypy": "clean"
+  }
+}

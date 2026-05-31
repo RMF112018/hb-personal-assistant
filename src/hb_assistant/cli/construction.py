@@ -28,6 +28,11 @@ Commands:
   separate deterministic_orphan_rate and candidate_orphan_rate (never combined).
   Model-proposed / weak / sensitive relationships always review_required=1 and
   never auto-promoted (enforced + proven in test). Report-focused (dry-run semantics).
+- ``hb-assistant construction-agent data-quality marts --json``
+  — Phase 07A Prompt 05 agent-ready query marts (project coverage, source-record
+  summary, relationship quality, cross-domain readiness) + measured latency for
+  the 8 target local-agent queries (target 500 ms). Populates the four V20/V21
+  marts from prior canonical artifacts. Additive only.
 
 All commands are read-only against external systems; only SQLite metadata is
 written, and only when ``--apply`` is set.
@@ -1696,6 +1701,43 @@ def relationships(
         "command": "construction-agent data-quality relationships",
         "report": report,
         "guardrails": _RELATIONSHIP_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+# ---------------------------------------------------------------------------
+# Phase 07A Prompt 05 — data-quality marts (agent-ready query marts + latency)
+# ---------------------------------------------------------------------------
+
+_MARTS_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "local_sqlite_marts_only",
+    "no_raw_content": True,
+    "additive_only": True,
+    "review_required_visible": True,
+    "latency_measured": True,
+}
+
+
+@data_quality_app.command("marts")
+def marts(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Agent-ready query marts (Phase 07A Prompt 05).
+
+    Populates the four local read models (project coverage reuse + source-record
+    summary, relationship quality, cross-domain readiness) and reports row counts
+    plus wall-clock latency (perf_counter) for the eight target local-agent queries.
+    """
+    from hb_assistant.construction.data_quality import populate_agent_ready_query_marts
+
+    report = populate_agent_ready_query_marts()
+
+    payload = {
+        "command": "construction-agent data-quality marts",
+        "report": report,
+        "guardrails": _MARTS_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)

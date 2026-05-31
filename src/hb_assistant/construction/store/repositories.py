@@ -3318,6 +3318,141 @@ class ConstructionStore:
                 ),
             )
 
+    # --- Prompt 05 agent-ready query marts (additive, follow coverage pattern) ---
+
+    def upsert_source_record_summary(self, row: dict[str, Any]) -> None:
+        """Upsert a source-record summary mart row."""
+        sid = row.get("summary_id")
+        if not sid:
+            raise ValueError("summary_id is required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            # Defensive IF NOT EXISTS so the CLI works even before explicit V21 migration on this DB
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS source_record_summary_mart (
+                  summary_id TEXT PRIMARY KEY,
+                  run_id TEXT NOT NULL,
+                  project_key TEXT NOT NULL,
+                  source_system TEXT NOT NULL,
+                  source_table TEXT NOT NULL,
+                  record_count INTEGER NOT NULL DEFAULT 0,
+                  mapped_count INTEGER NOT NULL DEFAULT 0,
+                  unmapped_count INTEGER NOT NULL DEFAULT 0,
+                  review_required_count INTEGER NOT NULL DEFAULT 0,
+                  stale_count INTEGER NOT NULL DEFAULT 0,
+                  quality_status TEXT NOT NULL,
+                  created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO source_record_summary_mart
+                (summary_id, run_id, project_key, source_system, source_table,
+                 record_count, mapped_count, unmapped_count, review_required_count,
+                 stale_count, quality_status, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    sid,
+                    row.get("run_id"),
+                    row.get("project_key"),
+                    row.get("source_system"),
+                    row.get("source_table"),
+                    row.get("record_count", 0),
+                    row.get("mapped_count", 0),
+                    row.get("unmapped_count", 0),
+                    row.get("review_required_count", 0),
+                    row.get("stale_count", 0),
+                    row.get("quality_status"),
+                    _utc_now(),
+                ),
+            )
+
+    def upsert_relationship_quality(self, row: dict[str, Any]) -> None:
+        """Upsert a relationship quality mart row."""
+        qid = row.get("quality_id")
+        if not qid:
+            raise ValueError("quality_id is required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS relationship_quality_mart (
+                  quality_id TEXT PRIMARY KEY,
+                  run_id TEXT NOT NULL,
+                  project_key TEXT,
+                  relationship_type TEXT NOT NULL,
+                  confidence_class TEXT NOT NULL,
+                  relationship_status TEXT NOT NULL,
+                  total_count INTEGER NOT NULL DEFAULT 0,
+                  review_required_count INTEGER NOT NULL DEFAULT 0,
+                  orphan_count INTEGER NOT NULL DEFAULT 0,
+                  quality_status TEXT NOT NULL,
+                  created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO relationship_quality_mart
+                (quality_id, run_id, project_key, relationship_type, confidence_class,
+                 relationship_status, total_count, review_required_count, orphan_count,
+                 quality_status, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    qid,
+                    row.get("run_id"),
+                    row.get("project_key"),
+                    row.get("relationship_type"),
+                    row.get("confidence_class"),
+                    row.get("relationship_status"),
+                    row.get("total_count", 0),
+                    row.get("review_required_count", 0),
+                    row.get("orphan_count", 0),
+                    row.get("quality_status"),
+                    _utc_now(),
+                ),
+            )
+
+    def upsert_cross_domain_readiness(self, row: dict[str, Any]) -> None:
+        """Upsert a cross-domain context readiness mart row."""
+        rid = row.get("readiness_id")
+        if not rid:
+            raise ValueError("readiness_id is required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS cross_domain_context_readiness_mart (
+                  readiness_id TEXT PRIMARY KEY,
+                  run_id TEXT NOT NULL,
+                  project_key TEXT NOT NULL,
+                  meeting_prep_ready INTEGER NOT NULL DEFAULT 0,
+                  risk_digest_ready INTEGER NOT NULL DEFAULT 0,
+                  financial_review_ready INTEGER NOT NULL DEFAULT 0,
+                  blocking_reasons_json TEXT,
+                  overall_status TEXT NOT NULL,
+                  created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO cross_domain_context_readiness_mart
+                (readiness_id, run_id, project_key, meeting_prep_ready, risk_digest_ready,
+                 financial_review_ready, blocking_reasons_json, overall_status, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    rid,
+                    row.get("run_id"),
+                    row.get("project_key"),
+                    1 if row.get("meeting_prep_ready") else 0,
+                    1 if row.get("risk_digest_ready") else 0,
+                    1 if row.get("financial_review_ready") else 0,
+                    row.get("blocking_reasons_json"),
+                    row.get("overall_status"),
+                    _utc_now(),
+                ),
+            )
+
     def insert_data_quality_gate_result(self, gate: dict[str, Any]) -> None:
         """Insert a gate result row (idempotent on gate_result_id)."""
         gate_result_id = gate.get("gate_result_id")

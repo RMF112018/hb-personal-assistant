@@ -1,14 +1,14 @@
 """Data quality, canonical identity, and source-record map (Phase 07A).
 
 Local-only builders and CLI surfaces for project identity backfill (Prompt 02),
-source-system record mapping (Prompt 03), relationship diagnostics, coverage marts,
-and gates. All operations are read-only against external systems by default; writes
-require explicit --apply and are limited to local SQLite metadata (no raw bodies,
-tokens, or external writeback).
+source-system record mapping (Prompt 03), relationship diagnostics (Prompt 04),
+agent-ready query marts and indexes (Prompt 05), and gates. All operations are
+read-only against external systems by default; writes require explicit --apply
+and are limited to local SQLite metadata (no raw bodies, tokens, or external
+writeback).
 
-Coverage counts and record mapping use existing ConstructionStore list_* + direct
-connection queries (plus one reusable helper added in Prompt 03 for the high-volume
-procore_live_records table). No raw content, no destructive changes.
+Prompt 05 adds four materialised read models (project coverage reuse + three new)
+plus latency instrumentation for the eight target local-agent queries (target 500 ms).
 
 See package policy in the Phase 07A implementation docs for matching rules,
 confidence classes, and review-required conventions.
@@ -27,6 +27,10 @@ from .relationships import (
     RelationshipDiagnostics,
     diagnose_relationships,
 )
+from .marts import (
+    MartBuilder,
+    populate_agent_ready_query_marts,
+)
 
 __all__ = [
     "ProjectIdentityBackfill",
@@ -36,4 +40,6 @@ __all__ = [
     "build_source_record_map",
     "RelationshipDiagnostics",
     "diagnose_relationships",
+    "MartBuilder",
+    "populate_agent_ready_query_marts",
 ]

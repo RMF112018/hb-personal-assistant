@@ -2134,6 +2134,69 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v21 Phase 07A Prompt 05 — agent-ready query marts (additive only).
+    # Three new materialised read models + supporting indexes.
+    # V1-V20 untouched. Source of truth for DDL shape: package
+    # 09_AGENT_READY... + 05_SCHEMA... + Prompt 05 plan.
+    V21_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS source_record_summary_mart (
+          summary_id TEXT PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          source_system TEXT NOT NULL,
+          source_table TEXT NOT NULL,
+          record_count INTEGER NOT NULL DEFAULT 0,
+          mapped_count INTEGER NOT NULL DEFAULT 0,
+          unmapped_count INTEGER NOT NULL DEFAULT 0,
+          review_required_count INTEGER NOT NULL DEFAULT 0,
+          stale_count INTEGER NOT NULL DEFAULT 0,
+          quality_status TEXT NOT NULL,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_source_record_summary_project_system
+          ON source_record_summary_mart(project_key, source_system);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS relationship_quality_mart (
+          quality_id TEXT PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          project_key TEXT,
+          relationship_type TEXT NOT NULL,
+          confidence_class TEXT NOT NULL,
+          relationship_status TEXT NOT NULL,
+          total_count INTEGER NOT NULL DEFAULT 0,
+          review_required_count INTEGER NOT NULL DEFAULT 0,
+          orphan_count INTEGER NOT NULL DEFAULT 0,
+          quality_status TEXT NOT NULL,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_relationship_quality_project_status
+          ON relationship_quality_mart(project_key, relationship_status);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS cross_domain_context_readiness_mart (
+          readiness_id TEXT PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          meeting_prep_ready INTEGER NOT NULL DEFAULT 0,
+          risk_digest_ready INTEGER NOT NULL DEFAULT 0,
+          financial_review_ready INTEGER NOT NULL DEFAULT 0,
+          blocking_reasons_json TEXT,
+          overall_status TEXT NOT NULL,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_readiness_project
+          ON cross_domain_context_readiness_mart(project_key);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -2376,6 +2439,17 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (20, 'v20_data_quality_and_source_record_map', ?)",
+                    (now,),
+                )
+
+            # v21 Phase 07A Prompt 05 — agent-ready query marts (additive only).
+            # Three new materialised read models + indexes. V1-V20 untouched.
+            for stmt in self.V21_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 21")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (21, 'v21_agent_ready_query_marts', ?)",
                     (now,),
                 )
 

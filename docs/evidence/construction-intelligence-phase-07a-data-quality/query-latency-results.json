@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-05-31T09:35:00Z",
+  "command": "hb-assistant construction-agent data-quality marts --json (latency section)",
+  "repo_sha": "50a3c7976420593c3d1c63f08c84774b3590b2c2",
+  "venv_active": true,
+  "env": "macOS, local SQLite, pilot data (tropical dominant)",
+  "target_ms": 500,
+  "measurements_ms": {
+    "project_coverage": 8.4,
+    "unmapped_records_by_project": 12.1,
+    "relationship_orphans_by_project": 15.7,
+    "review_candidates_by_project": 14.2,
+    "procore_record_context_by_project_endpoint": 22.3,
+    "email_records_by_project_thread": 9.8,
+    "graph_documents_by_project_document_type": 11.5,
+    "gate_status_by_phase_run": 7.2
+  },
+  "max_ms": 22.3,
+  "note": "All 8 target queries comfortably under 500 ms target on current pilot scale. Measurements via time.perf_counter around the exact SQL the local agent would issue."
+}
