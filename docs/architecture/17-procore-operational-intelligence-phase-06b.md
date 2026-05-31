@@ -321,3 +321,30 @@ No raw payload bodies, signed URLs, or tokens; no determinations. No new table/m
 stays V19). Evidence:
 `docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/13-obsidian-operational-output-preview.md`
 + `obsidian-operational-dry-run.json`.
+
+## Retrieval readiness (Prompt 14)
+
+Prompt 14 upgrades the Prompt 12 `retrieval-ready` placeholder (`store/procore_operational.py::
+build_retrieval_readiness`, surfaced as `procore live retrieval-ready --project KEY [--max-samples N]
+--json`) into a **retrieval fact manifest** — retrieval-safe, source-linked Procore facts for local
+assistant workflows. Read-only; no new table/migration (schema stays V19). The Prompt 12 corpus
+readiness probe (`retrieval_ready` / `reasons` / `corpus`) is preserved alongside the new `manifest`.
+
+**Fact families** (each fact = `fact_type` / `source_table` / `source_key` / `endpoint_id` /
+`procore_record_id?` / `attributes` (redacted scalars) / `source_link`):
+| Family | Source | Attributes |
+| --- | --- | --- |
+| `record` | `procore_live_records` (redacted scalar columns) | number, title_redacted, status, updated_at |
+| `action_signal` | `get_procore_action_signals` (open) | signal_type, importance, status, due, title_redacted |
+| `timeline_event` | `get_procore_changes` (**metadata only**) | detected_at, field_path, change_type/category, importance |
+| `exposure` | `build_cost_exposure` + `build_schedule_exposure` items | exposure type/category, importance, due, reason_codes |
+| `amount` | `read_financial_amount_facts` | amount_name, amount_value (decimal-safe TEXT), currency |
+
+**No-leak posture (stop-condition guard):** `canonical_json_redacted` free text is never read;
+timeline facts **exclude** `old_value_redacted` / `new_value_redacted` / hashes; exposure facts carry
+no inline amounts. `review_required` live records are **blocked** (counted under
+`blocked_by_reason.review_required`, never emitted). Manifest reports `total_facts`, `by_fact_type`,
+`by_endpoint`, `review_required_blocked`, `blocked_by_reason`, and a capped redacted `samples` list;
+every fact is source-linked to table/key/record. No raw bodies, signed URLs, tokens, or
+determinations (`determinations_made: false`). Evidence:
+`docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/14-retrieval-readiness-proof.json`.

@@ -1,0 +1,146 @@
+{
+  "command": "hb-assistant procore live retrieval-ready",
+  "corpus": {
+    "live_records": 3,
+    "open_action_signals": 1,
+    "text_intelligence_rows": 0,
+    "text_intelligence_with_action_candidates": 0
+  },
+  "determinations_made": false,
+  "generated_at": "2026-05-29T00:00:00Z",
+  "manifest": {
+    "blocked_by_reason": {
+      "free_text_field": 0,
+      "no_source_link": 0,
+      "review_required": 1
+    },
+    "by_endpoint": {
+      "commitment-contracts": 3,
+      "rfis": 4
+    },
+    "by_fact_type": {
+      "action_signal": 1,
+      "amount": 2,
+      "exposure": 1,
+      "record": 2,
+      "timeline_event": 1
+    },
+    "review_required_blocked": 1,
+    "samples": [
+      {
+        "attributes": {
+          "due_at_utc": "2026-05-01T00:00:00Z",
+          "importance": "high",
+          "signal_type": "rfi_overdue",
+          "status": "open",
+          "title": "rfi_overdue"
+        },
+        "endpoint_id": "rfis",
+        "fact_type": "action_signal",
+        "procore_record_id": null,
+        "source_key": "tropical|rfis||1",
+        "source_link": "procore_action_signals:tropical|rfis||1",
+        "source_table": "procore_action_signals"
+      },
+      {
+        "attributes": {
+          "amount_name": "grand_total",
+          "amount_value": "250000.00",
+          "currency_iso_code": "USD"
+        },
+        "endpoint_id": "commitment-contracts",
+        "fact_type": "amount",
+        "procore_record_id": null,
+        "source_key": "tropical|commitment-contracts||55",
+        "source_link": "procore_financial_amount_facts:tropical|commitment-contracts||55",
+        "source_table": "procore_financial_amount_facts"
+      },
+      {
+        "attributes": {
+          "amount_name": "retainage",
+          "amount_value": "12500.00",
+          "currency_iso_code": "USD"
+        },
+        "endpoint_id": "commitment-contracts",
+        "fact_type": "amount",
+        "procore_record_id": null,
+        "source_key": "tropical|commitment-contracts||55",
+        "source_link": "procore_financial_amount_facts:tropical|commitment-contracts||55",
+        "source_table": "procore_financial_amount_facts"
+      },
+      {
+        "attributes": {
+          "due_at_utc": "2026-05-01T00:00:00Z",
+          "exposure": "overdue_rfi",
+          "importance": "high",
+          "reason_codes": [
+            "overdue_signal_type",
+            "past_due_date",
+            "review_required_high_sensitivity"
+          ]
+        },
+        "endpoint_id": "rfis",
+        "fact_type": "exposure",
+        "procore_record_id": null,
+        "source_key": "tropical|rfis||1",
+        "source_link": "schedule_exposure:tropical|rfis||1",
+        "source_table": "read_model:schedule_exposure"
+      },
+      {
+        "attributes": {
+          "number": "N-55",
+          "status": "open",
+          "title": "sc-1",
+          "updated_at": "2026-05-29T00:00:00Z"
+        },
+        "endpoint_id": "commitment-contracts",
+        "fact_type": "record",
+        "procore_record_id": "55",
+        "source_key": "tropical|commitment-contracts||55",
+        "source_link": "procore_live_records:tropical|commitment-contracts||55",
+        "source_table": "procore_live_records"
+      },
+      {
+        "attributes": {
+          "number": "N-1",
+          "status": "open",
+          "title": "rfi-one",
+          "updated_at": "2026-05-29T00:00:00Z"
+        },
+        "endpoint_id": "rfis",
+        "fact_type": "record",
+        "procore_record_id": "1",
+        "source_key": "tropical|rfis||1",
+        "source_link": "procore_live_records:tropical|rfis||1",
+        "source_table": "procore_live_records"
+      },
+      {
+        "attributes": {
+          "change_category": "status_change",
+          "change_type": "modified",
+          "detected_at_utc": "2026-05-29T00:00:00Z",
+          "field_path": "status",
+          "importance": "high"
+        },
+        "endpoint_id": "rfis",
+        "fact_type": "timeline_event",
+        "procore_record_id": "1",
+        "source_key": "ce-1",
+        "source_link": "procore_live_record_change_events:ce-1",
+        "source_table": "procore_live_record_change_events"
+      }
+    ],
+    "samples_truncated": false,
+    "total_facts": 7
+  },
+  "no_live_call_performed": true,
+  "no_raw_values_persisted": true,
+  "note": "Retrieval fact manifest (Phase 06B Prompt 14) \u2014 redacted scalar facts only; raw free text, payload bodies, and change values are never embedded. Source-linked to table/key/record. `retrieval_ready` reflects embedding-corpus readiness.",
+  "ok": true,
+  "phase": "Phase 06B Prompt 14",
+  "project_key": "tropical",
+  "reasons": [
+    "no_text_intelligence_rows"
+  ],
+  "retrieval_ready": false
+}

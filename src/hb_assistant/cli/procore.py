@@ -1648,17 +1648,22 @@ def live_risks(
 @live_app.command("retrieval-ready")
 def live_retrieval_ready(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    max_samples: int = typer.Option(10, "--max-samples", min=1, help="Max redacted fact samples."),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
-    """Retrieval-readiness probe (Phase 06B Prompt 12, preliminary) — counts the local retrievable
-    corpus (text-intelligence, live records, open signals) and reports a ready flag with reasons.
-    Local SQLite only; read-only; no live call, no DB writes, no raw values. Prompt 14 hardens true
-    embedding readiness."""
+    """Retrieval fact manifest (Phase 06B Prompt 14) — retrieval-safe, source-linked Procore facts
+    from redacted canonical scalar fields, action signals, timeline events, exposure items, and
+    decimal-safe financial amount facts; with fact counts by endpoint/type, review-required +
+    blocked-reason counts, redacted samples, and the embedding-corpus readiness probe. Raw free
+    text, payload bodies, and change values are never embedded. Local SQLite only; read-only; no
+    live call, no DB writes, no determinations."""
     from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_operational import build_retrieval_readiness
 
     SQLiteMigrator().apply()
-    report = build_retrieval_readiness(project, now_utc=_query_now().isoformat())
+    report = build_retrieval_readiness(
+        project, now_utc=_query_now().isoformat(), max_samples=max_samples
+    )
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
 
