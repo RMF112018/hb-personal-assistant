@@ -915,6 +915,88 @@ class ConstructionStore:
                 ),
             )
 
+    def list_calendar_event_index(
+        self, *, source_id: Optional[str] = None, limit: int = 100000
+    ) -> list[dict[str, Any]]:
+        """Read redacted calendar event index rows for Phase 07B project matching.
+        Returns hashed/redacted metadata only (no raw values were ever stored)."""
+        conn = get_connection(self._db_path)
+        sql = (
+            "SELECT event_index_id, source_id, subject_token_hashes_json, organizer_domain,"
+            " is_private, is_cancelled, project_key, project_match_method,"
+            " project_match_confidence, review_required, review_reasons_json"
+            " FROM calendar_event_index"
+        )
+        params: tuple[Any, ...] = ()
+        if source_id is not None:
+            sql += " WHERE source_id = ?"
+            params = (source_id,)
+        sql += " ORDER BY start_datetime_utc LIMIT ?"
+        params = (*params, limit)
+        keys = (
+            "event_index_id", "source_id", "subject_token_hashes_json", "organizer_domain",
+            "is_private", "is_cancelled", "project_key", "project_match_method",
+            "project_match_confidence", "review_required", "review_reasons_json",
+        )
+        rows: list[dict[str, Any]] = []
+        for row in conn.execute(sql, params):
+            rec = dict(zip(keys, row, strict=True))
+            rec["subject_token_hashes"] = self._load_json(rec.pop("subject_token_hashes_json")) or []
+            rec["review_reasons"] = self._load_json(rec.pop("review_reasons_json")) or []
+            rec["is_private"] = bool(rec["is_private"])
+            rec["is_cancelled"] = bool(rec["is_cancelled"])
+            rec["review_required"] = bool(rec["review_required"])
+            rows.append(rec)
+        return rows
+
+    def upsert_calendar_project_match_candidate(
+        self,
+        *,
+        candidate_id: str,
+        event_index_id: str,
+        project_key: str,
+        candidate_type: str,
+        signals_json: str,
+        confidence: float,
+        confidence_class: str,
+        deterministic: bool = False,
+        model_proposed: bool = False,
+        review_required: bool = True,
+        promotion_status: str = "candidate",
+    ) -> None:
+        """Upsert a calendar event→project match candidate (V23). Candidates only —
+        ``promotion_status`` defaults to 'candidate' (no auto-promotion). Idempotent
+        by candidate_id. signals_json must carry safe values only (hashes/counts);
+        the raw_body / external_writeback CHECK columns remain 0."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO calendar_project_match_candidates
+                    (candidate_id, event_index_id, project_key, candidate_type,
+                     signals_json, confidence, confidence_class, deterministic,
+                     model_proposed, review_required, promotion_status, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(candidate_id) DO UPDATE SET
+                    event_index_id = excluded.event_index_id,
+                    project_key = excluded.project_key,
+                    candidate_type = excluded.candidate_type,
+                    signals_json = excluded.signals_json,
+                    confidence = excluded.confidence,
+                    confidence_class = excluded.confidence_class,
+                    deterministic = excluded.deterministic,
+                    model_proposed = excluded.model_proposed,
+                    review_required = excluded.review_required,
+                    promotion_status = excluded.promotion_status
+                """,
+                (
+                    candidate_id, event_index_id, project_key, candidate_type,
+                    signals_json, confidence, confidence_class, 1 if deterministic else 0,
+                    1 if model_proposed else 0, 1 if review_required else 0,
+                    promotion_status, _utc_now(),
+                ),
+            )
+
     def get_source_location(self, source_id: str) -> Optional[dict[str, Any]]:
         conn = get_connection(self._db_path)
         cur = conn.execute(

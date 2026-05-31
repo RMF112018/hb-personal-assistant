@@ -197,6 +197,26 @@ def test_normalize_event_skips_missing_window() -> None:
     assert fields is None and attendees == []
 
 
+def test_normalize_event_stores_full_project_number_hash() -> None:
+    # The full HB project number (NN-NNN-NN) is hashed un-split (before \W+
+    # fragmentation) so Prompt 05 can match it deterministically.
+    from hb_assistant.normalize.redaction import hash_value
+
+    ev = {
+        "id": "EVN",
+        "subject": "Coordination 23-435-01 walkthrough",
+        "start": {"dateTime": "2026-06-01T14:00:00Z"},
+        "end": {"dateTime": "2026-06-01T15:00:00Z"},
+        "sensitivity": "normal",
+    }
+    fields, _ = normalize_event(ev, source_id="s")
+    assert fields is not None
+    token_hashes = json.loads(fields["subject_token_hashes_json"])
+    assert hash_value("23-435-01") in token_hashes  # full number, un-split
+    assert hash_value("walkthrough") in token_hashes  # fragmented token still present
+    assert "23-435-01" not in fields["subject_token_hashes_json"]  # raw number never stored
+
+
 def test_normalize_event_omits_join_url_keys() -> None:
     ev = {
         "id": "EV1",

@@ -24,6 +24,7 @@ from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.construction.calendar import load_calendar_source_policy
 from hb_assistant.construction.calendar.event_indexer import CalendarEventIndexer
+from hb_assistant.construction.calendar.project_matcher import CalendarProjectMatcher
 from hb_assistant.construction.classification.client import OllamaChatClient
 from hb_assistant.construction.config import load_source_registry
 from hb_assistant.construction.config.loader import SourceRegistryError
@@ -1744,6 +1745,60 @@ def calendar_index_cmd(
     finally:
         if client is not None:
             client.close()
+
+
+@calendar_app.command("project-match")
+def calendar_project_match_cmd(
+    project: Optional[str] = typer.Option(None, "--project", help="Target project key to report."),
+    source: Optional[str] = typer.Option(None, "--source", help="Limit to one calendar source id."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply writes match candidates to SQLite."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Match indexed calendar events to projects (deterministic project-number +
+    heuristic name-token) over the redacted index, writing candidates only.
+
+    No auto-promotion: candidates persist with promotion_status='candidate' and the
+    event index is never written. Pure local SQLite + source registry — no Graph
+    calls, no token. Dry-run is the default; --apply writes
+    calendar_project_match_candidates. weak/moderate/conflicting candidates are
+    routed to review.
+    """
+    try:
+        store = ConstructionStore()
+        report = CalendarProjectMatcher(store).match(
+            target_project=project, source_id=source, dry_run=dry_run
+        )
+        payload: Dict[str, Any] = {
+            "command": "graph calendar project-match",
+            "ok": True,
+            "mode": report.mode,
+            "result": report.model_dump(),
+            "guardrails": {
+                "external_systems": "read_only",
+                "writeback": "none",
+                "graph_calls": "none",
+                "auto_promotion": False,
+                "microsoft_365_writeback_enabled": False,
+                "dry_run_default": True,
+                "review_routing": "review_required_flag",
+            },
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph calendar project-match",
+            "ok": False,
+            "mode": "dry_run" if dry_run else "apply",
+            "status": "match_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
 
 
 @mail_app.command("folders")

@@ -29,6 +29,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from hb_assistant.construction.email.project_matcher import HB_PROJECT_NUMBER_RE
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.calendar_readonly_client import ReadOnlyCalendarClient
 from hb_assistant.normalize.redaction import hash_value, redact_location, redact_subject
@@ -72,15 +73,23 @@ def _event_datetime(node: Any) -> Optional[str]:
 
 
 def _subject_token_hashes(subject: Optional[str]) -> Optional[str]:
-    """JSON list of hashed subject tokens (>=2 chars). Enables Prompt 05
-    project-token matching without ever persisting the raw subject."""
+    """JSON list of hashed subject tokens (>=2 chars), plus the hash of any full HB
+    project number (NN-NNN-NN) detected before fragmentation. Enables Prompt 05
+    deterministic project-number matching and project-token matching without ever
+    persisting the raw subject (a hash reveals nothing)."""
     if not subject:
         return None
     tokens = {t.lower() for t in re.split(r"\W+", subject) if len(t) >= 2}
-    hashes = sorted(h for h in (hash_value(t) for t in tokens) if h)
-    if not hashes:
+    token_hashes = {h for h in (hash_value(t) for t in tokens) if h}
+    # Full HB project number (un-split) so deterministic project matching survives
+    # the \W+ fragmentation above (e.g. "23-435-01" -> hash of the whole number).
+    for num in HB_PROJECT_NUMBER_RE.findall(subject):
+        num_hash = hash_value(num)
+        if num_hash:
+            token_hashes.add(num_hash)
+    if not token_hashes:
         return None
-    return json.dumps(hashes)
+    return json.dumps(sorted(token_hashes))
 
 
 def normalize_event(

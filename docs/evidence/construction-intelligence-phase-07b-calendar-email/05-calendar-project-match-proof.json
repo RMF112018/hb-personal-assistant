@@ -1,0 +1,105 @@
+{
+  "phase": "07B",
+  "prompt": "05 — Calendar Project Matching (deterministic + heuristic, candidates only)",
+  "head_before": "36f21f9da13cb0bda72d882c039db69bab017ec8",
+  "summary": "graph calendar project-match added — matches indexed calendar events to projects over the REDACTED index (hashed subject tokens + organizer domain), writing calendar_project_match_candidates only. No auto-promotion (event index never written; promotion_status='candidate'). Additive P04 correction stores the full HB project-number hash so deterministic matching survives token fragmentation.",
+  "preflight": {
+    "branch": "main",
+    "head": "36f21f9da13cb0bda72d882c039db69bab017ec8",
+    "git_status_short": "?? .claude/ (untracked, not committed)",
+    "compileall": 0,
+    "ruff_check": 0,
+    "mypy": 0,
+    "pytest_safe_subset": "0 failed / 8 xfail",
+    "graph_calendar_project_match_before": 2
+  },
+  "files_changed": {
+    "modified": [
+      "src/hb_assistant/construction/calendar/event_indexer.py (additive: _subject_token_hashes also stores hash of full \\d{2}-\\d{3}-\\d{2} project number)",
+      "src/hb_assistant/construction/store/repositories.py (list_calendar_event_index + upsert_calendar_project_match_candidate)",
+      "src/hb_assistant/cli/graph.py (graph calendar project-match command)",
+      "tests/test_calendar_event_indexing.py (full-number-hash test)"
+    ],
+    "added": [
+      "src/hb_assistant/construction/calendar/project_matcher.py",
+      "tests/test_calendar_project_matching.py",
+      "docs/architecture/22-phase-07b-calendar-project-matching.md",
+      "docs/evidence/construction-intelligence-phase-07b-calendar-email/05-calendar-project-match-proof.json"
+    ]
+  },
+  "dry_run_envelope": {
+    "note": "Live `hb-assistant graph calendar project-match --json` (dry-run) against the real (empty) store — exit 0, counts-only, no candidates persisted.",
+    "command": "graph calendar project-match",
+    "ok": true,
+    "mode": "dry_run",
+    "result": {
+      "summary": {
+        "events_evaluated": 0,
+        "events_matched": 0,
+        "events_unmatched": 0,
+        "candidates_created": 0,
+        "deterministic": 0,
+        "moderate": 0,
+        "weak": 0,
+        "review_routed": 0,
+        "conflicting": 0
+      },
+      "candidates": []
+    },
+    "guardrails": {
+      "external_systems": "read_only",
+      "writeback": "none",
+      "graph_calls": "none",
+      "auto_promotion": false,
+      "microsoft_365_writeback_enabled": false,
+      "dry_run_default": true,
+      "review_routing": "review_required_flag"
+    }
+  },
+  "apply_proof_temp_db": {
+    "note": "Persistence proven against a throwaway temp SQLite DB with 6 crafted redacted events + a fake 2-project registry (incl. 23-435-01). The real Application Support store is NOT written.",
+    "apply_summary": {
+      "events_evaluated": 6,
+      "events_matched": 4,
+      "events_unmatched": 1,
+      "candidates_created": 5,
+      "deterministic": 1,
+      "moderate": 3,
+      "weak": 1,
+      "review_routed": 4,
+      "conflicting": 2
+    },
+    "deterministic_candidate": "EVDET → project_number / confidence_class=deterministic / confidence=0.95 / deterministic=1 / review_required=0 / promotion_status=candidate",
+    "heuristic": "2-name-token overlap → moderate (review_required=1); 1-name-token → weak (review_required=1)",
+    "conflicting": "event matching 2 projects → all its candidates review_required=1 with signals.conflicting=true",
+    "private_and_unmatched": "private event and no-overlap event produce no candidate",
+    "no_auto_promotion": {
+      "event_index_project_key_set": 0,
+      "non_candidate_promotion_status": 0
+    },
+    "idempotent_rows": [5, 5],
+    "guard_check_columns_sum_raw_body_external_writeback": [0, 0],
+    "redaction": {
+      "raw_number_in_signals_json": false,
+      "number_hash_present_in_signals_json": true,
+      "note": "signals_json carries only the project-number HASH (in matched_token_hashes), token-overlap counts, and booleans; project_key is the safe local kebab identifier. No raw subject/number/organizer/attendee/location is persisted."
+    }
+  },
+  "validation_matrix_after": {
+    "python -m compileall src tests": 0,
+    "ruff check .": 0,
+    "mypy src": 0,
+    "pytest tests/test_calendar_project_matching.py tests/test_calendar_event_indexing.py": "16 passed",
+    "pytest tests/test_mutation_lockout.py": 0,
+    "pytest -m not-live-integration-manual": "0 failed / 8 xfail",
+    "construction-agent validate --json": 0,
+    "procore validate --json": 0,
+    "graph files status --json": 0,
+    "graph mail status --json": 0,
+    "graph calendar status --json": 0,
+    "graph calendar project-match --json": 0,
+    "construction-agent data-quality gates --json": 0,
+    "construction-agent data-quality no-writeback-proof --json": 0
+  },
+  "stop_conditions": "none triggered — no mutation/writeback; no weak/moderate/sensitive/model candidate auto-promoted (all promotion_status=candidate, event index project_key never written); no raw subject/number/organizer/attendee/location/join-URL in code/JSON/evidence/signals_json; no validation failure hidden; no 07D readiness claimed."
+}
