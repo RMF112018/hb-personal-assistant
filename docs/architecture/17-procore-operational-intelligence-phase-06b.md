@@ -296,3 +296,28 @@ that the Phase 06B query read-model modules (`procore_operational`, `procore_pro
 No new table/migration (schema stays V19). Evidence:
 `docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/12-operational-cli-contract-proof.md`
 + `operational-cli-sample-outputs.json`.
+
+## Obsidian operational outputs (Prompt 13)
+
+`procore/obsidian_operational.py` renders three deterministic, marker-bounded Obsidian notes from the
+Phase 06B **local SQLite read models** (never live Procore), mirroring the `obsidian_register.py`
+build/`_render_note`/apply pattern and reusing `obsidian._write_procore_artifact` /
+`PROCORE_GUARDRAILS` / `ConstructionVaultWriter` and `obsidian_register._table`/`_section`. Surfaced
+as three `procore obsidian` verbs — dry-run by default, `--apply` (with `--confirm` non-TTY gate)
+writes one marker-bounded note under `vault/01_Projects/` only when the vault is configured
+(`HB_CONSTRUCTION_VAULT_ROOT`); unconfigured vault and unparseable `--since` both fail closed.
+
+| `procore obsidian …` | Read models | Marker / file |
+| --- | --- | --- |
+| `project-health` | `build_project_health` | `HB-PROCORE-OPERATIONAL-PROJECT-HEALTH` → `{project}.procore-project-health.md` |
+| `meeting-prep --since` | open action signals (meeting endpoints/`meeting_topic_open_high_priority`) + `procore_live_records` meetings + `build_risks` | `HB-PROCORE-OPERATIONAL-MEETING-PREP` → `{project}.procore-meeting-prep.md` |
+| `daily-digest --since` | `build_operational_digest` + `build_overdue_queue` + `build_risks` + `get_procore_changes` (windowed) | `HB-PROCORE-OPERATIONAL-DAILY-DIGEST` → `{project}.procore-daily-digest.md` |
+
+Each note opens with a freshness + review-required **warning banner** and renders only
+already-redacted read-model fields (`title_redacted`, counts, status, `due_at_utc`,
+`source_url_redacted`, `record_key`) plus a local query-command reference. `review_required` records
+are diverted to the warning banner — **never inlined** with sensitive content (stop-condition guard).
+No raw payload bodies, signed URLs, or tokens; no determinations. No new table/migration (schema
+stays V19). Evidence:
+`docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/13-obsidian-operational-output-preview.md`
++ `obsidian-operational-dry-run.json`.

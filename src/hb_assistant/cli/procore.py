@@ -2283,6 +2283,164 @@ def obsidian_financial(
 
 
 # =============================================================================
+# Prompt 13: operational Obsidian outputs (project-health / meeting-prep /
+# daily-digest) from the Phase 06B read models; read-only SQLite, dry-run
+# default, marker-bounded apply to the configured local vault only.
+# =============================================================================
+
+_OBSIDIAN_OPS_PHASE = "Phase 06B Prompt 13"
+
+
+def _obsidian_ops_confirm(apply: bool, confirm: bool, filename: str) -> None:
+    """Shared --apply confirm gate (mirrors the preview/enriched/financial commands)."""
+    if not apply or confirm:
+        return
+    if not sys.stdin.isatty():
+        typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
+        raise typer.Exit(1)
+    if not typer.confirm(
+        f"CONFIRM: --apply will write {filename} to the local vault only "
+        "(no Procore mutation). Continue?",
+        default=False,
+    ):
+        typer.echo("Aborted.")
+        raise typer.Exit(1)
+
+
+def _emit_obsidian_ops(command: str, project: str, *, apply: bool, since_utc: Optional[str],
+                       result: dict, json_out: bool) -> None:
+    payload = {
+        "command": command, "ok": True, "phase": _OBSIDIAN_OPS_PHASE, "project_key": project,
+        "mode": "apply" if apply else "dry_run", "dry_run": not apply,
+        "generated_utc": result["generated_utc"], "counts": result["counts"],
+        "warnings": result["warnings"], "section_keys": result["section_keys"],
+        "rendered": result["rendered"], "written_paths": result.get("written_paths", []),
+        "guardrails": result["guardrails"],
+    }
+    if since_utc is not None:
+        payload["since_utc"] = since_utc
+    _emit(payload, json_out=json_out)
+
+
+def _vault_unconfigured(command: str, project: str, json_out: bool) -> None:
+    _emit({"command": command, "ok": False, "phase": _OBSIDIAN_OPS_PHASE, "project_key": project,
+           "state": "fail_closed_unsupported", "reason_codes": ["vault_root_unconfigured"]},
+          json_out=json_out, exit_code=3)
+
+
+@obsidian_app.command("project-health")
+def obsidian_project_health(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    dry_run: bool = typer.Option(True, "--dry-run", help="Default: rendered note preview, zero side effects."),
+    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in. Writes one marker-bounded procore-project-health.md to 01_Projects/ (local vault)."),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default)."),
+    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts."),
+) -> None:
+    """Project-health Obsidian note (Phase 06B Prompt 13) rendered from build_project_health.
+    Local SQLite only; read-only; dry-run default; never calls Procore. --apply writes one
+    marker-bounded source-linked note with freshness + review-required warnings."""
+    _obsidian_ops_confirm(apply, confirm, "procore-project-health.md")
+    from hb_assistant.procore.obsidian_operational import (
+        apply_project_health_note,
+        build_project_health_note,
+    )
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    SQLiteMigrator().apply()
+    now_utc = _query_now().isoformat()
+    cmd = "hb-assistant procore obsidian project-health"
+    if apply:
+        result = apply_project_health_note(project, now_utc=now_utc)
+        if not result.get("vault_configured", False):
+            _vault_unconfigured(cmd, project, json_out)
+            return
+    else:
+        result = build_project_health_note(project, now_utc=now_utc)
+        result["written_paths"] = []
+    _emit_obsidian_ops(cmd, project, apply=apply, since_utc=None, result=result, json_out=json_out)
+
+
+@obsidian_app.command("meeting-prep")
+def obsidian_meeting_prep(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    since: str = typer.Option("7 days ago", "--since", help="Window for recent meetings (relative or ISO)."),
+    dry_run: bool = typer.Option(True, "--dry-run", help="Default: rendered note preview, zero side effects."),
+    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in. Writes one marker-bounded procore-meeting-prep.md to 01_Projects/ (local vault)."),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default)."),
+    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts."),
+) -> None:
+    """Meeting-prep Obsidian note (Phase 06B Prompt 13) — open meeting actions, recent meetings, and
+    carryover risks from local SQLite read models. Read-only; dry-run default; never calls Procore.
+    --apply writes one marker-bounded source-linked note with freshness + review-required warnings."""
+    _obsidian_ops_confirm(apply, confirm, "procore-meeting-prep.md")
+    from hb_assistant.procore.obsidian_operational import apply_meeting_prep, build_meeting_prep
+    from hb_assistant.procore.time_window import parse_since
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    cmd = "hb-assistant procore obsidian meeting-prep"
+    now = datetime.now(timezone.utc)
+    try:
+        since_utc = parse_since(since, now=now)
+    except ValueError:
+        _emit({"command": cmd, "ok": False, "phase": _OBSIDIAN_OPS_PHASE, "project_key": project,
+               "state": "fail_closed_unsupported", "reason_codes": ["since_unparseable"]},
+              json_out=json_out, exit_code=3)
+        return
+    SQLiteMigrator().apply()
+    now_utc = now.isoformat()
+    if apply:
+        result = apply_meeting_prep(project, since_utc=since_utc, now_utc=now_utc)
+        if not result.get("vault_configured", False):
+            _vault_unconfigured(cmd, project, json_out)
+            return
+    else:
+        result = build_meeting_prep(project, since_utc=since_utc, now_utc=now_utc)
+        result["written_paths"] = []
+    _emit_obsidian_ops(cmd, project, apply=apply, since_utc=since_utc, result=result,
+                       json_out=json_out)
+
+
+@obsidian_app.command("daily-digest")
+def obsidian_daily_digest(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    since: str = typer.Option("24 hours ago", "--since", help="Window for the changes section (relative or ISO)."),
+    dry_run: bool = typer.Option(True, "--dry-run", help="Default: rendered note preview, zero side effects."),
+    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in. Writes one marker-bounded procore-daily-digest.md to 01_Projects/ (local vault)."),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default)."),
+    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts."),
+) -> None:
+    """Daily-digest Obsidian note (Phase 06B Prompt 13) — operator digest headline, overdue, top
+    risks, and changes-in-window from local SQLite read models. Read-only; dry-run default; never
+    calls Procore. --apply writes one marker-bounded note with freshness + review-required warnings."""
+    _obsidian_ops_confirm(apply, confirm, "procore-daily-digest.md")
+    from hb_assistant.procore.obsidian_operational import apply_daily_digest, build_daily_digest
+    from hb_assistant.procore.time_window import parse_since
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    cmd = "hb-assistant procore obsidian daily-digest"
+    now = datetime.now(timezone.utc)
+    try:
+        since_utc = parse_since(since, now=now)
+    except ValueError:
+        _emit({"command": cmd, "ok": False, "phase": _OBSIDIAN_OPS_PHASE, "project_key": project,
+               "state": "fail_closed_unsupported", "reason_codes": ["since_unparseable"]},
+              json_out=json_out, exit_code=3)
+        return
+    SQLiteMigrator().apply()
+    now_utc = now.isoformat()
+    if apply:
+        result = apply_daily_digest(project, since_utc=since_utc, now_utc=now_utc)
+        if not result.get("vault_configured", False):
+            _vault_unconfigured(cmd, project, json_out)
+            return
+    else:
+        result = build_daily_digest(project, since_utc=since_utc, now_utc=now_utc)
+        result["written_paths"] = []
+    _emit_obsidian_ops(cmd, project, apply=apply, since_utc=since_utc, result=result,
+                       json_out=json_out)
+
+
+# =============================================================================
 # Prompt_09A: procore obsidian register (endpoint-scoped projection from
 # Phase 04A procore_live_records; read-only SQLite, never calls Procore)
 # =============================================================================

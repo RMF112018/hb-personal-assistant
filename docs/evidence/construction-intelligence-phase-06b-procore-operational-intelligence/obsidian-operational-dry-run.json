@@ -1,0 +1,103 @@
+{
+  "daily_digest": {
+    "command": "hb-assistant procore obsidian daily-digest",
+    "counts": {
+      "changes_in_window": 0,
+      "overdue": 2,
+      "top_risks": 4
+    },
+    "dry_run": true,
+    "generated_utc": "2026-05-29T00:00:00Z",
+    "guardrails": {
+      "links_preserved": "true",
+      "projection_only": "true",
+      "redaction_applied": "true",
+      "review_routing": "procore_sensitive_routing_rules.yaml + endpoint contract flags",
+      "secrets_never": "true",
+      "source": "procore (read-only GET sync)",
+      "sqlite_authoritative": "true",
+      "traceability": "source_url + sqlite_id + sync_run_id"
+    },
+    "mode": "dry_run",
+    "rendered": "---\ntype: procore_daily_digest\nproject_key: tropical\nsource: procore_phase06b_read_models_sqlite\nreview_sensitive: false\ngenerated_utc: 2026-05-29T00:00:00Z\n---\n\n# Procore Daily Digest \u2014 tropical\n\n_Window since: 2026-05-22T00:00:00Z._ _Local SQLite read-model projection \u2014 no Procore call._\n\n> \u26a0\ufe0f **Review required:** 1 record(s) flagged \u2014 see `procore live project-health` / the review queue (not inlined here).\n\n## Headline\n\n_Query: `hb-assistant procore live digest --project tropical --json`_\n\nHealth: **review_recommended** \u2014 review_required_records, high_importance_signals, safety_quality_compliance_signals, overdue_signals\n\n| Metric | Count |\n| --- | --- |\n| Total Records | 5 |\n| Open Signals | 4 |\n| High Importance Signals | 3 |\n| Review Required Records | 1 |\n| Stale Endpoints | 0 |\n| Overdue | 2 |\n| Upcoming | 0 |\n| Cost Exposure | 0 |\n| Schedule Exposure | 4 |\n| Responsibility Partial Gaps | 0 |\n| Orphan Records | 0 |\n| Duplicate Warnings | 0 |\n\n\n## Overdue\n\n_Query: `hb-assistant procore live overdue --project tropical --json`_\n\n| Importance | Signal | Endpoint | Due | Days Overdue | Title |\n| --- | --- | --- | --- | --- | --- |\n| high | rfi_overdue | rfis | 2026-05-01T00:00:00Z | 28 | rfi_overdue |\n| medium | submittal_overdue | submittals | 2026-05-01T00:00:00Z | 28 | submittal_overdue |\n\n\n## Top Risks\n\n_Query: `hb-assistant procore live risks --project tropical --json`_\n\n| Importance | Signal | Endpoint | Dimensions | Title |\n| --- | --- | --- | --- | --- |\n| high | meeting_topic_open_high_priority | meetings |  | meeting_topic_open_high_priority |\n| high | inspection_open_safety | inspections | safety_quality_compliance | inspection_open_safety |\n| high | rfi_overdue | rfis | overdue | rfi_overdue |\n| medium | submittal_overdue | submittals | overdue | submittal_overdue |\n\n\n## Changes In Window\n\n_Query: `hb-assistant procore live changes --project tropical --since \"24 hours ago\" --json`_\n\n_No changes in the window._\n\n\n## Guardrails\n\n- projection_only: true\n- sqlite_authoritative: true\n- redaction_applied: true\n- secrets_never: true\n- source: procore (read-only GET sync)\n- review_routing: procore_sensitive_routing_rules.yaml + endpoint contract flags\n- links_preserved: true\n- traceability: source_url + sqlite_id + sync_run_id\n",
+    "section_keys": [
+      "headline",
+      "overdue",
+      "risks",
+      "changes"
+    ],
+    "warnings": {
+      "review_required_records": 1,
+      "stale_endpoints": 0
+    },
+    "written_paths": []
+  },
+  "meeting_prep": {
+    "command": "hb-assistant procore obsidian meeting-prep",
+    "counts": {
+      "carryover_risks": 4,
+      "meeting_actions": 1,
+      "meetings": 1,
+      "review_flagged_meetings": 1
+    },
+    "dry_run": true,
+    "generated_utc": "2026-05-29T00:00:00Z",
+    "guardrails": {
+      "links_preserved": "true",
+      "projection_only": "true",
+      "redaction_applied": "true",
+      "review_routing": "procore_sensitive_routing_rules.yaml + endpoint contract flags",
+      "secrets_never": "true",
+      "source": "procore (read-only GET sync)",
+      "sqlite_authoritative": "true",
+      "traceability": "source_url + sqlite_id + sync_run_id"
+    },
+    "mode": "dry_run",
+    "rendered": "---\ntype: procore_meeting_prep\nproject_key: tropical\nsource: procore_phase06b_read_models_sqlite\nreview_sensitive: false\ngenerated_utc: 2026-05-29T00:00:00Z\n---\n\n# Procore Meeting Prep \u2014 tropical\n\n_Window since: 2026-05-22T00:00:00Z._ _Local SQLite read-model projection \u2014 no Procore call._\n\n> \u26a0\ufe0f **Review required:** 2 record(s) flagged \u2014 see `procore live project-health` / the review queue (not inlined here).\n\n## Open Meeting Actions\n\n_Query: `hb-assistant procore live actions --project tropical --status open --json`_\n\n| Importance | Signal | Endpoint | Due | Record Key | Title |\n| --- | --- | --- | --- | --- | --- |\n| high | meeting_topic_open_high_priority | meetings |  | tropical\\|meetings\\|\\|10 | meeting_topic_open_high_priority |\n\n\n## Recent / Upcoming Meetings\n\n_Query: `hb-assistant procore live records count --project tropical --json`_\n\n| Number | Title | Status | Updated | Source |\n| --- | --- | --- | --- | --- |\n| M-10 | weekly-coordination | open | 2026-05-29T00:00:00Z | [10](#) |\n\n\n## Carryover Risks\n\n_Query: `hb-assistant procore live risks --project tropical --json`_\n\n| Importance | Signal | Endpoint | Dimensions | Title |\n| --- | --- | --- | --- | --- |\n| high | meeting_topic_open_high_priority | meetings |  | meeting_topic_open_high_priority |\n| high | inspection_open_safety | inspections | safety_quality_compliance | inspection_open_safety |\n| high | rfi_overdue | rfis | overdue | rfi_overdue |\n| medium | submittal_overdue | submittals | overdue | submittal_overdue |\n\n\n## Guardrails\n\n- projection_only: true\n- sqlite_authoritative: true\n- redaction_applied: true\n- secrets_never: true\n- source: procore (read-only GET sync)\n- review_routing: procore_sensitive_routing_rules.yaml + endpoint contract flags\n- links_preserved: true\n- traceability: source_url + sqlite_id + sync_run_id\n",
+    "section_keys": [
+      "actions",
+      "meetings",
+      "risks"
+    ],
+    "warnings": {
+      "review_required_records": 2,
+      "stale_endpoints": 0
+    },
+    "written_paths": []
+  },
+  "project_health": {
+    "command": "hb-assistant procore obsidian project-health",
+    "counts": {
+      "open_signals": 4,
+      "review_required_items": 1,
+      "stale_endpoints": 0,
+      "top_risks": 4
+    },
+    "dry_run": true,
+    "generated_utc": "2026-05-29T00:00:00Z",
+    "guardrails": {
+      "links_preserved": "true",
+      "projection_only": "true",
+      "redaction_applied": "true",
+      "review_routing": "procore_sensitive_routing_rules.yaml + endpoint contract flags",
+      "secrets_never": "true",
+      "source": "procore (read-only GET sync)",
+      "sqlite_authoritative": "true",
+      "traceability": "source_url + sqlite_id + sync_run_id"
+    },
+    "mode": "dry_run",
+    "rendered": "---\ntype: procore_project_health\nproject_key: tropical\nsource: procore_phase06b_read_models_sqlite\nreview_sensitive: false\ngenerated_utc: 2026-05-29T00:00:00Z\n---\n\n# Procore Project Health \u2014 tropical\n\n_Local SQLite read-model projection \u2014 no Procore call._\n\n> \u26a0\ufe0f **Review required:** 1 record(s) flagged \u2014 see `procore live project-health` / the review queue (not inlined here).\n\n## Health Status\n\n_Query: `hb-assistant procore live project-health --project tropical --json`_\n\n**review_recommended** \u2014 triggers: review_required_records, high_importance_signals, safety_quality_compliance_signals, overdue_signals\n\n\n\n## Score Components\n\n_Query: `hb-assistant procore live project-health --project tropical --json`_\n\n| Component | Count |\n| --- | --- |\n| Open signals | 4 |\n| High-importance signals | 3 |\n| Review-required records | 1 |\n| Cost exposure signals | 0 |\n| Schedule exposure signals | 0 |\n| Safety/quality/compliance signals | 1 |\n| Overdue signals | 2 |\n| Stale endpoints | 0 |\n| Records missing responsibility edge | 5 |\n\n\n## Top Risks\n\n_Query: `hb-assistant procore live project-health --project tropical --json`_\n\n| Importance | Signal | Endpoint | Due | Dimensions | Title |\n| --- | --- | --- | --- | --- | --- |\n| high | meeting_topic_open_high_priority | meetings |  |  | meeting_topic_open_high_priority |\n| high | inspection_open_safety | inspections |  | safety_quality_compliance | inspection_open_safety |\n| high | rfi_overdue | rfis | 2026-05-01T00:00:00Z | overdue | rfi_overdue |\n| medium | submittal_overdue | submittals | 2026-05-01T00:00:00Z | overdue | submittal_overdue |\n\n\n## Stale Endpoints\n\n_Query: `hb-assistant procore live project-health --project tropical --json`_\n\n_No stale endpoints._\n\n\n## Review-Required Items\n\n_Query: `hb-assistant procore live project-health --project tropical --json`_\n\n| Endpoint | Record ID | Reason | Source |\n| --- | --- | --- | --- |\n| meetings | 11 |  |  |\n\n\n## Guardrails\n\n- projection_only: true\n- sqlite_authoritative: true\n- redaction_applied: true\n- secrets_never: true\n- source: procore (read-only GET sync)\n- review_routing: procore_sensitive_routing_rules.yaml + endpoint contract flags\n- links_preserved: true\n- traceability: source_url + sqlite_id + sync_run_id\n",
+    "section_keys": [
+      "status",
+      "components",
+      "top_risks",
+      "stale",
+      "review_required"
+    ],
+    "warnings": {
+      "review_required_records": 1,
+      "stale_endpoints": 0
+    },
+    "written_paths": []
+  }
+}
