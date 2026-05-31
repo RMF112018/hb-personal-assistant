@@ -254,3 +254,45 @@ cannot be inferred is `unknown` rather than guessed. `no_live_call_performed: tr
 `procore_relationship_quality_metrics` persistence is **not** implemented — metrics are derived on
 demand (schema stays V19, consistent with Prompts 06–10). Evidence:
 `docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/11-responsible-party-and-relationship-quality-proof.json`.
+
+## Operational CLI surface (Prompt 12)
+
+Prompt 12 consolidates the Phase 06B read models into a stable operator surface under
+`hb-assistant procore live` — every command local SQLite only, read-only, no live call. Seven verbs
+already existed (Prompts 06–11); four are new (`store/procore_operational.py`). No name conflicts
+(`risks` is a new top-level verb, distinct from the `live financial risk` sub-verb).
+
+| `procore live …` | Read model | New? |
+| --- | --- | --- |
+| `project-health` | `build_project_health` (P06) | — |
+| `stale` | `build_freshness` (P07) | — |
+| `overdue` | `build_overdue_queue` (P08) | — |
+| `financial exposure` | `build_cost_exposure` (P09) | — |
+| `schedule exposure` | `build_schedule_exposure` (P10) | — |
+| `responsible-party-gaps` | `build_responsible_party_gaps` (P11) | — |
+| `relationship-quality` | `build_relationship_quality` (P11) | — |
+| `digest` | `build_operational_digest` — composes the above into a compact headline roll-up | **new** |
+| `risks` | `build_risks` — open signals that are high-importance or carry a cost/schedule/safety/overdue dimension | **new** |
+| `retrieval-ready` | `build_retrieval_readiness` — preliminary local-corpus probe | **new** |
+| `no-writeback-proof` | `build_no_writeback_proof` — preliminary posture attestation | **new** |
+
+`build_operational_digest` and `build_risks` only re-surface existing signals/counts. `digest` calls
+each P06–P11 `build_*` and extracts headline numbers (health status, open/high-importance/
+review-required, stale, overdue/upcoming, cost/schedule exposure totals, responsibility partial gaps,
+orphan records, duplicate warnings). `risks` reuses `get_procore_action_signals` +
+`project_health._dimensions_for`.
+
+**Deferral note:** `retrieval-ready` and `no-writeback-proof` are real-but-minimal here so the
+surface is contract-stable and JSON-testable; Prompt 14 hardens true embedding readiness
+(`content_embeddings`) and Prompt 15 produces the formal no-writeback proof bundle. Both carry a
+`note` field stating this.
+
+**Contract tests** (`tests/test_procore_operational_cli.py`): help text asserts local-only/read-only;
+JSON-shape + failure-mode (missing `--project`, empty project) per command; and a static AST proof
+that the Phase 06B query read-model modules (`procore_operational`, `procore_project_health`,
+`procore_freshness`, `procore_action_queue`, `procore_cost_exposure`, `procore_schedule_exposure`,
+`procore_relationship_quality`) import no HTTP client (`requests`/`httpx`/`urllib3`/
+`procore.http_client`) — extending `tests/test_procore_offline_enforcement.py` to the query sources.
+No new table/migration (schema stays V19). Evidence:
+`docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/12-operational-cli-contract-proof.md`
++ `operational-cli-sample-outputs.json`.

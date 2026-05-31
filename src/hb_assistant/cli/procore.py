@@ -1610,6 +1610,75 @@ def live_relationship_quality(
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
 
+@live_app.command("digest")
+def live_digest(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Operator digest (Phase 06B Prompt 12) — one compact roll-up of health status plus headline
+    counts composed from the project-health, overdue, cost/schedule-exposure, responsible-party-gaps,
+    and relationship-quality read models. Local SQLite only; read-only; no live call, no DB writes,
+    no raw values, no determinations."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_operational import build_operational_digest
+
+    SQLiteMigrator().apply()
+    report = build_operational_digest(project, now_utc=_query_now().isoformat())
+    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
+
+
+@live_app.command("risks")
+def live_risks(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    max_items: int = typer.Option(25, "--max-items", min=1, help="Max risk rows returned."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Top operational risks (Phase 06B Prompt 12) — open action signals that are high-importance or
+    carry a cost/schedule/safety-quality/overdue dimension, ordered high-importance-first with
+    per-dimension counts. Local SQLite only; read-only; no live call, no DB writes, no raw values,
+    no determinations."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_operational import build_risks
+
+    SQLiteMigrator().apply()
+    report = build_risks(project, now_utc=_query_now().isoformat(), max_items=max_items)
+    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
+
+
+@live_app.command("retrieval-ready")
+def live_retrieval_ready(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Retrieval-readiness probe (Phase 06B Prompt 12, preliminary) — counts the local retrievable
+    corpus (text-intelligence, live records, open signals) and reports a ready flag with reasons.
+    Local SQLite only; read-only; no live call, no DB writes, no raw values. Prompt 14 hardens true
+    embedding readiness."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_operational import build_retrieval_readiness
+
+    SQLiteMigrator().apply()
+    report = build_retrieval_readiness(project, now_utc=_query_now().isoformat())
+    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
+
+
+@live_app.command("no-writeback-proof")
+def live_no_writeback_proof(
+    project: Optional[str] = typer.Option(None, "--project", help="Optional mapped project key."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """No-writeback posture attestation (Phase 06B Prompt 12, preliminary) — asserts the operator
+    query surface is local SQLite only with no Microsoft 365 / Procore writeback and no raw-body
+    persistence. Local SQLite only; read-only. Prompt 15 produces the formal no-writeback proof
+    bundle."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_operational import build_no_writeback_proof
+
+    SQLiteMigrator().apply()
+    report = build_no_writeback_proof(project, now_utc=_query_now().isoformat())
+    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
+
+
 live_records_app = typer.Typer(help="Procore live SQLite record read-only commands.")
 live_app.add_typer(live_records_app, name="records")
 

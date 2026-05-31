@@ -1,0 +1,369 @@
+{
+  "digest": {
+    "command": "hb-assistant procore live digest",
+    "determinations_made": false,
+    "generated_at": "2026-05-29T00:00:00Z",
+    "headline": {
+      "cost_exposure": 0,
+      "duplicate_warnings": 0,
+      "high_importance_signals": 2,
+      "open_signals": 3,
+      "orphan_records": 1,
+      "overdue": 2,
+      "responsibility_partial_gaps": 0,
+      "review_required_records": 1,
+      "schedule_exposure": 3,
+      "stale_endpoints": 0,
+      "total_records": 5,
+      "upcoming": 0
+    },
+    "health_status": "review_recommended",
+    "no_live_call_performed": true,
+    "no_raw_values_persisted": true,
+    "ok": true,
+    "phase": "Phase 06B Prompt 12",
+    "project_key": "tropical",
+    "sources": {
+      "cost_exposure": "Phase 06B Prompt 09",
+      "overdue": "Phase 06B Prompt 08",
+      "project_health": "Phase 06B Prompt 06",
+      "relationship_quality": "Phase 06B Prompt 11",
+      "responsible_party_gaps": "Phase 06B Prompt 11",
+      "schedule_exposure": "Phase 06B Prompt 10"
+    },
+    "status_reason": [
+      "review_required_records",
+      "high_importance_signals",
+      "safety_quality_compliance_signals",
+      "overdue_signals"
+    ]
+  },
+  "no-writeback-proof": {
+    "checks": {
+      "mailbox_read_only_layers": [
+        "yaml_scope_policy",
+        "msal_delegated_scope",
+        "python_graph_adapter",
+        "sqlite_check_constraint"
+      ],
+      "no_m365_writeback": true,
+      "no_procore_writeback": true,
+      "no_raw_bodies_persisted": true,
+      "query_commands_local_sqlite_only": true
+    },
+    "command": "hb-assistant procore live no-writeback-proof",
+    "determinations_made": false,
+    "generated_at": "2026-05-29T00:00:00Z",
+    "no_live_call_performed": true,
+    "no_raw_values_persisted": true,
+    "note": "Preliminary posture attestation (Phase 06B Prompt 12). Prompt 15 produces the formal no-writeback proof bundle.",
+    "ok": true,
+    "phase": "Phase 06B Prompt 12",
+    "project_key": "tropical",
+    "query_commands": [
+      "project-health",
+      "stale",
+      "overdue",
+      "risks",
+      "digest",
+      "responsible-party-gaps",
+      "relationship-quality",
+      "financial exposure",
+      "schedule exposure",
+      "retrieval-ready",
+      "no-writeback-proof"
+    ]
+  },
+  "overdue": {
+    "command": "hb-assistant procore live overdue",
+    "determinations_made": false,
+    "filters": {
+      "dimension": null,
+      "endpoint_id": null,
+      "importance": null
+    },
+    "generated_at": "2026-05-29T00:00:00Z",
+    "no_live_call_performed": true,
+    "no_raw_values_persisted": true,
+    "ok": true,
+    "phase": "Phase 06B Prompt 08",
+    "project_key": "tropical",
+    "queue": [
+      {
+        "days_overdue": 28,
+        "dimensions": [
+          "overdue"
+        ],
+        "due_at_utc": "2026-05-01T00:00:00Z",
+        "endpoint_id": "rfis",
+        "exposure_amount_names": [],
+        "exposure_fact_count": 0,
+        "exposure_present": false,
+        "importance": "high",
+        "owner_entity_key": null,
+        "reason_codes": [
+          "overdue_signal_type",
+          "past_due_date"
+        ],
+        "record_key": "tropical|rfis||1",
+        "review_required": false,
+        "signal_type": "rfi_overdue",
+        "source_url_redacted": null,
+        "status": "overdue",
+        "title_redacted": "rfi_overdue"
+      },
+      {
+        "days_overdue": 28,
+        "dimensions": [
+          "overdue"
+        ],
+        "due_at_utc": "2026-05-01T00:00:00Z",
+        "endpoint_id": "submittals",
+        "exposure_amount_names": [],
+        "exposure_fact_count": 0,
+        "exposure_present": false,
+        "importance": "medium",
+        "owner_entity_key": null,
+        "reason_codes": [
+          "overdue_signal_type",
+          "past_due_date"
+        ],
+        "record_key": "tropical|submittals||2",
+        "review_required": false,
+        "signal_type": "submittal_overdue",
+        "source_url_redacted": null,
+        "status": "overdue",
+        "title_redacted": "submittal_overdue"
+      },
+      {
+        "days_overdue": null,
+        "dimensions": [
+          "safety_quality_compliance"
+        ],
+        "due_at_utc": null,
+        "endpoint_id": "inspections",
+        "exposure_amount_names": [],
+        "exposure_fact_count": 0,
+        "exposure_present": false,
+        "importance": "high",
+        "owner_entity_key": null,
+        "reason_codes": [
+          "no_due_date_high_importance",
+          "review_required_record"
+        ],
+        "record_key": "tropical|inspections||3",
+        "review_required": true,
+        "signal_type": "inspection_open_safety",
+        "source_url_redacted": null,
+        "status": "no_due_date",
+        "title_redacted": "inspection_open_safety"
+      }
+    ],
+    "queue_truncated": false,
+    "summary": {
+      "by_dimension": {
+        "overdue": 2,
+        "safety_quality_compliance": 1
+      },
+      "high_importance": 2,
+      "no_due_date": 1,
+      "overdue": 2,
+      "review_required": 1,
+      "total_open": 3,
+      "upcoming": 0
+    },
+    "unsupported_due_date_endpoints": [
+      "inspections"
+    ]
+  },
+  "project-health": {
+    "command": "hb-assistant procore live project-health",
+    "counts": {
+      "endpoints_with_data": 5,
+      "financial_amount_facts": 0,
+      "high_importance_signals": 2,
+      "open_signals": 3,
+      "review_required_records": 1,
+      "total_records": 5
+    },
+    "determinations_made": false,
+    "dimension_signal_breakdown": {
+      "cost_exposure": {},
+      "overdue": {
+        "rfi_overdue": 1,
+        "submittal_overdue": 1
+      },
+      "safety_quality_compliance": {
+        "inspection_open_safety": 1
+      },
+      "schedule_exposure": {}
+    },
+    "evidence_references": {
+      "review_required_sources": []
+    },
+    "generated_at": "2026-05-29T00:00:00Z",
+    "health_status": "review_recommended",
+    "no_live_call_performed": true,
+    "no_raw_values_persisted": true,
+    "ok": true,
+    "phase": "Phase 06B Prompt 06",
+    "project_key": "tropical",
+    "review_required_items": [
+      {
+        "endpoint_id": "inspections",
+        "procore_record_id": "3",
+        "sensitive_reason": null,
+        "source_url_redacted": null
+      }
+    ],
+    "review_required_items_truncated": false,
+    "score_components": {
+      "cost_exposure": {
+        "open_signals": 0
+      },
+      "freshness": {
+        "endpoints_synced": 0,
+        "endpoints_with_data": 5,
+        "stale_endpoints": 0,
+        "stale_threshold_days": 7
+      },
+      "open_work": {
+        "high_importance": 2,
+        "open_signals": 3
+      },
+      "overdue": {
+        "open_signals": 2
+      },
+      "relationship_quality": {
+        "distinct_responsible_parties": 0,
+        "records_missing_responsibility_edge": 5
+      },
+      "review_required": {
+        "records": 1
+      },
+      "safety_quality_compliance": {
+        "open_signals": 1
+      },
+      "schedule_exposure": {
+        "open_signals": 0
+      }
+    },
+    "stale_endpoints": [],
+    "status_reason": [
+      "review_required_records",
+      "high_importance_signals",
+      "safety_quality_compliance_signals",
+      "overdue_signals"
+    ],
+    "top_risks": [
+      {
+        "dimensions": [
+          "safety_quality_compliance"
+        ],
+        "due_at_utc": null,
+        "endpoint_id": "inspections",
+        "importance": "high",
+        "record_key": "tropical|inspections||3",
+        "signal_type": "inspection_open_safety",
+        "title_redacted": "inspection_open_safety"
+      },
+      {
+        "dimensions": [
+          "overdue"
+        ],
+        "due_at_utc": "2026-05-01T00:00:00Z",
+        "endpoint_id": "rfis",
+        "importance": "high",
+        "record_key": "tropical|rfis||1",
+        "signal_type": "rfi_overdue",
+        "title_redacted": "rfi_overdue"
+      },
+      {
+        "dimensions": [
+          "overdue"
+        ],
+        "due_at_utc": "2026-05-01T00:00:00Z",
+        "endpoint_id": "submittals",
+        "importance": "medium",
+        "record_key": "tropical|submittals||2",
+        "signal_type": "submittal_overdue",
+        "title_redacted": "submittal_overdue"
+      }
+    ]
+  },
+  "retrieval-ready": {
+    "command": "hb-assistant procore live retrieval-ready",
+    "corpus": {
+      "live_records": 5,
+      "open_action_signals": 3,
+      "text_intelligence_rows": 0,
+      "text_intelligence_with_action_candidates": 0
+    },
+    "determinations_made": false,
+    "generated_at": "2026-05-29T00:00:00Z",
+    "no_live_call_performed": true,
+    "no_raw_values_persisted": true,
+    "note": "Preliminary readiness probe (Phase 06B Prompt 12). Prompt 14 hardens embedding readiness over content_embeddings.",
+    "ok": true,
+    "phase": "Phase 06B Prompt 12",
+    "project_key": "tropical",
+    "reasons": [
+      "no_text_intelligence_rows"
+    ],
+    "retrieval_ready": false
+  },
+  "risks": {
+    "command": "hb-assistant procore live risks",
+    "determinations_made": false,
+    "generated_at": "2026-05-29T00:00:00Z",
+    "no_live_call_performed": true,
+    "no_raw_values_persisted": true,
+    "ok": true,
+    "phase": "Phase 06B Prompt 12",
+    "project_key": "tropical",
+    "risks": [
+      {
+        "dimensions": [
+          "safety_quality_compliance"
+        ],
+        "due_at_utc": null,
+        "endpoint_id": "inspections",
+        "importance": "high",
+        "record_key": "tropical|inspections||3",
+        "signal_type": "inspection_open_safety",
+        "title_redacted": "inspection_open_safety"
+      },
+      {
+        "dimensions": [
+          "overdue"
+        ],
+        "due_at_utc": "2026-05-01T00:00:00Z",
+        "endpoint_id": "rfis",
+        "importance": "high",
+        "record_key": "tropical|rfis||1",
+        "signal_type": "rfi_overdue",
+        "title_redacted": "rfi_overdue"
+      },
+      {
+        "dimensions": [
+          "overdue"
+        ],
+        "due_at_utc": "2026-05-01T00:00:00Z",
+        "endpoint_id": "submittals",
+        "importance": "medium",
+        "record_key": "tropical|submittals||2",
+        "signal_type": "submittal_overdue",
+        "title_redacted": "submittal_overdue"
+      }
+    ],
+    "risks_truncated": false,
+    "summary": {
+      "by_dimension": {
+        "overdue": 2,
+        "safety_quality_compliance": 1
+      },
+      "high_importance": 2,
+      "total": 3
+    }
+  }
+}
