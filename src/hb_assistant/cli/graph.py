@@ -35,6 +35,7 @@ from hb_assistant.construction.config.loader import SourceRegistryError
 from hb_assistant.construction.correspondence import CorrespondenceReviewBuilder
 from hb_assistant.construction.document import (
     classify_document_cards,
+    evaluate_extraction_eligibility,
     evaluate_source_scope_compliance,
     match_document_projects,
     materialize_document_cards,
@@ -617,6 +618,32 @@ def files_match_document_projects_cmd(
     """
     store = ConstructionStore()
     report = match_document_projects(store, apply=apply)
+    typer.echo(json.dumps(report, indent=2) if json_out else str(report))
+    raise typer.Exit(0 if report["ok"] else 1)
+
+
+@files_app.command("evaluate-extraction-eligibility")
+def files_evaluate_extraction_eligibility_cmd(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist extraction dispositions to SQLite (default: dry-run)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Decide each document card's extraction disposition (deterministic; no download).
+
+    Dry-run by default: computes the eligibility / reason breakdown without any SQLite
+    write; ``--apply`` persists the disposition to each card's extraction_eligibility
+    column (one of not_evaluated/metadata_only/eligible/manual_approval_required/
+    blocked/skipped). The decision is deterministic from card metadata + the file
+    ingestion policy + document review rules — NO content is downloaded, parsed, or
+    persisted. Review-required cards can never be ``eligible`` (they route to
+    manual_approval_required); non-text-parseable kinds become metadata_only; oversize
+    and policy-disallowed kinds are blocked. ``eligible`` only means a card MAY be
+    extracted on a later explicit, separately-gated request. Read-only against
+    Microsoft 365 (no token, no Graph call).
+    """
+    store = ConstructionStore()
+    report = evaluate_extraction_eligibility(store, apply=apply)
     typer.echo(json.dumps(report, indent=2) if json_out else str(report))
     raise typer.Exit(0 if report["ok"] else 1)
 

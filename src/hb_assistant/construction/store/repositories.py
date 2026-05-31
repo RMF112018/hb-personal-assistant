@@ -2076,7 +2076,8 @@ class ConstructionStore:
             """
             SELECT card_id, document_card_id, source_id, drive_item_id, file_extension,
                    mime_type, project_key, project_number_hash, document_type,
-                   source_path_token_hashes_json, review_status, review_required
+                   source_path_token_hashes_json, review_status, review_required,
+                   extraction_eligibility, size_class
             FROM construction_document_cards
             ORDER BY card_id
             """
@@ -2085,6 +2086,7 @@ class ConstructionStore:
             "card_id", "document_card_id", "source_id", "drive_item_id", "file_extension",
             "mime_type", "project_key", "project_number_hash", "document_type",
             "source_path_token_hashes_json", "review_status", "review_required",
+            "extraction_eligibility", "size_class",
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
@@ -2205,6 +2207,35 @@ class ConstructionStore:
         )
         row = cur.fetchone()
         return int(row[0]) if row else 0
+
+    # --- Phase 07C controlled extraction eligibility (V24 card column) ------
+
+    def update_document_card_extraction_eligibility(
+        self,
+        *,
+        card_id: str,
+        extraction_eligibility: str,
+    ) -> None:
+        """Set the controlled-extraction disposition on an existing document card.
+
+        Touches ONLY the ``extraction_eligibility`` column (+ ``updated_utc``); the
+        guard CHECK columns and every content/identity field are left untouched. The
+        column CHECK constraint rejects any value outside the six-value enum
+        (not_evaluated / metadata_only / eligible / manual_approval_required /
+        blocked / skipped), so the caller must emit one of those. No download, parse,
+        or raw-text persistence is involved — this records a disposition only.
+        """
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                UPDATE construction_document_cards
+                   SET extraction_eligibility = ?,
+                       updated_utc = ?
+                 WHERE card_id = ?
+                """,
+                (extraction_eligibility, _utc_now(), card_id),
+            )
 
     # --- canonical processing receipts (V5) ---------------------------------
 

@@ -18,6 +18,9 @@ from hb_assistant.construction.document.contracts import (
     load_all_document_contracts,
     load_document_contract,
 )
+from hb_assistant.construction.document.extraction_eligibility import (
+    evaluate_extraction_eligibility,
+)
 from hb_assistant.construction.document.project_matcher import match_document_projects
 from hb_assistant.construction.document.source_scope import (
     evaluate_source_scope_compliance,
@@ -33,4 +36,5 @@ __all__ = [
     "materialize_document_cards",
     "classify_document_cards",
     "match_document_projects",
+    "evaluate_extraction_eligibility",
 ]
