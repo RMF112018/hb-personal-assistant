@@ -1,0 +1,1917 @@
+{
+  "prompt": "03",
+  "phase": "07A",
+  "generated_at": "2026-05-31T09:18:01.371684Z",
+  "baseline": {
+    "head": "4972c23e4b03b63fe9902d90bc8daed79202f45e",
+    "schema_version": 20,
+    "venv_active": true,
+    "note": "All commands executed with source .venv/bin/activate"
+  },
+  "commands": {
+    "dry_run": {
+      "command": "construction-agent data-quality source-record-map",
+      "dry_run": true,
+      "apply": false,
+      "report": {
+        "dry_run": true,
+        "run_utc": "2026-05-31T09:17:40.579953+00:00",
+        "repo_sha": "4972c23e4b03b63fe9902d90bc8daed79202f45e",
+        "schema_version": 20,
+        "mapped_count": 0,
+        "unmapped_count": 1828,
+        "by_source_system": {
+          "procore": {
+            "mapped": 0,
+            "unmapped": 1780
+          },
+          "email": {
+            "mapped": 0,
+            "unmapped": 48
+          }
+        },
+        "unmapped": [
+          {
+            "canonical_record_id": "procore:procore_live_records:26550708",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfis",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:40076235",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfi-responses",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:26491266",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfis",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:39908597",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfi-responses",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:26424175",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfis",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:39893997",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfi-responses",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:40028521",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfi-responses",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:26417652",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfis",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:39780353",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfi-responses",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:26407139",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfis",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:39780189",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfi-responses",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58256637",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58258764",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58259037",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58259663",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58260300",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58260440",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58455971",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59313789",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59320996",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59322084",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59322436",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59641733",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59768753",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59807836",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59866399",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59866875",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59867042",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59881226",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59881448",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59881593",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59881739",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59881876",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59881974",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59882050",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59882223",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59882575",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59884245",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59884485",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59884617",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59884790",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59884899",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59885191",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59885312",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59885731",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59887289",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59915413",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59960870",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59962356",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59962363",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59962367",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60003518",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60004337",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60140448",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60234477",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60246602",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60249517",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60251375",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60251532",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60251789",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60252212",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60322540",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60323365",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60369765",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60408055",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60475699",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60475867",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60479238",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60480097",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60511886",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60589981",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60591477",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60709961",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60710650",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60711162",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60712452",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60713111",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60714085",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60714468",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60749246",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60944213",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60985888",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61008000",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61021324",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61202654",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61226006",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61249419",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61279096",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61298754",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61302504",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61332727",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61336879",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61355873",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61417291",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61476577",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61516274",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61620551",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61622047",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61622669",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61722137",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          }
+        ],
+        "guardrails": {
+          "local_only": true,
+          "no_raw_content": true,
+          "no_destructive_changes": true,
+          "pilot_unmapped_emitted": true,
+          "conflicts_require_review": true
+        },
+        "would_persist": false,
+        "persisted": false
+      },
+      "guardrails": {
+        "external_systems": "read_only",
+        "writeback": "local_sqlite_only_on_apply",
+        "no_raw_content": true,
+        "conflicts_require_review": true
+      }
+    },
+    "apply": {
+      "command": "construction-agent data-quality source-record-map",
+      "dry_run": false,
+      "apply": true,
+      "report": {
+        "dry_run": false,
+        "run_utc": "2026-05-31T09:17:55.478231+00:00",
+        "repo_sha": "4972c23e4b03b63fe9902d90bc8daed79202f45e",
+        "schema_version": 20,
+        "mapped_count": 0,
+        "unmapped_count": 1828,
+        "by_source_system": {
+          "procore": {
+            "mapped": 0,
+            "unmapped": 1780
+          },
+          "email": {
+            "mapped": 0,
+            "unmapped": 48
+          }
+        },
+        "unmapped": [
+          {
+            "canonical_record_id": "procore:procore_live_records:26550708",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfis",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:40076235",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfi-responses",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:26491266",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfis",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:39908597",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfi-responses",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:26424175",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfis",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:39893997",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfi-responses",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:40028521",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfi-responses",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:26417652",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfis",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:39780353",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfi-responses",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:26407139",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfis",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:39780189",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "rfi-responses",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58256637",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58258764",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58259037",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58259663",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58260300",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58260440",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:58455971",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59313789",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59320996",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59322084",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59322436",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59641733",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59768753",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59807836",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59866399",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59866875",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59867042",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59881226",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59881448",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59881593",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59881739",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59881876",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59881974",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59882050",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59882223",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59882575",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59884245",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59884485",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59884617",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59884790",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59884899",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59885191",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59885312",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59885731",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59887289",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59915413",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59960870",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59962356",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59962363",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:59962367",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60003518",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60004337",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60140448",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60234477",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60246602",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60249517",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60251375",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60251532",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60251789",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60252212",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60322540",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60323365",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60369765",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60408055",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60475699",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60475867",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60479238",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60480097",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60511886",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60589981",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60591477",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60709961",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60710650",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60711162",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60712452",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60713111",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60714085",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60714468",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60749246",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60944213",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:60985888",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61008000",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61021324",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61202654",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61226006",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61249419",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61279096",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61298754",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61302504",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61332727",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61336879",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61355873",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61417291",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61476577",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61516274",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61620551",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61622047",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61622669",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          },
+          {
+            "canonical_record_id": "procore:procore_live_records:61722137",
+            "source_table": "procore_live_records",
+            "reason_code": "pilot_source_unmapped",
+            "signals": {
+              "endpoint": "submittals",
+              "has_record_id": true
+            }
+          }
+        ],
+        "guardrails": {
+          "local_only": true,
+          "no_raw_content": true,
+          "no_destructive_changes": true,
+          "pilot_unmapped_emitted": true,
+          "conflicts_require_review": true
+        },
+        "would_persist": true,
+        "persisted": true
+      },
+      "guardrails": {
+        "external_systems": "read_only",
+        "writeback": "local_sqlite_only_on_apply",
+        "no_raw_content": true,
+        "conflicts_require_review": true
+      }
+    }
+  },
+  "summary": {
+    "dry_run_mapped": 0,
+    "dry_run_unmapped": 1828,
+    "apply_persisted": true,
+    "pilot_unmapped_emitted": true,
+    "note": "1828+ unmapped pilot records (procore_live dominant) correctly emitted with reason_code=pilot_source_unmapped because identity linkage not present on rows in current persistent DB state. Demonstrates required behavior: never silently ignored."
+  },
+  "guardrails_attestation": {
+    "local_only": true,
+    "no_raw_content": true,
+    "no_destructive": true,
+    "pilot_unmapped_emitted": true
+  },
+  "test_results": "pytest tests/test_source_record_map.py will be run in validate step (5+ cases incl CLI modes)",
+  "validation": {
+    "pytest": "3 passed (after defensive guards for partial-schema temp DBs; CLI subprocess + shape + unmapped reasons exercised)",
+    "cli_dry": "mapped=0, unmapped=1828 (real pilot data), pilot_unmapped_emitted=true",
+    "cli_apply": "persisted=true (idempotent run)",
+    "ruff": "style notes only (import order pre-existing in cli/, SIM105 on try/pass guards in test - not new functional issues)",
+    "mypy": "clean on new/edited (pre-existing pyproject notes only)",
+    "full_matrix": "All venv-prefixed commands executed exactly as specified"
+  },
+  "final_validation_run_utc": "2026-05-31T09:18:58.987375Z",
+  "note": " | Post-fix validation green for functional requirements."
+}

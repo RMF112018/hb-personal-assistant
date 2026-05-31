@@ -3343,3 +3343,59 @@ class ConstructionStore:
                     _utc_now(),
                 ),
             )
+
+    # --- Phase 07A Prompt 03 reusable helper (high-volume procore live table) ---
+    # Added as the single minimal read-only extension for Prompt 03.
+    # All other source adapters in source_record_map.py continue to use direct
+    # bounded get_connection() queries + existing public list_* methods.
+    # This helper reduces duplication for the dominant pilot data volume and
+    # is intended for reuse in later prompts (diagnostics, marts, gates).
+    # Read-only, no side effects, supports optional project filter + limit.
+
+    def list_procore_live_records(
+        self, *, project_key: Optional[str] = None, limit: Optional[int] = None
+    ) -> list[dict[str, Any]]:
+        """Bounded read of procore_live_records (V6+). Returns dict rows.
+
+        Used by Prompt 03 SourceRecordMapBuilder for deterministic mapping of
+        the high-volume pilot live records. Can be reused by diagnostics/marts
+        without duplicating SQL.
+        """
+        conn = get_connection(self._db_path)
+        sql = (
+            "SELECT project_key, procore_project_id, endpoint_id, parent_procore_id, "
+            "procore_record_id, procore_record_number, title_redacted, status, "
+            "updated_at_utc, source_url_redacted, first_seen_at_utc, last_seen_at_utc, "
+            "last_sync_run_id, review_required, sensitive_reason "
+            "FROM procore_live_records WHERE 1=1"
+        )
+        params: list[Any] = []
+        if project_key is not None:
+            sql += " AND project_key = ?"
+            params.append(project_key)
+        sql += " ORDER BY last_seen_at_utc DESC"
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(int(limit))
+        cur = conn.execute(sql, tuple(params))
+        keys = (
+            "project_key",
+            "procore_project_id",
+            "endpoint_id",
+            "parent_procore_id",
+            "procore_record_id",
+            "procore_record_number",
+            "title_redacted",
+            "status",
+            "updated_at_utc",
+            "source_url_redacted",
+            "first_seen_at_utc",
+            "last_seen_at_utc",
+            "last_sync_run_id",
+            "review_required",
+            "sensitive_reason",
+        )
+        rows = [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+        for r in rows:
+            r["review_required"] = bool(r.get("review_required", 0))
+        return rows

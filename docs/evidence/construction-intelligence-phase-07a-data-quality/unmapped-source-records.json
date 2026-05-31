@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-05-31T09:18:03.987446Z",
+  "command": "hb-assistant construction-agent data-quality source-record-map --dry-run --json",
+  "repo_sha": "4972c23e4b03b63fe9902d90bc8daed79202f45e",
+  "venv_active": true,
+  "unmapped_sample_count": 100,
+  "total_unmapped_in_run": 1828,
+  "by_system": {
+    "procore": {
+      "mapped": 0,
+      "unmapped": 1780
+    },
+    "email": {
+      "mapped": 0,
+      "unmapped": 48
+    }
+  },
+  "sample_unmapped": [
+    {
+      "canonical_record_id": "procore:procore_live_records:26550708",
+      "source_table": "procore_live_records",
+      "reason_code": "pilot_source_unmapped",
+      "signals": {
+        "endpoint": "rfis",
+        "has_record_id": true
+      }
+    },
+    {
+      "canonical_record_id": "procore:procore_live_records:40076235",
+      "source_table": "procore_live_records",
+      "reason_code": "pilot_source_unmapped",
+      "signals": {
+        "endpoint": "rfi-responses",
+        "has_record_id": true
+      }
+    },
+    {
+      "canonical_record_id": "procore:procore_live_records:26491266",
+      "source_table": "procore_live_records",
+      "reason_code": "pilot_source_unmapped",
+      "signals": {
+        "endpoint": "rfis",
+        "has_record_id": true
+      }
+    },
+    {
+      "canonical_record_id": "procore:procore_live_records:39908597",
+      "source_table": "procore_live_records",
+      "reason_code": "pilot_source_unmapped",
+      "signals": {
+        "endpoint": "rfi-responses",
+        "has_record_id": true
+      }
+    },
+    {
+      "canonical_record_id": "procore:procore_live_records:26424175",
+      "source_table": "procore_live_records",
+      "reason_code": "pilot_source_unmapped",
+      "signals": {
+        "endpoint": "rfis",
+        "has_record_id": true
+      }
+    }
+  ],
+  "note": "Full list in the proof.json. All are pilot-source records without resolved project identity link on the source row at time of run. reason_code=pilot_source_unmapped or no_project_identity_signal. Never silently dropped."
+}

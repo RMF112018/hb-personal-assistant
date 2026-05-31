@@ -14,6 +14,12 @@ Commands:
 - ``hb-assistant construction-agent data-quality project-coverage [--json] [--apply]``
   — Phase 07A local-only canonical project identity backfill + coverage matrix
   (dry-run default; --apply writes to V5 identity/match tables).
+- ``hb-assistant construction-agent data-quality source-record-map [--dry-run] [--apply] [--json]``
+  — Phase 07A local-only source-system record map (Prompt 03). Maps Procore live/financial,
+  email messages/candidates, Graph files/ingestion decisions, body vault refs into
+  V20 source_system_record_map using deterministic canonical IDs + Prompt 02 identities.
+  Always emits unmapped active-pilot records with reason codes (never silent).
+  Explicit --dry-run (default) / --apply; mutual exclusion enforced.
 
 All commands are read-only against external systems; only SQLite metadata is
 written, and only when ``--apply`` is set.
@@ -44,7 +50,11 @@ from hb_assistant.construction.config import (
     load_source_registry,
 )
 from hb_assistant.construction.config.loader import SourceRegistryError
-from hb_assistant.construction.data_quality import ProjectIdentityBackfill
+from hb_assistant.construction.data_quality import (
+    ProjectIdentityBackfill,
+    SourceRecordMapBuilder,
+)
+
 from hb_assistant.construction.fixtures import (
     KIND_ALIASES as FIXTURE_KIND_ALIASES,
 )
@@ -1583,4 +1593,60 @@ def project_coverage(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     # Non-zero only on internal error (not on dry-run or conflicts)
+    raise typer.Exit(0)
+
+
+# ---------------------------------------------------------------------------
+# Phase 07A Prompt 03 — data-quality source-record-map (explicit --dry-run/--apply)
+# ---------------------------------------------------------------------------
+
+@data_quality_app.command("source-record-map")
+def source_record_map(
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview only (no writes). Default when neither flag given.",
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Persist rows to source_system_record_map (V20).",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Local-only source-system record map (Phase 07A Prompt 03).
+
+    Deterministic canonical IDs for Procore (live + financial), email (messages +
+    project-match candidates), Graph (drive items + ingestion decisions), and
+    body vault refs. Links to Prompt 02 project identities or row signals.
+    Weak / candidate / pilot-unmapped rows always get review_required + reason
+    in the emitted unmapped list. Active-pilot sources are never silently ignored.
+
+    No flag or --dry-run: preview (no DB writes).
+    --apply: performs the upserts.
+    Both flags: error (mutual exclusion).
+    """
+    if not dry_run and not apply:
+        dry_run = True  # no flag => dry-run (per spec clarification)
+    if dry_run and apply:
+        payload = {
+            "command": "construction-agent data-quality source-record-map",
+            "status": "invalid_flags",
+            "error": "--dry-run and --apply are mutually exclusive",
+            "hint": "Use --dry-run (or no flag) for preview or --apply to persist.",
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(2)
+
+    builder = SourceRecordMapBuilder()
+    report = builder.run(dry_run=not apply)
+
+    payload = {
+        "command": "construction-agent data-quality source-record-map",
+        "dry_run": dry_run and not apply,
+        "apply": apply,
+        "report": report,
+        "guardrails": _DATA_QUALITY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
