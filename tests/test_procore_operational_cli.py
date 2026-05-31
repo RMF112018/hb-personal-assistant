@@ -64,6 +64,7 @@ def _patch_conn(monkeypatch: pytest.MonkeyPatch, db: Path) -> None:
     import hb_assistant.store.procore_enrichment as enr_mod
     import hb_assistant.store.procore_financials as fin_mod
     import hb_assistant.store.procore_history as hist_mod
+    import hb_assistant.store.procore_no_writeback_proof as nwb_mod
     import hb_assistant.store.procore_operational as op_mod
     import hb_assistant.store.procore_project_health as ph_mod
     import hb_assistant.store.procore_relationship_quality as rq_mod
@@ -75,7 +76,7 @@ def _patch_conn(monkeypatch: pytest.MonkeyPatch, db: Path) -> None:
         return real(str(db))
 
     for mod in (conn_mod, mig_mod, enr_mod, fin_mod, hist_mod, aq_mod, ce_mod, se_mod, ph_mod,
-                rq_mod, com_mod, op_mod):
+                rq_mod, com_mod, op_mod, nwb_mod):
         monkeypatch.setattr(mod, "get_connection", _get, raising=False)
 
 

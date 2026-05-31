@@ -1672,16 +1672,18 @@ def live_no_writeback_proof(
     project: Optional[str] = typer.Option(None, "--project", help="Optional mapped project key."),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
-    """No-writeback posture attestation (Phase 06B Prompt 12, preliminary) — asserts the operator
-    query surface is local SQLite only with no Microsoft 365 / Procore writeback and no raw-body
-    persistence. Local SQLite only; read-only. Prompt 15 produces the formal no-writeback proof
-    bundle."""
+    """Formal no-writeback / no-secret / no-raw-body proof (Phase 06B Prompt 15). Statically scans
+    the Phase 06B modules for Procore/M365 writeback + forbidden HTTP-client imports, probes the
+    SQLite raw_body_persisted guardrails, and scans the evidence outputs for token/secret/signed-URL
+    patterns. Local SQLite only; read-only; no live call, no determinations. Fail-closed: exits 3 if
+    the proof does not pass."""
     from hb_assistant.store.migrator import SQLiteMigrator
-    from hb_assistant.store.procore_operational import build_no_writeback_proof
+    from hb_assistant.store.procore_no_writeback_proof import build_no_writeback_proof
 
     SQLiteMigrator().apply()
     report = build_no_writeback_proof(project, now_utc=_query_now().isoformat())
-    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
+    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out,
+          exit_code=0 if report["proof_passed"] else 3)
 
 
 live_records_app = typer.Typer(help="Procore live SQLite record read-only commands.")

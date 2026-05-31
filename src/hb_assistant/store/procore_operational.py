@@ -362,38 +362,8 @@ def build_retrieval_readiness(
     }
 
 
-def build_no_writeback_proof(
-    project_key: Optional[str] = None,
-    *,
-    now_utc: str,
-    db_path: Optional[Path] = None,
-) -> Dict[str, Any]:
-    """Preliminary, read-only no-writeback posture attestation (Prompt 15 produces the formal proof)."""
-    return {
-        "command": "hb-assistant procore live no-writeback-proof",
-        "ok": True,
-        "phase": _PHASE,
-        "project_key": project_key,
-        "generated_at": now_utc,
-        "checks": {
-            "no_m365_writeback": True,
-            "no_procore_writeback": True,
-            "query_commands_local_sqlite_only": True,
-            "no_raw_bodies_persisted": True,
-            "mailbox_read_only_layers": list(_MAILBOX_READ_ONLY_LAYERS),
-        },
-        "query_commands": list(_QUERY_COMMANDS),
-        "note": "Preliminary posture attestation (Phase 06B Prompt 12). Prompt 15 produces the "
-                "formal no-writeback proof bundle.",
-        "no_live_call_performed": True,
-        "no_raw_values_persisted": True,
-        "determinations_made": False,
-    }
-
-
 __all__ = [
     "build_risks",
     "build_operational_digest",
     "build_retrieval_readiness",
-    "build_no_writeback_proof",
 ]

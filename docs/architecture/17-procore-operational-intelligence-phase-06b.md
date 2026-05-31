@@ -348,3 +348,28 @@ no inline amounts. `review_required` live records are **blocked** (counted under
 every fact is source-linked to table/key/record. No raw bodies, signed URLs, tokens, or
 determinations (`determinations_made: false`). Evidence:
 `docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/14-retrieval-readiness-proof.json`.
+
+## No-writeback / no-secret / no-raw-body proof (Prompt 15)
+
+`store/procore_no_writeback_proof.py::build_no_writeback_proof` upgrades the Prompt 12 placeholder
+into an **executable proof** (surfaced as `procore live no-writeback-proof --json`) that Phase 06B
+added no Procore writeback, no Microsoft 365 writeback, no raw-body persistence, and leaked no
+secrets. Read-only; no new table/migration (schema stays V19). The CLI is **fail-closed** (exit 3 if
+`proof_passed` is false).
+
+Five checks (`checks_detail`, each `{passed, findings}`):
+| Check | What it proves |
+| --- | --- |
+| `static_writeback_scan` | the 8 Phase 06B modules contain no mutating method calls (`.post(`/`.put(`/`.patch(`/`.delete(`/`.send_mail(`/`.create_message(`…) — call-form only, so prose like "no writeback" never false-positives |
+| `no_http_client_imports` | AST: none import `requests`/`httpx`/`urllib3`/`procore.http_client` (query + Obsidian commands cannot call live Procore) |
+| `module_secret_scan` | tight value-shaped regexes (JWT, PEM header, `Bearer <token>`, SAS `sig=`, `client_secret":"…`) find no secrets in the modules |
+| `sqlite_raw_body_guardrail` | every `raw_body_persisted` table (24, discovered from `sqlite_master`) carries `CHECK(raw_body_persisted = 0)` and stores only `0` |
+| `evidence_output_scan` | the phase evidence `*.json` outputs carry no token/secret/signed-URL patterns |
+
+The prover holds the detection patterns, so it deliberately scans the *other* 8 Phase 06B modules,
+never itself (a self-scan would false-positive on its own pattern table). Secret scans use
+value-shaped regexes, never bare keywords, because the evidence narratives mention "Authorization
+headers" / "tokens" in prose. `_scan_text_for_secrets` is unit-tested against planted secrets +
+prose so the proof is not vacuous. Evidence:
+`docs/evidence/construction-intelligence-phase-06b-procore-operational-intelligence/no-writeback-proof.json`
++ `15-no-writeback-no-secret-no-raw-body-proof.md`.

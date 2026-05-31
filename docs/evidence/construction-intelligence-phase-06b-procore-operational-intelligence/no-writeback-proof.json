@@ -1,0 +1,239 @@
+{
+  "checks": {
+    "mailbox_read_only_layers": [
+      "yaml_scope_policy",
+      "msal_delegated_scope",
+      "python_graph_adapter",
+      "sqlite_check_constraint"
+    ],
+    "no_m365_writeback": true,
+    "no_procore_writeback": true,
+    "no_raw_bodies_persisted": true,
+    "no_secret_leakage": true,
+    "query_commands_local_sqlite_only": true
+  },
+  "checks_detail": {
+    "evidence_output_scan": {
+      "files_scanned": 16,
+      "findings": [],
+      "passed": true
+    },
+    "module_secret_scan": {
+      "findings": [],
+      "passed": true
+    },
+    "no_http_client_imports": {
+      "findings": [],
+      "passed": true
+    },
+    "sqlite_raw_body_guardrail": {
+      "findings": [],
+      "passed": true
+    },
+    "static_writeback_scan": {
+      "findings": [],
+      "passed": true
+    }
+  },
+  "command": "hb-assistant procore live no-writeback-proof",
+  "determinations_made": false,
+  "generated_at": "2026-05-31T09:00:18.067666+00:00",
+  "no_live_call_performed": true,
+  "no_raw_values_persisted": true,
+  "note": "Formal no-writeback / no-secret / no-raw-body proof (Phase 06B Prompt 15). Static scans the Phase 06B modules (the prover excludes itself), probes the SQLite raw_body_persisted guardrails, and scans the evidence outputs. Read-only.",
+  "ok": true,
+  "phase": "Phase 06B Prompt 15",
+  "project_key": null,
+  "proof_passed": true,
+  "query_commands": [
+    "project-health",
+    "stale",
+    "overdue",
+    "risks",
+    "digest",
+    "responsible-party-gaps",
+    "relationship-quality",
+    "financial exposure",
+    "schedule exposure",
+    "retrieval-ready",
+    "no-writeback-proof"
+  ],
+  "raw_body_tables": [
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_attachment_refs"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_amount_facts"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_billing_periods"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_budget_changes"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_budget_rows"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_budget_views"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_change_events"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_change_order_line_items"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_change_orders"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_compliance_documents"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_contracts"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_invoice_items"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_line_items"
+    },
+    {
+      "distinct_values": [],
+      "has_check": true,
+      "table": "procore_financial_payment_applications"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_rfqs"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_financial_subcontractor_invoices"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_live_record_change_events"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_live_record_snapshots"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_live_record_state_index"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_live_records"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_live_sync_runs"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_people_entities"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_record_timeline_events"
+    },
+    {
+      "distinct_values": [
+        0
+      ],
+      "has_check": true,
+      "table": "procore_text_intelligence"
+    }
+  ],
+  "scanned_modules": [
+    "src/hb_assistant/store/procore_project_health.py",
+    "src/hb_assistant/store/procore_freshness.py",
+    "src/hb_assistant/store/procore_action_queue.py",
+    "src/hb_assistant/store/procore_cost_exposure.py",
+    "src/hb_assistant/store/procore_schedule_exposure.py",
+    "src/hb_assistant/store/procore_relationship_quality.py",
+    "src/hb_assistant/store/procore_operational.py",
+    "src/hb_assistant/procore/obsidian_operational.py"
+  ]
+}
