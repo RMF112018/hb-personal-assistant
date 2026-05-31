@@ -34,6 +34,7 @@ from hb_assistant.construction.config import load_source_registry
 from hb_assistant.construction.config.loader import SourceRegistryError
 from hb_assistant.construction.correspondence import CorrespondenceReviewBuilder
 from hb_assistant.construction.document import (
+    DocumentObsidianProjector,
     build_document_intelligence_previews,
     build_document_relationship_candidates,
     classify_document_cards,
@@ -696,6 +697,31 @@ def files_build_document_previews_cmd(
     """
     store = ConstructionStore()
     report = build_document_intelligence_previews(store, apply=apply)
+    typer.echo(json.dumps(report, indent=2) if json_out else str(report))
+    raise typer.Exit(0 if report["ok"] else 1)
+
+
+@files_app.command("document-obsidian")
+def files_document_obsidian_cmd(
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to one project key."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run (preview); --apply writes notes."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
+) -> None:
+    """Generate marker-bounded document register + review notes from SQLite state.
+
+    Grouped, low-noise Obsidian artifacts — never one note per document: one project
+    Document Register (counts by document type / confidence / extraction disposition /
+    review state + relationship counts + the review-controlled preview's warnings and a
+    source reference) and one Document Review note (review-required counts by category,
+    routed to the review queue — not inlined). Counts only — no document names, full
+    paths, URLs, or document text (output-fenced). Marker-bounded + idempotent. Scope is
+    projects that already have a Prompt-09 preview. Offline (SQLite); no Graph/Procore.
+    Dry-run default; --apply writes to the vault.
+    """
+    store = ConstructionStore()
+    report = DocumentObsidianProjector(store).project(project_key=project, dry_run=dry_run)
     typer.echo(json.dumps(report, indent=2) if json_out else str(report))
     raise typer.Exit(0 if report["ok"] else 1)
 

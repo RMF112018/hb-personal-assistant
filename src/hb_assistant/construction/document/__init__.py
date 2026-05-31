@@ -21,6 +21,7 @@ from hb_assistant.construction.document.contracts import (
 from hb_assistant.construction.document.extraction_eligibility import (
     evaluate_extraction_eligibility,
 )
+from hb_assistant.construction.document.obsidian_projection import DocumentObsidianProjector
 from hb_assistant.construction.document.preview_builder import (
     build_document_intelligence_previews,
 )
@@ -45,4 +46,5 @@ __all__ = [
     "evaluate_extraction_eligibility",
     "build_document_relationship_candidates",
     "build_document_intelligence_previews",
+    "DocumentObsidianProjector",
 ]

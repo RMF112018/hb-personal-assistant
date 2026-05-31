@@ -2379,6 +2379,28 @@ class ConstructionStore:
         row = cur.fetchone()
         return int(row[0]) if row else 0
 
+    def list_document_intelligence_previews(
+        self, *, project_key: Optional[str] = None
+    ) -> list[dict[str, Any]]:
+        """List the document-intelligence previews (V24), optionally one project."""
+        conn = get_connection(self._db_path)
+        sql = (
+            "SELECT preview_id, project_key, preview_kind, preview_redacted, warnings_json, "
+            "confidence_class, review_required, generated_utc "
+            "FROM construction_document_intelligence_previews"
+        )
+        params: tuple[Any, ...] = ()
+        if project_key is not None:
+            sql += " WHERE project_key = ?"
+            params = (project_key,)
+        sql += " ORDER BY project_key"
+        cur = conn.execute(sql, params)
+        keys = (
+            "preview_id", "project_key", "preview_kind", "preview_redacted", "warnings_json",
+            "confidence_class", "review_required", "generated_utc",
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
     def count_procore_live_records(self, *, project_key: str, endpoint_id: str) -> int:
         """Read-only count of canonical Procore live records for a project + endpoint.
 
