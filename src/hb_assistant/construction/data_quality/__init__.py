@@ -2,7 +2,7 @@
 
 Local-only builders and CLI surfaces for project identity backfill (Prompt 02),
 source-system record mapping (Prompt 03), relationship diagnostics (Prompt 04),
-agent-ready query marts and indexes (Prompt 05), gates, and Obsidian marker-bounded data-quality outputs (Prompt 06). All operations are
+agent-ready query marts and indexes (Prompt 05), gates and phase go/no-go (Prompt 07), and Obsidian marker-bounded data-quality outputs (Prompt 06). All operations are
 read-only against external systems by default; writes require explicit --apply
 and are limited to local SQLite metadata (no raw bodies, tokens, or external
 writeback).
@@ -20,6 +20,10 @@ from .marts import (
 )
 from .obsidian import (
     render_data_quality_obsidian_outputs,
+)
+from .gates import (
+    evaluate_data_quality_gates,
+    GateEvaluator,
 )
 from .project_identity import (
     ProjectIdentityBackfill,
@@ -46,4 +50,6 @@ __all__ = [
     "MartBuilder",
     "populate_agent_ready_query_marts",
     "render_data_quality_obsidian_outputs",
+    "evaluate_data_quality_gates",
+    "GateEvaluator",
 ]

@@ -43,6 +43,15 @@ Commands:
   the 4 notes to the configured local vault under "Construction Intelligence/
   Phase 07A Data Quality/" using atomic marker-bounded replace (preserves user
   content outside markers). Zero raw content, zero external writeback.
+- ``hb-assistant construction-agent data-quality gates --json`` — Phase 07A
+  Prompt 07 Data Quality Gates and Phase Go/No-Go. Loads thresholds from
+  resources/json/data_quality_gate_thresholds.json, evaluates 12+ gates against
+  V20/V21 marts + source_system_record_map + relationship_resolution_queue +
+  project identity + latency + prior guardrail attestations. Classifies results
+  (pass/warning/fail_blocking/deferred_not_blocking/not_applicable), persists
+  via existing repository method, and emits explicit phase_go_nogo summaries
+  that assign blockers to 07B (calendar/email), 07C (documents), 08B (financials),
+  or later. Never overstates meeting-prep readiness. Report-only (no --apply).
 
 All commands are read-only against external systems; only SQLite metadata is
 written, and only when ``--apply`` is set.
@@ -1829,6 +1838,59 @@ def obsidian(
         "apply": apply,
         "report": report,
         "guardrails": _OBSIDIAN_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+# ---------------------------------------------------------------------------
+# Phase 07A Prompt 07 — data-quality gates (report + persist via existing repo method)
+# ---------------------------------------------------------------------------
+
+_GATES_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "local_sqlite_only_via_existing_insert",
+    "no_raw_content": True,
+    "phase_assignments_visible": True,
+    "meeting_prep_readiness_requires_all_calendar_email_doc_gates": True,
+    "financial_readiness_requires_financial_gates": True,
+    "candidates_never_auto_promoted": True,
+}
+
+
+@data_quality_app.command("gates")
+def gates(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Data Quality Gates and Phase Go/No-Go (Phase 07A Prompt 07).
+
+    Loads thresholds from resources/json/data_quality_gate_thresholds.json and
+    evaluates the full set of Phase 07A gates (project identity coverage, source
+    record map coverage, orphan rates, email classifier / calendar / document
+    population status, financial completeness, review-required routing, raw
+    content leakage, external writeback, and query latency including gate results
+    query itself).
+
+    Each gate is classified deterministically as pass / warning / fail_blocking /
+    deferred_not_blocking / not_applicable. Blockers are explicitly assigned to
+    future phases (07B for calendar + email threads, 07C for documents, 08B for
+    financials). Results are persisted via the pre-existing
+    ConstructionStore.insert_data_quality_gate_result (no new repository methods).
+
+    The emitted report contains a full per-gate table plus phase_go_nogo
+    summaries that prevent over-claiming meeting-prep, risk-digest, or financial
+    readiness. All computation is local, offline, and source-linked.
+
+    This command is intentionally report-only (no --dry-run / --apply flags).
+    """
+    from hb_assistant.construction.data_quality import evaluate_data_quality_gates
+
+    report = evaluate_data_quality_gates(persist=True)
+
+    payload = {
+        "command": "construction-agent data-quality gates",
+        "report": report,
+        "guardrails": _GATES_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)

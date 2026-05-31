@@ -1,0 +1,198 @@
+{
+  "prompt": "07",
+  "phase": "07A",
+  "generated_utc": "2026-05-31T09:54:07.360023+00:00",
+  "repo_sha": "9b4e63065e7d28efc18af7fe22e40972df0518e1",
+  "schema_version": 21,
+  "run_id": "phase07a-gates-2026-05-31T09-54-07",
+  "gates": [
+    {
+      "gate_name": "project_identity_coverage",
+      "gate_status": "not_applicable",
+      "threshold": 1.0,
+      "observed": null,
+      "blocking": 0,
+      "future_phase": null,
+      "reason": "no_data_in_local_store",
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    },
+    {
+      "gate_name": "source_record_map_coverage",
+      "gate_status": "warning",
+      "threshold": 0.8,
+      "observed": 0.0,
+      "blocking": 0,
+      "future_phase": null,
+      "reason": "below_threshold_0.8",
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    },
+    {
+      "gate_name": "deterministic_orphan_rate",
+      "gate_status": "pass",
+      "threshold": 0.02,
+      "observed": 0.0,
+      "blocking": 0,
+      "future_phase": null,
+      "reason": null,
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    },
+    {
+      "gate_name": "candidate_orphan_rate",
+      "gate_status": "pass",
+      "threshold": 0.1,
+      "observed": 0.0,
+      "blocking": 0,
+      "future_phase": null,
+      "reason": null,
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    },
+    {
+      "gate_name": "email_classifier_persistence_status",
+      "gate_status": "deferred_not_blocking",
+      "threshold": null,
+      "observed": false,
+      "blocking": 0,
+      "future_phase": "07B",
+      "reason": "deferred_to_07B",
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    },
+    {
+      "gate_name": "calendar_population_status",
+      "gate_status": "deferred_not_blocking",
+      "threshold": null,
+      "observed": false,
+      "blocking": 0,
+      "future_phase": "07B",
+      "reason": "deferred_to_07B",
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    },
+    {
+      "gate_name": "document_card_population_status",
+      "gate_status": "deferred_not_blocking",
+      "threshold": null,
+      "observed": false,
+      "blocking": 0,
+      "future_phase": "07C",
+      "reason": "deferred_to_07C",
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    },
+    {
+      "gate_name": "financial_amount_parseability",
+      "gate_status": "warning",
+      "threshold": 0.99,
+      "observed": 0.0,
+      "blocking": 0,
+      "future_phase": "08B",
+      "reason": "below_threshold_0.99",
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    },
+    {
+      "gate_name": "financial_currency_completeness",
+      "gate_status": "warning",
+      "threshold": 0.95,
+      "observed": 0.0,
+      "blocking": 0,
+      "future_phase": "08B",
+      "reason": "below_threshold_0.95",
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    },
+    {
+      "gate_name": "review_required_routing_presence",
+      "gate_status": "deferred_not_blocking",
+      "threshold": null,
+      "observed": false,
+      "blocking": 0,
+      "future_phase": null,
+      "reason": "feature_not_yet_implemented",
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    },
+    {
+      "gate_name": "raw_content_leakage_scan",
+      "gate_status": "pass",
+      "threshold": 0,
+      "observed": 0,
+      "blocking": 0,
+      "future_phase": null,
+      "reason": null,
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    },
+    {
+      "gate_name": "external_writeback_scan",
+      "gate_status": "pass",
+      "threshold": 0,
+      "observed": 0,
+      "blocking": 0,
+      "future_phase": null,
+      "reason": null,
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    },
+    {
+      "gate_name": "query_latency_p95",
+      "gate_status": "pass",
+      "threshold": 500,
+      "observed": 0.28125010430812836,
+      "blocking": 0,
+      "future_phase": null,
+      "reason": null,
+      "run_id": "phase07a-gates-2026-05-31T09-54-07"
+    }
+  ],
+  "phase_go_nogo": {
+    "07A_exit": {
+      "ready": false,
+      "blocking_gates": []
+    },
+    "07B": {
+      "blocked_by": [
+        "email_classifier_persistence_status",
+        "calendar_population_status"
+      ],
+      "ready_for": [
+        "calendar_ingestion",
+        "email_thread_summaries",
+        "meeting_project_matching"
+      ]
+    },
+    "07C": {
+      "blocked_by": [
+        "document_card_population_status"
+      ],
+      "ready_for": [
+        "document_card_population",
+        "file_to_record_relationships"
+      ]
+    },
+    "07D": {
+      "relationship_quality_ready": true,
+      "notes": "07D can proceed on deterministic relationships even if candidate rates are warnings."
+    },
+    "08B": {
+      "financial_readiness": "blocked"
+    }
+  },
+  "meeting_prep_readiness_claim": "blocked",
+  "risk_digest_readiness_claim": "blocked",
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "local_sqlite_only_via_existing_insert",
+    "no_raw_content": true,
+    "phase_assignments_visible": true,
+    "meeting_prep_readiness_requires_all_calendar_email_doc_gates": true,
+    "financial_readiness_requires_financial_gates": true,
+    "risk_digest_readiness_requires_relationship_and_source_gates": true,
+    "candidates_never_auto_promoted": true
+  },
+  "stop_conditions_checked": [
+    "gates_run_deterministically_offline",
+    "gate_failures_not_hidden",
+    "phase_assignments_explicit_for_blockers",
+    "meeting_prep_not_reported_ready_while_calendar_thread_doc_gates_fail",
+    "no_raw_content_or_writeback_leakage_in_gate_logic"
+  ],
+  "no_raw_content": true,
+  "no_external_writeback": true,
+  "files_emitted": [
+    "08-data-quality-gates.json",
+    "08-data-quality-gates.md"
+  ]
+}
