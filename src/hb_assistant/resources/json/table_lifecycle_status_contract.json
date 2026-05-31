@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 105,
+  "table_count": 110,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -315,7 +315,52 @@
       "phase_owner": "02",
       "blocking_for_phase": "07A",
       "v": "V5",
-      "notes": "explicit empty in 02_"
+      "notes": "explicit empty in 02_; extended additively in V24 for 07C document intelligence"
+    },
+    "construction_document_classification_candidates": {
+      "table_family": "document_intelligence_v24",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07C",
+      "blocking_for_phase": "none",
+      "v": "V24",
+      "notes": "document type classification candidates; populated in 07C Prompt 05"
+    },
+    "construction_document_project_match_candidates": {
+      "table_family": "document_intelligence_v24",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07C",
+      "blocking_for_phase": "none",
+      "v": "V24",
+      "notes": "document-to-project match candidates; populated in 07C Prompt 06"
+    },
+    "construction_document_relationship_candidates": {
+      "table_family": "document_intelligence_v24",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07C",
+      "blocking_for_phase": "none",
+      "v": "V24",
+      "notes": "document-to-record relationship candidates; populated in 07C Prompt 08"
+    },
+    "construction_document_intelligence_previews": {
+      "table_family": "document_intelligence_v24",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07C",
+      "blocking_for_phase": "none",
+      "v": "V24",
+      "notes": "review-controlled redacted document previews; populated in 07C Prompt 09"
+    },
+    "construction_document_projection_runs": {
+      "table_family": "document_intelligence_v24",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07C",
+      "blocking_for_phase": "none",
+      "v": "V24",
+      "notes": "document obsidian projection run ledger; populated in 07C Prompt 10"
     },
     "construction_processing_receipts": {
       "table_family": "misc_evidence_audit",

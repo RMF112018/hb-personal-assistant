@@ -1,0 +1,24 @@
+{
+  "contract": "document_project_match_contract",
+  "version": "phase07c-v1",
+  "confidence_classes": [
+    "deterministic",
+    "high_heuristic",
+    "moderate_heuristic",
+    "weak_heuristic",
+    "model_proposed",
+    "unknown"
+  ],
+  "deterministic_signals": [
+    "source_location_project_key",
+    "full_project_number_hash",
+    "stable_record_number_with_project_context"
+  ],
+  "review_required_classes": [
+    "moderate_heuristic",
+    "weak_heuristic",
+    "model_proposed",
+    "unknown"
+  ],
+  "auto_promotion_allowed": false
+}

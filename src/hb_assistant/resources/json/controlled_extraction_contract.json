@@ -1,0 +1,26 @@
+{
+  "contract": "controlled_extraction_contract",
+  "version": "phase07c-v1",
+  "download_default": false,
+  "extract_default": false,
+  "cache_location_policy": "outside_repo_and_outside_vault",
+  "delete_cache_after_parse_default": true,
+  "ocr_default": false,
+  "persist_full_text": false,
+  "persist_allowed": [
+    "hashes",
+    "bounded_redacted_excerpt",
+    "parser_status",
+    "parseability",
+    "confidence",
+    "receipt_metadata"
+  ],
+  "blocked_when": [
+    "review_required",
+    "oversize",
+    "sensitive",
+    "unknown_type",
+    "low_project_confidence",
+    "policy_disallowed"
+  ]
+}

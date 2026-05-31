@@ -1,0 +1,48 @@
+{
+  "contract": "document_card_contract",
+  "version": "phase07c-v1",
+  "required_fields": [
+    "document_card_id",
+    "source_id",
+    "drive_item_id_hash",
+    "document_type",
+    "confidence_class",
+    "review_status",
+    "extraction_eligibility"
+  ],
+  "safe_identity_fields": [
+    "drive_id_hash",
+    "drive_item_id_hash",
+    "title_hash",
+    "title_redacted",
+    "source_path_hash",
+    "source_path_token_hashes_json"
+  ],
+  "forbidden_fields": [
+    "raw_document_text",
+    "signed_url",
+    "download_url",
+    "raw_full_path",
+    "raw_payload",
+    "raw_prompt",
+    "raw_response"
+  ],
+  "guardrail_columns": [
+    "raw_document_text_persisted",
+    "raw_payload_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "source_file_copied_to_vault",
+    "external_writeback_performed"
+  ],
+  "review_required_when": [
+    "weak_match",
+    "model_proposed",
+    "sensitive_type",
+    "high_impact_type",
+    "source_scope_non_compliant",
+    "oversize",
+    "unknown_document_type",
+    "conflicting_project_signals"
+  ]
+}

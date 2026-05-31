@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 23
+LATEST_SCHEMA_VERSION = 24
 
 
 class SQLiteMigrator:
@@ -2407,6 +2407,198 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v24 Phase 07C Prompt 02 — document intelligence schema additions. Additive only:
+    # the existing (empty) V5 construction_document_cards table is *extended* via
+    # ALTER ADD COLUMN (it cannot be greenfield-recreated — CREATE IF NOT EXISTS would
+    # no-op), and five document satellite tables are created fresh. document_card_id is
+    # the canonical 07C card identity (UNIQUE INDEX); the legacy card_id PRIMARY KEY is
+    # retained untouched. Every document-intelligence column/table carries the hard
+    # no-raw-document-text / no-raw-payload / no-signed-url / no-download-url /
+    # no-source-file-copy / no-external-writeback CHECK(... = 0) guardrails. Only hashed
+    # / redacted / bounded fields are stored — never raw text, full paths, or URLs.
+    # (column_name, full ALTER-COLUMN DDL). NOT NULL columns carry a constant DEFAULT
+    # (SQLite ALTER requirement); hash/id columns are nullable TEXT on the empty table
+    # and the materializer (Prompt 04) enforces presence per the contract required_fields.
+    V24_CARD_COLUMNS: list[tuple[str, str]] = [
+        ("document_card_id", "document_card_id TEXT"),
+        ("drive_id_hash", "drive_id_hash TEXT"),
+        ("drive_item_id_hash", "drive_item_id_hash TEXT"),
+        ("project_number_hash", "project_number_hash TEXT"),
+        ("title_hash", "title_hash TEXT"),
+        ("title_redacted", "title_redacted TEXT"),
+        ("file_extension", "file_extension TEXT"),
+        ("mime_type", "mime_type TEXT"),
+        (
+            "size_class",
+            "size_class TEXT NOT NULL DEFAULT 'unknown' "
+            "CHECK(size_class IN ('small','medium','large','oversize','unknown'))",
+        ),
+        ("source_path_hash", "source_path_hash TEXT"),
+        ("source_path_token_hashes_json", "source_path_token_hashes_json TEXT"),
+        ("last_modified_datetime", "last_modified_datetime TEXT"),
+        ("source_reference_json", "source_reference_json TEXT"),
+        (
+            "review_status",
+            "review_status TEXT NOT NULL DEFAULT 'pending' "
+            "CHECK(review_status IN ('not_required','pending','approved','rejected','blocked'))",
+        ),
+        ("review_required", "review_required INTEGER NOT NULL DEFAULT 0"),
+        ("review_reasons_json", "review_reasons_json TEXT"),
+        (
+            "extraction_eligibility",
+            "extraction_eligibility TEXT NOT NULL DEFAULT 'not_evaluated' "
+            "CHECK(extraction_eligibility IN "
+            "('not_evaluated','metadata_only','eligible','manual_approval_required','blocked','skipped'))",
+        ),
+        (
+            "confidence_class",
+            "confidence_class TEXT NOT NULL DEFAULT 'unknown' "
+            "CHECK(confidence_class IN "
+            "('deterministic','high_heuristic','moderate_heuristic','weak_heuristic','model_proposed','unknown'))",
+        ),
+        ("guardrail_flags_json", "guardrail_flags_json TEXT"),
+        (
+            "raw_document_text_persisted",
+            "raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 "
+            "CHECK(raw_document_text_persisted = 0)",
+        ),
+        (
+            "raw_payload_persisted",
+            "raw_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_payload_persisted = 0)",
+        ),
+        (
+            "signed_url_persisted",
+            "signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0)",
+        ),
+        (
+            "download_url_persisted",
+            "download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0)",
+        ),
+        (
+            "source_file_copied_to_vault",
+            "source_file_copied_to_vault INTEGER NOT NULL DEFAULT 0 "
+            "CHECK(source_file_copied_to_vault = 0)",
+        ),
+        (
+            "external_writeback_performed",
+            "external_writeback_performed INTEGER NOT NULL DEFAULT 0 "
+            "CHECK(external_writeback_performed = 0)",
+        ),
+    ]
+
+    V24_STATEMENTS: list[str] = [
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_document_cards_document_card_id
+          ON construction_document_cards(document_card_id);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_document_classification_candidates (
+          candidate_id TEXT PRIMARY KEY,
+          document_card_id TEXT NOT NULL REFERENCES construction_document_cards(document_card_id),
+          document_type TEXT NOT NULL,
+          classifier_name TEXT NOT NULL,
+          signal_class TEXT NOT NULL CHECK(signal_class IN ('deterministic','heuristic','model_proposed')),
+          confidence REAL NOT NULL,
+          confidence_class TEXT NOT NULL,
+          signals_json TEXT,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          promotion_status TEXT NOT NULL DEFAULT 'candidate',
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_document_project_match_candidates (
+          candidate_id TEXT PRIMARY KEY,
+          document_card_id TEXT NOT NULL REFERENCES construction_document_cards(document_card_id),
+          project_key TEXT NOT NULL,
+          candidate_type TEXT NOT NULL,
+          confidence REAL NOT NULL,
+          confidence_class TEXT NOT NULL,
+          deterministic INTEGER NOT NULL DEFAULT 0,
+          model_proposed INTEGER NOT NULL DEFAULT 0,
+          review_required INTEGER NOT NULL DEFAULT 1,
+          promotion_status TEXT NOT NULL DEFAULT 'candidate',
+          signals_json TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_document_relationship_candidates (
+          candidate_id TEXT PRIMARY KEY,
+          document_card_id TEXT NOT NULL REFERENCES construction_document_cards(document_card_id),
+          target_system TEXT NOT NULL,
+          target_record_type TEXT NOT NULL,
+          target_record_key_hash TEXT NOT NULL,
+          relationship_type TEXT NOT NULL,
+          candidate_type TEXT NOT NULL CHECK(candidate_type IN ('deterministic','heuristic','model_proposed')),
+          confidence REAL NOT NULL,
+          confidence_class TEXT NOT NULL,
+          source_reference_json TEXT,
+          signals_json TEXT,
+          review_required INTEGER NOT NULL DEFAULT 1,
+          promotion_status TEXT NOT NULL DEFAULT 'candidate',
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_document_intelligence_previews (
+          preview_id TEXT PRIMARY KEY,
+          project_key TEXT,
+          document_card_id TEXT REFERENCES construction_document_cards(document_card_id),
+          preview_kind TEXT NOT NULL,
+          preview_redacted TEXT,
+          warnings_json TEXT,
+          confidence_class TEXT NOT NULL,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS construction_document_projection_runs (
+          run_id TEXT PRIMARY KEY,
+          mode TEXT NOT NULL,
+          cards_considered INTEGER NOT NULL DEFAULT 0,
+          cards_written INTEGER NOT NULL DEFAULT 0,
+          review_required_count INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL,
+          error_redacted TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_document_cards_project_type
+          ON construction_document_cards(project_key, document_type, confidence_class);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_document_cards_source
+          ON construction_document_cards(source_id, drive_item_id_hash);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_document_cards_review
+          ON construction_document_cards(review_required, review_status);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_document_relationship_candidates_target
+          ON construction_document_relationship_candidates(target_system, target_record_type, target_record_key_hash);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -2690,6 +2882,31 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (23, 'v23_calendar_email_thread_intelligence', ?)",
+                    (now,),
+                )
+
+            # v24 Phase 07C Prompt 02 — document intelligence schema additions. Additive:
+            # extend the existing (empty) V5 construction_document_cards via idempotent
+            # ALTER ADD COLUMN (per-column PRAGMA table_info guard, like V22), then create
+            # the five document satellite tables + indexes (CREATE IF NOT EXISTS). The V5
+            # card table exists by now (V5 CREATE IF NOT EXISTS ran above). V1-V23 untouched.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 24")
+            if cur.fetchone() is None:
+                card_cols = {
+                    row[1]
+                    for row in conn.execute(
+                        "PRAGMA table_info(construction_document_cards)"
+                    ).fetchall()
+                }
+                for col_name, col_ddl in self.V24_CARD_COLUMNS:
+                    if col_name not in card_cols:
+                        conn.execute(
+                            f"ALTER TABLE construction_document_cards ADD COLUMN {col_ddl}"
+                        )
+                for stmt in self.V24_STATEMENTS:
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (24, 'v24_document_intelligence_schema', ?)",
                     (now,),
                 )
 

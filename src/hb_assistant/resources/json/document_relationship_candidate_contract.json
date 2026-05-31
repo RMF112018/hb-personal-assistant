@@ -1,0 +1,38 @@
+{
+  "contract": "document_relationship_candidate_contract",
+  "version": "phase07c-v1",
+  "target_systems": [
+    "procore",
+    "email",
+    "calendar"
+  ],
+  "target_record_types": [
+    "rfi",
+    "submittal",
+    "observation",
+    "meeting",
+    "commitment",
+    "contract",
+    "change_event",
+    "change_order",
+    "daily_log",
+    "inspection",
+    "email_thread",
+    "calendar_event"
+  ],
+  "candidate_types": [
+    "deterministic",
+    "heuristic",
+    "model_proposed"
+  ],
+  "promotion_default": "candidate",
+  "review_required_when": [
+    "heuristic_weak",
+    "model_proposed",
+    "sensitive",
+    "high_impact",
+    "conflicting",
+    "stale",
+    "unknown"
+  ]
+}

@@ -48,7 +48,7 @@ def _names(conn: sqlite3.Connection, kind: str) -> set[str]:
 def test_v23_creates_all_tables_and_indexes() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "v23.db"
-        assert _migrate(db) == LATEST_SCHEMA_VERSION == 23
+        assert _migrate(db) == LATEST_SCHEMA_VERSION
         conn = sqlite3.connect(str(db))
         tables = _names(conn, "table")
         for t in _V23_TABLES:
@@ -61,8 +61,8 @@ def test_v23_creates_all_tables_and_indexes() -> None:
 def test_v23_is_idempotent() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "v23.db"
-        assert _migrate(db) == 23
-        assert _migrate(db) == 23  # second apply is a no-op
+        assert _migrate(db) == LATEST_SCHEMA_VERSION
+        assert _migrate(db) == LATEST_SCHEMA_VERSION  # second apply is a no-op
         conn = sqlite3.connect(str(db))
         n = conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 23").fetchone()[0]
         assert n == 1

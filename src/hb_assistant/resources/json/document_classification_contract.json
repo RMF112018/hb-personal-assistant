@@ -1,0 +1,31 @@
+{
+  "contract": "document_classification_contract",
+  "version": "phase07c-v1",
+  "document_types": [
+    "drawings",
+    "specifications",
+    "addenda",
+    "rfi",
+    "submittal",
+    "meeting_minutes",
+    "contract",
+    "change_order",
+    "pay_application",
+    "schedule",
+    "daily_report",
+    "inspection_report",
+    "warranty_closeout",
+    "photo_media",
+    "unknown_needs_review"
+  ],
+  "signal_order": [
+    "source_context",
+    "folder_token_hashes",
+    "filename_token_hashes",
+    "extension_mime",
+    "known_record_number",
+    "heuristic",
+    "model_proposed"
+  ],
+  "model_output_policy": "advisory_only_review_required"
+}
