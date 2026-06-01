@@ -110,7 +110,8 @@ def test_safety_proof_discloses_raw_staging_layer_out_of_scope():
     try:
         report = build_data_quality_no_writeback_proof(db_path=db_path)
         assert report["no_raw_values_persisted_scope"] == (
-            "phase_07a_data_quality_and_phase_07b_calendar_email_thread_candidate_surfaces_only"
+            "phase_07a_data_quality_and_phase_07b_calendar_email_thread_candidate_"
+            "and_phase_07c_document_intelligence_surfaces"
         )
         disclosed = report["raw_staging_layers_out_of_scope"]
         assert isinstance(disclosed, list) and disclosed

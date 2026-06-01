@@ -135,6 +135,71 @@ _PHASE_07B_TABLES: List[str] = list(_PHASE_07B_TABLE_GUARDS)
 
 _PHASE_07B_EVIDENCE_SUBDIR = "construction-intelligence-phase-07b-calendar-email"
 
+# ---------------------------------------------------------------------------
+# Phase 07C scope (document-intelligence surfaces, Prompt 12)
+# ---------------------------------------------------------------------------
+
+# Source modules created across Phase 07C (relative to src/hb_assistant/). The 06A
+# file-intelligence projector (graph/file_obsidian_projection.py) is intentionally NOT
+# listed here — it renders SharePoint web_url links by design and is a 06A surface.
+_PHASE_07C_MODULES: List[str] = [
+    "construction/document/card_materializer.py",
+    "construction/document/classifier.py",
+    "construction/document/contracts.py",
+    "construction/document/extraction_eligibility.py",
+    "construction/document/obsidian_projection.py",
+    "construction/document/preview_builder.py",
+    "construction/document/project_matcher.py",
+    "construction/document/relationship_builder.py",
+    "construction/document/source_scope.py",
+]
+
+# Phase 07C (V24) document tables -> the guard CHECK columns each declares and the
+# value each must hold (all 0).
+_PHASE_07C_TABLE_GUARDS: Dict[str, Dict[str, int]] = {
+    "construction_document_cards": {
+        "raw_document_text_persisted": 0,
+        "raw_payload_persisted": 0,
+        "signed_url_persisted": 0,
+        "download_url_persisted": 0,
+        "source_file_copied_to_vault": 0,
+        "external_writeback_performed": 0,
+    },
+    "construction_document_classification_candidates": {
+        "raw_document_text_persisted": 0,
+        "raw_prompt_persisted": 0,
+        "raw_response_persisted": 0,
+        "external_writeback_performed": 0,
+    },
+    "construction_document_project_match_candidates": {
+        "raw_document_text_persisted": 0,
+        "external_writeback_performed": 0,
+    },
+    "construction_document_relationship_candidates": {
+        "raw_document_text_persisted": 0,
+        "raw_prompt_persisted": 0,
+        "raw_response_persisted": 0,
+        "external_writeback_performed": 0,
+    },
+    "construction_document_intelligence_previews": {
+        "raw_document_text_persisted": 0,
+        "raw_prompt_persisted": 0,
+        "raw_response_persisted": 0,
+        "external_writeback_performed": 0,
+    },
+    "construction_document_projection_runs": {
+        "raw_document_text_persisted": 0,
+        "external_writeback_performed": 0,
+    },
+}
+
+_PHASE_07C_TABLES: List[str] = list(_PHASE_07C_TABLE_GUARDS)
+
+_PHASE_07C_EVIDENCE_SUBDIR = "construction-intelligence-phase-07c-document-intelligence"
+
+# Obsidian output base (relative to the vault root) produced by Phase 07C Prompt 10.
+_PHASE_07C_OBSIDIAN_BASE = "Work/HB Personal Assistant/07C_Document_Intelligence"
+
 # Raw-by-design staging layers that are OUTSIDE the scope of this no-raw-persistence
 # proof. The Phase 06A file-intelligence inventory intentionally stores raw drive-item
 # metadata (file name / web URL / parent path) and is NOT scanned here (its web_url
@@ -299,6 +364,31 @@ def _scan_07a_evidence_outputs(repo_root: Path) -> Dict[str, Any]:
     return _scan_evidence_outputs(repo_root, _PHASE_07A_EVIDENCE_SUBDIR)
 
 
+def _scan_obsidian_outputs(base_relative: str) -> Dict[str, Any]:
+    """Scan a generated Obsidian output directory (under the vault root) for secrets /
+    tokens (read-only). An unresolved vault root or an absent directory means there is
+    nothing to scan — that is not a violation (mirrors the evidence-scan semantics).
+    Findings are ``filename: label`` only — never the offending value."""
+    findings: List[str] = []
+    try:
+        root = PathPolicy().get_vault_root() / base_relative
+    except Exception:
+        return {"scanned_dir": base_relative, "findings": findings, "note": "vault root unresolved"}
+    if not root.exists():
+        return {"scanned_dir": str(root), "findings": findings, "note": "obsidian output dir not present"}
+    for r, _dirs, files in os.walk(root):
+        for fn in files:
+            if fn.endswith((".md", ".txt")):
+                p = Path(r) / fn
+                try:
+                    text = p.read_text(encoding="utf-8", errors="ignore")
+                    for h in _scan_text_for_secrets(text):
+                        findings.append(f"{fn}: {h}")
+                except Exception:
+                    pass
+    return {"scanned_dir": str(root), "findings": findings}
+
+
 def _scan_module_set(repo_root: Path, src_relative_paths: List[str]) -> Dict[str, Dict[str, Any]]:
     """Static mutation/import/secret scan over a set of modules (relative to
     src/hb_assistant/). Reuses the shared per-module scanner."""
@@ -404,6 +494,7 @@ _SAFETY_GUARDRAILS = {
     "external_systems": "read_only",
     "writeback": "none_permitted_in_07a_data_quality",
     "raw_body_persisted": "enforced_0_in_all_v20_v21_07a_tables",
+    "document_tables_guard_columns": "enforced_0_in_all_v24_07c_document_tables",
     "secrets_tokens_urls_in_code_or_evidence": "forbidden",
     "no_live_calls": True,
     "phase_assignments_preserved": True,
@@ -476,7 +567,28 @@ def build_data_quality_no_writeback_proof(
     evidence_07b = _scan_evidence_outputs(repo_root, _PHASE_07B_EVIDENCE_SUBDIR)
     no_07b_evidence_secrets = not evidence_07b["findings"]
 
-    # Overall verdict (07A AND 07B; any finding fails the proof closed)
+    # 5. Phase 07C surfaces — document modules, the six V24 document tables (guard
+    #    CHECK columns + persisted content), the 07C evidence tree, and the 07C
+    #    Obsidian output. Fail-closed.
+    c_modules = _scan_module_set(repo_root, _PHASE_07C_MODULES)
+    scanned_07c_modules = [m for m, r in c_modules.items() if r.get("present") is not False]
+    any_07c_writeback = any(r.get("writeback") for r in c_modules.values())
+    any_07c_bad_imports = any(r.get("bad_imports") for r in c_modules.values())
+    any_07c_module_secrets = any(r.get("secrets") for r in c_modules.values())
+
+    guards_07c = _probe_table_guards(conn, _PHASE_07C_TABLE_GUARDS)
+    guards_07c_ok = not guards_07c["violations"]
+
+    content_07c = _scan_table_contents(conn, _PHASE_07C_TABLES)
+    content_07c_ok = not content_07c["findings"]
+
+    evidence_07c = _scan_evidence_outputs(repo_root, _PHASE_07C_EVIDENCE_SUBDIR)
+    no_07c_evidence_secrets = not evidence_07c["findings"]
+
+    obsidian_07c = _scan_obsidian_outputs(_PHASE_07C_OBSIDIAN_BASE)
+    no_07c_obsidian_secrets = not obsidian_07c["findings"]
+
+    # Overall verdict (07A AND 07B AND 07C; any finding fails the proof closed)
     proof_passed = (
         not any_writeback
         and not any_bad_imports
@@ -489,6 +601,13 @@ def build_data_quality_no_writeback_proof(
         and guards_07b_ok
         and content_07b_ok
         and no_07b_evidence_secrets
+        and not any_07c_writeback
+        and not any_07c_bad_imports
+        and not any_07c_module_secrets
+        and guards_07c_ok
+        and content_07c_ok
+        and no_07c_evidence_secrets
+        and no_07c_obsidian_secrets
     )
 
     checks_detail = {
@@ -541,37 +660,74 @@ def build_data_quality_no_writeback_proof(
             "findings": evidence_07b["findings"],
             "scanned_dir": evidence_07b["scanned_dir"],
         },
+        "static_writeback_scan_07c_modules": {
+            "passed": not any_07c_writeback,
+            "findings": [f for r in c_modules.values() for f in (r.get("writeback") or [])],
+        },
+        "no_http_client_or_mutation_imports_07c": {
+            "passed": not any_07c_bad_imports,
+            "findings": [f for r in c_modules.values() for f in (r.get("bad_imports") or [])],
+        },
+        "module_secret_scan_07c": {
+            "passed": not any_07c_module_secrets,
+            "findings": [f for r in c_modules.values() for f in (r.get("secrets") or [])],
+        },
+        "sqlite_guard_checks_07c_document_tables": {
+            "passed": guards_07c_ok,
+            "findings": guards_07c["violations"],
+            "tables": guards_07c["tables"],
+        },
+        "sqlite_content_leak_scan_07c_document_tables": {
+            "passed": content_07c_ok,
+            "findings": content_07c["findings"],
+            "scanned_tables": content_07c["scanned"],
+        },
+        "evidence_output_scan_07c": {
+            "passed": no_07c_evidence_secrets,
+            "findings": evidence_07c["findings"],
+            "scanned_dir": evidence_07c["scanned_dir"],
+        },
+        "obsidian_output_scan_07c": {
+            "passed": no_07c_obsidian_secrets,
+            "findings": obsidian_07c["findings"],
+            "scanned_dir": obsidian_07c["scanned_dir"],
+        },
     }
 
     report: Dict[str, Any] = {
         "command": "construction-agent data-quality no-writeback-proof",
         "ok": proof_passed,
         "proof_passed": proof_passed,
-        "phase": "Phase 07A Prompt 08 + Phase 07B Prompt 12",
+        "phase": "Phase 07A Prompt 08 + Phase 07B Prompt 12 + Phase 07C Prompt 12",
         "generated_utc": generated_utc,
         "repo_sha": sha,
         "schema_version": schema_version,
         "scanned_modules": scanned_modules,
         "scanned_modules_07b": scanned_07b_modules,
+        "scanned_modules_07c": scanned_07c_modules,
         "checks_detail": checks_detail,
         "guardrails": _SAFETY_GUARDRAILS,
         "stop_conditions_checked": _STOP_CONDITIONS_CHECKED,
         "no_live_call_performed": True,
-        "no_raw_values_persisted": raw_body_ok and guards_07b_ok and content_07b_ok,
+        "no_raw_values_persisted": (
+            raw_body_ok and guards_07b_ok and content_07b_ok and guards_07c_ok and content_07c_ok
+        ),
         "no_raw_values_persisted_scope": (
-            "phase_07a_data_quality_and_phase_07b_calendar_email_thread_candidate_surfaces_only"
+            "phase_07a_data_quality_and_phase_07b_calendar_email_thread_candidate_"
+            "and_phase_07c_document_intelligence_surfaces"
         ),
         "raw_staging_layers_out_of_scope": _RAW_STAGING_LAYERS_OUT_OF_SCOPE,
         "note": (
-            "Formal no-writeback / no-secret / no-raw-body proof for Phase 07A data-quality "
-            "surfaces AND Phase 07B calendar/email/thread/candidate surfaces (modules + "
-            "V11/V14/V23 guard CHECK columns + persisted-content scan + evidence). Re-uses the "
+            "Formal no-writeback / no-secret / no-raw-body / no-raw-document-text proof for Phase "
+            "07A data-quality surfaces, Phase 07B calendar/email/thread/candidate surfaces, AND "
+            "Phase 07C document-intelligence surfaces (modules + V11/V14/V23/V24 guard CHECK "
+            "columns + persisted-content scan + evidence + generated Obsidian notes). Re-uses the "
             "shared secret scanner from the Procore no-writeback prover; findings are pattern "
-            "labels and table.column locations only (never the value). Read-only, fail-closed. "
-            "This proof does NOT cover the Phase 06A raw file-intelligence staging layer "
-            "(construction_drive_item_inventory: name/web_url/parent_path), which is raw-by-design "
-            "and must be hashed/redacted before any Phase 07C document-card, evidence, or Obsidian "
-            "output — see raw_staging_layers_out_of_scope."
+            "labels and table.column / file locations only (never the value). Read-only, "
+            "fail-closed. This proof does NOT cover the Phase 06A raw file-intelligence staging "
+            "layer (construction_drive_item_inventory: name/web_url/parent_path), which is "
+            "raw-by-design and is hashed/redacted before any Phase 07C document-card, evidence, or "
+            "Obsidian output — see raw_staging_layers_out_of_scope."
         ),
     }
     return report
