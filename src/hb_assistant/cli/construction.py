@@ -132,6 +132,10 @@ from hb_assistant.construction.relationships.cross_source_substrate import (
     CrossSourceRelationshipSubstrateBuilder,
     relationship_substrate_status,
 )
+from hb_assistant.construction.risk_digest import (
+    RiskDigestBuilder,
+    project_risk_digest_status,
+)
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient
 from hb_assistant.store.migrator import SQLiteMigrator
@@ -372,6 +376,70 @@ def issue_history_status(
         "filter": {"project": project},
         "report": report,
         "guardrails": _ISSUE_HISTORY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+risk_digest_app = typer.Typer(
+    help="Phase 07D project risk-digest materialization (build/status). Dry-run safe by default; "
+    "--apply writes local SQLite risk-digest items only — advisory, review-controlled, no raw "
+    "content, and never writes back to any external system."
+)
+app.add_typer(risk_digest_app, name="risk-digest")
+
+_RISK_DIGEST_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "writes": "local_sqlite_project_risk_digest_items_only",
+    "no_raw_content": True,
+    "advisory_only": True,
+    "no_final_determinations": True,
+    "auto_promotion": False,
+}
+
+
+@risk_digest_app.command("build")
+def risk_digest_build(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist risk-digest items to SQLite (default: dry-run)."
+    ),
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Materialize review-controlled risk digests into project_risk_digest_items (V25),
+    classifying indicators as source_stated / inferred_candidate / model_proposed /
+    review_required. Advisory; model/weak/sensitive items stay review-required and are never
+    auto-promoted."""
+    builder = RiskDigestBuilder(ConstructionStore())
+    report = builder.build(dry_run=not apply, project_filter=project)
+    payload = {
+        "command": "construction-agent risk-digest build",
+        "apply": apply,
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _RISK_DIGEST_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+@risk_digest_app.command("status")
+def risk_digest_status(
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Read-only coverage report over the Phase 07D project risk-digest table (V25)."""
+    report = project_risk_digest_status(ConstructionStore(), project_filter=project)
+    payload = {
+        "command": "construction-agent risk-digest status",
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _RISK_DIGEST_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if report.get("ok") else 1)

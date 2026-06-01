@@ -2899,6 +2899,121 @@ class ConstructionStore:
         row = conn.execute("SELECT COUNT(*) FROM project_issue_history_items").fetchone()
         return int(row[0]) if row else 0
 
+    # --- Phase 07D Prompt 08 risk digest (V25) -------------------------------
+
+    def list_procore_action_signals(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        signal_status: Optional[str] = None,
+        limit: int = 100000,
+    ) -> list[dict[str, Any]]:
+        """List Procore action signals (V7) — safe identifier/enum fields only (never
+        title_redacted / summary_redacted / metadata_json free-text)."""
+        keys = (
+            "action_signal_id", "project_key", "record_key", "endpoint_id", "signal_type",
+            "signal_status", "importance", "due_at_utc",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if signal_status is not None:
+            clauses.append("signal_status = ?")
+            params.append(signal_status)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM procore_action_signals {where} "
+            "ORDER BY action_signal_id LIMIT ?",
+            tuple(params),
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    def upsert_project_risk_digest_item(
+        self,
+        *,
+        risk_digest_id: str,
+        project_key: str,
+        risk_indicator_type: str,
+        risk_source_class: str,
+        summary_redacted: str,
+        confidence_class: str,
+        evidence_trail_id: Optional[str] = None,
+        review_required: bool = False,
+        stale_unknown_flags_json: Optional[str] = None,
+    ) -> None:
+        """Upsert a project risk-digest item (V25). Idempotent by risk_digest_id (a
+        deterministic hash of project + risk_source_class + risk_indicator_type).
+        summary_redacted holds compact counts / enums / category tokens / endpoint names only —
+        never a raw body, document text, status payload, URL, or token. Guard CHECK columns keep
+        their schema defaults (0)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO project_risk_digest_items
+                    (risk_digest_id, project_key, risk_indicator_type, risk_source_class,
+                     summary_redacted, evidence_trail_id, confidence_class, review_required,
+                     stale_unknown_flags_json, created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(risk_digest_id) DO UPDATE SET
+                    project_key = excluded.project_key,
+                    risk_indicator_type = excluded.risk_indicator_type,
+                    risk_source_class = excluded.risk_source_class,
+                    summary_redacted = excluded.summary_redacted,
+                    evidence_trail_id = excluded.evidence_trail_id,
+                    confidence_class = excluded.confidence_class,
+                    review_required = excluded.review_required,
+                    stale_unknown_flags_json = excluded.stale_unknown_flags_json,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    risk_digest_id, project_key, risk_indicator_type, risk_source_class,
+                    summary_redacted, evidence_trail_id, confidence_class,
+                    1 if review_required else 0, stale_unknown_flags_json, _utc_now(), _utc_now(),
+                ),
+            )
+
+    def list_project_risk_digest_items(
+        self, *, project_key: Optional[str] = None, limit: int = 2000,
+    ) -> list[dict[str, Any]]:
+        """List project risk-digest items (V25). Safe fields only; JSON decoded."""
+        keys = (
+            "risk_digest_id", "project_key", "risk_indicator_type", "risk_source_class",
+            "summary_redacted", "evidence_trail_id", "confidence_class", "review_required",
+            "stale_unknown_flags_json",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM project_risk_digest_items {where} "
+            "ORDER BY risk_digest_id LIMIT ?",
+            tuple(params),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            record["stale_unknown_flags_json"] = self._load_json(
+                record["stale_unknown_flags_json"]
+            )
+            record["review_required"] = bool(record["review_required"])
+            results.append(record)
+        return results
+
+    def count_project_risk_digest_items(self) -> int:
+        conn = get_connection(self._db_path)
+        row = conn.execute("SELECT COUNT(*) FROM project_risk_digest_items").fetchone()
+        return int(row[0]) if row else 0
+
     # --- Phase 07D Prompt 04 normalization source readers --------------------
 
     def list_procore_record_edges(
