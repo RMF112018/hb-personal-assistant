@@ -75,6 +75,10 @@ from pydantic import ValidationError
 from hb_assistant.auth.providers import DelegatedAuthProvider
 from hb_assistant.config.loader import load_config
 from hb_assistant.config.path_policy import PathPolicy
+from hb_assistant.construction.aging_exposure import (
+    AgingExposureBuilder,
+    project_aging_exposure_status,
+)
 from hb_assistant.construction.classification import (
     ClassificationRouter,
     ClassificationService,
@@ -440,6 +444,70 @@ def risk_digest_status(
         "filter": {"project": project},
         "report": report,
         "guardrails": _RISK_DIGEST_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+aging_exposure_app = typer.Typer(
+    help="Phase 07D aging & exposure reporting (build/status). Dry-run safe by default; --apply "
+    "writes local SQLite aging-exposure items only — advisory, no raw content / financial amounts, "
+    "and never writes back to any external system."
+)
+app.add_typer(aging_exposure_app, name="aging-exposure")
+
+_AGING_EXPOSURE_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "writes": "local_sqlite_aging_exposure_report_items_only",
+    "no_raw_content": True,
+    "no_financial_amounts_persisted": True,
+    "advisory_only": True,
+    "no_final_determinations": True,
+    "auto_promotion": False,
+}
+
+
+@aging_exposure_app.command("build")
+def aging_exposure_build(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist aging-exposure items to SQLite (default: dry-run)."
+    ),
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Materialize aging & exposure reports into aging_exposure_report_items (V25): one classified
+    row per record across record families, with an aging threshold band and stale / missing-status
+    flags. Advisory; no raw financial amounts are persisted; sensitive records stay review-required."""
+    builder = AgingExposureBuilder(ConstructionStore())
+    report = builder.build(dry_run=not apply, project_filter=project)
+    payload = {
+        "command": "construction-agent aging-exposure build",
+        "apply": apply,
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _AGING_EXPOSURE_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+@aging_exposure_app.command("status")
+def aging_exposure_status(
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Read-only coverage report over the Phase 07D aging & exposure table (V25)."""
+    report = project_aging_exposure_status(ConstructionStore(), project_filter=project)
+    payload = {
+        "command": "construction-agent aging-exposure status",
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _AGING_EXPOSURE_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if report.get("ok") else 1)

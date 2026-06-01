@@ -3014,6 +3014,95 @@ class ConstructionStore:
         row = conn.execute("SELECT COUNT(*) FROM project_risk_digest_items").fetchone()
         return int(row[0]) if row else 0
 
+    # --- Phase 07D Prompt 09 aging & exposure reporting (V25) ----------------
+
+    def upsert_aging_exposure_report_item(
+        self,
+        *,
+        aging_item_id: str,
+        project_key: str,
+        record_family: str,
+        record_ref: str,
+        status: str,
+        threshold_band: str,
+        age_days: int = 0,
+        stale_flag: bool = False,
+        missing_status_flag: bool = False,
+        evidence_trail_id: Optional[str] = None,
+        confidence_class: Optional[str] = None,
+        review_required: bool = False,
+    ) -> None:
+        """Upsert an aging/exposure report item (V25). Idempotent by aging_item_id (a
+        deterministic hash of project + record_family + record_ref, matching the UNIQUE key).
+        record_ref is a local stable record key; status is a normalized bounded token — never a
+        raw body, status payload, financial amount, URL, or token. Guard CHECK columns keep their
+        schema defaults (0)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO aging_exposure_report_items
+                    (aging_item_id, project_key, record_family, record_ref, status, age_days,
+                     threshold_band, stale_flag, missing_status_flag, evidence_trail_id,
+                     confidence_class, review_required, created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(aging_item_id) DO UPDATE SET
+                    project_key = excluded.project_key,
+                    record_family = excluded.record_family,
+                    record_ref = excluded.record_ref,
+                    status = excluded.status,
+                    age_days = excluded.age_days,
+                    threshold_band = excluded.threshold_band,
+                    stale_flag = excluded.stale_flag,
+                    missing_status_flag = excluded.missing_status_flag,
+                    evidence_trail_id = excluded.evidence_trail_id,
+                    confidence_class = excluded.confidence_class,
+                    review_required = excluded.review_required,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    aging_item_id, project_key, record_family, record_ref, status, age_days,
+                    threshold_band, 1 if stale_flag else 0, 1 if missing_status_flag else 0,
+                    evidence_trail_id, confidence_class, 1 if review_required else 0,
+                    _utc_now(), _utc_now(),
+                ),
+            )
+
+    def list_aging_exposure_report_items(
+        self, *, project_key: Optional[str] = None, limit: int = 2000,
+    ) -> list[dict[str, Any]]:
+        """List aging/exposure report items (V25). Safe fields only."""
+        keys = (
+            "aging_item_id", "project_key", "record_family", "record_ref", "status",
+            "age_days", "threshold_band", "stale_flag", "missing_status_flag",
+            "evidence_trail_id", "confidence_class", "review_required",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM aging_exposure_report_items {where} "
+            "ORDER BY aging_item_id LIMIT ?",
+            tuple(params),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            for bool_field in ("stale_flag", "missing_status_flag", "review_required"):
+                record[bool_field] = bool(record[bool_field])
+            results.append(record)
+        return results
+
+    def count_aging_exposure_report_items(self) -> int:
+        conn = get_connection(self._db_path)
+        row = conn.execute("SELECT COUNT(*) FROM aging_exposure_report_items").fetchone()
+        return int(row[0]) if row else 0
+
     # --- Phase 07D Prompt 04 normalization source readers --------------------
 
     def list_procore_record_edges(
