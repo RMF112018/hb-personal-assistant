@@ -114,6 +114,10 @@ from hb_assistant.construction.manifests import (
     ManifestService,
     VaultRootNotConfigured,
 )
+from hb_assistant.construction.meeting_prep import (
+    MeetingPrepBriefBuilder,
+    meeting_prep_brief_status,
+)
 from hb_assistant.construction.policy import (
     ReviewPolicyEvaluator,
     ReviewQueueRouter,
@@ -232,6 +236,73 @@ def relationships_promote(
         "filter": {"project": project},
         "report": report,
         "guardrails": _RELATIONSHIP_SUBSTRATE_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+meeting_prep_app = typer.Typer(
+    help="Phase 07D meeting-prep brief materialization (build/status). Dry-run safe by default; "
+    "--apply writes local SQLite brief runs + sections only — advisory, prerequisite-gated, no "
+    "raw content, and never writes back to any external system."
+)
+app.add_typer(meeting_prep_app, name="meeting-prep")
+
+_MEETING_PREP_BRIEF_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "writes": "local_sqlite_brief_runs_and_sections_only",
+    "no_raw_content": True,
+    "advisory_only": True,
+    "no_final_determinations": True,
+    "prerequisite_gated": True,
+    "auto_promotion": False,
+}
+
+
+@meeting_prep_app.command("build")
+def meeting_prep_build(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist brief runs + sections to SQLite (default: dry-run)."
+    ),
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    lookahead_days: Optional[int] = typer.Option(
+        None, "--lookahead-days", help="Override the policy meeting lookahead window (days)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Materialize source-linked meeting-prep briefs into the V25 brief tables. One run per
+    project with the eight policy sections; advisory only and gated by the Phase 07D meeting-prep
+    prerequisite gates (a blocked run writes zero sections). Never auto-promotes."""
+    builder = MeetingPrepBriefBuilder(ConstructionStore())
+    report = builder.build(dry_run=not apply, project_filter=project, lookahead_days=lookahead_days)
+    payload = {
+        "command": "construction-agent meeting-prep build",
+        "apply": apply,
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _MEETING_PREP_BRIEF_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+@meeting_prep_app.command("status")
+def meeting_prep_status(
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Read-only coverage report over the Phase 07D meeting-prep brief tables (V25)."""
+    report = meeting_prep_brief_status(ConstructionStore(), project_filter=project)
+    payload = {
+        "command": "construction-agent meeting-prep status",
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _MEETING_PREP_BRIEF_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if report.get("ok") else 1)

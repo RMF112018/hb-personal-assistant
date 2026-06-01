@@ -2627,6 +2627,189 @@ class ConstructionStore:
         row = cur.fetchone()
         return int(row[0]) if row else 0
 
+    _CROSS_SOURCE_RELATIONSHIP_KEYS: tuple[str, ...] = (
+        "relationship_id", "candidate_id", "project_key", "source_family",
+        "source_record_type", "source_record_ref", "target_family", "target_record_type",
+        "target_record_ref", "relationship_type", "confidence_class", "promotion_status",
+        "promoted_by", "review_required", "signals_json", "source_reference_json",
+        "evidence_trail_id",
+    )
+
+    def list_cross_source_relationships(
+        self, *, project_key: Optional[str] = None, limit: int = 2000,
+    ) -> list[dict[str, Any]]:
+        """List promoted cross-source relationships (V25). Safe identifier/enum fields only;
+        JSON columns decoded. The eight guard CHECK columns are not selected."""
+        keys = self._CROSS_SOURCE_RELATIONSHIP_KEYS
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM cross_source_relationships {where} "
+            "ORDER BY relationship_id LIMIT ?",
+            tuple(params),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            for json_field in ("signals_json", "source_reference_json"):
+                record[json_field] = self._load_json(record[json_field])
+            record["review_required"] = bool(record["review_required"])
+            results.append(record)
+        return results
+
+    # --- Phase 07D Prompt 06 meeting-prep brief materialization (V25) ---------
+
+    def upsert_meeting_prep_brief_run(
+        self,
+        *,
+        brief_run_id: str,
+        project_key: str,
+        mode: str,
+        lookahead_days: int,
+        status: str,
+        event_index_id: Optional[str] = None,
+        sections_written: int = 0,
+        review_required_count: int = 0,
+    ) -> None:
+        """Upsert a meeting-prep brief run (V25). Idempotent by brief_run_id (a deterministic
+        hash of project_key + lookahead). ``mode`` is 'dry_run' or 'apply'. Guard CHECK
+        columns keep their schema defaults (0); no raw content is written."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO meeting_prep_brief_runs
+                    (brief_run_id, project_key, event_index_id, mode, lookahead_days, status,
+                     sections_written, review_required_count, generated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(brief_run_id) DO UPDATE SET
+                    project_key = excluded.project_key,
+                    event_index_id = excluded.event_index_id,
+                    mode = excluded.mode,
+                    lookahead_days = excluded.lookahead_days,
+                    status = excluded.status,
+                    sections_written = excluded.sections_written,
+                    review_required_count = excluded.review_required_count,
+                    generated_utc = excluded.generated_utc
+                """,
+                (
+                    brief_run_id, project_key, event_index_id, mode, lookahead_days, status,
+                    sections_written, review_required_count, _utc_now(),
+                ),
+            )
+
+    def upsert_meeting_prep_brief_section(
+        self,
+        *,
+        section_id: str,
+        brief_run_id: str,
+        section_kind: str,
+        section_redacted: str,
+        confidence_class: str,
+        evidence_trail_id: Optional[str] = None,
+        review_required: bool = False,
+        stale_unknown_flags_json: Optional[str] = None,
+    ) -> None:
+        """Upsert a meeting-prep brief section (V25). Idempotent by section_id (a deterministic
+        hash of brief_run_id + section_kind). section_redacted holds compact counts / enums /
+        local identifiers only — never a raw body, document text, calendar payload, URL, or
+        token. Guard CHECK columns keep their schema defaults (0)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO meeting_prep_brief_sections
+                    (section_id, brief_run_id, section_kind, section_redacted, evidence_trail_id,
+                     confidence_class, review_required, stale_unknown_flags_json, generated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(section_id) DO UPDATE SET
+                    brief_run_id = excluded.brief_run_id,
+                    section_kind = excluded.section_kind,
+                    section_redacted = excluded.section_redacted,
+                    evidence_trail_id = excluded.evidence_trail_id,
+                    confidence_class = excluded.confidence_class,
+                    review_required = excluded.review_required,
+                    stale_unknown_flags_json = excluded.stale_unknown_flags_json,
+                    generated_utc = excluded.generated_utc
+                """,
+                (
+                    section_id, brief_run_id, section_kind, section_redacted, evidence_trail_id,
+                    confidence_class, 1 if review_required else 0, stale_unknown_flags_json,
+                    _utc_now(),
+                ),
+            )
+
+    def list_meeting_prep_brief_runs(
+        self, *, project_key: Optional[str] = None, limit: int = 2000,
+    ) -> list[dict[str, Any]]:
+        """List meeting-prep brief runs (V25). Safe fields only."""
+        keys = (
+            "brief_run_id", "project_key", "event_index_id", "mode", "lookahead_days",
+            "status", "sections_written", "review_required_count", "generated_utc",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM meeting_prep_brief_runs {where} "
+            "ORDER BY brief_run_id LIMIT ?",
+            tuple(params),
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    def list_meeting_prep_brief_sections(
+        self, *, brief_run_id: Optional[str] = None, limit: int = 2000,
+    ) -> list[dict[str, Any]]:
+        """List meeting-prep brief sections (V25). Safe fields only; JSON decoded."""
+        keys = (
+            "section_id", "brief_run_id", "section_kind", "section_redacted",
+            "evidence_trail_id", "confidence_class", "review_required",
+            "stale_unknown_flags_json", "generated_utc",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if brief_run_id is not None:
+            clauses.append("brief_run_id = ?")
+            params.append(brief_run_id)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM meeting_prep_brief_sections {where} "
+            "ORDER BY section_id LIMIT ?",
+            tuple(params),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            record["stale_unknown_flags_json"] = self._load_json(
+                record["stale_unknown_flags_json"]
+            )
+            record["review_required"] = bool(record["review_required"])
+            results.append(record)
+        return results
+
+    def count_meeting_prep_brief_runs(self) -> int:
+        conn = get_connection(self._db_path)
+        row = conn.execute("SELECT COUNT(*) FROM meeting_prep_brief_runs").fetchone()
+        return int(row[0]) if row else 0
+
+    def count_meeting_prep_brief_sections(self) -> int:
+        conn = get_connection(self._db_path)
+        row = conn.execute("SELECT COUNT(*) FROM meeting_prep_brief_sections").fetchone()
+        return int(row[0]) if row else 0
+
     # --- Phase 07D Prompt 04 normalization source readers --------------------
 
     def list_procore_record_edges(
