@@ -130,6 +130,10 @@ from hb_assistant.construction.meeting_prep import (
     MeetingPrepBriefBuilder,
     meeting_prep_brief_status,
 )
+from hb_assistant.construction.obsidian import (
+    cross_source_obsidian_status,
+    render_cross_source_obsidian_outputs,
+)
 from hb_assistant.construction.policy import (
     ReviewPolicyEvaluator,
     ReviewQueueRouter,
@@ -575,6 +579,87 @@ def correspondence_status_cmd(
         "filter": {"project": project},
         "report": report,
         "guardrails": _CORRESPONDENCE_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+cross_source_app = typer.Typer(
+    help="Phase 07D cross-source intelligence Obsidian outputs (obsidian/status). Dry-run safe by "
+    "default (writes a repo evidence preview + proof, no vault); --apply writes marker-bounded "
+    "notes to the local vault. No raw content, no external writeback, never auto-promotes."
+)
+app.add_typer(cross_source_app, name="cross-source")
+
+_CROSS_SOURCE_OBSIDIAN_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "local_vault_only_on_apply",
+    "no_raw_content": True,
+    "marker_bounded": True,
+    "advisory_only": True,
+    "candidates_promoted_as_authoritative": False,
+}
+
+
+@cross_source_app.command("obsidian")
+def cross_source_obsidian(
+    dry_run: bool = typer.Option(
+        False, "--dry-run",
+        help="Preview only (no vault writes). Default when neither flag given. Always emits a repo "
+        "evidence preview + proof JSON.",
+    ),
+    apply: bool = typer.Option(
+        False, "--apply",
+        help="EXPLICIT opt-in. Writes six marker-bounded 07D intelligence notes to the local vault "
+        "(if configured).",
+    ),
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Render marker-bounded Obsidian notes for the 07D cross-source intelligence (relationships,
+    meeting-prep readiness, issue history, risk digest, aging & exposure, correspondence) from the
+    redacted read-model summaries. No raw content; review-required items are never authoritative."""
+    if dry_run and apply:
+        payload = {
+            "command": "construction-agent cross-source obsidian",
+            "status": "invalid_flags",
+            "error": "--dry-run and --apply are mutually exclusive",
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(2)
+    if not dry_run and not apply:
+        dry_run = True
+    report = render_cross_source_obsidian_outputs(
+        dry_run=dry_run, apply=apply, project_filter=project
+    )
+    payload = {
+        "command": "construction-agent cross-source obsidian",
+        "dry_run": dry_run and not apply,
+        "apply": apply,
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _CROSS_SOURCE_OBSIDIAN_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+@cross_source_app.command("status")
+def cross_source_status(
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Read-only coverage over the Phase 07D cross-source-intelligence Obsidian run records (V25)."""
+    report = cross_source_obsidian_status(ConstructionStore(), project_filter=project)
+    payload = {
+        "command": "construction-agent cross-source status",
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _CROSS_SOURCE_OBSIDIAN_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if report.get("ok") else 1)

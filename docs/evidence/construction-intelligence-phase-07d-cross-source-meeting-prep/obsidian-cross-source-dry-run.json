@@ -1,0 +1,27 @@
+{
+  "prompt": "11",
+  "phase": "07D",
+  "generated_utc": "2026-06-01T23:27:06.289783+00:00",
+  "repo_sha": "fe2f6cd845d3cf9329fe536a749c812ffd9b58a2",
+  "schema_version": 25,
+  "mode": "dry_run",
+  "notes_planned": 6,
+  "notes_written": 0,
+  "applied_to_vault": false,
+  "marker_bounded": true,
+  "no_raw_content": true,
+  "review_required_total": 2027,
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "local_vault_only_on_apply",
+    "no_raw_content": true,
+    "marker_bounded": true,
+    "source_traceability": true,
+    "candidates_promoted_as_authoritative": false,
+    "advisory_only": true
+  },
+  "files_emitted": [
+    "11-obsidian-cross-source-output-preview.md",
+    "obsidian-cross-source-dry-run.json"
+  ]
+}

@@ -3103,6 +3103,77 @@ class ConstructionStore:
         row = conn.execute("SELECT COUNT(*) FROM aging_exposure_report_items").fetchone()
         return int(row[0]) if row else 0
 
+    # --- Phase 07D Prompt 11 cross-source intelligence Obsidian runs (V25) ----
+
+    def upsert_cross_source_intelligence_obsidian_run(
+        self,
+        *,
+        obsidian_run_id: str,
+        mode: str,
+        output_kind: str,
+        status: str,
+        project_key: Optional[str] = None,
+        notes_written: int = 0,
+        review_required_count: int = 0,
+        error_redacted: Optional[str] = None,
+    ) -> None:
+        """Upsert a cross-source-intelligence Obsidian run record (V25). Idempotent by
+        obsidian_run_id. ``mode`` is 'dry_run' or 'apply'. Carries only counts / enums — no raw
+        content. Guard CHECK columns keep their schema defaults (0)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO cross_source_intelligence_obsidian_runs
+                    (obsidian_run_id, project_key, mode, output_kind, notes_written,
+                     review_required_count, status, error_redacted, generated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(obsidian_run_id) DO UPDATE SET
+                    project_key = excluded.project_key,
+                    mode = excluded.mode,
+                    output_kind = excluded.output_kind,
+                    notes_written = excluded.notes_written,
+                    review_required_count = excluded.review_required_count,
+                    status = excluded.status,
+                    error_redacted = excluded.error_redacted,
+                    generated_utc = excluded.generated_utc
+                """,
+                (
+                    obsidian_run_id, project_key, mode, output_kind, notes_written,
+                    review_required_count, status, error_redacted, _utc_now(),
+                ),
+            )
+
+    def list_cross_source_intelligence_obsidian_runs(
+        self, *, project_key: Optional[str] = None, limit: int = 2000,
+    ) -> list[dict[str, Any]]:
+        """List cross-source-intelligence Obsidian run records (V25). Safe fields only."""
+        keys = (
+            "obsidian_run_id", "project_key", "mode", "output_kind", "notes_written",
+            "review_required_count", "status", "error_redacted", "generated_utc",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM cross_source_intelligence_obsidian_runs {where} "
+            "ORDER BY generated_utc DESC, obsidian_run_id LIMIT ?",
+            tuple(params),
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    def count_cross_source_intelligence_obsidian_runs(self) -> int:
+        conn = get_connection(self._db_path)
+        row = conn.execute(
+            "SELECT COUNT(*) FROM cross_source_intelligence_obsidian_runs"
+        ).fetchone()
+        return int(row[0]) if row else 0
+
     # --- Phase 07D Prompt 04 normalization source readers --------------------
 
     def list_procore_record_edges(
