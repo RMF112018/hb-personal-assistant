@@ -1,0 +1,9 @@
+version: phase07d-review-required-relationship-rules-v1
+always_review_required:
+  confidence_classes: [weak_heuristic, model_proposed, stale_or_unresolved]
+  categories: [legal, contractual, claim, safety, personnel, financial, sensitive_high_impact]
+  source_flags: [private_calendar_event, encrypted_body_context, review_required_document, unresolved_target]
+never_auto_promote_if:
+  - sensitive_high_impact: true
+  - model_proposed: true
+  - confidence_class: weak_heuristic

@@ -1,0 +1,22 @@
+{
+  "version": "meeting_prep_brief_contract-v1",
+  "required_fields": [
+    "brief_run_id",
+    "project_key",
+    "meeting_context",
+    "project_context",
+    "open_items",
+    "aging_items",
+    "recent_activity",
+    "risk_exposure_watchlist",
+    "review_required_warnings",
+    "evidence_refs",
+    "confidence_labels",
+    "stale_unknown_warnings"
+  ],
+  "guardrails": {
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "source_references_required": true
+  }
+}

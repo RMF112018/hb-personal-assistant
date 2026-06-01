@@ -1,0 +1,22 @@
+{
+  "version": "phase_07d_data_quality_gates-v1",
+  "required_fields": [
+    "cross_source_relationship_candidate_coverage",
+    "deterministic_relationship_quality",
+    "weak_model_sensitive_review_routing_accuracy",
+    "meeting_prep_prerequisite_status",
+    "meeting_prep_brief_generation_coverage",
+    "evidence_trail_completeness",
+    "issue_history_coverage",
+    "risk_digest_coverage",
+    "aging_report_coverage",
+    "no_writeback_no_secret_no_raw_content_proof",
+    "obsidian_output_safety",
+    "stale_unknown_warning_coverage"
+  ],
+  "guardrails": {
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "source_references_required": true
+  }
+}

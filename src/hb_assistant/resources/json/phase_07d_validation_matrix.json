@@ -1,0 +1,21 @@
+{
+  "phase": "07D",
+  "evidence_root": "docs/evidence/construction-intelligence-phase-07d-cross-source-meeting-prep",
+  "commands": [
+    "python -m compileall src tests",
+    "ruff check .",
+    "mypy src",
+    "pytest -m \"not live and not integration and not manual\"",
+    "hb-assistant construction-agent relationships status --json",
+    "hb-assistant construction-agent meeting-prep status --json",
+    "hb-assistant construction-agent data-quality phase-07d-gates --json",
+    "hb-assistant construction-agent data-quality phase-07d-no-writeback-proof --json"
+  ],
+  "stop_on": [
+    "unsafe_persistence",
+    "external_writeback",
+    "readiness_overstatement",
+    "missing_evidence_refs",
+    "unclassified_validation_failure"
+  ]
+}

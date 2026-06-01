@@ -1,0 +1,19 @@
+{
+  "version": "project_issue_history_contract-v1",
+  "required_fields": [
+    "issue_family_id",
+    "project_key",
+    "status",
+    "age_days",
+    "latest_activity_utc",
+    "source_families_json",
+    "evidence_trail_id",
+    "confidence_class",
+    "review_required"
+  ],
+  "guardrails": {
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "source_references_required": true
+  }
+}

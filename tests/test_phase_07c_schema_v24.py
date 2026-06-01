@@ -82,7 +82,9 @@ def _names(conn: sqlite3.Connection, kind: str) -> set[str]:
 def test_v24_is_latest_and_creates_document_schema() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "v24.db"
-        assert _migrate(db) == LATEST_SCHEMA_VERSION == 24
+        # V24 is additive; later migrations (e.g. V25 Phase 07D) advance LATEST, so we
+        # assert the migration reaches LATEST and the V24 document schema is present below.
+        assert _migrate(db) == LATEST_SCHEMA_VERSION >= 24
         conn = sqlite3.connect(str(db))
 
         tables = _names(conn, "table")

@@ -1,0 +1,33 @@
+{
+  "version": "phase07d-cross-source-relationship-v1",
+  "required_fields": [
+    "candidate_id",
+    "project_key",
+    "source_family",
+    "source_record_type",
+    "source_record_ref",
+    "target_family",
+    "target_record_type",
+    "target_record_ref",
+    "relationship_type",
+    "confidence_score",
+    "confidence_class",
+    "review_required",
+    "promotion_status",
+    "source_reference_json"
+  ],
+  "confidence_classes": [
+    "deterministic",
+    "strong_heuristic",
+    "weak_heuristic",
+    "model_proposed",
+    "human_promoted",
+    "rejected",
+    "stale_or_unresolved"
+  ],
+  "no_auto_promotion_for": [
+    "weak_heuristic",
+    "model_proposed",
+    "sensitive_high_impact"
+  ]
+}

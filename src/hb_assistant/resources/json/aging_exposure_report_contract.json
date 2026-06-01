@@ -1,0 +1,21 @@
+{
+  "version": "aging_exposure_report_contract-v1",
+  "required_fields": [
+    "aging_item_id",
+    "project_key",
+    "record_family",
+    "record_ref",
+    "status",
+    "age_days",
+    "threshold_band",
+    "stale_flag",
+    "missing_status_flag",
+    "evidence_trail_id",
+    "review_required"
+  ],
+  "guardrails": {
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "source_references_required": true
+  }
+}

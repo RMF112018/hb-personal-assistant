@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 24
+LATEST_SCHEMA_VERSION = 25
 
 
 class SQLiteMigrator:
@@ -2599,6 +2599,302 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v25 Phase 07D Prompt 02 — cross-source relationship + meeting-prep substrate.
+    # Additive-only (CREATE IF NOT EXISTS): ten local read-model tables that ship empty
+    # and are populated by later 07D prompts (relationship normalization, meeting-prep
+    # briefs, issue history, risk digest, aging/exposure, Obsidian projections, 07D
+    # gates/validation). Every table carries the eight no-raw / no-writeback guard
+    # columns (CHECK(... = 0)) from 05_SCHEMA_AND_MIGRATION_PLAN; deterministic-hash PKs
+    # + UNIQUE edge keys make apply() idempotent and dedup-safe. V1-V24 untouched.
+    V25_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS cross_source_relationship_candidates (
+          candidate_id TEXT PRIMARY KEY,
+          project_key TEXT,
+          source_family TEXT NOT NULL,
+          source_record_type TEXT NOT NULL,
+          source_record_ref TEXT NOT NULL,
+          target_family TEXT NOT NULL,
+          target_record_type TEXT NOT NULL,
+          target_record_ref TEXT NOT NULL,
+          relationship_type TEXT NOT NULL,
+          confidence_score REAL NOT NULL,
+          confidence_class TEXT NOT NULL CHECK(confidence_class IN ('deterministic','strong_heuristic','weak_heuristic','model_proposed','human_promoted','rejected','stale_or_unresolved')),
+          deterministic INTEGER NOT NULL DEFAULT 0,
+          model_proposed INTEGER NOT NULL DEFAULT 0,
+          sensitive_high_impact INTEGER NOT NULL DEFAULT 0,
+          review_required INTEGER NOT NULL DEFAULT 1,
+          promotion_status TEXT NOT NULL DEFAULT 'candidate' CHECK(promotion_status IN ('candidate','promoted','rejected','stale','needs_review')),
+          signals_json TEXT,
+          source_reference_json TEXT NOT NULL,
+          evidence_trail_id TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          UNIQUE(source_family, source_record_ref, target_family, target_record_ref, relationship_type)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_cross_source_relationship_candidates_project
+          ON cross_source_relationship_candidates(project_key, confidence_class, review_required);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_cross_source_relationship_candidates_source
+          ON cross_source_relationship_candidates(source_family, source_record_type);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_cross_source_relationship_candidates_target
+          ON cross_source_relationship_candidates(target_family, target_record_type);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS cross_source_relationships (
+          relationship_id TEXT PRIMARY KEY,
+          candidate_id TEXT REFERENCES cross_source_relationship_candidates(candidate_id),
+          project_key TEXT,
+          source_family TEXT NOT NULL,
+          source_record_type TEXT NOT NULL,
+          source_record_ref TEXT NOT NULL,
+          target_family TEXT NOT NULL,
+          target_record_type TEXT NOT NULL,
+          target_record_ref TEXT NOT NULL,
+          relationship_type TEXT NOT NULL,
+          confidence_class TEXT NOT NULL CHECK(confidence_class IN ('deterministic','strong_heuristic','weak_heuristic','model_proposed','human_promoted','rejected','stale_or_unresolved')),
+          promotion_status TEXT NOT NULL DEFAULT 'promoted' CHECK(promotion_status IN ('promoted','human_promoted','rejected','stale')),
+          promoted_by TEXT NOT NULL DEFAULT 'deterministic' CHECK(promoted_by IN ('deterministic','human')),
+          review_required INTEGER NOT NULL DEFAULT 0,
+          signals_json TEXT,
+          source_reference_json TEXT NOT NULL,
+          evidence_trail_id TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          UNIQUE(source_family, source_record_ref, target_family, target_record_ref, relationship_type)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_cross_source_relationships_project
+          ON cross_source_relationships(project_key, confidence_class, review_required);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS source_evidence_trails (
+          evidence_trail_id TEXT PRIMARY KEY,
+          project_key TEXT,
+          evidence_kind TEXT NOT NULL,
+          relationship_candidate_id TEXT,
+          source_refs_json TEXT NOT NULL,
+          confidence_class TEXT NOT NULL,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          stale_unknown_flags_json TEXT,
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_source_evidence_trails_project
+          ON source_evidence_trails(project_key, confidence_class, review_required);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS meeting_prep_brief_runs (
+          brief_run_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          event_index_id TEXT,
+          mode TEXT NOT NULL CHECK(mode IN ('dry_run','apply')),
+          lookahead_days INTEGER NOT NULL,
+          status TEXT NOT NULL,
+          sections_written INTEGER NOT NULL DEFAULT 0,
+          review_required_count INTEGER NOT NULL DEFAULT 0,
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_meeting_prep_brief_runs_project
+          ON meeting_prep_brief_runs(project_key, status);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS meeting_prep_brief_sections (
+          section_id TEXT PRIMARY KEY,
+          brief_run_id TEXT NOT NULL REFERENCES meeting_prep_brief_runs(brief_run_id) ON DELETE CASCADE,
+          section_kind TEXT NOT NULL,
+          section_redacted TEXT NOT NULL,
+          evidence_trail_id TEXT,
+          confidence_class TEXT NOT NULL,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          stale_unknown_flags_json TEXT,
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_meeting_prep_brief_sections_run
+          ON meeting_prep_brief_sections(brief_run_id, section_kind);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS project_issue_history_items (
+          issue_family_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          issue_kind TEXT,
+          status TEXT NOT NULL,
+          age_days INTEGER NOT NULL DEFAULT 0,
+          latest_activity_utc TEXT,
+          source_families_json TEXT NOT NULL,
+          evidence_trail_id TEXT,
+          confidence_class TEXT NOT NULL,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          stale_unknown_flags_json TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_project_issue_history_items_project
+          ON project_issue_history_items(project_key, status, review_required);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS project_risk_digest_items (
+          risk_digest_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          risk_indicator_type TEXT NOT NULL,
+          risk_source_class TEXT NOT NULL CHECK(risk_source_class IN ('source_stated','inferred_candidate','model_proposed','review_required')),
+          summary_redacted TEXT NOT NULL,
+          evidence_trail_id TEXT,
+          confidence_class TEXT NOT NULL,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          stale_unknown_flags_json TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_project_risk_digest_items_project
+          ON project_risk_digest_items(project_key, risk_source_class, review_required);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS aging_exposure_report_items (
+          aging_item_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          record_family TEXT NOT NULL,
+          record_ref TEXT NOT NULL,
+          status TEXT NOT NULL,
+          age_days INTEGER NOT NULL DEFAULT 0,
+          threshold_band TEXT NOT NULL,
+          stale_flag INTEGER NOT NULL DEFAULT 0,
+          missing_status_flag INTEGER NOT NULL DEFAULT 0,
+          evidence_trail_id TEXT,
+          confidence_class TEXT,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          UNIQUE(project_key, record_family, record_ref)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_aging_exposure_report_items_project
+          ON aging_exposure_report_items(project_key, threshold_band, review_required);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS cross_source_intelligence_obsidian_runs (
+          obsidian_run_id TEXT PRIMARY KEY,
+          project_key TEXT,
+          mode TEXT NOT NULL CHECK(mode IN ('dry_run','apply')),
+          output_kind TEXT NOT NULL,
+          notes_written INTEGER NOT NULL DEFAULT 0,
+          review_required_count INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL,
+          error_redacted TEXT,
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS phase_07d_validation_runs (
+          validation_run_id TEXT PRIMARY KEY,
+          mode TEXT NOT NULL CHECK(mode IN ('dry_run','apply')),
+          status TEXT NOT NULL,
+          schema_version INTEGER,
+          commands_json TEXT,
+          passed_count INTEGER NOT NULL DEFAULT 0,
+          failed_count INTEGER NOT NULL DEFAULT 0,
+          error_redacted TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -2907,6 +3203,19 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (24, 'v24_document_intelligence_schema', ?)",
+                    (now,),
+                )
+
+            # v25 Phase 07D Prompt 02 — cross-source relationship + meeting-prep schema
+            # additions (additive CREATE TABLE/INDEX only; no-raw/no-writeback CHECK
+            # guardrails; deterministic-hash PKs + UNIQUE edges for idempotency). Tables
+            # ship empty for later 07D prompts to populate. V1-V24 untouched.
+            for stmt in self.V25_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 25")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (25, 'v25_cross_source_relationship_meeting_prep_schema', ?)",
                     (now,),
                 )
 

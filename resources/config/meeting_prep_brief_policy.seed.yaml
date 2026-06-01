@@ -1,0 +1,19 @@
+version: phase07d-meeting-prep-brief-policy-v1
+lookahead_days_default: 7
+require_prerequisite_gates: true
+require_evidence_refs_per_section: true
+sections:
+  - meeting_context
+  - project_context
+  - open_items
+  - aging_items
+  - recent_activity
+  - risk_exposure_watchlist
+  - review_required_warnings
+  - confidence_and_stale_unknown_warnings
+forbidden_outputs:
+  - final_legal_determination
+  - final_contractual_determination
+  - final_claim_determination
+  - final_safety_determination
+  - final_financial_determination

@@ -1,0 +1,17 @@
+{
+  "version": "source_evidence_trail_contract-v1",
+  "required_fields": [
+    "evidence_trail_id",
+    "project_key",
+    "source_refs_json",
+    "confidence_class",
+    "relationship_status",
+    "review_required",
+    "stale_unknown_flags_json"
+  ],
+  "guardrails": {
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "source_references_required": true
+  }
+}

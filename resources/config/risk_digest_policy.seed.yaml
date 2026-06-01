@@ -1,0 +1,15 @@
+version: phase07d-risk-digest-policy-v1
+risk_source_classes:
+  source_stated: source record explicitly states the condition
+  inferred_candidate: deterministic or strong heuristic indicator
+  model_proposed: model-derived without deterministic support
+  review_required: weak, sensitive, high-impact, stale, or disputed
+review_required_categories:
+  - legal
+  - claim
+  - contractual
+  - safety
+  - personnel
+  - financial
+  - schedule_impact
+  - cost_impact

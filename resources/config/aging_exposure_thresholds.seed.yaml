@@ -1,0 +1,8 @@
+version: phase07d-aging-exposure-thresholds-v1
+default_bands:
+  current: {min_days: 0, max_days: 7}
+  monitor: {min_days: 8, max_days: 14}
+  aging: {min_days: 15, max_days: 30}
+  stale: {min_days: 31, max_days: 60}
+  critical_review: {min_days: 61, max_days: null}
+record_family_overrides: {}

@@ -1,0 +1,17 @@
+version: phase07d-cross-source-relationship-policy-v1
+promotion:
+  deterministic:
+    allow_local_promotion: true
+    require_sensitive_high_impact_absent: true
+  strong_heuristic:
+    allow_local_promotion: false
+    review_required: conditional
+  weak_heuristic:
+    allow_local_promotion: false
+    review_required: true
+  model_proposed:
+    allow_local_promotion: false
+    review_required: true
+  sensitive_high_impact:
+    allow_local_promotion: false
+    review_required: true

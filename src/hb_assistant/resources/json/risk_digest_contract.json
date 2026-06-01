@@ -1,0 +1,18 @@
+{
+  "version": "risk_digest_contract-v1",
+  "required_fields": [
+    "risk_digest_id",
+    "project_key",
+    "risk_indicator_type",
+    "risk_source_class",
+    "summary_redacted",
+    "evidence_trail_id",
+    "confidence_class",
+    "review_required"
+  ],
+  "guardrails": {
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "source_references_required": true
+  }
+}

@@ -1,6 +1,6 @@
 {
   "schema": "table_lifecycle_status_contract/v1",
-  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation).",
+  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02).",
   "statuses": [
     "operational_populated",
     "operational_empty_expected",
@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 110,
+  "table_count": 120,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1009,6 +1009,96 @@
       "blocking_for_phase": "none",
       "v": "V23",
       "notes": "Phase 07B calendar/email-thread intelligence (V23)"
+    },
+    "cross_source_relationship_candidates": {
+      "table_family": "cross_source_07d",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07D",
+      "blocking_for_phase": "none",
+      "v": "V25",
+      "notes": "Phase 07D cross-source relationship candidates; populated in 07D Prompt 03/04"
+    },
+    "cross_source_relationships": {
+      "table_family": "cross_source_07d",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07D",
+      "blocking_for_phase": "none",
+      "v": "V25",
+      "notes": "Phase 07D promoted/confirmed cross-source relationships (deterministic or human); populated in 07D Prompt 04"
+    },
+    "source_evidence_trails": {
+      "table_family": "cross_source_07d",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07D",
+      "blocking_for_phase": "none",
+      "v": "V25",
+      "notes": "Phase 07D redacted source evidence trails; populated in 07D Prompt 04"
+    },
+    "meeting_prep_brief_runs": {
+      "table_family": "cross_source_07d",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07D",
+      "blocking_for_phase": "none",
+      "v": "V25",
+      "notes": "Phase 07D meeting-prep brief run ledger; populated in 07D Prompt 06"
+    },
+    "meeting_prep_brief_sections": {
+      "table_family": "cross_source_07d",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07D",
+      "blocking_for_phase": "none",
+      "v": "V25",
+      "notes": "Phase 07D meeting-prep brief sections (redacted); populated in 07D Prompt 06"
+    },
+    "project_issue_history_items": {
+      "table_family": "cross_source_07d",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07D",
+      "blocking_for_phase": "none",
+      "v": "V25",
+      "notes": "Phase 07D cross-source project issue history; populated in 07D Prompt 07"
+    },
+    "project_risk_digest_items": {
+      "table_family": "cross_source_07d",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07D",
+      "blocking_for_phase": "none",
+      "v": "V25",
+      "notes": "Phase 07D project risk digest items (redacted summaries); populated in 07D Prompt 08"
+    },
+    "aging_exposure_report_items": {
+      "table_family": "cross_source_07d",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07D",
+      "blocking_for_phase": "none",
+      "v": "V25",
+      "notes": "Phase 07D aging/exposure report items; populated in 07D Prompt 09"
+    },
+    "cross_source_intelligence_obsidian_runs": {
+      "table_family": "cross_source_07d",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07D",
+      "blocking_for_phase": "none",
+      "v": "V25",
+      "notes": "Phase 07D cross-source Obsidian projection run ledger; populated in 07D Prompt 11"
+    },
+    "phase_07d_validation_runs": {
+      "table_family": "cross_source_07d",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "07D",
+      "blocking_for_phase": "none",
+      "v": "V25",
+      "notes": "Phase 07D validation run ledger; populated in 07D Prompt 13/14"
     }
   }
 }
