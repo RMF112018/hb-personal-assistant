@@ -61,7 +61,7 @@ def test_empty_store_defers_07b_gates_and_blocks_meeting_prep() -> None:
         statuses = _status_map(report)
         for gate in _07B_GATES:
             assert statuses[gate] == "deferred_not_blocking", (gate, statuses.get(gate))
-        assert report["meeting_prep_readiness_claim"] in ("blocked", "needs_07b_07c_data")
+        assert report["meeting_prep_readiness_claim"] in ("blocked", "needs_07b_07c_data", "needs_07d_data")
         prep = _meeting_prep(report)
         assert prep["ready"] is False
         assert prep["auto_readiness_allowed"] is False

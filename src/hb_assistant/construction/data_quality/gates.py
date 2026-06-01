@@ -97,6 +97,60 @@ _PHASE_ASSIGNMENTS = {
     # Others are 07A core or relationship (07D-enabling but not blocking 07A exit)
 }
 
+# Phase 07D Prompt 05 — meeting-prep prerequisite gates evaluated over the V25
+# cross-source relationship substrate. Kept as an explicit constant (not derived from
+# phase_07d_data_quality_gates.json, whose required_fields are a superset spanning later
+# 07D prompts) so the readiness blocked_by list only ever names gates that actually run.
+_MEETING_PREP_07D_PREREQUISITES = [
+    "cross_source_relationship_candidate_coverage",
+    "deterministic_relationship_quality",
+    "evidence_trail_completeness",
+    "weak_model_sensitive_review_routing_accuracy",
+    "meeting_prep_prerequisite_status",
+]
+
+# Confidence-class vocabulary (cross_source_relationship_contract.json). A deterministic
+# edge must carry the deterministic class; weak/model/stale classes (plus the
+# model_proposed / sensitive_high_impact flags) must always be review-routed and never
+# auto-promoted.
+_DETERMINISTIC_CONFIDENCE_CLASS = "deterministic"
+_WEAK_CONFIDENCE_CLASSES = frozenset(
+    {"weak_heuristic", "model_proposed", "stale_or_unresolved"}
+)
+
+# Per-category grouping for the meeting-prep readiness breakdown. Names absent from the
+# evaluated result set (e.g. a later-prompt gate) are filtered out at build time.
+_MEETING_PREP_CATEGORY_MAP: dict[str, list[str]] = {
+    "calendar": ["calendar_population_status"],
+    "email": [
+        "email_classifier_persistence_status",
+        "email_thread_summary_population_status",
+        "meeting_email_candidate_population_status",
+    ],
+    "document": [
+        "document_card_population_status",
+        "document_classification_coverage",
+        "document_project_match_coverage",
+        "document_extraction_eligibility_status",
+        "document_relationship_population_status",
+        "document_intelligence_safety_scan",
+    ],
+    "relationship": [
+        "cross_source_relationship_candidate_coverage",
+        "deterministic_relationship_quality",
+        "evidence_trail_completeness",
+    ],
+    "review": [
+        "review_required_routing_presence",
+        "weak_model_sensitive_review_routing_accuracy",
+    ],
+    "safety": ["raw_content_leakage_scan", "external_writeback_scan"],
+    "source_scope": [
+        "document_source_scope_compliance",
+        "meeting_prep_prerequisite_status",
+    ],
+}
+
 # ---------------------------------------------------------------------------
 # Helpers (duplicated minimal style from siblings; no cross-module re-import of internals)
 # ---------------------------------------------------------------------------
@@ -590,6 +644,184 @@ class GateEvaluator:
             "document_intelligence_safety_scan", observed, None, is_boolean=True, future_phase="07C"
         )
 
+    # --- Phase 07D meeting-prep prerequisite gates (V25 substrate) ----------
+
+    def _gate_cross_source_relationship_candidate_coverage(self) -> dict[str, Any]:
+        """The V25 cross-source relationship substrate has been built (07D).
+
+        Presence gate: candidates>0 -> pass; empty -> deferred_not_blocking (the substrate
+        is a meeting-prep prerequisite, so an empty substrate keeps readiness blocked).
+        """
+        count = 0
+        with contextlib.suppress(Exception):
+            count = ConstructionStore(db_path=self.db_path).count_cross_source_relationship_candidates()
+        res = self._classify(
+            "cross_source_relationship_candidate_coverage", count > 0, None,
+            is_boolean=True, future_phase="07D",
+        )
+        res["candidate_count"] = count
+        return res
+
+    def _gate_deterministic_relationship_quality(self) -> dict[str, Any]:
+        """Deterministic relationship candidates are well-formed (07D).
+
+        A deterministic edge must carry the deterministic confidence class and must never be
+        flagged sensitive_high_impact. Zero deterministic candidates -> deferred_not_blocking;
+        any malformed deterministic edge is a real quality violation -> fail_blocking.
+        """
+        deterministic_count = 0
+        malformed = 0
+        with contextlib.suppress(Exception):
+            store = ConstructionStore(db_path=self.db_path)
+            for c in store.list_cross_source_relationship_candidates(limit=100000):
+                if not c.get("deterministic"):
+                    continue
+                deterministic_count += 1
+                if (
+                    c.get("confidence_class") != _DETERMINISTIC_CONFIDENCE_CLASS
+                    or c.get("sensitive_high_impact")
+                ):
+                    malformed += 1
+        res = self._classify(
+            "deterministic_relationship_quality", deterministic_count > 0, None,
+            is_boolean=True, future_phase="07D",
+        )
+        if malformed > 0:
+            res["gate_status"] = "fail_blocking"
+            res["blocking"] = 1
+            res["reason"] = "deterministic_edge_quality_violation"
+        res["deterministic_count"] = deterministic_count
+        res["malformed_count"] = malformed
+        return res
+
+    def _gate_evidence_trail_completeness(self) -> dict[str, Any]:
+        """Every relationship candidate carries a source evidence trail (07D).
+
+        candidates==0 -> deferred_not_blocking; trails>=candidates -> pass;
+        trails<candidates -> fail_blocking (source-traceability is a hard invariant).
+        """
+        candidates = 0
+        trails = 0
+        with contextlib.suppress(Exception):
+            store = ConstructionStore(db_path=self.db_path)
+            candidates = store.count_cross_source_relationship_candidates()
+            trails = store.count_source_evidence_trails()
+        res = self._classify(
+            "evidence_trail_completeness", candidates > 0 and trails >= candidates, None,
+            is_boolean=True, future_phase="07D",
+        )
+        if candidates > 0 and trails < candidates:
+            res["gate_status"] = "fail_blocking"
+            res["blocking"] = 1
+            res["reason"] = "missing_evidence_trails"
+        res["candidates"] = candidates
+        res["evidence_trails"] = trails
+        return res
+
+    def _gate_weak_model_sensitive_review_routing_accuracy(self) -> dict[str, Any]:
+        """Weak / model-proposed / sensitive relationship candidates are review-routed (07D).
+
+        Every candidate that is model_proposed OR sensitive_high_impact OR carries a weak
+        confidence class must have review_required=True (never silently treated as fact).
+        No such candidates -> deferred_not_blocking; all routed -> pass; any misrouted ->
+        fail_blocking. This gate only reports; it never sets review flags or promotes.
+        """
+        weak_model_sensitive = 0
+        misrouted = 0
+        with contextlib.suppress(Exception):
+            store = ConstructionStore(db_path=self.db_path)
+            for c in store.list_cross_source_relationship_candidates(limit=100000):
+                requires_review = (
+                    c.get("model_proposed")
+                    or c.get("sensitive_high_impact")
+                    or c.get("confidence_class") in _WEAK_CONFIDENCE_CLASSES
+                )
+                if not requires_review:
+                    continue
+                weak_model_sensitive += 1
+                if not c.get("review_required"):
+                    misrouted += 1
+        res = self._classify(
+            "weak_model_sensitive_review_routing_accuracy", weak_model_sensitive > 0, None,
+            is_boolean=True, future_phase="07D",
+        )
+        if misrouted > 0:
+            res["gate_status"] = "fail_blocking"
+            res["blocking"] = 1
+            res["reason"] = "weak_model_sensitive_not_review_routed"
+            self.review_items.append(
+                f"{misrouted} weak/model/sensitive relationship candidate(s) lack review routing"
+            )
+        res["weak_model_sensitive_count"] = weak_model_sensitive
+        res["misrouted_count"] = misrouted
+        return res
+
+    def _gate_meeting_prep_prerequisite_status(self) -> dict[str, Any]:
+        """Meeting-prep source-scope prerequisite (07D).
+
+        Distinguishes (per the 07D source-scope prerequisite policy):
+        - pass: SharePoint approved scope or OneDrive explicit selected/all-folders allowlist
+          (explicit all-folders is compliant and must NOT block on its own).
+        - fail_blocking: an in-scope OneDrive source is ambiguous / missing allowlist /
+          unresolved-root / implicit root-wide (collapsed into implicit_root_blocked).
+        - deferred_not_blocking: no OneDrive sources in scope, or no document-card inputs.
+        Registry/policy unavailable -> not_applicable (never raises).
+        """
+        observed: Optional[bool]
+        breakdown: Optional[dict[str, Any]] = None
+        onedrive_n = 0
+        blocked_sources: list[str] = []
+        try:
+            from hb_assistant.construction.config import load_source_registry
+            from hb_assistant.construction.document.source_scope import (
+                evaluate_source_scope_compliance,
+            )
+            from hb_assistant.construction.policy.document_source_policy import (
+                load_document_source_policy,
+            )
+
+            result = evaluate_source_scope_compliance(
+                load_source_registry(), load_document_source_policy()
+            )
+            observed = bool(result.get("all_compliant"))
+            breakdown = result.get("onedrive_scope_breakdown")
+            onedrive_n = int((result.get("by_system") or {}).get("onedrive", 0))
+            blocked_sources = list(result.get("blocked_sources") or [])
+        except Exception:
+            observed = None  # registry/policy unavailable -> not_applicable
+
+        conn = get_connection(self.db_path)
+        card_count = self._card_count(conn)
+
+        res = self._classify(
+            "meeting_prep_prerequisite_status", observed, None, is_boolean=True,
+            future_phase="07D",
+        )
+        if observed is not None:
+            implicit_blocked = int((breakdown or {}).get("implicit_root_blocked", 0))
+            if onedrive_n == 0 or card_count == 0:
+                res["gate_status"] = "deferred_not_blocking"
+                res["blocking"] = 0
+                res["reason"] = "no_onedrive_sources_or_no_document_cards"
+            elif implicit_blocked > 0:
+                res["gate_status"] = "fail_blocking"
+                res["blocking"] = 1
+                res["reason"] = "onedrive_scope_blocking"
+                if blocked_sources:
+                    self.review_items.append(
+                        "meeting-prep source-scope blocked sources: "
+                        + ", ".join(sorted(blocked_sources))
+                    )
+            elif observed:
+                res["gate_status"] = "pass"
+                res["blocking"] = 0
+                res["reason"] = None
+        res["onedrive_scope_breakdown"] = breakdown
+        res["onedrive_source_count"] = onedrive_n
+        res["document_card_count"] = card_count
+        res["blocked_sources"] = blocked_sources
+        return res
+
     def _gate_financial_amount_parseability(self) -> dict[str, Any]:
         conn = get_connection(self.db_path)
         # Look for any financial fact table with amount columns; compute parseability ratio if data present
@@ -718,6 +950,12 @@ class GateEvaluator:
         self._gate_review_required_routing_presence()
         self._gate_raw_content_leakage()
         self._gate_external_writeback()
+        # Phase 07D meeting-prep prerequisite gates (V25 cross-source substrate)
+        self._gate_cross_source_relationship_candidate_coverage()
+        self._gate_deterministic_relationship_quality()
+        self._gate_evidence_trail_completeness()
+        self._gate_weak_model_sensitive_review_routing_accuracy()
+        self._gate_meeting_prep_prerequisite_status()
         self._gate_query_latency()
 
         # Persist via the existing, already-migration-gated repository method
@@ -743,26 +981,58 @@ class GateEvaluator:
         phase_07d_readiness = [r for r in self.results if r["gate_name"] in ("deterministic_orphan_rate", "candidate_orphan_rate", "review_required_routing_presence") and r["gate_status"] == "pass"]
         phase_07a_core_pass = all(r["gate_status"] in ("pass", "warning", "deferred_not_blocking") for r in self.results if r.get("future_phase") is None)
 
-        # Hard stop-condition enforcement in the report (visible to operator)
-        meeting_prep_claim = "blocked" if any(b["future_phase"] in ("07B", "07C") for b in self.results if b["gate_status"] not in ("pass",)) else "needs_07b_07c_data"
-        financial_claim = "blocked" if any(b["future_phase"] == "08B" for b in self.results if b["gate_status"] not in ("pass",)) else "needs_financial_data"
-
-        # Structured meeting-prep (07D) prerequisite check driven by the 07B manifest:
-        # readiness requires EVERY prerequisite gate (07B + 07C + relationship + safety) to
-        # pass; auto_readiness_allowed stays false so 07D is never auto-claimed.
-        prereqs = self.phase_07b_manifest.get("meeting_prep_prerequisites", [])
         by_name = {r["gate_name"]: r for r in self.results}
+
+        # Structured meeting-prep (07D) prerequisite check. Readiness requires EVERY
+        # prerequisite gate — the 07B/07C manifest set (calendar/email/document/safety) PLUS
+        # the 07D substrate set (relationship/review/source-scope) — to pass. A
+        # deferred_not_blocking 07D gate (e.g. empty substrate) keeps readiness blocked.
+        # auto_readiness_allowed stays false so 07D is never auto-claimed.
+        prereqs_07b = self.phase_07b_manifest.get("meeting_prep_prerequisites", [])
+        all_prereqs = list(dict.fromkeys([*prereqs_07b, *_MEETING_PREP_07D_PREREQUISITES]))
         meeting_prep_blocked_by = [
-            n for n in prereqs if (by_name.get(n) or {}).get("gate_status") != "pass"
+            n for n in all_prereqs if (by_name.get(n) or {}).get("gate_status") != "pass"
         ]
+        prerequisite_categories: dict[str, dict[str, Any]] = {}
+        for category, names in _MEETING_PREP_CATEGORY_MAP.items():
+            present = [n for n in names if n in by_name]
+            cat_blocked = [n for n in present if by_name[n].get("gate_status") != "pass"]
+            prerequisite_categories[category] = {
+                "prerequisites": present,
+                "blocked_by": cat_blocked,
+                "ready": len(present) > 0 and len(cat_blocked) == 0,
+            }
         meeting_prep_readiness = {
             "ready": len(meeting_prep_blocked_by) == 0,
             "blocked_by": meeting_prep_blocked_by,
-            "prerequisites": prereqs,
+            "prerequisites": all_prereqs,
+            "prerequisite_categories": prerequisite_categories,
             "auto_readiness_allowed": bool(
                 self.phase_07b_manifest.get("auto_readiness_allowed", False)
             ),
         }
+
+        # Hard stop-condition enforcement in the report (visible to operator). The claim
+        # never jumps to "ready" while any prerequisite is unmet; a 07D-only gap is reported
+        # honestly as "needs_07d_data" rather than mislabelled as a 07B/07C gap.
+        if any(
+            b.get("future_phase") in ("07B", "07C") and b["gate_status"] == "fail_blocking"
+            for b in self.results
+        ):
+            meeting_prep_claim = "blocked"
+        elif any(
+            b.get("future_phase") in ("07B", "07C") and b["gate_status"] != "pass"
+            for b in self.results
+        ):
+            meeting_prep_claim = "needs_07b_07c_data"
+        elif any(
+            (by_name.get(n) or {}).get("gate_status") != "pass"
+            for n in _MEETING_PREP_07D_PREREQUISITES
+        ):
+            meeting_prep_claim = "needs_07d_data"
+        else:
+            meeting_prep_claim = "ready"
+        financial_claim = "blocked" if any(b["future_phase"] == "08B" for b in self.results if b["gate_status"] not in ("pass",)) else "needs_financial_data"
 
         report = {
             "command": "construction-agent data-quality gates",

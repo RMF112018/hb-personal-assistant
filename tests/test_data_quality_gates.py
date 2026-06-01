@@ -72,7 +72,7 @@ def test_gates_meeting_prep_claim_is_blocked_when_calendar_or_doc_gates_are_not_
         report = evaluate_data_quality_gates(db_path=db_path, persist=False)
         claim = report["meeting_prep_readiness_claim"]
         # In a fresh/empty DB the calendar, email, and document gates will be not_applicable or deferred
-        assert claim in ("blocked", "needs_07b_07c_data"), f"Unexpected meeting prep claim: {claim}"
+        assert claim in ("blocked", "needs_07b_07c_data", "needs_07d_data"), f"Unexpected meeting prep claim: {claim}"
         # Explicit stop-condition: we never claim "ready" while dependent gates are not pass
         if claim == "ready":
             # This would be a violation
