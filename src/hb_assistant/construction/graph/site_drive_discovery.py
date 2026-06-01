@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from hb_assistant.construction.config import SourceLocation
 from hb_assistant.construction.graph.resolver import (
     GRAPH_SCOPES,
+    GRAPH_SCOPES_DRIVE,
     ConstructionGraphResolver,
     _parse_sharepoint_url,
 )
@@ -339,7 +340,8 @@ class SiteDriveDiscovery:
             data = self._http.get(
                 path,
                 params={"$select": "id,name,driveType,webUrl"},
-                scopes=GRAPH_SCOPES,
+                # OneDrive enumeration is drive-scoped (no admin-restricted Sites.Read.All).
+                scopes=GRAPH_SCOPES_DRIVE,
             )
         except GraphHttpError as e:
             return [], f"me_drives_enumeration_failed: graph_{e.status}"

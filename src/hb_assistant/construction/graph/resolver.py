@@ -446,7 +446,9 @@ class ConstructionGraphResolver:
         drive_data = self._http.get(
             "/me/drive",
             params={"$select": "id,webUrl,driveType"},
-            scopes=GRAPH_SCOPES,
+            # OneDrive root resolution is drive-scoped: Files.ReadWrite.All only
+            # (no admin-restricted Sites.Read.All).
+            scopes=GRAPH_SCOPES_DRIVE,
         )
         drive_id = drive_data.get("id")
         web_url = drive_data.get("webUrl")

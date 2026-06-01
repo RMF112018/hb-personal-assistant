@@ -55,6 +55,7 @@ from hb_assistant.construction.email import (
     run_operational_validation,
 )
 from hb_assistant.construction.email.email_classifier import DEFAULT_MODEL_NAME
+from hb_assistant.construction.graph import GRAPH_SCOPES_DRIVE, scopes_for_source_kind
 from hb_assistant.construction.graph.baseline_crawler import BaselineCrawler
 from hb_assistant.construction.graph.controlled_extraction import ControlledExtractor
 from hb_assistant.construction.graph.delta_sync import DeltaSync
@@ -1006,7 +1007,8 @@ def files_onedrive_cmd(
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(1)
 
-    client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+    # OneDrive roots are drive-scoped: Files.ReadWrite.All only (no Sites.Read.All).
+    client, auth_payload = _files_graph_client_or_auth(GRAPH_SCOPES_DRIVE)
     if client is None:
         payload = {
             "command": "graph files onedrive",
@@ -1074,7 +1076,9 @@ def files_index_cmd(
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(1)
 
-    client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+    # Minimized, per-source-kind delegated scopes (drive sources never request
+    # the admin-restricted Sites.Read.All; only site-page kinds do).
+    client, auth_payload = _files_graph_client_or_auth(scopes_for_source_kind(matching[0].kind))
     if client is None:
         payload = {
             "command": "graph files index",
@@ -1190,7 +1194,9 @@ def files_crawl_cmd(
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(1)
 
-    client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+    # Minimized, per-source-kind delegated scopes (drive sources never request
+    # the admin-restricted Sites.Read.All; only site-page kinds do).
+    client, auth_payload = _files_graph_client_or_auth(scopes_for_source_kind(matching[0].kind))
     if client is None:
         payload = {
             "command": "graph files crawl",
@@ -1261,7 +1267,9 @@ def files_delta_cmd(
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
         raise typer.Exit(1)
 
-    client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+    # Minimized, per-source-kind delegated scopes (drive sources never request
+    # the admin-restricted Sites.Read.All; only site-page kinds do).
+    client, auth_payload = _files_graph_client_or_auth(scopes_for_source_kind(matching[0].kind))
     if client is None:
         payload = {
             "command": "graph files delta",
@@ -1420,7 +1428,8 @@ def files_extract_cmd(
     auth_payload: Optional[Dict[str, Any]] = None
     # A Graph client is only needed when actually downloading (apply + --download).
     if not dry_run and download:
-        client, auth_payload = _files_graph_client_or_auth(_FILES_GRAPH_SCOPES)
+        # Minimized, per-source-kind delegated scopes (drive sources exclude Sites.Read.All).
+        client, auth_payload = _files_graph_client_or_auth(scopes_for_source_kind(matching[0].kind))
         if client is None:
             payload = {
                 "command": "graph files extract",
