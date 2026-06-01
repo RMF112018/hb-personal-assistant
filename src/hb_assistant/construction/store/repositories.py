@@ -2627,6 +2627,71 @@ class ConstructionStore:
         row = cur.fetchone()
         return int(row[0]) if row else 0
 
+    # --- Phase 07D Prompt 04 normalization source readers --------------------
+
+    def list_procore_record_edges(
+        self, *, project_key: Optional[str] = None, limit: int = 100000,
+    ) -> list[dict[str, Any]]:
+        """List Procore-native record edges (V7) — safe identifier fields only (no
+        metadata_json free-text). Keys are stable internal Procore identifiers / hashes."""
+        keys = (
+            "edge_id", "project_key", "from_record_key", "to_record_key", "to_entity_key",
+            "edge_type", "source_endpoint_id", "confidence",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM procore_record_edges {where} "
+            "ORDER BY edge_id LIMIT ?",
+            tuple(params),
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    def list_relationship_resolution_queue(
+        self, *, limit: int = 100000,
+    ) -> list[dict[str, Any]]:
+        """List relationship-resolution-queue edges (V20) — safe fields only (no
+        evidence_redacted free-text). Carries the row's confidence_class verbatim."""
+        keys = (
+            "relationship_id", "from_canonical_record_id", "to_canonical_record_id",
+            "from_source_system", "to_source_system", "relationship_type",
+            "relationship_status", "confidence_class", "confidence", "review_required",
+            "promotion_status",
+        )
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM relationship_resolution_queue "
+            "ORDER BY relationship_id LIMIT ?",
+            (limit,),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            record["review_required"] = bool(record["review_required"])
+            results.append(record)
+        return results
+
+    def resolve_source_record_project_key(
+        self, source_system: str, source_primary_key: str
+    ) -> Optional[str]:
+        """Look up the canonical project_key for a (source_system, source_primary_key) via
+        source_system_record_map (V20). Returns None when no mapping exists (the map may be
+        empty, in which case cross-family project_key alignment is a safe no-op)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            "SELECT project_key FROM source_system_record_map "
+            "WHERE source_system = ? AND source_primary_key = ? LIMIT 1",
+            (source_system, source_primary_key),
+        )
+        row = cur.fetchone()
+        return row[0] if row and row[0] else None
+
     # --- Phase 07C document intelligence previews (V24) --------------------
 
     def upsert_document_intelligence_preview(

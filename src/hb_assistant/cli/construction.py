@@ -211,6 +211,32 @@ def relationships_status(
     raise typer.Exit(0 if report.get("ok") else 1)
 
 
+@relationships_app.command("promote")
+def relationships_promote(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist deterministic promotions to SQLite (default: dry-run)."
+    ),
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Policy-gated promotion of deterministic cross-source relationships into
+    cross_source_relationships (V25). Only deterministic, non-sensitive, non-review candidates
+    are promoted — weak/strong/model/sensitive/high-impact are never auto-promoted."""
+    builder = CrossSourceRelationshipSubstrateBuilder(ConstructionStore())
+    report = builder.promote(dry_run=not apply, project_filter=project)
+    payload = {
+        "command": "construction-agent relationships promote",
+        "apply": apply,
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _RELATIONSHIP_SUBSTRATE_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
 def _build_report(registry: SourceRegistry) -> dict[str, Any]:
     resolved = [s for s in registry.sources if s.resolution_status == "resolved"]
     pending = [s for s in registry.sources if s.resolution_status == "pending"]

@@ -64,8 +64,22 @@ class NormalizedEdge(BaseModel):
     sensitive_high_impact: bool = False
     origin_table: str = ""
     origin_review_required: bool = False
+    # When a source already classifies the edge (e.g. relationship_resolution_queue), carry its
+    # confidence_class through verbatim instead of recomputing from flags/score.
+    confidence_class_override: Optional[str] = None
 
     model_config = {"extra": "forbid"}
+
+
+_VALID_CONFIDENCE_CLASSES = {
+    "deterministic",
+    "strong_heuristic",
+    "weak_heuristic",
+    "model_proposed",
+    "human_promoted",
+    "rejected",
+    "stale_or_unresolved",
+}
 
 
 # --- per-source adapters -------------------------------------------------------
@@ -149,7 +163,65 @@ def _email_edges(store: ConstructionStore) -> Iterator[NormalizedEdge]:
         )
 
 
-_ADAPTERS = (_document_edges, _meeting_email_edges, _email_edges)
+def _procore_edges(store: ConstructionStore) -> Iterator[NormalizedEdge]:
+    """Procore-native record edges (V7). Deterministic record↔record / record→entity links."""
+    for r in store.list_procore_record_edges(limit=100000):
+        to_record = r.get("to_record_key")
+        if to_record:
+            target_family = "procore"
+            target_record_type = "procore_record"
+            target_ref = str(to_record)
+        else:
+            target_family = "procore_entity"
+            target_record_type = "entity"
+            target_ref = str(r.get("to_entity_key") or "")
+        if not target_ref:
+            continue
+        confidence = float(r.get("confidence") or 0.0)
+        yield NormalizedEdge(
+            source_family="procore",
+            source_record_type="procore_record",
+            source_record_ref=str(r["from_record_key"]),
+            target_family=target_family,
+            target_record_type=target_record_type,
+            target_record_ref=target_ref,
+            relationship_type=str(r.get("edge_type") or "procore_edge"),
+            confidence_score=confidence,
+            project_key=r.get("project_key"),
+            deterministic=confidence >= 0.999,
+            origin_table="procore_record_edges",
+        )
+
+
+def _resolution_queue_edges(store: ConstructionStore) -> Iterator[NormalizedEdge]:
+    """Phase 07A relationship-resolution-queue edges (V20). Confidence class carried verbatim."""
+    for r in store.list_relationship_resolution_queue(limit=100000):
+        source_ref = r.get("from_canonical_record_id")
+        target_ref = r.get("to_canonical_record_id")
+        if not source_ref or not target_ref:
+            continue
+        yield NormalizedEdge(
+            source_family=str(r.get("from_source_system") or "unknown"),
+            source_record_type="canonical_record",
+            source_record_ref=str(source_ref),
+            target_family=str(r.get("to_source_system") or "unknown"),
+            target_record_type="canonical_record",
+            target_record_ref=str(target_ref),
+            relationship_type=str(r.get("relationship_type") or "related_to"),
+            confidence_score=float(r.get("confidence") or 0.0),
+            confidence_class_override=r.get("confidence_class"),
+            origin_table="relationship_resolution_queue",
+            origin_review_required=bool(r.get("review_required")),
+        )
+
+
+_ADAPTERS = (
+    _document_edges,
+    _meeting_email_edges,
+    _email_edges,
+    _procore_edges,
+    _resolution_queue_edges,
+)
 
 
 # --- classification + routing --------------------------------------------------
@@ -157,6 +229,8 @@ _ADAPTERS = (_document_edges, _meeting_email_edges, _email_edges)
 
 def _confidence_class(edge: NormalizedEdge) -> str:
     """Map a normalized edge to the unified V25 confidence_class enum."""
+    if edge.confidence_class_override in _VALID_CONFIDENCE_CLASSES:
+        return edge.confidence_class_override
     if edge.model_proposed:
         return "model_proposed"
     if edge.deterministic:
@@ -230,13 +304,23 @@ class CrossSourceRelationshipSubstrateBuilder:
         by_source_family: dict[str, int] = {}
         by_confidence_class: dict[str, int] = {}
         by_target_family: dict[str, int] = {}
+        project_key_aligned = 0
         seen: set[str] = set()
 
         for adapter in _ADAPTERS:
             for edge in adapter(self._store):
                 if len(seen) >= max_edges:
                     break
-                if project_filter is not None and edge.project_key != project_filter:
+                # Cross-family project_key alignment: backfill a missing project_key from the
+                # source-record map before filtering (no-op when the map has no match).
+                project_key = edge.project_key
+                if project_key is None:
+                    project_key = self._store.resolve_source_record_project_key(
+                        edge.source_family, edge.source_record_ref
+                    )
+                    if project_key is not None:
+                        project_key_aligned += 1
+                if project_filter is not None and project_key != project_filter:
                     skipped_project_filter += 1
                     continue
                 edges_considered += 1
@@ -290,7 +374,7 @@ class CrossSourceRelationshipSubstrateBuilder:
                     sort_keys=True,
                 )
                 stale_unknown_flags_json = json.dumps(
-                    {"unknown_project_key": edge.project_key is None}, sort_keys=True
+                    {"unknown_project_key": project_key is None}, sort_keys=True
                 )
 
                 if not dry_run:
@@ -299,7 +383,7 @@ class CrossSourceRelationshipSubstrateBuilder:
                         evidence_kind="relationship_candidate",
                         source_refs_json=source_reference_json,
                         confidence_class=conf_class,
-                        project_key=edge.project_key,
+                        project_key=project_key,
                         relationship_candidate_id=candidate_id,
                         review_required=review_required,
                         stale_unknown_flags_json=stale_unknown_flags_json,
@@ -316,7 +400,7 @@ class CrossSourceRelationshipSubstrateBuilder:
                         confidence_score=edge.confidence_score,
                         confidence_class=conf_class,
                         source_reference_json=source_reference_json,
-                        project_key=edge.project_key,
+                        project_key=project_key,
                         deterministic=edge.deterministic,
                         model_proposed=edge.model_proposed,
                         sensitive_high_impact=sensitive,
@@ -343,11 +427,94 @@ class CrossSourceRelationshipSubstrateBuilder:
                 "review_required": review_required_count,
                 "dedup_collapsed": dedup_collapsed,
                 "skipped_project_filter": skipped_project_filter,
+                "project_key_aligned": project_key_aligned,
                 "by_source_family": dict(sorted(by_source_family.items())),
                 "by_confidence_class": dict(sorted(by_confidence_class.items())),
                 "by_target_family": dict(sorted(by_target_family.items())),
             },
             "guardrails": _SUBSTRATE_GUARDRAILS,
+        }
+
+    def promote(
+        self, *, dry_run: bool = True, project_filter: Optional[str] = None
+    ) -> dict[str, Any]:
+        """Policy-gated promotion of deterministic relationships into
+        ``cross_source_relationships``. Per ``cross_source_relationship_policy.seed.yaml`` only
+        ``deterministic`` candidates that are not ``sensitive_high_impact`` and not
+        ``review_required`` are promoted — weak/strong/model/sensitive are never auto-promoted.
+        Idempotent (deterministic ``relationship_id``); writes only when not ``dry_run``."""
+        policy = load_phase_07d_seed("cross_source_relationship_policy")
+        det = policy.get("promotion", {}).get("deterministic", {})
+        allow_local = bool(det.get("allow_local_promotion"))
+        require_absent = bool(det.get("require_sensitive_high_impact_absent"))
+        considered = 0
+        promotable = 0
+        skipped_not_deterministic = 0
+        skipped_sensitive = 0
+        skipped_review_required = 0
+        if allow_local:
+            for c in self._store.list_cross_source_relationship_candidates(
+                project_key=project_filter, limit=100000
+            ):
+                considered += 1
+                if c.get("confidence_class") != "deterministic":
+                    skipped_not_deterministic += 1
+                    continue
+                if require_absent and c.get("sensitive_high_impact"):
+                    skipped_sensitive += 1
+                    continue
+                if c.get("review_required"):
+                    skipped_review_required += 1
+                    continue
+                candidate_id = str(c["candidate_id"])
+                relationship_id = hash_value(f"rel|{candidate_id}")
+                if relationship_id is None:  # pragma: no cover - candidate_id is non-empty
+                    continue
+                if not dry_run:
+                    src_ref = c.get("source_reference_json")
+                    source_reference_json = (
+                        json.dumps(src_ref, sort_keys=True)
+                        if isinstance(src_ref, (dict, list))
+                        else (src_ref or "{}")
+                    )
+                    self._store.upsert_cross_source_relationship(
+                        relationship_id=relationship_id,
+                        source_family=str(c["source_family"]),
+                        source_record_type=str(c["source_record_type"]),
+                        source_record_ref=str(c["source_record_ref"]),
+                        target_family=str(c["target_family"]),
+                        target_record_type=str(c["target_record_type"]),
+                        target_record_ref=str(c["target_record_ref"]),
+                        relationship_type=str(c["relationship_type"]),
+                        confidence_class="deterministic",
+                        source_reference_json=source_reference_json,
+                        candidate_id=candidate_id,
+                        project_key=c.get("project_key"),
+                        promotion_status="promoted",
+                        promoted_by="deterministic",
+                        review_required=False,
+                    )
+                promotable += 1
+        return {
+            "command": "construction-agent relationships promote",
+            "mode": "apply" if not dry_run else "dry_run",
+            "ok": True,
+            "schema_version": LATEST_SCHEMA_VERSION,
+            "project_filter": project_filter,
+            "policy": {
+                "deterministic_allow_local_promotion": allow_local,
+                "require_sensitive_high_impact_absent": require_absent,
+            },
+            "summary": {
+                "candidates_considered": considered,
+                "promoted": promotable if not dry_run else 0,
+                "promotable": promotable,
+                "skipped_not_deterministic": skipped_not_deterministic,
+                "skipped_sensitive_high_impact": skipped_sensitive,
+                "skipped_review_required": skipped_review_required,
+                "total_promoted_relationships": self._store.count_cross_source_relationships(),
+            },
+            "guardrails": {**_SUBSTRATE_GUARDRAILS, "promotion": "deterministic_only_policy_gated"},
         }
 
 

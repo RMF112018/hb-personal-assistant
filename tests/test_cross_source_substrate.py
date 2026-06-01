@@ -242,7 +242,7 @@ def test_project_filter_excludes_other_projects() -> None:
 
 def test_cli_build_and_status_subprocess_exit_zero() -> None:
     """The CLI commands run (dry-run, non-mutating) and emit valid JSON with exit 0."""
-    for sub in ("build", "status"):
+    for sub in ("build", "status", "promote"):
         cmd = [
             sys.executable, "-m", "hb_assistant.cli.main",
             "construction-agent", "relationships", sub, "--json",
@@ -255,3 +255,155 @@ def test_cli_build_and_status_subprocess_exit_zero() -> None:
         payload = json.loads(proc.stdout)
         assert payload["command"] == f"construction-agent relationships {sub}"
         assert payload["report"]["ok"] is True
+
+
+# --- Prompt 04: Procore-native + resolution-queue arms, alignment, promotion ----
+
+
+def _seed_procore_and_resolution(db: str) -> None:
+    """Seed Procore-native edges + relationship-resolution-queue edges via raw (FK-off) conn."""
+    raw = sqlite3.connect(db)
+    now = "2026-06-01T00:00:00Z"
+    # deterministic record→record and record→entity edges
+    raw.execute(
+        "INSERT INTO procore_record_edges (edge_id, project_key, from_record_key, to_record_key, "
+        "to_entity_key, edge_type, source_endpoint_id, confidence, first_seen_at_utc, "
+        "last_seen_at_utc) VALUES ('pe1','tropical','rfis:100','submittals:200',NULL,'references',"
+        "'rfis',1.0,?,?)",
+        (now, now),
+    )
+    raw.execute(
+        "INSERT INTO procore_record_edges (edge_id, project_key, from_record_key, to_record_key, "
+        "to_entity_key, edge_type, source_endpoint_id, confidence, first_seen_at_utc, "
+        "last_seen_at_utc) VALUES ('pe2','tropical','rfis:100',NULL,'entity_hash_abc',"
+        "'assigned_to','rfis',1.0,?,?)",
+        (now, now),
+    )
+    # resolution-queue edges: a strong-heuristic (no review) and a weak/safety (review)
+    raw.execute(
+        "INSERT INTO relationship_resolution_queue (relationship_id, from_canonical_record_id, "
+        "to_canonical_record_id, from_source_system, to_source_system, relationship_type, "
+        "relationship_status, confidence_class, confidence, review_required, promotion_status) "
+        "VALUES ('rq1','procore:rfis:1','email:msg:9','procore','email','documents_discusses',"
+        "'open','strong_heuristic',0.85,0,'not_promoted')"
+    )
+    raw.execute(
+        "INSERT INTO relationship_resolution_queue (relationship_id, from_canonical_record_id, "
+        "to_canonical_record_id, from_source_system, to_source_system, relationship_type, "
+        "relationship_status, confidence_class, confidence, review_required, promotion_status) "
+        "VALUES ('rq2','procore:rfis:2','calendar:ev:9','procore','calendar','safety_related',"
+        "'open','weak_heuristic',0.40,1,'not_promoted')"
+    )
+    raw.commit()
+    raw.close()
+
+
+def test_procore_edges_normalize_as_deterministic() -> None:
+    db = _fresh_db()
+    try:
+        _seed_procore_and_resolution(db)
+        store = ConstructionStore(db_path=db)
+        CrossSourceRelationshipSubstrateBuilder(store).build(dry_run=False)
+        by_target = {c["target_family"]: c for c in store.list_cross_source_relationship_candidates()}
+        # record→record and record→entity both present, both deterministic
+        assert "procore" in by_target and by_target["procore"]["confidence_class"] == "deterministic"
+        assert "procore_entity" in by_target
+        assert by_target["procore"]["deterministic"] is True
+        assert by_target["procore"]["review_required"] is False
+    finally:
+        Path(db).unlink(missing_ok=True)
+
+
+def test_resolution_queue_confidence_class_override_preserved() -> None:
+    db = _fresh_db()
+    try:
+        _seed_procore_and_resolution(db)
+        store = ConstructionStore(db_path=db)
+        CrossSourceRelationshipSubstrateBuilder(store).build(dry_run=False)
+        rq = [
+            c for c in store.list_cross_source_relationship_candidates()
+            if c["target_family"] in ("email", "calendar")
+        ]
+        classes = {c["target_family"]: c for c in rq}
+        assert classes["email"]["confidence_class"] == "strong_heuristic"
+        assert classes["email"]["review_required"] is False
+        # weak + safety keyword → sensitive + review
+        assert classes["calendar"]["confidence_class"] == "weak_heuristic"
+        assert classes["calendar"]["review_required"] is True
+        assert classes["calendar"]["sensitive_high_impact"] is True
+    finally:
+        Path(db).unlink(missing_ok=True)
+
+
+def test_project_key_alignment_backfills_from_source_record_map() -> None:
+    db = _fresh_db()
+    try:
+        _seed_procore_and_resolution(db)
+        raw = sqlite3.connect(db)
+        # map the rq1 source canonical id to project 'gardens'; rq2 has no mapping
+        raw.execute(
+            "INSERT INTO source_system_record_map (canonical_record_id, project_key, source_system, "
+            "source_table, source_primary_key, confidence_class) VALUES "
+            "('c1','gardens','procore','procore_live_records','procore:rfis:1','deterministic')"
+        )
+        raw.commit()
+        raw.close()
+        store = ConstructionStore(db_path=db)
+        report = CrossSourceRelationshipSubstrateBuilder(store).build(dry_run=False)
+        assert report["summary"]["project_key_aligned"] == 1
+        rows = {c["target_family"]: c for c in store.list_cross_source_relationship_candidates()}
+        assert rows["email"]["project_key"] == "gardens"  # rq1 aligned
+        assert rows["calendar"]["project_key"] is None  # rq2 unmapped
+    finally:
+        Path(db).unlink(missing_ok=True)
+
+
+def test_promote_only_deterministic_non_sensitive() -> None:
+    db = _fresh_db()
+    try:
+        _seed_procore_and_resolution(db)
+        _seed_standard(db)  # adds a sensitive financial email + weak document, etc.
+        store = ConstructionStore(db_path=db)
+        builder = CrossSourceRelationshipSubstrateBuilder(store)
+        builder.build(dry_run=False)
+        # dry-run promote writes nothing
+        pdry = builder.promote(dry_run=True)
+        assert store.count_cross_source_relationships() == 0
+        assert pdry["summary"]["promoted"] == 0
+        assert pdry["summary"]["promotable"] >= 2  # the two deterministic procore edges
+        # apply promote: only deterministic candidates land
+        papply = builder.promote(dry_run=False)
+        promoted = store.count_cross_source_relationships()
+        assert promoted == papply["summary"]["promotable"]
+        assert promoted >= 2
+        # every promoted row is deterministic-promoted; none of the weak/strong/sensitive landed
+        raw = sqlite3.connect(db)
+        rows = raw.execute(
+            "SELECT confidence_class, promoted_by, review_required FROM cross_source_relationships"
+        ).fetchall()
+        raw.close()
+        assert all(r[0] == "deterministic" and r[1] == "deterministic" and r[2] == 0 for r in rows)
+        # idempotent
+        builder.promote(dry_run=False)
+        assert store.count_cross_source_relationships() == promoted
+    finally:
+        Path(db).unlink(missing_ok=True)
+
+
+def test_promote_no_raw_content() -> None:
+    db = _fresh_db()
+    try:
+        _seed_procore_and_resolution(db)
+        store = ConstructionStore(db_path=db)
+        builder = CrossSourceRelationshipSubstrateBuilder(store)
+        builder.build(dry_run=False)
+        builder.promote(dry_run=False)
+        raw = sqlite3.connect(db)
+        blob = json.dumps(raw.execute("SELECT * FROM cross_source_relationships").fetchall())
+        # guard columns all zero
+        for row in raw.execute(f"SELECT {', '.join(_GUARDS)} FROM cross_source_relationships"):
+            assert set(row) <= {0}
+        raw.close()
+        assert not _LEAK.search(blob)
+    finally:
+        Path(db).unlink(missing_ok=True)
