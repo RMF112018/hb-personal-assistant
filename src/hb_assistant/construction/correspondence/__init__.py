@@ -8,6 +8,10 @@ determinations.
 
 from __future__ import annotations
 
+from .correspondence_context import (
+    CorrespondenceContextBuilder,
+    correspondence_context_status,
+)
 from .correspondence_review import (
     CorrespondencePreview,
     CorrespondenceReviewBuilder,
@@ -16,8 +20,10 @@ from .correspondence_review import (
 )
 
 __all__ = [
+    "CorrespondenceContextBuilder",
     "CorrespondencePreview",
     "CorrespondenceReviewBuilder",
     "CorrespondenceReviewReport",
     "CorrespondenceWarning",
+    "correspondence_context_status",
 ]

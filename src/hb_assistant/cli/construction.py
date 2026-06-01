@@ -93,6 +93,10 @@ from hb_assistant.construction.config import (
     load_source_registry,
 )
 from hb_assistant.construction.config.loader import SourceRegistryError
+from hb_assistant.construction.correspondence import (
+    CorrespondenceContextBuilder,
+    correspondence_context_status,
+)
 from hb_assistant.construction.data_quality import (
     ProjectIdentityBackfill,
     RelationshipDiagnostics,
@@ -508,6 +512,69 @@ def aging_exposure_status(
         "filter": {"project": project},
         "report": report,
         "guardrails": _AGING_EXPOSURE_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+correspondence_app = typer.Typer(
+    help="Phase 07D review-controlled correspondence context (context/status). Read-only "
+    "projection that ties email thread summaries to related records where relationships exist — "
+    "no writes (local or external), advisory, and never auto-promotes."
+)
+app.add_typer(correspondence_app, name="correspondence")
+
+_CORRESPONDENCE_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "persistence": "none_read_only_projection",
+    "no_raw_content": True,
+    "advisory_only": True,
+    "no_final_determinations": True,
+    "auto_promotion": False,
+}
+
+
+@correspondence_app.command("context")
+def correspondence_context_cmd(
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    lookback_days: Optional[int] = typer.Option(
+        None, "--lookback-days", help="Only include threads active within the last N days."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Tie email thread summaries to meetings, RFIs, submittals, changes, commitments, daily-log
+    issues, inspections, and documents where relationships exist (read-only projection). Weak /
+    model / sensitive ties stay review-required and are never auto-promoted."""
+    report = CorrespondenceContextBuilder(ConstructionStore()).context(
+        project_filter=project, lookback_days=lookback_days
+    )
+    payload = {
+        "command": "construction-agent correspondence context",
+        "filter": {"project": project, "lookback_days": lookback_days},
+        "report": report,
+        "guardrails": _CORRESPONDENCE_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+@correspondence_app.command("status")
+def correspondence_status_cmd(
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Read-only correspondence-context coverage summary (thread/record-tie counts)."""
+    report = correspondence_context_status(ConstructionStore(), project_filter=project)
+    payload = {
+        "command": "construction-agent correspondence status",
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _CORRESPONDENCE_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if report.get("ok") else 1)
