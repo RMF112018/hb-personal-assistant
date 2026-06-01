@@ -1,0 +1,65 @@
+{
+  "phase": "construction-intelligence-phase-07c-document-intelligence",
+  "prompt": "11-data-quality-gates",
+  "generated_utc": "2026-06-01",
+  "repo_sha_parent": "233b8b3f361188f44cb6b6c0d8a4d340b141619b",
+  "schema_version": 24,
+  "package_version": "1.3.0",
+  "leak_safe": "gate names + statuses + phase assignments + boolean/count observed values only; no per-card identifiers and no raw filenames, paths, URLs, tokens, or document text. The document_intelligence_safety_scan gate emits a boolean — the offending text is never read into the report.",
+  "command": "hb-assistant construction-agent data-quality gates --json",
+  "exit_code": 0,
+  "deterministic": "identical gate name->status map across PYTHONHASHSEED 1/2/3",
+  "total_gates": 21,
+  "new_07c_gates": {
+    "document_classification_coverage": { "gate_status": "pass", "future_phase": "07C", "observed": true },
+    "document_project_match_coverage": { "gate_status": "pass", "future_phase": "07C", "observed": true },
+    "document_extraction_eligibility_status": { "gate_status": "pass", "future_phase": "07C", "observed": true },
+    "document_relationship_population_status": { "gate_status": "pass", "future_phase": "07C", "observed": true },
+    "document_source_scope_compliance": { "gate_status": "deferred_not_blocking", "future_phase": "07C", "observed": false },
+    "document_intelligence_safety_scan": { "gate_status": "pass", "future_phase": "07C", "observed": true }
+  },
+  "gate_status_map": {
+    "project_identity_coverage": "not_applicable",
+    "source_record_map_coverage": "warning",
+    "deterministic_orphan_rate": "pass",
+    "candidate_orphan_rate": "pass",
+    "calendar_population_status": "pass",
+    "email_classifier_persistence_status": "pass",
+    "email_thread_summary_population_status": "pass",
+    "meeting_email_candidate_population_status": "pass",
+    "document_card_population_status": "pass",
+    "document_classification_coverage": "pass",
+    "document_project_match_coverage": "pass",
+    "document_extraction_eligibility_status": "pass",
+    "document_relationship_population_status": "pass",
+    "document_source_scope_compliance": "deferred_not_blocking",
+    "document_intelligence_safety_scan": "pass",
+    "financial_amount_parseability": "warning",
+    "financial_currency_completeness": "warning",
+    "review_required_routing_presence": "deferred_not_blocking",
+    "raw_content_leakage_scan": "pass",
+    "external_writeback_scan": "pass",
+    "query_latency_p95": "pass"
+  },
+  "meeting_prep_readiness": {
+    "ready": false,
+    "blocked_by": ["document_source_scope_compliance", "review_required_routing_presence"],
+    "auto_readiness_allowed": false
+  },
+  "meeting_prep_readiness_claim": "blocked",
+  "phase_go_nogo_07c": {
+    "blocked_by": ["document_source_scope_compliance"],
+    "ready_for": ["document_card_population", "file_to_record_relationships"]
+  },
+  "guardrails": {
+    "machine_readable_gates": true,
+    "missing_07c_data_blocks_readiness": true,
+    "no_07d_readiness_overstatement": true,
+    "auto_readiness_allowed": false,
+    "external_writeback": false,
+    "safety_gate_emits_boolean_not_raw_text": true
+  },
+  "notable_finding": "document_source_scope_compliance is deferred_not_blocking because the live source registry contains at least one source that is not scope-compliant under the document source policy (all_compliant=false). This is a truthful gate result that correctly blocks meeting-prep readiness; it is not a defect of this prompt.",
+  "deferred_disclosure": "This prompt adds a runtime data-quality GATE over the V24 document tables; the static no-writeback / no-secret / no-raw-document-text PROOF over those tables remains deferred to Prompt 12 and is not claimed here.",
+  "outcome": "Six new 07C document-intelligence data-quality gates added (classification coverage, project-match coverage, extraction-eligibility status, relationship population, source-scope compliance, safety scan), each future_phase=07C and machine-readable. Five pass on the live store; document_source_scope_compliance honestly defers (registry has non-compliant sources). The gates were appended to meeting_prep_prerequisites so missing 07C data blocks readiness; meeting_prep_readiness.ready stays false and no 07D readiness is overstated. Gates persist only to the local data_quality_gate_results table; no external writeback, no raw content, no unsafe identifiers."
+}

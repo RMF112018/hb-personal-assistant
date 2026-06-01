@@ -65,6 +65,12 @@ _CORE_GATE_NAMES = [
     "email_thread_summary_population_status",
     "meeting_email_candidate_population_status",
     "document_card_population_status",
+    "document_classification_coverage",
+    "document_project_match_coverage",
+    "document_extraction_eligibility_status",
+    "document_relationship_population_status",
+    "document_source_scope_compliance",
+    "document_intelligence_safety_scan",
     "financial_amount_parseability",
     "financial_currency_completeness",
     "review_required_routing_presence",
@@ -80,6 +86,12 @@ _PHASE_ASSIGNMENTS = {
     "email_thread_summary_population_status": "07B",
     "meeting_email_candidate_population_status": "07B",
     "document_card_population_status": "07C",
+    "document_classification_coverage": "07C",
+    "document_project_match_coverage": "07C",
+    "document_extraction_eligibility_status": "07C",
+    "document_relationship_population_status": "07C",
+    "document_source_scope_compliance": "07C",
+    "document_intelligence_safety_scan": "07C",
     "financial_amount_parseability": "08B",
     "financial_currency_completeness": "08B",
     # Others are 07A core or relationship (07D-enabling but not blocking 07A exit)
@@ -401,6 +413,177 @@ class GateEvaluator:
         count = _safe_scalar(conn, "SELECT COUNT(*) FROM construction_document_cards") if self._table_exists(conn, "construction_document_cards") else 0
         return self._classify("document_card_population_status", count > 0, None, is_boolean=True, future_phase="07C")
 
+    # --- Phase 07C document-intelligence gates (V24) -----------------------
+
+    def _card_count(self, conn: Any) -> int:
+        if not self._table_exists(conn, "construction_document_cards"):
+            return 0
+        return int(_safe_scalar(conn, "SELECT COUNT(*) FROM construction_document_cards") or 0)
+
+    def _gate_document_classification_coverage(self) -> dict[str, Any]:
+        """Every materialized document card has a classification candidate (07C)."""
+        conn = get_connection(self.db_path)
+        cards = self._card_count(conn)
+        if cards == 0 or not self._table_exists(conn, "construction_document_classification_candidates"):
+            observed = False
+        else:
+            classified = int(
+                _safe_scalar(
+                    conn,
+                    "SELECT COUNT(DISTINCT document_card_id) "
+                    "FROM construction_document_classification_candidates",
+                )
+                or 0
+            )
+            observed = cards > 0 and classified >= cards
+        return self._classify(
+            "document_classification_coverage", observed, None, is_boolean=True, future_phase="07C"
+        )
+
+    def _gate_document_project_match_coverage(self) -> dict[str, Any]:
+        """Every document card has a project-match candidate (07C)."""
+        conn = get_connection(self.db_path)
+        cards = self._card_count(conn)
+        if cards == 0 or not self._table_exists(conn, "construction_document_project_match_candidates"):
+            observed = False
+        else:
+            matched = int(
+                _safe_scalar(
+                    conn,
+                    "SELECT COUNT(DISTINCT document_card_id) "
+                    "FROM construction_document_project_match_candidates",
+                )
+                or 0
+            )
+            observed = cards > 0 and matched >= cards
+        return self._classify(
+            "document_project_match_coverage", observed, None, is_boolean=True, future_phase="07C"
+        )
+
+    def _gate_document_extraction_eligibility_status(self) -> dict[str, Any]:
+        """Every document card has a controlled-extraction disposition (not 'not_evaluated') (07C)."""
+        conn = get_connection(self.db_path)
+        cards = self._card_count(conn)
+        if cards == 0:
+            observed = False
+        else:
+            pending = int(
+                _safe_scalar(
+                    conn,
+                    "SELECT COUNT(*) FROM construction_document_cards "
+                    "WHERE extraction_eligibility = 'not_evaluated'",
+                )
+                or 0
+            )
+            observed = cards > 0 and pending == 0
+        return self._classify(
+            "document_extraction_eligibility_status", observed, None, is_boolean=True,
+            future_phase="07C",
+        )
+
+    def _gate_document_relationship_population_status(self) -> dict[str, Any]:
+        """Document->record relationship candidates have been generated (07C)."""
+        conn = get_connection(self.db_path)
+        count = (
+            int(
+                _safe_scalar(
+                    conn, "SELECT COUNT(*) FROM construction_document_relationship_candidates"
+                )
+                or 0
+            )
+            if self._table_exists(conn, "construction_document_relationship_candidates")
+            else 0
+        )
+        return self._classify(
+            "document_relationship_population_status", count > 0, None, is_boolean=True,
+            future_phase="07C",
+        )
+
+    def _gate_document_source_scope_compliance(self) -> dict[str, Any]:
+        """Indexed document sources are scope-compliant per the document source policy (07C)."""
+        observed: Optional[bool]
+        try:
+            from hb_assistant.construction.config import load_source_registry
+            from hb_assistant.construction.document.source_scope import (
+                evaluate_source_scope_compliance,
+            )
+            from hb_assistant.construction.policy.document_source_policy import (
+                load_document_source_policy,
+            )
+
+            result = evaluate_source_scope_compliance(
+                load_source_registry(), load_document_source_policy()
+            )
+            observed = bool(result.get("all_compliant"))
+        except Exception:
+            observed = None  # registry/policy unavailable -> not_applicable
+        return self._classify(
+            "document_source_scope_compliance", observed, None, is_boolean=True, future_phase="07C"
+        )
+
+    def _gate_document_intelligence_safety_scan(self) -> dict[str, Any]:
+        """Runtime safety scan of the V24 document tables: guard CHECK columns all 0 and no
+        URL/token/secret pattern in the persisted hashed/typed evidence columns (07C).
+
+        The observed value is a boolean ("clean"); the offending text is never read into the
+        report — only LIKE-counted in SQL.
+        """
+        conn = get_connection(self.db_path)
+        if not self._table_exists(conn, "construction_document_cards"):
+            return self._classify(
+                "document_intelligence_safety_scan", None, None, is_boolean=True, future_phase="07C"
+            )
+        # (table, guard columns, text columns scanned for forbidden patterns)
+        specs: list[tuple[str, list[str], list[str]]] = [
+            (
+                "construction_document_cards",
+                ["raw_document_text_persisted", "raw_payload_persisted", "signed_url_persisted",
+                 "download_url_persisted", "source_file_copied_to_vault", "external_writeback_performed"],
+                ["source_reference_json", "guardrail_flags_json"],
+            ),
+            (
+                "construction_document_classification_candidates",
+                ["raw_document_text_persisted", "raw_prompt_persisted", "raw_response_persisted",
+                 "external_writeback_performed"],
+                ["signals_json"],
+            ),
+            (
+                "construction_document_project_match_candidates",
+                ["raw_document_text_persisted", "external_writeback_performed"],
+                ["signals_json"],
+            ),
+            (
+                "construction_document_relationship_candidates",
+                ["raw_document_text_persisted", "raw_prompt_persisted", "raw_response_persisted",
+                 "external_writeback_performed"],
+                ["signals_json", "source_reference_json"],
+            ),
+            (
+                "construction_document_intelligence_previews",
+                ["raw_document_text_persisted", "raw_prompt_persisted", "raw_response_persisted",
+                 "external_writeback_performed"],
+                ["preview_redacted", "warnings_json"],
+            ),
+        ]
+        patterns = ["%http://%", "%https://%", "%token=%", "%access_token%", "%bearer %", "%-----begin%"]
+        guard_sum = 0
+        pattern_hits = 0
+        for table, guards, texts in specs:
+            if not self._table_exists(conn, table):
+                continue
+            guard_expr = " + ".join(f"COALESCE(SUM({g}), 0)" for g in guards)
+            guard_sum += int(_safe_scalar(conn, f"SELECT {guard_expr} FROM {table}") or 0)
+            for col in texts:
+                where = " OR ".join(f"lower({col}) LIKE ?" for _ in patterns)
+                hits = _safe_scalar(
+                    conn, f"SELECT COUNT(*) FROM {table} WHERE {where}", tuple(patterns)
+                )
+                pattern_hits += int(hits or 0)
+        observed = guard_sum == 0 and pattern_hits == 0
+        return self._classify(
+            "document_intelligence_safety_scan", observed, None, is_boolean=True, future_phase="07C"
+        )
+
     def _gate_financial_amount_parseability(self) -> dict[str, Any]:
         conn = get_connection(self.db_path)
         # Look for any financial fact table with amount columns; compute parseability ratio if data present
@@ -487,6 +670,12 @@ class GateEvaluator:
         self._gate_candidate_orphan_rate()
         self._gate_phase_07b_presence()
         self._gate_document_card_population()
+        self._gate_document_classification_coverage()
+        self._gate_document_project_match_coverage()
+        self._gate_document_extraction_eligibility_status()
+        self._gate_document_relationship_population_status()
+        self._gate_document_source_scope_compliance()
+        self._gate_document_intelligence_safety_scan()
         self._gate_financial_amount_parseability()
         self._gate_financial_currency_completeness()
         self._gate_review_required_routing_presence()
