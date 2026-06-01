@@ -2507,3 +2507,41 @@ def table_inventory(
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
 
+
+_PHASE_07D_GATES_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "no_raw_content": True,
+    "safe_counts_only": True,
+    "candidates_promoted_as_authoritative": False,
+    "advisory_only": True,
+}
+
+
+@data_quality_app.command("phase-07d-gates")
+def phase_07d_gates(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Phase 07D data-quality gates (Prompt 12).
+
+    Evaluates the full twelve-field phase_07d_data_quality_gates contract over the V25
+    cross-source substrate + meeting-prep / issue-history / risk-digest / aging-exposure /
+    Obsidian read models, plus the four OneDrive/SharePoint source-scope safe counts
+    (counts only — never folder names, paths, web URLs, drive IDs, or item IDs) and a
+    07D-scoped no-writeback / no-secret / no-raw-content proof. Read-only; persists nothing;
+    coverage gates defer (never pass) on empty data; nothing is auto-promoted.
+    """
+    from hb_assistant.construction.data_quality import (
+        evaluate_phase_07d_data_quality_gates,
+    )
+
+    report = evaluate_phase_07d_data_quality_gates()
+
+    payload = {
+        "command": "construction-agent data-quality phase-07d-gates",
+        "report": report,
+        "guardrails": _PHASE_07D_GATES_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+

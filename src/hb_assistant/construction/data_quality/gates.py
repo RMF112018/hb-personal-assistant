@@ -270,6 +270,29 @@ def _safe_scalar(conn, sql: str, params: tuple = ()) -> Any:
         return None
 
 
+def source_scope_safe_counts(sources: list[dict[str, Any]]) -> dict[str, int]:
+    """Derive the four Phase 07D source-scope safe counts from an
+    ``evaluate_source_scope_compliance`` ``sources`` list. Counts only — never folder names, paths,
+    URLs, drive IDs, or item IDs. Explicit all-folders selection is a compliant scope (it is counted
+    under ``onedrive_explicit_all_folders_sources``, never as blocked)."""
+    onedrive = [s for s in sources if s.get("system") == "onedrive"]
+    sharepoint = [s for s in sources if s.get("system") == "sharepoint"]
+    return {
+        "onedrive_explicit_subset_sources": sum(
+            1 for s in onedrive if s.get("scope_type") == "selected_folders"
+        ),
+        "onedrive_explicit_all_folders_sources": sum(
+            1 for s in onedrive if s.get("scope_type") == "all_folders_explicit"
+        ),
+        "onedrive_implicit_root_blocked_sources": sum(
+            1 for s in onedrive if s.get("compliance_status") == "non_compliant"
+        ),
+        "sharepoint_approved_all_nested_sources": sum(
+            1 for s in sharepoint if s.get("compliance_status") == "compliant"
+        ),
+    }
+
+
 # ---------------------------------------------------------------------------
 # GateEvaluator
 # ---------------------------------------------------------------------------
@@ -771,6 +794,7 @@ class GateEvaluator:
         breakdown: Optional[dict[str, Any]] = None
         onedrive_n = 0
         blocked_sources: list[str] = []
+        safe_counts: Optional[dict[str, int]] = None
         try:
             from hb_assistant.construction.config import load_source_registry
             from hb_assistant.construction.document.source_scope import (
@@ -787,6 +811,7 @@ class GateEvaluator:
             breakdown = result.get("onedrive_scope_breakdown")
             onedrive_n = int((result.get("by_system") or {}).get("onedrive", 0))
             blocked_sources = list(result.get("blocked_sources") or [])
+            safe_counts = source_scope_safe_counts(result.get("sources") or [])
         except Exception:
             observed = None  # registry/policy unavailable -> not_applicable
 
@@ -820,6 +845,7 @@ class GateEvaluator:
         res["onedrive_source_count"] = onedrive_n
         res["document_card_count"] = card_count
         res["blocked_sources"] = blocked_sources
+        res["source_scope_safe_counts"] = safe_counts
         return res
 
     def _gate_financial_amount_parseability(self) -> dict[str, Any]:

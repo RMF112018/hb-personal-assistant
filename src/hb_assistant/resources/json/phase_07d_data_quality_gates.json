@@ -14,6 +14,12 @@
     "obsidian_output_safety",
     "stale_unknown_warning_coverage"
   ],
+  "source_scope_safe_counts": [
+    "onedrive_explicit_subset_sources",
+    "onedrive_explicit_all_folders_sources",
+    "onedrive_implicit_root_blocked_sources",
+    "sharepoint_approved_all_nested_sources"
+  ],
   "guardrails": {
     "no_raw_content": true,
     "no_external_writeback": true,

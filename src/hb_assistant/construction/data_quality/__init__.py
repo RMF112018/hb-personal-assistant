@@ -25,6 +25,9 @@ from .marts import (
 from .obsidian import (
     render_data_quality_obsidian_outputs,
 )
+from .phase_07d import (
+    evaluate_phase_07d_data_quality_gates,
+)
 from .project_identity import (
     ProjectIdentityBackfill,
     backfill_project_identity,
@@ -57,6 +60,7 @@ __all__ = [
     "populate_agent_ready_query_marts",
     "render_data_quality_obsidian_outputs",
     "evaluate_data_quality_gates",
+    "evaluate_phase_07d_data_quality_gates",
     "GateEvaluator",
     "build_data_quality_no_writeback_proof",
     "build_table_inventory_report",
