@@ -5,9 +5,12 @@ document-source scope policy before document cards are materialized:
 
 - SharePoint sources index the approved drive / approved project-drive scope and
   all nested folders -> compliant.
-- OneDrive sources may index only an explicit selected-folder allowlist
-  (``selected_folder_item_ids``); root-wide OneDrive indexing is not allowed, so a
-  OneDrive source without an allowlist is NON-COMPLIANT and is blocked from
+- OneDrive sources are compliant via one of two explicit declarations: an explicit
+  selected-folder allowlist (``selected_folder_item_ids``), OR an explicit
+  all-folders opt-in (``allow_all_folders: true`` on a recognized OneDrive root
+  kind, with the policy's ``allow_explicit_all_folders`` enabled) covering the root
+  and all nested folders. *Implicit* root-wide OneDrive indexing is never allowed,
+  so a OneDrive source with neither declaration is NON-COMPLIANT and blocked from
   document-card promotion (fail-closed).
 
 Offline and read-only: it loads the in-memory source registry + policy and returns
@@ -27,6 +30,18 @@ from hb_assistant.construction.policy.inventory_first import ONEDRIVE_INVENTORY_
 
 _BLOCK_ACTION = "block_document_card_promotion"
 
+# Recognized OneDrive *root* kinds eligible for the explicit all-folders path.
+# Local to the document-source-scope evaluator on purpose: it must NOT broaden the
+# shared inventory-first scope set (``ONEDRIVE_INVENTORY_FIRST_SCOPES``), which
+# governs unrelated crawl behavior. It extends the canonical Phase 02 root kinds
+# with the legacy Phase 01 compat root kinds (``onedrive_personal`` /
+# ``onedrive_shared``) so a superseded compat duplicate of an approved personal
+# OneDrive root can be explicitly opted in — but only via ``allow_all_folders``.
+_ONEDRIVE_ALL_FOLDERS_ROOT_KINDS = frozenset(ONEDRIVE_INVENTORY_FIRST_SCOPES) | {
+    "onedrive_personal",
+    "onedrive_shared",
+}
+
 
 def _system_of(source: SourceLocation) -> str:
     kind = str(source.kind)
@@ -37,7 +52,17 @@ def _system_of(source: SourceLocation) -> str:
     return "not_applicable"
 
 
-def _evaluate_source(source: SourceLocation) -> dict[str, Any]:
+def _is_onedrive_root_kind(source: SourceLocation) -> bool:
+    """True when the source kind names a recognized OneDrive root scope.
+
+    The explicit all-folders path is honored only on these kinds so a OneDrive
+    source with an unresolved / unrecognized root identity can never be treated as
+    an all-folders allowlist (it stays blocked as ambiguous).
+    """
+    return str(source.kind) in _ONEDRIVE_ALL_FOLDERS_ROOT_KINDS
+
+
+def _evaluate_source(source: SourceLocation, policy: DocumentSourcePolicy) -> dict[str, Any]:
     """Classify a single enabled source. Returns its compliance record."""
     system = _system_of(source)
     record: dict[str, Any] = {
@@ -64,16 +89,36 @@ def _evaluate_source(source: SourceLocation) -> dict[str, Any]:
     if system == "onedrive":
         allowlist = source.selected_folder_item_ids or []
         if allowlist:
+            # Explicit subset: listed folders and all nested folders therein.
             record["scope_type"] = "selected_folders"
             record["compliance_status"] = "compliant"
-            record["reasons"] = ["selected_folder_allowlist_present"]
+            record["reasons"] = [
+                "selected_folder_allowlist_present",
+                "onedrive_selected_folders_compliant",
+            ]
+        elif (
+            source.allow_all_folders
+            and policy.onedrive.allow_explicit_all_folders
+            and _is_onedrive_root_kind(source)
+        ):
+            # Explicit operator opt-in: root and all nested folders.
+            record["scope_type"] = "all_folders_explicit"
+            record["compliance_status"] = "compliant"
+            record["reasons"] = [
+                "explicit_all_folders_allowlist_declared",
+                "root_and_all_nested_folders",
+                "onedrive_all_folders_explicit_compliant",
+            ]
         else:
+            # Ambiguous / implicit root-wide, or all-folders requested without an
+            # explicit opt-in or on an unrecognized root kind: blocked, fail-closed.
             record["scope_type"] = "root_wide"
             record["compliance_status"] = "non_compliant"
             record["action"] = _BLOCK_ACTION
             record["reasons"] = [
                 "root_wide_onedrive_indexing_not_allowed",
-                "selected_folder_allowlist_required",
+                "explicit_all_folders_or_selected_allowlist_required",
+                "onedrive_implicit_root_blocked",
             ]
         return record
 
@@ -92,7 +137,7 @@ def evaluate_source_scope_compliance(
         raise ValueError("source registry contains a non-read-only source; refusing to evaluate")
 
     enabled = [s for s in registry.sources if s.enabled]
-    records = [_evaluate_source(s) for s in enabled]
+    records = [_evaluate_source(s, policy) for s in enabled]
 
     by_system: dict[str, int] = {}
     for r in records:
@@ -102,6 +147,21 @@ def evaluate_source_scope_compliance(
     non_compliant = [r for r in records if r["compliance_status"] == "non_compliant"]
     not_applicable = [r for r in records if r["compliance_status"] == "not_applicable"]
     blocked = [r["source_key"] for r in non_compliant]
+
+    # Phase 07D — surface the explicit-compliant vs implicit-blocked OneDrive
+    # distinction so the data-quality gate and evidence can report it.
+    onedrive = [r for r in records if r["system"] == "onedrive"]
+    onedrive_scope_breakdown = {
+        "all_folders_explicit_compliant": sum(
+            1 for r in onedrive if r["scope_type"] == "all_folders_explicit"
+        ),
+        "selected_folders_compliant": sum(
+            1 for r in onedrive if r["scope_type"] == "selected_folders"
+        ),
+        "implicit_root_blocked": sum(
+            1 for r in onedrive if r["compliance_status"] == "non_compliant"
+        ),
+    }
 
     return {
         "command": "graph files scope-compliance",
@@ -116,6 +176,7 @@ def evaluate_source_scope_compliance(
             "not_applicable": len(not_applicable),
         },
         "by_system": by_system,
+        "onedrive_scope_breakdown": onedrive_scope_breakdown,
         "sources": records,
         "blocked_sources": blocked,
         "guardrails": {
@@ -127,6 +188,7 @@ def evaluate_source_scope_compliance(
             "sharepoint_policy": policy.sharepoint.intended_scope,
             "onedrive_policy": policy.onedrive.intended_scope,
             "onedrive_root_wide_allowed": policy.onedrive.root_wide_indexing_allowed,
+            "onedrive_explicit_all_folders_allowed": policy.onedrive.allow_explicit_all_folders,
         },
     }
 

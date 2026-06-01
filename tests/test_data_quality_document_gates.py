@@ -114,6 +114,72 @@ def test_missing_classification_defers_and_blocks_readiness() -> None:
         Path(db).unlink(missing_ok=True)
 
 
+def _gate(report: dict, name: str) -> dict:
+    return next(g for g in report["gates"] if g["gate_name"] == name)
+
+
+def test_review_routing_passes_on_document_review_queue() -> None:
+    """Phase 07D — review-routing reconciles across queues: a review-required document
+    card alone proves the routing path exists (relationship queue may be empty)."""
+    db = _fresh_db()
+    try:
+        store = ConstructionStore(db)
+        _seed_card(store, key="c0")  # review_required=True document card
+        report = evaluate_data_quality_gates(db_path=db, persist=False)
+        gate = _gate(report, "review_required_routing_presence")
+        assert gate["gate_status"] == "pass"
+        breakdown = gate["review_routing_breakdown"]
+        assert breakdown["construction_document_cards"] >= 1
+        assert breakdown["relationship_resolution_queue"] == 0  # empty, yet gate passes
+    finally:
+        Path(db).unlink(missing_ok=True)
+
+
+def test_review_routing_defers_on_empty_queues() -> None:
+    db = _fresh_db()
+    try:
+        report = evaluate_data_quality_gates(db_path=db, persist=False)
+        gate = _gate(report, "review_required_routing_presence")
+        assert gate["gate_status"] == "deferred_not_blocking"
+        assert all(v == 0 for v in gate["review_routing_breakdown"].values())
+    finally:
+        Path(db).unlink(missing_ok=True)
+
+
+def test_review_routing_is_idempotent() -> None:
+    db = _fresh_db()
+    try:
+        store = ConstructionStore(db)
+        _seed_card(store, key="c0")
+        r1 = _gate(evaluate_data_quality_gates(db_path=db, persist=False), "review_required_routing_presence")
+        r2 = _gate(evaluate_data_quality_gates(db_path=db, persist=False), "review_required_routing_presence")
+        assert r1["gate_status"] == r2["gate_status"] == "pass"
+        assert r1["review_routing_breakdown"] == r2["review_routing_breakdown"]
+    finally:
+        Path(db).unlink(missing_ok=True)
+
+
+def test_source_scope_gate_surfaces_onedrive_breakdown() -> None:
+    """The document_source_scope_compliance gate attaches the explicit-compliant vs
+    implicit-blocked OneDrive distinction (driven by the live registry/policy)."""
+    db = _fresh_db()
+    try:
+        gate = _gate(
+            evaluate_data_quality_gates(db_path=db, persist=False),
+            "document_source_scope_compliance",
+        )
+        breakdown = gate["onedrive_scope_breakdown"]
+        # Keys are always present; values are non-negative ints from the registry.
+        assert set(breakdown) == {
+            "all_folders_explicit_compliant",
+            "selected_folders_compliant",
+            "implicit_root_blocked",
+        }
+        assert all(isinstance(v, int) and v >= 0 for v in breakdown.values())
+    finally:
+        Path(db).unlink(missing_ok=True)
+
+
 def test_empty_store_defers_07c_gates() -> None:
     db = _fresh_db()
     try:

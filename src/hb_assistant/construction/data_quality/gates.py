@@ -515,11 +515,17 @@ class GateEvaluator:
                 load_source_registry(), load_document_source_policy()
             )
             observed = bool(result.get("all_compliant"))
+            breakdown = result.get("onedrive_scope_breakdown")
         except Exception:
             observed = None  # registry/policy unavailable -> not_applicable
-        return self._classify(
+            breakdown = None
+        res = self._classify(
             "document_source_scope_compliance", observed, None, is_boolean=True, future_phase="07C"
         )
+        # Phase 07D — surface the explicit-compliant vs implicit-blocked distinction
+        # (onedrive_all_folders_explicit_compliant vs onedrive_implicit_root_blocked).
+        res["onedrive_scope_breakdown"] = breakdown
+        return res
 
     def _gate_document_intelligence_safety_scan(self) -> dict[str, Any]:
         """Runtime safety scan of the V24 document tables: guard CHECK columns all 0 and no
@@ -609,10 +615,41 @@ class GateEvaluator:
         return self._classify("financial_currency_completeness", ratio, self.thresholds.get("financial_currency_completeness_min"), future_phase="08B")
 
     def _gate_review_required_routing_presence(self) -> dict[str, Any]:
+        """Review-required routing exists and is populated across the available review queues.
+
+        Phase 07D reconciliation: a review-required path is proven by ANY populated
+        review queue, not only the relationship queue. We defensively count
+        ``review_required=1`` rows across the relationship, document, email, and
+        calendar review surfaces (a missing table contributes 0) and pass when the
+        total is positive. The per-queue breakdown is attached for evidence; no raw
+        content is read — only COUNT(*) is issued.
+        """
         conn = get_connection(self.db_path)
-        # Any row in relationship_resolution_queue with review_required=1 is evidence the path exists and is populated
-        count = _safe_scalar(conn, "SELECT COUNT(*) FROM relationship_resolution_queue WHERE review_required = 1") or 0
-        return self._classify("review_required_routing_presence", count > 0, None, is_boolean=True, future_phase=None)
+        # (label, table, where-clause) — defensive; missing tables contribute 0.
+        queues: list[tuple[str, str, str]] = [
+            ("relationship_resolution_queue", "relationship_resolution_queue", "review_required = 1"),
+            ("construction_document_cards", "construction_document_cards", "review_required = 1"),
+            ("construction_review_queue", "construction_review_queue", "review_required = 1"),
+            ("email_review_queue", "email_review_queue", "review_required = 1"),
+            (
+                "calendar_project_match_candidates",
+                "calendar_project_match_candidates",
+                "review_required = 1",
+            ),
+        ]
+        breakdown: dict[str, int] = {}
+        total = 0
+        for label, table, where in queues:
+            if not self._table_exists(conn, table):
+                continue
+            n = int(_safe_scalar(conn, f"SELECT COUNT(*) FROM {table} WHERE {where}") or 0)
+            breakdown[label] = n
+            total += n
+        res = self._classify(
+            "review_required_routing_presence", total > 0, None, is_boolean=True, future_phase=None
+        )
+        res["review_routing_breakdown"] = breakdown
+        return res
 
     def _gate_raw_content_leakage(self) -> dict[str, Any]:
         # Attestation from prior prompts + explicit guard in this module (we never SELECT raw bodies)

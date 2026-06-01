@@ -11,8 +11,12 @@ sharepoint:
   require_delta_or_baseline_receipt: true
   non_compliant_action: block_document_card_promotion
 onedrive:
-  intended_scope: selected_folders_only
+  intended_scope: selected_folders_or_explicit_all_folders
   include_nested_folders_under_selected_folders: true
+  # Implicit root-wide indexing stays forbidden. The only compliant
+  # root-and-all-nested path is an explicit per-source `allow_all_folders: true`
+  # operator opt-in, honored when `allow_explicit_all_folders` is true below.
   root_wide_indexing_allowed: false
   require_selected_folder_allowlist: true
+  allow_explicit_all_folders: true
   non_compliant_action: block_document_card_promotion

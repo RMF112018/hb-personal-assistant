@@ -59,9 +59,16 @@ class SharePointScopePolicy(BaseModel):
 class OneDriveScopePolicy(BaseModel):
     intended_scope: str = "selected_folders_only"
     include_nested_folders_under_selected_folders: bool = True
-    # Literal-locked: root-wide OneDrive indexing is never allowed by policy.
+    # Literal-locked: *implicit* root-wide OneDrive indexing is never allowed by
+    # policy. The only compliant root-and-all-nested path is an explicit operator
+    # opt-in (``allow_explicit_all_folders`` + a source's ``allow_all_folders``).
     root_wide_indexing_allowed: Literal[False] = False
     require_selected_folder_allowlist: Literal[True] = True
+    # Phase 07D — permit an explicitly declared all-folders/root-and-all-nested
+    # allowlist as a compliant OneDrive scope. Default True (capability enabled);
+    # set False to disable the explicit all-folders path entirely. This never
+    # weakens the implicit-root-wide block above.
+    allow_explicit_all_folders: bool = True
     non_compliant_action: Literal["block_document_card_promotion"] = _BLOCK_ACTION
 
     model_config = {"extra": "forbid"}

@@ -285,6 +285,12 @@ class SourceLocation(BaseModel):
     # source is scope-compliant only when this is non-empty; root-wide OneDrive
     # indexing is not allowed by the 07C document-source policy.
     selected_folder_item_ids: list[str] | None = None
+    # Phase 07D — explicit OneDrive all-folders opt-in. Fail-closed default False:
+    # implicit root-wide indexing stays blocked. When True on a recognized OneDrive
+    # root scope, the operator has explicitly approved indexing the root and all
+    # nested folders (an "all-folders allowlist"), which the source-scope evaluator
+    # treats as compliant. It is never an implicit permission to crawl.
+    allow_all_folders: bool = False
 
     # Crawl + match descriptors.
     sync_mode: str | None = None

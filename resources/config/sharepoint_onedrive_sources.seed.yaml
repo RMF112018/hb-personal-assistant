@@ -104,6 +104,10 @@ sources:
     display_name: "Bobby OneDrive (delegated, personal scope)"
     read_only: true
     resolution_status: pending
+    # Phase 07D — legacy compat duplicate of the approved personal OneDrive root
+    # (od_personal_bobby). All-folder OneDrive indexing is explicitly operator-
+    # approved, so this compat root carries the same explicit all-folders opt-in.
+    allow_all_folders: true
     notes: "Phase 01 compat record. See od_personal_bobby for canonical Phase 02 entry."
 
   # --- Phase 02 canonical sources ------------------------------------------
@@ -268,6 +272,9 @@ sources:
     sync_frequency_minutes: 30
     resolution_status: pending_drive_resolution
     enabled: true
+    # Phase 07D — explicit operator opt-in: index this OneDrive root and all nested
+    # folders (an all-folders allowlist). Scope-compliant; never an implicit crawl.
+    allow_all_folders: true
     baseline_policy:
       mode: inventory_first
       deep_index_default: false
@@ -285,6 +292,9 @@ sources:
     sync_frequency_minutes: 120
     resolution_status: pending_drive_resolution
     enabled: true
+    # Phase 07D — explicit operator opt-in: index this OneDrive root and all nested
+    # folders (an all-folders allowlist). Scope-compliant; never an implicit crawl.
+    allow_all_folders: true
     baseline_policy:
       mode: inventory_first
       deep_index_default: false
@@ -300,6 +310,9 @@ sources:
     sync_frequency_minutes: 60
     resolution_status: pending_source_resolution
     enabled: true
+    # Phase 07D — explicit operator opt-in: index this OneDrive root and all nested
+    # folders (an all-folders allowlist). Scope-compliant; never an implicit crawl.
+    allow_all_folders: true
     baseline_policy:
       mode: inventory_first
       deep_index_default: false
