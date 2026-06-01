@@ -120,6 +120,10 @@ from hb_assistant.construction.policy import (
     ReviewRulesError,
     load_review_rules,
 )
+from hb_assistant.construction.relationships.cross_source_substrate import (
+    CrossSourceRelationshipSubstrateBuilder,
+    relationship_substrate_status,
+)
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.http_client import GraphHttpClient
 from hb_assistant.store.migrator import SQLiteMigrator
@@ -146,6 +150,65 @@ app.add_typer(classify_app, name="classify")
 app.add_typer(ollama_app, name="ollama")
 app.add_typer(fixtures_app, name="fixtures")
 app.add_typer(data_quality_app, name="data-quality")
+relationships_app = typer.Typer(
+    help="Phase 07D unified cross-source relationship substrate (build/status). Dry-run safe "
+    "by default; --apply writes local SQLite candidates + evidence trails only — never "
+    "promotes and never writes back to any external system."
+)
+app.add_typer(relationships_app, name="relationships")
+
+_RELATIONSHIP_SUBSTRATE_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "writes": "local_sqlite_candidates_and_evidence_only",
+    "auto_promotion": False,
+    "no_raw_content": True,
+    "weak_model_sensitive_always_review": True,
+}
+
+
+@relationships_app.command("build")
+def relationships_build(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist candidates + evidence trails to SQLite (default: dry-run)."
+    ),
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Normalize existing document/calendar/email relationship candidates into the unified
+    Phase 07D cross-source substrate (V25). Candidates-only; never auto-promotes."""
+    builder = CrossSourceRelationshipSubstrateBuilder(ConstructionStore())
+    report = builder.build(dry_run=not apply, project_filter=project)
+    payload = {
+        "command": "construction-agent relationships build",
+        "apply": apply,
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _RELATIONSHIP_SUBSTRATE_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+@relationships_app.command("status")
+def relationships_status(
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Read-only coverage report over the Phase 07D cross-source relationship substrate (V25)."""
+    report = relationship_substrate_status(ConstructionStore(), project_filter=project)
+    payload = {
+        "command": "construction-agent relationships status",
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _RELATIONSHIP_SUBSTRATE_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
 
 
 def _build_report(registry: SourceRegistry) -> dict[str, Any]:

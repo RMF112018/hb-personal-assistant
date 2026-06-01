@@ -2325,6 +2325,308 @@ class ConstructionStore:
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
+    def list_document_relationship_candidates_full(self) -> list[dict[str, Any]]:
+        """List the safe full field set of every document->record relationship candidate
+        (V24) needed by the 07D cross-source substrate normalizer. The target record is a
+        hashed key and source_reference_json carries hashed/typed evidence only — no raw
+        document text / path / URL ever round-trips here."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT candidate_id, document_card_id, target_system, target_record_type,
+                   target_record_key_hash, relationship_type, candidate_type,
+                   confidence, confidence_class, review_required, source_reference_json
+            FROM construction_document_relationship_candidates
+            ORDER BY candidate_id
+            """
+        )
+        keys = (
+            "candidate_id", "document_card_id", "target_system", "target_record_type",
+            "target_record_key_hash", "relationship_type", "candidate_type",
+            "confidence", "confidence_class", "review_required", "source_reference_json",
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            record["review_required"] = bool(record["review_required"])
+            record["source_reference_json"] = self._load_json(record["source_reference_json"])
+            results.append(record)
+        return results
+
+    # --- Phase 07D cross-source relationship substrate (V25) ----------------
+
+    def upsert_cross_source_relationship_candidate(
+        self,
+        *,
+        candidate_id: str,
+        source_family: str,
+        source_record_type: str,
+        source_record_ref: str,
+        target_family: str,
+        target_record_type: str,
+        target_record_ref: str,
+        relationship_type: str,
+        confidence_score: float,
+        confidence_class: str,
+        source_reference_json: str,
+        project_key: Optional[str] = None,
+        deterministic: bool = False,
+        model_proposed: bool = False,
+        sensitive_high_impact: bool = False,
+        review_required: bool = True,
+        promotion_status: str = "candidate",
+        signals_json: Optional[str] = None,
+        evidence_trail_id: Optional[str] = None,
+    ) -> None:
+        """Upsert a unified cross-source relationship candidate (V25). Idempotent by
+        candidate_id (a deterministic hash of the source/target/relationship edge, which
+        also matches the table's UNIQUE edge key). The eight no-raw / no-writeback guard
+        CHECK columns are never written — the schema defaults (all 0) hold. Record refs are
+        local stable identifiers or existing hashes; only hashed/typed/enum evidence
+        round-trips through signals_json / source_reference_json."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO cross_source_relationship_candidates
+                    (candidate_id, project_key, source_family, source_record_type,
+                     source_record_ref, target_family, target_record_type, target_record_ref,
+                     relationship_type, confidence_score, confidence_class, deterministic,
+                     model_proposed, sensitive_high_impact, review_required, promotion_status,
+                     signals_json, source_reference_json, evidence_trail_id, created_utc,
+                     updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(candidate_id) DO UPDATE SET
+                    project_key = excluded.project_key,
+                    source_family = excluded.source_family,
+                    source_record_type = excluded.source_record_type,
+                    source_record_ref = excluded.source_record_ref,
+                    target_family = excluded.target_family,
+                    target_record_type = excluded.target_record_type,
+                    target_record_ref = excluded.target_record_ref,
+                    relationship_type = excluded.relationship_type,
+                    confidence_score = excluded.confidence_score,
+                    confidence_class = excluded.confidence_class,
+                    deterministic = excluded.deterministic,
+                    model_proposed = excluded.model_proposed,
+                    sensitive_high_impact = excluded.sensitive_high_impact,
+                    review_required = excluded.review_required,
+                    promotion_status = excluded.promotion_status,
+                    signals_json = excluded.signals_json,
+                    source_reference_json = excluded.source_reference_json,
+                    evidence_trail_id = excluded.evidence_trail_id,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    candidate_id, project_key, source_family, source_record_type,
+                    source_record_ref, target_family, target_record_type, target_record_ref,
+                    relationship_type, confidence_score, confidence_class,
+                    1 if deterministic else 0, 1 if model_proposed else 0,
+                    1 if sensitive_high_impact else 0, 1 if review_required else 0,
+                    promotion_status, signals_json, source_reference_json, evidence_trail_id,
+                    _utc_now(), _utc_now(),
+                ),
+            )
+
+    def count_cross_source_relationship_candidates(self) -> int:
+        conn = get_connection(self._db_path)
+        cur = conn.execute("SELECT COUNT(*) FROM cross_source_relationship_candidates")
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
+    _CROSS_SOURCE_CANDIDATE_KEYS: tuple[str, ...] = (
+        "candidate_id", "project_key", "source_family", "source_record_type",
+        "source_record_ref", "target_family", "target_record_type", "target_record_ref",
+        "relationship_type", "confidence_score", "confidence_class", "deterministic",
+        "model_proposed", "sensitive_high_impact", "review_required", "promotion_status",
+        "signals_json", "source_reference_json", "evidence_trail_id",
+    )
+
+    def list_cross_source_relationship_candidates(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        review_required: Optional[bool] = None,
+        limit: int = 2000,
+    ) -> list[dict[str, Any]]:
+        """List unified cross-source relationship candidates (V25) with optional filters.
+        Returns safe identifier/hash/enum fields only; JSON columns are decoded."""
+        keys = self._CROSS_SOURCE_CANDIDATE_KEYS
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if review_required is not None:
+            clauses.append("review_required = ?")
+            params.append(1 if review_required else 0)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM cross_source_relationship_candidates "
+            f"{where} ORDER BY confidence_score DESC, candidate_id LIMIT ?",
+            tuple(params),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            for json_field in ("signals_json", "source_reference_json"):
+                record[json_field] = self._load_json(record[json_field])
+            for bool_field in (
+                "deterministic", "model_proposed", "sensitive_high_impact", "review_required",
+            ):
+                record[bool_field] = bool(record[bool_field])
+            results.append(record)
+        return results
+
+    def upsert_source_evidence_trail(
+        self,
+        *,
+        evidence_trail_id: str,
+        evidence_kind: str,
+        source_refs_json: str,
+        confidence_class: str,
+        project_key: Optional[str] = None,
+        relationship_candidate_id: Optional[str] = None,
+        review_required: bool = False,
+        stale_unknown_flags_json: Optional[str] = None,
+    ) -> None:
+        """Upsert a redacted source evidence trail (V25). Idempotent by evidence_trail_id.
+        source_refs_json holds compact local identifiers / hashes only — never a raw body,
+        signed URL, or download URL. Guard CHECK columns keep their schema defaults (0)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO source_evidence_trails
+                    (evidence_trail_id, project_key, evidence_kind, relationship_candidate_id,
+                     source_refs_json, confidence_class, review_required,
+                     stale_unknown_flags_json, generated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(evidence_trail_id) DO UPDATE SET
+                    project_key = excluded.project_key,
+                    evidence_kind = excluded.evidence_kind,
+                    relationship_candidate_id = excluded.relationship_candidate_id,
+                    source_refs_json = excluded.source_refs_json,
+                    confidence_class = excluded.confidence_class,
+                    review_required = excluded.review_required,
+                    stale_unknown_flags_json = excluded.stale_unknown_flags_json
+                """,
+                (
+                    evidence_trail_id, project_key, evidence_kind, relationship_candidate_id,
+                    source_refs_json, confidence_class, 1 if review_required else 0,
+                    stale_unknown_flags_json, _utc_now(),
+                ),
+            )
+
+    def count_source_evidence_trails(self) -> int:
+        conn = get_connection(self._db_path)
+        cur = conn.execute("SELECT COUNT(*) FROM source_evidence_trails")
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
+    def list_source_evidence_trails(
+        self, *, project_key: Optional[str] = None, limit: int = 2000,
+    ) -> list[dict[str, Any]]:
+        """List redacted source evidence trails (V25). Safe fields only; JSON decoded."""
+        keys = (
+            "evidence_trail_id", "project_key", "evidence_kind", "relationship_candidate_id",
+            "source_refs_json", "confidence_class", "review_required",
+            "stale_unknown_flags_json",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM source_evidence_trails {where} "
+            "ORDER BY evidence_trail_id LIMIT ?",
+            tuple(params),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            for json_field in ("source_refs_json", "stale_unknown_flags_json"):
+                record[json_field] = self._load_json(record[json_field])
+            record["review_required"] = bool(record["review_required"])
+            results.append(record)
+        return results
+
+    def upsert_cross_source_relationship(
+        self,
+        *,
+        relationship_id: str,
+        source_family: str,
+        source_record_type: str,
+        source_record_ref: str,
+        target_family: str,
+        target_record_type: str,
+        target_record_ref: str,
+        relationship_type: str,
+        confidence_class: str,
+        source_reference_json: str,
+        candidate_id: Optional[str] = None,
+        project_key: Optional[str] = None,
+        promotion_status: str = "promoted",
+        promoted_by: str = "deterministic",
+        review_required: bool = False,
+        signals_json: Optional[str] = None,
+        evidence_trail_id: Optional[str] = None,
+    ) -> None:
+        """Upsert a promoted/confirmed cross-source relationship (V25). Idempotent by
+        relationship_id. Ships for Phase 07D Prompt 04's policy-gated promotion path; the
+        Prompt 03 substrate builder never calls this (no auto-promotion). Guard CHECK
+        columns keep their schema defaults (0)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO cross_source_relationships
+                    (relationship_id, candidate_id, project_key, source_family,
+                     source_record_type, source_record_ref, target_family, target_record_type,
+                     target_record_ref, relationship_type, confidence_class, promotion_status,
+                     promoted_by, review_required, signals_json, source_reference_json,
+                     evidence_trail_id, created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(relationship_id) DO UPDATE SET
+                    candidate_id = excluded.candidate_id,
+                    project_key = excluded.project_key,
+                    source_family = excluded.source_family,
+                    source_record_type = excluded.source_record_type,
+                    source_record_ref = excluded.source_record_ref,
+                    target_family = excluded.target_family,
+                    target_record_type = excluded.target_record_type,
+                    target_record_ref = excluded.target_record_ref,
+                    relationship_type = excluded.relationship_type,
+                    confidence_class = excluded.confidence_class,
+                    promotion_status = excluded.promotion_status,
+                    promoted_by = excluded.promoted_by,
+                    review_required = excluded.review_required,
+                    signals_json = excluded.signals_json,
+                    source_reference_json = excluded.source_reference_json,
+                    evidence_trail_id = excluded.evidence_trail_id,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    relationship_id, candidate_id, project_key, source_family,
+                    source_record_type, source_record_ref, target_family, target_record_type,
+                    target_record_ref, relationship_type, confidence_class, promotion_status,
+                    promoted_by, 1 if review_required else 0, signals_json,
+                    source_reference_json, evidence_trail_id, _utc_now(), _utc_now(),
+                ),
+            )
+
+    def count_cross_source_relationships(self) -> int:
+        conn = get_connection(self._db_path)
+        cur = conn.execute("SELECT COUNT(*) FROM cross_source_relationships")
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
     # --- Phase 07C document intelligence previews (V24) --------------------
 
     def upsert_document_intelligence_preview(
