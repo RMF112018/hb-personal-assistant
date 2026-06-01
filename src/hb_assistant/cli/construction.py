@@ -107,6 +107,10 @@ from hb_assistant.construction.graph import (
     ResolutionResult,
     scopes_for_source_kind,
 )
+from hb_assistant.construction.issue_history import (
+    IssueHistoryBuilder,
+    project_issue_history_status,
+)
 from hb_assistant.construction.manifests import (
     ConstructionVaultWriter,
     DocumentCardPolicyError,
@@ -303,6 +307,71 @@ def meeting_prep_status(
         "filter": {"project": project},
         "report": report,
         "guardrails": _MEETING_PREP_BRIEF_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+issue_history_app = typer.Typer(
+    help="Phase 07D project issue-history materialization (build/status). Dry-run safe by default; "
+    "--apply writes local SQLite issue-history families only — advisory, grouped by "
+    "deterministic/strong relationships, no raw content, and never writes back to any external "
+    "system."
+)
+app.add_typer(issue_history_app, name="issue-history")
+
+_ISSUE_HISTORY_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "writes": "local_sqlite_project_issue_history_items_only",
+    "no_raw_content": True,
+    "advisory_only": True,
+    "no_final_determinations": True,
+    "auto_promotion": False,
+    "grouping": "deterministic_and_strong_heuristic_only",
+}
+
+
+@issue_history_app.command("build")
+def issue_history_build(
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist issue-history families to SQLite (default: dry-run)."
+    ),
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Materialize project issue history into project_issue_history_items (V25), grouping the
+    cross-source substrate into per-issue families from deterministic + strong-heuristic
+    relationships only. Advisory; weak/model/sensitive edges are excluded and never promoted."""
+    builder = IssueHistoryBuilder(ConstructionStore())
+    report = builder.build(dry_run=not apply, project_filter=project)
+    payload = {
+        "command": "construction-agent issue-history build",
+        "apply": apply,
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _ISSUE_HISTORY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+@issue_history_app.command("status")
+def issue_history_status(
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Limit to a single project_key."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Read-only coverage report over the Phase 07D project issue-history table (V25)."""
+    report = project_issue_history_status(ConstructionStore(), project_filter=project)
+    payload = {
+        "command": "construction-agent issue-history status",
+        "filter": {"project": project},
+        "report": report,
+        "guardrails": _ISSUE_HISTORY_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if report.get("ok") else 1)

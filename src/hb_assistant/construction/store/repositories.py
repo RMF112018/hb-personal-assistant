@@ -2810,6 +2810,95 @@ class ConstructionStore:
         row = conn.execute("SELECT COUNT(*) FROM meeting_prep_brief_sections").fetchone()
         return int(row[0]) if row else 0
 
+    # --- Phase 07D Prompt 07 project issue history (V25) ----------------------
+
+    def upsert_project_issue_history_item(
+        self,
+        *,
+        issue_family_id: str,
+        project_key: str,
+        status: str,
+        source_families_json: str,
+        confidence_class: str,
+        issue_kind: Optional[str] = None,
+        age_days: int = 0,
+        latest_activity_utc: Optional[str] = None,
+        evidence_trail_id: Optional[str] = None,
+        review_required: bool = False,
+        stale_unknown_flags_json: Optional[str] = None,
+    ) -> None:
+        """Upsert a project issue-history family (V25). Idempotent by issue_family_id (a
+        deterministic hash of the anchor source record). status is a normalized bounded token;
+        source_families_json / stale_unknown_flags_json carry families/flags only — never a raw
+        body, document text, calendar payload, status payload, URL, or token. Guard CHECK
+        columns keep their schema defaults (0)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO project_issue_history_items
+                    (issue_family_id, project_key, issue_kind, status, age_days,
+                     latest_activity_utc, source_families_json, evidence_trail_id,
+                     confidence_class, review_required, stale_unknown_flags_json,
+                     created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(issue_family_id) DO UPDATE SET
+                    project_key = excluded.project_key,
+                    issue_kind = excluded.issue_kind,
+                    status = excluded.status,
+                    age_days = excluded.age_days,
+                    latest_activity_utc = excluded.latest_activity_utc,
+                    source_families_json = excluded.source_families_json,
+                    evidence_trail_id = excluded.evidence_trail_id,
+                    confidence_class = excluded.confidence_class,
+                    review_required = excluded.review_required,
+                    stale_unknown_flags_json = excluded.stale_unknown_flags_json,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    issue_family_id, project_key, issue_kind, status, age_days,
+                    latest_activity_utc, source_families_json, evidence_trail_id,
+                    confidence_class, 1 if review_required else 0, stale_unknown_flags_json,
+                    _utc_now(), _utc_now(),
+                ),
+            )
+
+    def list_project_issue_history_items(
+        self, *, project_key: Optional[str] = None, limit: int = 2000,
+    ) -> list[dict[str, Any]]:
+        """List project issue-history families (V25). Safe fields only; JSON decoded."""
+        keys = (
+            "issue_family_id", "project_key", "issue_kind", "status", "age_days",
+            "latest_activity_utc", "source_families_json", "evidence_trail_id",
+            "confidence_class", "review_required", "stale_unknown_flags_json",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM project_issue_history_items {where} "
+            "ORDER BY issue_family_id LIMIT ?",
+            tuple(params),
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            record = dict(zip(keys, row, strict=True))
+            for json_field in ("source_families_json", "stale_unknown_flags_json"):
+                record[json_field] = self._load_json(record[json_field])
+            record["review_required"] = bool(record["review_required"])
+            results.append(record)
+        return results
+
+    def count_project_issue_history_items(self) -> int:
+        conn = get_connection(self._db_path)
+        row = conn.execute("SELECT COUNT(*) FROM project_issue_history_items").fetchone()
+        return int(row[0]) if row else 0
+
     # --- Phase 07D Prompt 04 normalization source readers --------------------
 
     def list_procore_record_edges(
