@@ -1,0 +1,647 @@
+{
+  "checks_detail": {
+    "evidence_output_scan_08a": {
+      "findings": [],
+      "passed": true,
+      "scanned_dir": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/construction-intelligence-phase-08a-second-brain-runtime"
+    },
+    "generated_brief_handoff_scan": {
+      "findings": [],
+      "passed": true
+    },
+    "model_boundary_disclosure": {
+      "model_boundary": {
+        "bad_imports": [],
+        "module": "construction/second_brain/reasoning.py",
+        "sanctioned_external_call": "anthropic.messages.create (live model boundary)",
+        "secrets": [],
+        "writeback_findings_excluded": [
+          "construction/second_brain/reasoning.py: .create() call"
+        ]
+      },
+      "passed": true
+    },
+    "model_receipt_metadata_only": {
+      "hashes_present": true,
+      "metadata_only": true,
+      "passed": true,
+      "raw_markers_absent": true,
+      "receipt_tables_present": []
+    },
+    "module_secret_scan_08a": {
+      "findings": [],
+      "passed": true
+    },
+    "no_http_client_or_mutation_imports_08a": {
+      "findings": [],
+      "passed": true
+    },
+    "obsidian_brief_output_scan": {
+      "findings": [],
+      "passed": true,
+      "scanned_dir": "/Users/bobbyfetting/Documents/Obsidian Vault/Work/HB Personal Assistant/12_Daily_Brief"
+    },
+    "sqlite_content_leak_scan_08a_tables": {
+      "findings": [],
+      "passed": true,
+      "scanned_tables": [
+        "second_brain_runtime_config_receipts",
+        "obsidian_index_manifests",
+        "obsidian_index_entries",
+        "retrieval_query_receipts",
+        "retrieval_context_refs",
+        "query_tool_receipts",
+        "long_term_memory_items",
+        "long_term_memory_source_refs",
+        "long_term_memory_quality_signals",
+        "memory_update_candidates",
+        "memory_update_reviews",
+        "second_brain_research_packets",
+        "second_brain_evaluation_runs",
+        "second_brain_operator_feedback",
+        "second_brain_operator_preference_profiles",
+        "daily_brief_runs",
+        "daily_brief_source_refs",
+        "launchd_schedule_previews"
+      ]
+    },
+    "sqlite_guard_checks_v26_second_brain_tables": {
+      "findings": [],
+      "passed": true,
+      "tables": [
+        {
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "raw_response_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "signed_url_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "download_url_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "arbitrary_sql_allowed",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "external_writeback_performed",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "second_brain_runtime_config_receipts"
+        },
+        {
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "raw_response_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "signed_url_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "download_url_persisted",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "arbitrary_sql_allowed",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            },
+            {
+              "column": "external_writeback_performed",
+              "distinct_values": [
+                0
+              ],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "obsidian_index_manifests"
+        },
+        {
+          "guard_columns": [],
+          "present": true,
+          "table": "obsidian_index_entries"
+        },
+        {
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_response_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "signed_url_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "download_url_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "arbitrary_sql_allowed",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "external_writeback_performed",
+              "distinct_values": [],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "retrieval_query_receipts"
+        },
+        {
+          "guard_columns": [],
+          "present": true,
+          "table": "retrieval_context_refs"
+        },
+        {
+          "guard_columns": [
+            {
+              "column": "arbitrary_sql_allowed",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "external_writeback_performed",
+              "distinct_values": [],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "query_tool_receipts"
+        },
+        {
+          "guard_columns": [
+            {
+              "column": "raw_prompt_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_response_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "distinct_values": [],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "long_term_memory_items"
+        },
+        {
+          "guard_columns": [],
+          "present": true,
+          "table": "long_term_memory_source_refs"
+        },
+        {
+          "guard_columns": [
+            {
+              "column": "raw_prompt_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_response_persisted",
+              "distinct_values": [],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "long_term_memory_quality_signals"
+        },
+        {
+          "guard_columns": [
+            {
+              "column": "raw_prompt_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_response_persisted",
+              "distinct_values": [],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "memory_update_candidates"
+        },
+        {
+          "guard_columns": [],
+          "present": true,
+          "table": "memory_update_reviews"
+        },
+        {
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_response_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "signed_url_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "download_url_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "arbitrary_sql_allowed",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "external_writeback_performed",
+              "distinct_values": [],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "second_brain_research_packets"
+        },
+        {
+          "guard_columns": [
+            {
+              "column": "raw_prompt_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_response_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "external_writeback_performed",
+              "distinct_values": [],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "second_brain_evaluation_runs"
+        },
+        {
+          "guard_columns": [
+            {
+              "column": "raw_prompt_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_response_persisted",
+              "distinct_values": [],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "second_brain_operator_feedback"
+        },
+        {
+          "guard_columns": [
+            {
+              "column": "raw_prompt_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_response_persisted",
+              "distinct_values": [],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "second_brain_operator_preference_profiles"
+        },
+        {
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "raw_response_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "signed_url_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "download_url_persisted",
+              "distinct_values": [],
+              "has_check": true
+            },
+            {
+              "column": "external_writeback_performed",
+              "distinct_values": [],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "daily_brief_runs"
+        },
+        {
+          "guard_columns": [],
+          "present": true,
+          "table": "daily_brief_source_refs"
+        },
+        {
+          "guard_columns": [
+            {
+              "column": "external_writeback_performed",
+              "distinct_values": [],
+              "has_check": true
+            }
+          ],
+          "present": true,
+          "table": "launchd_schedule_previews"
+        }
+      ]
+    },
+    "static_writeback_scan_08a_modules": {
+      "findings": [],
+      "passed": true
+    }
+  },
+  "command": "second-brain data-quality no-writeback-proof",
+  "generated_utc": "2026-06-02T16:16:49.914501+00:00",
+  "guardrails": {
+    "external_systems": "read_only",
+    "fail_closed": true,
+    "model_boundary": "anthropic_messages_create_only_metadata_only_receipts",
+    "no_live_calls": true,
+    "raw_content_persisted": false,
+    "secrets_tokens_urls_in_code_or_evidence": "forbidden",
+    "writeback": "none_permitted_in_08a_runtime"
+  },
+  "model_boundary": {
+    "bad_imports": [],
+    "module": "construction/second_brain/reasoning.py",
+    "sanctioned_external_call": "anthropic.messages.create (live model boundary)",
+    "secrets": [],
+    "writeback_findings_excluded": [
+      "construction/second_brain/reasoning.py: .create() call"
+    ]
+  },
+  "no_external_writeback": true,
+  "no_live_call_performed": true,
+  "no_raw_values_persisted": true,
+  "no_raw_values_persisted_scope": "phase_08a_second_brain_runtime_modules_tables_evidence_outputs_receipts",
+  "ok": true,
+  "phase": "Phase 08A Prompt 15",
+  "proof_passed": true,
+  "repo_sha": "90ebe0a1451d273ca0d61fc1c42003155961ce36",
+  "scanned_modules": [
+    "construction/second_brain/__init__.py",
+    "construction/second_brain/agents/__init__.py",
+    "construction/second_brain/agents/loader.py",
+    "construction/second_brain/agents/models.py",
+    "construction/second_brain/agents/policy.py",
+    "construction/second_brain/config.py",
+    "construction/second_brain/contracts.py",
+    "construction/second_brain/daily_brief/__init__.py",
+    "construction/second_brain/daily_brief/context.py",
+    "construction/second_brain/daily_brief/generate.py",
+    "construction/second_brain/daily_brief/models.py",
+    "construction/second_brain/daily_brief/output.py",
+    "construction/second_brain/daily_brief/policy.py",
+    "construction/second_brain/daily_brief/scheduling.py",
+    "construction/second_brain/daily_brief/store.py",
+    "construction/second_brain/daily_brief/triage.py",
+    "construction/second_brain/data_quality.py",
+    "construction/second_brain/memory/__init__.py",
+    "construction/second_brain/memory/curator.py",
+    "construction/second_brain/memory/models.py",
+    "construction/second_brain/memory/policy.py",
+    "construction/second_brain/memory/preference.py",
+    "construction/second_brain/memory/store.py",
+    "construction/second_brain/obsidian_index/__init__.py",
+    "construction/second_brain/obsidian_index/indexer.py",
+    "construction/second_brain/obsidian_index/models.py",
+    "construction/second_brain/obsidian_index/policy.py",
+    "construction/second_brain/query_tools/__init__.py",
+    "construction/second_brain/query_tools/models.py",
+    "construction/second_brain/query_tools/policy.py",
+    "construction/second_brain/query_tools/store.py",
+    "construction/second_brain/query_tools/tools.py",
+    "construction/second_brain/reasoning.py",
+    "construction/second_brain/research/__init__.py",
+    "construction/second_brain/research/models.py",
+    "construction/second_brain/research/orchestrator.py",
+    "construction/second_brain/research/packet.py",
+    "construction/second_brain/research/policy.py",
+    "construction/second_brain/research/store.py",
+    "construction/second_brain/retrieval/__init__.py",
+    "construction/second_brain/retrieval/broker.py",
+    "construction/second_brain/retrieval/models.py",
+    "construction/second_brain/retrieval/policy.py",
+    "construction/second_brain/retrieval/readers.py",
+    "construction/second_brain/safety.py",
+    "construction/second_brain/store.py",
+    "construction/second_brain/synthesis/__init__.py",
+    "construction/second_brain/synthesis/agent.py",
+    "construction/second_brain/synthesis/evaluation.py",
+    "construction/second_brain/synthesis/models.py",
+    "construction/second_brain/synthesis/store.py"
+  ],
+  "schema_version": 26,
+  "stop_conditions_checked": [
+    "no_source_system_writeback_calls_in_08a_modules",
+    "no_bad_http_or_sdk_imports_in_08a_modules",
+    "all_v26_guard_columns_zero_and_present",
+    "no_secrets_or_raw_in_tables_evidence_or_generated_outputs",
+    "model_receipts_metadata_only_and_no_receipt_table",
+    "fail_closed_on_absent_expected_table_or_unsafe_pattern"
+  ]
+}

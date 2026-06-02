@@ -905,6 +905,20 @@ def data_quality_phase_08a_gates(
     raise typer.Exit(0 if report["ok"] else 3)
 
 
+@data_quality_app.command("no-writeback-proof")
+def data_quality_no_writeback_proof(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Prove the Phase 08A runtime has no writeback / secrets / raw content (read-only)."""
+    from hb_assistant.construction.second_brain.safety import (
+        build_second_brain_no_writeback_proof,
+    )
+
+    report = build_second_brain_no_writeback_proof()
+    typer.echo(json.dumps(report, indent=2, default=str) if json_out else str(report))
+    raise typer.Exit(0 if report["proof_passed"] else 3)
+
+
 @index_app.command("obsidian")
 def index_obsidian(
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview planned notes (no apply)."),

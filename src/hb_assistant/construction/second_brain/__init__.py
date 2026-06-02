@@ -124,6 +124,7 @@ from .retrieval import (
     build_retrieval_broker_agent_proof,
     validate_retrieval_policy,
 )
+from .safety import build_second_brain_no_writeback_proof
 from .store import read_latest_config_receipt, write_config_receipt
 from .synthesis import (
     EvaluationPreview,
@@ -230,6 +231,7 @@ __all__ = [
     "read_latest_evaluation_runs",
     "synthesize_answer",
     "write_evaluation_run",
+    "build_second_brain_no_writeback_proof",
     "MemoryCandidate",
     "MemoryItem",
     "OperatorPreference",
