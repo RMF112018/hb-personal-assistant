@@ -7,6 +7,7 @@
     "delivery_handoff_durability",
     "automation_policy_seed",
     "observability_reason_codes",
+    "automation_health",
     "automation_execution",
     "launchd_install"
   ],

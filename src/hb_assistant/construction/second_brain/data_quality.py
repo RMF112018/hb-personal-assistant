@@ -25,6 +25,7 @@ from .agents import (
     build_agent_registry_proof,
     build_agent_tool_policy_proof,
 )
+from .automation_health import build_automation_health_proof
 from .automation_policy import validate_phase_08b_automation_policy
 from .config import load_second_brain_config
 from .contracts import load_phase_08a_contract, load_phase_08b_contract
@@ -281,6 +282,7 @@ PHASE_08B_GATE_NAMES: tuple[str, ...] = (
     "delivery_handoff_durability",
     "automation_policy_seed",
     "observability_reason_codes",
+    "automation_health",
     "automation_execution",
     "launchd_install",
 )
@@ -393,6 +395,10 @@ def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict
             reason="OBSERVABILITY_REASON_CODES_PRESENT",
         )
     )
+
+    # Automation Health Agent (Prompt 03) — proof-gate: the read-only health evaluator runs and
+    # reports structured reason codes on a temp migrated DB.
+    gates.append(_proof_gate("automation_health", build_automation_health_proof()))
 
     # Deferred 08B execution surfaces — never reported as pass.
     gates.append(

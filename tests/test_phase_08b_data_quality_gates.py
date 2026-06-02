@@ -43,6 +43,8 @@ def test_no_readiness_overstatement() -> None:
     # Substrate surfaces this prompt ships are pass.
     assert by["agent_run_receipt_persistence"] == "pass"
     assert by["agent_model_receipt_persistence"] == "pass"
+    # The Automation Health Agent (Prompt 03) is implemented -> pass (proof-gate).
+    assert by["automation_health"] == "pass"
 
 
 def test_gates_carry_structured_reason_codes() -> None:

@@ -223,7 +223,7 @@ def read_daily_brief_handoff(
         """
         SELECT source_family, source_ref, evidence_trail_id, confidence_class
         FROM daily_brief_source_refs WHERE brief_run_id = ?
-        ORDER BY daily_brief_source_ref_id
+        ORDER BY rowid
         """,
         (brief_run_id,),
     ).fetchall():

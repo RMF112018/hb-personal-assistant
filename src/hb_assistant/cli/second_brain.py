@@ -80,6 +80,13 @@ data_quality_app = typer.Typer(
 )
 app.add_typer(data_quality_app, name="data-quality")
 
+automation_app = typer.Typer(
+    name="automation",
+    help="Phase 08B automation health + observability (read-only status surface).",
+    no_args_is_help=True,
+)
+app.add_typer(automation_app, name="automation")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -1001,6 +1008,54 @@ def data_quality_phase_08b_gates(
     report = evaluate_phase_08b_data_quality_gates()
     typer.echo(json.dumps(report, indent=2, default=str) if json_out else str(report))
     raise typer.Exit(0 if report["ok"] else 3)
+
+
+_AUTOMATION_HEALTH_GUARDRAILS = {
+    "local_first": True,
+    "read_only": True,
+    "no_external_writeback": True,
+    "no_external_delivery": True,
+    "no_alert_emitted": True,
+    "no_raw_content": True,
+    "receipt_emit_gated": True,
+    "model_direct_external_api_access": False,
+}
+
+
+@automation_app.command("health")
+def automation_health(
+    json_out: bool = typer.Option(True, "--json"),
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Persist a metadata-only V28 agent-run receipt for this health run (off by default).",
+    ),
+) -> None:
+    """Report second-brain automation health with actionable reason codes (read-only)."""
+    from hb_assistant.construction.second_brain.automation_health import run_automation_health
+
+    try:
+        status, agent_run_id = run_automation_health(emit_receipt=emit_receipt)
+    except Exception as exc:  # pragma: no cover - defensive: status must not crash
+        err = {"command": "second-brain automation health", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation health",
+        "overall_status": status.overall_status,
+        "reason_code": status.reason_code,
+        "checks": [c.model_dump() for c in status.checks],
+        "degraded_checks": status.degraded_checks,
+        "policy_version": status.policy_version,
+        "schema_version": status.schema_version,
+        "schema_expected": status.schema_expected,
+        "agent_run_id": agent_run_id,
+        "generated_utc": status.generated_utc,
+        "guardrails": _AUTOMATION_HEALTH_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if status.overall_status == "ok" else 3)
 
 
 @data_quality_app.command("no-writeback-proof")
