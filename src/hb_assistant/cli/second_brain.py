@@ -1493,6 +1493,50 @@ def automation_observability(
     raise typer.Exit(0 if snapshot.overall_status == "ok" else 3)
 
 
+@automation_app.command("daily-brief-health")
+def automation_daily_brief_health(
+    json_out: bool = typer.Option(True, "--json"),
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Persist a metadata-only V28 agent-run receipt for this job-health run (off by default).",
+    ),
+) -> None:
+    """Report daily-brief job health (cadence / success / degradation) with reason codes (read-only)."""
+    from hb_assistant.construction.second_brain.daily_brief_health import (
+        run_daily_brief_job_health,
+    )
+
+    try:
+        status, agent_run_id = run_daily_brief_job_health(emit_receipt=emit_receipt)
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation daily-brief-health", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation daily-brief-health",
+        "overall_status": status.overall_status,
+        "reason_code": status.reason_code,
+        "last_run_status": status.last_run_status,
+        "last_run_utc": status.last_run_utc,
+        "last_run_date": status.last_run_date,
+        "age_seconds": status.age_seconds,
+        "degradation_mode": status.degradation_mode,
+        "review_tier": status.review_tier,
+        "consecutive_non_healthy": status.consecutive_non_healthy,
+        "runs_examined": status.runs_examined,
+        "policy_version": status.policy_version,
+        "schema_version": status.schema_version,
+        "schema_expected": status.schema_expected,
+        "agent_run_id": agent_run_id,
+        "generated_utc": status.generated_utc,
+        "guardrails": _FRESHNESS_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if status.overall_status == "ok" else 3)
+
+
 @data_quality_app.command("no-writeback-proof")
 def data_quality_no_writeback_proof(
     json_out: bool = typer.Option(True, "--json"),

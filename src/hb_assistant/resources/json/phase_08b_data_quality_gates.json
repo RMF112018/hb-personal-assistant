@@ -11,6 +11,7 @@
     "run_registry_locking",
     "retry_recovery",
     "freshness_observability",
+    "daily_brief_job_health",
     "automation_execution",
     "launchd_install"
   ],
@@ -60,6 +61,11 @@
     "RUNTIME_HEALTH_DEGRADED",
     "OBSERVABILITY_OK",
     "OBSERVABILITY_DEGRADED",
+    "JOB_HEALTHY",
+    "JOB_DEGRADED",
+    "JOB_STALE",
+    "JOB_NEVER_RUN",
+    "DAILY_BRIEF_JOB_HEALTH_OK",
     "HEALTH_RETRY_WEEKEND_ALERTING_EXECUTION_DEFERRED",
     "REAL_LAUNCHD_INSTALL_DEFERRED"
   ],

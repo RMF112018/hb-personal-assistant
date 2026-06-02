@@ -30,6 +30,7 @@ from .automation_policy import validate_phase_08b_automation_policy
 from .config import load_second_brain_config
 from .contracts import load_phase_08a_contract, load_phase_08b_contract
 from .daily_brief import build_daily_brief_delivery_handoff_proof
+from .daily_brief_health import build_daily_brief_job_health_proof
 from .freshness import build_freshness_observability_proof
 from .launchd_scheduler import build_launchd_scheduler_proof
 from .memory import build_memory_curator_agent_proof
@@ -290,6 +291,7 @@ PHASE_08B_GATE_NAMES: tuple[str, ...] = (
     "run_registry_locking",
     "retry_recovery",
     "freshness_observability",
+    "daily_brief_job_health",
     "automation_execution",
     "launchd_install",
 )
@@ -424,6 +426,11 @@ def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict
     # deterministic evaluator reports per-domain source freshness, composes runtime health, and
     # checks index/retrieval freshness, all with structured reason codes and no raw content.
     gates.append(_proof_gate("freshness_observability", build_freshness_observability_proof()))
+
+    # Daily-brief job health (Prompt 08) — proof-gate: the read-only deterministic evaluator over
+    # the daily_brief_runs ledger reports healthy / degraded / stale / never-run with structured
+    # reason codes and no raw content.
+    gates.append(_proof_gate("daily_brief_job_health", build_daily_brief_job_health_proof()))
 
     # Deferred 08B execution surfaces — never reported as pass.
     gates.append(

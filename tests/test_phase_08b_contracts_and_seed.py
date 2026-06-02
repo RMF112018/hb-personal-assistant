@@ -141,3 +141,17 @@ def test_freshness_observability_reason_codes_declared() -> None:
     assert new_codes <= set(gates["reason_codes"])
     assert "freshness_observability" in gates["required_fields"]
     assert "freshness_observability" not in gates["deferred_surfaces"]
+
+
+def test_daily_brief_job_health_reason_codes_declared() -> None:
+    # Prompt 08 — daily-brief job-health reason codes are seeded + contract-backed.
+    seed = load_phase_08b_automation_policy_seed()
+    new_codes = {"JOB_HEALTHY", "JOB_DEGRADED", "JOB_STALE", "JOB_NEVER_RUN"}
+    assert new_codes <= set(seed["reason_codes"])
+    assert seed["daily_brief_job_health"]["enabled"] is True
+    assert seed["daily_brief_job_health"]["max_age_hours"] == 36
+    assert validate_phase_08b_automation_policy()["valid"] is True
+    gates = load_phase_08b_contract("data_quality_gates_contract")
+    assert new_codes <= set(gates["reason_codes"])
+    assert "daily_brief_job_health" in gates["required_fields"]
+    assert "daily_brief_job_health" not in gates["deferred_surfaces"]

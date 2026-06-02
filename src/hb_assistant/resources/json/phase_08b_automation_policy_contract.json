@@ -43,7 +43,12 @@
     "RUNTIME_HEALTH_OK",
     "RUNTIME_HEALTH_DEGRADED",
     "OBSERVABILITY_OK",
-    "OBSERVABILITY_DEGRADED"
+    "OBSERVABILITY_DEGRADED",
+    "JOB_HEALTHY",
+    "JOB_DEGRADED",
+    "JOB_STALE",
+    "JOB_NEVER_RUN",
+    "DAILY_BRIEF_JOB_HEALTH_OK"
   ],
   "guardrails": {
     "alerting_local_only": true,

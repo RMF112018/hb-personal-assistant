@@ -52,6 +52,8 @@ def test_no_readiness_overstatement() -> None:
     assert by["retry_recovery"] == "pass"
     # Source/runtime/retrieval freshness observability (Prompt 07) is implemented -> pass.
     assert by["freshness_observability"] == "pass"
+    # Daily-brief job health (Prompt 08) is implemented -> pass (proof-gate).
+    assert by["daily_brief_job_health"] == "pass"
 
 
 def test_gates_carry_structured_reason_codes() -> None:

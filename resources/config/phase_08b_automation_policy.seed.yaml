@@ -50,6 +50,17 @@ freshness:
   ok_reason_code: OBSERVABILITY_OK
   degraded_reason_code: OBSERVABILITY_DEGRADED
 
+# Daily-brief job-health posture (Prompt 08). Read-only monitoring over the daily_brief_runs
+# ledger: is the brief job running on cadence, succeeding, and not degrading?
+daily_brief_job_health:
+  enabled: true
+  max_age_hours: 36
+  healthy_statuses: [synthesized]
+  healthy_reason_code: JOB_HEALTHY
+  degraded_reason_code: JOB_DEGRADED
+  stale_reason_code: JOB_STALE
+  never_run_reason_code: JOB_NEVER_RUN
+
 weekend_behavior: skip          # skip | run
 weekend_reason_code: WEEKEND_GATE_SKIPPED
 
@@ -132,3 +143,8 @@ reason_codes:
   - RUNTIME_HEALTH_DEGRADED
   - OBSERVABILITY_OK
   - OBSERVABILITY_DEGRADED
+  - JOB_HEALTHY
+  - JOB_DEGRADED
+  - JOB_STALE
+  - JOB_NEVER_RUN
+  - DAILY_BRIEF_JOB_HEALTH_OK
