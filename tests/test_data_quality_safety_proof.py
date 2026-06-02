@@ -109,10 +109,14 @@ def test_safety_proof_discloses_raw_staging_layer_out_of_scope():
     db_path = _fresh_db_with_v21()
     try:
         report = build_data_quality_no_writeback_proof(db_path=db_path)
-        assert report["no_raw_values_persisted_scope"] == (
-            "phase_07a_data_quality_and_phase_07b_calendar_email_thread_candidate_"
-            "and_phase_07c_document_intelligence_surfaces"
-        )
+        scope = report["no_raw_values_persisted_scope"]
+        for phase_scope in (
+            "phase_07a_data_quality",
+            "phase_07b_calendar_email_thread_candidate",
+            "phase_07c_document_intelligence",
+            "phase_07d_cross_source_meeting_prep",
+        ):
+            assert phase_scope in scope, scope
         disclosed = report["raw_staging_layers_out_of_scope"]
         assert isinstance(disclosed, list) and disclosed
         assert {d["table"] for d in disclosed} >= {"construction_drive_item_inventory"}

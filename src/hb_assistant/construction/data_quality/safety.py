@@ -200,6 +200,55 @@ _PHASE_07C_EVIDENCE_SUBDIR = "construction-intelligence-phase-07c-document-intel
 # Obsidian output base (relative to the vault root) produced by Phase 07C Prompt 10.
 _PHASE_07C_OBSIDIAN_BASE = "Work/HB Personal Assistant/07C_Document_Intelligence"
 
+# Phase 07D (cross-source relationship & meeting-prep) modules — relative to
+# src/hb_assistant/. Scanned for mutation verbs / dangerous imports / secrets.
+_PHASE_07D_MODULES: List[str] = [
+    "construction/relationships/cross_source_substrate.py",
+    "construction/relationships/contracts.py",
+    "construction/meeting_prep/brief_builder.py",
+    "construction/issue_history/issue_history_builder.py",
+    "construction/risk_digest/risk_digest_builder.py",
+    "construction/aging_exposure/aging_exposure_builder.py",
+    "construction/correspondence/correspondence_context.py",
+    "construction/obsidian/cross_source.py",
+    "construction/data_quality/phase_07d.py",
+]
+
+# Phase 07D (V25) cross-source tables -> the eight guard CHECK columns each declares and
+# the value each must hold (all 0).
+_PHASE_07D_GUARD_COLUMNS: Dict[str, int] = {
+    "raw_email_body_persisted": 0,
+    "raw_document_text_persisted": 0,
+    "raw_calendar_payload_persisted": 0,
+    "raw_prompt_persisted": 0,
+    "raw_response_persisted": 0,
+    "signed_url_persisted": 0,
+    "download_url_persisted": 0,
+    "external_writeback_performed": 0,
+}
+_PHASE_07D_TABLE_GUARDS: Dict[str, Dict[str, int]] = {
+    table: dict(_PHASE_07D_GUARD_COLUMNS)
+    for table in (
+        "cross_source_relationship_candidates",
+        "cross_source_relationships",
+        "source_evidence_trails",
+        "meeting_prep_brief_runs",
+        "meeting_prep_brief_sections",
+        "project_issue_history_items",
+        "project_risk_digest_items",
+        "aging_exposure_report_items",
+        "cross_source_intelligence_obsidian_runs",
+        "phase_07d_validation_runs",
+    )
+}
+
+_PHASE_07D_TABLES: List[str] = list(_PHASE_07D_TABLE_GUARDS)
+
+_PHASE_07D_EVIDENCE_SUBDIR = "construction-intelligence-phase-07d-cross-source-meeting-prep"
+
+# Obsidian output base (relative to the vault root) produced by Phase 07D Prompt 11.
+_PHASE_07D_OBSIDIAN_BASE = "Construction Intelligence/Phase 07D Cross-Source Intelligence"
+
 # Raw-by-design staging layers that are OUTSIDE the scope of this no-raw-persistence
 # proof. The Phase 06A file-intelligence inventory intentionally stores raw drive-item
 # metadata (file name / web URL / parent path) and is NOT scanned here (its web_url
@@ -588,7 +637,28 @@ def build_data_quality_no_writeback_proof(
     obsidian_07c = _scan_obsidian_outputs(_PHASE_07C_OBSIDIAN_BASE)
     no_07c_obsidian_secrets = not obsidian_07c["findings"]
 
-    # Overall verdict (07A AND 07B AND 07C; any finding fails the proof closed)
+    # 6. Phase 07D surfaces — the nine cross-source / meeting-prep modules, the ten V25
+    #    cross-source tables (guard CHECK columns + persisted content), the 07D evidence
+    #    tree, and the 07D Obsidian output. Fail-closed.
+    d_modules = _scan_module_set(repo_root, _PHASE_07D_MODULES)
+    scanned_07d_modules = [m for m, r in d_modules.items() if r.get("present") is not False]
+    any_07d_writeback = any(r.get("writeback") for r in d_modules.values())
+    any_07d_bad_imports = any(r.get("bad_imports") for r in d_modules.values())
+    any_07d_module_secrets = any(r.get("secrets") for r in d_modules.values())
+
+    guards_07d = _probe_table_guards(conn, _PHASE_07D_TABLE_GUARDS)
+    guards_07d_ok = not guards_07d["violations"]
+
+    content_07d = _scan_table_contents(conn, _PHASE_07D_TABLES)
+    content_07d_ok = not content_07d["findings"]
+
+    evidence_07d = _scan_evidence_outputs(repo_root, _PHASE_07D_EVIDENCE_SUBDIR)
+    no_07d_evidence_secrets = not evidence_07d["findings"]
+
+    obsidian_07d = _scan_obsidian_outputs(_PHASE_07D_OBSIDIAN_BASE)
+    no_07d_obsidian_secrets = not obsidian_07d["findings"]
+
+    # Overall verdict (07A AND 07B AND 07C AND 07D; any finding fails the proof closed)
     proof_passed = (
         not any_writeback
         and not any_bad_imports
@@ -608,6 +678,13 @@ def build_data_quality_no_writeback_proof(
         and content_07c_ok
         and no_07c_evidence_secrets
         and no_07c_obsidian_secrets
+        and not any_07d_writeback
+        and not any_07d_bad_imports
+        and not any_07d_module_secrets
+        and guards_07d_ok
+        and content_07d_ok
+        and no_07d_evidence_secrets
+        and no_07d_obsidian_secrets
     )
 
     checks_detail = {
@@ -692,36 +769,73 @@ def build_data_quality_no_writeback_proof(
             "findings": obsidian_07c["findings"],
             "scanned_dir": obsidian_07c["scanned_dir"],
         },
+        "static_writeback_scan_07d_modules": {
+            "passed": not any_07d_writeback,
+            "findings": [f for r in d_modules.values() for f in (r.get("writeback") or [])],
+        },
+        "no_http_client_or_mutation_imports_07d": {
+            "passed": not any_07d_bad_imports,
+            "findings": [f for r in d_modules.values() for f in (r.get("bad_imports") or [])],
+        },
+        "module_secret_scan_07d": {
+            "passed": not any_07d_module_secrets,
+            "findings": [f for r in d_modules.values() for f in (r.get("secrets") or [])],
+        },
+        "sqlite_guard_checks_07d_cross_source_tables": {
+            "passed": guards_07d_ok,
+            "findings": guards_07d["violations"],
+            "tables": guards_07d["tables"],
+        },
+        "sqlite_content_leak_scan_07d_cross_source_tables": {
+            "passed": content_07d_ok,
+            "findings": content_07d["findings"],
+            "scanned_tables": content_07d["scanned"],
+        },
+        "evidence_output_scan_07d": {
+            "passed": no_07d_evidence_secrets,
+            "findings": evidence_07d["findings"],
+            "scanned_dir": evidence_07d["scanned_dir"],
+        },
+        "obsidian_output_scan_07d": {
+            "passed": no_07d_obsidian_secrets,
+            "findings": obsidian_07d["findings"],
+            "scanned_dir": obsidian_07d["scanned_dir"],
+        },
     }
 
     report: Dict[str, Any] = {
         "command": "construction-agent data-quality no-writeback-proof",
         "ok": proof_passed,
         "proof_passed": proof_passed,
-        "phase": "Phase 07A Prompt 08 + Phase 07B Prompt 12 + Phase 07C Prompt 12",
+        "phase": (
+            "Phase 07A Prompt 08 + Phase 07B Prompt 12 + Phase 07C Prompt 12 + Phase 07D Prompt 13"
+        ),
         "generated_utc": generated_utc,
         "repo_sha": sha,
         "schema_version": schema_version,
         "scanned_modules": scanned_modules,
         "scanned_modules_07b": scanned_07b_modules,
         "scanned_modules_07c": scanned_07c_modules,
+        "scanned_modules_07d": scanned_07d_modules,
         "checks_detail": checks_detail,
         "guardrails": _SAFETY_GUARDRAILS,
         "stop_conditions_checked": _STOP_CONDITIONS_CHECKED,
         "no_live_call_performed": True,
         "no_raw_values_persisted": (
             raw_body_ok and guards_07b_ok and content_07b_ok and guards_07c_ok and content_07c_ok
+            and guards_07d_ok and content_07d_ok
         ),
         "no_raw_values_persisted_scope": (
             "phase_07a_data_quality_and_phase_07b_calendar_email_thread_candidate_"
-            "and_phase_07c_document_intelligence_surfaces"
+            "and_phase_07c_document_intelligence_and_phase_07d_cross_source_meeting_prep_surfaces"
         ),
         "raw_staging_layers_out_of_scope": _RAW_STAGING_LAYERS_OUT_OF_SCOPE,
         "note": (
             "Formal no-writeback / no-secret / no-raw-body / no-raw-document-text proof for Phase "
-            "07A data-quality surfaces, Phase 07B calendar/email/thread/candidate surfaces, AND "
-            "Phase 07C document-intelligence surfaces (modules + V11/V14/V23/V24 guard CHECK "
-            "columns + persisted-content scan + evidence + generated Obsidian notes). Re-uses the "
+            "07A data-quality surfaces, Phase 07B calendar/email/thread/candidate surfaces, Phase "
+            "07C document-intelligence surfaces, AND Phase 07D cross-source / meeting-prep surfaces "
+            "(nine 07D modules + the ten V25 cross-source tables' eight guard CHECK columns + "
+            "persisted-content scan + the 07D evidence tree + the 07D Obsidian notes). Re-uses the "
             "shared secret scanner from the Procore no-writeback prover; findings are pattern "
             "labels and table.column / file locations only (never the value). Read-only, "
             "fail-closed. This proof does NOT cover the Phase 06A raw file-intelligence staging "
