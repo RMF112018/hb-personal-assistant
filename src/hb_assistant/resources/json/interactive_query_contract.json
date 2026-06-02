@@ -1,0 +1,22 @@
+{
+  "version": "phase_08a_interactive_query-v2",
+  "purpose": "Source-linked, research-first interactive Q&A output. Advisory intelligence is separated from actionable recommendations; claim strength is labeled; Tier-3 / high-impact items are visible but never presented as final conclusions.",
+  "required_output": [
+    "answer_redacted",
+    "source_refs",
+    "confidence_labels",
+    "review_tiers",
+    "research_packet_summary",
+    "evaluation_summary",
+    "warnings",
+    "advisory_vs_actionable_marking"
+  ],
+  "guardrails": {
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "research_packet_required_for_complex": true,
+    "advisory_vs_actionable_separation": true,
+    "tier_3_never_final_conclusion": true,
+    "high_impact_not_presented_as_final": true
+  }
+}

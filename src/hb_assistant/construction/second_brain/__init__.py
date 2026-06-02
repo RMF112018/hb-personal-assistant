@@ -76,6 +76,13 @@ from .retrieval import (
     validate_retrieval_policy,
 )
 from .store import read_latest_config_receipt, write_config_receipt
+from .synthesis import (
+    EvaluationPreview,
+    QueryResult,
+    build_answer_synthesis_agent_proof,
+    build_evaluation_preview,
+    synthesize_answer,
+)
 
 __all__ = [
     "AgentDefinition",
@@ -133,4 +140,9 @@ __all__ = [
     "list_approved_obsidian_index_entries",
     "read_latest_config_receipt",
     "write_config_receipt",
+    "EvaluationPreview",
+    "QueryResult",
+    "build_answer_synthesis_agent_proof",
+    "build_evaluation_preview",
+    "synthesize_answer",
 ]

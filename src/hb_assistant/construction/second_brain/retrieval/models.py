@@ -74,8 +74,15 @@ class RetrievalEnvelope(BaseModel):
 
     model_config = {"extra": "forbid"}
 
-    def to_context_envelope(self, *, question: str) -> ContextEnvelope:
-        """Map into the adapter's bounded ContextEnvelope (safe fields only)."""
+    def to_context_envelope(
+        self, *, question: str, research_packet_ok: bool = False
+    ) -> ContextEnvelope:
+        """Map into the adapter's bounded ContextEnvelope (safe fields only).
+
+        ``research_packet_ok`` is supplied by the orchestrator / research packet (the
+        adapter refuses synthesis until a packet has passed); default stays False so a
+        bare envelope never implies an approved packet.
+        """
         source_references = [
             {
                 "source_family": it.source_family,
@@ -102,7 +109,7 @@ class RetrievalEnvelope(BaseModel):
             review_tier=tier,
             review_reason_code=reason,
             confidence_class="low" if tier == 3 else "medium",
-            research_packet_ok=False,
+            research_packet_ok=research_packet_ok,
             context_quality=quality,
             disposition="advisory",
             coverage_warnings=self.coverage_warnings,

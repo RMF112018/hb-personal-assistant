@@ -392,6 +392,46 @@ def research_packet_build(
     raise typer.Exit(0)
 
 
+_QUERY_GUARDRAILS = {
+    "local_first": True,
+    "mock_first": True,
+    "no_external_writeback": True,
+    "no_raw_content": True,
+    "research_packet_required_for_complex": True,
+    "advisory_vs_actionable_separation": True,
+    "tier_3_never_final_conclusion": True,
+    "model_direct_external_api_access": False,
+}
+
+
+@app.command("query")
+def query(
+    question: str = typer.Argument(..., help="The question to answer (source-linked, advisory)."),
+    project_key: str = typer.Option(None, "--project-key", help="Optional project filter."),
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Persist the research-packet + retrieval receipts (metadata only).",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Answer a question from approved, source-linked context (mock-first, advisory)."""
+    from hb_assistant.construction.second_brain.synthesis import synthesize_answer
+
+    try:
+        result = synthesize_answer(
+            question=question, project_key=project_key, emit_receipt=emit_receipt
+        )
+    except Exception as exc:  # pragma: no cover - defensive (e.g., DB unavailable)
+        err = {"command": "second-brain query", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {"command": "second-brain query", **result.model_dump(), "guardrails": _QUERY_GUARDRAILS}
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
 @index_app.command("obsidian")
 def index_obsidian(
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview planned notes (no apply)."),

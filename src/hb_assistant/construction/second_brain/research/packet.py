@@ -101,15 +101,40 @@ def build_research_packet(
     envelope = RetrievalBroker(db_path=db_path).retrieve(
         project_key=project_key, families=requested, emit_receipt=False
     )
+    return build_research_packet_from_envelope(
+        envelope,
+        packet_type=packet_type,
+        requested=tuple(requested),
+        project_key=project_key,
+        db_path=db_path,
+        emit_receipt=emit_receipt,
+    )
+
+
+def build_research_packet_from_envelope(
+    envelope: RetrievalEnvelope,
+    *,
+    packet_type: str,
+    requested: tuple[str, ...],
+    project_key: str | None = None,
+    db_path: str | None = None,
+    emit_receipt: bool = True,
+) -> tuple[ResearchPacket, ResearchPacketAssessment, str | None, str | None]:
+    """Assess + assemble a research packet from an already-retrieved envelope.
+
+    Lets a caller (e.g. the answer-synthesis agent) retrieve once and reuse the same
+    envelope for both the packet and the model context. Returns
+    (packet, assessment, retrieval_receipt_id|None, packet_receipt_id|None).
+    """
     # Own the retrieval receipt so we can link it to the packet (gated by emit_receipt
     # so --no-emit-receipt is fully dry — no local DB writes).
     retrieval_receipt_id: str | None = None
     if emit_receipt:
         retrieval_receipt_id = write_retrieval_receipt(
-            envelope, requested=tuple(requested), db_path=db_path
+            envelope, requested=requested, db_path=db_path
         )
 
-    assessment, score = _assess(envelope, tuple(requested))
+    assessment, score = _assess(envelope, requested)
     items = envelope.items
     review_tier = max((it.review_tier for it in items), default=3)
     reason = "T3_MANDATORY_REVIEW" if review_tier == 3 else "T1_SOURCE_BACKED"

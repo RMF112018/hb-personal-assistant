@@ -69,6 +69,8 @@ _REQUIRED_KEYS = {
         "result_required_fields",
         "forbidden_fields",
     ],
+    # Phase 08A Prompt 08 — interactive query output contract.
+    "interactive_query_contract": ["version", "required_output", "guardrails"],
 }
 
 

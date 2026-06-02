@@ -15,7 +15,11 @@ from .models import (
     ResearchPacketAssessment,
 )
 from .orchestrator import RetrievalOrchestrator, build_retrieval_orchestrator_proof
-from .packet import build_research_packet, build_research_packet_agent_proof
+from .packet import (
+    build_research_packet,
+    build_research_packet_agent_proof,
+    build_research_packet_from_envelope,
+)
 from .policy import (
     PACKET_TYPES,
     ResearchPacketPolicyError,
@@ -34,6 +38,7 @@ __all__ = [
     "build_retrieval_orchestrator_proof",
     "build_research_packet",
     "build_research_packet_agent_proof",
+    "build_research_packet_from_envelope",
     "PACKET_TYPES",
     "ResearchPacketPolicyError",
     "load_research_packet_policy_seed",
