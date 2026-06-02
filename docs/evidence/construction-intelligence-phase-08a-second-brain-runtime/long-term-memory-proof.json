@@ -1,0 +1,19 @@
+{
+  "guard_columns_zero": true,
+  "guardrails": {
+    "local_first": true,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "origin_and_source_refs_required": true,
+    "review_controlled": true
+  },
+  "memory_review_status": "accepted",
+  "origin_id_present": true,
+  "proof": "phase_08a_long_term_memory",
+  "proof_passed": true,
+  "quality_signal_types": [
+    "origin",
+    "quality"
+  ],
+  "source_ref_count": 1
+}

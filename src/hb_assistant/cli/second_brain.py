@@ -52,6 +52,20 @@ research_packet_app = typer.Typer(
 )
 app.add_typer(research_packet_app, name="research-packet")
 
+memory_app = typer.Typer(
+    name="memory",
+    help="Long-term memory candidates + review (source-linked, review-controlled).",
+    no_args_is_help=True,
+)
+app.add_typer(memory_app, name="memory")
+
+preference_app = typer.Typer(
+    name="preference",
+    help="Reviewable operator preferences (presentation-only; never override safety).",
+    no_args_is_help=True,
+)
+app.add_typer(preference_app, name="preference")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -428,6 +442,147 @@ def query(
         raise typer.Exit(3) from exc
 
     payload = {"command": "second-brain query", **result.model_dump(), "guardrails": _QUERY_GUARDRAILS}
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+_MEMORY_GUARDRAILS = {
+    "local_first": True,
+    "no_external_writeback": True,
+    "no_raw_content": True,
+    "sensitive_high_impact_routes_tier_3": True,
+    "no_silent_acceptance": True,
+    "preferences_never_override_safety": True,
+}
+
+
+@memory_app.command("candidate")
+def memory_candidate(
+    statement: str = typer.Option(..., "--statement", help="Redacted memory statement."),
+    memory_type: str = typer.Option("fact", "--memory-type"),
+    origin_id: str = typer.Option(..., "--origin-id", help="Origin (query/packet/brief/feedback) id."),
+    confidence: str = typer.Option("medium", "--confidence", help="high|medium|low."),
+    sensitivity: str = typer.Option(None, "--sensitivity", help="Sensitive/high-impact category."),
+    project_key: str = typer.Option(None, "--project-key"),
+    source_refs: str = typer.Option(
+        None, "--source-refs", help="Comma-separated 'family:ref' pairs."
+    ),
+    emit: bool = typer.Option(False, "--emit/--no-emit", help="Persist the candidate (dry-run default)."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Propose a long-term memory candidate (sensitive/high-impact -> Tier 3; never auto-accepted)."""
+    from hb_assistant.construction.second_brain.memory import propose_memory_candidate
+
+    refs: list[dict[str, str]] = []
+    for raw in (source_refs or "").split(","):
+        raw = raw.strip()
+        if not raw:
+            continue
+        family, _, ref = raw.partition(":")
+        refs.append({"source_family": family, "source_ref": ref})
+    candidate = propose_memory_candidate(
+        statement_redacted=statement,
+        proposed_memory_type=memory_type,
+        origin_id=origin_id,
+        source_refs=refs,
+        confidence_class=confidence,
+        sensitivity_category=sensitivity,
+        project_key=project_key,
+        emit=emit,
+    )
+    payload = {
+        "command": "second-brain memory candidate",
+        "emitted": emit,
+        "candidate": candidate.model_dump(),
+        "guardrails": _MEMORY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@memory_app.command("review")
+def memory_review(
+    candidate_id: str = typer.Option(..., "--candidate-id"),
+    decision: str = typer.Option(..., "--decision", help="accepted|rejected|superseded|deferred."),
+    reason: str = typer.Option(None, "--reason", help="Redacted decision reason."),
+    emit: bool = typer.Option(False, "--emit/--no-emit", help="Persist the review (dry-run default)."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Apply an explicit operator review; 'accepted' promotes the candidate to memory."""
+    from hb_assistant.construction.second_brain.memory import (
+        MemoryCandidate,
+        review_memory_candidate,
+    )
+    from hb_assistant.construction.second_brain.memory.store import read_memory_candidate
+
+    row = read_memory_candidate(candidate_id)
+    if row is None:
+        err = {"command": "second-brain memory review", "error": "candidate_not_found", "candidate_id": candidate_id}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3)
+
+    candidate = MemoryCandidate(
+        candidate_id=row["candidate_id"],
+        proposed_memory_type=row["proposed_memory_type"],
+        statement_redacted=row["statement_redacted"],
+        project_key=row["project_key"],
+        origin_id=row["origin_id"],
+        provenance_class=row["provenance_class"],
+        confidence_class=row["confidence_class"],
+        review_required=bool(row["review_required"]),
+        review_tier=row["review_tier"] or 3,
+        review_tier_reason_code=row["review_tier_reason_code"] or "T3_MODEL_ONLY",
+        sensitivity_class=row["sensitivity_class"],
+        source_refs=json.loads(row["source_refs_json"] or "[]"),
+        status=row["status"],
+    )
+    review, item, signals = review_memory_candidate(
+        candidate=candidate,
+        decision=decision,
+        decision_reason_redacted=reason,
+        emit=emit,
+    )
+    payload = {
+        "command": "second-brain memory review",
+        "emitted": emit,
+        "decision": review.decision,
+        "accepted_memory_id": item.memory_id if item else None,
+        "quality_signal_types": [s.signal_type for s in signals],
+        "guardrails": _MEMORY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@preference_app.command("capture")
+def preference_capture(
+    preference_key: str = typer.Option(..., "--key", help="Preference key (presentation only)."),
+    value: str = typer.Option(None, "--value", help="Redacted preference value."),
+    scope: str = typer.Option("global", "--scope", help="global|project|entity."),
+    scope_key: str = typer.Option(None, "--scope-key"),
+    preference_type: str = typer.Option(None, "--type", help="Preference type (sensitive -> Tier 3)."),
+    sensitive: bool = typer.Option(False, "--sensitive/--not-sensitive"),
+    emit: bool = typer.Option(False, "--emit/--no-emit", help="Persist the preference (dry-run default)."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Capture a reviewable operator preference (never auto-accepted; can't override safety)."""
+    from hb_assistant.construction.second_brain.memory import capture_preference
+
+    pref = capture_preference(
+        scope=scope,
+        preference_key=preference_key,
+        preference_value_redacted=value,
+        preference_type=preference_type,
+        scope_key=scope_key,
+        sensitive=sensitive,
+        emit=emit,
+    )
+    payload = {
+        "command": "second-brain preference capture",
+        "emitted": emit,
+        "preference": pref.model_dump(),
+        "guardrails": _MEMORY_GUARDRAILS,
+    }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
 

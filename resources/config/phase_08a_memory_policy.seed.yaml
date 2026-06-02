@@ -1,0 +1,41 @@
+# Phase 08A — long-term memory policy (Prompt 10).
+#
+# Drives the Memory Curator Agent (A07): candidates are dry-run-first, require an
+# origin + source refs + quality signals, and route sensitive/high-impact material to
+# Tier 3 mandatory review (never auto-accepted). Loaded deterministically (no contract —
+# the registered review_tier_contract / long_term_memory_contract remain authoritative).
+version: phase_08a_memory_policy_v2
+candidate_dry_run_first: true
+origin_required: true
+source_refs_required: true
+quality_signals_required: true
+review_tier_required: true
+tier_1_auto_accept_allowed: true
+tier_1_requires:
+  - low_risk
+  - source_linked
+  - no_sensitive_high_impact
+  - no_conflict
+  - policy_threshold_met
+sensitive_high_impact_categories:
+  - legal
+  - contractual
+  - claim
+  - personnel
+  - safety
+  - financial
+  - entitlement
+  - schedule_impact
+tier_3_always:
+  - legal
+  - contractual
+  - claim
+  - personnel
+  - safety
+  - financial
+  - entitlement
+  - schedule_impact
+  - model_only
+  - conflicting_sources
+  - unsupported
+  - sensitive_high_impact

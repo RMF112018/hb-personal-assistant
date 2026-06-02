@@ -1,0 +1,32 @@
+# Phase 08A — operator preference policy (Prompt 10).
+#
+# Drives the Operator Preference Agent (A08): preferences are reviewable, presentation-
+# only memory-like records. They may influence ordering / detail / terminology / emphasis /
+# warning-style / summary-style only. They MUST NOT override safety policy, review-tier
+# routing, high-impact review, or no-writeback / no-raw-content guardrails. Sensitive
+# preferences route to Tier 3 mandatory review.
+version: operator_preference_policy-v1
+scope: local_first_second_brain
+allowed_preference_types:
+  - output_structure
+  - detail_level
+  - terminology
+  - emphasis
+  - warning_style
+  - executive_summary_style
+sensitive_preference_types:
+  - personnel
+  - legal
+  - financial
+  - safety
+never_overrides:
+  - safety_policy
+  - review_tier_routing
+  - high_impact_review
+  - no_writeback
+  - no_raw_content
+persistence:
+  raw_prompt_persisted: false
+  raw_model_response_persisted: false
+  source_refs_required: true
+  origin_id_required: true

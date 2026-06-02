@@ -1,0 +1,38 @@
+{
+  "accepted_memory": {
+    "origin_id_present": true,
+    "quality_signal_types": [
+      "origin",
+      "quality"
+    ],
+    "review_status": "accepted",
+    "source_ref_count": 1
+  },
+  "candidate_count": 2,
+  "guard_columns_zero": true,
+  "guardrails": {
+    "local_first": true,
+    "model_direct_external_api_access": false,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "no_silent_acceptance": true,
+    "sensitive_high_impact_routes_tier_3": true
+  },
+  "memory_item_count": 1,
+  "no_raw_content": true,
+  "no_silent_acceptance": true,
+  "normal_candidate": {
+    "reason": "T1_DETERMINISTIC_SOURCE_BACKED",
+    "review_required": false,
+    "review_tier": 1
+  },
+  "proof": "phase_08a_memory_curator_agent",
+  "proof_passed": true,
+  "quality_signal_count": 2,
+  "sensitive_candidate_routed_tier_3": {
+    "reason": "T3_SENSITIVE_HIGH_IMPACT",
+    "review_required": true,
+    "review_tier": 3,
+    "sensitivity_class": "financial"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "accepted_preferences_cannot_override_safety": {
+    "applied": {
+      "detail_level": "concise"
+    },
+    "dropped": [
+      "review_tier_override:safety_affecting_ignored",
+      "suppress_warnings:safety_affecting_ignored",
+      "terminology:not_accepted"
+    ],
+    "enforced": true
+  },
+  "guard_columns_zero": true,
+  "guardrails": {
+    "local_first": true,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "preferences_never_auto_accepted": true,
+    "preferences_never_override_safety": true,
+    "sensitive_preferences_default_tier_3": true
+  },
+  "low_risk_preference": {
+    "review_status": "pending_review",
+    "review_tier": 2
+  },
+  "no_raw_content": true,
+  "preference_rows": 2,
+  "proof": "phase_08a_operator_preference",
+  "proof_passed": true,
+  "sensitive_preference_routed_tier_3": {
+    "reason": "T3_SENSITIVE_HIGH_IMPACT",
+    "review_status": "pending_review",
+    "review_tier": 3
+  }
+}
