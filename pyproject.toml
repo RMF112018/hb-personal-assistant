@@ -48,6 +48,14 @@ dev = [
   "types-PyYAML>=6.0",
   "types-requests",  # future proof for graph client
 ]
+# Phase 08A second-brain runtime — opt-in live Claude transport only.
+# Lazy-imported inside the live adapter so the base install, migrations, full
+# test suite, and mock mode all run with NO cloud-model tooling present
+# (local-first default). Prompt 04 extends this with `llama-index-core` when the
+# retrieval/orchestration layer begins.
+second-brain = [
+  "anthropic>=0.40",
+]
 
 [project.scripts]
 hb-assistant = "hb_assistant.cli.main:cli"
@@ -126,6 +134,8 @@ module = [
   "hb_assistant.cli.run",
   # Phase 04A Prompt 01: narrow strict-typing coverage for the live env gate.
   "hb_assistant.procore.live_gate",
+  # Phase 08A Prompt 03: strict typing for the second-brain config/adapter surface.
+  "hb_assistant.construction.second_brain.*",
 ]
 ignore_errors = false
 follow_imports = "normal"

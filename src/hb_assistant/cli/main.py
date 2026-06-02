@@ -27,6 +27,7 @@ from . import graph as graph_mod
 from . import procore as procore_mod
 from . import run as run_mod
 from . import search as search_mod
+from . import second_brain as second_brain_mod
 
 app = typer.Typer(
     name="hb-assistant",
@@ -67,6 +68,7 @@ app.add_typer(auto_mod.app, name="automation")
 app.add_typer(construction_mod.app, name="construction-agent")
 app.add_typer(procore_mod.app, name="procore")
 app.add_typer(graph_mod.app, name="graph")
+app.add_typer(second_brain_mod.app, name="second-brain")
 
 
 # Explicit thin stubs for remaining command groups
