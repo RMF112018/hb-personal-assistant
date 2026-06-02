@@ -57,6 +57,17 @@ from .reasoning import (
     build_claude_adapter_mock_proof,
     build_model_call_receipt,
 )
+from .research import (
+    OrchestratorResult,
+    ResearchPacket,
+    ResearchPacketAssessment,
+    RetrievalOrchestrator,
+    build_research_packet,
+    build_research_packet_agent_proof,
+    build_retrieval_orchestrator_proof,
+    requires_research_packet,
+    validate_research_packet_policy,
+)
 from .retrieval import (
     RetrievalBroker,
     RetrievalEnvelope,
@@ -101,6 +112,15 @@ __all__ = [
     "read_only_connection",
     "run_query_tool",
     "validate_query_tool_policy",
+    "OrchestratorResult",
+    "ResearchPacket",
+    "ResearchPacketAssessment",
+    "RetrievalOrchestrator",
+    "build_research_packet",
+    "build_research_packet_agent_proof",
+    "build_retrieval_orchestrator_proof",
+    "requires_research_packet",
+    "validate_research_packet_policy",
     "RetrievalBroker",
     "RetrievalEnvelope",
     "RetrievalItem",

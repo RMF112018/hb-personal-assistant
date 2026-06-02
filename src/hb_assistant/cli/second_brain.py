@@ -45,6 +45,13 @@ query_tools_app = typer.Typer(
 )
 app.add_typer(query_tools_app, name="query-tools")
 
+research_packet_app = typer.Typer(
+    name="research-packet",
+    help="Pre-synthesis research packet + context-quality gate (read-only).",
+    no_args_is_help=True,
+)
+app.add_typer(research_packet_app, name="research-packet")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -286,6 +293,100 @@ def query_tools_run(
         "warnings": result.warnings,
         "source_refs": result.source_refs[:200],
         "guardrails": _QUERY_TOOL_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+_RESEARCH_PACKET_GUARDRAILS = {
+    "local_first": True,
+    "synthesis_requires_packet": True,
+    "insufficient_context_degrades_not_overstates": True,
+    "no_external_writeback": True,
+    "no_raw_content": True,
+    "source_references_required": True,
+    "model_direct_external_api_access": False,
+}
+
+
+@research_packet_app.command("build")
+def research_packet_build(
+    packet_type: str = typer.Option(
+        "interactive_query", "--packet-type", help="Packet type (e.g. interactive_query, daily_brief)."
+    ),
+    project_key: str = typer.Option(None, "--project-key", help="Optional project filter."),
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Write a metadata-only research-packet receipt to the local V26 table.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Assess context quality and build a pre-synthesis research packet (read-only)."""
+    from hb_assistant.construction.second_brain.research import (
+        PACKET_TYPES,
+        RetrievalOrchestrator,
+    )
+
+    if packet_type not in PACKET_TYPES:
+        err_payload: dict[str, object] = {
+            "command": "second-brain research-packet build",
+            "error": "invalid_packet_type",
+            "detail": f"{packet_type!r} not in {list(PACKET_TYPES)}",
+        }
+        typer.echo(
+            json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload)
+        )
+        raise typer.Exit(2)
+
+    try:
+        result = RetrievalOrchestrator().orchestrate(
+            packet_type=packet_type, project_key=project_key, emit_receipt=emit_receipt
+        )
+    except Exception as exc:  # pragma: no cover - defensive (e.g., DB unavailable)
+        err = {
+            "command": "second-brain research-packet build",
+            "packet_type": packet_type,
+            "error": type(exc).__name__,
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    packet = result.packet
+    a = result.assessment
+    payload = {
+        "command": "second-brain research-packet build",
+        "packet_type": result.packet_type,
+        "project_key": project_key,
+        "request_requires_packet": result.request_requires_packet,
+        "research_packet_ok": result.research_packet_ok,
+        "synthesis_allowed": result.synthesis_allowed,
+        "packet": {
+            "packet_id": packet.packet_id,
+            "topic_hash": packet.topic_hash,
+            "source_ref_count": packet.source_ref_count,
+            "review_required_count": packet.review_required_count,
+            "stale_unknown_count": packet.stale_unknown_count,
+            "conflict_count": packet.conflict_count,
+            "context_quality_class": packet.context_quality_class,
+            "degradation_mode": packet.degradation_mode,
+            "confidence_class": packet.confidence_class,
+            "review_tier": packet.review_tier,
+            "status": packet.status,
+        },
+        "assessment": {
+            "families_present": a.families_present,
+            "families_missing": a.families_missing,
+            "source_coverage": a.source_coverage,
+            "review_tier_distribution": a.review_tier_distribution,
+            "accepted_memory_refs_count": len(a.accepted_memory_refs),
+            "open_questions": a.open_questions[:50],
+            "degradation_recommendation": a.degradation_recommendation,
+        },
+        "retrieval_receipt_id": result.retrieval_receipt_id,
+        "packet_receipt_id": result.packet_receipt_id,
+        "warnings": result.warnings,
+        "guardrails": _RESEARCH_PACKET_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)

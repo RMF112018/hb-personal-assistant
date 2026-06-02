@@ -1,0 +1,42 @@
+{
+  "accepted_memory_present": true,
+  "empty_db_packet": {
+    "context_quality_class": "insufficient",
+    "degradation_mode": "blocked",
+    "status": "blocked"
+  },
+  "guard_columns_zero": true,
+  "guardrails": {
+    "insufficient_context_degrades_not_overstates": true,
+    "local_first": true,
+    "model_direct_external_api_access": false,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "synthesis_requires_packet": true
+  },
+  "no_raw_content": true,
+  "packet_receipt_persisted": true,
+  "proof": "phase_08a_research_packet_agent",
+  "proof_passed": true,
+  "retrieval_receipt_linked": true,
+  "seeded_packet": {
+    "accepted_memory_refs_count": 1,
+    "context_quality_class": "partial",
+    "degradation_mode": "graceful_degraded",
+    "families_missing": [
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "aging_exposure_report_items",
+      "approved_obsidian_generated_outputs"
+    ],
+    "families_present": [
+      "accepted_long_term_memory",
+      "cross_source_relationships"
+    ],
+    "open_questions_count": 5,
+    "review_tier": 1,
+    "source_coverage": 0.2857,
+    "source_ref_count": 2
+  }
+}

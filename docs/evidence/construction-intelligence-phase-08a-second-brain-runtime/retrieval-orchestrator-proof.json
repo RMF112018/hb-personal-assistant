@@ -1,0 +1,40 @@
+{
+  "complex_paths_require_packet": true,
+  "daily_brief_path": {
+    "degradation_mode": "graceful_degraded",
+    "packet_built": true,
+    "request_requires_packet": true,
+    "synthesis_allowed": true
+  },
+  "guardrails": {
+    "insufficient_context_degrades_not_overstates": true,
+    "local_first": true,
+    "model_direct_external_api_access": false,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "synthesis_requires_packet": true
+  },
+  "insufficient_context_degrades_not_overstates": true,
+  "insufficient_context_path": {
+    "degradation_mode": "blocked",
+    "research_packet_ok": false,
+    "synthesis_allowed": false,
+    "warnings": [
+      "degradation_recommended:blocked",
+      "no_context_retrieved",
+      "no_read_model:meeting_prep_brief_sections",
+      "no_read_model:review_controlled_correspondence_context",
+      "synthesis_blocked:insufficient_context"
+    ]
+  },
+  "interactive_query_path": {
+    "degradation_mode": "graceful_degraded",
+    "packet_built": true,
+    "request_requires_packet": true,
+    "synthesis_allowed": true
+  },
+  "no_raw_content": true,
+  "packet_built_for_both_paths": true,
+  "proof": "phase_08a_retrieval_orchestrator",
+  "proof_passed": true
+}

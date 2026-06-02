@@ -1,0 +1,24 @@
+# Phase 08A — research-packet context-quality policy (Prompt 07).
+#
+# Deterministic thresholds + degradation mapping for the Research Packet Agent (A02).
+# The packet assesses retrieved context BEFORE synthesis; when context is insufficient
+# the orchestrator degrades or blocks (never overstates). Loaded like the context
+# budget seed (no contract — standalone deterministic config).
+version: phase_08a_research_packet_policy_v1
+required_for:
+  - daily_brief
+  - complex_interactive_query
+  - high_impact_query
+  - memory_extraction
+quality_thresholds:
+  max_tier_3_density_for_standard_synthesis: 0.35
+  max_stale_unknown_density_for_standard_synthesis: 0.30
+  min_source_reference_completeness: 0.95
+  # Repo-authored: the package seed specifies tier-3/stale densities + ref completeness
+  # but no numeric coverage floor; this drives the low_coverage -> narrow_claims path.
+  min_source_coverage: 0.5
+degradation:
+  low_coverage: narrow_claims
+  high_tier_3_density: advisory_only
+  conflicting_sources: ask_for_targeted_research
+  missing_source_refs: blocked
