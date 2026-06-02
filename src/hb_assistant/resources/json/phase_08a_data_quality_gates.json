@@ -1,0 +1,35 @@
+{
+  "version": "phase_08a_data_quality_gates-v1",
+  "purpose": "Read-only Phase 08A second-brain runtime-readiness gate set. Aggregates per-surface validators + proofs into pass/warning/fail/deferred statuses; readiness is never overstated (offline/mock synthesis -> warning; unimplemented surfaces -> deferred).",
+  "required_fields": [
+    "runtime_readiness",
+    "agent_registry",
+    "model_profile",
+    "retrieval",
+    "research_packet",
+    "evaluation",
+    "memory_provenance",
+    "daily_brief_handoff",
+    "synthesis_liveness",
+    "mcp_exposure",
+    "model_call_receipt_persistence",
+    "automation_hardening"
+  ],
+  "statuses": [
+    "pass",
+    "warning",
+    "fail_blocking",
+    "deferred_not_blocking"
+  ],
+  "deferred_surfaces": [
+    "mcp_exposure",
+    "model_call_receipt_persistence",
+    "automation_hardening"
+  ],
+  "guardrails": {
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "no_readiness_overstatement": true,
+    "source_references_required": true
+  }
+}

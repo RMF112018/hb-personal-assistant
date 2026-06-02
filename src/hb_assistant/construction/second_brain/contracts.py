@@ -52,6 +52,8 @@ PHASE_08A_CONTRACT_FILES: dict[str, str] = {
     "interactive_query_contract": "interactive_query_contract.json",
     # Phase 08A Prompt 11 — daily-brief context + delivery handoff contract.
     "daily_brief_contract": "daily_brief_contract.json",
+    # Phase 08A Prompt 14 — second-brain data-quality gate set.
+    "data_quality_gates_contract": "phase_08a_data_quality_gates.json",
 }
 
 

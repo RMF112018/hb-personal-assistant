@@ -73,6 +73,13 @@ daily_brief_app = typer.Typer(
 )
 app.add_typer(daily_brief_app, name="daily-brief")
 
+data_quality_app = typer.Typer(
+    name="data-quality",
+    help="Phase 08A second-brain data-quality gates (read-only; no readiness overstatement).",
+    no_args_is_help=True,
+)
+app.add_typer(data_quality_app, name="data-quality")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -882,6 +889,20 @@ def daily_brief_schedule_preview(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
+
+
+@data_quality_app.command("phase-08a-gates")
+def data_quality_phase_08a_gates(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Evaluate the Phase 08A second-brain data-quality gate set (read-only)."""
+    from hb_assistant.construction.second_brain.data_quality import (
+        evaluate_phase_08a_data_quality_gates,
+    )
+
+    report = evaluate_phase_08a_data_quality_gates()
+    typer.echo(json.dumps(report, indent=2, default=str) if json_out else str(report))
+    raise typer.Exit(0 if report["ok"] else 3)
 
 
 @index_app.command("obsidian")

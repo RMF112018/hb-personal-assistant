@@ -73,6 +73,8 @@ _REQUIRED_KEYS = {
     "interactive_query_contract": ["version", "required_output", "guardrails"],
     # Phase 08A Prompt 11 — daily-brief context + delivery handoff contract.
     "daily_brief_contract": ["version", "required_fields", "brief_sections", "guardrails"],
+    # Phase 08A Prompt 14 — second-brain data-quality gate set.
+    "data_quality_gates_contract": ["version", "required_fields", "statuses", "guardrails"],
 }
 
 

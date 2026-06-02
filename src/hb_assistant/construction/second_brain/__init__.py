@@ -57,6 +57,10 @@ from .daily_brief import (
     write_daily_brief_run,
     write_launchd_schedule_preview,
 )
+from .data_quality import (
+    build_phase_08a_gates_proof,
+    evaluate_phase_08a_data_quality_gates,
+)
 from .memory import (
     MemoryCandidate,
     MemoryItem,
@@ -168,6 +172,8 @@ __all__ = [
     "build_daily_brief_delivery_handoff_proof",
     "build_daily_brief_schedule_preview",
     "build_launchd_schedule_proof",
+    "build_phase_08a_gates_proof",
+    "evaluate_phase_08a_data_quality_gates",
     "build_review_load_status",
     "build_review_triage_agent_proof",
     "read_latest_daily_brief_runs",
