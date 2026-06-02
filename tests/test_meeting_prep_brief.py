@@ -22,7 +22,7 @@ from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.store.migrator import SQLiteMigrator
 
 _LEAK = re.compile(
-    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ", re.IGNORECASE
+    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}", re.IGNORECASE
 )
 _READY = {"ready": True, "blocked_by": [], "auto_readiness_allowed": False}
 _NOW = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)

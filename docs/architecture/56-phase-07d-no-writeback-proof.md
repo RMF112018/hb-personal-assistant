@@ -1,6 +1,6 @@
 # 56 — Phase 07D: No-Writeback / No-Secret / No-Raw-Content Proof (07D arm)
 
-**Status:** Implemented (Phase 07D Prompt 13). Additive over schema **V25** (no migration).
+**Status:** Implemented (Phase 07D Prompt 13; CLI alias added Phase 08A Prompt 01). Additive over schema **V25** (no migration).
 **Scope:** Extend the formal `build_data_quality_no_writeback_proof`
 (`construction/data_quality/safety.py`) with a Phase 07D arm so the existing
 `construction-agent data-quality no-writeback-proof` command now proves no external writeback / no
@@ -24,8 +24,12 @@ Each contributes a boolean AND-chained into `proof_passed`; any finding flips it
 (fail-closed). The report gains `scanned_modules_07d`, the seven `checks_detail` entries, an extended
 `phase` string, and `no_raw_values_persisted` (now AND `guards_07d_ok` and `content_07d_ok`) +
 `no_raw_values_persisted_scope` / `note` covering the 07D surfaces. **Findings are pattern labels and
-`table.column` / file locations only — never the offending value.** No new command (the objective is
-to *extend* the proof); the matrix's `phase-07d-no-writeback-proof` is satisfied by this extension.
+`table.column` / file locations only — never the offending value.** Prompt 13 added no new command
+(the objective was to *extend* the proof). **Phase 08A Prompt 01** later added a thin read-only CLI
+alias `construction-agent data-quality phase-07d-no-writeback-proof` that delegates to the same
+`build_data_quality_no_writeback_proof` builder, so the matrix's `phase-07d-no-writeback-proof`
+command name now resolves to an implemented surface (the alias payload adds `alias_of`; the report is
+byte-identical to `no-writeback-proof`).
 
 ### Constants
 
@@ -63,5 +67,7 @@ four phases). Live `data-quality no-writeback-proof` `proof_passed=true` now cov
 - `src/hb_assistant/construction/data_quality/safety.py` (07D constants + arm).
 - `tests/test_phase07d_no_writeback_proof.py` (new); `tests/test_data_quality_safety_proof.py`
   (scope assertion broadened).
+- **08A Prompt 01:** `src/hb_assistant/cli/construction.py` (`phase-07d-no-writeback-proof` alias
+  command) + `tests/test_construction_cli_commands.py` (alias CliRunner test).
 
 See `docs/evidence/construction-intelligence-phase-07d-cross-source-meeting-prep/13-no-writeback-no-secret-no-raw-content-proof.md`.

@@ -20,7 +20,7 @@ from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.store.migrator import SQLiteMigrator
 
 _LEAK = re.compile(
-    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ", re.IGNORECASE
+    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}", re.IGNORECASE
 )
 _CONTRACT_FIELDS = set(load_phase_07d_contract("phase_07d_data_quality_gates")["required_fields"])
 

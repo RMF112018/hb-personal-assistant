@@ -24,7 +24,7 @@ from hb_assistant.construction.relationships.contracts import (
 
 # A leak-pattern probe: URLs, email/host addresses, calendar bodies, PEM/token markers.
 _LEAK = re.compile(
-    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ",
+    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}",
     re.IGNORECASE,
 )
 

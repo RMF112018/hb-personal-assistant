@@ -2467,6 +2467,35 @@ def no_writeback_proof(
     raise typer.Exit(0 if report.get("proof_passed") else 3)
 
 
+@data_quality_app.command("phase-07d-no-writeback-proof")
+def phase_07d_no_writeback_proof(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Phase 07D alias for the no-writeback / no-secret / no-raw-content proof.
+
+    The formal proof (`no-writeback-proof`) already extends across Phase 07D — its report
+    carries the `scanned_modules_07d` arm and the V25 cross-source guard/content scans. This
+    alias exists so the `phase_07d_validation_matrix` command name resolves to a real CLI
+    surface (matching the `phase-07d-gates` first-class pattern); it delegates to the same
+    `build_data_quality_no_writeback_proof` builder, performs no extra work, and stays
+    read-only and fail-closed (exit 3 when the proof fails).
+    """
+    from hb_assistant.construction.data_quality import (
+        build_data_quality_no_writeback_proof,
+    )
+
+    report = build_data_quality_no_writeback_proof()
+
+    payload = {
+        "command": "construction-agent data-quality phase-07d-no-writeback-proof",
+        "alias_of": "construction-agent data-quality no-writeback-proof",
+        "report": report,
+        "guardrails": _SAFETY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("proof_passed") else 3)
+
+
 # ---------------------------------------------------------------------------
 # Phase 07B Prompt 01 — data-quality table-inventory (read-only lifecycle report)
 # ---------------------------------------------------------------------------

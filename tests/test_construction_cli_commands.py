@@ -266,3 +266,29 @@ def test_new_commands_never_advertise_writeback(runner: CliRunner) -> None:
             assert guardrails["writeback"] == "none", argv
         if "external_systems" in guardrails:
             assert guardrails["external_systems"] == "read_only", argv
+
+
+# ---------------------------------------------------------------------------
+# Phase 08A Prompt 01 — phase-07d-no-writeback-proof alias (G-07D-02)
+# ---------------------------------------------------------------------------
+
+
+def test_phase_07d_no_writeback_proof_alias_resolves_to_real_command(
+    runner: CliRunner,
+) -> None:
+    """The `phase_07d_validation_matrix` command name resolves to a real CLI surface that
+    delegates to the same proof builder as `no-writeback-proof` (exit 0 on pass / 3 on fail)."""
+    r = runner.invoke(
+        construction_cli.app, ["data-quality", "phase-07d-no-writeback-proof", "--json"]
+    )
+    assert r.exit_code in (0, 3), r.output
+    p = json.loads(r.output)
+    assert p["command"] == "construction-agent data-quality phase-07d-no-writeback-proof"
+    assert p["alias_of"] == "construction-agent data-quality no-writeback-proof"
+    # The delegated report carries the Phase 07D arm.
+    assert "proof_passed" in p["report"]
+    assert "scanned_modules_07d" in p["report"]
+    # Identical proof to the canonical command (same builder, no extra work).
+    c = runner.invoke(construction_cli.app, ["data-quality", "no-writeback-proof", "--json"])
+    assert c.exit_code == r.exit_code, c.output
+    assert json.loads(c.output)["report"]["proof_passed"] == p["report"]["proof_passed"]
