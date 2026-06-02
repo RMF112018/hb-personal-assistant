@@ -1,0 +1,20 @@
+{
+  "version": "phase_08a_source_reference-v1",
+  "required_fields": [
+    "source_family",
+    "source_ref",
+    "evidence_trail_id",
+    "confidence_class",
+    "review_required",
+    "stale_unknown"
+  ],
+  "forbidden_fields": [
+    "raw_url",
+    "download_url",
+    "signed_url",
+    "token",
+    "secret",
+    "raw_body",
+    "raw_document_text"
+  ]
+}

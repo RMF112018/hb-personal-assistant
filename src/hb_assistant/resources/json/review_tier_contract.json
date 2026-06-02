@@ -1,0 +1,62 @@
+{
+  "version": "phase_08a_review_tier-v1",
+  "purpose": "Tier 1 / Tier 2 / Tier 3 review classification + reason codes for efficient human partnership. Tiers and reason codes appear in every emitted contract/CLI output that carries advisory intelligence.",
+  "required_fields": [
+    "review_tier",
+    "review_tier_reason_code"
+  ],
+  "tiers": {
+    "tier_1": {
+      "label": "auto-eligible / lightweight review",
+      "description": "Deterministic, source-backed, low-impact advisory items. May be surfaced without mandatory human sign-off but are never actionable determinations.",
+      "auto_accept_as_fact": true
+    },
+    "tier_2": {
+      "label": "recommended review",
+      "description": "Strong-heuristic or partial-coverage items. Surfaced as advisory; human review recommended before action.",
+      "auto_accept_as_fact": false
+    },
+    "tier_3": {
+      "label": "mandatory review",
+      "description": "Model-only, low-confidence, unsupported, stale, conflicting, or sensitive/high-impact items. Never treated as an accepted fact and never auto-accepted.",
+      "auto_accept_as_fact": false
+    }
+  },
+  "tier_3_is_accepted_fact": false,
+  "never_auto_accept_tiers": [
+    "tier_3"
+  ],
+  "mandatory_review_for": [
+    "sensitive_high_impact",
+    "legal",
+    "contractual",
+    "claim",
+    "personnel",
+    "safety",
+    "financial",
+    "entitlement",
+    "schedule_impact",
+    "model_only",
+    "low_confidence",
+    "unsupported",
+    "stale",
+    "conflict"
+  ],
+  "reason_codes": {
+    "T1_DETERMINISTIC_SOURCE_BACKED": "tier_1",
+    "T2_STRONG_HEURISTIC": "tier_2",
+    "T2_PARTIAL_COVERAGE": "tier_2",
+    "T3_MODEL_ONLY": "tier_3",
+    "T3_LOW_CONFIDENCE": "tier_3",
+    "T3_UNSUPPORTED": "tier_3",
+    "T3_STALE_OR_UNKNOWN": "tier_3",
+    "T3_CONFLICT_DETECTED": "tier_3",
+    "T3_SENSITIVE_HIGH_IMPACT": "tier_3"
+  },
+  "guardrails": {
+    "tier_3_never_auto_accepted": true,
+    "sensitive_high_impact_defaults_to_mandatory_review": true,
+    "tiers_and_reason_codes_must_appear_in_output": true,
+    "advisory_vs_actionable_must_be_classified": true
+  }
+}

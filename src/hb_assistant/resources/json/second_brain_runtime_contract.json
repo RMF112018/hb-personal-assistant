@@ -1,0 +1,27 @@
+{
+  "version": "phase_08a_second_brain_runtime-v1",
+  "components": [
+    "config",
+    "obsidian_index",
+    "sqlite_tools",
+    "retrieval_orchestrator",
+    "claude_adapter",
+    "interactive_query",
+    "chat_session_memory",
+    "long_term_memory",
+    "daily_brief",
+    "launchd_preview",
+    "gates",
+    "safety_proof"
+  ],
+  "mode_values": [
+    "disabled",
+    "mock",
+    "live"
+  ],
+  "guardrails": {
+    "local_first": true,
+    "model_direct_external_api_access": false,
+    "external_writeback": false
+  }
+}

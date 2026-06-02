@@ -1,6 +1,6 @@
 {
   "schema": "table_lifecycle_status_contract/v1",
-  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02).",
+  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02).",
   "statuses": [
     "operational_populated",
     "operational_empty_expected",
@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 120,
+  "table_count": 141,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1099,6 +1099,195 @@
       "blocking_for_phase": "none",
       "v": "V25",
       "notes": "Phase 07D validation run ledger; populated in 07D Prompt 13/14"
+    },
+    "second_brain_runtime_config_receipts": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A second-brain runtime config receipts; populated in 08A Prompt 03"
+    },
+    "obsidian_index_manifests": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A approved Obsidian index manifests; populated in 08A Prompt 05"
+    },
+    "obsidian_index_entries": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A Obsidian index entries (redacted/hashed); populated in 08A Prompt 05"
+    },
+    "retrieval_query_receipts": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A retrieval query receipts (review tier/reason code, degradation mode); populated in 08A Prompt 07"
+    },
+    "retrieval_context_refs": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A retrieval context source refs; populated in 08A Prompt 07"
+    },
+    "query_tool_receipts": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A read-only SQLite query-tool receipts (renamed from sqlite_query_tool_receipts: sqlite_ prefix is reserved); populated in 08A Prompt 06"
+    },
+    "interactive_chat_sessions": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A interactive chat sessions (bounded redacted summary only); populated in 08A Prompt 08/09"
+    },
+    "interactive_chat_message_receipts": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A chat message receipts (hashes only); populated in 08A Prompt 09"
+    },
+    "long_term_memory_items": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A long-term memory items (redacted statements, origin/provenance); populated in 08A Prompt 10"
+    },
+    "long_term_memory_source_refs": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A long-term memory source refs; populated in 08A Prompt 10"
+    },
+    "long_term_memory_quality_signals": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A memory origin/provenance/quality/freshness/conflict/feedback signals; populated in 08A Prompt 10"
+    },
+    "memory_update_candidates": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A memory update candidates (default review_required, review tier/reason); populated in 08A Prompt 10"
+    },
+    "memory_update_reviews": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A operator memory review decisions; populated in 08A Prompt 10"
+    },
+    "second_brain_research_packets": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A research packets assembled before synthesis (coverage/conflict/quality, review tier); populated in 08A Prompt 07+"
+    },
+    "second_brain_evaluation_runs": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A evaluation checklist/score runs (dry-run where output generated); populated in 08A Prompt 07+"
+    },
+    "second_brain_operator_feedback": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A auditable operator feedback over outputs/memory; populated in 08A Prompt 10+"
+    },
+    "second_brain_operator_preference_profiles": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A compounding operator preference profiles (redacted); populated in 08A Prompt 10+"
+    },
+    "daily_brief_runs": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A daily brief runs (research-packet/evaluation links, review tier); populated in 08A Prompt 11/12"
+    },
+    "daily_brief_source_refs": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A daily brief source refs; populated in 08A Prompt 11/12"
+    },
+    "launchd_schedule_previews": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A launchd schedule dry-run previews; populated in 08A Prompt 13"
+    },
+    "phase_08a_validation_runs": {
+      "table_family": "second_brain_08a",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08A",
+      "blocking_for_phase": "none",
+      "v": "V26",
+      "notes": "Phase 08A validation run ledger; populated in 08A Prompt 16"
     }
   }
 }

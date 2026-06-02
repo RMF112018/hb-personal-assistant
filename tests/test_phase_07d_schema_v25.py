@@ -68,7 +68,7 @@ def _insert_candidate(conn: sqlite3.Connection, candidate_id: str, ref: str = "r
 def test_v25_is_latest_and_creates_substrate_tables() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "v25.db"
-        assert _migrate(db) == LATEST_SCHEMA_VERSION == 25
+        assert _migrate(db) == LATEST_SCHEMA_VERSION >= 25
         conn = sqlite3.connect(str(db))
         tables = _names(conn, "table")
         for t in _V25_TABLES:

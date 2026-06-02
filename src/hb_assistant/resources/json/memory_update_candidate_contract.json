@@ -1,0 +1,11 @@
+{
+  "version": "phase_08a_memory_update_candidate-v1",
+  "statuses": [
+    "proposed",
+    "accepted",
+    "rejected",
+    "superseded"
+  ],
+  "default_review_required": true,
+  "silent_acceptance_allowed": false
+}

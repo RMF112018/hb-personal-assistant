@@ -1,0 +1,31 @@
+{
+  "version": "phase_08a_operator_feedback-v1",
+  "purpose": "Auditable operator feedback loop over second-brain outputs and memory; feeds preference learning and memory quality signals without persisting raw content.",
+  "required_fields": [
+    "feedback_id",
+    "target_kind",
+    "target_id",
+    "feedback_class",
+    "created_utc"
+  ],
+  "feedback_classes": [
+    "accept",
+    "reject",
+    "correct",
+    "prefer",
+    "flag_review",
+    "defer"
+  ],
+  "target_kinds": [
+    "memory",
+    "research_packet",
+    "evaluation",
+    "daily_brief",
+    "retrieval"
+  ],
+  "guardrails": {
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "reason_redacted_only": true
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "version": "phase_08a_operator_preference_profile-v1",
+  "purpose": "Compounding operator preference signals derived from feedback; bounded redacted values only, scoped globally/by-project/by-entity, advisory and review-aware.",
+  "required_fields": [
+    "preference_id",
+    "scope",
+    "preference_key",
+    "confidence_class",
+    "signal_count"
+  ],
+  "scopes": [
+    "global",
+    "project",
+    "entity"
+  ],
+  "uniqueness": [
+    "scope",
+    "scope_key",
+    "preference_key"
+  ],
+  "guardrails": {
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "preference_value_redacted_only": true,
+    "advisory_only": true
+  }
+}

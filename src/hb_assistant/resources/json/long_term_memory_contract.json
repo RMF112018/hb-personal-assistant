@@ -1,0 +1,25 @@
+{
+  "version": "phase_08a_long_term_memory-v1",
+  "required_fields": [
+    "memory_id",
+    "memory_type",
+    "statement_redacted",
+    "source_references",
+    "confidence_class",
+    "review_status",
+    "sensitivity_class",
+    "created_utc",
+    "updated_utc"
+  ],
+  "review_required_for": [
+    "legal",
+    "contractual",
+    "claim",
+    "personnel",
+    "safety",
+    "financial",
+    "model_only",
+    "low_confidence",
+    "unsupported"
+  ]
+}

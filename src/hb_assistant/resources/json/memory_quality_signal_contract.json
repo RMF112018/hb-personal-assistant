@@ -1,0 +1,36 @@
+{
+  "version": "phase_08a_memory_quality_signal-v1",
+  "purpose": "Origin, provenance, quality, freshness, conflict, and feedback signals attached to long-term memory items so memory compounds with auditable quality rather than silent drift.",
+  "required_fields": [
+    "signal_id",
+    "memory_id",
+    "signal_type",
+    "review_required"
+  ],
+  "signal_types": [
+    "origin",
+    "provenance",
+    "quality",
+    "freshness",
+    "conflict",
+    "feedback"
+  ],
+  "provenance_classes": [
+    "deterministic",
+    "strong_heuristic",
+    "weak_heuristic",
+    "model_proposed",
+    "operator"
+  ],
+  "freshness_classes": [
+    "fresh",
+    "aging",
+    "stale",
+    "unknown"
+  ],
+  "guardrails": {
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "origin_id_required_for_memory_affecting_records": true
+  }
+}

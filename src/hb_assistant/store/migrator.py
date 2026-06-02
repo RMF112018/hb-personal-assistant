@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 25
+LATEST_SCHEMA_VERSION = 26
 
 
 class SQLiteMigrator:
@@ -2895,6 +2895,463 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v26 Phase 08A Prompt 02 — local-first second-brain runtime substrate.
+    # Additive-only (CREATE IF NOT EXISTS): 21 metadata/bounded-output tables that ship
+    # EMPTY and are populated by later 08A prompts (config, obsidian index, retrieval,
+    # query tools, chat, memory, daily brief, launchd, validation) plus the addendum
+    # research -> evaluation -> synthesis -> capture pipeline (research packets,
+    # evaluation runs, operator feedback, preference profiles, memory quality signals).
+    # No raw email/document/calendar body, raw prompt/response, retrieved context, signed
+    # /download URL, secret, or external writeback may ever be stored: each table carries
+    # the relevant no-raw / no-writeback guard CHECK(... = 0) columns. Review tiers
+    # (1/2/3) + reason codes and memory origin/provenance ride on the output-bearing
+    # tables. Deterministic-hash PKs make apply() idempotent. V1-V25 untouched.
+    V26_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_runtime_config_receipts (
+          config_receipt_id TEXT PRIMARY KEY,
+          mode TEXT NOT NULL CHECK(mode IN ('mock','live','disabled')),
+          config_status TEXT NOT NULL,
+          dependency_status_json TEXT,
+          policy_version TEXT,
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          arbitrary_sql_allowed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_allowed = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS obsidian_index_manifests (
+          manifest_id TEXT PRIMARY KEY,
+          mode TEXT NOT NULL CHECK(mode IN ('dry_run','apply')),
+          vault_root_fingerprint TEXT,
+          approved_roots_json TEXT NOT NULL,
+          entry_count INTEGER NOT NULL DEFAULT 0,
+          excluded_count INTEGER NOT NULL DEFAULT 0,
+          policy_version TEXT NOT NULL,
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          arbitrary_sql_allowed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_allowed = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS obsidian_index_entries (
+          entry_id TEXT PRIMARY KEY,
+          manifest_id TEXT NOT NULL REFERENCES obsidian_index_manifests(manifest_id) ON DELETE CASCADE,
+          note_path_redacted TEXT NOT NULL,
+          note_path_hash TEXT NOT NULL,
+          section_marker TEXT,
+          heading_redacted TEXT,
+          content_hash TEXT NOT NULL,
+          modified_utc TEXT,
+          project_key TEXT,
+          source_type TEXT,
+          confidence_class TEXT,
+          review_status TEXT,
+          source_refs_json TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(manifest_id, note_path_hash, section_marker, content_hash)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_obsidian_index_entries_project
+          ON obsidian_index_entries(project_key, source_type, review_status);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_obsidian_index_entries_hash
+          ON obsidian_index_entries(note_path_hash, content_hash);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS retrieval_query_receipts (
+          retrieval_receipt_id TEXT PRIMARY KEY,
+          mode TEXT NOT NULL CHECK(mode IN ('mock','live','dry_run')),
+          query_hash TEXT NOT NULL,
+          project_key TEXT,
+          tool_names_json TEXT,
+          research_packet_id TEXT,
+          source_ref_count INTEGER NOT NULL DEFAULT 0,
+          review_required_count INTEGER NOT NULL DEFAULT 0,
+          stale_unknown_count INTEGER NOT NULL DEFAULT 0,
+          conflict_count INTEGER NOT NULL DEFAULT 0,
+          context_char_count INTEGER NOT NULL DEFAULT 0,
+          truncated INTEGER NOT NULL DEFAULT 0,
+          answer_generated INTEGER NOT NULL DEFAULT 0,
+          context_quality_class TEXT,
+          degradation_mode TEXT,
+          review_tier INTEGER CHECK(review_tier IS NULL OR review_tier IN (1,2,3)),
+          review_tier_reason_code TEXT,
+          advisory_classification TEXT NOT NULL DEFAULT 'advisory' CHECK(advisory_classification IN ('advisory','actionable')),
+          policy_version TEXT NOT NULL,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          arbitrary_sql_allowed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_allowed = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_retrieval_query_receipts_project
+          ON retrieval_query_receipts(project_key, created_utc);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS retrieval_context_refs (
+          context_ref_id TEXT PRIMARY KEY,
+          retrieval_receipt_id TEXT NOT NULL REFERENCES retrieval_query_receipts(retrieval_receipt_id) ON DELETE CASCADE,
+          source_family TEXT NOT NULL,
+          source_ref TEXT NOT NULL,
+          evidence_trail_id TEXT,
+          confidence_class TEXT,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          stale_unknown INTEGER NOT NULL DEFAULT 0,
+          included INTEGER NOT NULL DEFAULT 1,
+          exclusion_reason TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS query_tool_receipts (
+          tool_receipt_id TEXT PRIMARY KEY,
+          retrieval_receipt_id TEXT,
+          tool_name TEXT NOT NULL,
+          project_key TEXT,
+          row_count INTEGER NOT NULL DEFAULT 0,
+          char_count INTEGER NOT NULL DEFAULT 0,
+          truncated INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          arbitrary_sql_allowed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_allowed = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_query_tool_receipts_tool
+          ON query_tool_receipts(tool_name, project_key, status);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS interactive_chat_sessions (
+          session_id TEXT PRIMARY KEY,
+          mode TEXT NOT NULL CHECK(mode IN ('mock','live')),
+          project_key TEXT,
+          status TEXT NOT NULL,
+          started_utc TEXT NOT NULL,
+          ended_utc TEXT,
+          bounded_summary_redacted TEXT,
+          clear_requested INTEGER NOT NULL DEFAULT 0,
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS interactive_chat_message_receipts (
+          message_receipt_id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL REFERENCES interactive_chat_sessions(session_id) ON DELETE CASCADE,
+          turn_index INTEGER NOT NULL,
+          user_message_hash TEXT NOT NULL,
+          model_response_hash TEXT,
+          retrieval_receipt_id TEXT,
+          memory_candidate_count INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS long_term_memory_items (
+          memory_id TEXT PRIMARY KEY,
+          memory_type TEXT NOT NULL,
+          statement_redacted TEXT NOT NULL,
+          project_key TEXT,
+          entity_key TEXT,
+          origin_id TEXT,
+          provenance_class TEXT,
+          confidence_class TEXT NOT NULL,
+          review_status TEXT NOT NULL CHECK(review_status IN ('accepted','pending_review','rejected','superseded')),
+          sensitivity_class TEXT NOT NULL DEFAULT 'normal',
+          supersedes_memory_id TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_long_term_memory_items_project
+          ON long_term_memory_items(project_key, review_status);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS long_term_memory_source_refs (
+          memory_source_ref_id TEXT PRIMARY KEY,
+          memory_id TEXT NOT NULL REFERENCES long_term_memory_items(memory_id) ON DELETE CASCADE,
+          source_family TEXT NOT NULL,
+          source_ref TEXT NOT NULL,
+          evidence_trail_id TEXT,
+          confidence_class TEXT,
+          review_required INTEGER NOT NULL DEFAULT 0
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_long_term_memory_source_refs_memory
+          ON long_term_memory_source_refs(memory_id);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS long_term_memory_quality_signals (
+          signal_id TEXT PRIMARY KEY,
+          memory_id TEXT NOT NULL REFERENCES long_term_memory_items(memory_id) ON DELETE CASCADE,
+          signal_type TEXT NOT NULL CHECK(signal_type IN ('origin','provenance','quality','freshness','conflict','feedback')),
+          origin_id TEXT,
+          provenance_class TEXT,
+          quality_score REAL,
+          freshness_class TEXT,
+          conflict_flag INTEGER NOT NULL DEFAULT 0,
+          feedback_id TEXT,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_long_term_memory_quality_signals_memory
+          ON long_term_memory_quality_signals(memory_id, signal_type);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS memory_update_candidates (
+          candidate_id TEXT PRIMARY KEY,
+          proposed_memory_type TEXT NOT NULL,
+          statement_redacted TEXT NOT NULL,
+          project_key TEXT,
+          origin_id TEXT,
+          provenance_class TEXT,
+          confidence_class TEXT NOT NULL,
+          review_required INTEGER NOT NULL DEFAULT 1,
+          review_tier INTEGER CHECK(review_tier IS NULL OR review_tier IN (1,2,3)),
+          review_tier_reason_code TEXT,
+          sensitivity_class TEXT NOT NULL DEFAULT 'normal',
+          source_refs_json TEXT NOT NULL,
+          status TEXT NOT NULL CHECK(status IN ('proposed','accepted','rejected','superseded')),
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_memory_update_candidates_review
+          ON memory_update_candidates(status, review_required);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS memory_update_reviews (
+          review_id TEXT PRIMARY KEY,
+          candidate_id TEXT NOT NULL REFERENCES memory_update_candidates(candidate_id) ON DELETE CASCADE,
+          decision TEXT NOT NULL CHECK(decision IN ('accepted','rejected','superseded','deferred')),
+          reviewer_ref TEXT NOT NULL DEFAULT 'operator',
+          decision_reason_redacted TEXT,
+          reviewed_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_memory_update_reviews_candidate
+          ON memory_update_reviews(candidate_id, decision);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_research_packets (
+          packet_id TEXT PRIMARY KEY,
+          mode TEXT NOT NULL CHECK(mode IN ('mock','live','dry_run')),
+          topic_hash TEXT NOT NULL,
+          project_key TEXT,
+          retrieval_receipt_id TEXT,
+          source_ref_count INTEGER NOT NULL DEFAULT 0,
+          review_required_count INTEGER NOT NULL DEFAULT 0,
+          stale_unknown_count INTEGER NOT NULL DEFAULT 0,
+          conflict_count INTEGER NOT NULL DEFAULT 0,
+          coverage_warnings_json TEXT,
+          context_quality_class TEXT,
+          degradation_mode TEXT,
+          confidence_class TEXT,
+          review_tier INTEGER NOT NULL DEFAULT 3 CHECK(review_tier IN (1,2,3)),
+          review_tier_reason_code TEXT,
+          review_status TEXT NOT NULL DEFAULT 'pending_review' CHECK(review_status IN ('accepted','pending_review','rejected','superseded')),
+          advisory_classification TEXT NOT NULL DEFAULT 'advisory' CHECK(advisory_classification IN ('advisory','actionable')),
+          summary_redacted TEXT,
+          status TEXT NOT NULL,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          arbitrary_sql_allowed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_allowed = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_second_brain_research_packets_project
+          ON second_brain_research_packets(project_key, status, review_tier);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_evaluation_runs (
+          evaluation_run_id TEXT PRIMARY KEY,
+          mode TEXT NOT NULL CHECK(mode IN ('mock','live','dry_run')),
+          target_kind TEXT NOT NULL,
+          target_id TEXT NOT NULL,
+          research_packet_id TEXT,
+          checklist_json TEXT,
+          checklist_total INTEGER NOT NULL DEFAULT 0,
+          checklist_passed INTEGER NOT NULL DEFAULT 0,
+          score REAL,
+          passed INTEGER NOT NULL DEFAULT 0,
+          confidence_class TEXT,
+          review_tier INTEGER CHECK(review_tier IS NULL OR review_tier IN (1,2,3)),
+          review_tier_reason_code TEXT,
+          review_status TEXT NOT NULL DEFAULT 'pending_review' CHECK(review_status IN ('accepted','pending_review','rejected','superseded')),
+          degradation_mode TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_second_brain_evaluation_runs_target
+          ON second_brain_evaluation_runs(target_kind, target_id);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_operator_feedback (
+          feedback_id TEXT PRIMARY KEY,
+          target_kind TEXT NOT NULL,
+          target_id TEXT NOT NULL,
+          origin_id TEXT,
+          feedback_class TEXT NOT NULL CHECK(feedback_class IN ('accept','reject','correct','prefer','flag_review','defer')),
+          rating INTEGER,
+          reason_redacted TEXT,
+          review_tier INTEGER CHECK(review_tier IS NULL OR review_tier IN (1,2,3)),
+          review_tier_reason_code TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_second_brain_operator_feedback_target
+          ON second_brain_operator_feedback(target_kind, target_id);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_operator_preference_profiles (
+          preference_id TEXT PRIMARY KEY,
+          scope TEXT NOT NULL CHECK(scope IN ('global','project','entity')),
+          scope_key TEXT,
+          preference_key TEXT NOT NULL,
+          preference_value_redacted TEXT,
+          confidence_class TEXT,
+          signal_count INTEGER NOT NULL DEFAULT 0,
+          source_feedback_refs_json TEXT,
+          review_status TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          UNIQUE(scope, scope_key, preference_key)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS daily_brief_runs (
+          brief_run_id TEXT PRIMARY KEY,
+          brief_date TEXT NOT NULL,
+          mode TEXT NOT NULL CHECK(mode IN ('dry_run','apply')),
+          status TEXT NOT NULL,
+          project_count INTEGER NOT NULL DEFAULT 0,
+          source_ref_count INTEGER NOT NULL DEFAULT 0,
+          review_required_count INTEGER NOT NULL DEFAULT 0,
+          stale_unknown_count INTEGER NOT NULL DEFAULT 0,
+          research_packet_id TEXT,
+          evaluation_run_id TEXT,
+          review_tier INTEGER CHECK(review_tier IS NULL OR review_tier IN (1,2,3)),
+          review_tier_reason_code TEXT,
+          degradation_mode TEXT,
+          output_path_redacted TEXT,
+          output_path_hash TEXT,
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_daily_brief_runs_date
+          ON daily_brief_runs(brief_date, status);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS daily_brief_source_refs (
+          daily_brief_source_ref_id TEXT PRIMARY KEY,
+          brief_run_id TEXT NOT NULL REFERENCES daily_brief_runs(brief_run_id) ON DELETE CASCADE,
+          source_family TEXT NOT NULL,
+          source_ref TEXT NOT NULL,
+          evidence_trail_id TEXT,
+          confidence_class TEXT,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          stale_unknown INTEGER NOT NULL DEFAULT 0
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS launchd_schedule_previews (
+          launchd_preview_id TEXT PRIMARY KEY,
+          mode TEXT NOT NULL CHECK(mode = 'dry_run'),
+          label TEXT NOT NULL,
+          schedule_json TEXT NOT NULL,
+          plist_path_redacted TEXT,
+          log_dir_redacted TEXT,
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS phase_08a_validation_runs (
+          validation_run_id TEXT PRIMARY KEY,
+          status TEXT NOT NULL,
+          schema_version INTEGER,
+          commands_json TEXT NOT NULL,
+          passed_count INTEGER NOT NULL DEFAULT 0,
+          failed_count INTEGER NOT NULL DEFAULT 0,
+          error_redacted TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -3216,6 +3673,19 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (25, 'v25_cross_source_relationship_meeting_prep_schema', ?)",
+                    (now,),
+                )
+
+            # v26 Phase 08A Prompt 02 — local-first second-brain runtime substrate
+            # (additive CREATE TABLE/INDEX only; per-table no-raw/no-writeback CHECK
+            # guardrails; deterministic-hash PKs for idempotency). 21 tables ship empty
+            # for later 08A prompts to populate. V1-V25 untouched.
+            for stmt in self.V26_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 26")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (26, 'v26_second_brain_phase_08a_schema', ?)",
                     (now,),
                 )
 

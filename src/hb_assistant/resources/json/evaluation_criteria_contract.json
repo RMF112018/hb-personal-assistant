@@ -1,0 +1,41 @@
+{
+  "version": "phase_08a_evaluation_criteria-v1",
+  "purpose": "Deterministic evaluation checklist + score applied in dry-run wherever output is generated (research packet, synthesis, daily brief), captured as an auditable evaluation run.",
+  "required_fields": [
+    "evaluation_run_id",
+    "target_kind",
+    "target_id",
+    "checklist_total",
+    "checklist_passed",
+    "score",
+    "passed",
+    "review_tier",
+    "review_status"
+  ],
+  "checklist_items": [
+    "source_references_present",
+    "review_tiers_assigned",
+    "confidence_class_present",
+    "stale_unknown_warnings_surfaced",
+    "conflict_warnings_surfaced",
+    "coverage_warnings_surfaced",
+    "advisory_vs_actionable_classified",
+    "no_tier_3_treated_as_accepted_fact",
+    "no_raw_content_in_output",
+    "degradation_mode_set_when_insufficient"
+  ],
+  "score_range": {
+    "min": 0.0,
+    "max": 1.0
+  },
+  "modes": [
+    "mock",
+    "live",
+    "dry_run"
+  ],
+  "guardrails": {
+    "evaluation_in_dry_run_where_output_generated": true,
+    "no_raw_content": true,
+    "no_external_writeback": true
+  }
+}
