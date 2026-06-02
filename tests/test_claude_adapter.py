@@ -8,6 +8,7 @@ no-raw-content envelope boundary, and that live mode fails closed without the SD
 from __future__ import annotations
 
 import importlib.util
+import json
 
 import pytest
 from pydantic import ValidationError
@@ -19,6 +20,8 @@ from hb_assistant.construction.second_brain.reasoning import (
     LiveClaudeAdapter,
     MockClaudeAdapter,
     build_claude_adapter,
+    build_claude_adapter_mock_proof,
+    build_model_call_receipt,
 )
 
 
@@ -139,3 +142,78 @@ def test_live_adapter_gate_runs_before_sdk_lookup() -> None:
     result = adapter.synthesize(_good_envelope(review_tier=3))
     assert result.synthesized is False
     assert result.degradation_mode == "blocked"
+
+
+# --- Synthesized Prompt 03: metadata-only model-call receipts -----------------
+
+
+def test_model_call_receipt_holds_only_hashes() -> None:
+    secret_in = "RAW PROMPT with sk-ant-SECRET and https://signed.example/x"
+    secret_out = "RAW MODEL RESPONSE body text"
+    receipt = build_model_call_receipt(
+        model_profile_id="deep_reasoning",
+        model_id="claude-opus-4-8",
+        input_context=secret_in,
+        output_text=secret_out,
+        temperature=0.1,
+    )
+    blob = receipt.model_dump_json()
+    assert secret_in not in blob and secret_out not in blob
+    assert "sk-ant-SECRET" not in blob and "signed.example" not in blob
+    assert len(receipt.input_context_hash) == 64
+    assert len(receipt.output_hash) == 64
+    assert receipt.input_token_count > 0 and receipt.output_token_count > 0
+    assert receipt.model_profile_id == "deep_reasoning"
+
+
+def test_model_call_receipt_is_deterministic_per_content() -> None:
+    a = build_model_call_receipt(
+        model_profile_id="fast_summary", model_id="claude-haiku-4-5",
+        input_context="same", output_text="out",
+    )
+    b = build_model_call_receipt(
+        model_profile_id="fast_summary", model_id="claude-haiku-4-5",
+        input_context="same", output_text="out",
+    )
+    assert a.input_context_hash == b.input_context_hash
+    assert a.output_hash == b.output_hash
+    assert a.model_receipt_id != b.model_receipt_id  # unique id per receipt
+
+
+def test_router_receipt_allows_no_model_id() -> None:
+    receipt = build_model_call_receipt(
+        model_profile_id="deterministic_router", model_id=None,
+        input_context="route this", output_text="{}",
+    )
+    assert receipt.model_id is None
+
+
+def test_claude_adapter_mock_proof_passes() -> None:
+    proof = build_claude_adapter_mock_proof()
+    assert proof["proof"] == "phase_08a_claude_adapter_mock"
+    assert proof["proof_passed"] is True
+    assert proof["mode"] == "mock"
+    assert proof["live_called"] is False
+    assert proof["no_raw_content"] is True
+    receipt = proof["model_call_receipt"]
+    assert receipt["raw_prompt_persisted"] is False
+    assert receipt["raw_response_persisted"] is False
+    assert len(receipt["input_context_hash"]) == 64
+    blob = json.dumps(proof)
+    for forbidden in ("signed_url", "download_url", "raw_body"):
+        assert forbidden not in blob
+
+
+def test_default_config_ci_path_is_not_live() -> None:
+    # No env set -> disabled; explicit mock -> MockClaudeAdapter. Never live in CI.
+    from hb_assistant.config.models import AppConfig
+    from hb_assistant.construction.second_brain.config import load_second_brain_config
+
+    disabled = load_second_brain_config(app_config=AppConfig(), env={})
+    assert disabled.mode == "disabled"
+    assert build_claude_adapter(disabled) is None
+    mock_cfg = load_second_brain_config(
+        app_config=AppConfig(), env={"HB_SECOND_BRAIN_ENABLED": "1"}
+    )
+    assert mock_cfg.mode == "mock"
+    assert isinstance(build_claude_adapter(mock_cfg), MockClaudeAdapter)

@@ -1,0 +1,28 @@
+{
+  "degradation_mode": "none",
+  "guardrails": {
+    "local_first": true,
+    "mcp_implemented": false,
+    "model_direct_external_api_access": false,
+    "no_external_writeback": true,
+    "no_raw_content": true
+  },
+  "live_called": false,
+  "mode": "mock",
+  "model_call_receipt": {
+    "input_context_hash": "c6ec3b30f3b692b591f7bef0c4bfb5240ebd2e4aa1ea5188b59647ba9f56ba9c",
+    "input_token_count": 11,
+    "model_id": "claude-haiku-4-5",
+    "model_profile_id": "fast_summary",
+    "output_hash": "f069a90bfe58e5f248f14f017aaf54ddeacf2b26da19c1d5a4954e211299bd80",
+    "output_token_count": 36,
+    "raw_prompt_persisted": false,
+    "raw_response_persisted": false
+  },
+  "no_raw_content": true,
+  "proof": "phase_08a_claude_adapter_mock",
+  "proof_passed": true,
+  "review_status": "auto_advisory",
+  "source_reference_count": 2,
+  "synthesized": true
+}

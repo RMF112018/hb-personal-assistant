@@ -16,9 +16,11 @@ from .loader import (
 )
 from .models import AgentDefinition, AgentRegistry, AgentResult, AgentRunReceipt
 from .policy import (
+    build_agent_model_profile_proof,
     build_agent_registry_proof,
     build_agent_tool_policy_proof,
     validate_agent_registry,
+    validate_model_profiles,
 )
 
 __all__ = [
@@ -30,7 +32,9 @@ __all__ = [
     "AgentRegistry",
     "AgentResult",
     "AgentRunReceipt",
+    "build_agent_model_profile_proof",
     "build_agent_registry_proof",
     "build_agent_tool_policy_proof",
     "validate_agent_registry",
+    "validate_model_profiles",
 ]

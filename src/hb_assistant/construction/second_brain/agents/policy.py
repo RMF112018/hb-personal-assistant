@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..contracts import load_phase_08a_contract
-from .loader import load_agent_registry
+from .loader import load_agent_registry, load_model_profiles
 from .models import AgentRegistry
 
 # Review policies that keep high-impact / Tier 3 items under mandatory review.
@@ -227,4 +227,119 @@ def build_agent_tool_policy_proof() -> dict[str, Any]:
         "mcp_future_exposure_rule": tool_contract.get("mcp_future_exposure_rule", ""),
         "per_agent": per_agent,
         "violations": violations,
+    }
+
+
+# Model profile intent (Synthesized Prompt 03): deterministic router has no model;
+# fast=Haiku, default=Sonnet, deep=Opus; evaluator emits checklist JSON.
+_PROFILE_MODEL_INTENT: dict[str, str | None] = {
+    "deterministic_router": None,
+    "fast_summary": "claude-haiku-4-5",
+    "default_reasoning": "claude-sonnet-4-6",
+    "deep_reasoning": "claude-opus-4-8",
+}
+_PROFILE_OUTPUT_INTENT: dict[str, str] = {"evaluator": "checklist_json"}
+
+
+def validate_model_profiles(
+    seed: dict[str, Any], contract: dict[str, Any]
+) -> dict[str, Any]:
+    """Validate the model-profiles seed against the model-profile contract."""
+    contract_profiles = {
+        p.get("profile_id"): p for p in contract.get("profiles", []) if p.get("profile_id")
+    }
+    seed_profiles: dict[str, Any] = seed.get("profiles", {}) or {}
+
+    violations: list[dict[str, str]] = []
+    missing_profiles = [pid for pid in contract_profiles if pid not in seed_profiles]
+    for pid in missing_profiles:
+        violations.append({"profile_id": pid, "code": "missing_profile", "detail": "absent from seed"})
+
+    for pid, expected_model in _PROFILE_MODEL_INTENT.items():
+        cp = contract_profiles.get(pid)
+        sp = seed_profiles.get(pid)
+        if cp is not None and cp.get("default_model") != expected_model:
+            violations.append(
+                {"profile_id": pid, "code": "contract_model_mismatch", "detail": str(cp.get("default_model"))}
+            )
+        if sp is not None:
+            if expected_model is None and sp.get("model") is not None:
+                violations.append(
+                    {"profile_id": pid, "code": "router_should_have_no_model", "detail": str(sp.get("model"))}
+                )
+            if expected_model is not None and sp.get("model") != expected_model:
+                violations.append(
+                    {"profile_id": pid, "code": "seed_model_mismatch", "detail": str(sp.get("model"))}
+                )
+
+    for pid, expected_output in _PROFILE_OUTPUT_INTENT.items():
+        cp = contract_profiles.get(pid)
+        sp = seed_profiles.get(pid)
+        if cp is not None and cp.get("output_mode") != expected_output:
+            violations.append(
+                {"profile_id": pid, "code": "contract_output_mode_mismatch", "detail": str(cp.get("output_mode"))}
+            )
+        if sp is not None and sp.get("output_mode") != expected_output:
+            violations.append(
+                {"profile_id": pid, "code": "seed_output_mode_mismatch", "detail": str(sp.get("output_mode"))}
+            )
+
+    persistence = contract.get("persistence_policy", {})
+    if persistence.get("persist_raw_prompt") is not False:
+        violations.append({"profile_id": "*", "code": "persist_raw_prompt_not_false", "detail": "contract"})
+    if persistence.get("persist_raw_response") is not False:
+        violations.append({"profile_id": "*", "code": "persist_raw_response_not_false", "detail": "contract"})
+    for pid, sp in seed_profiles.items():
+        if sp.get("raw_prompt_persisted") is not False:
+            violations.append({"profile_id": pid, "code": "seed_raw_prompt_persisted", "detail": "must be false"})
+        if sp.get("raw_response_persisted") is not False:
+            violations.append({"profile_id": pid, "code": "seed_raw_response_persisted", "detail": "must be false"})
+
+    return {
+        "valid": not violations and not missing_profiles,
+        "profile_count": len(seed_profiles),
+        "missing_profiles": missing_profiles,
+        "violations": violations,
+    }
+
+
+def build_agent_model_profile_proof() -> dict[str, Any]:
+    """Deterministic proof for `agent-model-profile-proof.json`."""
+    seed = load_model_profiles()
+    contract = load_phase_08a_contract("model_profile_contract")
+    report = validate_model_profiles(seed, contract)
+
+    contract_profiles = {
+        p.get("profile_id"): p for p in contract.get("profiles", []) if p.get("profile_id")
+    }
+    intent_map = {
+        pid: {
+            "default_model": contract_profiles.get(pid, {}).get("default_model"),
+            "output_mode": contract_profiles.get(pid, {}).get("output_mode"),
+        }
+        for pid in contract_profiles
+    }
+    no_raw_persistence = not any(
+        v["code"].endswith("persist_raw_prompt_not_false")
+        or v["code"].endswith("persist_raw_response_not_false")
+        or v["code"].startswith("seed_raw_")
+        for v in report["violations"]
+    )
+
+    return {
+        "proof": "phase_08a_agent_model_profile",
+        "proof_passed": report["valid"],
+        "contract_version": contract.get("version", "unknown"),
+        "seed_version": seed.get("version", "unknown"),
+        "profile_count": report["profile_count"],
+        "intent_map": intent_map,
+        "no_raw_persistence": no_raw_persistence,
+        "guardrails": {
+            "local_first": True,
+            "no_external_writeback": True,
+            "no_raw_content": True,
+            "model_direct_external_api_access": False,
+            "mcp_implemented": False,
+        },
+        "violations": report["violations"],
     }

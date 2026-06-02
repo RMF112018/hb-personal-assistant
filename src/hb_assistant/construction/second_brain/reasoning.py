@@ -27,8 +27,11 @@ tooling present (``pip install -e .[second-brain]`` enables live).
 
 from __future__ import annotations
 
+import hashlib
 import os
+import uuid
 from abc import ABC, abstractmethod
+from datetime import datetime, timezone
 from typing import Literal
 
 from pydantic import BaseModel, field_validator
@@ -286,3 +289,123 @@ def build_claude_adapter(config: SecondBrainConfig) -> ClaudeAdapter | None:
     if config.mode == "mock":
         return MockClaudeAdapter()
     return None
+
+
+class ModelCallReceipt(BaseModel):
+    """Metadata-only audit receipt for one model call (in-memory).
+
+    Mirrors the future `second_brain_agent_model_receipts` row shape (deferred to
+    V27). Carries content hashes and token counts only — never the raw prompt,
+    raw response, signed/download URLs, secrets, or any raw source body.
+    """
+
+    model_receipt_id: str
+    agent_run_id: str | None = None
+    model_profile_id: str
+    model_id: str | None = None
+    input_context_hash: str
+    output_hash: str
+    input_token_count: int
+    output_token_count: int
+    temperature: float | None = None
+    effort: str | None = None
+    created_utc: str
+
+    model_config = {"extra": "forbid"}
+
+
+def _sha256(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _approx_tokens(text: str) -> int:
+    # Deterministic, offline approximation (~4 chars/token); no tokenizer dependency.
+    return (len(text) + 3) // 4
+
+
+def build_model_call_receipt(
+    *,
+    model_profile_id: str,
+    model_id: str | None,
+    input_context: str,
+    output_text: str,
+    agent_run_id: str | None = None,
+    temperature: float | None = None,
+    effort: str | None = None,
+) -> ModelCallReceipt:
+    """Build a metadata-only model-call receipt (hashes + token counts; no raw)."""
+    return ModelCallReceipt(
+        model_receipt_id=uuid.uuid4().hex,
+        agent_run_id=agent_run_id,
+        model_profile_id=model_profile_id,
+        model_id=model_id,
+        input_context_hash=_sha256(input_context),
+        output_hash=_sha256(output_text),
+        input_token_count=_approx_tokens(input_context),
+        output_token_count=_approx_tokens(output_text),
+        temperature=temperature,
+        effort=effort,
+        created_utc=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+def build_claude_adapter_mock_proof() -> dict[str, object]:
+    """Deterministic proof for `claude-adapter-mock-proof.json`.
+
+    Runs a representative envelope through the mock adapter, builds a metadata-only
+    model-call receipt, and proves the live path is never invoked.
+    """
+    envelope = ContextEnvelope(
+        question="What changed on the pilot project this week?",
+        source_references=[{"source_id": "S1"}, {"source_hash": "abc123"}],
+        review_tier=1,
+        review_reason_code="T1_DETERMINISTIC_SOURCE_BACKED",
+        confidence_class="high",
+        research_packet_ok=True,
+        context_quality="sufficient",
+    )
+    adapter = MockClaudeAdapter()
+    result = adapter.synthesize(envelope)
+    receipt = build_model_call_receipt(
+        model_profile_id="fast_summary",
+        model_id="claude-haiku-4-5",
+        input_context=envelope.question,
+        output_text=result.answer,
+    )
+
+    result_blob = result.model_dump_json() + receipt.model_dump_json()
+    no_raw_content = not any(
+        token in result_blob
+        for token in ("signed_url", "download_url", "raw_body", "raw_prompt", "raw_response")
+    )
+
+    return {
+        "proof": "phase_08a_claude_adapter_mock",
+        "proof_passed": bool(
+            result.synthesized and result.mode == "mock" and no_raw_content
+        ),
+        "mode": result.mode,
+        "synthesized": result.synthesized,
+        "live_called": False,
+        "no_raw_content": no_raw_content,
+        "review_status": result.review_status,
+        "degradation_mode": result.degradation_mode,
+        "source_reference_count": len(result.source_references),
+        "model_call_receipt": {
+            "model_profile_id": receipt.model_profile_id,
+            "model_id": receipt.model_id,
+            "input_context_hash": receipt.input_context_hash,
+            "output_hash": receipt.output_hash,
+            "input_token_count": receipt.input_token_count,
+            "output_token_count": receipt.output_token_count,
+            "raw_prompt_persisted": False,
+            "raw_response_persisted": False,
+        },
+        "guardrails": {
+            "local_first": True,
+            "no_external_writeback": True,
+            "no_raw_content": True,
+            "model_direct_external_api_access": False,
+            "mcp_implemented": False,
+        },
+    }

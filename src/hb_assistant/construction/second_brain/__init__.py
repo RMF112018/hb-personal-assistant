@@ -14,10 +14,12 @@ from .agents import (
     AgentRegistry,
     AgentResult,
     AgentRunReceipt,
+    build_agent_model_profile_proof,
     build_agent_registry_proof,
     build_agent_tool_policy_proof,
     load_agent_registry,
     validate_agent_registry,
+    validate_model_profiles,
 )
 from .config import SecondBrainConfig, load_second_brain_config
 from .contracts import (
@@ -32,7 +34,10 @@ from .reasoning import (
     ContextEnvelope,
     LiveClaudeAdapter,
     MockClaudeAdapter,
+    ModelCallReceipt,
     build_claude_adapter,
+    build_claude_adapter_mock_proof,
+    build_model_call_receipt,
 )
 from .store import read_latest_config_receipt, write_config_receipt
 
@@ -41,10 +46,12 @@ __all__ = [
     "AgentRegistry",
     "AgentResult",
     "AgentRunReceipt",
+    "build_agent_model_profile_proof",
     "build_agent_registry_proof",
     "build_agent_tool_policy_proof",
     "load_agent_registry",
     "validate_agent_registry",
+    "validate_model_profiles",
     "PHASE_08A_CONTRACT_FILES",
     "load_all_phase_08a_contracts",
     "load_phase_08a_contract",
@@ -56,7 +63,10 @@ __all__ = [
     "ContextEnvelope",
     "LiveClaudeAdapter",
     "MockClaudeAdapter",
+    "ModelCallReceipt",
     "build_claude_adapter",
+    "build_claude_adapter_mock_proof",
+    "build_model_call_receipt",
     "read_latest_config_receipt",
     "write_config_receipt",
 ]

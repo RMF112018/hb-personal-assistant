@@ -1,0 +1,38 @@
+{
+  "contract_version": "phase_08a_model_profile_contract-v1",
+  "guardrails": {
+    "local_first": true,
+    "mcp_implemented": false,
+    "model_direct_external_api_access": false,
+    "no_external_writeback": true,
+    "no_raw_content": true
+  },
+  "intent_map": {
+    "deep_reasoning": {
+      "default_model": "claude-opus-4-8",
+      "output_mode": "structured_markdown_and_json"
+    },
+    "default_reasoning": {
+      "default_model": "claude-sonnet-4-6",
+      "output_mode": "structured_markdown_and_json"
+    },
+    "deterministic_router": {
+      "default_model": null,
+      "output_mode": "strict_json"
+    },
+    "evaluator": {
+      "default_model": "claude-haiku-4-5",
+      "output_mode": "checklist_json"
+    },
+    "fast_summary": {
+      "default_model": "claude-haiku-4-5",
+      "output_mode": "bounded_text_or_json"
+    }
+  },
+  "no_raw_persistence": true,
+  "profile_count": 5,
+  "proof": "phase_08a_agent_model_profile",
+  "proof_passed": true,
+  "seed_version": "phase_08a_model_profiles-v1",
+  "violations": []
+}
