@@ -989,6 +989,20 @@ def data_quality_phase_08a_gates(
     raise typer.Exit(0 if report["ok"] else 3)
 
 
+@data_quality_app.command("phase-08b-gates")
+def data_quality_phase_08b_gates(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Evaluate the Phase 08B automation/observability substrate gate set (read-only)."""
+    from hb_assistant.construction.second_brain.data_quality import (
+        evaluate_phase_08b_data_quality_gates,
+    )
+
+    report = evaluate_phase_08b_data_quality_gates()
+    typer.echo(json.dumps(report, indent=2, default=str) if json_out else str(report))
+    raise typer.Exit(0 if report["ok"] else 3)
+
+
 @data_quality_app.command("no-writeback-proof")
 def data_quality_no_writeback_proof(
     json_out: bool = typer.Option(True, "--json"),

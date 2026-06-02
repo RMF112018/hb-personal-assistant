@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 27
+LATEST_SCHEMA_VERSION = 28
 
 
 class SQLiteMigrator:
@@ -3385,6 +3385,70 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v28 Phase 08B Prompt 02 — persisted agent receipts (model-call + agent-run). Metadata-only:
+    # content hashes + token counts + structured reason codes; the same per-row no-raw /
+    # no-writeback CHECK(col = 0) guard columns as the V26/V27 tables. These replace the prior
+    # in-memory-only / V27-deferred receipts. Ship empty. V1-V27 untouched.
+    V28_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_agent_run_receipts (
+          agent_run_id TEXT PRIMARY KEY,
+          agent_id TEXT NOT NULL,
+          run_kind TEXT NOT NULL,
+          status TEXT NOT NULL,
+          reason_code TEXT,
+          review_tier INTEGER CHECK(review_tier IS NULL OR review_tier IN (1,2,3)),
+          degradation_mode TEXT,
+          model_receipt_count INTEGER NOT NULL DEFAULT 0,
+          started_utc TEXT,
+          finished_utc TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_agent_run_receipts_agent
+          ON second_brain_agent_run_receipts(agent_id, created_utc);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_agent_model_receipts (
+          model_receipt_id TEXT PRIMARY KEY,
+          agent_run_id TEXT REFERENCES second_brain_agent_run_receipts(agent_run_id) ON DELETE CASCADE,
+          model_profile_id TEXT NOT NULL,
+          model_id TEXT,
+          input_context_hash TEXT NOT NULL,
+          output_hash TEXT NOT NULL,
+          input_token_count INTEGER NOT NULL DEFAULT 0,
+          output_token_count INTEGER NOT NULL DEFAULT 0,
+          temperature REAL,
+          effort TEXT,
+          review_tier_reason_code TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_agent_model_receipts_run
+          ON second_brain_agent_model_receipts(agent_run_id, created_utc);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -3732,6 +3796,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (27, 'v27_daily_brief_handoff_lines', ?)",
+                    (now,),
+                )
+
+            # v28 Phase 08B Prompt 02 — persisted agent receipts (model-call + agent-run),
+            # metadata-only with per-row no-raw/no-writeback CHECK guardrails. Replaces the
+            # prior in-memory-only / V27-deferred receipts. Ships empty. V1-V27 untouched.
+            for stmt in self.V28_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 28")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (28, 'v28_agent_receipts', ?)",
                     (now,),
                 )
 

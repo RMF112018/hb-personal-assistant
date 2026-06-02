@@ -98,9 +98,8 @@ def run_daily_brief(
     ctx_env = envelope.to_context_envelope(
         question=f"daily brief {brief_date}", research_packet_ok=research_packet_ok
     )
-    resolved_adapter = (
-        adapter or build_claude_adapter(config or load_second_brain_config()) or MockClaudeAdapter()
-    )
+    resolved_config = config or load_second_brain_config()
+    resolved_adapter = adapter or build_claude_adapter(resolved_config) or MockClaudeAdapter()
     adapter_result = resolved_adapter.synthesize(ctx_env)
 
     # Output Evaluation Agent (A05).
@@ -159,6 +158,30 @@ def run_daily_brief(
             brief_run_id=brief_run_id,
             db_path=db_path,
         )
+        # Persist metadata-only agent-run + model-call receipts (V28). Content hashes + token
+        # counts + structured reason code only — never the raw prompt/response. Guard cols 0.
+        from ..reasoning import build_agent_run_receipt, build_model_call_receipt
+        from ..store import write_agent_model_receipt, write_agent_run_receipt
+
+        run_receipt = build_agent_run_receipt(
+            agent_id="daily_brief_agent",
+            run_kind="daily_brief",
+            status="synthesized" if adapter_result.synthesized else "blocked",
+            reason_code=adapter_result.review_reason_code,
+            review_tier=adapter_result.review_tier,
+            degradation_mode=adapter_result.degradation_mode,
+            model_receipt_count=1,
+        )
+        write_agent_run_receipt(run_receipt, db_path=db_path)
+        model_receipt = build_model_call_receipt(
+            model_profile_id="daily_brief_synthesis",
+            model_id=resolved_config.claude_model if adapter_result.mode == "live" else None,
+            input_context=ctx_env.question,
+            output_text=adapter_result.answer,
+            agent_run_id=run_receipt.agent_run_id,
+            review_tier_reason_code=adapter_result.review_reason_code,
+        )
+        write_agent_model_receipt(model_receipt, db_path=db_path)
 
     handoff = _build_handoff(
         context,

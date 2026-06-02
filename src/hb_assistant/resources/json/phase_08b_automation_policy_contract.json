@@ -1,0 +1,22 @@
+{
+  "version": "phase_08b_automation_policy-v1",
+  "purpose": "Declarative Phase 08B automation/observability policy substrate: health-check, retry, weekend, and alerting posture plus the structured reason-code vocabulary the future automation-hardening evaluator consumes. Declarative only — this prompt ships the policy + reason codes, not the execution.",
+  "required_sections": ["health_checks", "retry", "weekend_behavior", "alerting", "reason_codes"],
+  "alerting_channels_allowed": ["local_only"],
+  "alerting_channels_forbidden": ["email", "slack", "teams", "sms", "push", "webhook", "graph_sendmail"],
+  "reason_codes": [
+    "HEALTH_CHECK_FAILED",
+    "RETRY_EXHAUSTED",
+    "WEEKEND_GATE_SKIPPED",
+    "LAUNCHD_NOT_INSTALLED",
+    "SCHEDULE_DRIFT",
+    "RUN_OK",
+    "RUN_DEGRADED"
+  ],
+  "guardrails": {
+    "alerting_local_only": true,
+    "no_external_delivery": true,
+    "no_external_writeback": true,
+    "dry_run_install_only": true
+  }
+}

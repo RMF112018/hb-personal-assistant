@@ -94,9 +94,7 @@ class ContextEnvelope(BaseModel):
 
     @field_validator("source_references")
     @classmethod
-    def _no_raw_reference_fields(
-        cls, refs: list[dict[str, str]]
-    ) -> list[dict[str, str]]:
+    def _no_raw_reference_fields(cls, refs: list[dict[str, str]]) -> list[dict[str, str]]:
         for ref in refs:
             leaked = FORBIDDEN_REFERENCE_FIELDS.intersection(ref)
             if leaked:
@@ -263,7 +261,8 @@ class LiveClaudeAdapter(ClaudeAdapter):
 def _bounded_prompt(envelope: ContextEnvelope) -> str:
     """Render the bounded prompt from envelope metadata only (no raw content)."""
     refs = "; ".join(
-        ref.get("source_id") or ref.get("source_hash") or "ref" for ref in envelope.source_references
+        ref.get("source_id") or ref.get("source_hash") or "ref"
+        for ref in envelope.source_references
     )
     return (
         f"Question: {envelope.question}\n"
@@ -292,10 +291,10 @@ def build_claude_adapter(config: SecondBrainConfig) -> ClaudeAdapter | None:
 
 
 class ModelCallReceipt(BaseModel):
-    """Metadata-only audit receipt for one model call (in-memory).
+    """Metadata-only audit receipt for one model call.
 
-    Mirrors the future `second_brain_agent_model_receipts` row shape (deferred to
-    V27). Carries content hashes and token counts only — never the raw prompt,
+    Mirrors the ``second_brain_agent_model_receipts`` row shape (persisted in V28 via the
+    emit-gated writer). Carries content hashes and token counts only — never the raw prompt,
     raw response, signed/download URLs, secrets, or any raw source body.
     """
 
@@ -309,9 +308,40 @@ class ModelCallReceipt(BaseModel):
     output_token_count: int
     temperature: float | None = None
     effort: str | None = None
+    review_tier_reason_code: str | None = None
     created_utc: str
 
     model_config = {"extra": "forbid"}
+
+
+class AgentRunReceipt(BaseModel):
+    """Metadata-only audit receipt for one internal agent run.
+
+    Mirrors the ``second_brain_agent_run_receipts`` row shape (persisted in V28 via the
+    emit-gated writer). Carries the agent id, run kind, status, a structured reason code,
+    review tier, and counts only — never raw content.
+    """
+
+    agent_run_id: str
+    agent_id: str
+    run_kind: str
+    status: str
+    reason_code: str | None = None
+    review_tier: int | None = None
+    degradation_mode: str | None = None
+    model_receipt_count: int = 0
+    started_utc: str | None = None
+    finished_utc: str | None = None
+    created_utc: str
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("review_tier")
+    @classmethod
+    def _tier_in_range(cls, value: int | None) -> int | None:
+        if value is not None and value not in (1, 2, 3):
+            raise ValueError("review_tier must be 1, 2, or 3")
+        return value
 
 
 def _sha256(text: str) -> str:
@@ -332,6 +362,7 @@ def build_model_call_receipt(
     agent_run_id: str | None = None,
     temperature: float | None = None,
     effort: str | None = None,
+    review_tier_reason_code: str | None = None,
 ) -> ModelCallReceipt:
     """Build a metadata-only model-call receipt (hashes + token counts; no raw)."""
     return ModelCallReceipt(
@@ -345,6 +376,36 @@ def build_model_call_receipt(
         output_token_count=_approx_tokens(output_text),
         temperature=temperature,
         effort=effort,
+        review_tier_reason_code=review_tier_reason_code,
+        created_utc=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+def build_agent_run_receipt(
+    *,
+    agent_id: str,
+    run_kind: str,
+    status: str,
+    reason_code: str | None = None,
+    review_tier: int | None = None,
+    degradation_mode: str | None = None,
+    model_receipt_count: int = 0,
+    started_utc: str | None = None,
+    finished_utc: str | None = None,
+    agent_run_id: str | None = None,
+) -> AgentRunReceipt:
+    """Build a metadata-only agent-run receipt (status + structured reason code; no raw)."""
+    return AgentRunReceipt(
+        agent_run_id=agent_run_id or uuid.uuid4().hex,
+        agent_id=agent_id,
+        run_kind=run_kind,
+        status=status,
+        reason_code=reason_code,
+        review_tier=review_tier,
+        degradation_mode=degradation_mode,
+        model_receipt_count=model_receipt_count,
+        started_utc=started_utc,
+        finished_utc=finished_utc,
         created_utc=datetime.now(timezone.utc).isoformat(),
     )
 
@@ -381,9 +442,7 @@ def build_claude_adapter_mock_proof() -> dict[str, object]:
 
     return {
         "proof": "phase_08a_claude_adapter_mock",
-        "proof_passed": bool(
-            result.synthesized and result.mode == "mock" and no_raw_content
-        ),
+        "proof_passed": bool(result.synthesized and result.mode == "mock" and no_raw_content),
         "mode": result.mode,
         "synthesized": result.synthesized,
         "live_called": False,

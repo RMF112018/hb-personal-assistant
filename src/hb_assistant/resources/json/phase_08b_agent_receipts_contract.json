@@ -1,0 +1,47 @@
+{
+  "version": "phase_08b_agent_receipts-v1",
+  "purpose": "Defines the metadata-only persisted agent-run and model-call receipt row shapes (V28). Receipts carry content hashes, token counts, status, and structured reason codes only — never raw prompts, responses, bodies, document text, calendar payloads, signed/download URLs, or secrets.",
+  "tables": {
+    "second_brain_agent_run_receipts": {
+      "primary_key": "agent_run_id",
+      "required_fields": ["agent_run_id", "agent_id", "run_kind", "status", "created_utc"],
+      "optional_fields": ["reason_code", "review_tier", "degradation_mode", "model_receipt_count", "started_utc", "finished_utc"],
+      "schema_version": "V28"
+    },
+    "second_brain_agent_model_receipts": {
+      "primary_key": "model_receipt_id",
+      "required_fields": ["model_receipt_id", "model_profile_id", "input_context_hash", "output_hash", "input_token_count", "output_token_count", "created_utc"],
+      "optional_fields": ["agent_run_id", "model_id", "temperature", "effort", "review_tier_reason_code"],
+      "schema_version": "V28"
+    }
+  },
+  "guard_columns": [
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "retrieved_context_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed"
+  ],
+  "forbidden_persisted_fields": [
+    "raw_prompt",
+    "raw_response",
+    "raw_body",
+    "raw_document_text",
+    "raw_calendar_payload",
+    "signed_url",
+    "download_url",
+    "secret",
+    "token"
+  ],
+  "guardrails": {
+    "metadata_only": true,
+    "emit_gated": true,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "model_direct_external_api_access": false
+  }
+}

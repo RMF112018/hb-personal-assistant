@@ -8,15 +8,15 @@ unsafe persistence. It covers:
   scan), with the single sanctioned model boundary (the lazy Anthropic ``messages.create``
   call in ``reasoning.py``) disclosed and excluded from the source-system-writeback
   aggregation — it is the model boundary, never source-system writeback;
-- the nineteen second-brain tables' guard CHECK columns (the eighteen V26 tables + the V27
-  ``daily_brief_handoff_lines`` durable-handoff table), probed + persisted-value scanned and
-  fail-closed on any absent expected table;
+- the twenty-one second-brain tables' guard CHECK columns (the eighteen V26 tables + the V27
+  ``daily_brief_handoff_lines`` durable-handoff table + the two V28 agent-receipt tables),
+  probed + persisted-value scanned and fail-closed on any absent expected table;
 - a persisted-content leak scan over those tables;
 - the Phase 08A evidence tree;
 - the generated daily-brief + delivery-handoff outputs (vault dir + an in-memory dry-run);
 - the model-call receipt structure (proven metadata-only: hashes + token counts, no raw
-  prompt/response), with the absence of any model-call / agent-run receipt table asserted
-  (in-memory only / V27-deferred).
+  prompt/response); the V28 model-call / agent-run receipt tables are now persisted and are
+  guard-probed + leak-scanned above (metadata-only, not absent).
 
 Reuses the battle-tested scanner helpers from ``construction/data_quality/safety.py`` rather
 than duplicating them. Findings are pattern labels + ``table.column`` / file locations only —
@@ -72,16 +72,17 @@ _PHASE_08A_TABLES: list[str] = [
     "daily_brief_source_refs",
     "daily_brief_handoff_lines",
     "launchd_schedule_previews",
+    "second_brain_agent_run_receipts",
+    "second_brain_agent_model_receipts",
 ]
 
 _PHASE_08A_EVIDENCE_SUBDIR = "construction-intelligence-phase-08a-second-brain-runtime"
 _DAILY_BRIEF_OBSIDIAN_BASE = "Work/HB Personal Assistant/12_Daily_Brief"
 
-# Receipt tables that must NOT exist (model-call / agent-run receipts are in-memory only).
-_DEFERRED_RECEIPT_TABLES = (
-    "second_brain_agent_model_receipts",
-    "second_brain_agent_run_receipts",
-)
+# Model-call / agent-run receipt tables are now persisted (V28) and metadata-only: they are
+# guard-probed + content-leak-scanned above (in _PHASE_08A_TABLES), so no receipt table is
+# forbidden anymore. Kept as an (empty) tuple for the structural check below.
+_DEFERRED_RECEIPT_TABLES: tuple[str, ...] = ()
 
 _GUARDRAILS = {
     "external_systems": "read_only",
@@ -98,7 +99,7 @@ _STOP_CONDITIONS = [
     "no_bad_http_or_sdk_imports_in_08a_modules",
     "all_v26_guard_columns_zero_and_present",
     "no_secrets_or_raw_in_tables_evidence_or_generated_outputs",
-    "model_receipts_metadata_only_and_no_receipt_table",
+    "model_receipts_metadata_only_and_receipt_tables_guarded",
     "fail_closed_on_absent_expected_table_or_unsafe_pattern",
 ]
 
@@ -202,7 +203,8 @@ def build_second_brain_no_writeback_proof(*, db_path: str | None = None) -> dict
     generated_findings = _scan_generated_outputs()
     generated_ok = not generated_findings
 
-    # 6. Model-receipt metadata-only + no receipt table.
+    # 6. Model-receipt metadata-only. The V28 receipt tables are now persisted + guard-probed
+    # above; _DEFERRED_RECEIPT_TABLES is empty, so this stays a structural no-forbidden-table check.
     receipt_check = _check_model_receipt_metadata_only()
     no_receipt_table = [t for t in _DEFERRED_RECEIPT_TABLES if _table_exists(conn, t)]
     receipts_ok = receipt_check["metadata_only"] and not no_receipt_table

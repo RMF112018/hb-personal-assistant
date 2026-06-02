@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 142,
+  "table_count": 144,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1279,6 +1279,24 @@
       "blocking_for_phase": "none",
       "v": "V27",
       "notes": "Phase 08B durable delivery-handoff lines (section/order/redacted title/tier/safe source refs) for post-exit handoff reconstruction; populated in 08B Prompt 01 via daily-brief generate --emit-receipt"
+    },
+    "second_brain_agent_run_receipts": {
+      "table_family": "second_brain_08b",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08B",
+      "blocking_for_phase": "none",
+      "v": "V28",
+      "notes": "Phase 08B agent-run receipts (agent_id/run_kind/status/reason_code/tier; metadata-only, guard-checked); populated in 08B Prompt 02 via emit-gated agent runs"
+    },
+    "second_brain_agent_model_receipts": {
+      "table_family": "second_brain_08b",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08B",
+      "blocking_for_phase": "none",
+      "v": "V28",
+      "notes": "Phase 08B model-call receipts (content hashes + token counts + reason code; never raw prompt/response); populated in 08B Prompt 02 via emit-gated model calls"
     },
     "launchd_schedule_previews": {
       "table_family": "second_brain_08a",

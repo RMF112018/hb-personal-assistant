@@ -1,0 +1,45 @@
+# Phase 08B — automation / observability policy seed (Prompt 02).
+#
+# Declarative policy substrate for the Phase 08B Automation Delivery & Observability work:
+# health-check posture, retry/backoff, weekend behavior, alerting (local-only — NEVER an
+# external channel), and the structured reason-code vocabulary the future automation-hardening
+# evaluator emits. This prompt ships the policy + reason codes; execution (running health checks,
+# retries, real launchd install, weekend gating) is owned by a later 08B prompt. Read-only,
+# deterministic, no external delivery.
+version: phase_08b_automation_policy_v1
+
+health_checks:
+  enabled: true
+  checks:
+    - path_readiness
+    - store_readiness
+    - schema_at_latest
+    - daily_brief_handoff_durable
+  fail_reason_code: HEALTH_CHECK_FAILED
+
+retry:
+  max_attempts: 3
+  backoff_seconds: [60, 300, 900]
+  exhausted_reason_code: RETRY_EXHAUSTED
+
+weekend_behavior: skip          # skip | run
+weekend_reason_code: WEEKEND_GATE_SKIPPED
+
+alerting:
+  channel: local_only           # local_only only — external delivery is never permitted
+  emit: false                   # alerts are recorded locally; never sent externally
+  degraded_reason_code: RUN_DEGRADED
+
+launchd:
+  dry_run_install_only: true
+  not_installed_reason_code: LAUNCHD_NOT_INSTALLED
+  schedule_drift_reason_code: SCHEDULE_DRIFT
+
+reason_codes:
+  - HEALTH_CHECK_FAILED
+  - RETRY_EXHAUSTED
+  - WEEKEND_GATE_SKIPPED
+  - LAUNCHD_NOT_INSTALLED
+  - SCHEDULE_DRIFT
+  - RUN_OK
+  - RUN_DEGRADED

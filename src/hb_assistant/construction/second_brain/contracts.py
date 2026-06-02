@@ -56,14 +56,21 @@ PHASE_08A_CONTRACT_FILES: dict[str, str] = {
     "data_quality_gates_contract": "phase_08a_data_quality_gates.json",
 }
 
+# Phase 08B contracts (Automation Delivery & Observability). Registered separately so the 08A
+# loader/registry stays unchanged; additive only.
+PHASE_08B_CONTRACT_FILES: dict[str, str] = {
+    # Phase 08B Prompt 02 — persisted agent receipts, gate set, automation policy.
+    "agent_receipts_contract": "phase_08b_agent_receipts_contract.json",
+    "data_quality_gates_contract": "phase_08b_data_quality_gates.json",
+    "automation_policy_contract": "phase_08b_automation_policy_contract.json",
+}
+
 
 def _load_json_resource(filename: str) -> dict[str, Any]:
     """Load a packaged json resource. importlib -> filesystem -> empty dict."""
     try:
         if hasattr(importlib_resources, "files"):
-            text = (importlib_resources.files(_CONTRACT_PKG) / filename).read_text(
-                encoding="utf-8"
-            )
+            text = (importlib_resources.files(_CONTRACT_PKG) / filename).read_text(encoding="utf-8")
         else:  # pragma: no cover - legacy importlib path
             text = importlib_resources.read_text(_CONTRACT_PKG, filename, encoding="utf-8")
         parsed = json.loads(text)
@@ -86,3 +93,15 @@ def load_phase_08a_contract(name: str) -> dict[str, Any]:
 def load_all_phase_08a_contracts() -> dict[str, dict[str, Any]]:
     """Load every registered Phase 08A contract (logical name -> parsed dict)."""
     return {name: load_phase_08a_contract(name) for name in PHASE_08A_CONTRACT_FILES}
+
+
+def load_phase_08b_contract(name: str) -> dict[str, Any]:
+    """Load a single Phase 08B contract by logical name."""
+    if name not in PHASE_08B_CONTRACT_FILES:
+        raise KeyError(f"unknown phase 08B contract: {name!r}")
+    return _load_json_resource(PHASE_08B_CONTRACT_FILES[name])
+
+
+def load_all_phase_08b_contracts() -> dict[str, dict[str, Any]]:
+    """Load every registered Phase 08B contract (logical name -> parsed dict)."""
+    return {name: load_phase_08b_contract(name) for name in PHASE_08B_CONTRACT_FILES}
