@@ -1,0 +1,34 @@
+{
+  "version": "phase_08a_agent_registry_contract-v1",
+  "required_agent_fields": [
+    "agent_id",
+    "phase_owner",
+    "enabled",
+    "purpose",
+    "allowed_tool_groups",
+    "denied_tool_groups",
+    "default_model_profile",
+    "review_policy",
+    "output_contract",
+    "receipt_required"
+  ],
+  "required_phase_08a_agents": [
+    "second_brain_orchestrator_agent",
+    "research_packet_agent",
+    "retrieval_source_broker_agent",
+    "answer_synthesis_agent",
+    "output_evaluation_agent",
+    "daily_brief_agent",
+    "memory_curator_agent",
+    "operator_preference_agent",
+    "review_triage_agent"
+  ],
+  "guardrails": {
+    "local_first": true,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "source_refs_required": true,
+    "review_tiers_required": true,
+    "mcp_future_ready": true
+  }
+}

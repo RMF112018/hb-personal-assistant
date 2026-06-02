@@ -1,0 +1,56 @@
+{
+  "version": "phase_08a_agent_tool_contract-v1",
+  "tool_groups": {
+    "status": {
+      "risk": "low",
+      "external_writeback": false
+    },
+    "research_packet": {
+      "risk": "low",
+      "external_writeback": false
+    },
+    "retrieval_broker": {
+      "risk": "medium",
+      "external_writeback": false
+    },
+    "answer_synthesis": {
+      "risk": "medium",
+      "external_writeback": false
+    },
+    "daily_brief": {
+      "risk": "medium",
+      "external_writeback": false
+    },
+    "memory_review": {
+      "risk": "medium",
+      "external_writeback": false
+    },
+    "preference_capture": {
+      "risk": "medium",
+      "external_writeback": false
+    },
+    "review_triage": {
+      "risk": "medium",
+      "external_writeback": false
+    },
+    "local_apply": {
+      "risk": "medium_high",
+      "external_writeback": false,
+      "dry_run_default": true
+    }
+  },
+  "denied_tool_groups": [
+    "arbitrary_sql",
+    "raw_sqlite_file",
+    "raw_filesystem",
+    "raw_obsidian_vault",
+    "direct_graph_api",
+    "direct_procore_api",
+    "email_send_or_mutate",
+    "calendar_mutate",
+    "sharepoint_onedrive_mutate",
+    "procore_mutate",
+    "external_writeback"
+  ],
+  "mcp_future_exposure_rule": "Expose workflows only; never expose stores."
+}

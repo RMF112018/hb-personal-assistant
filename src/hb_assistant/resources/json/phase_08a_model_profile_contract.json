@@ -1,0 +1,69 @@
+{
+  "version": "phase_08a_model_profile_contract-v1",
+  "profiles": [
+    {
+      "profile_id": "deterministic_router",
+      "default_model": null,
+      "fallback_model": "claude-haiku-4-5",
+      "temperature": 0.0,
+      "output_mode": "strict_json",
+      "use_cases": [
+        "routing",
+        "tier classification",
+        "policy checks"
+      ]
+    },
+    {
+      "profile_id": "fast_summary",
+      "default_model": "claude-haiku-4-5",
+      "temperature": 0.0,
+      "output_mode": "bounded_text_or_json",
+      "use_cases": [
+        "status summaries",
+        "review grouping",
+        "operator-readable warnings"
+      ]
+    },
+    {
+      "profile_id": "default_reasoning",
+      "default_model": "claude-sonnet-4-6",
+      "temperature": 0.2,
+      "output_mode": "structured_markdown_and_json",
+      "use_cases": [
+        "daily brief",
+        "interactive Q&A",
+        "memory extraction"
+      ]
+    },
+    {
+      "profile_id": "deep_reasoning",
+      "default_model": "claude-opus-4-8",
+      "temperature": 0.1,
+      "effort": "medium_or_high_when_available",
+      "output_mode": "structured_markdown_and_json",
+      "use_cases": [
+        "complex multi-source synthesis",
+        "executive-level audit",
+        "difficult consolidation"
+      ]
+    },
+    {
+      "profile_id": "evaluator",
+      "default_model": "claude-haiku-4-5",
+      "escalation_model": "claude-sonnet-4-6",
+      "temperature": 0.0,
+      "output_mode": "checklist_json",
+      "use_cases": [
+        "output evaluation",
+        "unsupported claim scan"
+      ]
+    }
+  ],
+  "persistence_policy": {
+    "persist_raw_prompt": false,
+    "persist_raw_response": false,
+    "persist_context_hash": true,
+    "persist_output_hash": true,
+    "persist_token_counts": true
+  }
+}

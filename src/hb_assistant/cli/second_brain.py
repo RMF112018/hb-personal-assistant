@@ -24,6 +24,13 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
+agents_app = typer.Typer(
+    name="agents",
+    help="Phase 08A internal service-agent registry (read-only).",
+    no_args_is_help=True,
+)
+app.add_typer(agents_app, name="agents")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -90,3 +97,95 @@ def status(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
+
+
+_AGENT_GUARDRAILS = {
+    "local_first": True,
+    "no_external_writeback": True,
+    "no_raw_content": True,
+    "source_refs_required": True,
+    "review_tiers_required": True,
+    "model_direct_external_api_access": False,
+    "mcp_implemented": False,
+}
+
+
+@agents_app.command("registry")
+def agents_registry(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List the registered Phase 08A internal service agents (read-only)."""
+    from hb_assistant.construction.second_brain.agents import load_agent_registry
+
+    registry = load_agent_registry()
+    agents = [
+        {
+            "agent_id": a.agent_id,
+            "phase_owner": a.phase_owner,
+            "enabled": a.enabled,
+            "purpose": a.purpose,
+            "allowed_tool_groups": a.allowed_tool_groups,
+            "denied_tool_groups": a.denied_tool_groups,
+            "default_model_profile": a.default_model_profile,
+            "review_policy": a.review_policy,
+            "output_contract": a.output_contract,
+            "receipt_required": a.receipt_required,
+        }
+        for a in registry.agents
+    ]
+    payload = {
+        "command": "second-brain agents registry",
+        "registry_version": registry.version,
+        "count": len(agents),
+        "agents": agents,
+        "guardrails": _AGENT_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@agents_app.command("status")
+def agents_status(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report agent registry status + policy validity (offline, fail-closed)."""
+    from hb_assistant.construction.second_brain.agents import (
+        build_agent_registry_proof,
+        build_agent_tool_policy_proof,
+    )
+    from hb_assistant.construction.second_brain.contracts import load_phase_08a_contract
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    registry_proof = build_agent_registry_proof()
+    tool_proof = build_agent_tool_policy_proof()
+
+    try:
+        schema_version = SQLiteMigrator().current_version()
+    except Exception:  # pragma: no cover - defensive: status must not crash
+        schema_version = 0
+
+    registry_valid = bool(registry_proof["proof_passed"])
+    tool_policy_valid = bool(tool_proof["proof_passed"])
+    violations_count = len(registry_proof["violations"]) + len(tool_proof["violations"])
+
+    payload = {
+        "command": "second-brain agents status",
+        "agent_count": registry_proof["agent_count"],
+        "enabled_count": registry_proof["enabled_count"],
+        "registry_valid": registry_valid,
+        "tool_policy_valid": tool_policy_valid,
+        "violations_count": violations_count,
+        "required_agents_present": registry_proof["required_agents_present"],
+        "tier3_handling_visible": registry_proof["tier3_handling_visible"],
+        "contracts": {
+            "agent_registry_contract": registry_proof["contract_version"],
+            "agent_tool_contract": tool_proof["contract_version"],
+            "model_profile_contract": load_phase_08a_contract("model_profile_contract").get(
+                "version", "unknown"
+            ),
+        },
+        "schema_version": schema_version,
+        "guardrails": _AGENT_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if registry_valid and tool_policy_valid else 3)

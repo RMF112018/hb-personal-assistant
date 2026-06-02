@@ -1,0 +1,173 @@
+{
+  "contract_version": "phase_08a_agent_tool_contract-v1",
+  "denied_tool_groups_global": [
+    "arbitrary_sql",
+    "calendar_mutate",
+    "direct_graph_api",
+    "direct_procore_api",
+    "email_send_or_mutate",
+    "external_writeback",
+    "procore_mutate",
+    "raw_filesystem",
+    "raw_obsidian_vault",
+    "raw_sqlite_file",
+    "sharepoint_onedrive_mutate"
+  ],
+  "mcp_future_exposure_rule": "Expose workflows only; never expose stores.",
+  "per_agent": [
+    {
+      "agent_id": "second_brain_orchestrator_agent",
+      "allowed_tool_groups": [
+        "answer_synthesis",
+        "daily_brief",
+        "memory_review",
+        "research_packet",
+        "retrieval_broker",
+        "review_triage",
+        "status"
+      ],
+      "allowed_valid": true,
+      "denied_tool_groups": [
+        "arbitrary_sql",
+        "direct_graph_api",
+        "direct_procore_api",
+        "external_writeback",
+        "raw_filesystem"
+      ],
+      "no_denied_in_allowed": true,
+      "no_global_deny_in_allowed": true
+    },
+    {
+      "agent_id": "research_packet_agent",
+      "allowed_tool_groups": [
+        "research_packet",
+        "retrieval_broker",
+        "status"
+      ],
+      "allowed_valid": true,
+      "denied_tool_groups": [
+        "arbitrary_sql",
+        "external_writeback",
+        "raw_filesystem"
+      ],
+      "no_denied_in_allowed": true,
+      "no_global_deny_in_allowed": true
+    },
+    {
+      "agent_id": "retrieval_source_broker_agent",
+      "allowed_tool_groups": [
+        "retrieval_broker"
+      ],
+      "allowed_valid": true,
+      "denied_tool_groups": [
+        "arbitrary_sql",
+        "direct_graph_api",
+        "direct_procore_api",
+        "external_writeback",
+        "raw_obsidian_vault",
+        "raw_sqlite_file"
+      ],
+      "no_denied_in_allowed": true,
+      "no_global_deny_in_allowed": true
+    },
+    {
+      "agent_id": "answer_synthesis_agent",
+      "allowed_tool_groups": [
+        "answer_synthesis",
+        "retrieval_broker"
+      ],
+      "allowed_valid": true,
+      "denied_tool_groups": [
+        "arbitrary_sql",
+        "direct_graph_api",
+        "direct_procore_api",
+        "external_writeback",
+        "raw_filesystem"
+      ],
+      "no_denied_in_allowed": true,
+      "no_global_deny_in_allowed": true
+    },
+    {
+      "agent_id": "output_evaluation_agent",
+      "allowed_tool_groups": [
+        "answer_synthesis",
+        "status"
+      ],
+      "allowed_valid": true,
+      "denied_tool_groups": [
+        "arbitrary_sql",
+        "external_writeback",
+        "raw_filesystem"
+      ],
+      "no_denied_in_allowed": true,
+      "no_global_deny_in_allowed": true
+    },
+    {
+      "agent_id": "daily_brief_agent",
+      "allowed_tool_groups": [
+        "answer_synthesis",
+        "daily_brief",
+        "local_apply",
+        "research_packet",
+        "retrieval_broker"
+      ],
+      "allowed_valid": true,
+      "denied_tool_groups": [
+        "calendar_mutate",
+        "email_send_or_mutate",
+        "external_writeback",
+        "procore_mutate",
+        "sharepoint_onedrive_mutate"
+      ],
+      "no_denied_in_allowed": true,
+      "no_global_deny_in_allowed": true
+    },
+    {
+      "agent_id": "memory_curator_agent",
+      "allowed_tool_groups": [
+        "local_apply",
+        "memory_review",
+        "preference_capture"
+      ],
+      "allowed_valid": true,
+      "denied_tool_groups": [
+        "arbitrary_sql",
+        "external_writeback",
+        "raw_filesystem"
+      ],
+      "no_denied_in_allowed": true,
+      "no_global_deny_in_allowed": true
+    },
+    {
+      "agent_id": "operator_preference_agent",
+      "allowed_tool_groups": [
+        "memory_review",
+        "preference_capture"
+      ],
+      "allowed_valid": true,
+      "denied_tool_groups": [
+        "external_writeback",
+        "raw_filesystem"
+      ],
+      "no_denied_in_allowed": true,
+      "no_global_deny_in_allowed": true
+    },
+    {
+      "agent_id": "review_triage_agent",
+      "allowed_tool_groups": [
+        "review_triage",
+        "status"
+      ],
+      "allowed_valid": true,
+      "denied_tool_groups": [
+        "arbitrary_sql",
+        "external_writeback"
+      ],
+      "no_denied_in_allowed": true,
+      "no_global_deny_in_allowed": true
+    }
+  ],
+  "proof": "phase_08a_agent_tool_policy",
+  "proof_passed": true,
+  "violations": []
+}

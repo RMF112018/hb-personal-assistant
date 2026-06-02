@@ -9,6 +9,16 @@ prompts. No external API access, no writeback, no raw content.
 
 from __future__ import annotations
 
+from .agents import (
+    AgentDefinition,
+    AgentRegistry,
+    AgentResult,
+    AgentRunReceipt,
+    build_agent_registry_proof,
+    build_agent_tool_policy_proof,
+    load_agent_registry,
+    validate_agent_registry,
+)
 from .config import SecondBrainConfig, load_second_brain_config
 from .contracts import (
     PHASE_08A_CONTRACT_FILES,
@@ -27,6 +37,14 @@ from .reasoning import (
 from .store import read_latest_config_receipt, write_config_receipt
 
 __all__ = [
+    "AgentDefinition",
+    "AgentRegistry",
+    "AgentResult",
+    "AgentRunReceipt",
+    "build_agent_registry_proof",
+    "build_agent_tool_policy_proof",
+    "load_agent_registry",
+    "validate_agent_registry",
     "PHASE_08A_CONTRACT_FILES",
     "load_all_phase_08a_contracts",
     "load_phase_08a_contract",

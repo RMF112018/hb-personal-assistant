@@ -37,6 +37,10 @@ PHASE_08A_CONTRACT_FILES: dict[str, str] = {
     "operator_preference_profile_contract": "operator_preference_profile_contract.json",
     "review_tier_contract": "review_tier_contract.json",
     "memory_quality_signal_contract": "memory_quality_signal_contract.json",
+    # Phase 08A Prompt 02 Addendum — agent runtime foundation contracts.
+    "agent_registry_contract": "phase_08a_agent_registry_contract.json",
+    "agent_tool_contract": "phase_08a_agent_tool_contract.json",
+    "model_profile_contract": "phase_08a_model_profile_contract.json",
 }
 
 

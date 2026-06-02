@@ -1,0 +1,113 @@
+# Phase 08A agent registry seed (Prompt 02 Addendum — Agent Runtime Foundation).
+#
+# Registers the nine Phase 08A internal service agents (A01-A09). Agents are
+# deterministic or model-assisted service modules behind controller policy, not
+# autonomous actors. Local-first, source-linked, review-tiered, bounded,
+# no-writeback. MCP is NOT implemented in Phase 08A (deferred to 08D).
+#
+# Sourced verbatim from the package seed; one repo-truth reconciliation: the
+# registry contract (phase_08a_agent_registry_contract.json) lists
+# `output_contract` as a required agent field but the package seed omitted it,
+# so an explicit `output_contract` label is added per agent here so the registry
+# validates against its own contract. Labels are logical (an agent's output
+# shape); they need not resolve to an installed JSON contract this prompt.
+version: phase_08a_agent_registry-v1
+agents:
+  - agent_id: second_brain_orchestrator_agent
+    phase_owner: "08A"
+    enabled: true
+    purpose: "Route user/runtime requests and enforce research-evaluate-synthesize-capture discipline."
+    allowed_tool_groups: [status, research_packet, retrieval_broker, answer_synthesis, daily_brief, memory_review, review_triage]
+    denied_tool_groups: [arbitrary_sql, raw_filesystem, direct_graph_api, direct_procore_api, external_writeback]
+    default_model_profile: deterministic_router
+    review_policy: tiered_review_required
+    output_contract: agent_result
+    receipt_required: true
+
+  - agent_id: research_packet_agent
+    phase_owner: "08A"
+    enabled: true
+    purpose: "Assess source coverage, warnings, conflicts, accepted memory, and degradation recommendation before synthesis."
+    allowed_tool_groups: [status, research_packet, retrieval_broker]
+    denied_tool_groups: [arbitrary_sql, raw_filesystem, external_writeback]
+    default_model_profile: fast_summary
+    review_policy: advisory_only
+    output_contract: research_packet_contract
+    receipt_required: true
+
+  - agent_id: retrieval_source_broker_agent
+    phase_owner: "08A"
+    enabled: true
+    purpose: "Retrieve bounded source-linked context from approved local read models and indexes."
+    allowed_tool_groups: [retrieval_broker]
+    denied_tool_groups: [arbitrary_sql, raw_sqlite_file, raw_obsidian_vault, direct_graph_api, direct_procore_api, external_writeback]
+    default_model_profile: none
+    review_policy: source_linked_context_only
+    output_contract: source_reference_contract
+    receipt_required: true
+
+  - agent_id: answer_synthesis_agent
+    phase_owner: "08A"
+    enabled: true
+    purpose: "Generate source-linked advisory answers from research packets and bounded context."
+    allowed_tool_groups: [answer_synthesis, retrieval_broker]
+    denied_tool_groups: [arbitrary_sql, raw_filesystem, direct_graph_api, direct_procore_api, external_writeback]
+    default_model_profile: default_reasoning
+    review_policy: no_high_impact_determinations
+    output_contract: agent_result
+    receipt_required: true
+
+  - agent_id: output_evaluation_agent
+    phase_owner: "08A"
+    enabled: true
+    purpose: "Score answer and brief outputs before presentation or apply."
+    allowed_tool_groups: [status, answer_synthesis]
+    denied_tool_groups: [external_writeback, arbitrary_sql, raw_filesystem]
+    default_model_profile: evaluator
+    review_policy: block_on_policy_failure
+    output_contract: evaluation_criteria_contract
+    receipt_required: true
+
+  - agent_id: daily_brief_agent
+    phase_owner: "08A"
+    enabled: true
+    purpose: "Generate daily brief from evaluated context and create delivery handoff payload."
+    allowed_tool_groups: [research_packet, retrieval_broker, answer_synthesis, daily_brief, local_apply]
+    denied_tool_groups: [email_send_or_mutate, calendar_mutate, sharepoint_onedrive_mutate, procore_mutate, external_writeback]
+    default_model_profile: default_reasoning
+    review_policy: evaluated_before_apply
+    output_contract: agent_result
+    receipt_required: true
+
+  - agent_id: memory_curator_agent
+    phase_owner: "08A"
+    enabled: true
+    purpose: "Extract, review, and manage long-term memory candidates."
+    allowed_tool_groups: [memory_review, preference_capture, local_apply]
+    denied_tool_groups: [external_writeback, raw_filesystem, arbitrary_sql]
+    default_model_profile: default_reasoning
+    review_policy: source_linked_memory_only
+    output_contract: memory_update_candidate_contract
+    receipt_required: true
+
+  - agent_id: operator_preference_agent
+    phase_owner: "08A"
+    enabled: true
+    purpose: "Capture and apply reviewed operator formatting/structure preferences."
+    allowed_tool_groups: [preference_capture, memory_review]
+    denied_tool_groups: [external_writeback, raw_filesystem]
+    default_model_profile: fast_summary
+    review_policy: preferences_never_override_safety
+    output_contract: operator_preference_profile_contract
+    receipt_required: true
+
+  - agent_id: review_triage_agent
+    phase_owner: "08A"
+    enabled: true
+    purpose: "Summarize and group review load by tier, source, project, and urgency."
+    allowed_tool_groups: [review_triage, status]
+    denied_tool_groups: [external_writeback, arbitrary_sql]
+    default_model_profile: fast_summary
+    review_policy: tier_3_mandatory_review
+    output_contract: review_tier_contract
+    receipt_required: true

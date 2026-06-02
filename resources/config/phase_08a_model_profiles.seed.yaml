@@ -1,0 +1,44 @@
+version: phase_08a_model_profiles-v1
+profiles:
+  deterministic_router:
+    provider: none_by_default
+    fallback_provider: anthropic
+    fallback_model: claude-haiku-4-5
+    temperature: 0.0
+    output_mode: strict_json
+    raw_prompt_persisted: false
+    raw_response_persisted: false
+
+  fast_summary:
+    provider: anthropic
+    model: claude-haiku-4-5
+    temperature: 0.0
+    output_mode: bounded_text_or_json
+    raw_prompt_persisted: false
+    raw_response_persisted: false
+
+  default_reasoning:
+    provider: anthropic
+    model: claude-sonnet-4-6
+    temperature: 0.2
+    output_mode: structured_markdown_and_json
+    raw_prompt_persisted: false
+    raw_response_persisted: false
+
+  deep_reasoning:
+    provider: anthropic
+    model: claude-opus-4-8
+    temperature: 0.1
+    effort: medium_or_high_when_available
+    output_mode: structured_markdown_and_json
+    raw_prompt_persisted: false
+    raw_response_persisted: false
+
+  evaluator:
+    provider: anthropic
+    model: claude-haiku-4-5
+    escalation_model: claude-sonnet-4-6
+    temperature: 0.0
+    output_mode: checklist_json
+    raw_prompt_persisted: false
+    raw_response_persisted: false

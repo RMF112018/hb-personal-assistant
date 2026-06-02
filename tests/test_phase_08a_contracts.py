@@ -42,6 +42,20 @@ _REQUIRED_KEYS = {
     "operator_preference_profile_contract": ["version", "scopes", "required_fields", "guardrails"],
     "review_tier_contract": ["version", "tiers", "reason_codes", "mandatory_review_for"],
     "memory_quality_signal_contract": ["version", "signal_types", "required_fields", "guardrails"],
+    # Phase 08A Prompt 02 Addendum — agent runtime foundation contracts.
+    "agent_registry_contract": [
+        "version",
+        "required_agent_fields",
+        "required_phase_08a_agents",
+        "guardrails",
+    ],
+    "agent_tool_contract": [
+        "version",
+        "tool_groups",
+        "denied_tool_groups",
+        "mcp_future_exposure_rule",
+    ],
+    "model_profile_contract": ["version", "profiles", "persistence_policy"],
 }
 
 

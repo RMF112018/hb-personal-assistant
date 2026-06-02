@@ -1,0 +1,24 @@
+{
+  "agent_count": 9,
+  "all_fields_complete": true,
+  "contract_version": "phase_08a_agent_registry_contract-v1",
+  "enabled_count": 9,
+  "guardrails": {
+    "local_first": true,
+    "mcp_future_ready": true,
+    "mcp_implemented": false,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "review_tiers_required": true,
+    "source_refs_required": true
+  },
+  "missing_agents": [],
+  "model_profiles_explicit": true,
+  "proof": "phase_08a_agent_registry",
+  "proof_passed": true,
+  "receipts_required_all": true,
+  "registry_version": "phase_08a_agent_registry-v1",
+  "required_agents_present": true,
+  "tier3_handling_visible": true,
+  "violations": []
+}
