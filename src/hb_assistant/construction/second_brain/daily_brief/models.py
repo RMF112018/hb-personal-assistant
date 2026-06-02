@@ -309,3 +309,57 @@ class DailyBriefResult(BaseModel):
     warnings: list[str] = []
 
     model_config = {"extra": "forbid"}
+
+
+# --- Prompt 13: launchd scheduling dry-run install preview -----------------------------
+
+
+class LaunchdSchedulePreview(BaseModel):
+    """Dry-run-only launchd install preview for the scheduled daily brief.
+
+    A documentation/preview artifact: no plist is written and ``launchctl`` is never
+    invoked. All paths are redacted (``$HOME`` -> ``~``); logs live outside the repo.
+    """
+
+    label: str
+    hour: int = 0
+    minute: int = 0
+    day_offset: int = 0
+    command_mode: str = "apply"
+    program_arguments_redacted: list[str] = []
+    plist: dict[str, Any] = {}
+    plist_path_redacted: str = ""
+    log_out_redacted: str = ""
+    log_err_redacted: str = ""
+    log_dir_redacted: str = ""
+    logs_outside_repo: bool = True
+    manual_install_commands: list[str] = []
+    readiness: dict[str, Any] = {}
+    phase_08b_handoff: str = ""
+    dry_run_install_only: bool = True
+    external_writeback_performed: bool = False
+    preview_id: str | None = None
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("program_arguments_redacted")
+    @classmethod
+    def _args_have_no_forbidden_tokens(cls, value: list[str]) -> list[str]:
+        for token in value:
+            if token in FORBIDDEN_REFERENCE_FIELDS:
+                raise ValueError(f"forbidden raw token in program arguments: {token!r}")
+        return value
+
+    @field_validator("dry_run_install_only")
+    @classmethod
+    def _must_be_dry_run(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("launchd install preview is dry-run only")
+        return value
+
+    @field_validator("external_writeback_performed")
+    @classmethod
+    def _no_external_writeback(cls, value: bool) -> bool:
+        if value:
+            raise ValueError("schedule preview never performs external writeback")
+        return value

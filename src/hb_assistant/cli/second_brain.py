@@ -733,7 +733,12 @@ _DAILY_BRIEF_GENERATE_GUARDRAILS = {
 
 @daily_brief_app.command("generate")
 def daily_brief_generate(
-    brief_date: str = typer.Option(..., "--date", help="Brief date (YYYY-MM-DD)."),
+    brief_date: str = typer.Option(
+        None, "--date", help="Brief date YYYY-MM-DD (default: today + --day-offset)."
+    ),
+    day_offset: int = typer.Option(
+        0, "--day-offset", help="Days from today when --date is omitted (1 = tomorrow)."
+    ),
     project_key: str = typer.Option(None, "--project-key", help="Optional project filter."),
     mode: str = typer.Option(
         "dry_run", "--mode", help="dry_run|apply (apply writes approved Obsidian output)."
@@ -756,6 +761,11 @@ def daily_brief_generate(
             json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload)
         )
         raise typer.Exit(2)
+
+    if brief_date is None:
+        from datetime import date, timedelta
+
+        brief_date = (date.today() + timedelta(days=day_offset)).isoformat()
 
     from hb_assistant.construction.second_brain.daily_brief import run_daily_brief
 
@@ -813,6 +823,62 @@ def daily_brief_generate(
         },
         "warnings": result.warnings[:50],
         "guardrails": _DAILY_BRIEF_GENERATE_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+_SCHEDULE_PREVIEW_GUARDRAILS = {
+    "local_first": True,
+    "dry_run_install_only": True,
+    "no_launchctl_invocation": True,
+    "no_plist_written": True,
+    "logs_outside_repo": True,
+    "no_external_writeback": True,
+    "no_hidden_background_behavior": True,
+    "phase_08b_owns_hardening": True,
+}
+
+
+@daily_brief_app.command("schedule-preview")
+def daily_brief_schedule_preview(
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Persist a metadata-only dry-run preview row to the local V26 table.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Preview the launchd schedule for the daily brief (dry-run install only; no launchctl)."""
+    from hb_assistant.construction.second_brain.daily_brief import (
+        build_daily_brief_schedule_preview,
+    )
+
+    try:
+        preview = build_daily_brief_schedule_preview(emit=emit_receipt)
+    except Exception as exc:  # pragma: no cover - defensive (e.g., seed unavailable)
+        err = {"command": "second-brain daily-brief schedule-preview", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain daily-brief schedule-preview",
+        "preview_id": preview.preview_id,
+        "label": preview.label,
+        "schedule": {"hour": preview.hour, "minute": preview.minute},
+        "day_offset": preview.day_offset,
+        "command_mode": preview.command_mode,
+        "program_arguments_redacted": preview.program_arguments_redacted,
+        "plist": preview.plist,
+        "plist_path_redacted": preview.plist_path_redacted,
+        "log_out_redacted": preview.log_out_redacted,
+        "log_err_redacted": preview.log_err_redacted,
+        "logs_outside_repo": preview.logs_outside_repo,
+        "manual_install_commands": preview.manual_install_commands,
+        "readiness": preview.readiness,
+        "dry_run_install_only": preview.dry_run_install_only,
+        "phase_08b_handoff": preview.phase_08b_handoff,
+        "guardrails": _SCHEDULE_PREVIEW_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)

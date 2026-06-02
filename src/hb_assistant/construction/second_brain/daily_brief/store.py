@@ -10,6 +10,7 @@ notification. Mirrors ``research/store.py::write_research_packet_receipt``.
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,7 +20,7 @@ from hb_assistant.store.connection import get_connection, transaction
 from hb_assistant.store.migrator import SQLiteMigrator
 
 if TYPE_CHECKING:
-    from .models import DailyBriefContext
+    from .models import DailyBriefContext, LaunchdSchedulePreview
 
 
 def write_daily_brief_run(
@@ -105,6 +106,70 @@ def read_latest_daily_brief_runs(
                review_tier_reason_code, degradation_mode, generated_utc
         FROM daily_brief_runs
         ORDER BY generated_utc DESC, brief_run_id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    return [dict(row) for row in cur.fetchall()]
+
+
+def write_launchd_schedule_preview(
+    preview: LaunchdSchedulePreview,
+    *,
+    db_path: str | None = None,
+) -> str:
+    """Insert one metadata-only launchd schedule preview; returns the ``preview_id``.
+
+    Dry-run only by construction (the table enforces ``mode = 'dry_run'``). No plist is
+    written and ``launchctl`` is never invoked. Guard column stays at 0 via the DB CHECK.
+    """
+    SQLiteMigrator(db_path).apply()  # ensure V26 table exists (idempotent)
+
+    preview_id = uuid.uuid4().hex
+    schedule_json = json.dumps(
+        {
+            "hour": preview.hour,
+            "minute": preview.minute,
+            "day_offset": preview.day_offset,
+            "command_mode": preview.command_mode,
+            "program_arguments": preview.program_arguments_redacted,
+        },
+        sort_keys=True,
+    )
+
+    conn = get_connection(Path(db_path) if db_path is not None else None)
+    with transaction(conn):
+        conn.execute(
+            """
+            INSERT INTO launchd_schedule_previews
+                (launchd_preview_id, mode, label, schedule_json, plist_path_redacted,
+                 log_dir_redacted, generated_utc)
+            VALUES (?, 'dry_run', ?, ?, ?, ?, ?)
+            """,
+            (
+                preview_id,
+                preview.label,
+                schedule_json,
+                preview.plist_path_redacted,
+                preview.log_dir_redacted,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+    return preview_id
+
+
+def read_latest_launchd_schedule_previews(
+    *, db_path: str | None = None, limit: int = 50
+) -> list[dict[str, Any]]:
+    """Return the most recent launchd schedule-preview rows (metadata only)."""
+    SQLiteMigrator(db_path).apply()  # ensure V26 table exists (idempotent)
+    conn = get_connection(Path(db_path) if db_path is not None else None)
+    cur = conn.execute(
+        """
+        SELECT launchd_preview_id, mode, label, schedule_json, plist_path_redacted,
+               log_dir_redacted, generated_utc, external_writeback_performed
+        FROM launchd_schedule_previews
+        ORDER BY generated_utc DESC, launchd_preview_id DESC
         LIMIT ?
         """,
         (limit,),

@@ -1,0 +1,55 @@
+{
+  "guard_column_zero": true,
+  "guardrails": {
+    "dry_run_install_only": true,
+    "local_first": true,
+    "logs_outside_repo": true,
+    "no_external_writeback": true,
+    "no_hidden_background_behavior": true,
+    "no_launchctl_invocation": true,
+    "no_plist_written": true,
+    "phase_08b_owns_hardening": true
+  },
+  "logs_outside_repo": true,
+  "mode_is_dry_run": true,
+  "no_plist_written": true,
+  "no_secrets_or_home_leak": true,
+  "persisted_row": {
+    "external_writeback_performed": 0,
+    "label": "com.hb.personal-assistant.second-brain-daily-brief",
+    "log_dir_redacted": "~/Library/Application Support/HB Personal Assistant/logs",
+    "mode": "dry_run",
+    "plist_path_redacted": "~/Library/LaunchAgents/com.hb.personal-assistant.second-brain-daily-brief.plist"
+  },
+  "preview": {
+    "command_mode": "apply",
+    "day_offset": 1,
+    "label": "com.hb.personal-assistant.second-brain-daily-brief",
+    "log_err_redacted": "~/Library/Application Support/HB Personal Assistant/logs/error-logs/launchd-second-brain-daily-brief.err.log",
+    "log_out_redacted": "~/Library/Application Support/HB Personal Assistant/logs/run-logs/launchd-second-brain-daily-brief.out.log",
+    "manual_install_commands": [
+      "launchctl load -w ~/Library/LaunchAgents/com.hb.personal-assistant.second-brain-daily-brief.plist",
+      "launchctl kickstart -k gui/$(id -u)/com.hb.personal-assistant.second-brain-daily-brief",
+      "launchctl unload -w ~/Library/LaunchAgents/com.hb.personal-assistant.second-brain-daily-brief.plist"
+    ],
+    "plist_path_redacted": "~/Library/LaunchAgents/com.hb.personal-assistant.second-brain-daily-brief.plist",
+    "program_arguments_redacted": [
+      "~/hb-personal-assistant/.venv/bin/hb-assistant",
+      "second-brain",
+      "daily-brief",
+      "generate",
+      "--day-offset",
+      "1",
+      "--mode",
+      "apply",
+      "--emit-receipt"
+    ],
+    "schedule": {
+      "hour": 20,
+      "minute": 0
+    }
+  },
+  "preview_persisted": true,
+  "proof": "phase_08a_launchd_schedule_dry_run",
+  "proof_passed": true
+}

@@ -1,0 +1,64 @@
+{
+  "command_mode": "apply",
+  "day_offset": 1,
+  "dry_run_install_only": true,
+  "external_writeback_performed": false,
+  "hour": 20,
+  "label": "com.hb.personal-assistant.second-brain-daily-brief",
+  "log_dir_redacted": "~/Library/Application Support/HB Personal Assistant/logs",
+  "log_err_redacted": "~/Library/Application Support/HB Personal Assistant/logs/error-logs/launchd-second-brain-daily-brief.err.log",
+  "log_out_redacted": "~/Library/Application Support/HB Personal Assistant/logs/run-logs/launchd-second-brain-daily-brief.out.log",
+  "logs_outside_repo": true,
+  "manual_install_commands": [
+    "launchctl load -w ~/Library/LaunchAgents/com.hb.personal-assistant.second-brain-daily-brief.plist",
+    "launchctl kickstart -k gui/$(id -u)/com.hb.personal-assistant.second-brain-daily-brief",
+    "launchctl unload -w ~/Library/LaunchAgents/com.hb.personal-assistant.second-brain-daily-brief.plist"
+  ],
+  "minute": 0,
+  "phase_08b_handoff": "Automation hardening (health checks, retries, weekend behavior, failure alerting, and real install/enable) is owned by the Phase 08B Automation Health Agent. This preview is dry-run only and performs no install.",
+  "plist": {
+    "EnvironmentVariables": {
+      "PYTHONUNBUFFERED": "1"
+    },
+    "Label": "com.hb.personal-assistant.second-brain-daily-brief",
+    "ProgramArguments": [
+      "~/hb-personal-assistant/.venv/bin/hb-assistant",
+      "second-brain",
+      "daily-brief",
+      "generate",
+      "--day-offset",
+      "1",
+      "--mode",
+      "apply",
+      "--emit-receipt"
+    ],
+    "StandardErrorPath": "~/Library/Application Support/HB Personal Assistant/logs/error-logs/launchd-second-brain-daily-brief.err.log",
+    "StandardOutPath": "~/Library/Application Support/HB Personal Assistant/logs/run-logs/launchd-second-brain-daily-brief.out.log",
+    "StartCalendarInterval": {
+      "Hour": 20,
+      "Minute": 0
+    },
+    "WorkingDirectory": "~/hb-personal-assistant"
+  },
+  "plist_path_redacted": "~/Library/LaunchAgents/com.hb.personal-assistant.second-brain-daily-brief.plist",
+  "preview_id": null,
+  "program_arguments_redacted": [
+    "~/hb-personal-assistant/.venv/bin/hb-assistant",
+    "second-brain",
+    "daily-brief",
+    "generate",
+    "--day-offset",
+    "1",
+    "--mode",
+    "apply",
+    "--emit-receipt"
+  ],
+  "readiness": {
+    "blocking": false,
+    "command_args_present": true,
+    "executable_exists": true,
+    "executable_resolved": true,
+    "logs_dir_outside_repo": true,
+    "working_directory_exists": true
+  }
+}

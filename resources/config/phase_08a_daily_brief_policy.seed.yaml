@@ -44,3 +44,17 @@ delivery:
   external_delivery_performed: false
   emit_macos_notification: false
   render_html: false
+# Prompt 13 — launchd scheduling (dry-run install preview only). The scheduled job runs at
+# 20:00 local and generates the FOLLOWING day's brief (day_offset 1) in apply mode. Real
+# install / hardening (health checks, retries, weekend logic, alerting) is owned by the
+# Phase 08B Automation Health Agent; this phase only previews and documents.
+schedule:
+  label: com.hb.personal-assistant.second-brain-daily-brief
+  time: "20:00"
+  day_offset: 1
+  command_mode: apply
+  weekend_behavior: run
+  logs_outside_repo: true
+  dry_run_install_only: true
+  phase_08b_owns_hardening: true
+  automation_health_agent_handoff: true
