@@ -48,6 +48,8 @@ def test_no_readiness_overstatement() -> None:
     assert by["launchd_install"] == "pass"
     # Run registry + no-overlap locking (Prompt 05) is implemented -> pass (proof-gate).
     assert by["run_registry_locking"] == "pass"
+    # Retry/backoff + Run Recovery Agent (Prompt 06) is implemented -> pass (proof-gate).
+    assert by["retry_recovery"] == "pass"
 
 
 def test_gates_carry_structured_reason_codes() -> None:

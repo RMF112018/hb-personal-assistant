@@ -34,6 +34,7 @@ from .launchd_scheduler import build_launchd_scheduler_proof
 from .memory import build_memory_curator_agent_proof
 from .research import build_research_packet_agent_proof
 from .retrieval import build_retrieval_broker_agent_proof
+from .retry_recovery import build_retry_recovery_proof
 from .run_registry import build_run_registry_locking_proof
 from .synthesis import build_output_evaluation_agent_proof
 
@@ -286,6 +287,7 @@ PHASE_08B_GATE_NAMES: tuple[str, ...] = (
     "observability_reason_codes",
     "automation_health",
     "run_registry_locking",
+    "retry_recovery",
     "automation_execution",
     "launchd_install",
 )
@@ -408,6 +410,13 @@ def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict
     # artifacts live outside the repo, and the registry/step rows are metadata-only with guard
     # columns at 0. The broader retry/backoff/weekend executor stays deferred below.
     gates.append(_proof_gate("run_registry_locking", build_run_registry_locking_proof()))
+
+    # Retry/backoff receipts + Run Recovery Agent (Prompt 06) — proof-gate: the policy-driven retry
+    # decision (scheduled / exhausted / succeeded) emits a metadata-only V30 receipt, and the
+    # recovery agent detects orphaned runs + stale locks and recovers them (apply, dry-run default,
+    # local-only). The broader executor (weekend execution + alerting + pipeline wiring) stays
+    # deferred below.
+    gates.append(_proof_gate("retry_recovery", build_retry_recovery_proof()))
 
     # Deferred 08B execution surfaces — never reported as pass.
     gates.append(

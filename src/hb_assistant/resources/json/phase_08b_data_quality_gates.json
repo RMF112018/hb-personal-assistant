@@ -9,6 +9,7 @@
     "observability_reason_codes",
     "automation_health",
     "run_registry_locking",
+    "retry_recovery",
     "automation_execution",
     "launchd_install"
   ],
@@ -39,6 +40,15 @@
     "RUN_REGISTERED",
     "RUN_STEP_RECORDED",
     "RUN_REGISTRY_LOCKING_OK",
+    "RETRY_SCHEDULED",
+    "RETRY_SUCCEEDED",
+    "RETRY_ATTEMPT_RECORDED",
+    "RECOVERY_NEEDED",
+    "RECOVERY_NOT_NEEDED",
+    "RECOVERY_BLOCKED",
+    "RUN_ORPHANED",
+    "RUN_RECOVERED",
+    "RETRY_RECOVERY_OK",
     "HEALTH_RETRY_WEEKEND_ALERTING_EXECUTION_DEFERRED",
     "REAL_LAUNCHD_INSTALL_DEFERRED"
   ],

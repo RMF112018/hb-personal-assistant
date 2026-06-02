@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 29
+LATEST_SCHEMA_VERSION = 30
 
 
 class SQLiteMigrator:
@@ -3515,6 +3515,41 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v30 Phase 08B Prompt 06 — retry/backoff receipts. One metadata-only row per retry attempt
+    # (attempt number, max attempts, outcome, backoff seconds, structured reason code), with the
+    # same per-row no-raw / no-writeback CHECK(col = 0) guards as V26-V29. The Run Recovery Agent
+    # reuses the V28 ``second_brain_agent_run_receipts`` table (no new table for recovery). Ships
+    # empty; V1-V29 untouched.
+    V30_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_retry_receipts (
+          retry_receipt_id TEXT PRIMARY KEY,
+          run_kind TEXT NOT NULL,
+          run_registry_id TEXT REFERENCES second_brain_run_registry(run_registry_id) ON DELETE CASCADE,
+          attempt_number INTEGER NOT NULL,
+          max_attempts INTEGER NOT NULL,
+          outcome TEXT NOT NULL,
+          reason_code TEXT,
+          backoff_seconds INTEGER NOT NULL DEFAULT 0,
+          next_attempt_utc TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_retry_receipts_kind
+          ON second_brain_retry_receipts(run_kind, created_utc);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -3887,6 +3922,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (29, 'v29_run_registry_and_steps', ?)",
+                    (now,),
+                )
+
+            # v30 Phase 08B Prompt 06 — retry/backoff receipts (metadata-only, per-row no-raw/
+            # no-writeback CHECK guardrails). The Run Recovery Agent reuses the V28 agent-run
+            # receipts table. Ships empty. V1-V29 untouched.
+            for stmt in self.V30_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 30")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (30, 'v30_retry_receipts', ?)",
                     (now,),
                 )
 

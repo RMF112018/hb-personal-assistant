@@ -21,6 +21,19 @@ retry:
   max_attempts: 3
   backoff_seconds: [60, 300, 900]
   exhausted_reason_code: RETRY_EXHAUSTED
+  scheduled_reason_code: RETRY_SCHEDULED
+  succeeded_reason_code: RETRY_SUCCEEDED
+
+# Run recovery posture (Prompt 06). The recovery agent detects V29 registry rows left in the
+# orphan status (an interrupted run) + stale locks and, in apply mode, recovers them locally.
+run_recovery:
+  enabled: true
+  orphan_status: started
+  needed_reason_code: RECOVERY_NEEDED
+  not_needed_reason_code: RECOVERY_NOT_NEEDED
+  blocked_reason_code: RECOVERY_BLOCKED
+  orphaned_reason_code: RUN_ORPHANED
+  recovered_reason_code: RUN_RECOVERED
 
 weekend_behavior: skip          # skip | run
 weekend_reason_code: WEEKEND_GATE_SKIPPED
@@ -85,3 +98,12 @@ reason_codes:
   - RUN_REGISTERED
   - RUN_STEP_RECORDED
   - RUN_REGISTRY_LOCKING_OK
+  - RETRY_SCHEDULED
+  - RETRY_SUCCEEDED
+  - RETRY_ATTEMPT_RECORDED
+  - RECOVERY_NEEDED
+  - RECOVERY_NOT_NEEDED
+  - RECOVERY_BLOCKED
+  - RUN_ORPHANED
+  - RUN_RECOVERED
+  - RETRY_RECOVERY_OK

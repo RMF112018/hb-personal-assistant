@@ -1309,6 +1309,85 @@ def automation_run_lock(
     raise typer.Exit(0)
 
 
+_RETRY_RECOVERY_GUARDRAILS = {
+    "local_first": True,
+    "read_only_default": True,
+    "apply_mutates_local_state_only": True,
+    "no_external_writeback": True,
+    "no_external_delivery": True,
+    "no_raw_content": True,
+    "model_direct_external_api_access": False,
+}
+
+
+@automation_app.command("retry-plan")
+def automation_retry_plan(
+    run_kind: str = typer.Option("morning_automation", "--run-kind", help="Run kind label."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report the policy-driven retry/backoff schedule for a run kind (read-only)."""
+    from hb_assistant.construction.second_brain.retry_recovery import plan_retry_schedule
+
+    try:
+        plan = plan_retry_schedule(run_kind=run_kind)
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation retry-plan", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation retry-plan",
+        **plan,
+        "guardrails": _RETRY_RECOVERY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@automation_app.command("run-recovery")
+def automation_run_recovery(
+    mode: str = typer.Option(
+        "dry_run",
+        "--mode",
+        help="dry_run|apply (apply recovers orphaned runs + clears stale locks).",
+    ),
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Persist a metadata-only V28 agent-run receipt for this recovery run (off by default).",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Detect orphaned runs / stale locks and (apply, dry-run default) recover them."""
+    if mode not in ("dry_run", "apply"):
+        err = {
+            "command": "second-brain automation run-recovery",
+            "error": "invalid_mode",
+            "detail": f"{mode!r} not in ['dry_run', 'apply']",
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(2)
+
+    from hb_assistant.construction.second_brain.retry_recovery import run_run_recovery_agent
+
+    try:
+        status, agent_run_id = run_run_recovery_agent(mode=mode, emit_receipt=emit_receipt)
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation run-recovery", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation run-recovery",
+        "mode": mode,
+        **status.model_dump(),
+        "agent_run_id": agent_run_id,
+        "guardrails": _RETRY_RECOVERY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if status.overall_status == "ok" else 3)
+
+
 @data_quality_app.command("no-writeback-proof")
 def data_quality_no_writeback_proof(
     json_out: bool = typer.Option(True, "--json"),

@@ -1,9 +1,9 @@
-"""Phase 08B Prompt 05 — V29 run-registry + run-step ledger schema additions.
+"""Phase 08B Prompt 06 — V30 retry/backoff receipt schema additions.
 
-Proves V29 additively (1) creates the run registry + run-step tables that ship empty, (2) declares
-+ enforces the canonical no-raw / no-writeback guard `CHECK(col = 0)` columns, (3) enforces the
-run-step -> registry FK, (4) is idempotent, (5) leaves V1-V28 intact, and (6) the lifecycle
-contract classifies both tables operational_empty_expected at count 146.
+Proves V30 additively (1) creates the retry-receipts table that ships empty, (2) declares + enforces
+the canonical no-raw / no-writeback guard `CHECK(col = 0)` columns, (3) enforces the run_registry FK,
+(4) is idempotent, (5) leaves V1-V29 intact, and (6) the lifecycle contract classifies the table
+operational_empty_expected at count 147.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import pytest
 from hb_assistant.construction.data_quality import build_table_inventory_report
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
-_V29_TABLES = ["second_brain_run_registry", "second_brain_run_steps"]
+_V30_TABLES = ["second_brain_retry_receipts"]
 
 _GUARD_NAME_RE = re.compile(
     r"(raw_email_body_persisted|raw_document_text_persisted|raw_calendar_payload_persisted|"
@@ -43,24 +43,24 @@ def _ddl(conn: sqlite3.Connection, table: str) -> str:
     return str(row[0])
 
 
-def test_v29_is_latest_and_creates_run_tables() -> None:
+def test_v30_is_latest_and_creates_retry_table() -> None:
     with tempfile.TemporaryDirectory() as td:
-        db = Path(td) / "v29.db"
+        db = Path(td) / "v30.db"
         assert _migrate(db) == LATEST_SCHEMA_VERSION
-        assert LATEST_SCHEMA_VERSION >= 29
+        assert LATEST_SCHEMA_VERSION >= 30
         conn = sqlite3.connect(str(db))
         tables = _names(conn)
-        for t in _V29_TABLES:
-            assert t in tables, f"missing V29 table {t}"
+        for t in _V30_TABLES:
+            assert t in tables, f"missing V30 table {t}"
             assert conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] == 0
 
 
-def test_v29_guard_columns_present_and_enforced() -> None:
+def test_v30_guard_columns_present_and_enforced() -> None:
     with tempfile.TemporaryDirectory() as td:
-        db = Path(td) / "v29.db"
+        db = Path(td) / "v30.db"
         _migrate(db)
         conn = sqlite3.connect(str(db))
-        for t in _V29_TABLES:
+        for t in _V30_TABLES:
             guards = set(_GUARD_NAME_RE.findall(_ddl(conn, t)))
             for col in (
                 "raw_prompt_persisted",
@@ -70,55 +70,54 @@ def test_v29_guard_columns_present_and_enforced() -> None:
                 "external_writeback_performed",
             ):
                 assert col in guards, f"{t} missing guard {col}"
-        # The guard CHECK(col = 0) rejects a nonzero write.
         with pytest.raises(sqlite3.IntegrityError):
             conn.execute(
-                "INSERT INTO second_brain_run_registry "
-                "(run_registry_id, run_kind, status, external_writeback_performed) "
-                "VALUES ('r1','daily_brief','started',1)"
+                "INSERT INTO second_brain_retry_receipts "
+                "(retry_receipt_id, run_kind, attempt_number, max_attempts, outcome, "
+                " external_writeback_performed) VALUES ('r1','daily_brief',1,3,'failed',1)"
             )
 
 
-def test_v29_run_step_fk_enforced() -> None:
+def test_v30_run_registry_fk_enforced() -> None:
     with tempfile.TemporaryDirectory() as td:
-        db = Path(td) / "v29.db"
+        db = Path(td) / "v30.db"
         _migrate(db)
         conn = sqlite3.connect(str(db))
         conn.execute("PRAGMA foreign_keys = ON")
         with pytest.raises(sqlite3.IntegrityError):
             conn.execute(
-                "INSERT INTO second_brain_run_steps "
-                "(run_step_id, run_registry_id, step_name, step_order, status) "
-                "VALUES ('s1','does-not-exist','lock','0','ok')"
+                "INSERT INTO second_brain_retry_receipts "
+                "(retry_receipt_id, run_kind, run_registry_id, attempt_number, max_attempts, outcome) "
+                "VALUES ('r1','daily_brief','does-not-exist',1,3,'failed')"
             )
 
 
-def test_v29_is_idempotent_and_preserves_prior_versions() -> None:
+def test_v30_is_idempotent_and_preserves_prior_versions() -> None:
     with tempfile.TemporaryDirectory() as td:
-        db = Path(td) / "v29.db"
+        db = Path(td) / "v30.db"
         assert _migrate(db) == LATEST_SCHEMA_VERSION
         assert _migrate(db) == LATEST_SCHEMA_VERSION
         conn = sqlite3.connect(str(db))
-        n = conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 29").fetchone()[0]
+        n = conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 30").fetchone()[0]
         assert n == 1
-        # Prior-version tables intact (V1 ledger + V27/V28 second-brain substrate).
         tables = _names(conn)
         for t in (
             "assistant_runs",
-            "daily_brief_handoff_lines",
+            "second_brain_run_registry",
+            "second_brain_run_steps",
             "second_brain_agent_run_receipts",
         ):
             assert t in tables
 
 
-def test_v29_tables_classified_in_lifecycle_contract() -> None:
+def test_v30_table_classified_in_lifecycle_contract() -> None:
     with tempfile.TemporaryDirectory() as td:
-        db = Path(td) / "v29.db"
+        db = Path(td) / "v30.db"
         _migrate(db)
         report = build_table_inventory_report(db_path=str(db))
         assert report["contract_table_count"] == 147
         by_name = {t["table_name"]: t for t in report["tables"]}
-        for t in _V29_TABLES:
+        for t in _V30_TABLES:
             assert t in by_name, f"{t} absent from live inventory"
             assert by_name[t]["lifecycle_status"] == "operational_empty_expected"
             assert by_name[t].get("source") == "contract"

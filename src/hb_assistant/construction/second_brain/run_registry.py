@@ -339,6 +339,52 @@ def read_run_lock(
     )
 
 
+def clear_stale_lock(
+    *, lock_name: str | None = None, locks_dir: str | None = None, now: datetime | None = None
+) -> RunLockResult:
+    """Remove the lock file ONLY if it is stale; never delete a live lock.
+
+    Used by the Run Recovery Agent to reclaim a lock left behind by a crashed run. A live
+    (non-stale) lock is left intact and reported ``RUN_OVERLAP_BLOCKED``.
+    """
+    cfg = _locking_cfg()
+    lock_name = lock_name or str(cfg.get("lock_name", _DEFAULT_LOCK_NAME))
+    stale_lock_seconds = int(cfg.get("stale_lock_seconds", _DEFAULT_STALE_LOCK_SECONDS))
+    now = now or datetime.now(timezone.utc)
+    path = _lock_path(lock_name, locks_dir)
+    redacted = _redact(path)
+
+    existing = _read_lock_payload(path)
+    if existing is None:
+        return RunLockResult(
+            status="absent",
+            reason_code=None,
+            lock_name=lock_name,
+            lock_path_redacted=redacted,
+            detail="no_lock_present",
+        )
+    if not _is_stale(existing, stale_lock_seconds=stale_lock_seconds, now=now):
+        return RunLockResult(
+            status="blocked",
+            reason_code=RUN_OVERLAP_BLOCKED,
+            lock_name=lock_name,
+            lock_path_redacted=redacted,
+            detail="live_lock_not_cleared",
+        )
+    prior_sha = (
+        _token_sha(str(existing["token"])) if isinstance(existing.get("token"), str) else None
+    )
+    path.unlink()
+    return RunLockResult(
+        status="reclaimed",
+        reason_code=STALE_LOCK_RECLAIMED,
+        lock_name=lock_name,
+        lock_path_redacted=redacted,
+        prior_token_sha=prior_sha,
+        detail="stale_lock_cleared",
+    )
+
+
 # --------------------------------------------------------------------------------------------
 # Run registry + step ledger (V29; emit-gated)
 # --------------------------------------------------------------------------------------------

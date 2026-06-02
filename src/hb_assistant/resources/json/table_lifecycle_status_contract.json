@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 146,
+  "table_count": 147,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1315,6 +1315,15 @@
       "blocking_for_phase": "none",
       "v": "V29",
       "notes": "Phase 08B run-step ledger (step_name/order/status/reason_code + non-sensitive detail incl. hashed prior lock token; metadata-only, guard-checked); populated in 08B Prompt 05 via emit-gated run steps"
+    },
+    "second_brain_retry_receipts": {
+      "table_family": "second_brain_08b",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08B",
+      "blocking_for_phase": "none",
+      "v": "V30",
+      "notes": "Phase 08B retry/backoff receipts (attempt_number/max_attempts/outcome/backoff_seconds/reason_code; metadata-only, guard-checked); populated in 08B Prompt 06 via emit-gated retry attempts"
     },
     "launchd_schedule_previews": {
       "table_family": "second_brain_08a",

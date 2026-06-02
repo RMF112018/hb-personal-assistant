@@ -92,3 +92,27 @@ def test_run_registry_locking_reason_codes_declared() -> None:
     # The new substrate gate is a required field (covered) and not a deferred surface.
     assert "run_registry_locking" in gates["required_fields"]
     assert "run_registry_locking" not in gates["deferred_surfaces"]
+
+
+def test_retry_recovery_reason_codes_declared() -> None:
+    # Prompt 06 — retry/backoff + run-recovery reason codes are seeded + contract-backed.
+    seed = load_phase_08b_automation_policy_seed()
+    new_codes = {
+        "RETRY_SCHEDULED",
+        "RETRY_SUCCEEDED",
+        "RETRY_ATTEMPT_RECORDED",
+        "RECOVERY_NEEDED",
+        "RECOVERY_NOT_NEEDED",
+        "RECOVERY_BLOCKED",
+        "RUN_ORPHANED",
+        "RUN_RECOVERED",
+    }
+    assert new_codes <= set(seed["reason_codes"])
+    assert seed["retry"]["scheduled_reason_code"] == "RETRY_SCHEDULED"
+    assert seed["run_recovery"]["enabled"] is True
+    assert seed["run_recovery"]["orphan_status"] == "started"
+    assert validate_phase_08b_automation_policy()["valid"] is True
+    gates = load_phase_08b_contract("data_quality_gates_contract")
+    assert new_codes <= set(gates["reason_codes"])
+    assert "retry_recovery" in gates["required_fields"]
+    assert "retry_recovery" not in gates["deferred_surfaces"]
