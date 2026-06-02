@@ -1,0 +1,60 @@
+{
+  "version": "phase_08a_daily_brief-v1",
+  "purpose": "Bounded, source-linked daily-brief context package: priority attention items, meetings, projects, warnings, and review-required cards, plus a structured delivery handoff input. A context/handoff package only — never HTML, never a notification.",
+  "required_fields": [
+    "brief_date",
+    "project_count",
+    "source_ref_count",
+    "review_required_count",
+    "stale_unknown_count",
+    "source_coverage",
+    "review_tier_counts",
+    "context_quality_class",
+    "degradation_mode",
+    "review_tier",
+    "review_tier_reason_code",
+    "status"
+  ],
+  "brief_sections": [
+    "priority_actions",
+    "waiting_on",
+    "meeting_prep",
+    "file_review_queue",
+    "project_signals"
+  ],
+  "card_kinds": [
+    "attention_item",
+    "meeting",
+    "project",
+    "warning",
+    "review_required"
+  ],
+  "delivery_handoff_fields": [
+    "sections",
+    "source_refs",
+    "review_tier",
+    "degradation_mode",
+    "output_format",
+    "notification_emitted"
+  ],
+  "context_quality_classes": [
+    "sufficient",
+    "partial",
+    "insufficient"
+  ],
+  "degradation_modes": [
+    "none",
+    "graceful_degraded",
+    "blocked"
+  ],
+  "guardrails": {
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "no_html": true,
+    "no_notifications": true,
+    "source_references_required": true,
+    "advisory_vs_actionable_separation": true,
+    "tier_3_never_final_conclusion": true,
+    "insufficient_context_must_degrade_not_overstate": true
+  }
+}

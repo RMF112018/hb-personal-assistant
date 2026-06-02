@@ -50,6 +50,8 @@ PHASE_08A_CONTRACT_FILES: dict[str, str] = {
     "sqlite_query_tool": "sqlite_query_tool_contract.json",
     # Phase 08A Prompt 08 — interactive query output contract.
     "interactive_query_contract": "interactive_query_contract.json",
+    # Phase 08A Prompt 11 — daily-brief context + delivery handoff contract.
+    "daily_brief_contract": "daily_brief_contract.json",
 }
 
 

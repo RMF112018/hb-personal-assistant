@@ -1,0 +1,32 @@
+# Phase 08A — daily-brief context builder + review-triage policy (Prompt 11).
+#
+# Deterministic posture for the Daily Brief Context Builder (daily_brief_agent) and the
+# Review Triage Agent (review_triage_agent). The brief is a bounded, source-linked context
+# / handoff package — never HTML, never a notification. Assembly is dry-run-first; triage
+# prioritization is deterministic (tier -> urgency -> source). Loaded like the research
+# packet / context budget seeds (standalone deterministic config; the daily_brief_contract
+# owns the brief-section + card-kind vocabulary).
+version: phase_08a_daily_brief_policy_v1
+brief_assembly:
+  dry_run_first: true
+  context_from_research_packet: true
+  context_from_retrieval_broker: true
+  render_html: false
+  emit_notifications: false
+triage_prioritization:
+  # Deterministic review-load ordering: most-restrictive review tier first, then urgency
+  # band, then source family (stable tie-break).
+  order:
+    - review_tier
+    - urgency
+    - source_family
+review_tier_mapping:
+  tier_1: source_backed_advisory
+  tier_2: review_recommended
+  tier_3: mandatory_review_before_action
+card_kinds:
+  - attention_item
+  - meeting
+  - project
+  - warning
+  - review_required

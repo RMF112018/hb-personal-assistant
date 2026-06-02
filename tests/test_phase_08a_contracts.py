@@ -71,6 +71,8 @@ _REQUIRED_KEYS = {
     ],
     # Phase 08A Prompt 08 — interactive query output contract.
     "interactive_query_contract": ["version", "required_output", "guardrails"],
+    # Phase 08A Prompt 11 — daily-brief context + delivery handoff contract.
+    "daily_brief_contract": ["version", "required_fields", "brief_sections", "guardrails"],
 }
 
 

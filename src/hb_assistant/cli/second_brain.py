@@ -66,6 +66,13 @@ preference_app = typer.Typer(
 )
 app.add_typer(preference_app, name="preference")
 
+daily_brief_app = typer.Typer(
+    name="daily-brief",
+    help="Daily-brief context builder + review triage (read-only; no HTML/notifications).",
+    no_args_is_help=True,
+)
+app.add_typer(daily_brief_app, name="daily-brief")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -582,6 +589,128 @@ def preference_capture(
         "emitted": emit,
         "preference": pref.model_dump(),
         "guardrails": _MEMORY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+_DAILY_BRIEF_GUARDRAILS = {
+    "local_first": True,
+    "read_only": True,
+    "no_external_writeback": True,
+    "no_raw_content": True,
+    "no_html_or_notifications": True,
+    "source_references_required": True,
+    "synthesis_requires_packet": True,
+    "insufficient_context_degrades_not_overstates": True,
+    "tier_3_never_final_conclusion": True,
+    "model_direct_external_api_access": False,
+}
+
+
+@daily_brief_app.command("build")
+def daily_brief_build(
+    brief_date: str = typer.Option(..., "--date", help="Brief date (YYYY-MM-DD)."),
+    project_key: str = typer.Option(None, "--project-key", help="Optional project filter."),
+    mode: str = typer.Option("dry_run", "--mode", help="dry_run|apply (no external writeback)."),
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Persist a metadata-only daily-brief run to the local V26 table.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Build a bounded, source-linked daily-brief context package (read-only)."""
+    if mode not in ("dry_run", "apply"):
+        err_payload: dict[str, object] = {
+            "command": "second-brain daily-brief build",
+            "error": "invalid_mode",
+            "detail": f"{mode!r} not in ['dry_run', 'apply']",
+        }
+        typer.echo(
+            json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload)
+        )
+        raise typer.Exit(2)
+
+    from hb_assistant.construction.second_brain.daily_brief import build_daily_brief_context
+
+    try:
+        context = build_daily_brief_context(
+            brief_date=brief_date,
+            project_key=project_key,
+            mode=mode,
+            emit_receipt=emit_receipt,
+        )
+    except Exception as exc:  # pragma: no cover - defensive (e.g., DB unavailable)
+        err = {
+            "command": "second-brain daily-brief build",
+            "brief_date": brief_date,
+            "error": type(exc).__name__,
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    handoff = context.delivery_handoff
+    payload = {
+        "command": "second-brain daily-brief build",
+        "brief_date": context.brief_date,
+        "brief_run_id": context.brief_run_id,
+        "mode": mode,
+        "status": context.status,
+        "project_count": context.project_count,
+        "source_ref_count": context.source_ref_count,
+        "review_required_count": context.review_required_count,
+        "stale_unknown_count": context.stale_unknown_count,
+        "source_coverage": context.source_coverage,
+        "review_tier_counts": context.review_tier_counts,
+        "context_quality_class": context.context_quality_class,
+        "degradation_mode": context.degradation_mode,
+        "review_tier": context.review_tier,
+        "review_tier_reason_code": context.review_tier_reason_code,
+        "research_packet_id": context.research_packet_id,
+        "cards": {
+            "attention_item": len(context.attention_cards),
+            "meeting": len(context.meeting_cards),
+            "project": len(context.project_cards),
+            "warning": len(context.warning_cards),
+            "review_required": len(context.review_required_cards),
+        },
+        "review_load": context.review_load.model_dump(),
+        "delivery_handoff": {
+            "output_format": handoff.output_format,
+            "notification_emitted": handoff.notification_emitted,
+            "review_tier": handoff.review_tier,
+            "degradation_mode": handoff.degradation_mode,
+            "section_counts": {k: len(v) for k, v in handoff.sections.items()},
+            "source_ref_count": len(handoff.source_refs),
+        },
+        "warnings": context.warnings[:50],
+        "guardrails": _DAILY_BRIEF_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@daily_brief_app.command("triage")
+def daily_brief_triage(
+    project_key: str = typer.Option(None, "--project-key", help="Optional project filter."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Summarize review load grouped by tier, source, project, and urgency (read-only)."""
+    from hb_assistant.construction.second_brain.daily_brief import ReviewTriageAgent
+
+    try:
+        status = ReviewTriageAgent().summarize(project_key=project_key)
+    except Exception as exc:  # pragma: no cover - defensive (e.g., DB unavailable)
+        err = {"command": "second-brain daily-brief triage", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain daily-brief triage",
+        "project_key": project_key,
+        **status.model_dump(),
+        "guardrails": _DAILY_BRIEF_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)

@@ -1,0 +1,39 @@
+{
+  "empty_db_review_load": {
+    "tier_3_count": 0,
+    "total_review_items": 0
+  },
+  "grouped_by_tier_source_project_urgency": true,
+  "guardrails": {
+    "local_first": true,
+    "model_direct_external_api_access": false,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "tier_3_mandatory_review": true
+  },
+  "no_raw_content": true,
+  "proof": "phase_08a_review_triage_agent",
+  "proof_passed": true,
+  "seeded_review_load": {
+    "by_project": {
+      "P1": 1
+    },
+    "by_source_family": {
+      "cross_source_relationships": 1
+    },
+    "by_tier": {
+      "1": 0,
+      "2": 0,
+      "3": 1
+    },
+    "by_urgency": {
+      "high": 1,
+      "low": 0,
+      "medium": 0
+    },
+    "mandatory_review_count": 1,
+    "tier_3_count": 1,
+    "total_review_items": 1
+  },
+  "tier_3_surfaced_as_mandatory_review": true
+}
