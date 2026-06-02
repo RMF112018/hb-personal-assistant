@@ -61,6 +61,20 @@ daily_brief_job_health:
   stale_reason_code: JOB_STALE
   never_run_reason_code: JOB_NEVER_RUN
 
+# Daily Brief Delivery Agent posture (Prompt 09). Local-only delivery of an approved brief to the
+# Obsidian vault (the only channel — external delivery is NEVER permitted). Dry-run by default;
+# apply writes the vault note + a metadata-only V31 delivery receipt for idempotency.
+daily_brief_delivery:
+  enabled: true
+  channel: obsidian_vault
+  max_age_hours: 36
+  never_generated_reason_code: DELIVERY_NEVER_GENERATED
+  blocked_reason_code: DELIVERY_BLOCKED
+  stale_reason_code: DELIVERY_STALE
+  eligible_reason_code: DELIVERY_ELIGIBLE
+  completed_reason_code: DELIVERY_COMPLETED
+  already_delivered_reason_code: DELIVERY_ALREADY_DELIVERED
+
 weekend_behavior: skip          # skip | run
 weekend_reason_code: WEEKEND_GATE_SKIPPED
 
@@ -148,3 +162,9 @@ reason_codes:
   - JOB_STALE
   - JOB_NEVER_RUN
   - DAILY_BRIEF_JOB_HEALTH_OK
+  - DELIVERY_NEVER_GENERATED
+  - DELIVERY_BLOCKED
+  - DELIVERY_STALE
+  - DELIVERY_ELIGIBLE
+  - DELIVERY_COMPLETED
+  - DELIVERY_ALREADY_DELIVERED

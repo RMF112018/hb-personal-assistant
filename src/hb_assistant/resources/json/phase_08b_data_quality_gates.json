@@ -12,11 +12,19 @@
     "retry_recovery",
     "freshness_observability",
     "daily_brief_job_health",
+    "daily_brief_delivery",
     "automation_execution",
     "launchd_install"
   ],
-  "statuses": ["pass", "warning", "fail_blocking", "deferred_not_blocking"],
-  "deferred_surfaces": ["automation_execution"],
+  "statuses": [
+    "pass",
+    "warning",
+    "fail_blocking",
+    "deferred_not_blocking"
+  ],
+  "deferred_surfaces": [
+    "automation_execution"
+  ],
   "reason_codes": [
     "RECEIPT_PERSISTENCE_OK",
     "RECEIPT_TABLE_ABSENT",
@@ -67,7 +75,13 @@
     "JOB_NEVER_RUN",
     "DAILY_BRIEF_JOB_HEALTH_OK",
     "HEALTH_RETRY_WEEKEND_ALERTING_EXECUTION_DEFERRED",
-    "REAL_LAUNCHD_INSTALL_DEFERRED"
+    "REAL_LAUNCHD_INSTALL_DEFERRED",
+    "DELIVERY_NEVER_GENERATED",
+    "DELIVERY_BLOCKED",
+    "DELIVERY_STALE",
+    "DELIVERY_ELIGIBLE",
+    "DELIVERY_COMPLETED",
+    "DELIVERY_ALREADY_DELIVERED"
   ],
   "guardrails": {
     "external_systems": "read_only",

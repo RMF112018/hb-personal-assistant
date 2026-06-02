@@ -155,3 +155,26 @@ def test_daily_brief_job_health_reason_codes_declared() -> None:
     assert new_codes <= set(gates["reason_codes"])
     assert "daily_brief_job_health" in gates["required_fields"]
     assert "daily_brief_job_health" not in gates["deferred_surfaces"]
+
+
+def test_daily_brief_delivery_reason_codes_declared() -> None:
+    # Prompt 09 — daily-brief delivery reason codes are seeded + contract-backed (both contracts).
+    seed = load_phase_08b_automation_policy_seed()
+    new_codes = {
+        "DELIVERY_NEVER_GENERATED",
+        "DELIVERY_BLOCKED",
+        "DELIVERY_STALE",
+        "DELIVERY_ELIGIBLE",
+        "DELIVERY_COMPLETED",
+        "DELIVERY_ALREADY_DELIVERED",
+    }
+    assert new_codes <= set(seed["reason_codes"])
+    assert seed["daily_brief_delivery"]["enabled"] is True
+    assert seed["daily_brief_delivery"]["channel"] == "obsidian_vault"
+    assert validate_phase_08b_automation_policy()["valid"] is True
+    policy = load_phase_08b_contract("automation_policy_contract")
+    assert new_codes <= set(policy["reason_codes"])
+    gates = load_phase_08b_contract("data_quality_gates_contract")
+    assert new_codes <= set(gates["reason_codes"])
+    assert "daily_brief_delivery" in gates["required_fields"]
+    assert "daily_brief_delivery" not in gates["deferred_surfaces"]

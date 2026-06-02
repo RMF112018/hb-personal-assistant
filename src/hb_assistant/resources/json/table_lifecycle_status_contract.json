@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 147,
+  "table_count": 148,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1342,6 +1342,15 @@
       "blocking_for_phase": "none",
       "v": "V26",
       "notes": "Phase 08A validation run ledger; populated in 08A Prompt 16"
+    },
+    "daily_brief_delivery_receipts": {
+      "table_family": "second_brain_08b",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08B",
+      "blocking_for_phase": "none",
+      "v": "V31",
+      "notes": "Phase 08B daily-brief delivery receipts (one metadata-only row per local-only Obsidian-vault delivery; delivery_channel pinned to obsidian_vault by CHECK; guard-checked); populated in 08B Prompt 09 via the Daily Brief Delivery Agent apply path"
     }
   }
 }

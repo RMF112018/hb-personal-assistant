@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 30
+LATEST_SCHEMA_VERSION = 31
 
 
 class SQLiteMigrator:
@@ -3550,6 +3550,44 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v31 Phase 08B Prompt 09 — daily-brief delivery receipts. One metadata-only row per
+    # local-only delivery (the redacted vault path + content hash + structured reason code) so the
+    # Daily Brief Delivery Agent is idempotent and auditable. ``delivery_channel`` is hard-pinned to
+    # ``obsidian_vault`` by a CHECK so no external delivery channel can ever be recorded; the same
+    # per-row no-raw / no-writeback CHECK(col = 0) guards as V26-V30 apply. Ships empty; V1-V30
+    # untouched.
+    V31_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS daily_brief_delivery_receipts (
+          delivery_receipt_id TEXT PRIMARY KEY,
+          brief_run_id TEXT REFERENCES daily_brief_runs(brief_run_id),
+          brief_date TEXT NOT NULL,
+          delivery_channel TEXT NOT NULL DEFAULT 'obsidian_vault' CHECK(delivery_channel = 'obsidian_vault'),
+          delivery_status TEXT NOT NULL,
+          reason_code TEXT,
+          mode TEXT NOT NULL CHECK(mode IN ('dry_run', 'apply')),
+          content_hash TEXT,
+          output_path_redacted TEXT,
+          output_path_hash TEXT,
+          delivered_utc TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_delivery_receipts_date
+          ON daily_brief_delivery_receipts(brief_date, created_utc);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -3934,6 +3972,19 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (30, 'v30_retry_receipts', ?)",
+                    (now,),
+                )
+
+            # v31 Phase 08B Prompt 09 — daily-brief delivery receipts (metadata-only, per-row
+            # no-raw/no-writeback CHECK guardrails; delivery_channel pinned to obsidian_vault). The
+            # Daily Brief Delivery Agent records one row per local-only delivery for idempotency +
+            # audit. Ships empty; V1-V30 untouched.
+            for stmt in self.V31_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 31")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (31, 'v31_daily_brief_delivery_receipts', ?)",
                     (now,),
                 )
 

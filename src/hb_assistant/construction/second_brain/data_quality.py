@@ -30,6 +30,7 @@ from .automation_policy import validate_phase_08b_automation_policy
 from .config import load_second_brain_config
 from .contracts import load_phase_08a_contract, load_phase_08b_contract
 from .daily_brief import build_daily_brief_delivery_handoff_proof
+from .daily_brief_delivery import build_daily_brief_delivery_proof
 from .daily_brief_health import build_daily_brief_job_health_proof
 from .freshness import build_freshness_observability_proof
 from .launchd_scheduler import build_launchd_scheduler_proof
@@ -292,6 +293,7 @@ PHASE_08B_GATE_NAMES: tuple[str, ...] = (
     "retry_recovery",
     "freshness_observability",
     "daily_brief_job_health",
+    "daily_brief_delivery",
     "automation_execution",
     "launchd_install",
 )
@@ -431,6 +433,12 @@ def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict
     # the daily_brief_runs ledger reports healthy / degraded / stale / never-run with structured
     # reason codes and no raw content.
     gates.append(_proof_gate("daily_brief_job_health", build_daily_brief_job_health_proof()))
+
+    # Daily Brief Delivery Agent (Prompt 09) — proof-gate: the dry-run-default agent reports
+    # never-generated / blocked / stale / eligible, and the apply path delivers the redacted brief
+    # to a temp Obsidian vault idempotently (V31 delivery receipt), writing nothing on dry-run and
+    # never to an external channel.
+    gates.append(_proof_gate("daily_brief_delivery", build_daily_brief_delivery_proof()))
 
     # Deferred 08B execution surfaces — never reported as pass.
     gates.append(
