@@ -27,10 +27,15 @@ def write_daily_brief_run(
     *,
     mode: str = "dry_run",
     db_path: str | None = None,
+    evaluation_run_id: str | None = None,
+    output_path_redacted: str | None = None,
+    output_path_hash: str | None = None,
 ) -> str:
     """Insert one daily-brief run + its source refs; returns the ``brief_run_id``.
 
     Local-only, additive, metadata-only. Guard columns stay at 0 via DB CHECKs.
+    ``evaluation_run_id`` links the Output Evaluation Agent (A05) row; the
+    ``output_path_*`` pair is recorded only when an approved local output was written.
     """
     SQLiteMigrator(db_path).apply()  # ensure V26 tables exist (idempotent)
 
@@ -44,7 +49,7 @@ def write_daily_brief_run(
                  review_required_count, stale_unknown_count, research_packet_id,
                  evaluation_run_id, review_tier, review_tier_reason_code, degradation_mode,
                  output_path_redacted, output_path_hash, generated_utc)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, NULL, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 brief_run_id,
@@ -56,9 +61,12 @@ def write_daily_brief_run(
                 context.review_required_count,
                 context.stale_unknown_count,
                 context.research_packet_id,
+                evaluation_run_id,
                 context.review_tier,
                 context.review_tier_reason_code,
                 context.degradation_mode,
+                output_path_redacted,
+                output_path_hash,
                 datetime.now(timezone.utc).isoformat(),
             ),
         )

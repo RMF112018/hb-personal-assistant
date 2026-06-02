@@ -716,6 +716,108 @@ def daily_brief_triage(
     raise typer.Exit(0)
 
 
+_DAILY_BRIEF_GENERATE_GUARDRAILS = {
+    "local_first": True,
+    "mock_first": True,
+    "research_packet_required": True,
+    "evaluation_required_before_apply": True,
+    "apply_blocked_when_evaluation_fails": True,
+    "no_external_delivery": True,
+    "no_macos_notification": True,
+    "no_html_rendering": True,
+    "no_external_writeback": True,
+    "no_raw_content": True,
+    "model_direct_external_api_access": False,
+}
+
+
+@daily_brief_app.command("generate")
+def daily_brief_generate(
+    brief_date: str = typer.Option(..., "--date", help="Brief date (YYYY-MM-DD)."),
+    project_key: str = typer.Option(None, "--project-key", help="Optional project filter."),
+    mode: str = typer.Option(
+        "dry_run", "--mode", help="dry_run|apply (apply writes approved Obsidian output)."
+    ),
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Persist metadata-only evaluation + brief-run rows to the local V26 tables.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Generate -> evaluate -> (gated) apply -> hand off the daily brief (mock-first)."""
+    if mode not in ("dry_run", "apply"):
+        err_payload: dict[str, object] = {
+            "command": "second-brain daily-brief generate",
+            "error": "invalid_mode",
+            "detail": f"{mode!r} not in ['dry_run', 'apply']",
+        }
+        typer.echo(
+            json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload)
+        )
+        raise typer.Exit(2)
+
+    from hb_assistant.construction.second_brain.daily_brief import run_daily_brief
+
+    try:
+        result = run_daily_brief(
+            brief_date=brief_date,
+            project_key=project_key,
+            mode=mode,
+            emit_receipt=emit_receipt,
+        )
+    except Exception as exc:  # pragma: no cover - defensive (e.g., DB/vault unavailable)
+        err = {
+            "command": "second-brain daily-brief generate",
+            "brief_date": brief_date,
+            "error": type(exc).__name__,
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    handoff = result.delivery_handoff
+    evaluation = result.evaluation
+    payload = {
+        "command": "second-brain daily-brief generate",
+        "brief_date": result.brief_date,
+        "brief_run_id": result.brief_run_id,
+        "mode": result.mode,
+        "status": result.status,
+        "applied": result.applied,
+        "apply_blocked_reason": result.apply_blocked_reason,
+        "evaluation": {
+            "passed": evaluation.get("passed"),
+            "score": evaluation.get("score"),
+            "checklist_passed": evaluation.get("checklist_passed"),
+            "checklist_total": evaluation.get("checklist_total"),
+        },
+        "evaluation_run_id": result.evaluation_run_id,
+        "eligible_for_delivery": result.eligible_for_delivery,
+        "output_written": result.output_written,
+        "output_path_redacted": result.output_path_redacted,
+        "source_ref_count": result.source_ref_count,
+        "source_coverage": result.source_coverage,
+        "review_tier_counts": result.review_tier_counts,
+        "delivery_handoff": {
+            "phase": handoff.phase,
+            "eligible_for_delivery": handoff.eligible_for_delivery,
+            "local_only": handoff.local_only,
+            "external_delivery_performed": handoff.external_delivery_performed,
+            "section_counts": {k: len(v) for k, v in handoff.sections.items()},
+            "source_ref_count": len(handoff.source_refs),
+            "notification_summary": handoff.notification_summary.model_dump(),
+            "html_rendering": {
+                "format": handoff.html_rendering.format,
+                "rendered": handoff.html_rendering.rendered,
+            },
+        },
+        "warnings": result.warnings[:50],
+        "guardrails": _DAILY_BRIEF_GENERATE_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
 @index_app.command("obsidian")
 def index_obsidian(
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview planned notes (no apply)."),

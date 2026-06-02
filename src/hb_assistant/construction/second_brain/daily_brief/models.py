@@ -11,7 +11,7 @@ field validator that rejects the forbidden raw reference fields.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, field_validator
 
@@ -195,3 +195,117 @@ class DailyBriefContext(BaseModel):
     @classmethod
     def _no_forbidden_fields(cls, value: list[dict[str, str]]) -> list[dict[str, str]]:
         return _reject_forbidden_refs(value)
+
+
+# --- Prompt 12: generation / evaluation / delivery-handoff payloads -------------------
+
+
+class NotificationSummary(BaseModel):
+    """Data-only notification summary (NEVER emitted here; no macOS notification)."""
+
+    title_redacted: str = ""
+    attention_count: int = 0
+    review_required_count: int = 0
+    warning_count: int = 0
+    project_count: int = 0
+    eligible: bool = False
+    channel: Literal["local_only"] = "local_only"
+    emitted: bool = False
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("emitted")
+    @classmethod
+    def _never_emitted(cls, value: bool) -> bool:
+        if value:
+            raise ValueError("notification summary is data-only; never emitted")
+        return value
+
+
+class HtmlRenderingData(BaseModel):
+    """Structured render-data for a future HTML renderer. No HTML is produced here."""
+
+    title_redacted: str = ""
+    sections: dict[str, list[HandoffLine]] = {}
+    source_refs: list[dict[str, str]] = []
+    format: Literal["render_data"] = "render_data"
+    rendered: bool = False
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("source_refs")
+    @classmethod
+    def _no_forbidden_fields(cls, value: list[dict[str, str]]) -> list[dict[str, str]]:
+        return _reject_forbidden_refs(value)
+
+    @field_validator("rendered")
+    @classmethod
+    def _never_rendered(cls, value: bool) -> bool:
+        if value:
+            raise ValueError("HTML rendering data is structured-only; no HTML is produced")
+        return value
+
+
+class DeliveryHandoffPayload(BaseModel):
+    """Phase 08B delivery-handoff payload — local-only, source-linked, never delivered."""
+
+    phase: Literal["08B"] = "08B"
+    brief_run_id: str | None = None
+    brief_date: str
+    evaluation_run_id: str | None = None
+    eligible_for_delivery: bool = False
+    review_tier: int = 3
+    degradation_mode: str = "blocked"
+    sections: dict[str, list[HandoffLine]] = {}
+    source_refs: list[dict[str, str]] = []
+    notification_summary: NotificationSummary = NotificationSummary()
+    html_rendering: HtmlRenderingData = HtmlRenderingData()
+    local_only: bool = True
+    external_delivery_performed: bool = False
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("source_refs")
+    @classmethod
+    def _no_forbidden_fields(cls, value: list[dict[str, str]]) -> list[dict[str, str]]:
+        return _reject_forbidden_refs(value)
+
+    @field_validator("local_only")
+    @classmethod
+    def _must_be_local_only(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("delivery handoff payload is local-only")
+        return value
+
+    @field_validator("external_delivery_performed")
+    @classmethod
+    def _no_external_delivery(cls, value: bool) -> bool:
+        if value:
+            raise ValueError("no external delivery is ever performed")
+        return value
+
+
+class DailyBriefResult(BaseModel):
+    """Daily Brief Agent (daily_brief_agent) generate/evaluate/apply outcome."""
+
+    brief_date: str
+    brief_run_id: str | None = None
+    mode: str = "dry_run"
+    status: str = "blocked"
+    applied: bool = False
+    apply_blocked_reason: str | None = None
+    evaluation: dict[str, Any] = {}
+    evaluation_run_id: str | None = None
+    eligible_for_delivery: bool = False
+    output_written: bool = False
+    output_path_redacted: str | None = None
+    output_path_hash: str | None = None
+    delivery_handoff: DeliveryHandoffPayload
+    source_ref_count: int = 0
+    source_coverage: float = 0.0
+    review_tier_counts: dict[str, int] = {}
+    review_tier: int = 3
+    degradation_mode: str = "blocked"
+    warnings: list[str] = []
+
+    model_config = {"extra": "forbid"}

@@ -11,17 +11,27 @@ Deterministic, local-first, read-only, metadata-only persistence (reuses V26
 from __future__ import annotations
 
 from .context import build_daily_brief_context, build_daily_brief_context_builder_proof
+from .generate import (
+    build_daily_brief_agent_proof,
+    build_daily_brief_delivery_handoff_proof,
+    run_daily_brief,
+)
 from .models import (
     AttentionItemCard,
     DailyBriefContext,
+    DailyBriefResult,
     DeliveryHandoffInput,
+    DeliveryHandoffPayload,
     HandoffLine,
+    HtmlRenderingData,
     MeetingCard,
+    NotificationSummary,
     ProjectCard,
     ReviewLoadStatus,
     ReviewRequiredCard,
     WarningCard,
 )
+from .output import render_brief_markdown, resolve_brief_path, write_brief_output
 from .policy import (
     DailyBriefPolicyError,
     load_daily_brief_policy_seed,
@@ -38,15 +48,25 @@ from .triage import (
 __all__ = [
     "AttentionItemCard",
     "DailyBriefContext",
+    "DailyBriefResult",
     "DeliveryHandoffInput",
+    "DeliveryHandoffPayload",
     "HandoffLine",
+    "HtmlRenderingData",
     "MeetingCard",
+    "NotificationSummary",
     "ProjectCard",
     "ReviewLoadStatus",
     "ReviewRequiredCard",
     "WarningCard",
     "build_daily_brief_context",
     "build_daily_brief_context_builder_proof",
+    "build_daily_brief_agent_proof",
+    "build_daily_brief_delivery_handoff_proof",
+    "run_daily_brief",
+    "render_brief_markdown",
+    "resolve_brief_path",
+    "write_brief_output",
     "DailyBriefPolicyError",
     "load_daily_brief_policy_seed",
     "reason_code_for_tier",

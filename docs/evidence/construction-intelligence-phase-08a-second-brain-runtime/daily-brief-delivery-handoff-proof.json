@@ -1,0 +1,36 @@
+{
+  "eligible_for_delivery": true,
+  "external_delivery_performed": false,
+  "guardrails": {
+    "handoff_local_only": true,
+    "handoff_source_linked": true,
+    "local_first": true,
+    "no_external_delivery": true,
+    "no_html_rendering": true,
+    "no_macos_notification": true,
+    "no_raw_content": true
+  },
+  "handoff_source_linked": true,
+  "html_rendering": {
+    "format": "render_data",
+    "rendered": false
+  },
+  "local_only": true,
+  "no_raw_content": true,
+  "notification_summary": {
+    "channel": "local_only",
+    "emitted": false,
+    "review_required_count": 0
+  },
+  "phase": "08B",
+  "proof": "phase_08a_daily_brief_delivery_handoff",
+  "proof_passed": true,
+  "section_counts": {
+    "file_review_queue": 0,
+    "meeting_prep": 0,
+    "priority_actions": 1,
+    "project_signals": 0,
+    "waiting_on": 0
+  },
+  "source_ref_count": 1
+}

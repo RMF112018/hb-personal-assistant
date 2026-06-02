@@ -12,8 +12,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..research import build_research_packet_from_envelope
-from ..retrieval import ALLOWLISTED_SOURCE_FAMILIES, RetrievalBroker, RetrievalItem
+from ..research import (
+    ResearchPacket,
+    ResearchPacketAssessment,
+    build_research_packet_from_envelope,
+)
+from ..retrieval import (
+    ALLOWLISTED_SOURCE_FAMILIES,
+    RetrievalBroker,
+    RetrievalEnvelope,
+    RetrievalItem,
+)
 from .models import (
     HANDOFF_SECTIONS,
     AttentionItemCard,
@@ -198,19 +207,25 @@ def _build_delivery_handoff(
     )
 
 
-def build_daily_brief_context(
+def _assemble_daily_brief(
     *,
     brief_date: str,
     project_key: str | None = None,
     families: tuple[str, ...] | None = None,
     db_path: str | None = None,
-    mode: str = "dry_run",
     emit_receipt: bool = False,
-) -> DailyBriefContext:
-    """Build the daily-brief context from the retrieval broker + research packet.
+) -> tuple[
+    DailyBriefContext,
+    ResearchPacket,
+    ResearchPacketAssessment,
+    RetrievalEnvelope,
+    str | None,
+]:
+    """Assemble the daily-brief context (no brief-run persist) from broker + packet.
 
-    Deterministic and read-only. When ``emit_receipt`` is True a metadata-only run is
-    persisted to the V26 ``daily_brief_runs`` table and ``brief_run_id`` is populated.
+    Returns (context, packet, assessment, envelope, packet_receipt_id). ``emit_receipt``
+    only controls the research-packet receipt; the brief-run row is persisted by the
+    caller. Deterministic, read-only.
     """
     requested = tuple(families or ALLOWLISTED_SOURCE_FAMILIES)
     envelope = RetrievalBroker(db_path=db_path).retrieve(
@@ -269,7 +284,30 @@ def build_daily_brief_context(
         warnings=sorted(set(assessment.policy_warnings) | set(envelope.coverage_warnings)),
         status=packet.status,
     )
+    return context, packet, assessment, envelope, packet_receipt_id
 
+
+def build_daily_brief_context(
+    *,
+    brief_date: str,
+    project_key: str | None = None,
+    families: tuple[str, ...] | None = None,
+    db_path: str | None = None,
+    mode: str = "dry_run",
+    emit_receipt: bool = False,
+) -> DailyBriefContext:
+    """Build the daily-brief context from the retrieval broker + research packet.
+
+    Deterministic and read-only. When ``emit_receipt`` is True a metadata-only run is
+    persisted to the V26 ``daily_brief_runs`` table and ``brief_run_id`` is populated.
+    """
+    context, _packet, _assessment, _envelope, _packet_receipt_id = _assemble_daily_brief(
+        brief_date=brief_date,
+        project_key=project_key,
+        families=families,
+        db_path=db_path,
+        emit_receipt=emit_receipt,
+    )
     if emit_receipt:
         context.brief_run_id = write_daily_brief_run(context, mode=mode, db_path=db_path)
     return context

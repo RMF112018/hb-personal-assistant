@@ -30,3 +30,17 @@ card_kinds:
   - project
   - warning
   - review_required
+# Prompt 12 — generation/apply gate + delivery posture. Apply (writing approved Obsidian
+# output) is blocked unless the Output Evaluation Agent (A05) passes and the context is not
+# blocked; delivery handoff is local-only and never performs external delivery.
+apply_gate:
+  require_research_packet: true
+  require_evaluation_pass: true
+  min_evaluation_score: 1.0
+  block_apply_when_context_blocked: true
+delivery:
+  local_only: true
+  eligibility_requires_evaluation_pass: true
+  external_delivery_performed: false
+  emit_macos_notification: false
+  render_html: false

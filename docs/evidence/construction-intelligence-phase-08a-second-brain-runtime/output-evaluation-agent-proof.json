@@ -1,0 +1,29 @@
+{
+  "evaluation_run_persisted": true,
+  "failed_case": {
+    "evaluation_run_id": "1dbe6e0646f14646acef25c7bad51da4",
+    "passed": false,
+    "score": 0.9,
+    "source_references_present": false
+  },
+  "guard_columns_zero": true,
+  "guardrails": {
+    "block_on_policy_failure": true,
+    "evaluation_in_dry_run_where_output_generated": true,
+    "local_first": true,
+    "model_direct_external_api_access": false,
+    "no_external_writeback": true,
+    "no_raw_content": true
+  },
+  "no_raw_content": true,
+  "passed_case": {
+    "checklist_passed": 10,
+    "checklist_total": 10,
+    "evaluation_run_id": "00f44ecea69c4081aecd30e6bdc369b5",
+    "passed": true,
+    "review_tier": 1,
+    "score": 1.0
+  },
+  "proof": "phase_08a_output_evaluation_agent",
+  "proof_passed": true
+}
