@@ -1388,6 +1388,111 @@ def automation_run_recovery(
     raise typer.Exit(0 if status.overall_status == "ok" else 3)
 
 
+_FRESHNESS_GUARDRAILS = {
+    "local_first": True,
+    "read_only": True,
+    "deterministic": True,
+    "no_external_writeback": True,
+    "no_external_delivery": True,
+    "no_raw_content": True,
+    "model_direct_external_api_access": False,
+}
+
+
+@automation_app.command("source-freshness")
+def automation_source_freshness(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report per-domain source freshness (last successful sync vs threshold; read-only)."""
+    from hb_assistant.construction.second_brain.freshness import evaluate_source_freshness
+
+    try:
+        status = evaluate_source_freshness()
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation source-freshness", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation source-freshness",
+        "overall_status": status.overall_status,
+        "reason_code": status.reason_code,
+        "signals": [s.model_dump() for s in status.signals],
+        "stale_count": status.stale_count,
+        "unknown_count": status.unknown_count,
+        "guardrails": _FRESHNESS_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if status.overall_status == "ok" else 3)
+
+
+@automation_app.command("retrieval-freshness")
+def automation_retrieval_freshness(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report Obsidian index + retrieval freshness (read-only, deterministic)."""
+    from hb_assistant.construction.second_brain.freshness import evaluate_retrieval_freshness
+
+    try:
+        status = evaluate_retrieval_freshness()
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {
+            "command": "second-brain automation retrieval-freshness",
+            "error": type(exc).__name__,
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation retrieval-freshness",
+        "overall_status": status.overall_status,
+        "reason_code": status.reason_code,
+        "signals": [s.model_dump() for s in status.signals],
+        "stale_count": status.stale_count,
+        "unknown_count": status.unknown_count,
+        "guardrails": _FRESHNESS_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if status.overall_status == "ok" else 3)
+
+
+@automation_app.command("observability")
+def automation_observability(
+    json_out: bool = typer.Option(True, "--json"),
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Persist a metadata-only V28 agent-run receipt for this observability run (off by default).",
+    ),
+) -> None:
+    """Combined source / runtime / retrieval freshness observability (read-only)."""
+    from hb_assistant.construction.second_brain.freshness import run_observability
+
+    try:
+        snapshot, agent_run_id = run_observability(emit_receipt=emit_receipt)
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation observability", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation observability",
+        "overall_status": snapshot.overall_status,
+        "reason_code": snapshot.reason_code,
+        "source": snapshot.source.model_dump(),
+        "runtime": snapshot.runtime.model_dump(),
+        "retrieval": snapshot.retrieval.model_dump(),
+        "policy_version": snapshot.policy_version,
+        "schema_version": snapshot.schema_version,
+        "schema_expected": snapshot.schema_expected,
+        "agent_run_id": agent_run_id,
+        "generated_utc": snapshot.generated_utc,
+        "guardrails": _FRESHNESS_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if snapshot.overall_status == "ok" else 3)
+
+
 @data_quality_app.command("no-writeback-proof")
 def data_quality_no_writeback_proof(
     json_out: bool = typer.Option(True, "--json"),

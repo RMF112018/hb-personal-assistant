@@ -116,3 +116,28 @@ def test_retry_recovery_reason_codes_declared() -> None:
     assert new_codes <= set(gates["reason_codes"])
     assert "retry_recovery" in gates["required_fields"]
     assert "retry_recovery" not in gates["deferred_surfaces"]
+
+
+def test_freshness_observability_reason_codes_declared() -> None:
+    # Prompt 07 — source/runtime/retrieval freshness reason codes are seeded + contract-backed.
+    seed = load_phase_08b_automation_policy_seed()
+    new_codes = {
+        "SOURCE_FRESH",
+        "SOURCE_STALE",
+        "SOURCE_FRESHNESS_UNKNOWN",
+        "RETRIEVAL_FRESH",
+        "RETRIEVAL_STALE",
+        "RETRIEVAL_INDEX_MISSING",
+        "RUNTIME_HEALTH_OK",
+        "RUNTIME_HEALTH_DEGRADED",
+        "OBSERVABILITY_OK",
+        "OBSERVABILITY_DEGRADED",
+    }
+    assert new_codes <= set(seed["reason_codes"])
+    assert seed["freshness"]["enabled"] is True
+    assert seed["freshness"]["source_max_age_hours"] == 48
+    assert validate_phase_08b_automation_policy()["valid"] is True
+    gates = load_phase_08b_contract("data_quality_gates_contract")
+    assert new_codes <= set(gates["reason_codes"])
+    assert "freshness_observability" in gates["required_fields"]
+    assert "freshness_observability" not in gates["deferred_surfaces"]

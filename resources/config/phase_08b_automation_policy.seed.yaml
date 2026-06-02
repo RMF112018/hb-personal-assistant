@@ -35,6 +35,21 @@ run_recovery:
   orphaned_reason_code: RUN_ORPHANED
   recovered_reason_code: RUN_RECOVERED
 
+# Freshness observability posture (Prompt 07). Read-only, deterministic; thresholds for the
+# source / runtime / retrieval freshness evaluator. No execution, no external delivery.
+freshness:
+  enabled: true
+  source_max_age_hours: 48
+  retrieval_max_age_hours: 168
+  source_fresh_reason_code: SOURCE_FRESH
+  source_stale_reason_code: SOURCE_STALE
+  source_unknown_reason_code: SOURCE_FRESHNESS_UNKNOWN
+  retrieval_fresh_reason_code: RETRIEVAL_FRESH
+  retrieval_stale_reason_code: RETRIEVAL_STALE
+  index_missing_reason_code: RETRIEVAL_INDEX_MISSING
+  ok_reason_code: OBSERVABILITY_OK
+  degraded_reason_code: OBSERVABILITY_DEGRADED
+
 weekend_behavior: skip          # skip | run
 weekend_reason_code: WEEKEND_GATE_SKIPPED
 
@@ -107,3 +122,13 @@ reason_codes:
   - RUN_ORPHANED
   - RUN_RECOVERED
   - RETRY_RECOVERY_OK
+  - SOURCE_FRESH
+  - SOURCE_STALE
+  - SOURCE_FRESHNESS_UNKNOWN
+  - RETRIEVAL_FRESH
+  - RETRIEVAL_STALE
+  - RETRIEVAL_INDEX_MISSING
+  - RUNTIME_HEALTH_OK
+  - RUNTIME_HEALTH_DEGRADED
+  - OBSERVABILITY_OK
+  - OBSERVABILITY_DEGRADED
