@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 28
+LATEST_SCHEMA_VERSION = 29
 
 
 class SQLiteMigrator:
@@ -3449,6 +3449,72 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v29 Phase 08B Prompt 05 — durable run-accounting substrate: a run registry + a run-step
+    # ledger for the no-overlap automation run (lock acquire/reclaim/release events recorded as
+    # steps). Metadata-only with the same per-row no-raw / no-writeback CHECK(col = 0) guards as
+    # V26-V28. The cross-process exclusion mechanism is an atomic lock FILE outside the repo;
+    # ``lock_token``/``lock_status`` here are an audit trail, not the lock itself. ``assistant_run_id``
+    # is a nullable bridge to the V1 ``assistant_runs`` ledger for the future executor. Ships empty;
+    # V1-V28 untouched.
+    V29_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_run_registry (
+          run_registry_id TEXT PRIMARY KEY,
+          run_kind TEXT NOT NULL,
+          status TEXT NOT NULL,
+          reason_code TEXT,
+          lock_token TEXT,
+          lock_status TEXT,
+          assistant_run_id INTEGER REFERENCES assistant_runs(id),
+          step_count INTEGER NOT NULL DEFAULT 0,
+          dry_run INTEGER NOT NULL DEFAULT 0,
+          started_utc TEXT,
+          finished_utc TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_run_registry_kind
+          ON second_brain_run_registry(run_kind, created_utc);
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_run_steps (
+          run_step_id TEXT PRIMARY KEY,
+          run_registry_id TEXT REFERENCES second_brain_run_registry(run_registry_id) ON DELETE CASCADE,
+          step_name TEXT NOT NULL,
+          step_order INTEGER NOT NULL,
+          status TEXT NOT NULL,
+          reason_code TEXT,
+          detail TEXT,
+          started_utc TEXT,
+          finished_utc TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_run_steps_registry
+          ON second_brain_run_steps(run_registry_id, step_order);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -3808,6 +3874,19 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (28, 'v28_agent_receipts', ?)",
+                    (now,),
+                )
+
+            # v29 Phase 08B Prompt 05 — run registry + run-step ledger (no-overlap run accounting),
+            # metadata-only with per-row no-raw/no-writeback CHECK guardrails. The lock itself is an
+            # atomic file outside the repo; these tables are the audit trail. Ships empty. V1-V28
+            # untouched.
+            for stmt in self.V29_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 29")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (29, 'v29_run_registry_and_steps', ?)",
                     (now,),
                 )
 

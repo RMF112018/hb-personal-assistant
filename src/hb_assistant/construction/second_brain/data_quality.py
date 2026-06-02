@@ -34,6 +34,7 @@ from .launchd_scheduler import build_launchd_scheduler_proof
 from .memory import build_memory_curator_agent_proof
 from .research import build_research_packet_agent_proof
 from .retrieval import build_retrieval_broker_agent_proof
+from .run_registry import build_run_registry_locking_proof
 from .synthesis import build_output_evaluation_agent_proof
 
 _GUARDRAILS: dict[str, Any] = {
@@ -284,6 +285,7 @@ PHASE_08B_GATE_NAMES: tuple[str, ...] = (
     "automation_policy_seed",
     "observability_reason_codes",
     "automation_health",
+    "run_registry_locking",
     "automation_execution",
     "launchd_install",
 )
@@ -400,6 +402,12 @@ def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict
     # Automation Health Agent (Prompt 03) — proof-gate: the read-only health evaluator runs and
     # reports structured reason codes on a temp migrated DB.
     gates.append(_proof_gate("automation_health", build_automation_health_proof()))
+
+    # Run registry + no-overlap locking (Prompt 05) — proof-gate: atomic lock acquisition works,
+    # overlap is blocked, stale locks are reclaimed, token-mismatch release is refused, lock
+    # artifacts live outside the repo, and the registry/step rows are metadata-only with guard
+    # columns at 0. The broader retry/backoff/weekend executor stays deferred below.
+    gates.append(_proof_gate("run_registry_locking", build_run_registry_locking_proof()))
 
     # Deferred 08B execution surfaces — never reported as pass.
     gates.append(

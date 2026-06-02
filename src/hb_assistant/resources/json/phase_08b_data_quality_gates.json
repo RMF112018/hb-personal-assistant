@@ -8,11 +8,12 @@
     "automation_policy_seed",
     "observability_reason_codes",
     "automation_health",
+    "run_registry_locking",
     "automation_execution",
     "launchd_install"
   ],
   "statuses": ["pass", "warning", "fail_blocking", "deferred_not_blocking"],
-  "deferred_surfaces": ["automation_execution", "launchd_install"],
+  "deferred_surfaces": ["automation_execution"],
   "reason_codes": [
     "RECEIPT_PERSISTENCE_OK",
     "RECEIPT_TABLE_ABSENT",
@@ -30,6 +31,14 @@
     "CATCH_UP_NOT_NEEDED",
     "CATCH_UP_STALE",
     "LAUNCHD_SCHEDULING_OK",
+    "LOCK_ACQUIRED",
+    "RUN_OVERLAP_BLOCKED",
+    "STALE_LOCK_RECLAIMED",
+    "LOCK_RELEASED",
+    "LOCK_RELEASE_TOKEN_MISMATCH",
+    "RUN_REGISTERED",
+    "RUN_STEP_RECORDED",
+    "RUN_REGISTRY_LOCKING_OK",
     "HEALTH_RETRY_WEEKEND_ALERTING_EXECUTION_DEFERRED",
     "REAL_LAUNCHD_INSTALL_DEFERRED"
   ],

@@ -1202,6 +1202,113 @@ def automation_launchd_uninstall(
     raise typer.Exit(0)
 
 
+_RUN_REGISTRY_GUARDRAILS = {
+    "local_first": True,
+    "read_only_default": True,
+    "atomic_file_lock_outside_repo": True,
+    "fail_closed_on_overlap": True,
+    "no_external_writeback": True,
+    "no_external_delivery": True,
+    "no_raw_content": True,
+    "model_direct_external_api_access": False,
+}
+
+
+@automation_app.command("run-registry-status")
+def automation_run_registry_status(
+    limit: int = typer.Option(10, "--limit", help="Max recent registry rows to report."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report recent run-registry rows + step counts + reason codes (read-only)."""
+    from hb_assistant.construction.second_brain.run_registry import read_latest_run_registry
+
+    try:
+        rows = read_latest_run_registry(limit=limit)
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {
+            "command": "second-brain automation run-registry-status",
+            "error": type(exc).__name__,
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation run-registry-status",
+        "count": len(rows),
+        "runs": rows,
+        "guardrails": _RUN_REGISTRY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@automation_app.command("run-lock-status")
+def automation_run_lock_status(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report the current no-overlap lock state (held / stale / absent) with reason codes."""
+    from hb_assistant.construction.second_brain.run_registry import read_run_lock
+
+    try:
+        lock = read_run_lock()
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation run-lock-status", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation run-lock-status",
+        **lock.model_dump(),
+        "guardrails": _RUN_REGISTRY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@automation_app.command("run-lock")
+def automation_run_lock(
+    run_kind: str = typer.Option("morning_automation", "--run-kind", help="Run kind label."),
+    mode: str = typer.Option(
+        "dry_run", "--mode", help="dry_run|apply (apply performs a real acquire->release cycle)."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Preview (dry-run, default) or perform an acquire->release no-overlap lock cycle."""
+    if mode not in ("dry_run", "apply"):
+        err = {
+            "command": "second-brain automation run-lock",
+            "error": "invalid_mode",
+            "detail": f"{mode!r} not in ['dry_run', 'apply']",
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(2)
+
+    from hb_assistant.construction.second_brain.run_registry import (
+        acquire_run_lock,
+        release_run_lock,
+    )
+
+    try:
+        acquired = acquire_run_lock(run_kind=run_kind, dry_run=(mode == "dry_run"))
+        released = None
+        if mode == "apply" and acquired.status in ("acquired", "reclaimed") and acquired.token:
+            released = release_run_lock(token=acquired.token, lock_name=acquired.lock_name)
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation run-lock", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation run-lock",
+        "mode": mode,
+        "acquire": acquired.model_dump(),
+        "release": released.model_dump() if released is not None else None,
+        "guardrails": _RUN_REGISTRY_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
 @data_quality_app.command("no-writeback-proof")
 def data_quality_no_writeback_proof(
     json_out: bool = typer.Option(True, "--json"),

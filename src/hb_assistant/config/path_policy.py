@@ -81,6 +81,13 @@ class PathPolicy:
     def get_evidence_dir(self) -> Path:
         return self.get_app_support() / "evidence"
 
+    def get_locks_dir(self) -> Path:
+        """Directory for atomic no-overlap run-lock files (outside the repo).
+
+        Not created by ``ensure_dirs`` — the lock service mkdirs it lazily on first acquire.
+        """
+        return self.get_app_support() / "locks"
+
     # --- Obsidian Vault ---
 
     def get_vault_root(self) -> Path:

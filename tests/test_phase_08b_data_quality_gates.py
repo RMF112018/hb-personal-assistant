@@ -46,6 +46,8 @@ def test_no_readiness_overstatement() -> None:
     assert by["automation_health"] == "pass"
     # LaunchAgent scheduling + first-run-after-wake (Prompt 04) is implemented -> pass (proof-gate).
     assert by["launchd_install"] == "pass"
+    # Run registry + no-overlap locking (Prompt 05) is implemented -> pass (proof-gate).
+    assert by["run_registry_locking"] == "pass"
 
 
 def test_gates_carry_structured_reason_codes() -> None:

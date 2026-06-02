@@ -68,3 +68,27 @@ def test_launchd_scheduling_reason_codes_declared() -> None:
     assert validate_phase_08b_automation_policy()["valid"] is True
     gates = load_phase_08b_contract("data_quality_gates_contract")
     assert new_codes <= set(gates["reason_codes"])
+
+
+def test_run_registry_locking_reason_codes_declared() -> None:
+    # Prompt 05 — the no-overlap-locking + run-registry reason codes are seeded + contract-backed.
+    seed = load_phase_08b_automation_policy_seed()
+    new_codes = {
+        "LOCK_ACQUIRED",
+        "RUN_OVERLAP_BLOCKED",
+        "STALE_LOCK_RECLAIMED",
+        "LOCK_RELEASED",
+        "LOCK_RELEASE_TOKEN_MISMATCH",
+        "RUN_REGISTERED",
+        "RUN_STEP_RECORDED",
+    }
+    assert new_codes <= set(seed["reason_codes"])
+    assert seed["no_overlap_locking"]["enabled"] is True
+    assert seed["no_overlap_locking"]["stale_lock_seconds"] == 3600
+    assert seed["run_registry"]["enabled"] is True
+    assert validate_phase_08b_automation_policy()["valid"] is True
+    gates = load_phase_08b_contract("data_quality_gates_contract")
+    assert new_codes <= set(gates["reason_codes"])
+    # The new substrate gate is a required field (covered) and not a deferred surface.
+    assert "run_registry_locking" in gates["required_fields"]
+    assert "run_registry_locking" not in gates["deferred_surfaces"]

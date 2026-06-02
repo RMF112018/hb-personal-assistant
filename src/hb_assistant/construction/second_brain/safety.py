@@ -74,6 +74,8 @@ _PHASE_08A_TABLES: list[str] = [
     "launchd_schedule_previews",
     "second_brain_agent_run_receipts",
     "second_brain_agent_model_receipts",
+    "second_brain_run_registry",
+    "second_brain_run_steps",
 ]
 
 _PHASE_08A_EVIDENCE_SUBDIR = "construction-intelligence-phase-08a-second-brain-runtime"

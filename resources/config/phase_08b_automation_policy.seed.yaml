@@ -46,6 +46,24 @@ first_run_after_wake:
   not_needed_reason_code: CATCH_UP_NOT_NEEDED
   stale_reason_code: CATCH_UP_STALE
 
+# No-overlap locking posture (Prompt 05). The cross-process exclusion mechanism is an atomic lock
+# FILE outside the repo (<app_support>/locks/); a live lock fails closed, a stale lock is reclaimed.
+no_overlap_locking:
+  enabled: true
+  lock_name: morning_automation
+  stale_lock_seconds: 3600
+  acquired_reason_code: LOCK_ACQUIRED
+  overlap_blocked_reason_code: RUN_OVERLAP_BLOCKED
+  stale_reclaimed_reason_code: STALE_LOCK_RECLAIMED
+  released_reason_code: LOCK_RELEASED
+  release_token_mismatch_reason_code: LOCK_RELEASE_TOKEN_MISMATCH
+
+# Run registry + run-step ledger posture (Prompt 05). Metadata-only durable run accounting.
+run_registry:
+  enabled: true
+  registered_reason_code: RUN_REGISTERED
+  step_recorded_reason_code: RUN_STEP_RECORDED
+
 reason_codes:
   - HEALTH_CHECK_FAILED
   - RETRY_EXHAUSTED
@@ -59,3 +77,11 @@ reason_codes:
   - CATCH_UP_NEEDED
   - CATCH_UP_NOT_NEEDED
   - CATCH_UP_STALE
+  - LOCK_ACQUIRED
+  - RUN_OVERLAP_BLOCKED
+  - STALE_LOCK_RECLAIMED
+  - LOCK_RELEASED
+  - LOCK_RELEASE_TOKEN_MISMATCH
+  - RUN_REGISTERED
+  - RUN_STEP_RECORDED
+  - RUN_REGISTRY_LOCKING_OK
