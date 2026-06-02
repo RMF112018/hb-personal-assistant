@@ -75,6 +75,21 @@ daily_brief_delivery:
   completed_reason_code: DELIVERY_COMPLETED
   already_delivered_reason_code: DELIVERY_ALREADY_DELIVERED
 
+# Local HTML Brief Renderer posture (Prompt 10). Renders a self-contained interactive HTML brief
+# (inline CSS/JS only — no external assets, no network) to <app_support>/html/ (outside repo + vault).
+# Dry-run by default; apply runs a fail-closed external-asset scan + writes a metadata-only V32 receipt.
+daily_brief_html_render:
+  enabled: true
+  output_dir: app_support_html
+  max_age_hours: 36
+  never_generated_reason_code: HTML_RENDER_NEVER_GENERATED
+  blocked_reason_code: HTML_RENDER_BLOCKED
+  stale_reason_code: HTML_RENDER_STALE
+  eligible_reason_code: HTML_RENDER_ELIGIBLE
+  completed_reason_code: HTML_RENDER_COMPLETED
+  already_rendered_reason_code: HTML_RENDER_ALREADY_RENDERED
+  external_asset_blocked_reason_code: HTML_RENDER_EXTERNAL_ASSET_BLOCKED
+
 weekend_behavior: skip          # skip | run
 weekend_reason_code: WEEKEND_GATE_SKIPPED
 
@@ -168,3 +183,10 @@ reason_codes:
   - DELIVERY_ELIGIBLE
   - DELIVERY_COMPLETED
   - DELIVERY_ALREADY_DELIVERED
+  - HTML_RENDER_NEVER_GENERATED
+  - HTML_RENDER_BLOCKED
+  - HTML_RENDER_STALE
+  - HTML_RENDER_ELIGIBLE
+  - HTML_RENDER_COMPLETED
+  - HTML_RENDER_ALREADY_RENDERED
+  - HTML_RENDER_EXTERNAL_ASSET_BLOCKED

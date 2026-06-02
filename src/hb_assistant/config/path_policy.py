@@ -88,6 +88,13 @@ class PathPolicy:
         """
         return self.get_app_support() / "locks"
 
+    def get_html_dir(self) -> Path:
+        """Directory for generated self-contained daily-brief HTML (outside the repo + vault).
+
+        Not created by ``ensure_dirs`` — the HTML renderer mkdirs it lazily on first apply.
+        """
+        return self.get_app_support() / "html"
+
     # --- Obsidian Vault ---
 
     def get_vault_root(self) -> Path:

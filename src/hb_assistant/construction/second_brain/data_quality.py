@@ -32,6 +32,7 @@ from .contracts import load_phase_08a_contract, load_phase_08b_contract
 from .daily_brief import build_daily_brief_delivery_handoff_proof
 from .daily_brief_delivery import build_daily_brief_delivery_proof
 from .daily_brief_health import build_daily_brief_job_health_proof
+from .daily_brief_html import build_daily_brief_html_render_proof
 from .freshness import build_freshness_observability_proof
 from .launchd_scheduler import build_launchd_scheduler_proof
 from .memory import build_memory_curator_agent_proof
@@ -294,6 +295,7 @@ PHASE_08B_GATE_NAMES: tuple[str, ...] = (
     "freshness_observability",
     "daily_brief_job_health",
     "daily_brief_delivery",
+    "daily_brief_html_render",
     "automation_execution",
     "launchd_install",
 )
@@ -439,6 +441,12 @@ def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict
     # to a temp Obsidian vault idempotently (V31 delivery receipt), writing nothing on dry-run and
     # never to an external channel.
     gates.append(_proof_gate("daily_brief_delivery", build_daily_brief_delivery_proof()))
+
+    # Local HTML Brief Renderer (Prompt 10) — proof-gate: the dry-run-default renderer reports
+    # never-generated / blocked / stale / eligible, and the apply path renders a fully self-contained
+    # interactive HTML page (inline CSS/JS; fail-closed external-asset scan) to a temp dir
+    # idempotently (V32 receipt), writing nothing on dry-run and never an external asset/network call.
+    gates.append(_proof_gate("daily_brief_html_render", build_daily_brief_html_render_proof()))
 
     # Deferred 08B execution surfaces — never reported as pass.
     gates.append(

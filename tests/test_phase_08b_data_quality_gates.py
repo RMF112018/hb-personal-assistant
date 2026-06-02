@@ -56,6 +56,8 @@ def test_no_readiness_overstatement() -> None:
     assert by["daily_brief_job_health"] == "pass"
     # Daily Brief Delivery Agent (Prompt 09) is implemented -> pass (proof-gate).
     assert by["daily_brief_delivery"] == "pass"
+    # Local HTML Brief Renderer (Prompt 10) is implemented -> pass (proof-gate).
+    assert by["daily_brief_html_render"] == "pass"
 
 
 def test_gates_carry_structured_reason_codes() -> None:

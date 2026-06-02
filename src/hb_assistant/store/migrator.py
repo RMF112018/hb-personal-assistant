@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 31
+LATEST_SCHEMA_VERSION = 32
 
 
 class SQLiteMigrator:
@@ -3588,6 +3588,44 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v32 Phase 08B Prompt 10 — local HTML brief render receipts. One metadata-only row per
+    # self-contained HTML rendering (redacted app-support path + content hash). The raw HTML is
+    # NEVER persisted here. ``no_external_assets`` is a fail-closed positive invariant
+    # (CHECK(... = 1)) — a receipt can only be written for HTML that passed the external-asset /
+    # network scan; ``mode`` is CHECK-pinned to dry_run|apply; the same 9 per-row no-raw/
+    # no-writeback CHECK(col = 0) guards as V26-V31 apply. Ships empty; V1-V31 untouched.
+    V32_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS daily_brief_html_render_receipts (
+          html_render_receipt_id TEXT PRIMARY KEY,
+          brief_run_id TEXT REFERENCES daily_brief_runs(brief_run_id),
+          brief_date TEXT NOT NULL,
+          render_status TEXT NOT NULL,
+          reason_code TEXT,
+          mode TEXT NOT NULL CHECK(mode IN ('dry_run', 'apply')),
+          content_hash TEXT,
+          html_path_redacted TEXT,
+          html_path_hash TEXT,
+          no_external_assets INTEGER NOT NULL DEFAULT 1 CHECK(no_external_assets = 1),
+          rendered_utc TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_html_render_receipts_date
+          ON daily_brief_html_render_receipts(brief_date, created_utc);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -3985,6 +4023,19 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (31, 'v31_daily_brief_delivery_receipts', ?)",
+                    (now,),
+                )
+
+            # v32 Phase 08B Prompt 10 — local HTML brief render receipts (metadata-only, per-row
+            # no-raw/no-writeback CHECK guardrails + a fail-closed no_external_assets = 1 invariant;
+            # raw HTML never persisted). The renderer records one row per self-contained HTML
+            # rendering written outside the repo. Ships empty; V1-V31 untouched.
+            for stmt in self.V32_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 32")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (32, 'v32_daily_brief_html_render_receipts', ?)",
                     (now,),
                 )
 

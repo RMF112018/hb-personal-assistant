@@ -1626,6 +1626,97 @@ def automation_deliver(
     raise typer.Exit(0 if status.overall_status == "ok" else 3)
 
 
+_HTML_RENDER_GUARDRAILS = {
+    "local_first": True,
+    "dry_run_default": True,
+    "self_contained_no_network": True,
+    "no_external_writeback": True,
+    "no_external_delivery": True,
+    "no_raw_html_persisted": True,
+    "model_direct_external_api_access": False,
+}
+
+
+def _html_render_payload(
+    command: str, status: object, agent_run_id: str | None
+) -> dict[str, object]:
+    return {
+        "command": command,
+        **status.model_dump(),  # type: ignore[attr-defined]
+        "agent_run_id": agent_run_id,
+        "guardrails": _HTML_RENDER_GUARDRAILS,
+    }
+
+
+@automation_app.command("html-status")
+def automation_html_status(
+    brief_date: str = typer.Option(
+        None, "--brief-date", help="Specific brief date (YYYY-MM-DD); default = latest run."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report local HTML-render eligibility for the daily brief with reason codes (read-only)."""
+    from hb_assistant.construction.second_brain.daily_brief_html import (
+        evaluate_daily_brief_html_render,
+    )
+
+    try:
+        status = evaluate_daily_brief_html_render(brief_date=brief_date)
+    except Exception as exc:  # pragma: no cover - defensive: status must not crash
+        err = {"command": "second-brain automation html-status", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = _html_render_payload("second-brain automation html-status", status, None)
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if status.overall_status == "ok" else 3)
+
+
+@automation_app.command("render-html")
+def automation_render_html(
+    mode: str = typer.Option(
+        "dry_run",
+        "--mode",
+        help="dry_run|apply (apply renders a self-contained HTML brief to <app_support>/html/).",
+    ),
+    brief_date: str = typer.Option(
+        None, "--brief-date", help="Specific brief date (YYYY-MM-DD); default = latest run."
+    ),
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Persist a metadata-only V28 agent-run receipt for this render run (off by default).",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Render a self-contained local HTML daily brief (apply; dry-run by default)."""
+    if mode not in ("dry_run", "apply"):
+        err = {
+            "command": "second-brain automation render-html",
+            "error": "invalid_mode",
+            "detail": f"{mode!r} not in ['dry_run', 'apply']",
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(2)
+
+    from hb_assistant.construction.second_brain.daily_brief_html import (
+        run_daily_brief_html_render_agent,
+    )
+
+    try:
+        status, agent_run_id = run_daily_brief_html_render_agent(
+            brief_date=brief_date, mode=mode, emit_receipt=emit_receipt
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation render-html", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = _html_render_payload("second-brain automation render-html", status, agent_run_id)
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if status.overall_status == "ok" else 3)
+
+
 @data_quality_app.command("no-writeback-proof")
 def data_quality_no_writeback_proof(
     json_out: bool = typer.Option(True, "--json"),
