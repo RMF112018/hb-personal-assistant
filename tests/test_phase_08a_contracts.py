@@ -61,6 +61,14 @@ _REQUIRED_KEYS = {
     "context_budget_contract": ["version", "required_fields"],
     # Phase 08A Prompt 05 — approved Obsidian index manifest contract.
     "obsidian_index_manifest_contract": ["version", "required_fields"],
+    # Phase 08A Prompt 06 — allowlisted read-only SQLite query-tool contract.
+    "sqlite_query_tool": [
+        "version",
+        "constraints",
+        "allowlisted_tools",
+        "result_required_fields",
+        "forbidden_fields",
+    ],
 }
 
 

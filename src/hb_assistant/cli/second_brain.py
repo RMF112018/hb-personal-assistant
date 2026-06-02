@@ -38,6 +38,13 @@ index_app = typer.Typer(
 )
 app.add_typer(index_app, name="index")
 
+query_tools_app = typer.Typer(
+    name="query-tools",
+    help="Allowlisted read-only SQLite query tools (no arbitrary SQL).",
+    no_args_is_help=True,
+)
+app.add_typer(query_tools_app, name="query-tools")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -196,6 +203,92 @@ def agents_status(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if registry_valid and tool_policy_valid else 3)
+
+
+_QUERY_TOOL_GUARDRAILS = {
+    "local_first": True,
+    "read_only": True,
+    "no_arbitrary_sql": True,
+    "no_model_generated_sql": True,
+    "no_external_writeback": True,
+    "no_raw_content": True,
+    "source_refs_required": True,
+    "review_tier_required": True,
+}
+
+
+@query_tools_app.command("list")
+def query_tools_list(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List the allowlisted query tools + their backing read-model availability."""
+    from hb_assistant.construction.second_brain.query_tools import (
+        list_query_tools,
+        validate_query_tool_policy,
+    )
+
+    policy = validate_query_tool_policy()
+    tools = list_query_tools()
+    payload = {
+        "command": "second-brain query-tools list",
+        "contract_version": policy["contract_version"],
+        "seed_version": policy["seed_version"],
+        "policy_valid": policy["valid"],
+        "count": len(tools),
+        "backed_count": sum(1 for t in tools if t["backed"]),
+        "tools": tools,
+        "guardrails": _QUERY_TOOL_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if policy["valid"] else 3)
+
+
+@query_tools_app.command("run")
+def query_tools_run(
+    tool: str = typer.Argument(..., help="Allowlisted query-tool name."),
+    project_key: str = typer.Option(None, "--project-key", help="Optional project filter."),
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Write a metadata-only query-tool receipt to the local V26 table.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Run one allowlisted query tool (read-only). Unknown tool names are rejected."""
+    from hb_assistant.construction.second_brain.query_tools import (
+        QueryToolError,
+        run_query_tool,
+    )
+
+    try:
+        result = run_query_tool(tool, project_key=project_key, emit_receipt=emit_receipt)
+    except QueryToolError as exc:
+        err_payload: dict[str, object] = {
+            "command": "second-brain query-tools run",
+            "tool": tool,
+            "error": "tool_not_allowlisted",
+            "detail": str(exc),
+        }
+        typer.echo(
+            json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload)
+        )
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain query-tools run",
+        "tool": result.tool_name,
+        "project_key": result.project_key,
+        "status": result.status,
+        "row_count": result.row_count,
+        "char_count": result.char_count,
+        "truncated": result.truncated,
+        "review_tier_summary": result.review_tier_summary,
+        "warnings": result.warnings,
+        "source_refs": result.source_refs[:200],
+        "guardrails": _QUERY_TOOL_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
 
 
 @index_app.command("obsidian")

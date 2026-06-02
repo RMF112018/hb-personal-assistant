@@ -46,6 +46,8 @@ PHASE_08A_CONTRACT_FILES: dict[str, str] = {
     "context_budget_contract": "context_budget_contract.json",
     # Phase 08A Prompt 05 — approved Obsidian index manifest contract.
     "obsidian_index_manifest_contract": "obsidian_index_manifest_contract.json",
+    # Phase 08A Prompt 06 — allowlisted read-only SQLite query-tool contract.
+    "sqlite_query_tool": "sqlite_query_tool_contract.json",
 }
 
 

@@ -1,0 +1,59 @@
+{
+  "version": "phase_08a_sqlite_tools-v2",
+  "constraints": [
+    "read_only",
+    "allowlisted_tools_only",
+    "no_model_generated_sql",
+    "bounded_results",
+    "source_refs_required",
+    "review_tier_required"
+  ],
+  "allowlisted_tools": [
+    "project_context",
+    "source_coverage",
+    "relationship_candidates",
+    "accepted_relationships",
+    "source_evidence_trails",
+    "meeting_prep_briefs",
+    "issue_history",
+    "risk_digest",
+    "aging_exposure",
+    "review_queue_status",
+    "memory_items",
+    "research_packet_status",
+    "evaluation_status"
+  ],
+  "result_required_fields": [
+    "tool_name",
+    "status",
+    "items",
+    "source_refs",
+    "row_count",
+    "char_count",
+    "truncated",
+    "review_tier_summary"
+  ],
+  "item_required_fields": [
+    "source_family",
+    "source_ref",
+    "confidence_class",
+    "review_tier",
+    "review_status",
+    "stale_unknown_flags"
+  ],
+  "forbidden_fields": [
+    "raw_email_body",
+    "raw_document_text",
+    "raw_calendar_payload",
+    "raw_prompt",
+    "raw_response",
+    "raw_body",
+    "raw_sql",
+    "signed_url",
+    "download_url",
+    "secret",
+    "token"
+  ],
+  "arbitrary_sql_allowed": false,
+  "mutation_sql_allowed": false
+}

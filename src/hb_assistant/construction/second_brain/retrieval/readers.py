@@ -140,8 +140,13 @@ def _read_bounded(
     excerpt_col: str | None,
     project_key: str | None,
     where_extra: str = "",
+    conn: Any = None,
 ) -> list[RetrievalItem]:
-    conn = _conn(db_path)
+    # ``conn`` lets a caller (e.g. the Prompt-06 query-tool layer) inject a
+    # read-only (PRAGMA query_only) connection so the bounded SELECT runs under an
+    # enforced read-only posture; default opens the canonical connection.
+    if conn is None:
+        conn = _conn(db_path)
     where = "WHERE 1=1"
     params: list[Any] = []
     if project_key is not None and "project_key" in columns:
@@ -175,7 +180,7 @@ def _read_bounded(
 
 
 def read_risk_digest(
-    store: ConstructionStore, db_path: str | None, project_key: str | None
+    store: ConstructionStore, db_path: str | None, project_key: str | None, conn: Any = None
 ) -> list[RetrievalItem]:
     return _read_bounded(
         db_path,
@@ -189,11 +194,12 @@ def read_risk_digest(
         type_col="risk_indicator_type",
         excerpt_col="summary_redacted",
         project_key=project_key,
+        conn=conn,
     )
 
 
 def read_aging_exposure(
-    store: ConstructionStore, db_path: str | None, project_key: str | None
+    store: ConstructionStore, db_path: str | None, project_key: str | None, conn: Any = None
 ) -> list[RetrievalItem]:
     return _read_bounded(
         db_path,
@@ -208,6 +214,7 @@ def read_aging_exposure(
         type_col="record_family",
         excerpt_col="threshold_band",
         project_key=project_key,
+        conn=conn,
     )
 
 
@@ -242,7 +249,7 @@ def read_approved_obsidian(
 
 
 def read_accepted_memory(
-    store: ConstructionStore, db_path: str | None, project_key: str | None
+    store: ConstructionStore, db_path: str | None, project_key: str | None, conn: Any = None
 ) -> list[RetrievalItem]:
     return _read_bounded(
         db_path,
@@ -257,6 +264,7 @@ def read_accepted_memory(
         excerpt_col="statement_redacted",
         project_key=project_key,
         where_extra=" AND review_status = 'accepted'",
+        conn=conn,
     )
 
 

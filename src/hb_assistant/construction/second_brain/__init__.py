@@ -34,6 +34,17 @@ from .obsidian_index import (
     build_index,
     list_approved_obsidian_index_entries,
 )
+from .query_tools import (
+    ALLOWLISTED_QUERY_TOOLS,
+    QueryToolError,
+    QueryToolReceipt,
+    QueryToolResult,
+    build_sqlite_query_tool_proof,
+    list_query_tools,
+    read_only_connection,
+    run_query_tool,
+    validate_query_tool_policy,
+)
 from .reasoning import (
     AdapterResult,
     AnthropicUnavailable,
@@ -81,6 +92,15 @@ __all__ = [
     "build_claude_adapter",
     "build_claude_adapter_mock_proof",
     "build_model_call_receipt",
+    "ALLOWLISTED_QUERY_TOOLS",
+    "QueryToolError",
+    "QueryToolReceipt",
+    "QueryToolResult",
+    "build_sqlite_query_tool_proof",
+    "list_query_tools",
+    "read_only_connection",
+    "run_query_tool",
+    "validate_query_tool_policy",
     "RetrievalBroker",
     "RetrievalEnvelope",
     "RetrievalItem",

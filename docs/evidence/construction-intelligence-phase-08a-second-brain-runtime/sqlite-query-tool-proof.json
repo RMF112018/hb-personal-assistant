@@ -1,0 +1,57 @@
+{
+  "allowlisted_tools": [
+    "project_context",
+    "source_coverage",
+    "relationship_candidates",
+    "accepted_relationships",
+    "source_evidence_trails",
+    "meeting_prep_briefs",
+    "issue_history",
+    "risk_digest",
+    "aging_exposure",
+    "review_queue_status",
+    "memory_items",
+    "research_packet_status",
+    "evaluation_status"
+  ],
+  "arbitrary_sql_rejected": true,
+  "backed_tools": [
+    "relationship_candidates",
+    "accepted_relationships",
+    "source_evidence_trails",
+    "issue_history",
+    "risk_digest",
+    "aging_exposure",
+    "memory_items"
+  ],
+  "contract_version": "phase_08a_sqlite_tools-v2",
+  "guardrails": {
+    "local_first": true,
+    "model_direct_external_api_access": false,
+    "no_arbitrary_sql": true,
+    "no_external_writeback": true,
+    "no_model_generated_sql": true,
+    "no_raw_content": true,
+    "read_only": true,
+    "review_tier_required": true,
+    "source_refs_required": true
+  },
+  "no_raw_content": true,
+  "no_read_model_graceful_degradation": true,
+  "no_read_model_tools": [
+    "project_context",
+    "source_coverage",
+    "meeting_prep_briefs",
+    "review_queue_status",
+    "research_packet_status",
+    "evaluation_status"
+  ],
+  "policy_valid": true,
+  "proof": "phase_08a_sqlite_query_tools",
+  "proof_passed": true,
+  "read_only_posture_enforced": true,
+  "relationship_split_disjoint": true,
+  "seed_version": "phase_08a_sqlite_query_tools_v2",
+  "source_refs_present": true,
+  "tier3_visible_not_concluded": true
+}

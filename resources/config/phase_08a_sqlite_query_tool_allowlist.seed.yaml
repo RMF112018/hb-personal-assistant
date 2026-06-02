@@ -1,0 +1,26 @@
+# Phase 08A — SQLite query-tool allowlist (Prompt 06).
+#
+# Every second-brain SQLite query tool is an explicit allowlisted *name*. The model
+# never generates or executes SQL; only the tool names below are callable, and each
+# resolves to a bounded, read-only reader over an approved local read-model. Tools
+# whose read-model is not yet built degrade gracefully (status=no_read_model); they
+# are never fabricated. Source refs + review tier are mandatory on every result.
+version: phase_08a_sqlite_query_tools_v2
+allowlisted_tools:
+  - project_context
+  - source_coverage
+  - relationship_candidates
+  - accepted_relationships
+  - source_evidence_trails
+  - meeting_prep_briefs
+  - issue_history
+  - risk_digest
+  - aging_exposure
+  - review_queue_status
+  - memory_items
+  - research_packet_status
+  - evaluation_status
+arbitrary_sql_allowed: false
+mutation_sql_allowed: false
+source_refs_required: true
+review_tier_required: true
