@@ -4,7 +4,7 @@ Proves V32 additively (1) creates the render-receipts table that ships empty, (2
 the canonical no-raw / no-writeback guard `CHECK(col = 0)` columns, (3) enforces the fail-closed
 `no_external_assets = 1` invariant and `mode IN ('dry_run','apply')`, (4) enforces the
 daily_brief_runs FK, (5) is idempotent and leaves V1-V31 intact, and (6) the lifecycle contract
-classifies the table operational_empty_expected at count 149.
+classifies the table operational_empty_expected at count 150.
 """
 
 from __future__ import annotations
@@ -156,7 +156,7 @@ def test_v32_table_classified_in_lifecycle_contract() -> None:
         db = Path(td) / "v32.db"
         _migrate(db)
         report = build_table_inventory_report(db_path=str(db))
-        assert report["contract_table_count"] == 149
+        assert report["contract_table_count"] == 150
         by_name = {t["table_name"]: t for t in report["tables"]}
         for t in _V32_TABLES:
             assert t in by_name, f"{t} absent from live inventory"

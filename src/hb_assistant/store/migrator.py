@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 32
+LATEST_SCHEMA_VERSION = 33
 
 
 class SQLiteMigrator:
@@ -3626,6 +3626,46 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v33 Phase 08B Prompt 11 — local macOS notification receipts. One metadata-only row per
+    # notification preview/emit. ``channel`` is hard-pinned to ``local_macos`` (CHECK) so no external
+    # channel can ever be recorded; only redacted counts + a title HASH are stored (never the raw
+    # notification text); ``mode`` is CHECK-pinned to dry_run|apply; the same 9 per-row no-raw/
+    # no-writeback CHECK(col = 0) guards as V26-V32 apply. The actual osascript emission is
+    # real-but-policy-gated (fail-closed). Ships empty; V1-V32 untouched.
+    V33_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS daily_brief_notification_receipts (
+          notification_receipt_id TEXT PRIMARY KEY,
+          brief_run_id TEXT REFERENCES daily_brief_runs(brief_run_id),
+          brief_date TEXT NOT NULL,
+          channel TEXT NOT NULL DEFAULT 'local_macos' CHECK(channel = 'local_macos'),
+          notify_status TEXT NOT NULL,
+          reason_code TEXT,
+          mode TEXT NOT NULL CHECK(mode IN ('dry_run', 'apply')),
+          attention_count INTEGER NOT NULL DEFAULT 0,
+          review_required_count INTEGER NOT NULL DEFAULT 0,
+          warning_count INTEGER NOT NULL DEFAULT 0,
+          project_count INTEGER NOT NULL DEFAULT 0,
+          title_hash TEXT,
+          emitted_utc TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_notification_receipts_date
+          ON daily_brief_notification_receipts(brief_date, created_utc);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -4036,6 +4076,19 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (32, 'v32_daily_brief_html_render_receipts', ?)",
+                    (now,),
+                )
+
+            # v33 Phase 08B Prompt 11 — local macOS notification receipts (metadata-only, per-row
+            # no-raw/no-writeback CHECK guardrails; channel pinned to local_macos; raw notification
+            # text never persisted). The renderer records one row per notification preview/emit; the
+            # osascript emission is real-but-policy-gated. Ships empty; V1-V32 untouched.
+            for stmt in self.V33_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 33")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (33, 'v33_daily_brief_notification_receipts', ?)",
                     (now,),
                 )
 

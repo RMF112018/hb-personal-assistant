@@ -90,6 +90,23 @@ daily_brief_html_render:
   already_rendered_reason_code: HTML_RENDER_ALREADY_RENDERED
   external_asset_blocked_reason_code: HTML_RENDER_EXTERNAL_ASSET_BLOCKED
 
+# Local macOS notification posture (Prompt 11). Previews (dry-run) and — on apply — emits a LOCAL
+# macOS Notification Center banner via osascript (counts only; no raw content). channel is local_macos
+# (no external channel). Emission is fail-closed: while emit=false (default) apply never invokes
+# osascript (NOTIFY_DISABLED_BY_POLICY), mirroring the launchd dry_run_install_only gate.
+daily_brief_notification:
+  enabled: true
+  channel: local_macos
+  emit: false
+  max_age_hours: 36
+  never_generated_reason_code: NOTIFY_NEVER_GENERATED
+  blocked_reason_code: NOTIFY_BLOCKED
+  stale_reason_code: NOTIFY_STALE
+  eligible_reason_code: NOTIFY_ELIGIBLE
+  disabled_by_policy_reason_code: NOTIFY_DISABLED_BY_POLICY
+  emitted_reason_code: NOTIFY_EMITTED
+  already_emitted_reason_code: NOTIFY_ALREADY_EMITTED
+
 weekend_behavior: skip          # skip | run
 weekend_reason_code: WEEKEND_GATE_SKIPPED
 
@@ -190,3 +207,10 @@ reason_codes:
   - HTML_RENDER_COMPLETED
   - HTML_RENDER_ALREADY_RENDERED
   - HTML_RENDER_EXTERNAL_ASSET_BLOCKED
+  - NOTIFY_NEVER_GENERATED
+  - NOTIFY_BLOCKED
+  - NOTIFY_STALE
+  - NOTIFY_ELIGIBLE
+  - NOTIFY_DISABLED_BY_POLICY
+  - NOTIFY_EMITTED
+  - NOTIFY_ALREADY_EMITTED

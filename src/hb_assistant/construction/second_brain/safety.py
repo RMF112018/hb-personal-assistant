@@ -79,6 +79,7 @@ _PHASE_08A_TABLES: list[str] = [
     "second_brain_retry_receipts",
     "daily_brief_delivery_receipts",
     "daily_brief_html_render_receipts",
+    "daily_brief_notification_receipts",
 ]
 
 _PHASE_08A_EVIDENCE_SUBDIR = "construction-intelligence-phase-08a-second-brain-runtime"

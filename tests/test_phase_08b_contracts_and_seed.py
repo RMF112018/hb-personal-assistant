@@ -202,3 +202,29 @@ def test_daily_brief_html_render_reason_codes_declared() -> None:
     assert new_codes <= set(gates["reason_codes"])
     assert "daily_brief_html_render" in gates["required_fields"]
     assert "daily_brief_html_render" not in gates["deferred_surfaces"]
+
+
+def test_daily_brief_notification_reason_codes_declared() -> None:
+    # Prompt 11 — local macOS notification reason codes are seeded + contract-backed (both contracts).
+    seed = load_phase_08b_automation_policy_seed()
+    new_codes = {
+        "NOTIFY_NEVER_GENERATED",
+        "NOTIFY_BLOCKED",
+        "NOTIFY_STALE",
+        "NOTIFY_ELIGIBLE",
+        "NOTIFY_DISABLED_BY_POLICY",
+        "NOTIFY_EMITTED",
+        "NOTIFY_ALREADY_EMITTED",
+    }
+    assert new_codes <= set(seed["reason_codes"])
+    assert seed["daily_brief_notification"]["enabled"] is True
+    assert seed["daily_brief_notification"]["channel"] == "local_macos"
+    # Fail-closed default: local emission is OFF until the operator flips it.
+    assert seed["daily_brief_notification"]["emit"] is False
+    assert validate_phase_08b_automation_policy()["valid"] is True
+    policy = load_phase_08b_contract("automation_policy_contract")
+    assert new_codes <= set(policy["reason_codes"])
+    gates = load_phase_08b_contract("data_quality_gates_contract")
+    assert new_codes <= set(gates["reason_codes"])
+    assert "daily_brief_notification" in gates["required_fields"]
+    assert "daily_brief_notification" not in gates["deferred_surfaces"]

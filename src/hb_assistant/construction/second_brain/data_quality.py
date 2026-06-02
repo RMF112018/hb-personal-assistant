@@ -33,6 +33,7 @@ from .daily_brief import build_daily_brief_delivery_handoff_proof
 from .daily_brief_delivery import build_daily_brief_delivery_proof
 from .daily_brief_health import build_daily_brief_job_health_proof
 from .daily_brief_html import build_daily_brief_html_render_proof
+from .daily_brief_notify import build_daily_brief_notification_proof
 from .freshness import build_freshness_observability_proof
 from .launchd_scheduler import build_launchd_scheduler_proof
 from .memory import build_memory_curator_agent_proof
@@ -296,6 +297,7 @@ PHASE_08B_GATE_NAMES: tuple[str, ...] = (
     "daily_brief_job_health",
     "daily_brief_delivery",
     "daily_brief_html_render",
+    "daily_brief_notification",
     "automation_execution",
     "launchd_install",
 )
@@ -447,6 +449,12 @@ def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict
     # interactive HTML page (inline CSS/JS; fail-closed external-asset scan) to a temp dir
     # idempotently (V32 receipt), writing nothing on dry-run and never an external asset/network call.
     gates.append(_proof_gate("daily_brief_html_render", build_daily_brief_html_render_proof()))
+
+    # Local macOS notification surface (Prompt 11) — proof-gate: the dry-run-default agent reports
+    # never-generated / blocked / stale / eligible, and the apply path is fail-closed behind the
+    # emission policy (NOTIFY_DISABLED_BY_POLICY invokes no osascript / writes no receipt), while the
+    # policy-on path emits a local banner via an injected notifier and records a V33 receipt.
+    gates.append(_proof_gate("daily_brief_notification", build_daily_brief_notification_proof()))
 
     # Deferred 08B execution surfaces — never reported as pass.
     gates.append(

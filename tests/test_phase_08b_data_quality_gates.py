@@ -58,6 +58,8 @@ def test_no_readiness_overstatement() -> None:
     assert by["daily_brief_delivery"] == "pass"
     # Local HTML Brief Renderer (Prompt 10) is implemented -> pass (proof-gate).
     assert by["daily_brief_html_render"] == "pass"
+    # Local macOS notification surface (Prompt 11) is implemented -> pass (proof-gate).
+    assert by["daily_brief_notification"] == "pass"
 
 
 def test_gates_carry_structured_reason_codes() -> None:

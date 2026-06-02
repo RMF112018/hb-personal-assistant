@@ -14,6 +14,7 @@
     "daily_brief_job_health",
     "daily_brief_delivery",
     "daily_brief_html_render",
+    "daily_brief_notification",
     "automation_execution",
     "launchd_install"
   ],
@@ -89,7 +90,14 @@
     "HTML_RENDER_ELIGIBLE",
     "HTML_RENDER_COMPLETED",
     "HTML_RENDER_ALREADY_RENDERED",
-    "HTML_RENDER_EXTERNAL_ASSET_BLOCKED"
+    "HTML_RENDER_EXTERNAL_ASSET_BLOCKED",
+    "NOTIFY_NEVER_GENERATED",
+    "NOTIFY_BLOCKED",
+    "NOTIFY_STALE",
+    "NOTIFY_ELIGIBLE",
+    "NOTIFY_DISABLED_BY_POLICY",
+    "NOTIFY_EMITTED",
+    "NOTIFY_ALREADY_EMITTED"
   ],
   "guardrails": {
     "external_systems": "read_only",
