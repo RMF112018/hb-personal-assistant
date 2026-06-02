@@ -30,6 +30,7 @@ from .automation_policy import validate_phase_08b_automation_policy
 from .config import load_second_brain_config
 from .contracts import load_phase_08a_contract, load_phase_08b_contract
 from .daily_brief import build_daily_brief_delivery_handoff_proof
+from .launchd_scheduler import build_launchd_scheduler_proof
 from .memory import build_memory_curator_agent_proof
 from .research import build_research_packet_agent_proof
 from .retrieval import build_retrieval_broker_agent_proof
@@ -409,14 +410,11 @@ def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict
             future_phase="08B",
         )
     )
-    gates.append(
-        _gate(
-            "launchd_install",
-            "deferred_not_blocking",
-            reason="REAL_LAUNCHD_INSTALL_DEFERRED",
-            future_phase="08B",
-        )
-    )
+    # LaunchAgent scheduling + first-run-after-wake (Prompt 04) — proof-gate: the install /
+    # uninstall surface is implemented real-but-policy-gated (fail-closed while the seed carries
+    # dry_run_install_only), the not-installed / drift / catch-up evaluators report structured
+    # reason codes, and no plist is written / launchctl invoked under the default policy.
+    gates.append(_proof_gate("launchd_install", build_launchd_scheduler_proof()))
 
     by_field_status = {g["gate_name"]: g["gate_status"] for g in gates}
     status_counts = {

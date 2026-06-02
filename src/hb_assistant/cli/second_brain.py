@@ -1058,6 +1058,150 @@ def automation_health(
     raise typer.Exit(0 if status.overall_status == "ok" else 3)
 
 
+_LAUNCHD_SCHEDULER_GUARDRAILS = {
+    "local_first": True,
+    "read_only_default": True,
+    "dry_run_install_only": True,
+    "apply_fail_closed_by_policy": True,
+    "no_external_writeback": True,
+    "no_external_delivery": True,
+    "no_raw_content": True,
+    "model_direct_external_api_access": False,
+}
+
+
+@automation_app.command("launchd-status")
+def automation_launchd_status(
+    json_out: bool = typer.Option(True, "--json"),
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Persist a metadata-only V28 agent-run receipt for this scheduling eval (off by default).",
+    ),
+) -> None:
+    """Report daily-brief LaunchAgent install/schedule + catch-up status (read-only)."""
+    from hb_assistant.construction.second_brain.launchd_scheduler import run_launchd_schedule_agent
+
+    try:
+        snapshot, agent_run_id = run_launchd_schedule_agent(emit_receipt=emit_receipt)
+    except Exception as exc:  # pragma: no cover - defensive: status must not crash
+        err = {"command": "second-brain automation launchd-status", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation launchd-status",
+        "overall_status": snapshot.overall_status,
+        "reason_code": snapshot.reason_code,
+        "schedule": snapshot.schedule.model_dump(),
+        "catch_up": snapshot.catch_up.model_dump(),
+        "policy_version": snapshot.policy_version,
+        "schema_version": snapshot.schema_version,
+        "schema_expected": snapshot.schema_expected,
+        "agent_run_id": agent_run_id,
+        "generated_utc": snapshot.generated_utc,
+        "guardrails": _LAUNCHD_SCHEDULER_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if snapshot.overall_status == "ok" else 3)
+
+
+@automation_app.command("catch-up-status")
+def automation_catch_up_status(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report whether a first-run-after-wake catch-up is owed (read-only, advisory)."""
+    from hb_assistant.construction.second_brain.launchd_scheduler import (
+        evaluate_first_run_after_wake,
+    )
+
+    try:
+        catch_up = evaluate_first_run_after_wake()
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation catch-up-status", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation catch-up-status",
+        **catch_up.model_dump(),
+        "guardrails": _LAUNCHD_SCHEDULER_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@automation_app.command("launchd-install")
+def automation_launchd_install(
+    apply: bool = typer.Option(
+        False, "--apply/--no-apply", help="Attempt a real install (fail-closed by policy)."
+    ),
+    confirm: bool = typer.Option(
+        False, "--confirm/--no-confirm", help="Required alongside --apply to attempt an install."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Preview (default) or attempt installing the daily-brief LaunchAgent (dry-run by default)."""
+    from hb_assistant.construction.second_brain.launchd_scheduler import (
+        apply_launchd_install,
+        preview_launchd_install,
+    )
+
+    try:
+        result = apply_launchd_install(confirm=confirm) if apply else preview_launchd_install()
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation launchd-install", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation launchd-install",
+        **result,
+        "guardrails": _LAUNCHD_SCHEDULER_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@automation_app.command("launchd-uninstall")
+def automation_launchd_uninstall(
+    apply: bool = typer.Option(
+        False, "--apply/--no-apply", help="Attempt a real uninstall (fail-closed by policy)."
+    ),
+    confirm: bool = typer.Option(
+        False, "--confirm/--no-confirm", help="Required alongside --apply to attempt an uninstall."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Preview (default) or attempt uninstalling the daily-brief LaunchAgent (dry-run by default)."""
+    from hb_assistant.construction.second_brain.launchd_scheduler import uninstall_launchd
+
+    try:
+        if apply:
+            result = uninstall_launchd(confirm=confirm)
+        else:
+            result = {
+                "command": "launchd-uninstall",
+                "status": "preview",
+                "plist_removed": False,
+                "launchctl_invoked": False,
+                "external_writeback_performed": 0,
+                "detail": "pass --apply --confirm to attempt (fail-closed by policy)",
+            }
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation launchd-uninstall", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation launchd-uninstall",
+        **result,
+        "guardrails": _LAUNCHD_SCHEDULER_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
 @data_quality_app.command("no-writeback-proof")
 def data_quality_no_writeback_proof(
     json_out: bool = typer.Option(True, "--json"),

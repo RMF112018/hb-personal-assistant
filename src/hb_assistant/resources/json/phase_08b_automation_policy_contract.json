@@ -11,7 +11,12 @@
     "LAUNCHD_NOT_INSTALLED",
     "SCHEDULE_DRIFT",
     "RUN_OK",
-    "RUN_DEGRADED"
+    "RUN_DEGRADED",
+    "LAUNCHD_INSTALLED_OK",
+    "LAUNCHD_INSTALL_DISABLED_BY_POLICY",
+    "CATCH_UP_NEEDED",
+    "CATCH_UP_NOT_NEEDED",
+    "CATCH_UP_STALE"
   ],
   "guardrails": {
     "alerting_local_only": true,

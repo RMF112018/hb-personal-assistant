@@ -34,6 +34,17 @@ launchd:
   dry_run_install_only: true
   not_installed_reason_code: LAUNCHD_NOT_INSTALLED
   schedule_drift_reason_code: SCHEDULE_DRIFT
+  installed_ok_reason_code: LAUNCHD_INSTALLED_OK
+  disabled_by_policy_reason_code: LAUNCHD_INSTALL_DISABLED_BY_POLICY
+
+# First-run-after-wake catch-up posture (Prompt 04). Declarative: the scheduling agent reports
+# whether a catch-up run is owed; it never runs the brief or installs the LaunchAgent.
+first_run_after_wake:
+  enabled: true
+  stale_after_days: 3
+  needed_reason_code: CATCH_UP_NEEDED
+  not_needed_reason_code: CATCH_UP_NOT_NEEDED
+  stale_reason_code: CATCH_UP_STALE
 
 reason_codes:
   - HEALTH_CHECK_FAILED
@@ -43,3 +54,8 @@ reason_codes:
   - SCHEDULE_DRIFT
   - RUN_OK
   - RUN_DEGRADED
+  - LAUNCHD_INSTALLED_OK
+  - LAUNCHD_INSTALL_DISABLED_BY_POLICY
+  - CATCH_UP_NEEDED
+  - CATCH_UP_NOT_NEEDED
+  - CATCH_UP_STALE

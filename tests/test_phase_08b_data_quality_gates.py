@@ -37,14 +37,15 @@ def test_no_readiness_overstatement() -> None:
     report = evaluate_phase_08b_data_quality_gates()
     assert report["readiness_overstated"] is False
     by = report["by_field_status"]
-    # Execution surfaces owned by a later prompt must never be reported as pass.
+    # The automation execution layer (retry/backoff/weekend) is owned by a later prompt -> deferred.
     assert by["automation_execution"] == "deferred_not_blocking"
-    assert by["launchd_install"] == "deferred_not_blocking"
     # Substrate surfaces this prompt ships are pass.
     assert by["agent_run_receipt_persistence"] == "pass"
     assert by["agent_model_receipt_persistence"] == "pass"
     # The Automation Health Agent (Prompt 03) is implemented -> pass (proof-gate).
     assert by["automation_health"] == "pass"
+    # LaunchAgent scheduling + first-run-after-wake (Prompt 04) is implemented -> pass (proof-gate).
+    assert by["launchd_install"] == "pass"
 
 
 def test_gates_carry_structured_reason_codes() -> None:
@@ -54,7 +55,8 @@ def test_gates_carry_structured_reason_codes() -> None:
         gates["automation_execution"]["reason"]
         == "HEALTH_RETRY_WEEKEND_ALERTING_EXECUTION_DEFERRED"
     )
-    assert gates["launchd_install"]["reason"] == "REAL_LAUNCHD_INSTALL_DEFERRED"
+    # launchd_install is now an implemented proof-gate (pass), not a deferred surface.
+    assert gates["launchd_install"]["gate_status"] == "pass"
 
 
 def test_report_carries_no_raw_content() -> None:

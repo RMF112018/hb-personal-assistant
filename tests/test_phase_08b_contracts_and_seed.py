@@ -49,3 +49,22 @@ def test_automation_policy_alerting_is_local_only() -> None:
     assert seed["alerting"]["channel"] == "local_only"
     # No external delivery is ever permitted by the policy.
     assert seed["alerting"].get("emit") is False
+
+
+def test_launchd_scheduling_reason_codes_declared() -> None:
+    # Prompt 04 — the LaunchAgent-scheduling + catch-up reason codes are seeded and contract-backed.
+    seed = load_phase_08b_automation_policy_seed()
+    new_codes = {
+        "LAUNCHD_INSTALLED_OK",
+        "LAUNCHD_INSTALL_DISABLED_BY_POLICY",
+        "CATCH_UP_NEEDED",
+        "CATCH_UP_NOT_NEEDED",
+        "CATCH_UP_STALE",
+    }
+    assert new_codes <= set(seed["reason_codes"])
+    assert seed["first_run_after_wake"]["enabled"] is True
+    assert seed["first_run_after_wake"]["stale_after_days"] == 3
+    # Validation (seed reason-codes subset of the contract vocabulary) still passes.
+    assert validate_phase_08b_automation_policy()["valid"] is True
+    gates = load_phase_08b_contract("data_quality_gates_contract")
+    assert new_codes <= set(gates["reason_codes"])
