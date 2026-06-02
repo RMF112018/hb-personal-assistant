@@ -39,6 +39,13 @@ from .reasoning import (
     build_claude_adapter_mock_proof,
     build_model_call_receipt,
 )
+from .retrieval import (
+    RetrievalBroker,
+    RetrievalEnvelope,
+    RetrievalItem,
+    build_retrieval_broker_agent_proof,
+    validate_retrieval_policy,
+)
 from .store import read_latest_config_receipt, write_config_receipt
 
 __all__ = [
@@ -67,6 +74,11 @@ __all__ = [
     "build_claude_adapter",
     "build_claude_adapter_mock_proof",
     "build_model_call_receipt",
+    "RetrievalBroker",
+    "RetrievalEnvelope",
+    "RetrievalItem",
+    "build_retrieval_broker_agent_proof",
+    "validate_retrieval_policy",
     "read_latest_config_receipt",
     "write_config_receipt",
 ]

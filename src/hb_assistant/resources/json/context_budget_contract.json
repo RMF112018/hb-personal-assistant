@@ -1,0 +1,10 @@
+{
+  "version": "phase_08a_context_budget-v2",
+  "required_fields": [
+    "max_context_chars",
+    "max_item_chars",
+    "tier_priority",
+    "deterministic_truncation",
+    "degradation_behavior"
+  ]
+}

@@ -41,6 +41,9 @@ PHASE_08A_CONTRACT_FILES: dict[str, str] = {
     "agent_registry_contract": "phase_08a_agent_registry_contract.json",
     "agent_tool_contract": "phase_08a_agent_tool_contract.json",
     "model_profile_contract": "phase_08a_model_profile_contract.json",
+    # Phase 08A Prompt 04 — retrieval policy + context budget contracts.
+    "retrieval_policy_contract": "retrieval_policy_contract.json",
+    "context_budget_contract": "context_budget_contract.json",
 }
 
 

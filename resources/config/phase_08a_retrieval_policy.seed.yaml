@@ -1,0 +1,24 @@
+version: phase_08a_retrieval_policy_v2
+approved_sources:
+  - phase_07d_source_evidence_trails
+  - meeting_prep_brief_sections
+  - project_issue_history_items
+  - project_risk_digest_items
+  - aging_exposure_report_items
+  - review_controlled_correspondence_context
+  - approved_obsidian_generated_outputs
+  - accepted_long_term_memory
+excluded_sources:
+  - raw_email_bodies
+  - raw_document_text
+  - raw_calendar_payloads
+  - raw_prompts
+  - raw_model_responses
+  - signed_urls
+  - download_urls
+  - secrets
+review_tier_required: true
+research_packet_required_for:
+  - daily_brief
+  - complex_interactive_query
+  - high_impact_query

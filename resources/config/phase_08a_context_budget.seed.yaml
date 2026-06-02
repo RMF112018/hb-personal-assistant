@@ -1,0 +1,29 @@
+# Phase 08A deterministic context-budget policy seed (Synthesized Prompt 04).
+#
+# Bounds the retrieval broker's model-bound context. Deterministic truncation by
+# tier priority -> recency -> source quality; no embeddings, no learned ranking.
+#
+# Repo-truth reconciliation: the package seed used `truncation:` / `degradation_modes:`
+# but context_budget_contract.json requires the field names `deterministic_truncation`
+# and `degradation_behavior`, so this seed carries the contract's exact required-field
+# names (plus the ordered truncation criteria and the degradation-mode vocabulary).
+version: phase_08a_context_budget-v2
+max_context_chars: 24000
+max_item_chars: 1800
+tier_priority:
+  - tier_1_auto_accept
+  - tier_2_soft_suggested
+  - tier_3_mandatory_review
+deterministic_truncation: true
+truncation_order:
+  - reviewed_high_confidence
+  - project_matched
+  - newest
+  - source_linked
+degradation_behavior: graceful_degraded
+degradation_modes:
+  - none
+  - narrow_claims
+  - advisory_only
+  - ask_for_targeted_research
+  - blocked

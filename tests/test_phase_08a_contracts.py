@@ -56,6 +56,9 @@ _REQUIRED_KEYS = {
         "mcp_future_exposure_rule",
     ],
     "model_profile_contract": ["version", "profiles", "persistence_policy"],
+    # Phase 08A Prompt 04 — retrieval policy + context budget contracts.
+    "retrieval_policy_contract": ["version", "required_fields", "excluded"],
+    "context_budget_contract": ["version", "required_fields"],
 }
 
 

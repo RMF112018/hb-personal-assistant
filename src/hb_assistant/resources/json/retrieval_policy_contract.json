@@ -1,0 +1,24 @@
+{
+  "version": "phase_08a_retrieval_policy-v2",
+  "required_fields": [
+    "source_family",
+    "source_ref",
+    "confidence_class",
+    "review_tier",
+    "review_status",
+    "source_refs",
+    "stale_unknown_flags",
+    "conflict_flags",
+    "degradation_mode"
+  ],
+  "excluded": [
+    "raw_email_body",
+    "raw_document_text",
+    "raw_calendar_payload",
+    "raw_prompt",
+    "raw_response",
+    "signed_url",
+    "download_url",
+    "secret"
+  ]
+}
