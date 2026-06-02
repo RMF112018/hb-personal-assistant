@@ -8,8 +8,9 @@ unsafe persistence. It covers:
   scan), with the single sanctioned model boundary (the lazy Anthropic ``messages.create``
   call in ``reasoning.py``) disclosed and excluded from the source-system-writeback
   aggregation — it is the model boundary, never source-system writeback;
-- the eighteen V26 second-brain tables' guard CHECK columns (probed + persisted-value scan,
-  fail-closed on any absent expected table);
+- the nineteen second-brain tables' guard CHECK columns (the eighteen V26 tables + the V27
+  ``daily_brief_handoff_lines`` durable-handoff table), probed + persisted-value scanned and
+  fail-closed on any absent expected table;
 - a persisted-content leak scan over those tables;
 - the Phase 08A evidence tree;
 - the generated daily-brief + delivery-handoff outputs (vault dir + an in-memory dry-run);
@@ -49,7 +50,8 @@ from hb_assistant.store.procore_no_writeback_proof import _scan_text_for_secrets
 # source-system writeback; it is excluded from the writeback aggregation and disclosed.
 _MODEL_BOUNDARY_REL = "construction/second_brain/reasoning.py"
 
-# The eighteen V26 second-brain tables (the guard-probe + content-scan scope).
+# The second-brain runtime tables in the guard-probe + content-scan scope: the eighteen V26
+# tables plus the V27 daily_brief_handoff_lines durable delivery-handoff table (Phase 08B).
 _PHASE_08A_TABLES: list[str] = [
     "second_brain_runtime_config_receipts",
     "obsidian_index_manifests",
@@ -68,6 +70,7 @@ _PHASE_08A_TABLES: list[str] = [
     "second_brain_operator_preference_profiles",
     "daily_brief_runs",
     "daily_brief_source_refs",
+    "daily_brief_handoff_lines",
     "launchd_schedule_previews",
 ]
 
@@ -102,9 +105,12 @@ _STOP_CONDITIONS = [
 
 def _table_exists(conn: Any, table: str) -> bool:
     try:
-        return conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,)
-        ).fetchone() is not None
+        return (
+            conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()
+            is not None
+        )
     except Exception:
         return False
 

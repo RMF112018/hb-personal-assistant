@@ -20,7 +20,12 @@ from hb_assistant.store.connection import get_connection, transaction
 from hb_assistant.store.migrator import SQLiteMigrator
 
 if TYPE_CHECKING:
-    from .models import DailyBriefContext, LaunchdSchedulePreview
+    from .models import (
+        DailyBriefContext,
+        DeliveryHandoffPayload,
+        HandoffLine,
+        LaunchdSchedulePreview,
+    )
 
 
 def write_daily_brief_run(
@@ -111,6 +116,147 @@ def read_latest_daily_brief_runs(
         (limit,),
     )
     return [dict(row) for row in cur.fetchall()]
+
+
+def write_daily_brief_handoff_lines(
+    sections: dict[str, list[HandoffLine]],
+    *,
+    brief_run_id: str,
+    db_path: str | None = None,
+) -> int:
+    """Persist the structured delivery-handoff lines for a brief run; returns rows written.
+
+    Phase 08B durable handoff recovery (V27): stores section + ordered position + redacted
+    title + review tier + safe source-ref pairs per line so the full handoff can be
+    reconstructed after process exit. Metadata-only — each line's ``source_refs`` is run
+    through the forbidden-field guard before serialization, and the row's no-raw /
+    no-writeback CHECK guard columns stay at 0. Lines are written in ``HANDOFF_SECTIONS``
+    order; ``brief_run_id`` must reference an existing ``daily_brief_runs`` row.
+    """
+    from .models import HANDOFF_SECTIONS, _reject_forbidden_refs
+
+    SQLiteMigrator(db_path).apply()  # ensure V27 table exists (idempotent)
+
+    conn = get_connection(Path(db_path) if db_path is not None else None)
+    written = 0
+    with transaction(conn):
+        for section in HANDOFF_SECTIONS:
+            for line_index, line in enumerate(sections.get(section, [])):
+                safe_refs = _reject_forbidden_refs(list(line.source_refs))
+                conn.execute(
+                    """
+                    INSERT INTO daily_brief_handoff_lines
+                        (line_id, brief_run_id, section, line_index, title_redacted,
+                         review_tier, source_refs_json, generated_utc)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        uuid.uuid4().hex,
+                        brief_run_id,
+                        section,
+                        line_index,
+                        line.title_redacted,
+                        line.review_tier,
+                        json.dumps(safe_refs, sort_keys=True),
+                        datetime.now(timezone.utc).isoformat(),
+                    ),
+                )
+                written += 1
+    return written
+
+
+def read_daily_brief_handoff(
+    brief_run_id: str, *, db_path: str | None = None
+) -> DeliveryHandoffPayload | None:
+    """Reconstruct the full, safe delivery-handoff payload for a persisted brief run.
+
+    Reads ``daily_brief_runs`` + ``daily_brief_handoff_lines`` + ``daily_brief_source_refs``
+    and rebuilds a :class:`DeliveryHandoffPayload` (sections grouped + ordered by
+    ``section, line_index``; derived data-only notification summary and HTML render-data with
+    ``rendered=False``). Returns ``None`` when ``brief_run_id`` is unknown. Deterministic,
+    metadata-only — no raw content; nothing is written.
+    """
+    from .models import (
+        HANDOFF_SECTIONS,
+        DeliveryHandoffPayload,
+        HandoffLine,
+        HtmlRenderingData,
+        NotificationSummary,
+    )
+
+    SQLiteMigrator(db_path).apply()  # ensure V27 table exists (idempotent)
+    conn = get_connection(Path(db_path) if db_path is not None else None)
+
+    run = conn.execute(
+        """
+        SELECT brief_run_id, brief_date, status, project_count, review_required_count,
+               stale_unknown_count, evaluation_run_id, review_tier, degradation_mode
+        FROM daily_brief_runs WHERE brief_run_id = ?
+        """,
+        (brief_run_id,),
+    ).fetchone()
+    if run is None:
+        return None
+
+    # Pre-seed all canonical sections (empty lists) so the reconstructed shape mirrors the
+    # in-memory handoff faithfully, then fill ordered lines.
+    sections: dict[str, list[HandoffLine]] = {name: [] for name in HANDOFF_SECTIONS}
+    for row in conn.execute(
+        """
+        SELECT section, title_redacted, review_tier, source_refs_json
+        FROM daily_brief_handoff_lines
+        WHERE brief_run_id = ?
+        ORDER BY section, line_index
+        """,
+        (brief_run_id,),
+    ).fetchall():
+        sections.setdefault(row["section"], []).append(
+            HandoffLine(
+                title_redacted=row["title_redacted"],
+                review_tier=row["review_tier"] if row["review_tier"] is not None else 3,
+                source_refs=json.loads(row["source_refs_json"] or "[]"),
+            )
+        )
+
+    source_refs: list[dict[str, str]] = []
+    for row in conn.execute(
+        """
+        SELECT source_family, source_ref, evidence_trail_id, confidence_class
+        FROM daily_brief_source_refs WHERE brief_run_id = ?
+        ORDER BY daily_brief_source_ref_id
+        """,
+        (brief_run_id,),
+    ).fetchall():
+        ref = {"source_family": row["source_family"], "source_ref": row["source_ref"]}
+        if row["evidence_trail_id"] is not None:
+            ref["evidence_trail_id"] = row["evidence_trail_id"]
+        if row["confidence_class"] is not None:
+            ref["confidence_class"] = row["confidence_class"]
+        source_refs.append(ref)
+
+    title = f"Daily Brief {run['brief_date']}"
+    eligible = run["status"] != "blocked"
+    notification = NotificationSummary(
+        title_redacted=title,
+        attention_count=len(sections.get("priority_actions", [])),
+        review_required_count=run["review_required_count"],
+        warning_count=len(sections.get("waiting_on", [])),
+        project_count=run["project_count"],
+        eligible=eligible,
+    )
+    html = HtmlRenderingData(title_redacted=title, sections=sections, source_refs=source_refs)
+    return DeliveryHandoffPayload(
+        brief_run_id=run["brief_run_id"],
+        brief_date=run["brief_date"],
+        evaluation_run_id=run["evaluation_run_id"],
+        eligible_for_delivery=eligible,
+        review_tier=run["review_tier"] if run["review_tier"] is not None else 3,
+        degradation_mode=run["degradation_mode"] or "blocked",
+        sections=sections,
+        source_refs=source_refs,
+        notification_summary=notification,
+        html_rendering=html,
+    )
 
 
 def write_launchd_schedule_preview(

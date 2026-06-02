@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 141,
+  "table_count": 142,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1270,6 +1270,15 @@
       "blocking_for_phase": "none",
       "v": "V26",
       "notes": "Phase 08A daily brief source refs; populated in 08A Prompt 11/12"
+    },
+    "daily_brief_handoff_lines": {
+      "table_family": "second_brain_08b",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08B",
+      "blocking_for_phase": "none",
+      "v": "V27",
+      "notes": "Phase 08B durable delivery-handoff lines (section/order/redacted title/tier/safe source refs) for post-exit handoff reconstruction; populated in 08B Prompt 01 via daily-brief generate --emit-receipt"
     },
     "launchd_schedule_previews": {
       "table_family": "second_brain_08a",

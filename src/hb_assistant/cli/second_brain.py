@@ -304,9 +304,7 @@ def query_tools_run(
             "error": "tool_not_allowlisted",
             "detail": str(exc),
         }
-        typer.echo(
-            json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload)
-        )
+        typer.echo(json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload))
         raise typer.Exit(3) from exc
 
     payload = {
@@ -340,7 +338,9 @@ _RESEARCH_PACKET_GUARDRAILS = {
 @research_packet_app.command("build")
 def research_packet_build(
     packet_type: str = typer.Option(
-        "interactive_query", "--packet-type", help="Packet type (e.g. interactive_query, daily_brief)."
+        "interactive_query",
+        "--packet-type",
+        help="Packet type (e.g. interactive_query, daily_brief).",
     ),
     project_key: str = typer.Option(None, "--project-key", help="Optional project filter."),
     emit_receipt: bool = typer.Option(
@@ -362,9 +362,7 @@ def research_packet_build(
             "error": "invalid_packet_type",
             "detail": f"{packet_type!r} not in {list(PACKET_TYPES)}",
         }
-        typer.echo(
-            json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload)
-        )
+        typer.echo(json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload))
         raise typer.Exit(2)
 
     try:
@@ -455,7 +453,11 @@ def query(
         typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
         raise typer.Exit(3) from exc
 
-    payload = {"command": "second-brain query", **result.model_dump(), "guardrails": _QUERY_GUARDRAILS}
+    payload = {
+        "command": "second-brain query",
+        **result.model_dump(),
+        "guardrails": _QUERY_GUARDRAILS,
+    }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
 
@@ -474,14 +476,18 @@ _MEMORY_GUARDRAILS = {
 def memory_candidate(
     statement: str = typer.Option(..., "--statement", help="Redacted memory statement."),
     memory_type: str = typer.Option("fact", "--memory-type"),
-    origin_id: str = typer.Option(..., "--origin-id", help="Origin (query/packet/brief/feedback) id."),
+    origin_id: str = typer.Option(
+        ..., "--origin-id", help="Origin (query/packet/brief/feedback) id."
+    ),
     confidence: str = typer.Option("medium", "--confidence", help="high|medium|low."),
     sensitivity: str = typer.Option(None, "--sensitivity", help="Sensitive/high-impact category."),
     project_key: str = typer.Option(None, "--project-key"),
     source_refs: str = typer.Option(
         None, "--source-refs", help="Comma-separated 'family:ref' pairs."
     ),
-    emit: bool = typer.Option(False, "--emit/--no-emit", help="Persist the candidate (dry-run default)."),
+    emit: bool = typer.Option(
+        False, "--emit/--no-emit", help="Persist the candidate (dry-run default)."
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Propose a long-term memory candidate (sensitive/high-impact -> Tier 3; never auto-accepted)."""
@@ -519,7 +525,9 @@ def memory_review(
     candidate_id: str = typer.Option(..., "--candidate-id"),
     decision: str = typer.Option(..., "--decision", help="accepted|rejected|superseded|deferred."),
     reason: str = typer.Option(None, "--reason", help="Redacted decision reason."),
-    emit: bool = typer.Option(False, "--emit/--no-emit", help="Persist the review (dry-run default)."),
+    emit: bool = typer.Option(
+        False, "--emit/--no-emit", help="Persist the review (dry-run default)."
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Apply an explicit operator review; 'accepted' promotes the candidate to memory."""
@@ -531,7 +539,11 @@ def memory_review(
 
     row = read_memory_candidate(candidate_id)
     if row is None:
-        err = {"command": "second-brain memory review", "error": "candidate_not_found", "candidate_id": candidate_id}
+        err = {
+            "command": "second-brain memory review",
+            "error": "candidate_not_found",
+            "candidate_id": candidate_id,
+        }
         typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
         raise typer.Exit(3)
 
@@ -574,9 +586,13 @@ def preference_capture(
     value: str = typer.Option(None, "--value", help="Redacted preference value."),
     scope: str = typer.Option("global", "--scope", help="global|project|entity."),
     scope_key: str = typer.Option(None, "--scope-key"),
-    preference_type: str = typer.Option(None, "--type", help="Preference type (sensitive -> Tier 3)."),
+    preference_type: str = typer.Option(
+        None, "--type", help="Preference type (sensitive -> Tier 3)."
+    ),
     sensitive: bool = typer.Option(False, "--sensitive/--not-sensitive"),
-    emit: bool = typer.Option(False, "--emit/--no-emit", help="Persist the preference (dry-run default)."),
+    emit: bool = typer.Option(
+        False, "--emit/--no-emit", help="Persist the preference (dry-run default)."
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Capture a reviewable operator preference (never auto-accepted; can't override safety)."""
@@ -634,9 +650,7 @@ def daily_brief_build(
             "error": "invalid_mode",
             "detail": f"{mode!r} not in ['dry_run', 'apply']",
         }
-        typer.echo(
-            json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload)
-        )
+        typer.echo(json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload))
         raise typer.Exit(2)
 
     from hb_assistant.construction.second_brain.daily_brief import build_daily_brief_context
@@ -764,9 +778,7 @@ def daily_brief_generate(
             "error": "invalid_mode",
             "detail": f"{mode!r} not in ['dry_run', 'apply']",
         }
-        typer.echo(
-            json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload)
-        )
+        typer.echo(json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload))
         raise typer.Exit(2)
 
     if brief_date is None:
@@ -830,6 +842,78 @@ def daily_brief_generate(
         },
         "warnings": result.warnings[:50],
         "guardrails": _DAILY_BRIEF_GENERATE_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+_RENDER_VIEW_GUARDRAILS = {
+    "local_first": True,
+    "read_only": True,
+    "deterministic": True,
+    "reconstructed_from_persisted_handoff": True,
+    "no_html_rendered": True,
+    "no_external_delivery": True,
+    "no_raw_content": True,
+    "source_references_required": True,
+}
+
+
+@daily_brief_app.command("render-view")
+def daily_brief_render_view(
+    brief_date: str = typer.Option(
+        None, "--date", help="Reconstruct the most recent persisted brief for this date."
+    ),
+    run_id: str = typer.Option(None, "--run-id", help="Reconstruct a specific brief_run_id."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Emit the deterministic, no-raw, rendered=False render view for a persisted brief (read-only)."""
+    if not run_id and not brief_date:
+        err_payload = {
+            "command": "second-brain daily-brief render-view",
+            "error": "missing_selector",
+            "detail": "provide --run-id or --date",
+        }
+        typer.echo(json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload))
+        raise typer.Exit(2)
+
+    from hb_assistant.construction.second_brain.daily_brief import (
+        build_daily_brief_render_view,
+        read_daily_brief_handoff,
+        read_latest_daily_brief_runs,
+    )
+
+    try:
+        resolved_run_id = run_id
+        if not resolved_run_id:
+            runs = [r for r in read_latest_daily_brief_runs() if r["brief_date"] == brief_date]
+            resolved_run_id = runs[0]["brief_run_id"] if runs else None
+
+        handoff = read_daily_brief_handoff(resolved_run_id) if resolved_run_id else None
+    except Exception as exc:  # pragma: no cover - defensive (e.g., DB unavailable)
+        err = {
+            "command": "second-brain daily-brief render-view",
+            "error": type(exc).__name__,
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    if handoff is None:
+        not_found = {
+            "command": "second-brain daily-brief render-view",
+            "error": "brief_run_not_found",
+            "brief_date": brief_date,
+            "run_id": run_id,
+            "guardrails": _RENDER_VIEW_GUARDRAILS,
+        }
+        typer.echo(json.dumps(not_found, indent=2, default=str) if json_out else str(not_found))
+        raise typer.Exit(4)
+
+    view = build_daily_brief_render_view(handoff)
+    payload = {
+        "command": "second-brain daily-brief render-view",
+        **view.model_dump(),
+        "guardrails": _RENDER_VIEW_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)

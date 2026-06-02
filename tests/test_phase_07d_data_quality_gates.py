@@ -214,4 +214,4 @@ def test_gates_command_carries_safe_counts() -> None:
 
 
 def test_table_inventory_unchanged() -> None:
-    assert build_table_inventory_report()["contract_table_count"] == 141
+    assert build_table_inventory_report()["contract_table_count"] == 142

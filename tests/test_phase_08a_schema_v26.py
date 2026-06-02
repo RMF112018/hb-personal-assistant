@@ -6,7 +6,8 @@ table carries (guard sets vary per table and are derived from the DDL), (3) enfo
 review-tier `CHECK(review_tier IN (1,2,3))` and the operator-preference UNIQUE key,
 (4) defaults research packets to the most-conservative Tier 3 + pending_review,
 (5) is idempotent, and (6) leaves V1-V25 intact. It also proves the lifecycle contract
-classifies every V26 table as operational_empty_expected (none unmapped) at count 141.
+classifies every V26 table as operational_empty_expected (none unmapped) at count 142
+(141 through V26 + the V27 daily_brief_handoff_lines table).
 """
 
 from __future__ import annotations
@@ -79,7 +80,8 @@ def _guard_columns(ddl: str) -> set[str]:
 def test_v26_is_latest_and_creates_substrate_tables() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "v26.db"
-        assert _migrate(db) == LATEST_SCHEMA_VERSION == 26
+        # V26 ships through the head schema (>= 26); forward bumps add tables, never remove.
+        assert _migrate(db) == LATEST_SCHEMA_VERSION >= 26
         conn = sqlite3.connect(str(db))
         tables = _names(conn, "table")
         for t in _V26_TABLES:
@@ -90,11 +92,58 @@ def test_v26_is_latest_and_creates_substrate_tables() -> None:
 def test_v26_is_idempotent() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "v26.db"
-        assert _migrate(db) == 26
-        assert _migrate(db) == 26
+        assert _migrate(db) == LATEST_SCHEMA_VERSION
+        assert _migrate(db) == LATEST_SCHEMA_VERSION
         conn = sqlite3.connect(str(db))
         n = conn.execute(
             "SELECT COUNT(*) FROM schema_migrations WHERE version = 26"
+        ).fetchone()[0]
+        assert n == 1
+
+
+_V27_TABLES = ["daily_brief_handoff_lines"]
+
+
+def test_v27_creates_handoff_lines_table_with_guards() -> None:
+    """V27 additively creates the durable daily_brief_handoff_lines table (ships empty),
+    declaring the canonical no-raw / no-writeback guard CHECK(col = 0) columns."""
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "v27.db"
+        _migrate(db)
+        conn = sqlite3.connect(str(db))
+        for t in _V27_TABLES:
+            assert t in _names(conn, "table"), f"missing V27 table {t}"
+            assert conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] == 0
+        guards = _guard_columns(_ddl(conn, "daily_brief_handoff_lines"))
+        for col in (
+            "raw_email_body_persisted",
+            "raw_document_text_persisted",
+            "raw_calendar_payload_persisted",
+            "raw_prompt_persisted",
+            "raw_response_persisted",
+            "retrieved_context_persisted",
+            "signed_url_persisted",
+            "download_url_persisted",
+            "external_writeback_performed",
+        ):
+            assert col in guards, f"missing guard column {col}"
+        # The guard CHECK(col = 0) is enforced: a nonzero write is rejected.
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO daily_brief_handoff_lines "
+                "(line_id, brief_run_id, section, line_index, title_redacted, "
+                " external_writeback_performed) VALUES ('l1','r1','priority_actions',0,'t',1)"
+            )
+
+
+def test_v27_is_idempotent() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "v27.db"
+        assert _migrate(db) == LATEST_SCHEMA_VERSION
+        assert _migrate(db) == LATEST_SCHEMA_VERSION
+        conn = sqlite3.connect(str(db))
+        n = conn.execute(
+            "SELECT COUNT(*) FROM schema_migrations WHERE version = 27"
         ).fetchone()[0]
         assert n == 1
 
@@ -237,7 +286,7 @@ def test_v26_tables_classified_in_lifecycle_contract() -> None:
         db = Path(td) / "v26.db"
         _migrate(db)
         report = build_table_inventory_report(db_path=str(db))
-        assert report["contract_table_count"] == 141
+        assert report["contract_table_count"] == 142
         by_name = {t["table_name"]: t for t in report["tables"]}
         for t in _V26_TABLES:
             assert t in by_name, f"{t} absent from live inventory"

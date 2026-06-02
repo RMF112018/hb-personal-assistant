@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 26
+LATEST_SCHEMA_VERSION = 27
 
 
 class SQLiteMigrator:
@@ -3352,6 +3352,39 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v27 Phase 08B Prompt 01 — durable delivery-handoff recovery. One additive table that
+    # persists the structured delivery-handoff *lines* (section + ordered redacted titles +
+    # review tier + safe source-ref pairs) so a full safe handoff can be reconstructed after
+    # process exit. Metadata-only; the same per-row no-raw / no-writeback CHECK(col = 0) guard
+    # columns as daily_brief_runs. Ships empty. V1-V26 untouched.
+    V27_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS daily_brief_handoff_lines (
+          line_id TEXT PRIMARY KEY,
+          brief_run_id TEXT NOT NULL REFERENCES daily_brief_runs(brief_run_id) ON DELETE CASCADE,
+          section TEXT NOT NULL,
+          line_index INTEGER NOT NULL,
+          title_redacted TEXT NOT NULL,
+          review_tier INTEGER CHECK(review_tier IS NULL OR review_tier IN (1,2,3)),
+          source_refs_json TEXT NOT NULL DEFAULT '[]',
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          retrieved_context_persisted INTEGER NOT NULL DEFAULT 0 CHECK(retrieved_context_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_daily_brief_handoff_lines_run
+          ON daily_brief_handoff_lines(brief_run_id, section, line_index);
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -3686,6 +3719,19 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (26, 'v26_second_brain_phase_08a_schema', ?)",
+                    (now,),
+                )
+
+            # v27 Phase 08B Prompt 01 — durable delivery-handoff recovery: one additive
+            # daily_brief_handoff_lines table (per-row no-raw/no-writeback CHECK guardrails)
+            # so the structured handoff sections survive process exit and can be
+            # reconstructed. Ships empty. V1-V26 untouched.
+            for stmt in self.V27_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 27")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (27, 'v27_daily_brief_handoff_lines', ?)",
                     (now,),
                 )
 

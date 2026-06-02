@@ -285,6 +285,63 @@ class DeliveryHandoffPayload(BaseModel):
         return value
 
 
+# --- Phase 08B Prompt 01: deterministic render-view contract --------------------------
+
+
+class RenderViewLine(_SourceLinked):
+    """One render-ready line: redacted title, tier, and safe source refs (no raw content)."""
+
+    title_redacted: str
+    review_tier: int = 3
+    review_tier_reason_code: str | None = None
+    source_refs: list[dict[str, str]] = []
+
+
+class RenderViewSection(BaseModel):
+    """A render-ready section: a named, ordered list of lines plus its line count."""
+
+    name: str
+    lines: list[RenderViewLine] = []
+    line_count: int = 0
+
+    model_config = {"extra": "forbid"}
+
+
+class DailyBriefRenderView(BaseModel):
+    """Deterministic, render-ready view the future HTML renderer consumes.
+
+    Built deterministically from a (persisted or in-memory) delivery handoff. Sections are
+    ordered by ``HANDOFF_SECTIONS``; lines preserve handoff order. No raw source content is
+    carried and no HTML is produced here — ``rendered`` is always False (a future renderer
+    flips it only when it actually emits HTML, which this contract never does).
+    """
+
+    brief_date: str
+    brief_run_id: str | None = None
+    title_redacted: str = ""
+    generated_utc: str = ""
+    degradation_mode: str = "blocked"
+    context_quality_class: str = "insufficient"
+    review_tier: int = 3
+    sections: list[RenderViewSection] = []
+    section_counts: dict[str, int] = {}
+    total_line_count: int = 0
+    review_required_count: int = 0
+    stale_unknown_count: int = 0
+    source_ref_count: int = 0
+    format: Literal["render_view"] = "render_view"
+    rendered: bool = False
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("rendered")
+    @classmethod
+    def _never_rendered(cls, value: bool) -> bool:
+        if value:
+            raise ValueError("render view is a structured contract; no HTML is produced")
+        return value
+
+
 class DailyBriefResult(BaseModel):
     """Daily Brief Agent (daily_brief_agent) generate/evaluate/apply outcome."""
 

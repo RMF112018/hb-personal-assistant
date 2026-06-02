@@ -26,7 +26,7 @@ from .models import (
     NotificationSummary,
 )
 from .output import render_brief_markdown, write_brief_output
-from .store import write_daily_brief_run
+from .store import write_daily_brief_handoff_lines, write_daily_brief_run
 
 
 def _build_handoff(
@@ -152,6 +152,13 @@ def run_daily_brief(
             output_path_hash=written.output_path_hash,
         )
         context.brief_run_id = brief_run_id
+        # Durably persist the structured handoff lines (V27) so the full safe handoff can be
+        # reconstructed after process exit (Phase 08B recovery). Metadata-only; guard cols 0.
+        write_daily_brief_handoff_lines(
+            context.delivery_handoff.sections,
+            brief_run_id=brief_run_id,
+            db_path=db_path,
+        )
 
     handoff = _build_handoff(
         context,
@@ -275,8 +282,14 @@ def build_daily_brief_agent_proof() -> dict[str, Any]:
     no_raw_content = not any(
         t in blob
         for t in (
-            "raw_body", "raw_document_text", "raw_calendar_payload", "raw_prompt",
-            "raw_response", "signed_url", "download_url", "secret",
+            "raw_body",
+            "raw_document_text",
+            "raw_calendar_payload",
+            "raw_prompt",
+            "raw_response",
+            "signed_url",
+            "download_url",
+            "secret",
         )
     )
     guards_zero = all(
@@ -391,8 +404,14 @@ def build_daily_brief_delivery_handoff_proof() -> dict[str, Any]:
     no_raw_content = not any(
         t in blob
         for t in (
-            "raw_body", "raw_document_text", "raw_calendar_payload", "raw_prompt",
-            "raw_response", "signed_url", "download_url", "secret",
+            "raw_body",
+            "raw_document_text",
+            "raw_calendar_payload",
+            "raw_prompt",
+            "raw_response",
+            "signed_url",
+            "download_url",
+            "secret",
         )
     )
     source_linked = bool(handoff.source_refs) and all(
