@@ -59,6 +59,8 @@ _REQUIRED_KEYS = {
     # Phase 08A Prompt 04 — retrieval policy + context budget contracts.
     "retrieval_policy_contract": ["version", "required_fields", "excluded"],
     "context_budget_contract": ["version", "required_fields"],
+    # Phase 08A Prompt 05 — approved Obsidian index manifest contract.
+    "obsidian_index_manifest_contract": ["version", "required_fields"],
 }
 
 

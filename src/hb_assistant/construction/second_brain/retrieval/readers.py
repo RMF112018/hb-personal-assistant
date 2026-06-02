@@ -211,6 +211,36 @@ def read_aging_exposure(
     )
 
 
+def read_approved_obsidian(
+    store: ConstructionStore, db_path: str | None, project_key: str | None
+) -> list[RetrievalItem]:
+    from ..obsidian_index import list_approved_obsidian_index_entries
+
+    items: list[RetrievalItem] = []
+    for rec in list_approved_obsidian_index_entries(db_path=db_path, limit=500):
+        if project_key is not None and rec.get("project_key") not in (None, project_key):
+            continue
+        meta = rec.get("meta") or {}
+        tier = int(meta.get("review_tier", 1))
+        status = "review_required" if tier == 3 else ("review_recommended" if tier == 2 else "auto_advisory")
+        items.append(
+            RetrievalItem(
+                source_family="approved_obsidian_generated_outputs",
+                source_ref=str(rec.get("note_path_hash")),
+                record_type=str(rec.get("source_type") or "obsidian_note"),
+                record_ref=str(rec.get("content_hash")),
+                project_key=rec.get("project_key"),
+                confidence_class=str(rec.get("confidence_class") or "high"),
+                review_tier=tier,
+                review_status=str(rec.get("review_status") or status),
+                review_required=tier == 3,
+                content_excerpt_redacted=str(rec.get("heading_redacted") or rec.get("section_marker") or ""),
+                recency=str(rec.get("modified_utc") or ""),
+            )
+        )
+    return items
+
+
 def read_accepted_memory(
     store: ConstructionStore, db_path: str | None, project_key: str | None
 ) -> list[RetrievalItem]:
@@ -239,4 +269,5 @@ READER_REGISTRY: dict[str, Callable[[ConstructionStore, str | None, str | None],
     "project_risk_digest_items": read_risk_digest,
     "aging_exposure_report_items": read_aging_exposure,
     "accepted_long_term_memory": read_accepted_memory,
+    "approved_obsidian_generated_outputs": read_approved_obsidian,
 }

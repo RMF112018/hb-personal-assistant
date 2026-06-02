@@ -1,0 +1,14 @@
+version: phase_08a_obsidian_index_policy_v2
+include_generated_outputs_only_by_default: true
+approved_roots:
+  - Construction Intelligence/Phase 07A Data Quality
+  - Construction Intelligence/Phase 07C Document Intelligence
+  - Construction Intelligence/Phase 07D Cross-Source Intelligence
+  - Construction Intelligence/Phase 08A Daily Briefs
+exclude:
+  - attachments
+  - raw source documents
+  - unmanaged private notes
+  - copied email bodies
+marker_boundaries_required: true
+review_tier_metadata_required: true

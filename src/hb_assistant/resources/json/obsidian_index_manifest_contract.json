@@ -1,0 +1,15 @@
+{
+  "version": "phase_08a_obsidian_index-v2",
+  "required_fields": [
+    "manifest_id",
+    "approved_root_label",
+    "note_path_hash",
+    "section_marker",
+    "project_key",
+    "confidence_class",
+    "review_tier",
+    "review_status",
+    "content_hash",
+    "source_ref_count"
+  ]
+}

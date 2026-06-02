@@ -1,0 +1,29 @@
+{
+  "approved_roots": [
+    "Construction Intelligence/Phase 07A Data Quality",
+    "Construction Intelligence/Phase 07C Document Intelligence",
+    "Construction Intelligence/Phase 07D Cross-Source Intelligence",
+    "Construction Intelligence/Phase 08A Daily Briefs"
+  ],
+  "contract_required_fields_present": true,
+  "exclude": [
+    "attachments",
+    "raw source documents",
+    "unmanaged private notes",
+    "copied email bodies"
+  ],
+  "guardrails": {
+    "local_first": true,
+    "mcp_implemented": false,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "raw_vault_browsing": false
+  },
+  "marker_boundaries_required": true,
+  "no_raw_content": true,
+  "only_managed_notes_indexed": true,
+  "policy_version": "phase_08a_obsidian_index_policy_v2",
+  "proof": "phase_08a_approved_obsidian_index",
+  "proof_passed": true,
+  "source_notes_mutated": false
+}

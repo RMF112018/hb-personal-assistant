@@ -27,6 +27,13 @@ from .contracts import (
     load_all_phase_08a_contracts,
     load_phase_08a_contract,
 )
+from .obsidian_index import (
+    ObsidianIndexEntry,
+    ObsidianIndexManifest,
+    build_approved_obsidian_index_proof,
+    build_index,
+    list_approved_obsidian_index_entries,
+)
 from .reasoning import (
     AdapterResult,
     AnthropicUnavailable,
@@ -79,6 +86,11 @@ __all__ = [
     "RetrievalItem",
     "build_retrieval_broker_agent_proof",
     "validate_retrieval_policy",
+    "ObsidianIndexEntry",
+    "ObsidianIndexManifest",
+    "build_approved_obsidian_index_proof",
+    "build_index",
+    "list_approved_obsidian_index_entries",
     "read_latest_config_receipt",
     "write_config_receipt",
 ]

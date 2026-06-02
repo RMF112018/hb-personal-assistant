@@ -31,6 +31,13 @@ agents_app = typer.Typer(
 )
 app.add_typer(agents_app, name="agents")
 
+index_app = typer.Typer(
+    name="index",
+    help="Approved Obsidian indexing (read-only over the vault).",
+    no_args_is_help=True,
+)
+app.add_typer(index_app, name="index")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -189,3 +196,72 @@ def agents_status(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if registry_valid and tool_policy_valid else 3)
+
+
+@index_app.command("obsidian")
+def index_obsidian(
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview planned notes (no apply)."),
+    apply: bool = typer.Option(False, "--apply", help="Persist an apply index manifest."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Index approved/generated marker-bounded Obsidian notes (read-only over vault)."""
+    if dry_run and apply:
+        typer.echo(
+            json.dumps({"error": "mutually_exclusive", "detail": "--dry-run and --apply"}, indent=2)
+            if json_out
+            else "error: --dry-run and --apply are mutually exclusive"
+        )
+        raise typer.Exit(2)
+    mode = "apply" if apply else "dry_run"
+
+    from hb_assistant.construction.second_brain.obsidian_index import build_index
+
+    try:
+        manifest = build_index(mode=mode)
+        error = None
+    except Exception as exc:  # pragma: no cover - defensive (e.g., DB/vault unavailable)
+        manifest = None
+        error = type(exc).__name__
+
+    if manifest is None:
+        payload: dict[str, object] = {
+            "command": "second-brain index obsidian",
+            "mode": mode,
+            "error": error,
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(3)
+
+    planned = [
+        {
+            "approved_root_label": e.approved_root_label,
+            "note_path_redacted": e.note_path_redacted,
+            "note_path_hash": e.note_path_hash,
+            "section_marker": e.section_marker,
+            "content_hash": e.content_hash,
+            "project_key": e.project_key,
+            "source_type": e.source_type,
+            "confidence_class": e.confidence_class,
+            "review_tier": e.review_tier,
+            "review_status": e.review_status,
+            "source_ref_count": e.source_ref_count,
+        }
+        for e in manifest.entries[:200]
+    ]
+    payload = {
+        "command": "second-brain index obsidian",
+        "mode": manifest.mode,
+        "manifest_id": manifest.manifest_id,
+        "entry_count": manifest.entry_count,
+        "excluded_count": manifest.excluded_count,
+        "approved_roots": manifest.approved_roots,
+        "policy_version": manifest.policy_version,
+        "planned_entries": planned,
+        "guardrails": {
+            "source_notes_mutated": False,
+            "raw_content_persisted": False,
+            "raw_vault_browsing": False,
+        },
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
