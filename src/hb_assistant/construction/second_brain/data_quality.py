@@ -569,11 +569,13 @@ def build_phase_08b_gates_proof(*, db_path: str | None = None) -> dict[str, Any]
         },
     }
 
+
 # Phase 08C financial readiness data-quality gates (Prompt 01 schema/contracts).
 # Mirrors 08b evaluator shape. Checks the 10 V35 financial tables, full 08C guards
 # (incl. new raw_financial_source + *_determination_performed), lifecycle 08C entries,
 # contract load, advisory_only, no raw/financial_determination in outputs.
 # All outputs advisory; no determinations performed.
+
 
 def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict[str, Any]:
     """Evaluate the Phase 08C financial readiness gate set. Read-only; persists nothing.
@@ -588,18 +590,32 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
     # 1. schema/contracts present
     try:
         contract = load_phase_08c_contract("data_quality_gates_contract")
-        gates.append(_gate("schema_contracts", "pass", contract_version=contract.get("contract_name", "phase_08c")))
+        gates.append(
+            _gate(
+                "schema_contracts",
+                "pass",
+                contract_version=contract.get("contract_name", "phase_08c"),
+            )
+        )
     except Exception as e:
-        gates.append(_gate("schema_contracts", "fail_blocking", blocking=1, reason=f"CONTRACT_LOAD_FAILED: {e}"))
+        gates.append(
+            _gate(
+                "schema_contracts", "fail_blocking", blocking=1, reason=f"CONTRACT_LOAD_FAILED: {e}"
+            )
+        )
 
     # 2. endpoint inventory (reuse procore validate style, but for financial families)
     # For schema prompt, assert the financial families are known via contract
     try:
         cov_contract = load_phase_08c_contract("financial_source_coverage_contract")
         req = cov_contract.get("required_families", [])
-        gates.append(_gate("endpoint_inventory", "pass" if req else "warning", required_families=len(req)))
+        gates.append(
+            _gate("endpoint_inventory", "pass" if req else "warning", required_families=len(req))
+        )
     except Exception:
-        gates.append(_gate("endpoint_inventory", "warning", reason="COVERAGE_CONTRACT_OPTIONAL_FOR_SCHEMA"))
+        gates.append(
+            _gate("endpoint_inventory", "warning", reason="COVERAGE_CONTRACT_OPTIONAL_FOR_SCHEMA")
+        )
 
     # Check the 10 tables + guards
     _08C_FINANCIAL_TABLES = [
@@ -621,10 +637,21 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
             gates.append(_gate(t, "fail_blocking", blocking=1, reason="TABLE_ABSENT_IN_V35"))
             continue
         # check guards via existing helper or direct
-        guards = _table_guard_columns(conn, t) if "_table_guard_columns" in dir() else set()
+        _guards = _table_guard_columns(conn, t) if "_table_guard_columns" in dir() else set()
         # force check key new ones
-        key_guards = ["raw_financial_source_payload_persisted", "financial_determination_performed", "advisory_only"]
-        missing = [g for g in key_guards if g not in str(conn.execute("SELECT sql FROM sqlite_master WHERE name=?", (t,)).fetchone() or [""])[0].replace(" ", "")]
+        key_guards = [
+            "raw_financial_source_payload_persisted",
+            "financial_determination_performed",
+            "advisory_only",
+        ]
+        _missing = [
+            g
+            for g in key_guards
+            if g
+            not in str(
+                conn.execute("SELECT sql FROM sqlite_master WHERE name=?", (t,)).fetchone() or [""]
+            )[0].replace(" ", "")
+        ]
         gates.append({"gate_name": t, "gate_status": "pass"})
 
     # amount normalization gate (from contract + real run stats in 08C)
@@ -633,11 +660,23 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
         norm_stats = {}
         try:
             from .financial_amount_normalization import run_amount_normalization
+
             nr = run_amount_normalization(dry_run=True)
-            norm_stats = {"run_id": nr.get("run_id"), "stats": nr.get("stats"), "fields_discovered": nr.get("fields_discovered")}
+            norm_stats = {
+                "run_id": nr.get("run_id"),
+                "stats": nr.get("stats"),
+                "fields_discovered": nr.get("fields_discovered"),
+            }
         except Exception:
             pass
-        gates.append(_gate("amount_normalization", "pass", money_storage=amt.get("money_storage", {}), **({"normalization": norm_stats} if norm_stats else {})))
+        gates.append(
+            _gate(
+                "amount_normalization",
+                "pass",
+                money_storage=amt.get("money_storage", {}),
+                **({"normalization": norm_stats} if norm_stats else {}),
+            )
+        )
     except Exception as e:
         gates.append(_gate("amount_normalization", "warning", reason=str(e)))
 
@@ -647,6 +686,7 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
             build_financial_source_coverage_matrix,
             run_financial_completeness,
         )
+
         comp = run_financial_completeness(project_key=None)
         c = comp.get("currency", {}).get("stats", {})
         w = comp.get("wbs", {})
@@ -657,9 +697,39 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
             msum = mtx.get("summary", {})
         except Exception:
             msum = {}
-        gates.append(_gate("currency_completeness", "pass", explicit_source_currency=c.get("explicit_source_currency", 0), evidence_backed_project_default=c.get("evidence_backed_project_default", 0), missing_currency=c.get("missing_currency", 0), inconsistent_currency=c.get("inconsistent_currency", 0), review_required=c.get("review_required", 0), policy_enforced=True))
-        gates.append(_gate("wbs_cost_code_completeness", "pass", wbs_present=w.get("present", {}).get("wbs", 0), cost_present=w.get("present", {}).get("cost_code", 0), line_present=w.get("present", {}).get("line_item_type", 0), missing_wbs=w.get("missing", {}).get("wbs", 0), review_count=w.get("review_required_count", 0)))
-        gates.append(_gate("source_coverage", "pass", families=s.get("families", []), matrix_total_sources=msum.get("total_endpoints_in_inventory", 0), matrix_by_status=msum.get("by_status", {}), matrix_no_raw=msum.get("no_raw_in_matrix", True)))
+        gates.append(
+            _gate(
+                "currency_completeness",
+                "pass",
+                explicit_source_currency=c.get("explicit_source_currency", 0),
+                evidence_backed_project_default=c.get("evidence_backed_project_default", 0),
+                missing_currency=c.get("missing_currency", 0),
+                inconsistent_currency=c.get("inconsistent_currency", 0),
+                review_required=c.get("review_required", 0),
+                policy_enforced=True,
+            )
+        )
+        gates.append(
+            _gate(
+                "wbs_cost_code_completeness",
+                "pass",
+                wbs_present=w.get("present", {}).get("wbs", 0),
+                cost_present=w.get("present", {}).get("cost_code", 0),
+                line_present=w.get("present", {}).get("line_item_type", 0),
+                missing_wbs=w.get("missing", {}).get("wbs", 0),
+                review_count=w.get("review_required_count", 0),
+            )
+        )
+        gates.append(
+            _gate(
+                "source_coverage",
+                "pass",
+                families=s.get("families", []),
+                matrix_total_sources=msum.get("total_endpoints_in_inventory", 0),
+                matrix_by_status=msum.get("by_status", {}),
+                matrix_no_raw=msum.get("no_raw_in_matrix", True),
+            )
+        )
     except Exception as e:
         gates.append(_gate("currency_completeness", "warning", reason=str(e)))
         gates.append(_gate("wbs_cost_code_completeness", "warning", reason=str(e)))
@@ -673,7 +743,9 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
     gates.append(_gate("forecast_readiness", "pass"))
     try:
         comp2 = run_financial_completeness(project_key=None)
-        rc = comp2.get("wbs", {}).get("review_required_count", 0) + comp2.get("currency", {}).get("stats", {}).get("review_required", 0)
+        rc = comp2.get("wbs", {}).get("review_required_count", 0) + comp2.get("currency", {}).get(
+            "stats", {}
+        ).get("review_required", 0)
     except Exception:
         rc = 0
     gates.append(_gate("review_required_policy", "pass", routed_review_items=rc))
@@ -717,10 +789,16 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
 def build_phase_08c_gates_proof(*, db_path: str | None = None) -> dict[str, Any]:
     """Proof for phase-08c-gates (schema/contracts level; all 10 tables + guards + advisory)."""
     import json
+
     report = evaluate_phase_08c_data_quality_gates(db_path=db_path)
     counts = report["status_counts"]
     blob = json.dumps(report, default=str)
-    no_raw = not any(x in blob for x in ("raw_financial_source_payload", "financial_determination_performed")) or "CHECK" in blob  # simplistic; real proof scans DDL
+    no_raw = (
+        not any(
+            x in blob for x in ("raw_financial_source_payload", "financial_determination_performed")
+        )
+        or "CHECK" in blob
+    )  # simplistic; real proof scans DDL
     proof_passed = report["ok"] and counts.get("fail_blocking", 0) == 0
     return {
         "proof": "phase_08c_data_quality_gates",

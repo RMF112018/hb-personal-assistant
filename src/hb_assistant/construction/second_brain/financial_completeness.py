@@ -46,9 +46,19 @@ EVIDENCE_DIR = "docs/evidence/construction-intelligence-phase-08c-financial-read
 FAMILY_LOCAL_TABLES: dict[str, list[str]] = {
     "owner_contracts": ["procore_financial_contracts"],
     "commitments": ["procore_financial_subcontractor_invoices"],
-    "purchase_orders": ["procore_financial_change_orders", "procore_financial_change_order_line_items"],
-    "subcontractor_invoices": ["procore_financial_subcontractor_invoices", "procore_financial_invoice_items"],
-    "budget": ["procore_financial_budget_views", "procore_financial_budget_rows", "procore_financial_budget_changes"],
+    "purchase_orders": [
+        "procore_financial_change_orders",
+        "procore_financial_change_order_line_items",
+    ],
+    "subcontractor_invoices": [
+        "procore_financial_subcontractor_invoices",
+        "procore_financial_invoice_items",
+    ],
+    "budget": [
+        "procore_financial_budget_views",
+        "procore_financial_budget_rows",
+        "procore_financial_budget_changes",
+    ],
     "change_management": ["procore_financial_change_events", "procore_financial_rfqs"],
     "billing": ["procore_financial_payment_applications", "procore_financial_billing_periods"],
     "payment_applications": ["procore_financial_payment_applications"],
@@ -65,14 +75,37 @@ def _load_policy(path: str) -> dict:
     if not p.exists():
         # Fallbacks for hermetic runs (match contract expectations)
         if "currency" in path:
-            return {"default_currency_allowed_only_when": ["documented_project_default_exists", "source_family_policy_allows_default", "no_line_level_conflict", "output_marks_default_as_derived"]}
+            return {
+                "default_currency_allowed_only_when": [
+                    "documented_project_default_exists",
+                    "source_family_policy_allows_default",
+                    "no_line_level_conflict",
+                    "output_marks_default_as_derived",
+                ]
+            }
         if "wbs" in path:
-            return {"required_dimensions": ["cost_code", "wbs", "line_item_type", "source_field_path", "project_key"]}
+            return {
+                "required_dimensions": [
+                    "cost_code",
+                    "wbs",
+                    "line_item_type",
+                    "source_field_path",
+                    "project_key",
+                ]
+            }
         if "review" in path:
-            return {"review_tiers": ["none", "operator_review", "financial_review"], "triggers": ["missing_or_inconsistent_currency", "missing_wbs_cost_code_or_line_item_type", "missing_source_field_path"]}
+            return {
+                "review_tiers": ["none", "operator_review", "financial_review"],
+                "triggers": [
+                    "missing_or_inconsistent_currency",
+                    "missing_wbs_cost_code_or_line_item_type",
+                    "missing_source_field_path",
+                ],
+            }
         return {}
     try:
         import yaml  # type: ignore
+
         with p.open() as f:
             return yaml.safe_load(f) or {}
     except Exception:
@@ -107,6 +140,7 @@ def _now() -> str:
 
 def _sha(s: str) -> str:
     import hashlib
+
     return hashlib.sha256((s or "").encode("utf-8")).hexdigest()
 
 
@@ -118,10 +152,67 @@ def _load_contract(name: str) -> dict:
             pass
     # Fallbacks (repo truth contracts are small)
     fallbacks = {
-        "currency_completeness_contract": {"currency_status_values": ["explicit_source_currency", "evidence_backed_project_default", "missing_currency", "inconsistent_currency", "ambiguous_currency", "review_required"], "project_default_conditions": ["documented_source", "policy_allowed", "no_line_level_conflict", "output_marks_default_derived"]},
-        "wbs_cost_code_completeness_contract": {"required_dimensions": ["cost_code", "wbs", "line_item_type", "source_field_path", "project_key"], "status_values": ["present", "missing", "ambiguous", "not_applicable", "review_required"]},
-        "financial_source_coverage_contract": {"required_families": ["owner_contracts", "commitments", "purchase_orders", "subcontractor_invoices", "payment_applications", "budget", "budget_changes", "change_events", "rfqs", "direct_costs"], "coverage_status_values": ["covered_ready", "covered_review_required", "covered_missing_context", "fail_closed", "deferred_not_blocking", "blocked"]},
-        "review_required_financial_policy_contract": {"triggers": ["missing_or_inconsistent_currency", "missing_wbs_cost_code_or_line_item_type", "missing_source_field_path"]},
+        "currency_completeness_contract": {
+            "currency_status_values": [
+                "explicit_source_currency",
+                "evidence_backed_project_default",
+                "missing_currency",
+                "inconsistent_currency",
+                "ambiguous_currency",
+                "review_required",
+            ],
+            "project_default_conditions": [
+                "documented_source",
+                "policy_allowed",
+                "no_line_level_conflict",
+                "output_marks_default_derived",
+            ],
+        },
+        "wbs_cost_code_completeness_contract": {
+            "required_dimensions": [
+                "cost_code",
+                "wbs",
+                "line_item_type",
+                "source_field_path",
+                "project_key",
+            ],
+            "status_values": [
+                "present",
+                "missing",
+                "ambiguous",
+                "not_applicable",
+                "review_required",
+            ],
+        },
+        "financial_source_coverage_contract": {
+            "required_families": [
+                "owner_contracts",
+                "commitments",
+                "purchase_orders",
+                "subcontractor_invoices",
+                "payment_applications",
+                "budget",
+                "budget_changes",
+                "change_events",
+                "rfqs",
+                "direct_costs",
+            ],
+            "coverage_status_values": [
+                "covered_ready",
+                "covered_review_required",
+                "covered_missing_context",
+                "fail_closed",
+                "deferred_not_blocking",
+                "blocked",
+            ],
+        },
+        "review_required_financial_policy_contract": {
+            "triggers": [
+                "missing_or_inconsistent_currency",
+                "missing_wbs_cost_code_or_line_item_type",
+                "missing_source_field_path",
+            ]
+        },
     }
     key = name.replace("phase_08c_", "").replace(".json", "")
     return fallbacks.get(key, {})
@@ -130,7 +221,15 @@ def _load_contract(name: str) -> dict:
 def discover_source_families(inventory_path: str = INVENTORY_DEFAULT) -> list[str]:
     p = Path(inventory_path)
     if not p.exists():
-        return ["owner_contracts", "commitments", "purchase_orders", "subcontractor_invoices", "budget", "change_events", "rfqs"]
+        return [
+            "owner_contracts",
+            "commitments",
+            "purchase_orders",
+            "subcontractor_invoices",
+            "budget",
+            "change_events",
+            "rfqs",
+        ]
     try:
         with p.open() as f:
             d = json.load(f)
@@ -146,27 +245,33 @@ def discover_source_families(inventory_path: str = INVENTORY_DEFAULT) -> list[st
 
 # --- Currency ---
 
-def _is_evidence_backed_project_default(project_key: str, explicit_currencies: set, policy: dict, contract: dict) -> bool:
+
+def _is_evidence_backed_project_default(
+    project_key: str, explicit_currencies: set, policy: dict, contract: dict
+) -> bool:
     """Return True only if ALL 4 conditions from contract + policy are satisfied.
     For 'documented_project_default_exists' we use a simple convention in harness/tests:
     caller can pass documented=True via a wrapper or we check a lightweight marker.
     In real data this could come from a procore project default or a documented source note.
     Here we require the caller/context to indicate (via policy or explicit flag in seed data).
     """
-    conditions = contract.get("project_default_conditions", []) or policy.get("default_currency_allowed_only_when", [])
+    conditions = contract.get("project_default_conditions", []) or policy.get(
+        "default_currency_allowed_only_when", []
+    )
     # documented_source
     documented = policy.get("_documented_project_default_exists", False)  # set by harness/seed
-    if ("documented_source" in conditions or "documented_project_default_exists" in conditions) and not documented:  # noqa: SIM103
+    if (
+        "documented_source" in conditions or "documented_project_default_exists" in conditions
+    ) and not documented:  # noqa: SIM103
         return False
     # policy_allowed
-    if ("policy_allowed" in conditions or "source_family_policy_allows_default" in conditions) and not policy.get("default_currency_allowed", True):
+    if (
+        "policy_allowed" in conditions or "source_family_policy_allows_default" in conditions
+    ) and not policy.get("default_currency_allowed", True):
         return False
     # no_line_level_conflict
-    if "no_line_level_conflict" in conditions and len(explicit_currencies) > 1:
-        return False
-    # output_marks_default_derived -- we always mark when we apply; the condition is "we will mark"
-    # so it is satisfied by construction when we reach here and decide to apply.
-    return True
+    # no_line_level_conflict (inline to satisfy SIM103)
+    return not ("no_line_level_conflict" in conditions and len(explicit_currencies) > 1)
 
 
 def build_currency_completeness_snapshot(
@@ -177,10 +282,10 @@ def build_currency_completeness_snapshot(
     policy: dict | None = None,
     contract: dict | None = None,
 ) -> dict[str, Any]:
-    own = False
+    _own = False
     if conn is None:
         conn = _get_conn()
-        own = True
+        _own = True
     if run_id is None:
         run_id = f"08c-curr-{uuid.uuid4().hex[:8]}"
     if policy is None:
@@ -204,7 +309,10 @@ def build_currency_completeness_snapshot(
     if not rows:
         # Fallback to amount_facts (source)
         try:
-            for r in conn.execute("SELECT project_key, source_field_path, currency_iso_code as currency, amount_fact_id as ref FROM procore_financial_amount_facts WHERE (? IS NULL OR project_key=?)", (project_key, project_key)):
+            for r in conn.execute(
+                "SELECT project_key, source_field_path, currency_iso_code as currency, amount_fact_id as ref FROM procore_financial_amount_facts WHERE (? IS NULL OR project_key=?)",
+                (project_key, project_key),
+            ):
                 rows.append({"project_key": r[0], "field": r[1], "currency": r[2], "ref": r[3]})
         except Exception:
             pass
@@ -221,7 +329,15 @@ def build_currency_completeness_snapshot(
         else:
             d["missing"] += 1
 
-    stats = {"explicit_source_currency": 0, "evidence_backed_project_default": 0, "missing_currency": 0, "inconsistent_currency": 0, "ambiguous_currency": 0, "review_required": 0, "project_default_applied_total": 0}
+    stats = {
+        "explicit_source_currency": 0,
+        "evidence_backed_project_default": 0,
+        "missing_currency": 0,
+        "inconsistent_currency": 0,
+        "ambiguous_currency": 0,
+        "review_required": 0,
+        "project_default_applied_total": 0,
+    }
 
     for pk, data in per_project.items():
         exp = data["explicit"]
@@ -232,7 +348,14 @@ def build_currency_completeness_snapshot(
             stats[st] += total
             # route
             for ref in data["refs"][:3]:  # bound
-                route_to_review(conn=conn, run_id=run_id, project_key=pk, trigger_category="missing_or_inconsistent_currency", amount_ref=str(ref), policy=policy)
+                route_to_review(
+                    conn=conn,
+                    run_id=run_id,
+                    project_key=pk,
+                    trigger_category="missing_or_inconsistent_currency",
+                    amount_ref=str(ref),
+                    policy=policy,
+                )
         elif len(exp) == 1 and mis == 0:
             st = "explicit_source_currency"
             stats[st] += total
@@ -243,7 +366,9 @@ def build_currency_completeness_snapshot(
         else:
             # no explicit at all
             documented = policy.get("_documented_project_default_exists", False)
-            pol = _is_evidence_backed_project_default(pk, exp, {**policy, "_documented_project_default_exists": documented}, contract)
+            pol = _is_evidence_backed_project_default(
+                pk, exp, {**policy, "_documented_project_default_exists": documented}, contract
+            )
             if pol:
                 st = "evidence_backed_project_default"
                 stats[st] += total
@@ -254,7 +379,14 @@ def build_currency_completeness_snapshot(
                 st = "missing_currency"
                 stats[st] += total
                 for ref in data["refs"][:3]:
-                    route_to_review(conn=conn, run_id=run_id, project_key=pk, trigger_category="missing_or_inconsistent_currency", amount_ref=str(ref), policy=policy)
+                    route_to_review(
+                        conn=conn,
+                        run_id=run_id,
+                        project_key=pk,
+                        trigger_category="missing_or_inconsistent_currency",
+                        amount_ref=str(ref),
+                        policy=policy,
+                    )
 
         # insert snapshot row (one per project aggregate status for simplicity; real could be per-fact)
         with transaction(conn):
@@ -267,17 +399,29 @@ def build_currency_completeness_snapshot(
                  claim_or_entitlement_decision_performed)
                 VALUES (?, ?, ?, ?, ?, ?, 1, 0, 0, 0, 0)
                 """,
-                (run_id, pk, st, 1 if st == "evidence_backed_project_default" else 0,
-                 1 if st == "evidence_backed_project_default" else 0,
-                 1 if st == "inconsistent_currency" else 0,
-                 1 if st in ("missing_currency", "ambiguous_currency") else 0,
-                 _now()),
+                (
+                    run_id,
+                    pk,
+                    st,
+                    1 if st == "evidence_backed_project_default" else 0,
+                    1 if st == "evidence_backed_project_default" else 0,
+                    1 if st == "inconsistent_currency" else 0,
+                    1 if st in ("missing_currency", "ambiguous_currency") else 0,
+                    _now(),
+                ),
             )
 
-    return {"run_id": run_id, "per_project": {k: {"status": "aggregated", "items": v["items"]} for k, v in per_project.items()}, "stats": stats}
+    return {
+        "run_id": run_id,
+        "per_project": {
+            k: {"status": "aggregated", "items": v["items"]} for k, v in per_project.items()
+        },
+        "stats": stats,
+    }
 
 
 # --- WBS / Cost / Line / Source ---
+
 
 def build_wbs_cost_code_completeness_snapshot(
     *,
@@ -286,10 +430,10 @@ def build_wbs_cost_code_completeness_snapshot(
     run_id: str | None = None,
     policy: dict | None = None,
 ) -> dict[str, Any]:
-    own = False
+    _own = False
     if conn is None:
         conn = _get_conn()
-        own = True
+        _own = True
     if run_id is None:
         run_id = f"08c-wbs-{uuid.uuid4().hex[:8]}"
     if policy is None:
@@ -304,7 +448,10 @@ def build_wbs_cost_code_completeness_snapshot(
 
     # Prefer normalized facts (they carry source_field_path + ref)
     try:
-        for r in conn.execute("SELECT project_key, source_field_path, source_record_ref FROM second_brain_financial_amount_facts_normalized WHERE (? IS NULL OR project_key=?)", (project_key, project_key)):
+        for r in conn.execute(
+            "SELECT project_key, source_field_path, source_record_ref FROM second_brain_financial_amount_facts_normalized WHERE (? IS NULL OR project_key=?)",
+            (project_key, project_key),
+        ):
             total += 1
             sfp = r[1]
             if sfp:
@@ -312,7 +459,14 @@ def build_wbs_cost_code_completeness_snapshot(
             else:
                 missing["source_field_path"] += 1
                 review += 1
-                route_to_review(conn=conn, run_id=run_id, project_key=r[0] or "global", trigger_category="missing_source_field_path", amount_ref=str(r[2]), policy=policy)
+                route_to_review(
+                    conn=conn,
+                    run_id=run_id,
+                    project_key=r[0] or "global",
+                    trigger_category="missing_source_field_path",
+                    amount_ref=str(r[2]),
+                    policy=policy,
+                )
     except Exception:
         pass
 
@@ -320,10 +474,19 @@ def build_wbs_cost_code_completeness_snapshot(
     for tbl, wcol, ccol, lcol in [
         ("procore_financial_line_items", "wbs_code_id", "cost_code_id", "line_item_type_id"),
         ("procore_financial_budget_rows", "wbs_code_id", "cost_code_id", None),
-        ("procore_financial_change_order_line_items", "wbs_code_id", "cost_code_id", "line_item_type_id"),
+        (
+            "procore_financial_change_order_line_items",
+            "wbs_code_id",
+            "cost_code_id",
+            "line_item_type_id",
+        ),
     ]:
         try:
-            q = f"SELECT project_key, {wcol} as w, {ccol} as c" + (f", {lcol} as l" if lcol else ", NULL as l") + f" FROM {tbl} WHERE (? IS NULL OR project_key=?) LIMIT 2000"
+            q = (
+                f"SELECT project_key, {wcol} as w, {ccol} as c"
+                + (f", {lcol} as l" if lcol else ", NULL as l")
+                + f" FROM {tbl} WHERE (? IS NULL OR project_key=?) LIMIT 2000"
+            )
             for r in conn.execute(q, (project_key, project_key)):
                 total += 1
                 pk = r[0] or "global"
@@ -332,19 +495,40 @@ def build_wbs_cost_code_completeness_snapshot(
                 else:
                     missing["wbs"] += 1
                     review += 1
-                    route_to_review(conn=conn, run_id=run_id, project_key=pk, trigger_category="missing_wbs_cost_code_or_line_item_type", source_ref=f"{tbl}:{r[1] or r[2]}", policy=policy)
+                    route_to_review(
+                        conn=conn,
+                        run_id=run_id,
+                        project_key=pk,
+                        trigger_category="missing_wbs_cost_code_or_line_item_type",
+                        source_ref=f"{tbl}:{r[1] or r[2]}",
+                        policy=policy,
+                    )
                 if r[2]:
                     present["cost_code"] += 1
                 else:
                     missing["cost_code"] += 1
                     review += 1
-                    route_to_review(conn=conn, run_id=run_id, project_key=pk, trigger_category="missing_wbs_cost_code_or_line_item_type", source_ref=f"{tbl}:{r[1] or r[2]}", policy=policy)
+                    route_to_review(
+                        conn=conn,
+                        run_id=run_id,
+                        project_key=pk,
+                        trigger_category="missing_wbs_cost_code_or_line_item_type",
+                        source_ref=f"{tbl}:{r[1] or r[2]}",
+                        policy=policy,
+                    )
                 if lcol and r[3]:
                     present["line_item_type"] += 1
                 elif lcol:
                     missing["line_item_type"] += 1
                     review += 1
-                    route_to_review(conn=conn, run_id=run_id, project_key=pk, trigger_category="missing_wbs_cost_code_or_line_item_type", source_ref=f"{tbl}:{r[1] or r[2]}", policy=policy)
+                    route_to_review(
+                        conn=conn,
+                        run_id=run_id,
+                        project_key=pk,
+                        trigger_category="missing_wbs_cost_code_or_line_item_type",
+                        source_ref=f"{tbl}:{r[1] or r[2]}",
+                        policy=policy,
+                    )
         except Exception:
             pass
 
@@ -359,11 +543,26 @@ def build_wbs_cost_code_completeness_snapshot(
              payment_decision_performed, claim_or_entitlement_decision_performed, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 0, 0, 0, ?)
             """,
-            (run_id, project_key or "global", present["wbs"], present["cost_code"], present["line_item_type"],
-             missing["wbs"], missing["cost_code"], ambiguous, review),
+            (
+                run_id,
+                project_key or "global",
+                present["wbs"],
+                present["cost_code"],
+                present["line_item_type"],
+                missing["wbs"],
+                missing["cost_code"],
+                ambiguous,
+                review,
+            ),
         )
 
-    return {"run_id": run_id, "present": present, "missing": missing, "review_required_count": review, "ambiguous": ambiguous}
+    return {
+        "run_id": run_id,
+        "present": present,
+        "missing": missing,
+        "review_required_count": review,
+        "ambiguous": ambiguous,
+    }
 
 
 def build_source_coverage_snapshot(
@@ -372,10 +571,10 @@ def build_source_coverage_snapshot(
     project_key: str | None = None,
     run_id: str | None = None,
 ) -> dict[str, Any]:
-    own = False
+    _own = False
     if conn is None:
         conn = _get_conn()
-        own = True
+        _own = True
     if run_id is None:
         run_id = f"08c-src-{uuid.uuid4().hex[:8]}"
     contract = _load_contract("financial_source_coverage_contract")
@@ -389,14 +588,21 @@ def build_source_coverage_snapshot(
         cur_cnt = 0
         wbs_cnt = 0
         try:
-            for r in conn.execute("SELECT COUNT(*), SUM(CASE WHEN source_record_ref IS NOT NULL THEN 1 ELSE 0 END), SUM(CASE WHEN currency_code IS NOT NULL THEN 1 ELSE 0 END), SUM(CASE WHEN source_field_path IS NOT NULL THEN 1 ELSE 0 END) FROM second_brain_financial_amount_facts_normalized WHERE source_family LIKE ?", (f"%{fam}%",)):
+            for r in conn.execute(
+                "SELECT COUNT(*), SUM(CASE WHEN source_record_ref IS NOT NULL THEN 1 ELSE 0 END), SUM(CASE WHEN currency_code IS NOT NULL THEN 1 ELSE 0 END), SUM(CASE WHEN source_field_path IS NOT NULL THEN 1 ELSE 0 END) FROM second_brain_financial_amount_facts_normalized WHERE source_family LIKE ?",
+                (f"%{fam}%",),
+            ):
                 row_count = r[0] or 0
                 amt_cnt = r[1] or 0
                 cur_cnt = r[2] or 0
                 wbs_cnt = r[3] or 0
         except Exception:
             pass
-        status = "covered_ready" if (amt_cnt > 0 and cur_cnt > 0 and wbs_cnt > 0) else "covered_missing_context"
+        status = (
+            "covered_ready"
+            if (amt_cnt > 0 and cur_cnt > 0 and wbs_cnt > 0)
+            else "covered_missing_context"
+        )
         with transaction(conn):
             conn.execute(
                 """
@@ -406,7 +612,17 @@ def build_source_coverage_snapshot(
                  advisory_only, raw_financial_source_payload_persisted, created_at)
                 VALUES (?, ?, ?, ?, 'live_eligible', ?, ?, ?, ?, ?, 1, 0, ?)
                 """,
-                (run_id, project_key or "global", fam, f"procore_financial_{fam}", status, row_count, amt_cnt, cur_cnt, wbs_cnt),
+                (
+                    run_id,
+                    project_key or "global",
+                    fam,
+                    f"procore_financial_{fam}",
+                    status,
+                    row_count,
+                    amt_cnt,
+                    cur_cnt,
+                    wbs_cnt,
+                ),
             )
     return {"run_id": run_id, "families": families}
 
@@ -448,17 +664,21 @@ def run_financial_completeness(
     project_key: str | None = None,
     inventory_path: str = INVENTORY_DEFAULT,
 ) -> dict[str, Any]:
-    own = False
+    _own = False
     if conn is None:
         conn = _get_conn()
-        own = True
+        _own = True
     run_id = f"08c-comp-{uuid.uuid4().hex[:8]}"
     pol_c = _load_policy(CURRENCY_POLICY_PATH)
     pol_w = _load_policy(WBS_POLICY_PATH)
-    pol_r = _load_policy(REVIEW_POLICY_PATH)
+    _pol_r = _load_policy(REVIEW_POLICY_PATH)
 
-    c_stats = build_currency_completeness_snapshot(conn=conn, project_key=project_key, run_id=run_id, policy=pol_c)
-    w_stats = build_wbs_cost_code_completeness_snapshot(conn=conn, project_key=project_key, run_id=run_id, policy=pol_w)
+    c_stats = build_currency_completeness_snapshot(
+        conn=conn, project_key=project_key, run_id=run_id, policy=pol_c
+    )
+    w_stats = build_wbs_cost_code_completeness_snapshot(
+        conn=conn, project_key=project_key, run_id=run_id, policy=pol_w
+    )
     s_stats = build_source_coverage_snapshot(conn=conn, project_key=project_key, run_id=run_id)
 
     return {"run_id": run_id, "currency": c_stats, "wbs": w_stats, "source": s_stats}
@@ -482,9 +702,18 @@ def build_currency_completeness_report(
         "by_project": res["currency"].get("per_project", {}),
         "totals": res["currency"].get("stats", {}),
         "contract": _load_contract("currency_completeness_contract"),
-        "policy_conditions": _load_policy(CURRENCY_POLICY_PATH).get("default_currency_allowed_only_when", []),
+        "policy_conditions": _load_policy(CURRENCY_POLICY_PATH).get(
+            "default_currency_allowed_only_when", []
+        ),
         "advisory_only": True,
-        "guardrails": {"local_first": True, "read_only": True, "no_external_writeback": True, "no_raw_financial_payload": True, "financial_determination_forbidden": True, "advisory_only": True},
+        "guardrails": {
+            "local_first": True,
+            "read_only": True,
+            "no_external_writeback": True,
+            "no_raw_financial_payload": True,
+            "financial_determination_forbidden": True,
+            "advisory_only": True,
+        },
         "notes": "project default currency applied ONLY when all evidence-backed conditions met and output explicitly marked as derived. Source amounts preserved verbatim in procore_financial_* tables. No raw payloads. Advisory review aid only.",
     }
     with open(Path(out_dir) / "currency-completeness-report.json", "w") as f:
@@ -512,7 +741,14 @@ def build_wbs_cost_code_coverage_report(
         "source_coverage_families": res["source"].get("families", []),
         "contract": _load_contract("wbs_cost_code_completeness_contract"),
         "advisory_only": True,
-        "guardrails": {"local_first": True, "read_only": True, "no_external_writeback": True, "no_raw_financial_payload": True, "financial_determination_forbidden": True, "advisory_only": True},
+        "guardrails": {
+            "local_first": True,
+            "read_only": True,
+            "no_external_writeback": True,
+            "no_raw_financial_payload": True,
+            "financial_determination_forbidden": True,
+            "advisory_only": True,
+        },
         "notes": "WBS/cost/line_item_type/source_field_path presence measured from normalized facts + procore source tables. Missing routes to review_required_items with trigger 'missing_wbs_cost_code_or_line_item_type' or 'missing_source_field_path'. No raw payloads. Advisory only.",
     }
     with open(Path(out_dir) / "wbs-cost-code-coverage-report.json", "w") as f:
@@ -580,7 +816,9 @@ def build_financial_source_coverage_matrix(
             ).fetchone()
             if row:
                 rc = int(row[0] or 0)
-                amt_c = int(row[1] or 0)  # proxy via source_field presence (amounts live in same rows)
+                amt_c = int(
+                    row[1] or 0
+                )  # proxy via source_field presence (amounts live in same rows)
                 cur_c = int(row[2] or 0)
                 wbs_c = int(row[3] or 0)
         except Exception:
@@ -596,14 +834,27 @@ def build_financial_source_coverage_matrix(
     for e in eps:
         fam = e.get("family") or "unknown"
         live_verified = bool(e.get("live_verified"))
-        counts = fam_row_counts.get(fam, {"source_row_count": 0, "amount_field_count": 0, "currency_field_count": 0, "wbs_cost_code_field_count": 0})
+        counts = fam_row_counts.get(
+            fam,
+            {
+                "source_row_count": 0,
+                "amount_field_count": 0,
+                "currency_field_count": 0,
+                "wbs_cost_code_field_count": 0,
+            },
+        )
 
         # Classify per contract 6 statuses (fail_closed takes precedence from P02 live gate)
         if not live_verified:
             status = "fail_closed"
         else:
             c = counts
-            if c["source_row_count"] > 0 and c["amount_field_count"] > 0 and c["currency_field_count"] > 0 and c["wbs_cost_code_field_count"] > 0:
+            if (
+                c["source_row_count"] > 0
+                and c["amount_field_count"] > 0
+                and c["currency_field_count"] > 0
+                and c["wbs_cost_code_field_count"] > 0
+            ):
                 status = "covered_ready"
             elif c["source_row_count"] > 0:
                 status = "covered_missing_context"
@@ -628,11 +879,18 @@ def build_financial_source_coverage_matrix(
             "coverage_status": status,
             "source_row_count": counts["source_row_count"],
             "amount_field_count": counts.get("amount_field_count", len(e.get("amount_fields", []))),
-            "currency_field_count": counts.get("currency_field_count", len(e.get("currency_fields", []))),
-            "wbs_cost_code_field_count": counts.get("wbs_cost_code_field_count", len(e.get("wbs_cost_line_fields", []))),
+            "currency_field_count": counts.get(
+                "currency_field_count", len(e.get("currency_fields", []))
+            ),
+            "wbs_cost_code_field_count": counts.get(
+                "wbs_cost_code_field_count", len(e.get("wbs_cost_line_fields", []))
+            ),
             "live_verified": live_verified,
             "advisory_label": "Financial source coverage matrix — advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
-            "notes": e.get("notes", "phase05 live or fail-closed per P02 inventory; mappings authoritative from repo endpoint registry."),
+            "notes": e.get(
+                "notes",
+                "phase05 live or fail-closed per P02 inventory; mappings authoritative from repo endpoint registry.",
+            ),
         }
         sources.append(entry)
 
@@ -640,27 +898,39 @@ def build_financial_source_coverage_matrix(
     covered_fams = {e.get("family") for e in eps}
     for fam in required_families:
         if fam not in covered_fams:
-            counts = fam_row_counts.get(fam, {"source_row_count": 0, "amount_field_count": 0, "currency_field_count": 0, "wbs_cost_code_field_count": 0})
-            sources.append({
-                "family": fam,
-                "endpoint_id": None,
-                "local_tables": FAMILY_LOCAL_TABLES.get(fam, ["procore_financial_amount_facts"]),
-                "normalizers": [],
-                "amount_fields": [],
-                "currency_fields": [],
-                "wbs_cost_code_fields": [],
-                "line_item_type_field": None,
-                "source_references": [],
-                "relationship_keys": ["project_key"],
-                "coverage_status": "deferred_not_blocking",
-                "source_row_count": counts["source_row_count"],
-                "amount_field_count": 0,
-                "currency_field_count": 0,
-                "wbs_cost_code_field_count": 0,
-                "live_verified": False,
-                "advisory_label": "Financial source coverage matrix — advisory review aid only. No raw values or payloads included. This required family has no endpoints in current P02 inventory; deferred non-blocking.",
-                "notes": "Required per financial_source_coverage_contract but no matching endpoint/family data in P02 inventory; counts may be 0. Advisory only.",
-            })
+            counts = fam_row_counts.get(
+                fam,
+                {
+                    "source_row_count": 0,
+                    "amount_field_count": 0,
+                    "currency_field_count": 0,
+                    "wbs_cost_code_field_count": 0,
+                },
+            )
+            sources.append(
+                {
+                    "family": fam,
+                    "endpoint_id": None,
+                    "local_tables": FAMILY_LOCAL_TABLES.get(
+                        fam, ["procore_financial_amount_facts"]
+                    ),
+                    "normalizers": [],
+                    "amount_fields": [],
+                    "currency_fields": [],
+                    "wbs_cost_code_fields": [],
+                    "line_item_type_field": None,
+                    "source_references": [],
+                    "relationship_keys": ["project_key"],
+                    "coverage_status": "deferred_not_blocking",
+                    "source_row_count": counts["source_row_count"],
+                    "amount_field_count": 0,
+                    "currency_field_count": 0,
+                    "wbs_cost_code_field_count": 0,
+                    "live_verified": False,
+                    "advisory_label": "Financial source coverage matrix — advisory review aid only. No raw values or payloads included. This required family has no endpoints in current P02 inventory; deferred non-blocking.",
+                    "notes": "Required per financial_source_coverage_contract but no matching endpoint/family data in P02 inventory; counts may be 0. Advisory only.",
+                }
+            )
 
     # Summary by_status (over all sources)
     by_status: dict[str, int] = dict.fromkeys(coverage_status_values, 0)
@@ -714,6 +984,7 @@ def build_financial_source_coverage_matrix(
 
 if __name__ == "__main__":
     import sys
+
     inv = sys.argv[1] if len(sys.argv) > 1 else INVENTORY_DEFAULT
     build_currency_completeness_report(inventory_path=inv)
     build_wbs_cost_code_coverage_report(inventory_path=inv)

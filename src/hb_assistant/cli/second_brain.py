@@ -2390,6 +2390,7 @@ _08C_GUARDRAILS = {
     "advisory_only": True,
 }
 
+
 @financial_app.command("readiness")
 def financial_readiness(
     project: str | None = typer.Option(None, "--project", help="Optional project key."),
@@ -2398,6 +2399,7 @@ def financial_readiness(
     """Financial readiness snapshot (V35 tables + contracts; advisory, read-only)."""
     from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
     from hb_assistant.store.migrator import SQLiteMigrator
+
     SQLiteMigrator().apply()
     contract = load_phase_08c_contract("financial_fact_contract")
     payload = {
@@ -2412,6 +2414,7 @@ def financial_readiness(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
 
+
 @financial_app.command("coverage")
 def financial_coverage(
     project: str | None = typer.Option(None, "--project"),
@@ -2423,6 +2426,7 @@ def financial_coverage(
         build_financial_source_coverage_matrix,
         build_source_coverage_snapshot,
     )
+
     contract = load_phase_08c_contract("financial_source_coverage_contract")
     try:
         snap = build_source_coverage_snapshot(project_key=project)
@@ -2452,6 +2456,7 @@ def financial_coverage(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
 
+
 @financial_app.command("exposure-summary")
 def financial_exposure_summary(
     project: str | None = typer.Option(None, "--project"),
@@ -2459,6 +2464,7 @@ def financial_exposure_summary(
 ) -> None:
     """Exposure summary items (advisory marts from V35)."""
     from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
+
     contract = load_phase_08c_contract("exposure_summary_contract")
     payload = {
         "command": "second-brain financial exposure-summary",
@@ -2471,6 +2477,7 @@ def financial_exposure_summary(
         "note": "amounts via normalized refs only; never summed",
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+
 
 @financial_app.command("review-items")
 def financial_review_items(
@@ -2488,6 +2495,7 @@ def financial_review_items(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
 
+
 # data-quality phase-08c-gates under data_quality_app for the expected command path
 @data_quality_app.command("phase-08c-gates")
 def data_quality_phase_08c_gates(
@@ -2497,5 +2505,10 @@ def data_quality_phase_08c_gates(
     from hb_assistant.construction.second_brain.data_quality import (
         evaluate_phase_08c_data_quality_gates,
     )
+
     report = evaluate_phase_08c_data_quality_gates()
-    typer.echo(json.dumps({**report, "guardrails": _08C_GUARDRAILS}, indent=2, default=str) if json_out else str(report))
+    typer.echo(
+        json.dumps({**report, "guardrails": _08C_GUARDRAILS}, indent=2, default=str)
+        if json_out
+        else str(report)
+    )
