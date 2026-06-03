@@ -1,0 +1,41 @@
+{
+  "proof": "phase_08b_data_quality_gates",
+  "proof_passed": true,
+  "ok": true,
+  "status_counts": {
+    "pass": 16,
+    "warning": 0,
+    "fail_blocking": 0,
+    "deferred_not_blocking": 0
+  },
+  "by_field_status": {
+    "agent_run_receipt_persistence": "pass",
+    "agent_model_receipt_persistence": "pass",
+    "delivery_handoff_durability": "pass",
+    "automation_policy_seed": "pass",
+    "observability_reason_codes": "pass",
+    "automation_health": "pass",
+    "run_registry_locking": "pass",
+    "retry_recovery": "pass",
+    "freshness_observability": "pass",
+    "daily_brief_job_health": "pass",
+    "daily_brief_delivery": "pass",
+    "daily_brief_html_render": "pass",
+    "daily_brief_notification": "pass",
+    "daily_brief_open": "pass",
+    "automation_execution": "pass",
+    "launchd_install": "pass"
+  },
+  "required_fields_covered": true,
+  "readiness_overstated": false,
+  "no_raw_content": true,
+  "contract_version": "phase_08b_data_quality_gates-v1",
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "no_readiness_overstatement": true,
+    "model_direct_external_api_access": false
+  }
+}

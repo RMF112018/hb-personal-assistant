@@ -25,6 +25,9 @@ from .agents import (
     build_agent_registry_proof,
     build_agent_tool_policy_proof,
 )
+from .automation_executor import (
+    build_automation_execution_proof,  # P08: for proof-backed gate (was deferred)
+)
 from .automation_health import build_automation_health_proof
 from .automation_policy import validate_phase_08b_automation_policy
 from .config import load_second_brain_config
@@ -465,15 +468,11 @@ def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict
     # list reads the four ledgers (metadata-only).
     gates.append(_proof_gate("daily_brief_open", build_brief_open_proof()))
 
-    # Deferred 08B execution surfaces — never reported as pass.
-    gates.append(
-        _gate(
-            "automation_execution",
-            "deferred_not_blocking",
-            reason="HEALTH_RETRY_WEEKEND_ALERTING_EXECUTION_DEFERRED",
-            future_phase="08B",
-        )
-    )
+    # P08: Automation execution (Prompts 02-08 consolidated) — proof-backed via build_automation_execution_proof
+    # (covers dry-run plan, simulated apply, lock use, retry/backoff, weekend/catch-up, first-run-after-wake,
+    # duplicate prevention, safe replay, last-good-run success-only, metadata-only receipts, no external writeback).
+    # Uses _proof_gate so status=pass only when the (extended) builder returns proof_passed=True.
+    gates.append(_proof_gate("automation_execution", build_automation_execution_proof()))
     # LaunchAgent scheduling + first-run-after-wake (Prompt 04) — proof-gate: the install /
     # uninstall surface is implemented real-but-policy-gated (fail-closed while the seed carries
     # dry_run_install_only), the not-installed / drift / catch-up evaluators report structured
@@ -511,7 +510,7 @@ def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict
 
 
 def build_phase_08b_gates_proof(*, db_path: str | None = None) -> dict[str, Any]:
-    """Deterministic proof for ``phase-08b-gates-proof.json``."""
+    """Deterministic proof for ``phase-08b-gates-proof.json`` (P08 final: automation_execution now pass, deferred may be 0)."""
     import json
 
     report = evaluate_phase_08b_data_quality_gates(db_path=db_path)
@@ -540,12 +539,13 @@ def build_phase_08b_gates_proof(*, db_path: str | None = None) -> dict[str, Any]
         report["ok"] is True
         and report["required_fields_covered"] is True
         and counts["pass"] >= 1
-        and counts["deferred_not_blocking"] >= 1
         and counts["fail_blocking"] == 0
         and report["readiness_overstated"] is False
         and distinguishes
         and no_raw_content
     )
+    # P08 note: removed "deferred_not_blocking >=1" requirement (was transitional for the execution deferral item);
+    # after P08 flip, 0 deferred is correct/expected for final 08b gates (all execution surfaces proven).
     return {
         "proof": "phase_08b_data_quality_gates",
         "proof_passed": proof_passed,

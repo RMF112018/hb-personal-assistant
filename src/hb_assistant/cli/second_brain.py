@@ -2049,7 +2049,8 @@ _EXEC_GUARDRAILS = {
     "lock_guaranteed_release": True,
     "stage_receipts_persisted": "V29_run_steps + emit V28+",
     "fail_closed": True,
-    "automation_execution_still_deferred": True,
+    "automation_execution_still_deferred": False,
+    "automation_execution_ready_via_proof": True,
 }
 
 
@@ -2158,7 +2159,8 @@ _AUTOMATION_CLI_GUARDRAILS = {
     "no_external_delivery_or_writeback": True,
     "no_raw_content": True,
     "stage_receipts_persisted": "V29_run_steps",
-    "automation_execution_still_deferred": True,
+    "automation_execution_still_deferred": False,
+    "automation_execution_ready_via_proof": True,
     # P07
     "last_good_updated_only_on_full_success": True,
     "job_health_after_all_outcomes": True,
