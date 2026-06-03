@@ -96,6 +96,7 @@ _GUARDRAILS = {
     "writeback": "none_permitted_in_08a_runtime",
     "model_boundary": "anthropic_messages_create_only_metadata_only_receipts",
     "raw_content_persisted": False,
+    "raw_html_persisted": False,
     "secrets_tokens_urls_in_code_or_evidence": "forbidden",
     "no_live_calls": True,
     "fail_closed": True,
@@ -157,8 +158,54 @@ def _derive_guard_map(conn: Any) -> tuple[dict[str, dict[str, int]], list[str]]:
     return derived, missing
 
 
+# HTML-markup scan (Prompt 14 — no-raw-HTML proof). The Prompt-10 renderer made HTML a first-class
+# artifact; the secret / raw-leak patterns do not match markup, so a dedicated tag-shaped scan proves
+# no raw HTML is persisted in any second-brain receipt or generated runtime output. Value-shaped to
+# match actual tags (not a stray "<", and not the ".html" path substring legitimately stored in
+# receipts). The renderer's own module source legitimately contains HTML templates and is NOT scanned.
+_HTML_MARKUP_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"<!doctype\b", re.IGNORECASE),
+    re.compile(
+        r"<\s*/?\s*(?:html|head|body|script|style|link|iframe|svg|img|div|span|table|meta|"
+        r"section|article|aside|main|header|footer|canvas|object|embed)\b",
+        re.IGNORECASE,
+    ),
+)
+
+
+def _scan_text_for_html_markup(text: str) -> list[str]:
+    """Return HTML-markup pattern labels present in ``text`` (empty when clean). Matches real tags."""
+    return [p.pattern for p in _HTML_MARKUP_PATTERNS if p.search(text)]
+
+
+def _scan_second_brain_tables_for_html(conn: Any) -> dict[str, Any]:
+    """Scan live string cells of the second-brain tables for raw HTML markup (no raw HTML persisted)."""
+    findings: list[str] = []
+    scanned: list[str] = []
+    for name in _PHASE_08A_TABLES:
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)
+        ).fetchone()
+        if not row:
+            continue
+        cur = conn.execute(f"SELECT * FROM {name}")  # noqa: S608 - fixed table allow-list
+        cols = [d[0] for d in cur.description] if cur.description else []
+        scanned.append(name)
+        seen: set[str] = set()
+        for record in cur.fetchall():
+            for col, value in zip(cols, record, strict=False):
+                if not isinstance(value, str):
+                    continue
+                for label in _scan_text_for_html_markup(value):
+                    key = f"{name}.{col}: {label}"
+                    if key not in seen:
+                        seen.add(key)
+                        findings.append(key)
+    return {"findings": findings, "scanned": scanned}
+
+
 def build_second_brain_no_writeback_proof(*, db_path: str | None = None) -> dict[str, Any]:
-    """Build the Phase 08A no-writeback / no-secret / no-raw-content proof (read-only)."""
+    """Build the Phase 08A no-writeback / no-secret / no-raw-content / no-raw-HTML proof (read-only)."""
     generated_utc = _now()
     repo_root = PathPolicy().resolve_repo_root()
     sha = _get_git_sha()
@@ -200,6 +247,10 @@ def build_second_brain_no_writeback_proof(*, db_path: str | None = None) -> dict
     content = _scan_table_contents(conn, _PHASE_08A_TABLES)
     content_ok = not content["findings"]
 
+    # 3b. No-raw-HTML markup scan over the same persisted rows (Prompt 14). Generated-output HTML is
+    # folded into html_ok below (after the dry-run brief is built).
+    html_table = _scan_second_brain_tables_for_html(conn)
+
     # 4. Evidence tree scan.
     evidence = _scan_evidence_outputs(repo_root, _PHASE_08A_EVIDENCE_SUBDIR)
     evidence_ok = not evidence["findings"]
@@ -207,8 +258,12 @@ def build_second_brain_no_writeback_proof(*, db_path: str | None = None) -> dict
     # 5. Generated brief / handoff outputs — vault dir + an in-memory dry-run.
     obsidian = _scan_obsidian_outputs(_DAILY_BRIEF_OBSIDIAN_BASE)
     obsidian_ok = not obsidian["findings"]
-    generated_findings = _scan_generated_outputs()
+    generated = _scan_generated_outputs()
+    generated_findings = generated["secrets"]
     generated_ok = not generated_findings
+    generated_html = generated["html"]
+    # No raw HTML persisted in any second-brain receipt row or generated runtime output.
+    html_ok = not html_table["findings"] and not generated_html
 
     # 6. Model-receipt metadata-only. The V28 receipt tables are now persisted + guard-probed
     # above; _DEFERRED_RECEIPT_TABLES is empty, so this stays a structural no-forbidden-table check.
@@ -227,6 +282,7 @@ def build_second_brain_no_writeback_proof(*, db_path: str | None = None) -> dict
         and obsidian_ok
         and generated_ok
         and receipts_ok
+        and html_ok
     )
 
     checks_detail = {
@@ -270,6 +326,15 @@ def build_second_brain_no_writeback_proof(*, db_path: str | None = None) -> dict
             "passed": generated_ok,
             "findings": generated_findings,
         },
+        "sqlite_html_markup_scan_08b_tables": {
+            "passed": not html_table["findings"],
+            "findings": html_table["findings"],
+            "scanned_tables": html_table["scanned"],
+        },
+        "generated_brief_handoff_html_scan": {
+            "passed": not generated_html,
+            "findings": generated_html,
+        },
         "model_receipt_metadata_only": {
             "passed": receipts_ok,
             "metadata_only": receipt_check["metadata_only"],
@@ -296,11 +361,13 @@ def build_second_brain_no_writeback_proof(*, db_path: str | None = None) -> dict
         "no_external_writeback": not writeback_findings and not bad_import_findings,
         "no_raw_values_persisted": guards_ok and content_ok,
         "no_raw_values_persisted_scope": "phase_08a_second_brain_runtime_modules_tables_evidence_outputs_receipts",
+        "no_raw_html_persisted": html_ok,
+        "no_raw_html_persisted_scope": "phase_08b_second_brain_receipt_tables_and_generated_outputs",
     }
 
 
-def _scan_generated_outputs() -> list[str]:
-    """Generate an in-memory dry-run brief + handoff and secret-scan the serialized output."""
+def _scan_generated_outputs() -> dict[str, list[str]]:
+    """Generate an in-memory dry-run brief + handoff and scan the serialized output for secrets + HTML."""
     import json
     import tempfile
 
@@ -309,7 +376,6 @@ def _scan_generated_outputs() -> list[str]:
     from .daily_brief import run_daily_brief
     from .reasoning import MockClaudeAdapter
 
-    findings: list[str] = []
     with tempfile.TemporaryDirectory() as tmp:
         db = f"{tmp}/gen.sqlite3"
         store = ConstructionStore(db)
@@ -338,9 +404,9 @@ def _scan_generated_outputs() -> list[str]:
             emit_receipt=False,
         )
     blob = result.model_dump_json() + result.delivery_handoff.model_dump_json()
-    for label in _scan_text_for_secrets(blob):
-        findings.append(f"generated_brief_handoff: {label}")
-    return findings
+    secrets = [f"generated_brief_handoff: {label}" for label in _scan_text_for_secrets(blob)]
+    html = [f"generated_brief_handoff: {label}" for label in _scan_text_for_html_markup(blob)]
+    return {"secrets": secrets, "html": html}
 
 
 def _check_model_receipt_metadata_only() -> dict[str, Any]:

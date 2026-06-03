@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import uuid
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ from hb_assistant.construction.second_brain.safety import (
     _PHASE_08A_TABLES,
     _check_model_receipt_metadata_only,
     _derive_guard_map,
+    _scan_text_for_html_markup,
     build_second_brain_no_writeback_proof,
 )
 from hb_assistant.construction.store import ConstructionStore
@@ -30,6 +32,8 @@ def test_proof_passes_on_clean_repo() -> None:
     assert proof["ok"] is True
     assert proof["no_external_writeback"] is True
     assert proof["no_raw_values_persisted"] is True
+    assert proof["no_raw_html_persisted"] is True
+    assert proof["guardrails"]["raw_html_persisted"] is False
     for name, check in proof["checks_detail"].items():
         assert check["passed"] is True, f"{name} failed: {check.get('findings')}"
 
@@ -47,6 +51,8 @@ def test_all_checks_present() -> None:
         "obsidian_brief_output_scan",
         "generated_brief_handoff_scan",
         "model_receipt_metadata_only",
+        "sqlite_html_markup_scan_08b_tables",
+        "generated_brief_handoff_html_scan",
     ):
         assert check in proof["checks_detail"]
 
@@ -106,6 +112,57 @@ def test_content_scanner_flags_planted_secret(tmp_path: Path) -> None:
     assert result["findings"]  # a planted URL is flagged
 
 
+def test_html_markup_scanner_clean_and_dirty() -> None:
+    # Clean receipt-shaped values (incl. a `.html` redacted path) must NOT trip the markup scan.
+    for clean in (
+        "12_Daily_Brief/2026-06-02_daily_brief.html",
+        "html/2026-06-02_daily_brief.html",
+        "a3f9" * 16,  # sha256-shaped hex
+        "DELIVERY_COMPLETED",
+        "Follow up on RFI 042",
+        "local_macos",
+        "obsidian_vault",
+    ):
+        assert _scan_text_for_html_markup(clean) == [], clean
+    # Actual HTML markup is flagged.
+    for dirty in (
+        "<!DOCTYPE html>",
+        "<html><script>x()</script>",
+        '<div class="x">hi</div>',
+        "</body>",
+    ):
+        assert _scan_text_for_html_markup(dirty), dirty
+
+
+def test_proof_fails_closed_on_planted_html(tmp_path: Path) -> None:
+    # A raw HTML blob persisted into a free-text receipt column must fail the proof closed.
+    db = str(tmp_path / "planted_html.sqlite")
+    ConstructionStore(db)  # migrate to latest
+    conn = sqlite3.connect(db)
+    with conn:
+        conn.execute(
+            "INSERT INTO daily_brief_runs (brief_run_id, brief_date, mode, status, generated_utc) "
+            "VALUES ('r1','2026-06-02','dry_run','synthesized','2026-06-02T00:00:00+00:00')"
+        )
+        conn.execute(
+            "INSERT INTO daily_brief_delivery_receipts (delivery_receipt_id, brief_run_id, brief_date, "
+            " delivery_channel, delivery_status, mode, output_path_redacted) "
+            "VALUES (?, 'r1','2026-06-02','obsidian_vault','delivered','apply', "
+            " '<!DOCTYPE html><html><body>leak</body></html>')",
+            (uuid.uuid4().hex,),
+        )
+    conn.close()
+
+    proof = build_second_brain_no_writeback_proof(db_path=db)
+    assert proof["proof_passed"] is False
+    assert proof["no_raw_html_persisted"] is False
+    html_check = proof["checks_detail"]["sqlite_html_markup_scan_08b_tables"]
+    assert html_check["passed"] is False
+    assert any(
+        "daily_brief_delivery_receipts.output_path_redacted" in f for f in html_check["findings"]
+    )
+
+
 def test_cli_no_writeback_proof_exit_zero(runner: CliRunner) -> None:
     result = runner.invoke(app, ["second-brain", "data-quality", "no-writeback-proof", "--json"])
     assert result.exit_code == 0, result.output
@@ -113,3 +170,4 @@ def test_cli_no_writeback_proof_exit_zero(runner: CliRunner) -> None:
     assert payload["command"] == "second-brain data-quality no-writeback-proof"
     assert payload["proof_passed"] is True
     assert payload["no_external_writeback"] is True
+    assert payload["no_raw_html_persisted"] is True
