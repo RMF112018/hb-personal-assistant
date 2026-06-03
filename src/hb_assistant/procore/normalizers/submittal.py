@@ -17,10 +17,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from .hashing import hash_summary
+from .hashing import hash_identifier, hash_summary
 from .rfi import NORMALIZATION_SCHEMA_VERSION
 
 _SUBMITTAL_CANONICAL_FIELD_KEYS = (
+    "id",
     "number",
     "title",
     "status",
@@ -34,6 +35,52 @@ _SUBMITTAL_CANONICAL_FIELD_KEYS = (
     "updated_at",
     "source_url",
 )
+
+_SUBMITTAL_FULL_RESPONSE_FIELD_KEYS = (
+    "id",
+    "actual_delivery_date",
+    "bic_due_date",
+    "confirmed_delivery_date",
+    "closed_at",
+    "cost_code_id",
+    "current_step_approvers",
+    "current_step_returned_date",
+    "current_step_sent_date",
+    "custom_textarea_1",
+    "custom_textfield_1",
+    "description",
+    "design_team_review_time",
+    "distribution_member_ids",
+    "due_date",
+    "internal_review_time",
+    "issue_date",
+    "lead_time",
+    "location_id",
+    "number",
+    "private",
+    "received_date",
+    "received_from_id",
+    "required_on_site_date",
+    "responsible_contractor_id",
+    "revision",
+    "scheduled_task_key",
+    "scheduled_task_id",
+    "specification_section_id",
+    "status_id",
+    "sub_job_id",
+    "submit_by",
+    "submittal_manager_id",
+    "submittal_package_id",
+    "title",
+    "type",
+    "workflow_step",
+)
+
+_SUBMITTAL_FREE_TEXT_FIELD_KEYS = {
+    "custom_textarea_1",
+    "custom_textfield_1",
+    "description",
+}
 
 _SUBMITTAL_RESPONSE_CANONICAL_FIELD_KEYS = (
     "id",
@@ -98,6 +145,96 @@ def _source_url(raw: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def _redact_person_ref(raw: Any) -> Optional[Dict[str, Any]]:
+    if not isinstance(raw, dict):
+        return None
+    out: Dict[str, Any] = {}
+    if raw.get("id") is not None:
+        out["id"] = raw["id"]
+    name_hash = hash_identifier(raw.get("name"))
+    if name_hash is not None:
+        out["name_hash_prefix"] = name_hash
+    return out or None
+
+
+def _redact_current_step_approvers(raw: Any) -> list[Dict[str, Any]]:
+    if not isinstance(raw, list):
+        return []
+    approvers: list[Dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        out: Dict[str, Any] = {}
+        for key in ("id", "response_required"):
+            if item.get(key) is not None:
+                out[key] = item[key]
+        user = _redact_person_ref(item.get("user"))
+        if user is not None:
+            out["user"] = user
+        approvers.append(out)
+    return approvers
+
+
+def _redact_custom_field_payload(raw: Any) -> Optional[Dict[str, Any]]:
+    if not isinstance(raw, dict):
+        return None
+    data_type = raw.get("data_type")
+    value = raw.get("value")
+    out: Dict[str, Any] = {"data_type": data_type}
+    if value is None:
+        return out
+    if data_type in {"decimal", "boolean", "lov_entry", "lov_entries"}:
+        out["value"] = value
+    else:
+        summary = hash_summary(value)
+        if summary is not None:
+            out["value_summary"] = summary
+    return out
+
+
+def _capture_submittal_response_fields(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Capture the documented submittal response shape with redaction.
+
+    The field set mirrors Procore's detail response. Scalar IDs, dates,
+    numbers, booleans and workflow metrics are preserved. Free-text fields and
+    string custom-field values are represented as hash summaries to preserve
+    the field without storing raw body text.
+    """
+    canonical_fields: Dict[str, Any] = {}
+    source_url = _source_url(raw)
+    if source_url is not None:
+        canonical_fields["source_url"] = source_url
+
+    for key in _SUBMITTAL_FULL_RESPONSE_FIELD_KEYS:
+        if key not in raw or raw[key] is None:
+            continue
+        value = raw[key]
+        if key in _SUBMITTAL_FREE_TEXT_FIELD_KEYS:
+            summary = hash_summary(value)
+            if summary is not None:
+                canonical_fields[key] = summary
+            continue
+        if key == "current_step_approvers":
+            canonical_fields[key] = _redact_current_step_approvers(value)
+            continue
+        canonical_fields[key] = value
+
+    for key, value in raw.items():
+        if not key.startswith("custom_field_"):
+            continue
+        redacted = _redact_custom_field_payload(value)
+        if redacted is not None:
+            canonical_fields[key] = redacted
+
+    # Backward-compatible aliases used by older fixtures/projections.
+    for key in _SUBMITTAL_CANONICAL_FIELD_KEYS:
+        if key == "source_url" or key in canonical_fields:
+            continue
+        if key in raw and raw[key] is not None:
+            canonical_fields[key] = raw[key]
+    return canonical_fields
+
+
 def _looks_review_required(raw: Dict[str, Any]) -> Tuple[bool, str]:
     status = raw.get("status")
     if isinstance(status, str):
@@ -137,15 +274,7 @@ def normalize_submittal(
     if "id" not in raw or raw["id"] in (None, ""):
         raise ValueError("normalize_submittal requires raw['id']")
 
-    canonical_fields: Dict[str, Any] = {}
-    source_url = _source_url(raw)
-    if source_url is not None:
-        canonical_fields["source_url"] = source_url
-    for key in _SUBMITTAL_CANONICAL_FIELD_KEYS:
-        if key == "source_url":
-            continue
-        if key in raw and raw[key] is not None:
-            canonical_fields[key] = raw[key]
+    canonical_fields = _capture_submittal_response_fields(raw)
 
     review_required, routing_reason = _looks_review_required(raw)
     excerpt = _title_excerpt(raw.get("title") or raw.get("subject"))
