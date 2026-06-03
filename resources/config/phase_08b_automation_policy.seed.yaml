@@ -107,6 +107,29 @@ daily_brief_notification:
   emitted_reason_code: NOTIFY_EMITTED
   already_emitted_reason_code: NOTIFY_ALREADY_EMITTED
 
+# Brief-open + consolidated status posture (Prompt 12). open-brief runs macOS `open` on a produced
+# LOCAL artifact (the delivered vault note or rendered HTML). Dry-run by default; apply is fail-closed
+# behind `open` (default false) -> OPEN_DISABLED_BY_POLICY, no `open` invoked. brief-status / receipts
+# are read-only over the V31/V32/V33/V34 ledgers.
+daily_brief_open:
+  enabled: true
+  open: false
+  default_target: vault
+  max_age_hours: 36
+  never_generated_reason_code: OPEN_NEVER_GENERATED
+  blocked_reason_code: OPEN_BLOCKED
+  stale_reason_code: OPEN_STALE
+  not_available_reason_code: OPEN_NOT_AVAILABLE
+  eligible_reason_code: OPEN_ELIGIBLE
+  disabled_by_policy_reason_code: OPEN_DISABLED_BY_POLICY
+  completed_reason_code: OPEN_COMPLETED
+  already_opened_reason_code: OPEN_ALREADY_OPENED
+  status_never_generated_reason_code: STATUS_NEVER_GENERATED
+  status_not_delivered_reason_code: STATUS_NOT_DELIVERED
+  status_delivered_reason_code: STATUS_DELIVERED
+  status_partial_reason_code: STATUS_PARTIAL
+  status_complete_reason_code: STATUS_COMPLETE
+
 weekend_behavior: skip          # skip | run
 weekend_reason_code: WEEKEND_GATE_SKIPPED
 
@@ -214,3 +237,16 @@ reason_codes:
   - NOTIFY_DISABLED_BY_POLICY
   - NOTIFY_EMITTED
   - NOTIFY_ALREADY_EMITTED
+  - OPEN_NEVER_GENERATED
+  - OPEN_BLOCKED
+  - OPEN_STALE
+  - OPEN_NOT_AVAILABLE
+  - OPEN_ELIGIBLE
+  - OPEN_DISABLED_BY_POLICY
+  - OPEN_COMPLETED
+  - OPEN_ALREADY_OPENED
+  - STATUS_NEVER_GENERATED
+  - STATUS_NOT_DELIVERED
+  - STATUS_DELIVERED
+  - STATUS_PARTIAL
+  - STATUS_COMPLETE

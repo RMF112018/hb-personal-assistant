@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 150,
+  "table_count": 151,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1369,6 +1369,15 @@
       "blocking_for_phase": "none",
       "v": "V33",
       "notes": "Phase 08B local macOS notification receipts (one metadata-only row per notification preview/emit; channel pinned to local_macos by CHECK; counts + title hash only, raw text never persisted; guard-checked); populated in 08B Prompt 11 via the macOS notification surface apply path (fail-closed behind daily_brief_notification.emit)"
+    },
+    "daily_brief_open_receipts": {
+      "table_family": "second_brain_08b",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08B",
+      "blocking_for_phase": "none",
+      "v": "V34",
+      "notes": "Phase 08B local brief-open receipts (one metadata-only row per open of the delivered vault note / rendered HTML; open_target pinned to vault|html by CHECK; redacted path + path hash only, raw content never persisted; guard-checked); populated in 08B Prompt 12 via the brief-open apply path (fail-closed behind daily_brief_open.open)"
     }
   }
 }

@@ -15,6 +15,7 @@
     "daily_brief_delivery",
     "daily_brief_html_render",
     "daily_brief_notification",
+    "daily_brief_open",
     "automation_execution",
     "launchd_install"
   ],
@@ -97,7 +98,20 @@
     "NOTIFY_ELIGIBLE",
     "NOTIFY_DISABLED_BY_POLICY",
     "NOTIFY_EMITTED",
-    "NOTIFY_ALREADY_EMITTED"
+    "NOTIFY_ALREADY_EMITTED",
+    "OPEN_NEVER_GENERATED",
+    "OPEN_BLOCKED",
+    "OPEN_STALE",
+    "OPEN_NOT_AVAILABLE",
+    "OPEN_ELIGIBLE",
+    "OPEN_DISABLED_BY_POLICY",
+    "OPEN_COMPLETED",
+    "OPEN_ALREADY_OPENED",
+    "STATUS_NEVER_GENERATED",
+    "STATUS_NOT_DELIVERED",
+    "STATUS_DELIVERED",
+    "STATUS_PARTIAL",
+    "STATUS_COMPLETE"
   ],
   "guardrails": {
     "external_systems": "read_only",

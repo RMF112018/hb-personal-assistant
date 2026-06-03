@@ -228,3 +228,35 @@ def test_daily_brief_notification_reason_codes_declared() -> None:
     assert new_codes <= set(gates["reason_codes"])
     assert "daily_brief_notification" in gates["required_fields"]
     assert "daily_brief_notification" not in gates["deferred_surfaces"]
+
+
+def test_daily_brief_open_reason_codes_declared() -> None:
+    # Prompt 12 — brief-open + consolidated-status reason codes are seeded + contract-backed.
+    seed = load_phase_08b_automation_policy_seed()
+    new_codes = {
+        "OPEN_NEVER_GENERATED",
+        "OPEN_BLOCKED",
+        "OPEN_STALE",
+        "OPEN_NOT_AVAILABLE",
+        "OPEN_ELIGIBLE",
+        "OPEN_DISABLED_BY_POLICY",
+        "OPEN_COMPLETED",
+        "OPEN_ALREADY_OPENED",
+        "STATUS_NEVER_GENERATED",
+        "STATUS_NOT_DELIVERED",
+        "STATUS_DELIVERED",
+        "STATUS_PARTIAL",
+        "STATUS_COMPLETE",
+    }
+    assert new_codes <= set(seed["reason_codes"])
+    assert seed["daily_brief_open"]["enabled"] is True
+    # Fail-closed default: local open is OFF until the operator flips it.
+    assert seed["daily_brief_open"]["open"] is False
+    assert seed["daily_brief_open"]["default_target"] == "vault"
+    assert validate_phase_08b_automation_policy()["valid"] is True
+    policy = load_phase_08b_contract("automation_policy_contract")
+    assert new_codes <= set(policy["reason_codes"])
+    gates = load_phase_08b_contract("data_quality_gates_contract")
+    assert new_codes <= set(gates["reason_codes"])
+    assert "daily_brief_open" in gates["required_fields"]
+    assert "daily_brief_open" not in gates["deferred_surfaces"]

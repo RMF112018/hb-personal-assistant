@@ -1807,6 +1807,132 @@ def automation_notify(
     raise typer.Exit(0 if status.overall_status == "ok" else 3)
 
 
+_OPEN_GUARDRAILS = {
+    "local_first": True,
+    "dry_run_default": True,
+    "fail_closed_open": True,
+    "no_external_writeback": True,
+    "no_external_delivery": True,
+    "no_raw_content": True,
+    "model_direct_external_api_access": False,
+}
+
+
+@automation_app.command("brief-status")
+def automation_brief_status(
+    brief_date: str = typer.Option(
+        None, "--brief-date", help="Specific brief date (YYYY-MM-DD); default = latest run."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report the consolidated daily-brief delivery lifecycle (delivered/rendered/notified/opened)."""
+    from hb_assistant.construction.second_brain.daily_brief_open import (
+        evaluate_brief_delivery_status,
+    )
+
+    try:
+        status = evaluate_brief_delivery_status(brief_date=brief_date)
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation brief-status", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation brief-status",
+        **status.model_dump(),
+        "guardrails": _OPEN_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if status.overall_status == "ok" else 3)
+
+
+@automation_app.command("receipts")
+def automation_receipts(
+    brief_date: str = typer.Option(
+        None, "--brief-date", help="Filter to a specific brief date (YYYY-MM-DD)."
+    ),
+    limit: int = typer.Option(50, "--limit", help="Max receipts to list."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """List recent delivery/render/notify/open receipts across the ledgers (read-only, metadata)."""
+    from hb_assistant.construction.second_brain.daily_brief_open import list_brief_receipts
+
+    try:
+        receipts = list_brief_receipts(brief_date=brief_date, limit=limit)
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation receipts", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation receipts",
+        "receipt_count": len(receipts),
+        "receipts": receipts,
+        "guardrails": _OPEN_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@automation_app.command("open-brief")
+def automation_open_brief(
+    mode: str = typer.Option(
+        "dry_run",
+        "--mode",
+        help="dry_run|apply (apply runs macOS `open` — fail-closed behind the open policy).",
+    ),
+    target: str = typer.Option(
+        "vault", "--target", help="vault|html (which produced local artifact to open)."
+    ),
+    brief_date: str = typer.Option(
+        None, "--brief-date", help="Specific brief date (YYYY-MM-DD); default = latest run."
+    ),
+    emit_receipt: bool = typer.Option(
+        False,
+        "--emit-receipt/--no-emit-receipt",
+        help="Persist a metadata-only V28 agent-run receipt for this open run (off by default).",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Open the produced local brief artifact (vault note / HTML) — apply; dry-run by default."""
+    if mode not in ("dry_run", "apply"):
+        err = {
+            "command": "second-brain automation open-brief",
+            "error": "invalid_mode",
+            "detail": f"{mode!r} not in ['dry_run', 'apply']",
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(2)
+    if target not in ("vault", "html"):
+        err = {
+            "command": "second-brain automation open-brief",
+            "error": "invalid_target",
+            "detail": f"{target!r} not in ['vault', 'html']",
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(2)
+
+    from hb_assistant.construction.second_brain.daily_brief_open import run_brief_open_agent
+
+    try:
+        status, agent_run_id = run_brief_open_agent(
+            brief_date=brief_date, target=target, mode=mode, emit_receipt=emit_receipt
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation open-brief", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation open-brief",
+        **status.model_dump(),
+        "agent_run_id": agent_run_id,
+        "guardrails": _OPEN_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if status.overall_status == "ok" else 3)
+
+
 @data_quality_app.command("no-writeback-proof")
 def data_quality_no_writeback_proof(
     json_out: bool = typer.Option(True, "--json"),

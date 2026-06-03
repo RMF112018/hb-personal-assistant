@@ -4,7 +4,7 @@ Proves V31 additively (1) creates the delivery-receipts table that ships empty, 
 enforces the canonical no-raw / no-writeback guard `CHECK(col = 0)` columns, (3) pins
 `delivery_channel = 'obsidian_vault'` and `mode IN ('dry_run','apply')` at the DB layer,
 (4) enforces the daily_brief_runs FK, (5) is idempotent and leaves V1-V30 intact, and (6) the
-lifecycle contract classifies the table operational_empty_expected at count 150.
+lifecycle contract classifies the table operational_empty_expected at count 151.
 """
 
 from __future__ import annotations
@@ -154,7 +154,7 @@ def test_v31_table_classified_in_lifecycle_contract() -> None:
         db = Path(td) / "v31.db"
         _migrate(db)
         report = build_table_inventory_report(db_path=str(db))
-        assert report["contract_table_count"] == 150
+        assert report["contract_table_count"] == 151
         by_name = {t["table_name"]: t for t in report["tables"]}
         for t in _V31_TABLES:
             assert t in by_name, f"{t} absent from live inventory"

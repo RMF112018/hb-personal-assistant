@@ -34,6 +34,7 @@ from .daily_brief_delivery import build_daily_brief_delivery_proof
 from .daily_brief_health import build_daily_brief_job_health_proof
 from .daily_brief_html import build_daily_brief_html_render_proof
 from .daily_brief_notify import build_daily_brief_notification_proof
+from .daily_brief_open import build_brief_open_proof
 from .freshness import build_freshness_observability_proof
 from .launchd_scheduler import build_launchd_scheduler_proof
 from .memory import build_memory_curator_agent_proof
@@ -298,6 +299,7 @@ PHASE_08B_GATE_NAMES: tuple[str, ...] = (
     "daily_brief_delivery",
     "daily_brief_html_render",
     "daily_brief_notification",
+    "daily_brief_open",
     "automation_execution",
     "launchd_install",
 )
@@ -455,6 +457,13 @@ def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict
     # emission policy (NOTIFY_DISABLED_BY_POLICY invokes no osascript / writes no receipt), while the
     # policy-on path emits a local banner via an injected notifier and records a V33 receipt.
     gates.append(_proof_gate("daily_brief_notification", build_daily_brief_notification_proof()))
+
+    # Brief open + consolidated delivery-status + receipts (Prompt 12) — proof-gate: the dry-run-
+    # default open agent reports never-generated / blocked / stale / not-available / eligible, the
+    # apply path is fail-closed behind the open policy (OPEN_DISABLED_BY_POLICY invokes no `open`),
+    # the consolidated status transitions NOT_DELIVERED -> DELIVERED -> COMPLETE, and the receipts
+    # list reads the four ledgers (metadata-only).
+    gates.append(_proof_gate("daily_brief_open", build_brief_open_proof()))
 
     # Deferred 08B execution surfaces — never reported as pass.
     gates.append(
