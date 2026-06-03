@@ -2707,3 +2707,46 @@ def financial_no_writeback_proof(
         f"  proof: {proof.get('proof_path')}",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3)
+
+
+@data_quality_app.command("phase-08c-no-writeback-proof")
+def data_quality_phase_08c_no_writeback_proof(
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 08C no-writeback / no-raw-financial-output safety proof (read-only).
+
+    Extends the second-brain safety scan over the 08C financial modules, the ten V35 tables, and
+    the 08C evidence directory; writes no-writeback-no-raw-financial-output-proof.json. Exit 0 when
+    the proof passes, 3 otherwise (fail-closed).
+    """
+    from hb_assistant.construction.second_brain.safety import (
+        build_phase_08c_no_writeback_no_raw_financial_output_proof,
+    )
+
+    proof = build_phase_08c_no_writeback_no_raw_financial_output_proof()
+    payload = {
+        "command": "second-brain data-quality phase-08c-no-writeback-proof",
+        "ok": proof.get("proof_passed"),
+        "phase": "08C",
+        "advisory_only": True,
+        "proof_passed": proof.get("proof_passed"),
+        "checks": {k: v.get("passed") for k, v in proof.get("checks_detail", {}).items()},
+        "confirmations": proof.get("confirmations"),
+        "scanned_modules": proof.get("scanned_modules"),
+        "scanned_tables": proof.get("scanned_tables"),
+        "proof_path": proof.get("proof_path"),
+        "evidence_paths": [proof.get("proof_json_path"), proof.get("proof_path")],
+        "guardrails": _08C_GUARDRAILS,
+        "attestations": _08C_ATTESTATIONS,
+        "note": "deterministic read-only safety scan over 08C modules/tables/evidence; advisory aid only.",
+    }
+    human = [
+        "Phase 08C no-writeback / no-raw-financial-output proof",
+        f"  proof passed: {proof.get('proof_passed')}",
+        f"  checks: {payload['checks']}",
+        f"  confirmations: {proof.get('confirmations')}",
+        f"  proof: {proof.get('proof_path')}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3)

@@ -86,6 +86,49 @@ _PHASE_08A_TABLES: list[str] = [
 _PHASE_08A_EVIDENCE_SUBDIR = "construction-intelligence-phase-08a-second-brain-runtime"
 _DAILY_BRIEF_OBSIDIAN_BASE = "Work/HB Personal Assistant/12_Daily_Brief"
 
+# Phase 08C financial substrate: the ten V35 tables guard-probed + content-leak-scanned by the
+# 08C no-writeback / no-raw-financial-output proof. The 08C evidence dir (where the read-only CLI
+# surfaces persist their outputs) is raw/secret scanned alongside.
+_PHASE_08C_TABLES: list[str] = [
+    "second_brain_financial_fact_normalization_runs",
+    "second_brain_financial_amount_facts_normalized",
+    "second_brain_financial_currency_completeness_snapshots",
+    "second_brain_financial_wbs_cost_code_snapshots",
+    "second_brain_financial_source_coverage_snapshots",
+    "second_brain_financial_exposure_summary_items",
+    "second_brain_financial_forecast_readiness_runs",
+    "second_brain_financial_review_required_items",
+    "second_brain_financial_readiness_agent_runs",
+    "second_brain_phase_08c_validation_runs",
+]
+
+_PHASE_08C_EVIDENCE_SUBDIR = "construction-intelligence-phase-08c-financial-readiness"
+
+# 08C financial module basenames included in the static mutation scan (subset of the full
+# second_brain walk, surfaced explicitly for the 08C proof).
+_PHASE_08C_MODULE_BASENAMES: tuple[str, ...] = (
+    "financial_completeness.py",
+    "financial_amount_normalization.py",
+    "financial_review_routing.py",
+    "financial_no_writeback.py",
+    "data_quality.py",
+    "contracts.py",
+)
+
+# Guard columns the 08C tables must declare at =0 (no raw / no writeback / no determination), used
+# to derive the six operator-facing confirmations from the guard map.
+_PHASE_08C_ZERO_GUARDS: dict[str, tuple[str, ...]] = {
+    "no_external_writeback": ("external_writeback_performed",),
+    "no_procore_mutation": ("raw_procore_payload_persisted",),
+    "no_raw_financial_source_payload": ("raw_financial_source_payload_persisted",),
+    "no_raw_prompts_or_responses": ("raw_prompt_persisted", "raw_response_persisted"),
+    "no_signed_or_download_urls": ("signed_url_persisted", "download_url_persisted"),
+    "no_payment_or_claim_or_entitlement_decisions": (
+        "payment_decision_performed",
+        "claim_or_entitlement_decision_performed",
+    ),
+}
+
 # Model-call / agent-run receipt tables are now persisted (V28) and metadata-only: they are
 # guard-probed + content-leak-scanned above (in _PHASE_08A_TABLES), so no receipt table is
 # forbidden anymore. Kept as an (empty) tuple for the structural check below.
@@ -138,14 +181,17 @@ def _enumerate_second_brain_modules(repo_root: Path) -> list[str]:
     return sorted(rels)
 
 
-def _derive_guard_map(conn: Any) -> tuple[dict[str, dict[str, int]], list[str]]:
+def _derive_guard_map(
+    conn: Any, tables: list[str] | None = None
+) -> tuple[dict[str, dict[str, int]], list[str]]:
     """Derive {table: {guard_col: 0}} from each expected table's CREATE SQL.
 
     Fail-closed: any expected table that is absent is returned as a violation.
+    ``tables`` defaults to the Phase 08A set; pass ``_PHASE_08C_TABLES`` for the 08C proof.
     """
     derived: dict[str, dict[str, int]] = {}
     missing: list[str] = []
-    for name in _PHASE_08A_TABLES:
+    for name in tables or _PHASE_08A_TABLES:
         row = conn.execute(
             "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (name,)
         ).fetchone()
@@ -519,3 +565,192 @@ def _check_model_receipt_metadata_only() -> dict[str, Any]:
         "raw_markers_absent": raw_markers_absent,
         "hashes_present": hashes_present,
     }
+
+
+def _render_phase_08c_no_writeback_md(proof: dict[str, Any]) -> str:
+    lines = [
+        "# Phase 08C No-Writeback / No-Raw-Financial-Output Proof",
+        "",
+        "Deterministic, read-only safety scan extending the second-brain safety proof over the "
+        "Phase 08C financial modules, the ten V35 financial tables, and the 08C evidence directory "
+        "(where the read-only operator CLI surfaces persist their outputs). Advisory review aid "
+        "only — not a determination, approval, claim, entitlement, or forecast. Fail-closed.",
+        "",
+        "## Summary",
+        f"- Proof passed: {str(proof['proof_passed']).lower()}",
+        f"- Repo SHA: {proof['repo_sha']}",
+        f"- Schema version: {proof['schema_version']}",
+        "",
+        "## Checks",
+    ]
+    for name, check in proof["checks_detail"].items():
+        lines.append(f"- {name}: {str(check['passed']).lower()}")
+    lines += ["", "## Confirmations"]
+    for name, value in proof["confirmations"].items():
+        lines.append(f"- {name}: {str(value).lower()}")
+    lines += ["", "## Stop conditions checked"]
+    for condition in proof["stop_conditions_checked"]:
+        lines.append(f"- {condition}")
+    lines += ["", "## Notes", proof["notes"], "", f"Generated: {proof['generated_utc']}", ""]
+    return "\n".join(lines)
+
+
+def build_phase_08c_no_writeback_no_raw_financial_output_proof(
+    *,
+    db_path: str | None = None,
+    out_dir: str | None = None,
+    evidence_dir: str | None = None,
+) -> dict[str, Any]:
+    """Phase 08C no-writeback / no-raw-financial-output safety proof (read-only, deterministic).
+
+    Extends the second-brain safety scan over the Phase 08C financial modules, the ten V35 tables,
+    and the 08C evidence directory; writes ``no-writeback-no-raw-financial-output-proof.json`` (+
+    ``.md``) to ``out_dir``. Fail-closed: ``proof_passed`` is False on any module mutation finding,
+    guard violation / absent table, content leak, evidence secret, or failed confirmation.
+    """
+    import json
+
+    generated_utc = _now()
+    repo_root = PathPolicy().resolve_repo_root()
+    sha = _get_git_sha()
+    SQLiteMigrator(db_path).apply()
+    schema_version = _get_schema_version(db_path)
+    conn = get_connection(db_path)
+
+    out_dir = out_dir or f"docs/evidence/{_PHASE_08C_EVIDENCE_SUBDIR}"
+    evidence_subdir = evidence_dir or _PHASE_08C_EVIDENCE_SUBDIR
+
+    # 1. Static mutation scan over the 08C financial modules (subset of the second-brain walk).
+    financial_rels = [
+        p for p in _enumerate_second_brain_modules(repo_root)
+        if Path(p).name in _PHASE_08C_MODULE_BASENAMES
+    ]
+    module_results = _scan_module_set(repo_root, financial_rels)
+    module_writeback = [f for r in module_results.values() for f in (r.get("writeback") or [])]
+    module_bad_imports = [f for r in module_results.values() for f in (r.get("bad_imports") or [])]
+    module_secrets = [f for r in module_results.values() for f in (r.get("secrets") or [])]
+    modules_ok = not (module_writeback or module_bad_imports or module_secrets)
+
+    # 2. Guard-column probe over the ten V35 tables (fail-closed on absent table).
+    guard_map, missing_tables = _derive_guard_map(conn, _PHASE_08C_TABLES)
+    guards = _probe_table_guards(conn, guard_map)
+    guard_violations = list(guards["violations"]) + missing_tables
+    guards_ok = not guard_violations
+
+    # 3. Content-leak scan over the 08C tables.
+    content = _scan_table_contents(conn, _PHASE_08C_TABLES)
+    content_ok = not content["findings"]
+
+    # 4. Evidence raw/secret scan over the 08C evidence directory (CLI outputs persist here).
+    evidence = _scan_evidence_outputs(repo_root, evidence_subdir)
+    evidence_ok = not evidence["findings"]
+
+    # 5. Confirmations: each guard column declared =0 across every present table + clean scans.
+    present_tables = list(guard_map)
+
+    def _all_declare(col: str) -> bool:
+        return bool(present_tables) and all(col in guard_map[t] for t in present_tables)
+
+    confirmations: dict[str, bool] = {}
+    for name, cols in _PHASE_08C_ZERO_GUARDS.items():
+        confirmations[name] = guards_ok and all(_all_declare(c) for c in cols)
+    confirmations["no_external_writeback"] = (
+        confirmations["no_external_writeback"] and not module_writeback
+    )
+    confirmations["no_procore_mutation"] = (
+        confirmations["no_procore_mutation"] and not module_bad_imports
+    )
+    for name in (
+        "no_signed_or_download_urls",
+        "no_raw_financial_source_payload",
+        "no_raw_prompts_or_responses",
+    ):
+        confirmations[name] = confirmations[name] and content_ok and evidence_ok
+
+    confirmations_ok = all(confirmations.values())
+    proof_passed = bool(
+        modules_ok and guards_ok and content_ok and evidence_ok and confirmations_ok
+    )
+
+    checks_detail = {
+        "static_mutation_scan_08c_modules": {
+            "passed": modules_ok,
+            "scanned_modules": financial_rels,
+            "writeback_findings": module_writeback,
+            "bad_import_findings": module_bad_imports,
+            "secret_findings": module_secrets,
+        },
+        "guard_column_probe_08c_tables": {
+            "passed": guards_ok,
+            "tables": guards["tables"],
+            "violations": guard_violations,
+        },
+        "content_leak_scan_08c_tables": {
+            "passed": content_ok,
+            "findings": content["findings"],
+            "scanned_tables": content["scanned"],
+        },
+        "evidence_raw_secret_scan_08c": {
+            "passed": evidence_ok,
+            "findings": evidence["findings"],
+            "scanned_dir": evidence["scanned_dir"],
+        },
+    }
+
+    proof: dict[str, Any] = {
+        "command": "second-brain data-quality phase-08c-no-writeback-proof",
+        "ok": proof_passed,
+        "proof_passed": proof_passed,
+        "phase": "08C",
+        "advisory_only": True,
+        "generated_utc": generated_utc,
+        "repo_sha": sha,
+        "schema_version": schema_version,
+        "scanned_modules": financial_rels,
+        "scanned_tables": list(_PHASE_08C_TABLES),
+        "checks_detail": checks_detail,
+        "confirmations": confirmations,
+        "guardrails": {
+            "local_first": True,
+            "read_only": True,
+            "no_external_writeback": True,
+            "no_procore_mutation": True,
+            "no_raw_financial_source_payload": True,
+            "no_raw_prompts_or_responses": True,
+            "no_signed_or_download_urls": True,
+            "no_payment_or_claim_or_entitlement_decisions": True,
+            "money_never_binary_float": True,
+            "advisory_only": True,
+            "fail_closed": True,
+        },
+        "stop_conditions_checked": [
+            "no_external_writeback_in_08c_modules_or_tables",
+            "no_procore_or_http_mutation_imports_in_08c_modules",
+            "no_raw_financial_source_payload_persisted",
+            "no_raw_prompts_or_responses_persisted",
+            "no_signed_or_download_urls_persisted",
+            "no_payment_claim_or_entitlement_decisions",
+            "no_secrets_or_raw_in_08c_tables_or_evidence",
+            "fail_closed_on_absent_expected_table",
+        ],
+        "notes": (
+            "Extends the second-brain no-writeback safety proof over Phase 08C: static mutation scan "
+            "of the financial modules, guard-column + content-leak scan of the ten V35 tables, and a "
+            "raw/secret scan of the 08C evidence directory (which holds the read-only operator CLI "
+            "outputs). Advisory review aid only. Findings record locations/labels only, never raw "
+            "values. Fail-closed on any finding or absent expected table."
+        ),
+    }
+
+    json_path = Path(out_dir) / "no-writeback-no-raw-financial-output-proof.json"
+    md_path = Path(out_dir) / "no-writeback-no-raw-financial-output-proof.md"
+    proof["proof_json_path"] = str(json_path)
+    proof["proof_path"] = str(md_path)
+
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    with open(json_path, "w") as handle:
+        json.dump(proof, handle, indent=2, default=str)
+    with open(md_path, "w") as handle:
+        handle.write(_render_phase_08c_no_writeback_md(proof))
+
+    return proof
