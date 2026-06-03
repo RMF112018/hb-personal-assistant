@@ -132,6 +132,34 @@ class _RateLimitOnChildTransport(_ManyParentsTransport):
         return super().__call__(method, url, headers, params)
 
 
+class _RateLimitThenSuccessChildTransport(_ManyParentsTransport):
+    """One child GET gets a 429 once, then succeeds when retried."""
+
+    def __init__(self, parent_ids: List[int], rate_limited_parent_id: int) -> None:
+        super().__init__(parent_ids)
+        self.rate_limited_parent_id = rate_limited_parent_id
+        self._rate_limit_returned = False
+
+    def __call__(
+        self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]
+    ) -> _FakeResponse:
+        if "/commitment_contracts/" in url and url.endswith("/line_items"):
+            pid = url.split("/commitment_contracts/")[1].split("/")[0]
+            self.calls.append(url)
+            self.child_calls.append(pid)
+            if int(pid) == self.rate_limited_parent_id and not self._rate_limit_returned:
+                self._rate_limit_returned = True
+                return _FakeResponse(
+                    {"error": "rate_limited"},
+                    status_code=429,
+                    headers={"Retry-After": "2"},
+                )
+            return _FakeResponse(
+                {"data": [{"id": int(pid) * 10 + 1, "amount": "100.00"}]}
+            )
+        return super().__call__(method, url, headers, params)
+
+
 class _EmptyChildTransport:
     """Generic N+1 transport: parent list has many rows, every child list is empty."""
 
@@ -162,6 +190,27 @@ class _EmptyChildTransport:
             return _FakeResponse({"data": rows})
         self.child_calls.append(url)
         return _FakeResponse({"data": []})
+
+
+class _RateLimitThenSuccessParentTransport(_ManyParentsTransport):
+    """The parent list gets one 429 without Retry-After, then succeeds."""
+
+    def __init__(self, parent_ids: List[int]) -> None:
+        super().__init__(parent_ids)
+        self._parent_rate_limit_returned = False
+
+    def __call__(
+        self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]
+    ) -> _FakeResponse:
+        if url.rstrip("/").endswith("/commitment_contracts"):
+            self.calls.append(url)
+            if not self._parent_rate_limit_returned:
+                self._parent_rate_limit_returned = True
+                return _FakeResponse({"error": "rate_limited"}, status_code=429)
+            page = int((params or {}).get("page", 1))
+            body = [{"id": p} for p in self.parent_ids] if page == 1 else []
+            return _FakeResponse({"data": body})
+        return super().__call__(method, url, headers, params)
 
 
 def _run(db: Path, transport: Any, *, max_child_requests: int) -> Dict[str, Any]:
@@ -200,6 +249,8 @@ def test_bounded_fanout_caps_child_requests(monkeypatch: pytest.MonkeyPatch) -> 
         "rate_limit_stopped": False,
         "rate_limit_parent_id": None,
         "child_request_delay_seconds": 0.0,
+        "rate_limit_wait_count": 0,
+        "rate_limit_sleep_seconds_total": 0.0,
     }
     assert "n1_child_cap_reached" in receipt["reason_codes"]
     # only the capped parents' children landed (501, 502).
@@ -271,6 +322,82 @@ def test_rate_limited_child_stops_remaining_fanout(monkeypatch: pytest.MonkeyPat
     assert transport.child_calls == ["501", "502", "503"]
     rows = _child_rows(db)
     assert {r["parent_procore_id"] for r in rows} == {"501", "502"}
+
+
+def test_wait_on_rate_limit_retries_same_child_then_resumes_sequence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup(monkeypatch)
+    db = _db()
+    sleeps: List[float] = []
+    transport = _RateLimitThenSuccessChildTransport(
+        [501, 502, 503, 504], rate_limited_parent_id=503
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint=_ENDPOINT,
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=50,
+        max_child_requests=50,
+        wait_on_rate_limit=True,
+        rate_limit_fallback_sleep_seconds=3660.0,
+        max_rate_limit_wait_cycles=1,
+        sleep_fn=sleeps.append,
+        db_path=db,
+        transport=transport,
+    )
+
+    fan = receipt["n1_fanout"]
+    assert receipt["state"] == "success"
+    assert receipt["rate_limit_wait_count"] == 1
+    assert receipt["rate_limit_sleep_seconds_total"] == 2.0
+    assert receipt["last_retry_after"] == 2
+    assert sleeps == [2.0]
+    assert fan["child_request_count"] == 5
+    assert fan["child_error_count"] == 0
+    assert fan["rate_limit_stopped"] is False
+    assert "n1_child_rate_limit_waited" in receipt["reason_codes"]
+    assert transport.child_calls == ["501", "502", "503", "503", "504"]
+    rows = _child_rows(db)
+    assert {r["parent_procore_id"] for r in rows} == {"501", "502", "503", "504"}
+
+
+def test_wait_on_rate_limit_uses_fallback_for_parent_list_without_retry_after(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup(monkeypatch)
+    db = _db()
+    sleeps: List[float] = []
+    transport = _RateLimitThenSuccessParentTransport([501])
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint=_ENDPOINT,
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=50,
+        max_child_requests=50,
+        wait_on_rate_limit=True,
+        rate_limit_fallback_sleep_seconds=3660.0,
+        max_rate_limit_wait_cycles=1,
+        sleep_fn=sleeps.append,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["rate_limit_wait_count"] == 1
+    assert receipt["rate_limit_sleep_seconds_total"] == 3660.0
+    assert sleeps == [3660.0]
+    assert "parent_list_rate_limit_waited" in receipt["reason_codes"]
+    assert len([url for url in transport.calls if url.endswith("/commitment_contracts")]) == 2
+    assert receipt["n1_fanout"]["child_request_count"] == 1
 
 
 @pytest.mark.parametrize(

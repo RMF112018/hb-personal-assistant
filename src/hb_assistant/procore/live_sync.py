@@ -607,6 +607,10 @@ def _build_receipt(
     child_errors_count: int = 0,
     projection_error_count: int = 0,
     n1_fanout: Optional[Dict[str, Any]] = None,
+    wait_on_rate_limit: bool = False,
+    rate_limit_wait_count: int = 0,
+    rate_limit_sleep_seconds_total: float = 0.0,
+    max_rate_limit_wait_cycles: int = 0,
 ) -> Dict[str, Any]:
     return {
         "receipt_id": receipt_id,
@@ -626,6 +630,10 @@ def _build_receipt(
         "attempt_count": attempt_count,
         "retry_count": retry_count,
         "last_retry_after": last_retry_after,
+        "wait_on_rate_limit": wait_on_rate_limit,
+        "rate_limit_wait_count": rate_limit_wait_count,
+        "rate_limit_sleep_seconds_total": rate_limit_sleep_seconds_total,
+        "max_rate_limit_wait_cycles": max_rate_limit_wait_cycles,
         "retrieved_count": retrieved_count,
         "normalized_count": normalized_count,
         "sqlite_upserted_count": sqlite_upserted_count,
@@ -664,6 +672,10 @@ def run_live_sync(
     max_items: int = DEFAULT_MAX_ITEMS,
     max_child_requests: int = DEFAULT_MAX_CHILD_REQUESTS,
     child_request_delay_seconds: float = DEFAULT_CHILD_REQUEST_DELAY_SECONDS,
+    wait_on_rate_limit: bool = False,
+    rate_limit_fallback_sleep_seconds: float = 3660.0,
+    max_rate_limit_wait_cycles: int = 1,
+    sleep_fn: Callable[[float], None] = time.sleep,
     parent_id: Optional[str] = None,
     mode_hint: Optional[str] = None,
     db_path: Optional[Path] = None,
@@ -691,9 +703,27 @@ def run_live_sync(
     attempt_count = 0
     retry_count = 0
     last_retry_after: Optional[int] = None
+    rate_limit_wait_count = 0
+    rate_limit_sleep_seconds_total = 0.0
     retrieved_count = 0
     normalized_count = 0
     sqlite_upserted_count = 0
+
+    def _sleep_for_rate_limit(exc: ProcoreRateLimitError, reason: str) -> bool:
+        nonlocal last_retry_after, rate_limit_wait_count, rate_limit_sleep_seconds_total
+        if not wait_on_rate_limit:
+            return False
+        if rate_limit_wait_count >= max_rate_limit_wait_cycles:
+            return False
+        last_retry_after = exc.retry_after
+        delay = float(exc.retry_after) if exc.retry_after is not None else float(rate_limit_fallback_sleep_seconds)
+        if delay < 0:
+            delay = 0.0
+        reason_codes.append(reason)
+        rate_limit_wait_count += 1
+        rate_limit_sleep_seconds_total += delay
+        sleep_fn(delay)
+        return True
 
     # Ensure V6 schema is present before any count/upsert path runs.
     from hb_assistant.store.migrator import SQLiteMigrator
@@ -941,20 +971,31 @@ def run_live_sync(
         items = [{"id": direct_parent_id}]
     try:
         if not direct_parent_id:
-            items_iter = client.paginate(
-                path=path,
-                params=get_params or None,
-                per_page=min(max_items, 100),
-                max_pages=max_pages,
-                max_items=max_items,
-                retry_policy=_LIVE_SYNC_RETRY_POLICY,
-            )
-            for item in items_iter:
-                request_count = max(request_count, 1)
-                items.append(item)
-                retrieved_count += 1
-                if retrieved_count >= max_items:
+            while True:
+                candidate_items: List[Dict[str, Any]] = []
+                candidate_retrieved_count = 0
+                try:
+                    items_iter = client.paginate(
+                        path=path,
+                        params=get_params or None,
+                        per_page=min(max_items, 100),
+                        max_pages=max_pages,
+                        max_items=max_items,
+                        retry_policy=_LIVE_SYNC_RETRY_POLICY,
+                    )
+                    for item in items_iter:
+                        request_count = max(request_count, 1)
+                        candidate_items.append(item)
+                        candidate_retrieved_count += 1
+                        if candidate_retrieved_count >= max_items:
+                            break
+                    items = candidate_items
+                    retrieved_count = candidate_retrieved_count
                     break
+                except ProcoreRateLimitError as exc:
+                    if _sleep_for_rate_limit(exc, "parent_list_rate_limit_waited"):
+                        continue
+                    raise
     except ProcoreAuthRequired:
         reason_codes.append("token_provider_unavailable")
         attempt_count = transport_calls["count"]
@@ -1005,6 +1046,10 @@ def run_live_sync(
             completed_at=_now_utc(),
             evidence_path=evidence_path,
             redacted_errors=redacted_errors,
+            wait_on_rate_limit=wait_on_rate_limit,
+            rate_limit_wait_count=rate_limit_wait_count,
+            rate_limit_sleep_seconds_total=rate_limit_sleep_seconds_total,
+            max_rate_limit_wait_cycles=max_rate_limit_wait_cycles,
         )
     except ProcoreAPIError as exc:
         attempt_count = transport_calls["count"]
@@ -1061,6 +1106,10 @@ def run_live_sync(
             completed_at=_now_utc(),
             evidence_path=evidence_path,
             redacted_errors=redacted_errors,
+            wait_on_rate_limit=wait_on_rate_limit,
+            rate_limit_wait_count=rate_limit_wait_count,
+            rate_limit_sleep_seconds_total=rate_limit_sleep_seconds_total,
+            max_rate_limit_wait_cycles=max_rate_limit_wait_cycles,
         )
 
     # Procore's v1.1 meetings endpoint returns GROUPED responses:
@@ -1113,41 +1162,49 @@ def run_live_sync(
                 f"/schedules/{schedule_id}/activities"
             )
             if child_request_delay_seconds > 0 and idx > 0:
-                time.sleep(child_request_delay_seconds)
-            try:
-                activity_iter = list(
-                    client.paginate(
-                        activities_path,
-                        per_page=100,
-                        max_pages=max_pages,
-                        max_items=max_items,
-                        retry_policy=_LIVE_SYNC_RETRY_POLICY,
+                sleep_fn(child_request_delay_seconds)
+            while True:
+                try:
+                    activity_iter = list(
+                        client.paginate(
+                            activities_path,
+                            per_page=100,
+                            max_pages=max_pages,
+                            max_items=max_items,
+                            retry_policy=_LIVE_SYNC_RETRY_POLICY,
+                        )
                     )
-                )
-            except ProcoreRateLimitError as exc:
-                last_retry_after = exc.retry_after
-                reason_codes.append("activities_rate_limited")
-                redacted_errors.append(
-                    {
-                        "detail_transport_error": exc.code or "rate_limited",
-                        "status": exc.status,
-                        "schedule_id": schedule_id,
-                    }
-                )
-                break
-            except ProcoreAPIError as exc:
-                redacted_errors.append(
-                    {
-                        "detail_transport_error": exc.code,
-                        "status": exc.status,
-                        "schedule_id": schedule_id,
-                    }
-                )
-                continue
-            except Exception:  # noqa: BLE001
-                redacted_errors.append(
-                    {"detail_transport_error": "unexpected", "schedule_id": schedule_id}
-                )
+                    break
+                except ProcoreRateLimitError as exc:
+                    if _sleep_for_rate_limit(exc, "activities_rate_limit_waited"):
+                        continue
+                    last_retry_after = exc.retry_after
+                    reason_codes.append("activities_rate_limited")
+                    redacted_errors.append(
+                        {
+                            "detail_transport_error": exc.code or "rate_limited",
+                            "status": exc.status,
+                            "schedule_id": schedule_id,
+                        }
+                    )
+                    break
+                except ProcoreAPIError as exc:
+                    redacted_errors.append(
+                        {
+                            "detail_transport_error": exc.code,
+                            "status": exc.status,
+                            "schedule_id": schedule_id,
+                        }
+                    )
+                    break
+                except Exception:  # noqa: BLE001
+                    redacted_errors.append(
+                        {"detail_transport_error": "unexpected", "schedule_id": schedule_id}
+                    )
+                    break
+            if redacted_errors and redacted_errors[-1].get("schedule_id") == schedule_id:
+                if redacted_errors[-1].get("status") == 429:
+                    break
                 continue
             for activity_raw in activity_iter:
                 if isinstance(activity_raw, dict):
@@ -1175,41 +1232,49 @@ def run_live_sync(
                 continue
             detail_path = f"/rest/v1.1/projects/{procore_project_id}/meetings/{meeting_id}"
             if child_request_delay_seconds > 0 and idx > 0:
-                time.sleep(child_request_delay_seconds)
-            try:
-                detail_iter = list(
-                    client.paginate(
-                        detail_path,
-                        per_page=1,
-                        max_pages=1,
-                        max_items=1,
-                        retry_policy=_LIVE_SYNC_RETRY_POLICY,
+                sleep_fn(child_request_delay_seconds)
+            while True:
+                try:
+                    detail_iter = list(
+                        client.paginate(
+                            detail_path,
+                            per_page=1,
+                            max_pages=1,
+                            max_items=1,
+                            retry_policy=_LIVE_SYNC_RETRY_POLICY,
+                        )
                     )
-                )
-            except ProcoreRateLimitError as exc:
-                last_retry_after = exc.retry_after
-                reason_codes.append("meeting_detail_rate_limited")
-                redacted_errors.append(
-                    {
-                        "detail_transport_error": exc.code or "rate_limited",
-                        "status": exc.status,
-                        "meeting_id": meeting_id,
-                    }
-                )
-                break
-            except ProcoreAPIError as exc:
-                redacted_errors.append(
-                    {
-                        "detail_transport_error": exc.code,
-                        "status": exc.status,
-                        "meeting_id": meeting_id,
-                    }
-                )
-                continue
-            except Exception:  # noqa: BLE001
-                redacted_errors.append(
-                    {"detail_transport_error": "unexpected", "meeting_id": meeting_id}
-                )
+                    break
+                except ProcoreRateLimitError as exc:
+                    if _sleep_for_rate_limit(exc, "meeting_detail_rate_limit_waited"):
+                        continue
+                    last_retry_after = exc.retry_after
+                    reason_codes.append("meeting_detail_rate_limited")
+                    redacted_errors.append(
+                        {
+                            "detail_transport_error": exc.code or "rate_limited",
+                            "status": exc.status,
+                            "meeting_id": meeting_id,
+                        }
+                    )
+                    break
+                except ProcoreAPIError as exc:
+                    redacted_errors.append(
+                        {
+                            "detail_transport_error": exc.code,
+                            "status": exc.status,
+                            "meeting_id": meeting_id,
+                        }
+                    )
+                    break
+                except Exception:  # noqa: BLE001
+                    redacted_errors.append(
+                        {"detail_transport_error": "unexpected", "meeting_id": meeting_id}
+                    )
+                    break
+            if redacted_errors and redacted_errors[-1].get("meeting_id") == meeting_id:
+                if redacted_errors[-1].get("status") == 429:
+                    break
                 continue
             if detail_iter:
                 detail_items.append(detail_iter[0])
@@ -1265,43 +1330,51 @@ def run_live_sync(
             # parent-derived contract_id (see _child_query_params).
             child_params = _child_query_params(adapter, str(procore_project_id), parent_summary)
             if child_request_delay_seconds > 0 and child_request_count > 0:
-                time.sleep(child_request_delay_seconds)
-            child_request_count += 1  # counted even on error (a GET was attempted)
-            try:
-                child_iter = list(
-                    client.paginate(
-                        child_path,
-                        params=child_params,
-                        per_page=min(max_items, 100),
-                        max_pages=max_pages,
-                        max_items=max_items,
-                        retry_policy=_LIVE_SYNC_RETRY_POLICY,
+                sleep_fn(child_request_delay_seconds)
+            while True:
+                child_request_count += 1  # counted even on error (a GET was attempted)
+                try:
+                    child_iter = list(
+                        client.paginate(
+                            child_path,
+                            params=child_params,
+                            per_page=min(max_items, 100),
+                            max_pages=max_pages,
+                            max_items=max_items,
+                            retry_policy=_LIVE_SYNC_RETRY_POLICY,
+                        )
                     )
-                )
-            except ProcoreRateLimitError as exc:
-                child_error_count += 1
-                rate_limit_stopped = True
-                rate_limit_parent_id = str(parent_id)
-                last_retry_after = exc.retry_after
-                reason_codes.append("n1_child_rate_limited")
-                child_skipped_count += parent_count - idx - 1
-                redacted_errors.append(
-                    {
-                        "detail_transport_error": exc.code or "rate_limited",
-                        "status": exc.status,
-                        token: parent_id,
-                    }
-                )
-                break
-            except ProcoreAPIError as exc:
-                child_error_count += 1
-                redacted_errors.append(
-                    {"detail_transport_error": exc.code, "status": exc.status, token: parent_id}
-                )
-                continue
-            except Exception:  # noqa: BLE001
-                child_error_count += 1
-                redacted_errors.append({"detail_transport_error": "unexpected", token: parent_id})
+                    break
+                except ProcoreRateLimitError as exc:
+                    if _sleep_for_rate_limit(exc, "n1_child_rate_limit_waited"):
+                        continue
+                    child_error_count += 1
+                    rate_limit_stopped = True
+                    rate_limit_parent_id = str(parent_id)
+                    last_retry_after = exc.retry_after
+                    reason_codes.append("n1_child_rate_limited")
+                    child_skipped_count += parent_count - idx - 1
+                    redacted_errors.append(
+                        {
+                            "detail_transport_error": exc.code or "rate_limited",
+                            "status": exc.status,
+                            token: parent_id,
+                        }
+                    )
+                    break
+                except ProcoreAPIError as exc:
+                    child_error_count += 1
+                    redacted_errors.append(
+                        {"detail_transport_error": exc.code, "status": exc.status, token: parent_id}
+                    )
+                    break
+                except Exception:  # noqa: BLE001
+                    child_error_count += 1
+                    redacted_errors.append({"detail_transport_error": "unexpected", token: parent_id})
+                    break
+            if redacted_errors and redacted_errors[-1].get(token) == parent_id:
+                if redacted_errors[-1].get("status") == 429:
+                    break
                 continue
             for child_raw in child_iter:
                 if isinstance(child_raw, dict):
@@ -1326,6 +1399,8 @@ def run_live_sync(
             "rate_limit_stopped": rate_limit_stopped,
             "rate_limit_parent_id": rate_limit_parent_id,
             "child_request_delay_seconds": child_request_delay_seconds,
+            "rate_limit_wait_count": rate_limit_wait_count,
+            "rate_limit_sleep_seconds_total": rate_limit_sleep_seconds_total,
         }
 
     # Normalize + upsert. After each parent upsert, perform an N+1 child GET if
@@ -1806,6 +1881,10 @@ def run_live_sync(
         child_errors_count=child_errors_count,
         projection_error_count=projection_error_count,
         n1_fanout=n1_fanout,
+        wait_on_rate_limit=wait_on_rate_limit,
+        rate_limit_wait_count=rate_limit_wait_count,
+        rate_limit_sleep_seconds_total=rate_limit_sleep_seconds_total,
+        max_rate_limit_wait_cycles=max_rate_limit_wait_cycles,
     )
 
 
