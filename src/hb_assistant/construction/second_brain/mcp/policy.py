@@ -33,10 +33,6 @@ _DEFERRED_SERVE_BLOCKERS = (
     "no_raw_access_proof_pending_prompt_13",
     "no_writeback_proof_pending_prompt_14",
 )
-# The policy-gated tool broker exists (Prompt 04); the nine workflow wrappers it
-# dispatches to land in Prompt 05, so serving is still refused until then.
-_WRAPPERS_BLOCKER = "workflow_wrappers_not_implemented_prompt_05"
-
 _MCP_GUARDRAILS = {
     "local_first": True,
     "transport_stdio_only": True,
@@ -163,16 +159,22 @@ def build_mcp_status(*, db_path: str | None = None, persist: bool = True) -> dic
     startup = evaluate_startup_checks()
     mcp_sdk_available = importlib.util.find_spec("mcp") is not None
 
-    # The broker exists (Prompt 04) and loads the registries; the wrappers it dispatches
-    # to are Prompt 05, so no tool is runtime-callable yet.
+    # The broker (Prompt 04) and the nine workflow wrappers (Prompt 05) are wired; serving
+    # over stdio still waits on the Prompt 13/14 guard proofs (and the optional SDK).
+    from .wrappers import (
+        build_wrapper_registry,  # noqa: PLC0415 - avoid import cycle at module load
+    )
+
     try:
         allowed_tool_specs = len(load_allowed_tools())
         denied_actions = len(load_denied_actions())
+        tools_registered = len(build_wrapper_registry())
     except Exception:  # noqa: BLE001 - a missing registry is reported, not raised, by status
         allowed_tool_specs = 0
         denied_actions = 0
+        tools_registered = 0
 
-    serve_blockers: list[str] = [_WRAPPERS_BLOCKER, *_DEFERRED_SERVE_BLOCKERS]
+    serve_blockers: list[str] = list(_DEFERRED_SERVE_BLOCKERS)
     if not mcp_sdk_available:
         serve_blockers.append("mcp_sdk_not_installed")
     ready_to_serve = startup["foundation_ok"] and not serve_blockers
@@ -183,7 +185,7 @@ def build_mcp_status(*, db_path: str | None = None, persist: bool = True) -> dic
         "schema_version": LATEST_SCHEMA_VERSION,
         "foundation_ok": startup["foundation_ok"],
         "mcp_sdk_available": mcp_sdk_available,
-        "mcp_tools_registered": 0,
+        "mcp_tools_registered": tools_registered,
         "mcp_allowed_tool_specs": allowed_tool_specs,
         "mcp_denied_actions": denied_actions,
         "serve_blockers": serve_blockers,
@@ -209,7 +211,7 @@ def build_mcp_status(*, db_path: str | None = None, persist: bool = True) -> dic
         "foundation_ok": startup["foundation_ok"],
         "ready_to_serve": ready_to_serve,
         "mcp_sdk_available": mcp_sdk_available,
-        "mcp_tools_registered": 0,
+        "mcp_tools_registered": tools_registered,
         "mcp_allowed_tool_specs": allowed_tool_specs,
         "mcp_denied_actions": denied_actions,
         "checks": startup["checks"],

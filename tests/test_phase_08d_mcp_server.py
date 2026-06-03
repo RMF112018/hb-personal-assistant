@@ -22,8 +22,9 @@ from hb_assistant.construction.second_brain.mcp import (
     serve_stdio,
 )
 from hb_assistant.construction.second_brain.mcp.config_preview import _server_entry
-from hb_assistant.construction.second_brain.mcp.policy import _WRAPPERS_BLOCKER
 from hb_assistant.construction.second_brain.mcp.store import write_mcp_server_config_snapshot
+
+_GUARD_PROOF_BLOCKER = "no_raw_access_proof_pending_prompt_13"
 
 
 def test_startup_checks_foundation_passes_and_defers_guard_proofs() -> None:
@@ -46,12 +47,12 @@ def test_startup_checks_foundation_passes_and_defers_guard_proofs() -> None:
     assert set(report["deferred"]) == {"no_raw_access_proof", "no_writeback_proof"}
 
 
-def test_status_is_not_ready_to_serve_with_broker_blocker() -> None:
+def test_status_is_not_ready_to_serve_on_guard_proofs() -> None:
     status = build_mcp_status(persist=False)
     assert status["foundation_ok"] is True
     assert status["ready_to_serve"] is False
-    assert status["mcp_tools_registered"] == 0
-    assert _WRAPPERS_BLOCKER in status["serve_blockers"]
+    # Prompt 05: the nine workflow wrappers are registered.
+    assert status["mcp_tools_registered"] == 9
     assert "no_raw_access_proof_pending_prompt_13" in status["serve_blockers"]
     assert "no_writeback_proof_pending_prompt_14" in status["serve_blockers"]
     # SDK is an optional extra and absent in CI.
@@ -99,7 +100,7 @@ def test_serve_is_fail_closed_and_opens_nothing() -> None:
     result = serve_stdio()
     assert result["served"] is False
     assert result["ready_to_serve"] is False
-    assert _WRAPPERS_BLOCKER in result["reasons"]
+    assert _GUARD_PROOF_BLOCKER in result["reasons"]
     assert result["transport"] == "stdio"
 
 

@@ -26,6 +26,21 @@ from .registry import load_allowed_tools, load_denied_actions
 
 EVIDENCE_DIR = "docs/evidence/construction-intelligence-phase-08d-mcp-bridge"
 PROOF_JSON = "mcp-tool-broker-proof.json"
+CONTRACT_PROOF_JSON = "mcp-tool-contract-proof.json"
+
+# Fields a tool result must never carry (raw content / determinations).
+_FORBIDDEN_RESULT_FIELDS = (
+    "raw_body",
+    "raw_prompt",
+    "raw_response",
+    "raw_sql",
+    "raw_source_content",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret",
+    "final_determination",
+)
 
 _GUARD_COLUMNS = (
     "raw_email_body_persisted",
@@ -64,6 +79,19 @@ def _ok_wrapper(_args: dict[str, Any]) -> dict[str, Any]:
 def _raw_leaking_wrapper(_args: dict[str, Any]) -> dict[str, Any]:
     # Deliberately tries to leak a forbidden raw pattern (a URL) — must be blocked.
     return {"status": "ok", "results": [{"link": "https://example.com/raw"}]}
+
+
+def _collect_keys(obj: Any) -> set[str]:
+    """Recursively collect every dict key in a nested structure (exact-match safety check)."""
+    keys: set[str] = set()
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            keys.add(str(key))
+            keys |= _collect_keys(value)
+    elif isinstance(obj, list):
+        for item in obj:
+            keys |= _collect_keys(item)
+    return keys
 
 
 def _guards_all_zero(conn: sqlite3.Connection, table: str) -> bool:
@@ -190,5 +218,104 @@ def build_mcp_tool_broker_proof(
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
         proof["proof_path"] = str(out_dir / PROOF_JSON)
+
+    return proof
+
+
+def build_mcp_allowed_tools_proof(
+    *,
+    evidence_dir: str | None = None,
+    write_evidence: bool = True,
+) -> dict[str, Any]:
+    """Dispatch all nine allowed tools through the real broker and attest the contract shape.
+
+    Runs against a temporary database (empty → wrappers degrade safely but stay allowed),
+    proving each tool is workflow-only: returns the bounded contract envelope, leaks no raw
+    fields, and writes a metadata-only receipt. Writes ``mcp-tool-contract-proof.json``.
+    """
+    # Imported lazily to avoid a module import cycle (wrappers import this module).
+    from . import build_default_broker  # noqa: PLC0415
+    from .registry import load_allowed_tools
+
+    allowed = load_allowed_tools()
+    tool_report: dict[str, Any] = {}
+    all_pass = True
+
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "tools.db")
+        broker = build_default_broker(db_path=db, persist=True)
+        sample_args = {
+            "hb_query": {"question": "status?"},
+            "hb_memory_feedback": {"target_id": "cand-test", "feedback_class": "accept"},
+        }
+        for name in sorted(allowed):
+            env = broker.dispatch(name, sample_args.get(name, {}))
+            result = env.get("result") if isinstance(env, dict) else None
+            has_envelope = all(
+                k in env for k in ("status", "provenance", "policy_posture", "receipt_id")
+            )
+            keys = _collect_keys(env)
+            forbidden_hit = sorted(set(_FORBIDDEN_RESULT_FIELDS) & keys)
+            ok = bool(
+                env.get("decision") == "allowed"
+                and has_envelope
+                and env.get("receipt_id")
+                and not forbidden_hit
+                and isinstance(result, dict)
+            )
+            all_pass = all_pass and ok
+            tool_report[name] = {
+                "decision": env.get("decision"),
+                "wrapper": allowed[name]["wrapper"],
+                "status": (result or {}).get("status"),
+                "output_classification": env.get("output_classification"),
+                "result_count": env.get("result_count"),
+                "receipt_id_present": bool(env.get("receipt_id")),
+                "envelope_complete": has_envelope,
+                "forbidden_fields": forbidden_hit,
+                "pass": ok,
+            }
+
+        conn = sqlite3.connect(db)
+        receipts = conn.execute(
+            "SELECT COUNT(*) FROM second_brain_mcp_tool_call_receipts"
+        ).fetchone()[0]
+        guards_clean = _guards_all_zero(conn, "second_brain_mcp_tool_call_receipts")
+
+    proof_passed = bool(all_pass and receipts == len(allowed) and guards_clean)
+    proof: dict[str, Any] = {
+        "proof": "phase_08d_mcp_allowed_tools",
+        "phase": "08D",
+        "proof_passed": proof_passed,
+        "tool_count": len(allowed),
+        "tools": tool_report,
+        "tool_call_receipts": receipts,
+        "metadata_only": {
+            "all_guard_columns_zero": guards_clean,
+            "no_forbidden_result_fields": all(
+                not r["forbidden_fields"] for r in tool_report.values()
+            ),
+        },
+        "contract": {
+            "required_envelope": ["status", "provenance", "policy_posture", "receipt_id"],
+            "bounded_output": True,
+            "workflow_wrapper_only": True,
+        },
+        "guardrails": {
+            "no_raw_content": True,
+            "no_writeback_external": True,
+            "no_final_determination": True,
+            "offline_mock_first": True,
+        },
+    }
+
+    serialized = json.dumps(proof, indent=2, default=str)
+    _assert_no_raw(serialized, "mcp allowed-tools contract proof")
+
+    if write_evidence:
+        out_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / CONTRACT_PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
+        proof["proof_path"] = str(out_dir / CONTRACT_PROOF_JSON)
 
     return proof

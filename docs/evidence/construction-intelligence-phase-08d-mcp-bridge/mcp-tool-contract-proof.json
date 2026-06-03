@@ -1,0 +1,128 @@
+{
+  "proof": "phase_08d_mcp_allowed_tools",
+  "phase": "08D",
+  "proof_passed": true,
+  "tool_count": 9,
+  "tools": {
+    "hb_get_daily_brief": {
+      "decision": "allowed",
+      "wrapper": "mcp_get_daily_brief_wrapper",
+      "status": "ok",
+      "output_classification": "bounded_summary",
+      "result_count": 1,
+      "receipt_id_present": true,
+      "envelope_complete": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "hb_memory_feedback": {
+      "decision": "allowed",
+      "wrapper": "mcp_memory_feedback_wrapper",
+      "status": "ok",
+      "output_classification": "bounded_summary",
+      "result_count": 1,
+      "receipt_id_present": true,
+      "envelope_complete": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "hb_memory_review_list": {
+      "decision": "allowed",
+      "wrapper": "mcp_memory_review_list_wrapper",
+      "status": "ok",
+      "output_classification": "bounded_summary",
+      "result_count": 0,
+      "receipt_id_present": true,
+      "envelope_complete": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "hb_open_daily_brief": {
+      "decision": "allowed",
+      "wrapper": "mcp_open_daily_brief_wrapper",
+      "status": "ok",
+      "output_classification": "bounded_summary",
+      "result_count": 1,
+      "receipt_id_present": true,
+      "envelope_complete": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "hb_query": {
+      "decision": "allowed",
+      "wrapper": "mcp_query_wrapper",
+      "status": "degraded",
+      "output_classification": "bounded_summary",
+      "result_count": 1,
+      "receipt_id_present": true,
+      "envelope_complete": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "hb_research_packet": {
+      "decision": "allowed",
+      "wrapper": "mcp_research_packet_wrapper",
+      "status": "degraded",
+      "output_classification": "bounded_summary",
+      "result_count": 1,
+      "receipt_id_present": true,
+      "envelope_complete": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "hb_review_load_status": {
+      "decision": "allowed",
+      "wrapper": "mcp_review_load_status_wrapper",
+      "status": "ok",
+      "output_classification": "bounded_summary",
+      "result_count": 1,
+      "receipt_id_present": true,
+      "envelope_complete": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "hb_status": {
+      "decision": "allowed",
+      "wrapper": "mcp_status_wrapper",
+      "status": "ok",
+      "output_classification": "bounded_summary",
+      "result_count": 1,
+      "receipt_id_present": true,
+      "envelope_complete": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "hb_validation_status": {
+      "decision": "allowed",
+      "wrapper": "mcp_validation_status_wrapper",
+      "status": "ok",
+      "output_classification": "bounded_summary",
+      "result_count": 1,
+      "receipt_id_present": true,
+      "envelope_complete": true,
+      "forbidden_fields": [],
+      "pass": true
+    }
+  },
+  "tool_call_receipts": 9,
+  "metadata_only": {
+    "all_guard_columns_zero": true,
+    "no_forbidden_result_fields": true
+  },
+  "contract": {
+    "required_envelope": [
+      "status",
+      "provenance",
+      "policy_posture",
+      "receipt_id"
+    ],
+    "bounded_output": true,
+    "workflow_wrapper_only": true
+  },
+  "guardrails": {
+    "no_raw_content": true,
+    "no_writeback_external": true,
+    "no_final_determination": true,
+    "offline_mock_first": true
+  }
+}
