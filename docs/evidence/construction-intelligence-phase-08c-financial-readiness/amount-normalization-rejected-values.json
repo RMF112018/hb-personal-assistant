@@ -1,0 +1,22 @@
+{
+  "generated_utc": "2026-06-03T14:06:39.290247Z",
+  "repo_head": "06241a7fcbb3ceea44d8ec7f5351dd358a240e6a",
+  "rejected_count": 2,
+  "items": [
+    {
+      "source_field_path": "procore_financial_budget_changes.adjustment_amount",
+      "source_value_hash": "e2f79e5b60330bba4c289962231b6ba2957d0b14e7deb3110417003c79dea635",
+      "parse_status": "rejected",
+      "rejection_reason": "decimal_parse_failed",
+      "advisory": "advisory review aid only"
+    },
+    {
+      "source_field_path": "procore_financial_amount_facts.amount_value",
+      "source_value_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "parse_status": "missing",
+      "rejection_reason": "source_value_missing_or_empty",
+      "advisory": "advisory review aid only"
+    }
+  ],
+  "note": "rejected cases for audit; advisory only. Source values preserved in existing procore tables."
+}

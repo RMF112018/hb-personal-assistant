@@ -1,12 +1,14 @@
 """Phase 05 shared financial normalization + redaction utilities.
 
 The single toolkit the per-endpoint financial normalizers (Prompts 04-09) and
-the live-sync dispatch reuse. Posture (Phase 04B carried forward):
+the live-sync dispatch reuse. Posture (Phase 04B carried forward; 08C hardened):
 
 - **Money / quantities / rates** are preserved as decimal-safe **strings** —
-  ``parse_amount`` never coerces through ``float``/``Decimal`` in a way that
-  drops trailing zeros or sign, so source precision survives for aggregation
-  and comparison.
+  Phase 08C: ``parse_amount`` and helpers are Decimal-only. float input is
+  prohibited (raises) for normalization/amount decisions to prevent binary
+  float precision loss. Source str preserved verbatim; ints exact. No float()
+  or JSON number coercion for money in 08C paths. canonical_decimal_text +
+  minor_units (INTEGER when scale known) only.
 - **Currency config, WBS / cost-code identifiers and labels** are structural
   business facts and are kept.
 - **Person PII** (name / login / email) is hashed (``person_hash_summary`` /
@@ -19,12 +21,16 @@ the live-sync dispatch reuse. Posture (Phase 04B carried forward):
 
 This module is pure (no DB / no I/O). It re-exposes the shared
 ``hashing`` / ``entities`` primitives so callers have one import.
+08C amount normalization discovers fields from P02 inventory JSONs,
+classifies per phase_08c_amount_normalization_contract (7 statuses),
+stores canonical + hash + ref + reason + advisory in V35 substrate.
 """
 
 from __future__ import annotations
 
 import html
 import re
+from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from .entities import (
@@ -49,10 +55,12 @@ _PEM_RE = re.compile(r"-----BEGIN[^\n]*")
 def parse_amount(value: Any) -> Optional[str]:
     """Return a decimal-safe string for a money/quantity/rate value.
 
-    Source strings are preserved verbatim (trimmed) so precision, trailing
-    zeros and sign survive; ints stringify exactly; a float (which JSON parsing
-    may already have produced) uses its shortest round-trip repr — no precision
-    is invented. ``None`` / ``bool`` / non-numeric containers return ``None``.
+    Phase 08C strict mode for normalization: Decimal-only. Only str or int (or
+    Decimal) accepted for money paths. float input is prohibited (raises) to
+    prevent binary floating-point precision loss in canonicalization/decisions.
+    Source strings preserved verbatim (trimmed); ints exact. Never calls float()
+    or stores via JSON number coercion for money. ``None`` / ``bool`` /
+    non-numeric -> None (caller classifies as missing/rejected).
     """
     if value is None or isinstance(value, bool):
         return None
@@ -61,9 +69,139 @@ def parse_amount(value: Any) -> Optional[str]:
         return stripped or None
     if isinstance(value, int):
         return str(value)
+    if isinstance(value, Decimal):
+        return format(value, "f")
     if isinstance(value, float):
-        return repr(value)
+        # Explicit prohibition per Phase 08C guardrail + stop condition.
+        raise ValueError(
+            "float money values are prohibited for normalization and amount "
+            "decisions; source must arrive as str or int (JSON number coercion "
+            "from raw payloads must be str() coerced upstream or rejected). "
+            "Use Decimal(str(v)) path only."
+        )
     return None
+
+
+def to_canonical_decimal_text(value: str | int | Decimal | None) -> Optional[str]:
+    """Canonical decimal string using Decimal only (no float).
+
+    Returns minimal 'f' format (trailing zeros per source for integers become
+    .0 only if present in input parse; callers quantize for currency scale).
+    Rejects float at parse_amount boundary.
+    """
+    if value is None:
+        return None
+    try:
+        if isinstance(value, float):
+            raise ValueError("float prohibited in to_canonical_decimal_text")
+        dec = Decimal(str(value)) if not isinstance(value, Decimal) else value
+        # preserve sign/zeros as much as possible; use 'f' for readability
+        s = format(dec, "f")
+        return s
+    except InvalidOperation:
+        return None
+    # ValueError (incl float prohibit) propagates for strict callers/tests
+
+
+def compute_minor_units(
+    canonical_text: str, currency_code: Optional[str] = None, scale: int = 2
+) -> Optional[int]:
+    """Integer minor units when scale/currency known. Decimal only."""
+    if not canonical_text:
+        return None
+    try:
+        dec = Decimal(canonical_text)
+        factor = Decimal(10) ** scale
+        minor = int((dec * factor).to_integral_value(rounding="ROUND_HALF_EVEN"))
+        return minor
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def source_value_hash(source_str: str) -> str:
+    """Stable hash of the original source amount string (for dedup/trace)."""
+    import hashlib
+
+    if source_str is None:
+        return ""
+    return hashlib.sha256(source_str.encode("utf-8")).hexdigest()
+
+
+def classify_amount(
+    source_value: Any,
+    *,
+    field_path: str,
+    currency_code: Optional[str] = None,
+    policy: Optional[dict] = None,
+) -> dict[str, Any]:
+    """Classify per phase_08c_amount_normalization_contract + policy.
+
+    Returns dict with parse_status (one of 7), canonical_decimal_text,
+    minor_units (or None), rejection_reason (or None), confidence_label,
+    review_tier (from policy or default), source_value_hash, advisory_only=1.
+    Uses Decimal-only paths; float at boundary -> rejected.
+    """
+    status = "parseable"
+    reason = None
+    canonical = None
+    minor = None
+    h = ""
+    tier = "none"
+    conf = "deterministic"
+
+    try:
+        if source_value is None or (isinstance(source_value, str) and not source_value.strip()):
+            status = "missing"
+            reason = "source_value_missing_or_empty"
+        else:
+            # This will raise on float -> rejected below
+            parsed = parse_amount(source_value)
+            if parsed is None:
+                status = "rejected"
+                reason = "non_numeric_or_empty_after_parse"
+            else:
+                h = source_value_hash(str(source_value))
+                canonical = to_canonical_decimal_text(parsed)
+                if canonical is None:
+                    status = "rejected"
+                    reason = "decimal_parse_failed"
+                else:
+                    minor = compute_minor_units(canonical, currency_code)
+                    # simple policy hook (triggers from seed can set review)
+                    if policy and "triggers" in policy:
+                        trigs = policy.get("triggers", [])
+                        if "amount_parse_ambiguous_or_rejected" in str(trigs) and status in ("ambiguous", "rejected"):
+                            tier = "operator_review"
+    except ValueError as ve:
+        if "float" in str(ve).lower():
+            status = "rejected"
+            reason = "float_money_prohibited"
+        else:
+            status = "rejected"
+            reason = f"parse_error:{ve}"
+    except Exception as ex:
+        status = "rejected"
+        reason = f"unexpected:{type(ex).__name__}"
+
+    # defaults / policy overlay (minimal; real impl can expand with seed)
+    if status == "parseable" and not canonical:
+        status = "ambiguous"
+        reason = "canonical_missing_after_success"
+    if status in ("ambiguous", "rejected", "conflicting") and tier == "none":
+        tier = "operator_review"
+
+    return {
+        "parse_status": status,
+        "canonical_decimal_text": canonical,
+        "minor_units": minor,
+        "currency_code": currency_code,
+        "rejection_reason": reason,
+        "source_value_hash": h,
+        "source_field_path": field_path,
+        "confidence_label": conf,
+        "review_tier": tier,
+        "advisory_only": 1,
+    }
 
 
 def extract_currency_config(raw: Any) -> Dict[str, Any]:
@@ -246,8 +384,12 @@ def build_amount_facts(
 
 
 __all__ = [
-    # financial-specific utilities
+    # financial-specific utilities (08C: Decimal-only strict for money)
     "parse_amount",
+    "to_canonical_decimal_text",
+    "compute_minor_units",
+    "source_value_hash",
+    "classify_amount",
     "extract_currency_config",
     "extract_wbs_cost_code",
     "mask_excerpt",

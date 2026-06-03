@@ -1,0 +1,51 @@
+{
+  "generated_utc": "2026-06-03T14:06:39.290247Z",
+  "repo_head": "06241a7fcbb3ceea44d8ec7f5351dd358a240e6a",
+  "schema_version": 35,
+  "inventory_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-table-inventory-audit.json",
+  "run_id": "proof-8cf1a6dd",
+  "stats": {
+    "parseable": 5,
+    "rejected": 1,
+    "missing": 1,
+    "ambiguous": 0,
+    "stale": 0,
+    "conflicting": 0,
+    "review_required": 0,
+    "total_values": 7
+  },
+  "fields_discovered": 30,
+  "contract": {
+    "money_storage": {
+      "canonical_decimal": "TEXT",
+      "minor_units": "INTEGER when scale known",
+      "float_allowed": false,
+      "sqlite_real_allowed": false
+    }
+  },
+  "money_storage": {
+    "canonical_decimal": "TEXT",
+    "minor_units": "INTEGER when scale known",
+    "float_allowed": false,
+    "sqlite_real_allowed": false
+  },
+  "sample_parseable": [
+    {
+      "source_field_path": "procore_financial_contracts.grand_total",
+      "canonical_decimal_text": "10200000.50",
+      "parse_status": "parseable"
+    }
+  ],
+  "no_float_in_path": true,
+  "source_preserved_note": "source amount strings remain verbatim TEXT in procore_financial_* tables; 08C normalized stores only canonical + hash + ref + status + reason",
+  "advisory_only": true,
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_raw_financial_payload": true,
+    "financial_determination_forbidden": true,
+    "advisory_only": true
+  },
+  "notes": "Decimal-only via helpers (parse_amount raises on float; classify uses Decimal(str(v)) only). 7 statuses from contract. Proof from samples matching inventory fields. Store attempted via run_amount_normalization."
+}

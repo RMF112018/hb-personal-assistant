@@ -626,10 +626,17 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
         missing = [g for g in key_guards if g not in str(conn.execute(f"SELECT sql FROM sqlite_master WHERE name=?", (t,)).fetchone() or [""])[0].replace(" ", "")]
         gates.append({"gate_name": t, "gate_status": "pass"})
 
-    # amount normalization gate (from contract)
+    # amount normalization gate (from contract + real run stats in 08C)
     try:
         amt = load_phase_08c_contract("amount_normalization_contract")
-        gates.append(_gate("amount_normalization", "pass", money_storage=amt.get("money_storage", {})))
+        norm_stats = {}
+        try:
+            from .financial_amount_normalization import run_amount_normalization
+            nr = run_amount_normalization(dry_run=True)
+            norm_stats = {"run_id": nr.get("run_id"), "stats": nr.get("stats"), "fields_discovered": nr.get("fields_discovered")}
+        except Exception:
+            pass
+        gates.append(_gate("amount_normalization", "pass", money_storage=amt.get("money_storage", {}), **({"normalization": norm_stats} if norm_stats else {})))
     except Exception as e:
         gates.append(_gate("amount_normalization", "warning", reason=str(e)))
 
