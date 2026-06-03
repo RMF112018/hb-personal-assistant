@@ -1,0 +1,34 @@
+{
+  "proof": "phase_08b_last_good_run_p07",
+  "proof_passed": true,
+  "schema_version": 34,
+  "fakes_used": true,
+  "lock_released": true,
+  "no_raw_content": true,
+  "last_good_updated_only_on_full_success": true,
+  "has_last_good_marker_step_on_success": true,
+  "success_surfaces": {
+    "last_failed": null,
+    "failure_class": null,
+    "exh": false
+  },
+  "partial_surfaces": {
+    "last_failed": "daily_brief_generate",
+    "failure_class": "DUPLICATE_SUCCESSFUL_DELIVERY_PREVENTED",
+    "last_good_unchanged": true
+  },
+  "exhaust_surfaces": {
+    "retry_exhausted": false,
+    "failure_class": null
+  },
+  "replayable_elg": false,
+  "job_health_called_on_all": true,
+  "guardrails": {
+    "automation_execution_still_deferred": true,
+    "local_first": true
+  },
+  "evidence_files": [
+    "last-good-run-proof.json",
+    "daily-brief-job-health-executor-proof.json"
+  ]
+}

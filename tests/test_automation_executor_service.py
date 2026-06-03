@@ -387,11 +387,67 @@ def test_p06_automation_status_diagnostics_builders() -> None:
 
     st = build_automation_status()
     assert st["command"] == "second-brain automation status"
-    for k in ("mode", "status", "run_id", "target_date", "stage_summary", "retry_summary", "lock_status", "replay_eligibility", "recovery_command_redacted", "guardrails"):
+    for k in (
+        "mode",
+        "status",
+        "run_id",
+        "target_date",
+        "stage_summary",
+        "retry_summary",
+        "lock_status",
+        "replay_eligibility",
+        "recovery_command_redacted",
+        "guardrails",
+    ):
         assert k in st
 
     # diagnostics needs a plausible id (may be None rows, still must return shape)
     dg = build_automation_diagnostics("nonexistent-for-test")
     assert dg["command"] == "second-brain automation diagnostics"
-    for k in ("mode", "status", "run_id", "stage_summary", "retry_summary", "lock_status", "replay_eligibility", "recovery_command_redacted", "guardrails"):
+    for k in (
+        "mode",
+        "status",
+        "run_id",
+        "stage_summary",
+        "retry_summary",
+        "lock_status",
+        "replay_eligibility",
+        "recovery_command_redacted",
+        "guardrails",
+    ):
+        assert k in dg
+
+
+# P07: job health after all outcomes, last-good only on full success, surfaces last_failed+class+exh+catchup, 4 scenarios
+def test_p07_last_good_updated_only_on_full_success():
+    from hb_assistant.construction.second_brain.automation_executor import (
+        build_last_good_run_proof,
+    )
+
+    p = build_last_good_run_proof()
+    assert p.get("proof_passed") is True
+    assert p.get("last_good_updated_only_on_full_success") is True
+    assert p.get("schema_version") == 34
+    assert p.get("fakes_used") is True
+    assert p.get("job_health_called_on_all") is True
+
+
+def test_p07_job_health_executor_proof_and_surfaces():
+    from hb_assistant.construction.second_brain.automation_executor import (
+        build_automation_diagnostics,
+        build_automation_status,
+        build_daily_brief_job_health_executor_proof,
+    )
+
+    p = build_daily_brief_job_health_executor_proof()
+    assert p.get("proof_passed") is True
+    assert p.get("job_health_called_for_success_and_fail_outcomes") is True
+    assert p.get("schema_version") == 34
+
+    # surfaces via builders (use a run id from prior or dummy; builders handle)
+    st = build_automation_status()
+    for k in ("last_failed_stage", "failure_class", "retry_exhausted", "catch_up_status"):
+        assert k in st
+    dg = build_automation_diagnostics("nonexistent-for-p07-test")
+    for k in ("last_failed_stage", "failure_class", "retry_exhausted", "catch_up_status"):
         assert k in dg

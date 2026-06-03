@@ -2159,6 +2159,9 @@ _AUTOMATION_CLI_GUARDRAILS = {
     "no_raw_content": True,
     "stage_receipts_persisted": "V29_run_steps",
     "automation_execution_still_deferred": True,
+    # P07
+    "last_good_updated_only_on_full_success": True,
+    "job_health_after_all_outcomes": True,
 }
 
 
@@ -2226,6 +2229,11 @@ def automation_run(
         payload["recovery_command_redacted"] = str(
             result.recovery_recommendation.get("suggested_next", ["<redacted>"])[0]
         )[:200]
+    # P07 surfaces from executor result (or defaults)
+    payload["last_failed_stage"] = getattr(result, "last_failed_stage", None)
+    payload["failure_class"] = getattr(result, "failure_class", None)
+    payload["retry_exhausted"] = getattr(result, "retry_exhausted", False)
+    payload["catch_up_status"] = "yes" if getattr(result, "catch_up", False) else "no"
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     ok = getattr(result, "overall_status", "dry_run") in ("succeeded", "dry_run")
     raise typer.Exit(0 if ok else 3)
@@ -2277,6 +2285,11 @@ def automation_replay(
             run_id
         ),
         "guardrails": _AUTOMATION_CLI_GUARDRAILS,
+        # P07
+        "last_failed_stage": getattr(result, "last_failed_stage", None),
+        "failure_class": getattr(result, "failure_class", None),
+        "retry_exhausted": getattr(result, "retry_exhausted", False),
+        "catch_up_status": "yes" if getattr(result, "catch_up", False) else "no",
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     ok = getattr(result, "overall_status", "dry_run") in ("succeeded", "dry_run")
@@ -2323,19 +2336,11 @@ def automation_last_good_run(
     kind: str = typer.Option("daily-brief", "--kind"),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
-    """Last successful run for kind (P06)."""
-    from hb_assistant.construction.second_brain.run_registry import read_latest_run_registry
+    """Last successful run for kind (P06/P07)."""
+    from hb_assistant.construction.second_brain.run_registry import last_good_run
 
     try:
-        rows = read_latest_run_registry(limit=20) or []
-        good = next(
-            (
-                r
-                for r in rows
-                if r.get("run_kind") == kind.replace("-", "_") and r.get("status") == "succeeded"
-            ),
-            None,
-        )
+        good = last_good_run(run_kind=kind.replace("-", "_"))
     except Exception as exc:
         err = {"command": "second-brain automation last-good-run", "error": type(exc).__name__}
         typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
@@ -2352,6 +2357,11 @@ def automation_last_good_run(
         "lock_status": "see status",
         "replay_eligibility": "n/a_for_good_run",
         "recovery_command_redacted": "n/a",
+        # P07
+        "last_failed_stage": None,
+        "failure_class": None,
+        "retry_exhausted": False,
+        "catch_up_status": "n/a_for_good_run",
         "guardrails": _AUTOMATION_CLI_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))

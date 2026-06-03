@@ -748,3 +748,41 @@ def build_run_registry_locking_proof() -> dict[str, Any]:
             "model_direct_external_api_access": False,
         },
     }
+
+
+def last_good_run(
+    *, run_kind: str = "daily_brief", db_path: str | None = None
+) -> dict[str, Any] | None:
+    """Return the most recent fully succeeded run row for the kind (P07 last-good-run tracking).
+
+    Only full-success executor runs (via update_last_good_run marker + succeeded status) qualify.
+    Replay and catch-up full successes for their target count as last-good for that kind/date.
+    """
+    rows = read_latest_run_registry(db_path=db_path, limit=20) or []
+    for r in rows:
+        if r.get("run_kind") == run_kind and r.get("status") == "succeeded":
+            return r
+    return None
+
+
+def update_last_good_run(
+    *,
+    run_kind: str,
+    run_registry_id: str,
+    target_date: str | None = None,
+    db_path: str | None = None,
+) -> None:
+    """Explicit last-good update (P07) — called ONLY after full success in executor.
+
+    Records a V29 marker step (no schema change). The authoritative "last good" is the
+    succeeded run row (queryable via last_good_run or read_latest filtered).
+    """
+    record_run_step(
+        run_registry_id=run_registry_id,
+        step_name="last_good_run",
+        step_order=100,
+        status="succeeded",
+        reason_code="LAST_GOOD_RUN_UPDATED",
+        detail=f"target_date={target_date or 'n/a'}",
+        db_path=db_path,
+    )

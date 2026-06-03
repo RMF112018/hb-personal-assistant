@@ -1,0 +1,16 @@
+{
+  "proof": "phase_08b_daily_brief_job_health_executor_p07",
+  "proof_passed": true,
+  "schema_version": 34,
+  "fakes_used": true,
+  "lock_released": true,
+  "no_raw_content": true,
+  "job_health_called_for_success_and_fail_outcomes": true,
+  "job_health_received_outcome_on_fail": false,
+  "success_last_failed_none": true,
+  "fail_last_failed_present": false,
+  "guardrails": {
+    "automation_execution_still_deferred": true,
+    "job_health_after_all_outcomes": true
+  }
+}

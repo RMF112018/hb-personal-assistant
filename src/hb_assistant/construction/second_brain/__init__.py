@@ -28,8 +28,10 @@ from .automation_executor import (
     build_automation_diagnostics,
     build_automation_execution_proof,
     build_automation_status,
+    build_daily_brief_job_health_executor_proof,
     build_duplicate_prevention_proof,
     build_first_run_after_wake_proof,
+    build_last_good_run_proof,
     build_retry_backoff_execution_proof,
     build_safe_replay_execution_proof,
     build_weekend_catchup_proof,
@@ -138,6 +140,7 @@ from .retrieval import (
     build_retrieval_broker_agent_proof,
     validate_retrieval_policy,
 )
+from .run_registry import last_good_run, update_last_good_run
 from .safety import build_second_brain_no_writeback_proof
 from .store import read_latest_config_receipt, write_config_receipt
 from .synthesis import (
@@ -268,8 +271,13 @@ __all__ = [
     "build_automation_status",
     "build_duplicate_prevention_proof",
     "build_first_run_after_wake_proof",
+    "build_last_good_run_proof",
+    "build_daily_brief_job_health_executor_proof",
     "build_retry_backoff_execution_proof",
     "build_safe_replay_execution_proof",
     "build_weekend_catchup_proof",
     "run_automation_execution",
+    # P07
+    "last_good_run",
+    "update_last_good_run",
 ]
