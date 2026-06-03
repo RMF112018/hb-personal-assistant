@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "hb-personal-assistant": {
+      "command": "hb-assistant",
+      "args": [
+        "second-brain",
+        "mcp",
+        "serve",
+        "--stdio",
+        "--json"
+      ],
+      "env": {
+        "HB_MCP_TRANSPORT": "stdio",
+        "HB_MCP_POLICY": "local_safe"
+      }
+    }
+  }
+}

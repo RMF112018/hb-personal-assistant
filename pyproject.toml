@@ -56,6 +56,14 @@ dev = [
 second-brain = [
   "anthropic>=0.40",
 ]
+# Phase 08D local MCP bridge — opt-in stdio-only server SDK. Lazy-imported inside
+# the serve entrypoint only; the base install, migrations, full test suite, the
+# `mcp status` / `config-preview` surfaces, and every guard proof all run with NO
+# MCP SDK present (local-first default; serving stays fail-closed until installed
+# and the tool broker lands in Prompt 04).
+mcp = [
+  "mcp>=1.0",
+]
 
 [project.scripts]
 hb-assistant = "hb_assistant.cli.main:cli"

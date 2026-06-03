@@ -87,6 +87,13 @@ financial_app = typer.Typer(
 )
 app.add_typer(financial_app, name="financial")
 
+mcp_app = typer.Typer(
+    name="mcp",
+    help="Phase 08D local MCP bridge — stdio-only, fail-closed (server foundation).",
+    no_args_is_help=True,
+)
+app.add_typer(mcp_app, name="mcp")
+
 automation_app = typer.Typer(
     name="automation",
     help="Phase 08B automation health + observability (read-only status surface).",
@@ -2750,3 +2757,79 @@ def data_quality_phase_08c_no_writeback_proof(
         f"  proof: {proof.get('proof_path')}",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3)
+
+
+# --------------------------------------------------------------------------- #
+# Phase 08D — local MCP bridge (server foundation + config surface)            #
+# --------------------------------------------------------------------------- #
+@mcp_app.command("status")
+def mcp_status(
+    snapshot: bool = typer.Option(
+        True, "--snapshot/--no-snapshot", help="Persist a metadata-only server-config snapshot."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
+) -> None:
+    """Phase 08D MCP server-foundation status (stdio-only; fail-closed).
+
+    Reports the startup checks, SDK availability, and why serving is not yet ready
+    (tool broker + guard proofs land in Prompts 04/13/14). Persists a metadata-only
+    snapshot unless ``--no-snapshot``.
+    """
+    from hb_assistant.construction.second_brain.mcp import build_mcp_status
+
+    payload = build_mcp_status(persist=snapshot)
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+    else:
+        typer.echo(f"MCP foundation_ok={payload['foundation_ok']} ready_to_serve={payload['ready_to_serve']}")
+        typer.echo(f"  sdk_available={payload['mcp_sdk_available']} tools={payload['mcp_tools_registered']}")
+        for check in payload["checks"]:
+            typer.echo(f"  [{check['status']}] {check['name']}: {check['detail']}")
+        typer.echo(f"  serve_blockers: {payload['serve_blockers']}")
+    raise typer.Exit(0)
+
+
+@mcp_app.command("config-preview")
+def mcp_config_preview(
+    client: str = typer.Option("claude-desktop", "--client", help="Target MCP client."),
+    snapshot: bool = typer.Option(
+        True, "--snapshot/--no-snapshot", help="Persist a metadata-only preview snapshot."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
+) -> None:
+    """Generate a safe, preview-only Claude Desktop config (never auto-applied).
+
+    Writes ``claude-desktop-config-preview.json`` to the 08D evidence dir and persists a
+    metadata-only preview row (env *key names* only — never values).
+    """
+    from hb_assistant.construction.second_brain.mcp import build_claude_desktop_config_preview
+
+    payload = build_claude_desktop_config_preview(client=client, persist=snapshot)
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+    else:
+        typer.echo(f"MCP config-preview client={payload['client']} safe={payload['safe']}")
+        typer.echo(f"  transport={payload['transport']} unsafe_reasons={payload['unsafe_reasons']}")
+        typer.echo(f"  evidence: {payload['evidence_path']}")
+    raise typer.Exit(0)
+
+
+@mcp_app.command("serve")
+def mcp_serve(
+    stdio: bool = typer.Option(False, "--stdio", help="Local stdio transport (the only allowed transport)."),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
+) -> None:
+    """Attempt to start the local stdio MCP server — fail-closed at the foundation stage.
+
+    Serving is refused until the Prompt 04 tool broker and the Prompt 13/14 guard proofs
+    are wired; this never opens a socket or a serve loop. Exits non-zero (fail-closed).
+    """
+    from hb_assistant.construction.second_brain.mcp import serve_stdio
+
+    payload = serve_stdio()
+    payload["requested_transport"] = "stdio" if stdio else "unspecified"
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+    else:
+        typer.echo(f"MCP serve served={payload['served']} reasons={payload['reasons']}")
+    raise typer.Exit(1)
