@@ -1,0 +1,45 @@
+{
+  "proof": "phase_08b_automation_executor_dry_run_plan",
+  "proof_passed": true,
+  "generated_utc": "2026-06-03T09:00:00Z",
+  "repo_sha": "f8998a37230a57ca209e1f228760b2a0ad2ebb62",
+  "schema_version": 34,
+  "request": {
+    "run_kind": "daily_brief",
+    "mode": "catch_up",
+    "brief_date": null,
+    "day_offset": 1,
+    "force": false
+  },
+  "stages": [
+    {"name": "preflight_status", "order": 0, "enabled": true, "mapped_to": "evaluate_automation_health + evaluate_runtime_health"},
+    {"name": "source_freshness_check", "order": 1, "enabled": true, "mapped_to": "evaluate_source_freshness"},
+    {"name": "daily_brief_generate", "order": 2, "enabled": true, "mapped_to": "daily_brief context/generate/eval (08A core)"},
+    {"name": "local_html_deliver", "order": 3, "enabled": true, "mapped_to": "evaluate_daily_brief_html_render / run_..."},
+    {"name": "macos_notification_emit", "order": 4, "enabled": true, "mapped_to": "evaluate_daily_brief_notification (fail-closed by seed)"},
+    {"name": "delivery_receipt_record", "order": 5, "enabled": true, "mapped_to": "evaluate_daily_brief_delivery / run_..."},
+    {"name": "job_health_update", "order": 6, "enabled": true, "mapped_to": "evaluate_daily_brief_job_health"},
+    {"name": "closeout", "order": 7, "enabled": true, "mapped_to": "receipts + health + registry close"}
+  ],
+  "decisions": [
+    {"kind": "catch_up", "decision": "proceed", "reason_code": "CATCH_UP_NEEDED", "detail": "first-run-after-wake or stale schedule"},
+    {"kind": "weekend_gate", "decision": "skip", "reason_code": "WEEKEND_GATE_SKIPPED", "detail": "weekend behavior=skip (policy)"}
+  ],
+  "overall_status": "planned",
+  "dry_run": true,
+  "policy_version": "phase_08b_automation_executor_policy_v1",
+  "stage_registry_version": "phase_08b_executor_stage_registry_v1",
+  "reason_codes_used": [
+    "CATCH_UP_NEEDED", "WEEKEND_GATE_SKIPPED", "EXECUTOR_STARTED", "STAGE_PREFLIGHT_PASSED"
+  ],
+  "guardrails": {
+    "local_first": true,
+    "dry_run_default": true,
+    "apply_requires_explicit_confirm": true,
+    "no_external_delivery": true,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "fail_closed": true,
+    "automation_execution_still_deferred": true
+  }
+}

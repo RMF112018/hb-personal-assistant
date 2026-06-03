@@ -2014,3 +2014,26 @@ def index_obsidian(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
+
+
+@automation_app.command("plan-execution")
+def automation_plan_execution(
+    mode: str = typer.Option("manual", "--mode", help="manual|launchd|catch_up|replay"),
+    day_offset: int = typer.Option(0, "--day-offset"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Build (dry-run) execution plan for daily brief using P01 substrate + 08B surfaces. Emits plan only (no side effects)."""
+    from hb_assistant.construction.second_brain.automation_executor import (
+        ExecutionRequest,
+        build_execution_plan,
+    )
+    req = ExecutionRequest(run_kind="daily_brief", mode=mode, day_offset=day_offset)  # type: ignore[arg-type]
+    plan = build_execution_plan(request=req, dry_run=True)
+    payload = {
+        "command": "second-brain automation plan-execution",
+        "dry_run": True,
+        "plan": plan.model_dump(),
+        "guardrails": plan.guardrails,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
