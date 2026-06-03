@@ -105,6 +105,73 @@ def _proof_gate(name: str, *proofs: dict[str, Any]) -> dict[str, Any]:
     return _gate(name, "fail_blocking", blocking=1, reason="proof_failed", failed_proofs=failed)
 
 
+# --- Phase 08C gate taxonomy helpers (pure; deterministic; unit-tested) ---
+
+# Guard columns every V35 financial table must declare (advisory_only=1, the rest =0).
+_08C_REQUIRED_GUARD_COLUMNS: tuple[str, ...] = (
+    "advisory_only",
+    "raw_financial_source_payload_persisted",
+    "financial_determination_performed",
+    "payment_decision_performed",
+    "claim_or_entitlement_decision_performed",
+    "external_writeback_performed",
+)
+
+# Gates that assert (some) readiness — used to detect overstatement.
+_08C_READINESS_GATES: tuple[str, ...] = (
+    "readiness_agent",
+    "forecast_readiness",
+    "review_required_policy",
+)
+
+# fail_blocking reasons that mean "required evidence is missing" (schema/contract/guards).
+_08C_MISSING_EVIDENCE_REASONS: tuple[str, ...] = (
+    "TABLE_ABSENT_IN_V35",
+    "CONTRACT_LOAD_FAILED",
+    "GUARD_COLUMN_MISSING",
+)
+
+
+def _count_gate_statuses(gates: list[dict[str, Any]]) -> dict[str, int]:
+    """Count gates by gate_status across the four-status taxonomy."""
+    counts = {"pass": 0, "warning": 0, "fail_blocking": 0, "deferred_not_blocking": 0}
+    for g in gates:
+        status = g.get("gate_status")
+        if status in counts:
+            counts[status] += 1
+    return counts
+
+
+def _missing_required_evidence(gates: list[dict[str, Any]]) -> list[str]:
+    """Gate names that fail_blocking because required schema/contract/guard evidence is absent."""
+    return [
+        g.get("gate_name", "")
+        for g in gates
+        if g.get("gate_status") == "fail_blocking"
+        and any((g.get("reason") or "").startswith(r) for r in _08C_MISSING_EVIDENCE_REASONS)
+    ]
+
+
+def _compute_readiness_overstated(gates: list[dict[str, Any]]) -> bool:
+    """True if a readiness-claiming gate passes while any gate is fail_blocking."""
+    by = {g.get("gate_name"): g.get("gate_status") for g in gates}
+    any_fail = any(g.get("gate_status") == "fail_blocking" for g in gates)
+    readiness_claimed = any(by.get(name) == "pass" for name in _08C_READINESS_GATES)
+    return bool(any_fail and readiness_claimed)
+
+
+def _required_fields_covered_08c(by_field_status: dict[str, str]) -> bool:
+    """True iff every required gate name from the contract is present (default True)."""
+    try:
+        contract = load_phase_08c_contract("data_quality_gates_contract")
+    except Exception:
+        return True
+    required = contract.get("required_fields") or contract.get("required_gates") or []
+    if not required:
+        return True
+    return all(name in by_field_status for name in required)
+
+
 def evaluate_phase_08a_data_quality_gates(*, db_path: str | None = None) -> dict[str, Any]:
     """Evaluate the Phase 08A second-brain data-quality gate set. Read-only; persists nothing."""
     generated = datetime.now(timezone.utc).isoformat()
@@ -634,27 +701,26 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
     ]
 
     for t in _08C_FINANCIAL_TABLES:
-        cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (t,))
-        if cur.fetchone() is None:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (t,)
+        ).fetchone()
+        if row is None:
             gates.append(_gate(t, "fail_blocking", blocking=1, reason="TABLE_ABSENT_IN_V35"))
             continue
-        # check guards via existing helper or direct
-        _guards = _table_guard_columns(conn, t) if "_table_guard_columns" in dir() else set()
-        # force check key new ones
-        key_guards = [
-            "raw_financial_source_payload_persisted",
-            "financial_determination_performed",
-            "advisory_only",
-        ]
-        _missing = [
-            g
-            for g in key_guards
-            if g
-            not in str(
-                conn.execute("SELECT sql FROM sqlite_master WHERE name=?", (t,)).fetchone() or [""]
-            )[0].replace(" ", "")
-        ]
-        gates.append({"gate_name": t, "gate_status": "pass"})
+        ddl = (row[0] or "").replace(" ", "")
+        missing = [g for g in _08C_REQUIRED_GUARD_COLUMNS if g not in ddl]
+        if missing:
+            gates.append(
+                _gate(
+                    t,
+                    "fail_blocking",
+                    blocking=1,
+                    reason="GUARD_COLUMN_MISSING",
+                    missing_guards=missing,
+                )
+            )
+        else:
+            gates.append(_gate(t, "pass"))
 
     # amount normalization gate (from contract + real run stats in 08C)
     try:
@@ -671,14 +737,10 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
             }
         except Exception:
             pass
-        gates.append(
-            _gate(
-                "amount_normalization",
-                "pass",
-                money_storage=amt.get("money_storage", {}),
-                **({"normalization": norm_stats} if norm_stats else {}),
-            )
-        )
+        amt_gate = _gate("amount_normalization", "pass", money_storage=amt.get("money_storage", {}))
+        if norm_stats:
+            amt_gate["normalization"] = norm_stats
+        gates.append(amt_gate)
     except Exception as e:
         gates.append(_gate("amount_normalization", "warning", reason=str(e)))
 
@@ -804,16 +866,34 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
     # cli / operator status (placeholder for schema prompt)
     gates.append(_gate("cli_operator_status", "pass", note="read-only surfaces registered"))
 
-    # no_writeback_no_raw_financial_output (tables have guards, no raw in contract)
-    gates.append(_gate("no_writeback_no_raw_financial_output", "pass"))
+    # no_writeback_no_raw_financial_output — real, read-only attestation (no file write):
+    # guard columns + money-not-float + evidence redaction + no-live posture.
+    try:
+        from .financial_no_writeback import run_financial_no_writeback_checks
+
+        nw_checks = run_financial_no_writeback_checks(conn)
+        nw_failed = [name for name, c in nw_checks.items() if not c.get("passed")]
+        nw_gate = _gate(
+            "no_writeback_no_raw_financial_output",
+            "pass" if not nw_failed else "fail_blocking",
+            blocking=0 if not nw_failed else 1,
+            reason=None if not nw_failed else "NO_WRITEBACK_CHECK_FAILED",
+        )
+        if nw_failed:
+            nw_gate["failed_checks"] = nw_failed
+        gates.append(nw_gate)
+    except Exception as e:
+        gates.append(
+            _gate(
+                "no_writeback_no_raw_financial_output",
+                "fail_blocking",
+                blocking=1,
+                reason=str(e),
+            )
+        )
 
     by_field_status = {g["gate_name"]: g["gate_status"] for g in gates}
-    status_counts = {
-        "pass": sum(1 for g in gates if g["gate_status"] == "pass"),
-        "warning": sum(1 for g in gates if g["gate_status"] == "warning"),
-        "fail_blocking": sum(1 for g in gates if g.get("blocking")),
-        "deferred_not_blocking": 0,
-    }
+    status_counts = _count_gate_statuses(gates)
     ok = status_counts["fail_blocking"] == 0
     return {
         "ok": ok,
@@ -823,8 +903,8 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
         "gates": gates,
         "by_field_status": by_field_status,
         "status_counts": status_counts,
-        "required_fields_covered": True,
-        "readiness_overstated": False,
+        "required_fields_covered": _required_fields_covered_08c(by_field_status),
+        "readiness_overstated": _compute_readiness_overstated(gates),
         "guardrails": {
             "local_first": True,
             "read_only": True,
@@ -837,29 +917,124 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
     }
 
 
-def build_phase_08c_gates_proof(*, db_path: str | None = None) -> dict[str, Any]:
-    """Proof for phase-08c-gates (schema/contracts level; all 10 tables + guards + advisory)."""
-    import json
+GATES_PROOF_JSON = "phase-08c-gates-proof.json"
+GATES_PROOF_MD = "phase-08c-gates-proof.md"
 
+
+def _render_phase_08c_gates_md(proof: dict[str, Any]) -> str:
+    lines = [
+        "# Phase 08C Data-Quality Gates Proof",
+        "",
+        "Deterministic, read-only gate evaluation over the V35 financial substrate. Advisory review "
+        "aid only — not a determination, approval, claim, entitlement, or forecast. Gates never pass "
+        "when required evidence (tables / contracts / guard columns) is missing.",
+        "",
+        "## Summary",
+        f"- Proof passed: {str(proof['proof_passed']).lower()}",
+        f"- ok (no fail_blocking): {str(proof['ok']).lower()}",
+        f"- Schema version: {proof['schema_version']} (expected >= {proof['schema_version_expected']})",
+        f"- Status counts: {proof['status_counts']}",
+        f"- Required fields covered: {str(proof['required_fields_covered']).lower()}",
+        f"- Readiness overstated: {str(proof['readiness_overstated']).lower()}",
+        f"- Missing required evidence: {proof['missing_required_evidence'] or 'none'}",
+        "",
+        "## Gates",
+        "| Gate | Status |",
+        "| --- | --- |",
+    ]
+    for name, status in proof["by_field_status"].items():
+        lines.append(f"| {name} | {status} |")
+    lines += [
+        "",
+        "## Stop checks",
+        f"- gates_passed_with_missing_evidence: {str(proof['stop_checks']['gates_passed_with_missing_evidence']).lower()}",
+        f"- raw_persisted: {str(proof['stop_checks']['raw_persisted']).lower()}",
+        f"- financial_determination_performed: {str(proof['stop_checks']['financial_determination_performed']).lower()}",
+        "",
+        "## Guardrails",
+    ]
+    for key, value in proof["guardrails"].items():
+        lines.append(f"- {key}: {str(value).lower()}")
+    lines += ["", "## Notes", proof["notes"], "", f"Generated: {proof['generated_utc']}", ""]
+    return "\n".join(lines)
+
+
+def build_phase_08c_gates_proof(
+    *, db_path: str | None = None, out_dir: str | None = None
+) -> dict[str, Any]:
+    """Evaluate the Phase 08C gates and WRITE ``phase-08c-gates-proof.json`` (+ ``.md``).
+
+    Read-only over the DB; writes only local evidence. ``proof_passed`` is False whenever a
+    required table / contract / guard column is missing (stop condition), readiness is overstated,
+    or any gate is fail_blocking.
+    """
+    import json
+    from pathlib import Path
+
+    from .financial_completeness import EVIDENCE_DIR, _now
+    from .financial_review_routing import _assert_no_raw
+
+    out_dir = out_dir or EVIDENCE_DIR
     report = evaluate_phase_08c_data_quality_gates(db_path=db_path)
     counts = report["status_counts"]
-    blob = json.dumps(report, default=str)
-    no_raw = (
-        not any(
-            x in blob for x in ("raw_financial_source_payload", "financial_determination_performed")
-        )
-        or "CHECK" in blob
-    )  # simplistic; real proof scans DDL
-    proof_passed = report["ok"] and counts.get("fail_blocking", 0) == 0
-    return {
+    missing = _missing_required_evidence(report["gates"])
+    proof_passed = (
+        bool(report["ok"]) and not report["readiness_overstated"] and not missing
+    )
+
+    proof: dict[str, Any] = {
         "proof": "phase_08c_data_quality_gates",
+        "command": "second-brain data-quality phase-08c-gates",
         "proof_passed": proof_passed,
         "ok": report["ok"],
+        "phase": "08C",
+        "generated_utc": _now(),
+        "schema_version": report["schema_version"],
+        "schema_version_expected": report["schema_version_expected"],
+        "contract_version": report.get("contract_version"),
+        "advisory_only": True,
         "status_counts": counts,
         "by_field_status": report["by_field_status"],
+        "gates": report["gates"],
         "required_fields_covered": report.get("required_fields_covered", True),
         "readiness_overstated": report["readiness_overstated"],
-        "no_raw_content": no_raw,
-        "contract_version": report.get("contract_version"),
+        "missing_required_evidence": missing,
+        "stop_checks": {
+            # must always be False — the proof never passes with missing evidence
+            "gates_passed_with_missing_evidence": bool(missing) and proof_passed,
+            "raw_persisted": False,
+            "financial_determination_performed": False,
+        },
         "guardrails": report["guardrails"],
+        "evidence_paths": [
+            f"{EVIDENCE_DIR}/{GATES_PROOF_JSON}",
+            f"{EVIDENCE_DIR}/forecast-readiness-proof.json",
+            f"{EVIDENCE_DIR}/financial-source-coverage-matrix.json",
+            f"{EVIDENCE_DIR}/financial-no-writeback-proof.json",
+        ],
+        "notes": (
+            "Deterministic Phase 08C data-quality gate evaluation across schema/contracts, the ten "
+            "V35 tables + guard columns, amount normalization, currency, WBS/cost-code, source "
+            "coverage, exposure marts, readiness agent, forecast-readiness, review-required policy, "
+            "CLI, and no-writeback/no-raw. Advisory review aid only — not a determination, approval, "
+            "claim, entitlement, or forecast. proof_passed is False when required evidence is missing."
+        ),
     }
+
+    json_path = Path(out_dir) / GATES_PROOF_JSON
+    md_path = Path(out_dir) / GATES_PROOF_MD
+    proof["proof_json_path"] = str(json_path)
+    proof["proof_path"] = str(md_path)
+
+    serialized = json.dumps(proof, default=str)
+    _assert_no_raw(serialized, "phase 08C gates proof JSON")
+
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    with open(json_path, "w") as handle:
+        json.dump(proof, handle, indent=2, default=str)
+    markdown = _render_phase_08c_gates_md(proof)
+    _assert_no_raw(markdown, "phase 08C gates proof markdown")
+    with open(md_path, "w") as handle:
+        handle.write(markdown)
+
+    return proof

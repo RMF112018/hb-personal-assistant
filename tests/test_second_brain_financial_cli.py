@@ -79,13 +79,19 @@ def _stub_builders(monkeypatch: pytest.MonkeyPatch, *, proof_passed: bool = True
         },
     )
     monkeypatch.setattr(
-        f"{_DQ}.evaluate_phase_08c_data_quality_gates",
+        f"{_DQ}.build_phase_08c_gates_proof",
         lambda *a, **k: {
             "ok": True,
+            "proof_passed": True,
             "schema_version": 36,
-            "gates": [],
-            "status_counts": {"pass": 1, "warning": 0, "fail_blocking": 0},
-            "guardrails": {},
+            "schema_version_expected": 35,
+            "status_counts": {"pass": 1, "warning": 0, "fail_blocking": 0, "deferred_not_blocking": 0},
+            "by_field_status": {"forecast_readiness": "pass"},
+            "required_fields_covered": True,
+            "readiness_overstated": False,
+            "missing_required_evidence": [],
+            "proof_path": "EVIDENCE/phase-08c-gates-proof.md",
+            "evidence_paths": ["EVIDENCE/phase-08c-gates-proof.json"],
         },
     )
     monkeypatch.setattr(

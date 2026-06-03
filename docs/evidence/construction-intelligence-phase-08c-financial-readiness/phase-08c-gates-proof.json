@@ -1,0 +1,235 @@
+{
+  "proof": "phase_08c_data_quality_gates",
+  "command": "second-brain data-quality phase-08c-gates",
+  "proof_passed": false,
+  "ok": false,
+  "phase": "08C",
+  "generated_utc": "2026-06-03T19:26:01.356362Z",
+  "schema_version": 36,
+  "schema_version_expected": 35,
+  "contract_version": "phase_08c_data_quality_gates-v1",
+  "advisory_only": true,
+  "status_counts": {
+    "pass": 18,
+    "warning": 3,
+    "fail_blocking": 1,
+    "deferred_not_blocking": 0
+  },
+  "by_field_status": {
+    "schema_contracts": "pass",
+    "endpoint_inventory": "pass",
+    "second_brain_financial_fact_normalization_runs": "pass",
+    "second_brain_financial_amount_facts_normalized": "pass",
+    "second_brain_financial_currency_completeness_snapshots": "pass",
+    "second_brain_financial_wbs_cost_code_snapshots": "pass",
+    "second_brain_financial_source_coverage_snapshots": "pass",
+    "second_brain_financial_exposure_summary_items": "pass",
+    "second_brain_financial_forecast_readiness_runs": "pass",
+    "second_brain_financial_review_required_items": "pass",
+    "second_brain_financial_readiness_agent_runs": "pass",
+    "second_brain_phase_08c_validation_runs": "pass",
+    "amount_normalization": "pass",
+    "currency_completeness": "warning",
+    "wbs_cost_code_completeness": "warning",
+    "source_coverage": "warning",
+    "exposure_marts": "pass",
+    "readiness_agent": "pass",
+    "forecast_readiness": "fail_blocking",
+    "review_required_policy": "pass",
+    "cli_operator_status": "pass",
+    "no_writeback_no_raw_financial_output": "pass"
+  },
+  "gates": [
+    {
+      "gate_name": "schema_contracts",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "contract_version": "phase_08c_data_quality_gates_contract"
+    },
+    {
+      "gate_name": "endpoint_inventory",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "required_families": 10
+    },
+    {
+      "gate_name": "second_brain_financial_fact_normalization_runs",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "second_brain_financial_amount_facts_normalized",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "second_brain_financial_currency_completeness_snapshots",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "second_brain_financial_wbs_cost_code_snapshots",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "second_brain_financial_source_coverage_snapshots",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "second_brain_financial_exposure_summary_items",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "second_brain_financial_forecast_readiness_runs",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "second_brain_financial_review_required_items",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "second_brain_financial_readiness_agent_runs",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "second_brain_phase_08c_validation_runs",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "amount_normalization",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "money_storage": {
+        "canonical_decimal": "TEXT",
+        "minor_units": "INTEGER when scale known",
+        "float_allowed": false,
+        "sqlite_real_allowed": false
+      },
+      "normalization": {
+        "run_id": "08c-amount-norm-f15396d6a490",
+        "stats": {
+          "parseable": 0,
+          "rejected": 0,
+          "missing": 0,
+          "ambiguous": 0,
+          "stale": 0,
+          "conflicting": 0,
+          "review_required": 0,
+          "total_values": 0
+        },
+        "fields_discovered": 30
+      }
+    },
+    {
+      "gate_name": "currency_completeness",
+      "gate_status": "warning",
+      "blocking": 0,
+      "reason": "11 values for 12 columns"
+    },
+    {
+      "gate_name": "wbs_cost_code_completeness",
+      "gate_status": "warning",
+      "blocking": 0,
+      "reason": "11 values for 12 columns"
+    },
+    {
+      "gate_name": "source_coverage",
+      "gate_status": "warning",
+      "blocking": 0,
+      "reason": "11 values for 12 columns"
+    },
+    {
+      "gate_name": "exposure_marts",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "total_items": 11,
+      "preview": "exposure-mart-preview.json"
+    },
+    {
+      "gate_name": "readiness_agent",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "run_id": "08c-fact-b749e03f",
+      "items": 80
+    },
+    {
+      "gate_name": "forecast_readiness",
+      "gate_status": "fail_blocking",
+      "blocking": 0,
+      "reason": null,
+      "readiness_status": "blocked_by_guardrail",
+      "context_items": 37,
+      "review_items": 72,
+      "proof_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-proof.json",
+      "md_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-gates.md"
+    },
+    {
+      "gate_name": "review_required_policy",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "routed_review_items": 0
+    },
+    {
+      "gate_name": "cli_operator_status",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "note": "read-only surfaces registered"
+    },
+    {
+      "gate_name": "no_writeback_no_raw_financial_output",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    }
+  ],
+  "required_fields_covered": true,
+  "readiness_overstated": true,
+  "missing_required_evidence": [],
+  "stop_checks": {
+    "gates_passed_with_missing_evidence": false,
+    "raw_persisted": false,
+    "financial_determination_performed": false
+  },
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "no_readiness_overstatement": true,
+    "advisory_only": true,
+    "financial_determination_forbidden": true
+  },
+  "evidence_paths": [
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.json",
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-proof.json",
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json",
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-no-writeback-proof.json"
+  ],
+  "notes": "Deterministic Phase 08C data-quality gate evaluation across schema/contracts, the ten V35 tables + guard columns, amount normalization, currency, WBS/cost-code, source coverage, exposure marts, readiness agent, forecast-readiness, review-required policy, CLI, and no-writeback/no-raw. Advisory review aid only \u2014 not a determination, approval, claim, entitlement, or forecast. proof_passed is False when required evidence is missing.",
+  "proof_json_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.json",
+  "proof_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.md"
+}

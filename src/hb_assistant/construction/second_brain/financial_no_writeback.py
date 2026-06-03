@@ -164,6 +164,28 @@ def _check_evidence_redaction(evidence_dir: str) -> dict[str, Any]:
     return {"passed": not findings, "files_scanned": scanned, "findings": findings}
 
 
+def run_financial_no_writeback_checks(
+    conn: Any, *, evidence_dir: str | None = None
+) -> dict[str, Any]:
+    """Run the no-writeback / no-raw checks read-only and return ``checks_detail``.
+
+    Writes nothing — usable by both the proof builder and the Phase 08C gate evaluator.
+    Each value is a dict with a ``passed`` bool plus check-specific detail.
+    """
+    evidence_dir = evidence_dir or EVIDENCE_DIR
+    return {
+        "guard_columns": _check_guard_columns(conn),
+        "money_not_float": _check_money_not_float(conn),
+        "evidence_redaction": _check_evidence_redaction(evidence_dir),
+        "no_live_no_writeback": {
+            "passed": True,
+            "live_procore_call_performed": False,
+            "external_writeback_performed": False,
+            "note": "read-only local attestation; performs no Procore/Graph call and no external mutation",
+        },
+    }
+
+
 def build_financial_no_writeback_proof(
     *,
     db_path: str | None = None,
@@ -180,22 +202,7 @@ def build_financial_no_writeback_proof(
     evidence_dir = evidence_dir or EVIDENCE_DIR
     conn = _get_conn(db_path)
 
-    guard = _check_guard_columns(conn)
-    money = _check_money_not_float(conn)
-    redaction = _check_evidence_redaction(evidence_dir)
-    no_live = {
-        "passed": True,
-        "live_procore_call_performed": False,
-        "external_writeback_performed": False,
-        "note": "read-only local attestation; performs no Procore/Graph call and no external mutation",
-    }
-
-    checks_detail = {
-        "guard_columns": guard,
-        "money_not_float": money,
-        "evidence_redaction": redaction,
-        "no_live_no_writeback": no_live,
-    }
+    checks_detail = run_financial_no_writeback_checks(conn, evidence_dir=evidence_dir)
     proof_passed = all(c["passed"] for c in checks_detail.values())
 
     proof: dict[str, Any] = {

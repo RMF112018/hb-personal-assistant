@@ -2622,32 +2622,44 @@ def data_quality_phase_08c_gates(
         True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
     ),
 ) -> None:
-    """Phase 08C financial data-quality gates (V35 tables + contracts + guards)."""
+    """Phase 08C financial data-quality gates (V35 tables + contracts + guards).
+
+    Evaluates the gates and writes phase-08c-gates-proof.json/.md to the evidence dir
+    (read-only over the DB; advisory only). proof_passed is False when required evidence
+    is missing.
+    """
     from hb_assistant.construction.second_brain.data_quality import (
-        evaluate_phase_08c_data_quality_gates,
+        build_phase_08c_gates_proof,
     )
 
-    report = evaluate_phase_08c_data_quality_gates()
-    evidence_dir = "docs/evidence/construction-intelligence-phase-08c-financial-readiness"
+    proof = build_phase_08c_gates_proof()
     payload = {
         "command": "second-brain data-quality phase-08c-gates",
         "phase": "08C",
         "project_key": project,
         "advisory_only": True,
-        **report,
-        "evidence_paths": [
-            f"{evidence_dir}/forecast-readiness-proof.json",
-            f"{evidence_dir}/financial-source-coverage-matrix.json",
-            f"{evidence_dir}/exposure-mart-preview.json",
-        ],
+        "ok": proof.get("ok"),
+        "proof_passed": proof.get("proof_passed"),
+        "schema_version": proof.get("schema_version"),
+        "schema_version_expected": proof.get("schema_version_expected"),
+        "status_counts": proof.get("status_counts"),
+        "by_field_status": proof.get("by_field_status"),
+        "required_fields_covered": proof.get("required_fields_covered"),
+        "readiness_overstated": proof.get("readiness_overstated"),
+        "missing_required_evidence": proof.get("missing_required_evidence"),
+        "proof_path": proof.get("proof_path"),
+        "evidence_paths": proof.get("evidence_paths"),
         "guardrails": _08C_GUARDRAILS,
         "attestations": _08C_ATTESTATIONS,
     }
     human = [
         "Phase 08C financial data-quality gates (advisory only)",
         f"  project: {project or 'all'}",
-        f"  ok: {report.get('ok')} | status counts: {report.get('status_counts')}",
-        f"  schema version: {report.get('schema_version')}",
+        f"  proof passed: {proof.get('proof_passed')} | ok: {proof.get('ok')}",
+        f"  status counts: {proof.get('status_counts')}",
+        f"  readiness overstated: {proof.get('readiness_overstated')}",
+        f"  missing required evidence: {proof.get('missing_required_evidence') or 'none'}",
+        f"  proof: {proof.get('proof_path')}",
     ]
     _emit_08c(payload, json_out=json_out, human=human)
 
