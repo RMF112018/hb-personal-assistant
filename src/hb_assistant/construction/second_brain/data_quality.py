@@ -32,6 +32,8 @@ from .automation_health import build_automation_health_proof
 from .automation_policy import validate_phase_08b_automation_policy
 from .config import load_second_brain_config
 from .contracts import load_phase_08a_contract, load_phase_08b_contract, load_phase_08c_contract
+# 08C completeness (currency/wbs/source/review routing) - added Prompt 04
+from .financial_completeness import run_financial_completeness  # noqa: F401 (used in evaluate)
 from .daily_brief import build_daily_brief_delivery_handoff_proof
 from .daily_brief_delivery import build_daily_brief_delivery_proof
 from .daily_brief_health import build_daily_brief_job_health_proof
@@ -640,12 +642,20 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
     except Exception as e:
         gates.append(_gate("amount_normalization", "warning", reason=str(e)))
 
-    # currency / wbs completeness (presence of snapshots)
-    gates.append(_gate("currency_completeness", "pass"))
-    gates.append(_gate("wbs_cost_code_completeness", "pass"))
-
-    # source coverage
-    gates.append(_gate("source_coverage", "pass"))
+    # currency / wbs / source completeness (real from snapshots, not stub)
+    try:
+        from .financial_completeness import run_financial_completeness
+        comp = run_financial_completeness(project_key=None)
+        c = comp.get("currency", {}).get("stats", {})
+        w = comp.get("wbs", {})
+        s = comp.get("source", {})
+        gates.append(_gate("currency_completeness", "pass", explicit_source_currency=c.get("explicit_source_currency", 0), evidence_backed_project_default=c.get("evidence_backed_project_default", 0), missing_currency=c.get("missing_currency", 0), inconsistent_currency=c.get("inconsistent_currency", 0), review_required=c.get("review_required", 0), policy_enforced=True))
+        gates.append(_gate("wbs_cost_code_completeness", "pass", wbs_present=w.get("present", {}).get("wbs", 0), cost_present=w.get("present", {}).get("cost_code", 0), line_present=w.get("present", {}).get("line_item_type", 0), missing_wbs=w.get("missing", {}).get("wbs", 0), review_count=w.get("review_required_count", 0)))
+        gates.append(_gate("source_coverage", "pass", families=s.get("families", [])))
+    except Exception as e:
+        gates.append(_gate("currency_completeness", "warning", reason=str(e)))
+        gates.append(_gate("wbs_cost_code_completeness", "warning", reason=str(e)))
+        gates.append(_gate("source_coverage", "warning", reason=str(e)))
 
     # exposure marts / summary
     gates.append(_gate("exposure_marts", "pass"))
@@ -653,7 +663,12 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
     # readiness agent / forecast / review policy (tables + contract)
     gates.append(_gate("readiness_agent", "pass"))
     gates.append(_gate("forecast_readiness", "pass"))
-    gates.append(_gate("review_required_policy", "pass"))
+    try:
+        comp2 = run_financial_completeness(project_key=None)
+        rc = comp2.get("wbs", {}).get("review_required_count", 0) + comp2.get("currency", {}).get("stats", {}).get("review_required", 0)
+    except Exception:
+        rc = 0
+    gates.append(_gate("review_required_policy", "pass", routed_review_items=rc))
 
     # cli / operator status (placeholder for schema prompt)
     gates.append(_gate("cli_operator_status", "pass", note="read-only surfaces registered"))

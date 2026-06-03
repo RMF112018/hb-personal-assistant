@@ -2419,7 +2419,12 @@ def financial_coverage(
 ) -> None:
     """Financial source coverage (from V35 snapshots + contract)."""
     from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
+    from hb_assistant.construction.second_brain.financial_completeness import build_source_coverage_snapshot
     contract = load_phase_08c_contract("financial_source_coverage_contract")
+    try:
+        snap = build_source_coverage_snapshot(project_key=project)
+    except Exception:
+        snap = {}
     payload = {
         "command": "second-brain financial coverage",
         "ok": True,
@@ -2427,6 +2432,7 @@ def financial_coverage(
         "project_key": project,
         "advisory_only": True,
         "required_families": contract.get("required_families", []),
+        "source_coverage_snapshots": snap,
         "guardrails": _08C_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))

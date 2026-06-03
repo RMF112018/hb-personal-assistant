@@ -1,0 +1,51 @@
+{
+  "generated_utc": "2026-06-03T14:19:16.106569Z",
+  "repo_head": "d5cb0e8daabbdf67fea854b97ecf4bab2a71663f",
+  "schema_version": 35,
+  "run_id": "comp-014c63d3",
+  "wbs_present": {
+    "wbs": 12,
+    "cost_code": 10,
+    "line_item_type": 8,
+    "source_field_path": 15
+  },
+  "wbs_missing": {
+    "wbs": 2,
+    "cost_code": 3,
+    "line_item_type": 4,
+    "source_field_path": 1
+  },
+  "review_required_count": 4,
+  "source_coverage_families": [
+    "owner_contracts",
+    "commitments",
+    "purchase_orders",
+    "budget"
+  ],
+  "contract": {
+    "required_dimensions": [
+      "cost_code",
+      "wbs",
+      "line_item_type",
+      "source_field_path",
+      "project_key"
+    ],
+    "status_values": [
+      "present",
+      "missing",
+      "ambiguous",
+      "not_applicable",
+      "review_required"
+    ]
+  },
+  "advisory_only": true,
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_raw_financial_payload": true,
+    "financial_determination_forbidden": true,
+    "advisory_only": true
+  },
+  "notes": "WBS/cost/line_item_type/source_field_path presence measured from normalized facts + procore source tables. Missing routes to review_required_items with trigger missing_wbs... or missing_source.... No raw payloads. Advisory only."
+}

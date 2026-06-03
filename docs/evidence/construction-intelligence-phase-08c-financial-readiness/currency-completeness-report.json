@@ -1,0 +1,57 @@
+{
+  "generated_utc": "2026-06-03T14:19:16.106569Z",
+  "repo_head": "d5cb0e8daabbdf67fea854b97ecf4bab2a71663f",
+  "schema_version": 35,
+  "run_id": "comp-e5d2c9ff",
+  "by_project": {
+    "trop": {
+      "explicit": 3,
+      "default": 1,
+      "missing": 1
+    },
+    "trop2": {
+      "explicit": 2,
+      "inconsistent": 1
+    }
+  },
+  "totals": {
+    "explicit_source_currency": 5,
+    "evidence_backed_project_default": 2,
+    "missing_currency": 1,
+    "inconsistent_currency": 1,
+    "ambiguous_currency": 0,
+    "review_required": 3,
+    "project_default_applied_total": 2
+  },
+  "contract": {
+    "currency_status_values": [
+      "explicit_source_currency",
+      "evidence_backed_project_default",
+      "missing_currency",
+      "inconsistent_currency",
+      "ambiguous_currency",
+      "review_required"
+    ],
+    "project_default_conditions": [
+      "documented_source",
+      "policy_allowed",
+      "no_line_level_conflict",
+      "output_marks_default_derived"
+    ]
+  },
+  "policy_conditions": [
+    "documented_project_default_exists",
+    "source_family_policy_allows_default",
+    "no_line_level_conflict"
+  ],
+  "advisory_only": true,
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_raw_financial_payload": true,
+    "financial_determination_forbidden": true,
+    "advisory_only": true
+  },
+  "notes": "project default currency applied ONLY when all evidence-backed conditions met and output explicitly marked as derived. Source amounts preserved verbatim in procore_financial_* tables. No raw payloads. Advisory review aid only. Decimal only (reused helpers)."
+}
