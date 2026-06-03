@@ -1,0 +1,35 @@
+{
+  "receipts": {
+    "activities": {
+      "n1_fanout": null,
+      "reason_codes": [],
+      "redacted_errors": [],
+      "request_count": 1,
+      "retrieved_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "success",
+      "status": "success"
+    },
+    "schedules": {
+      "n1_fanout": null,
+      "reason_codes": [],
+      "redacted_errors": [],
+      "request_count": 1,
+      "retrieved_count": 1,
+      "sqlite_upserted_count": 1,
+      "state": "success",
+      "status": "success"
+    }
+  },
+  "receipts_path": "docs/evidence/procore-live-request-audit/20260603T085513Z-schedule-activity-receipts.json",
+  "request_count_observed": 2,
+  "requests_by_endpoint_hint": {
+    "activity_urls": [],
+    "schedules_urls": [
+      "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules",
+      "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules"
+    ]
+  },
+  "requests_path": "docs/evidence/procore-live-request-audit/20260603T085513Z-schedule-activity-requests.jsonl",
+  "stamp": "20260603T085513Z"
+}

@@ -956,7 +956,7 @@ def run_live_sync(
         reason_codes.append("token_provider_unavailable")
         attempt_count = transport_calls["count"]
         request_count = max(request_count, attempt_count)
-        retry_count = max(0, attempt_count - 1)
+        retry_count = 0
         if will_write_db:
             record_sync_run_complete(
                 sync_run_id=sync_run_id,
@@ -1006,7 +1006,7 @@ def run_live_sync(
     except ProcoreAPIError as exc:
         attempt_count = transport_calls["count"]
         request_count = max(request_count, attempt_count)
-        retry_count = max(0, attempt_count - 1)
+        retry_count = 0
         if isinstance(exc, ProcoreRateLimitError):
             last_retry_after = exc.retry_after
             reason_codes.append("transport_error:429_rate_limited")
@@ -1674,7 +1674,7 @@ def run_live_sync(
     completed_at = _now_utc()
     attempt_count = transport_calls["count"]
     request_count = max(request_count, attempt_count)
-    retry_count = max(0, attempt_count - 1)
+    retry_count = 0
     state = "success" if not redacted_errors else "partial_success"
     status = "success" if not redacted_errors else "partial"
 

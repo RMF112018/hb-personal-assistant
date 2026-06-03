@@ -247,6 +247,38 @@ def test_paginate_returns_normalized_items_and_honors_max_bounds():
     assert rows == [{"id": "1"}, {"id": "2"}, {"id": "3"}]
 
 
+def test_paginate_parses_procore_link_header_without_space_before_rel():
+    link_next = (
+        '<https://sandbox.procore.com/rest/v2.0/projects/1/schedules/2/activities?page=1&per_page=100>;rel="first", '
+        '<https://sandbox.procore.com/rest/v2.0/projects/1/schedules/2/activities?page=2&per_page=100>;rel="next", '
+        '<https://sandbox.procore.com/rest/v2.0/projects/1/schedules/2/activities?page=3&per_page=100>;rel="last"'
+    )
+    transport, calls = make_recording_transport(
+        [
+            FakeResponse(200, {"data": [{"id": "1"}]}, headers={"Link": link_next}),
+            FakeResponse(200, {"data": [{"id": "2"}]}, headers={}),
+        ]
+    )
+    client = ProcoreHTTPClient(
+        environment="sandbox",
+        transport=transport,
+        access_token_provider=_stub_token_provider,
+    )
+
+    rows = list(
+        client.paginate(
+            "/rest/v2.0/projects/1/schedules/2/activities",
+            per_page=100,
+            max_pages=10,
+            max_items=10,
+        )
+    )
+
+    assert rows == [{"id": "1"}, {"id": "2"}]
+    assert len(calls) == 2
+    assert calls[1]["params"] == {"page": "2", "per_page": "100"}
+
+
 def test_paginate_stops_without_explicit_continuation_signal():
     transport, calls = make_recording_transport(
         [

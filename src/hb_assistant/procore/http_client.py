@@ -246,7 +246,10 @@ class ProcoreHTTPClient:
             return None
         for part in header.split(","):
             segment = part.strip()
-            if '; rel="next"' in segment and "<" in segment and ">" in segment:
+            if "<" not in segment or ">" not in segment:
+                continue
+            attrs = [attr.strip() for attr in segment.split(";")[1:]]
+            if 'rel="next"' in attrs or "rel=next" in attrs:
                 return segment[segment.find("<") + 1: segment.find(">")]
         return None
 

@@ -1,0 +1,36 @@
+{
+  "receipt": {
+    "last_retry_after": null,
+    "reason_codes": [],
+    "redacted_errors": [],
+    "request_count": 17,
+    "retrieved_count": 1609,
+    "retry_count": 16,
+    "sqlite_upserted_count": 1609,
+    "state": "success",
+    "status": "success"
+  },
+  "receipt_path": "docs/evidence/procore-live-request-audit/20260603T085715Z-activity-parent-9517-receipt.json",
+  "request_count_observed": 17,
+  "request_urls": [
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities",
+    "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/9517/activities"
+  ],
+  "requests_path": "docs/evidence/procore-live-request-audit/20260603T085715Z-activity-parent-9517-requests.jsonl",
+  "stamp": "20260603T085715Z"
+}
