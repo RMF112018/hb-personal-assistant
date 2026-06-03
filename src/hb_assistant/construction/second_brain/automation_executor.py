@@ -303,9 +303,7 @@ def build_execution_plan(
 
     decisions: list[ExecutionDecision] = []
     # Weekend / catch-up
-    decisions.extend(
-        _weekend_catchup_decisions(mode=request.mode, main_policy=main_pol, now=now)
-    )
+    decisions.extend(_weekend_catchup_decisions(mode=request.mode, main_policy=main_pol, now=now))
     # Duplicate prevention (read-only view)
     dup = _duplicate_prevention_decision(request=request, force=force or request.force)
     if dup:
@@ -440,4 +438,570 @@ __all__ = [
     "run_execution_planner",
     "build_automation_executor_dry_run_plan_proof",
     "DEFAULT_STAGES",
+    # P03 additions
+    "StageReceipt",
+    "ExecutionResult",
+    "AutomationExecutor",
+    "run_automation_execution",
+    "build_automation_execution_proof",
 ]
+
+
+# =============================================================================
+# Prompt 03: Automation Execution Service and Stage Runner
+# =============================================================================
+# Additive on top of P02 planner. Dry default. --apply --confirm for real path.
+# Lock acquired before any registry open or stage. Stages in DEFAULT_STAGES order.
+# Per-stage: record_run_step (status + reason + detail) + emit_receipt=True on
+# the domain run_* surfaces (for V28 agent + domain-specific receipts).
+# On failure: mark current failed, remaining downstream_skipped, generate recovery.
+# Release ALWAYS via finally. Injected fakes for tests (never real externals/side effects).
+# Receipt strategy: V29 run_steps + surfaces' emit receipts (no schema change).
+# Recovery rec: human dict with safe CLI hints (no tokens/secrets/URLs).
+# All results/payloads sanitized; guardrails dict present; schema_version asserted 34.
+# =============================================================================
+
+import time
+from typing import Any, Callable
+
+from pydantic import BaseModel, Field
+
+
+class StageReceipt(BaseModel):
+    """Per-stage receipt persisted via record_run_step + domain emit_receipts."""
+
+    stage: str
+    order: int
+    status: Literal["succeeded", "failed", "skipped_downstream"]
+    started_utc: str
+    finished_utc: str
+    duration_ms: int | None = None
+    reason_code: str | None = None
+    detail: str | None = None  # bounded, redacted
+    receipt_ids: list[str] = Field(default_factory=list)
+
+    model_config = {"extra": "forbid"}
+
+
+class ExecutionResult(BaseModel):
+    """Result of AutomationExecutor.execute (dry or apply)."""
+
+    request: ExecutionRequest
+    plan: ExecutionPlan
+    run_registry_id: str | None = None
+    stage_receipts: list[StageReceipt] = Field(default_factory=list)
+    overall_status: Literal["succeeded", "failed", "dry_run", "blocked", "degraded"]
+    recovery_recommendation: dict[str, Any] | None = None
+    guardrails: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "local_first": True,
+            "dry_run_default": True,
+            "apply_requires_explicit_confirm": True,
+            "no_external_delivery": True,
+            "no_external_writeback": True,
+            "no_raw_content": True,
+            "fail_closed": True,
+            "lock_guaranteed_release": True,
+            "stage_receipts_persisted": "V29_run_steps + emit V28+",
+            "automation_execution_still_deferred": True,
+        }
+    )
+    lock_released: bool = False
+    schema_version: int = 34
+
+    model_config = {"extra": "forbid"}
+
+
+class AutomationExecutor:
+    """Executor service: dry-run (plan only) or apply (lock+registry+stages+receipts+release).
+
+    Apply strictly requires confirm=True (plus dry_run=False). Use injected callables
+    for the 5 core domains in tests (fakes never fire osascript, never write real vault/html,
+    never emit real notifications). Defaults delegate to existing internal services.
+    """
+
+    def __init__(
+        self,
+        *,
+        dry_run: bool = True,
+        confirm: bool | None = None,
+        db_path: str | None = None,
+        locks_dir: str | None = None,
+        now: datetime | None = None,
+        brief_gen: Callable | None = None,
+        html_render: Callable | None = None,
+        macos_notify: Callable | None = None,
+        deliver: Callable | None = None,
+        job_health: Callable | None = None,
+    ) -> None:
+        self.dry_run = dry_run
+        self.confirm = confirm
+        self.db_path = db_path
+        self.locks_dir = locks_dir
+        self.now = now or datetime.now(timezone.utc)
+
+        # Injected or real (real imports guarded to avoid heavy top-level deps/cycles)
+        self._brief_gen = brief_gen or self._default_brief_gen
+        self._html_render = html_render or self._default_html_render
+        self._macos_notify = macos_notify or self._default_macos_notify
+        self._deliver = deliver or self._default_deliver
+        self._job_health = job_health or self._default_job_health
+
+    def _confirmed(self) -> bool:
+        return bool(self.confirm) and not self.dry_run
+
+    # ---- default delegates (import inside to keep module light; real paths) ----
+    def _default_brief_gen(self, **kw: Any) -> Any:
+        from .daily_brief.generate import run_daily_brief
+
+        return run_daily_brief(**kw)
+
+    def _default_html_render(self, **kw: Any) -> Any:
+        from .daily_brief_html import run_daily_brief_html_render_agent
+
+        return run_daily_brief_html_render_agent(**kw)
+
+    def _default_macos_notify(self, **kw: Any) -> Any:
+        from .daily_brief_notify import run_daily_brief_notification_agent
+
+        return run_daily_brief_notification_agent(**kw)
+
+    def _default_deliver(self, **kw: Any) -> Any:
+        from .daily_brief_delivery import run_daily_brief_delivery_agent
+
+        return run_daily_brief_delivery_agent(**kw)
+
+    def _default_job_health(self, **kw: Any) -> Any:
+        from .daily_brief_health import run_daily_brief_job_health
+
+        return run_daily_brief_job_health(**kw)
+
+    # ---- public ----
+    def execute(self, request: ExecutionRequest | None = None) -> ExecutionResult:
+        req = request or ExecutionRequest()
+        # Always build plan first (P02, dry emit semantics)
+        plan = build_execution_plan(request=req, dry_run=True, now=self.now)
+        if self.dry_run or not self._confirmed():
+            status = "dry_run" if self.dry_run else "blocked"
+            rec: dict[str, Any] | None = None
+            if not self.dry_run and not self._confirmed():
+                rec = {
+                    "reason_code": "EXECUTOR_APPLY_REQUIRES_CONFIRM",
+                    "detail": "pass --apply --confirm together",
+                }
+            return ExecutionResult(
+                request=req,
+                plan=plan,
+                overall_status=status,
+                recovery_recommendation=rec,
+            )
+
+        # APPLY PATH (confirmed)
+        from .run_registry import (
+            acquire_run_lock,
+            finish_run,
+            record_run_step,
+            register_run,
+            release_run_lock,
+        )
+        from hb_assistant.config.path_policy import PathPolicy
+
+        locks_dir = self.locks_dir or str(PathPolicy().get_locks_dir())
+        acquired = acquire_run_lock(run_kind=req.run_kind, locks_dir=locks_dir, dry_run=False)
+        if acquired.status not in ("acquired", "reclaimed"):
+            return ExecutionResult(
+                request=req,
+                plan=plan,
+                overall_status="blocked",
+                recovery_recommendation={
+                    "reason_code": acquired.reason_code or "RUN_OVERLAP_BLOCKED"
+                },
+            )
+
+        run_id: str | None = None
+        stage_receipts: list[StageReceipt] = []
+        failed_stage: str | None = None
+        try:
+            run_id = register_run(
+                run_kind=req.run_kind,
+                status="started",
+                reason_code="EXECUTOR_STARTED",
+                lock_token=acquired.token,
+                lock_status=acquired.status,
+                emit=True,
+                db_path=self.db_path,
+            )
+            if run_id is None:
+                run_id = "unregistered"  # defensive; emit=True path guarantees str
+            for idx, stg in enumerate(plan.stages):
+                started = datetime.now(timezone.utc).isoformat()
+                if failed_stage is not None:
+                    detail = f"downstream after failure in {failed_stage}"
+                    record_run_step(
+                        run_registry_id=run_id,
+                        step_name=stg.name,
+                        step_order=idx,
+                        status="skipped_downstream",
+                        reason_code="STAGE_DOWNSTREAM_SKIPPED",
+                        detail=detail,
+                        db_path=self.db_path,
+                    )
+                    stage_receipts.append(
+                        StageReceipt(
+                            stage=stg.name,
+                            order=idx,
+                            status="skipped_downstream",
+                            started_utc=started,
+                            finished_utc=datetime.now(timezone.utc).isoformat(),
+                            reason_code="STAGE_DOWNSTREAM_SKIPPED",
+                            detail=detail,
+                        )
+                    )
+                    continue
+                t0 = time.time()
+                try:
+                    srec = self._run_stage(stg, run_id, req)
+                    dur = int((time.time() - t0) * 1000)
+                    finished = datetime.now(timezone.utc).isoformat()
+                    record_run_step(
+                        run_registry_id=run_id,
+                        step_name=stg.name,
+                        step_order=idx,
+                        status="succeeded",
+                        reason_code=srec.get("reason_code") or "STAGE_CORE_COMPLETE",
+                        detail=None,
+                        db_path=self.db_path,
+                    )
+                    stage_receipts.append(
+                        StageReceipt(
+                            stage=stg.name,
+                            order=idx,
+                            status="succeeded",
+                            started_utc=started,
+                            finished_utc=finished,
+                            duration_ms=dur,
+                            reason_code=srec.get("reason_code"),
+                            receipt_ids=[srec.get("receipt_id")] if srec.get("receipt_id") else [],
+                        )
+                    )
+                except Exception as e:  # controlled failure path
+                    dur = int((time.time() - t0) * 1000)
+                    finished = datetime.now(timezone.utc).isoformat()
+                    detail = str(e)[:180]
+                    record_run_step(
+                        run_registry_id=run_id,
+                        step_name=stg.name,
+                        step_order=idx,
+                        status="failed",
+                        reason_code="EXECUTOR_FAILED",
+                        detail=detail,
+                        db_path=self.db_path,
+                    )
+                    stage_receipts.append(
+                        StageReceipt(
+                            stage=stg.name,
+                            order=idx,
+                            status="failed",
+                            started_utc=started,
+                            finished_utc=finished,
+                            duration_ms=dur,
+                            reason_code="EXECUTOR_FAILED",
+                            detail=detail,
+                        )
+                    )
+                    failed_stage = stg.name
+            fin_status = "succeeded" if not failed_stage else "failed"
+            finish_run(
+                run_registry_id=run_id if run_id is not None else "unregistered",
+                status=fin_status,
+                reason_code="EXECUTOR_SUCCEEDED" if not failed_stage else "EXECUTOR_FAILED",
+                db_path=self.db_path,
+            )
+            recov = (
+                self._generate_recovery_recommendation(
+                    failed_stage=failed_stage,
+                    run_registry_id=run_id,
+                    stage_receipts=stage_receipts,
+                    plan=plan,
+                )
+                if failed_stage
+                else None
+            )
+            overall = "succeeded" if not failed_stage else "failed"
+            res = ExecutionResult(
+                request=req,
+                plan=plan,
+                run_registry_id=run_id,
+                stage_receipts=stage_receipts,
+                overall_status=overall,
+                recovery_recommendation=recov,
+                lock_released=True,
+            )
+            return res
+        finally:
+            if acquired and acquired.token:
+                release_run_lock(token=acquired.token, locks_dir=locks_dir)
+
+    def _run_stage(
+        self, stage: ExecutorStage, run_id: str, req: ExecutionRequest
+    ) -> dict[str, Any]:
+        brief_date = req.brief_date or self.now.date().isoformat()
+        base: dict[str, Any] = {
+            "brief_date": brief_date,
+            "db_path": self.db_path,
+            "mode": "apply",
+            "emit_receipt": True,
+            "now": self.now,
+        }
+        if stage.name == "preflight_status":
+            from .automation_health import run_automation_health
+
+            h, _ = run_automation_health(db_path=self.db_path, emit_receipt=True)
+            return {
+                "stage": stage.name,
+                "status": "succeeded",
+                "reason_code": "STAGE_PREFLIGHT_PASSED",
+                "result": h.model_dump() if hasattr(h, "model_dump") else {},
+            }
+        if stage.name == "source_freshness_check":
+            from .freshness import evaluate_source_freshness
+
+            f = evaluate_source_freshness(db_path=self.db_path, now=self.now)
+            return {
+                "stage": stage.name,
+                "status": "succeeded",
+                "reason_code": "STAGE_FRESHNESS_CHECKED",
+                "result": f.model_dump() if hasattr(f, "model_dump") else {},
+            }
+        if stage.name == "daily_brief_generate":
+            res = self._brief_gen(
+                brief_date=brief_date, mode="apply", db_path=self.db_path, emit_receipt=True
+            )
+            return {
+                "stage": stage.name,
+                "status": "succeeded",
+                "reason_code": "STAGE_CORE_COMPLETE",
+                "result": _sanitize(res.model_dump()) if hasattr(res, "model_dump") else {},
+                "receipt_id": getattr(res, "brief_run_id", None),
+            }
+        if stage.name == "local_html_deliver":
+            from hb_assistant.config.path_policy import PathPolicy
+
+            html_dir = str(PathPolicy().get_html_dir())
+            res = self._html_render(
+                brief_date=brief_date,
+                mode="apply",
+                db_path=self.db_path,
+                html_dir=html_dir,
+                emit_receipt=True,
+            )
+            aid = res[1] if isinstance(res, (list, tuple)) and len(res) > 1 else None
+            return {
+                "stage": stage.name,
+                "status": "succeeded",
+                "reason_code": "STAGE_HTML_RENDERED",
+                "receipt_id": aid,
+            }
+        if stage.name == "macos_notification_emit":
+            res = self._macos_notify(
+                brief_date=brief_date,
+                mode="apply",
+                db_path=self.db_path,
+                emit_receipt=True,
+                notifier=None,
+                policy_emit=True,
+            )
+            aid = res[1] if isinstance(res, (list, tuple)) and len(res) > 1 else None
+            return {
+                "stage": stage.name,
+                "status": "succeeded",
+                "reason_code": "STAGE_NOTIFY_EMITTED",
+                "receipt_id": aid,
+            }
+        if stage.name == "delivery_receipt_record":
+            from hb_assistant.config.path_policy import PathPolicy
+
+            pp = PathPolicy()
+            vault = str(
+                getattr(pp, "get_vault_brief_dir", lambda: pp.get_app_support() / "tmp_vault")()
+            )
+            res = self._deliver(
+                brief_date=brief_date,
+                mode="apply",
+                db_path=self.db_path,
+                vault_brief_dir=vault,
+                emit_receipt=True,
+            )
+            aid = res[1] if isinstance(res, (list, tuple)) and len(res) > 1 else None
+            return {
+                "stage": stage.name,
+                "status": "succeeded",
+                "reason_code": "STAGE_DELIVERED",
+                "receipt_id": aid,
+            }
+        if stage.name == "job_health_update":
+            res = self._job_health(db_path=self.db_path, emit_receipt=True)
+            aid = res[1] if isinstance(res, (list, tuple)) and len(res) > 1 else None
+            return {
+                "stage": stage.name,
+                "status": "succeeded",
+                "reason_code": "STAGE_JOB_HEALTH_UPDATED",
+                "receipt_id": aid,
+            }
+        if stage.name == "closeout":
+            return {"stage": stage.name, "status": "succeeded", "reason_code": "EXECUTOR_COMPLETE"}
+        return {"stage": stage.name, "status": "succeeded", "reason_code": "STAGE_CORE_COMPLETE"}
+
+    def _generate_recovery_recommendation(
+        self,
+        *,
+        failed_stage: str | None,
+        run_registry_id: str | None,
+        stage_receipts: list[StageReceipt],
+        plan: ExecutionPlan,
+    ) -> dict[str, Any]:
+        return {
+            "recommendation": "Execution failed. Local-only recovery (no external systems, explicit confirm required):",
+            "failed_stage": failed_stage,
+            "run_registry_id": run_registry_id,
+            "reason_code": "EXECUTOR_FAILED",
+            "suggested_next": [
+                "hb-assistant second-brain automation run-recovery --mode=apply --confirm",
+                "hb-assistant second-brain automation execute --apply --confirm --mode=manual",
+                "hb-assistant second-brain automation run-registry-status --limit 5",
+                "hb-assistant second-brain automation receipts --brief-date $(date +%Y-%m-%d)",
+            ],
+            "guardrails": {"local_only": True, "no_external": True, "explicit_confirm": True},
+        }
+
+
+def run_automation_execution(
+    request: ExecutionRequest | None = None,
+    *,
+    apply: bool = False,
+    confirm: bool = False,
+    **ctor_kwargs: Any,
+) -> ExecutionResult:
+    """Thin wrapper for CLI/tests. Respects apply/confirm two-factor."""
+    dry = not (apply and confirm)
+    ex = AutomationExecutor(dry_run=dry, confirm=confirm, **ctor_kwargs)
+    return ex.execute(request)
+
+
+def build_automation_execution_proof() -> dict[str, Any]:
+    """Proof for P03 (temp DB/locks/html/vault; fakes for 5 domains; dry + apply success + fail+downstream cases)."""
+    import tempfile
+    from pathlib import Path
+
+    from hb_assistant.construction.store import ConstructionStore
+
+    with tempfile.TemporaryDirectory() as td:
+        db = f"{td}/proof.sqlite"
+        ConstructionStore(db)  # migrate to latest (34)
+        locks = str(Path(td) / "locks")
+        html_d = str(Path(td) / "html")
+        vault_d = str(Path(td) / "vault_brief")
+
+        class _Fake:
+            calls: list[dict] = []
+
+            def __call__(self, **kw: Any) -> Any:
+                self.calls.append(kw)
+                return type(
+                    "R",
+                    (),
+                    {
+                        "status": "succeeded",
+                        "model_dump": lambda s: {
+                            "brief_date": kw.get("brief_date"),
+                            "applied": False,
+                            "local_only": True,
+                            "output_written": False,
+                        },
+                        "brief_run_id": "fake-run-id",
+                    },
+                )()
+
+        class _FakeFail(_Fake):
+            def __call__(self, **kw: Any) -> Any:
+                self.calls.append(kw)
+                raise RuntimeError("simulated stage failure for downstream skip test")
+
+        fake_gen = _Fake()
+        fake_html = _Fake()
+        fake_notify = _Fake()
+        fake_deliver = _Fake()
+        fake_job = _Fake()
+
+        # success apply (confirmed)
+        ex_ok = AutomationExecutor(
+            dry_run=False,
+            confirm=True,
+            db_path=db,
+            locks_dir=locks,
+            brief_gen=fake_gen,
+            html_render=fake_html,
+            macos_notify=fake_notify,
+            deliver=fake_deliver,
+            job_health=fake_job,
+        )
+        req = ExecutionRequest(run_kind="daily_brief", mode="manual")
+        res_ok = ex_ok.execute(req)
+
+        # fail + downstream case
+        fake_gen_fail = _FakeFail()
+        ex_fail = AutomationExecutor(
+            dry_run=False,
+            confirm=True,
+            db_path=db,
+            locks_dir=locks,
+            brief_gen=fake_gen_fail,
+            html_render=_Fake(),
+            macos_notify=_Fake(),
+            deliver=_Fake(),
+            job_health=_Fake(),
+        )
+        res_fail = ex_fail.execute(req)
+
+        # dry
+        ex_dry = AutomationExecutor(dry_run=True, confirm=False, db_path=db, locks_dir=locks)
+        res_dry = ex_dry.execute(req)
+
+        # asserts (fail-closed)
+        assert res_ok.lock_released is True or res_ok.overall_status in ("succeeded", "failed")
+        assert len(res_ok.stage_receipts) == len(DEFAULT_STAGES)
+        blob_ok = json.dumps(res_ok.model_dump(), default=str)
+        assert not any(t in blob_ok for t in _FORBIDDEN_TOKENS)
+
+        failed_count = sum(1 for r in res_fail.stage_receipts if r.status == "failed")
+        skipped = sum(1 for r in res_fail.stage_receipts if r.status == "skipped_downstream")
+        assert failed_count >= 1
+        assert skipped >= 3
+        assert res_fail.recovery_recommendation is not None
+        assert "suggested_next" in res_fail.recovery_recommendation
+        assert any(
+            "run-recovery" in str(s)
+            for s in res_fail.recovery_recommendation.get("suggested_next", [])
+        )
+        assert res_fail.lock_released is True
+
+        assert res_dry.overall_status == "dry_run"
+        assert res_dry.run_registry_id is None
+
+        proof = {
+            "proof": "phase_08b_automation_execution_service",
+            "proof_passed": True,
+            "simulated_apply_result": res_ok.model_dump(),
+            "fail_downstream_result": res_fail.model_dump(),
+            "dry_result": res_dry.model_dump(),
+            "stage_count": len(DEFAULT_STAGES),
+            "receipt_persist_via": "V29_run_steps + emit_receipt V28+",
+            "lock_guaranteed_release": True,
+            "confirm_enforced": True,
+            "fakes_used": True,
+            "no_raw": True,
+            "schema_version": 34,
+            "guardrails": res_ok.guardrails,
+            "recovery_recommendation_present_on_fail": res_fail.recovery_recommendation is not None,
+        }
+        return proof

@@ -2027,6 +2027,7 @@ def automation_plan_execution(
         ExecutionRequest,
         build_execution_plan,
     )
+
     req = ExecutionRequest(run_kind="daily_brief", mode=mode, day_offset=day_offset)  # type: ignore[arg-type]
     plan = build_execution_plan(request=req, dry_run=True)
     payload = {
@@ -2034,6 +2035,92 @@ def automation_plan_execution(
         "dry_run": True,
         "plan": plan.model_dump(),
         "guardrails": plan.guardrails,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+_EXEC_GUARDRAILS = {
+    "local_first": True,
+    "apply_requires_explicit_confirm": True,
+    "no_external_delivery": True,
+    "no_external_writeback": True,
+    "no_raw_content": True,
+    "lock_guaranteed_release": True,
+    "stage_receipts_persisted": "V29_run_steps + emit V28+",
+    "fail_closed": True,
+    "automation_execution_still_deferred": True,
+}
+
+
+@automation_app.command("execute")
+def automation_execute(
+    mode: str = typer.Option("manual", "--mode", help="manual|launchd|catch_up|replay"),
+    day_offset: int = typer.Option(0, "--day-offset"),
+    apply: bool = typer.Option(
+        False,
+        "--apply/--no-apply",
+        help="Attempt real execution (acquire lock, register run, run 8 stages, persist receipts). Dry-run default.",
+    ),
+    confirm: bool = typer.Option(
+        False,
+        "--confirm/--no-confirm",
+        help="REQUIRED together with --apply to execute (two-factor explicit approval).",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Execute (or dry-run) the daily brief automation plan.
+
+    Default is dry-run (plan only). Real apply path requires BOTH --apply and --confirm.
+    Uses the executor service: lock before registry before ordered stages, stage receipts via V29+,
+    downstream skip on failure, recovery recommendation, guaranteed lock release.
+    Injected fakes used in tests; real CLI --apply --confirm is the production gate (still local-only).
+    """
+    from hb_assistant.construction.second_brain.automation_executor import (
+        ExecutionRequest,
+        run_automation_execution,
+    )
+
+    req = ExecutionRequest(run_kind="daily_brief", mode=mode, day_offset=day_offset)  # type: ignore[arg-type]
+    result = run_automation_execution(req, apply=apply, confirm=confirm)
+    payload = {
+        "command": "second-brain automation execute",
+        "apply_requested": apply,
+        "confirmed": confirm,
+        "result": result.model_dump() if hasattr(result, "model_dump") else result,
+        "guardrails": _EXEC_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    ok = (
+        result.overall_status in ("succeeded", "dry_run")
+        if hasattr(result, "overall_status")
+        else True
+    )
+    raise typer.Exit(0 if ok else 3)
+
+
+@automation_app.command("execution-status")
+def automation_execution_status(
+    limit: int = typer.Option(
+        5, "--limit", help="Max recent daily_brief runs to report with step counts."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report recent daily_brief execution runs + per-stage steps from the run registry (read-only)."""
+    from hb_assistant.construction.second_brain.run_registry import read_latest_run_registry
+
+    try:
+        rows = read_latest_run_registry(run_kind="daily_brief", limit=limit) or []
+    except Exception as exc:  # pragma: no cover - defensive
+        err = {"command": "second-brain automation execution-status", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation execution-status",
+        "count": len(rows),
+        "runs": rows,
+        "guardrails": _EXEC_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)

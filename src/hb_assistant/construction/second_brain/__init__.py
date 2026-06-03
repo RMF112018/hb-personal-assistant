@@ -136,6 +136,13 @@ from .synthesis import (
     synthesize_answer,
     write_evaluation_run,
 )
+from .automation_executor import (
+    AutomationExecutor,
+    ExecutionResult,
+    StageReceipt,
+    build_automation_execution_proof,
+    run_automation_execution,
+)
 
 __all__ = [
     "AgentDefinition",
@@ -245,4 +252,10 @@ __all__ = [
     "propose_memory_candidate",
     "review_memory_candidate",
     "validate_memory_policy",
+    # P03 executor service + runner (additive)
+    "AutomationExecutor",
+    "ExecutionResult",
+    "StageReceipt",
+    "build_automation_execution_proof",
+    "run_automation_execution",
 ]
