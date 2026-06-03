@@ -89,11 +89,10 @@ class ProcorePaginator:
             p["starting_after"] = result.next_cursor
             return p
 
-        # Traditional page increment fallback
-        page = int(current_params.get("page", 1))
-        p = dict(current_params)
-        p["page"] = page + 1
-        return p
+        # Procore signals continuation with a Link header or a cursor token.
+        # Do not invent page=N+1 when no continuation signal is present; many
+        # endpoints return the full unfiltered set in one response.
+        return None
 
     def _retryable(self, exc: Exception) -> tuple[bool, RateLimitInfo]:
         if isinstance(exc, ProcoreRateLimitError):

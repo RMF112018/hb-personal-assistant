@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -92,6 +92,7 @@ from hb_assistant.procore.normalizers.subcontractor_invoice import (
     normalize_subcontractor_invoice_contract_detail_item,
     normalize_subcontractor_invoice_contract_item,
 )
+from hb_assistant.procore.pagination import RetryPolicy
 from hb_assistant.procore.redaction import redact_source_url
 from hb_assistant.procore.token_provider import default_procore_token_provider
 from hb_assistant.store.procore_budget_projection import (
@@ -116,6 +117,7 @@ from hb_assistant.store.procore_owner_projection import (
 )
 from hb_assistant.store.procore_punch_projection import project_punch_item
 from hb_assistant.store.procore_repositories import (
+    count_procore_live_child_records_for_parent,
     count_procore_live_records,
     record_sync_run_complete,
     record_sync_run_start,
@@ -133,15 +135,61 @@ from hb_assistant.store.procore_submittal_projection import project_submittal
 COMPANY_ID = "5280"
 EVIDENCE_DIR_REL = "docs/evidence/construction-intelligence-phase-04a"
 
-# Default bound on N+1 child GETs per sync run (one GET per parent). Caps rate-limit /
-# long-run exposure for endpoints that fan out over a parent list; operators may lower
-# it via `--max-child-requests`. When reached, remaining parents are skipped and a later
-# run backfills idempotently (see run_live_sync N+1 fan-out).
-DEFAULT_MAX_CHILD_REQUESTS = 50
+# High default bounds keep live sync in "full unfiltered endpoint" posture while
+# still allowing operators/tests to pass lower caps for diagnostics.
+DEFAULT_MAX_PAGES = 1000
+DEFAULT_MAX_ITEMS = 100000
+DEFAULT_MAX_CHILD_REQUESTS = 100000
+CHILD_REFRESH_LOOKBACK_HOURS = 26
 
 
 def _now_utc() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_procore_datetime(value: Any) -> Optional[datetime]:
+    if value in (None, ""):
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        try:
+            dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _should_fetch_child_records(
+    *,
+    project_key: str,
+    child_endpoint_id: str,
+    parent_id: str,
+    parent_summary: Dict[str, Any],
+    now_utc: datetime,
+    db_path: Optional[Path],
+) -> bool:
+    """Daily-sync child fanout gate.
+
+    Fetch when children are not yet populated for this parent. Once children
+    exist, fetch only if the parent was updated in the prior 26 hours. Missing
+    or unparseable parent timestamps fail open so we do not miss updates.
+    """
+    existing_children = count_procore_live_child_records_for_parent(
+        project_key=project_key,
+        endpoint_id=child_endpoint_id,
+        parent_procore_id=str(parent_id),
+        db_path=db_path,
+    )
+    if existing_children == 0:
+        return True
+
+    parent_updated_at = _parse_procore_datetime(parent_summary.get("updated_at"))
+    if parent_updated_at is None:
+        return True
+    return parent_updated_at >= now_utc - timedelta(hours=CHILD_REFRESH_LOOKBACK_HOURS)
 
 
 def _normalize_project(
@@ -433,6 +481,7 @@ _N1_CHILD_ENDPOINTS = frozenset(
 # (mirrors how `activities` reuses `schedule_id`); read by the per-item parent-id
 # derivation so the financial projection receives the correct `parent_procore_id`.
 _PARENT_ID_KEY = "_hb_parent_procore_id"
+_LIVE_SYNC_RETRY_POLICY = RetryPolicy(max_retries=0, jitter=False)
 
 # N+1 children that need an extra query param sourced from the parent record. RFQ
 # responses/quotes require `contract_id` (= the rfq's commitment_contract_id) in addition
@@ -609,9 +658,10 @@ def run_live_sync(
     apply: bool,
     sqlite_only: bool,
     confirm_live_get: bool,
-    max_pages: int = 3,
-    max_items: int = 100,
+    max_pages: int = DEFAULT_MAX_PAGES,
+    max_items: int = DEFAULT_MAX_ITEMS,
     max_child_requests: int = DEFAULT_MAX_CHILD_REQUESTS,
+    parent_id: Optional[str] = None,
     mode_hint: Optional[str] = None,
     db_path: Optional[Path] = None,
     transport: Optional[Any] = None,
@@ -627,7 +677,8 @@ def run_live_sync(
     mode regardless of the apply flag.
     """
 
-    started_at = _now_utc()
+    started_dt = datetime.now(timezone.utc)
+    started_at = started_dt.isoformat()
     receipt_id = str(uuid.uuid4())
     sync_run_id = receipt_id
     correlation_id = str(uuid.uuid4())
@@ -676,6 +727,15 @@ def run_live_sync(
             evidence_path=evidence_path,
             redacted_errors=redacted_errors,
         )
+
+    direct_parent_id = str(parent_id).strip() if parent_id is not None else None
+    if direct_parent_id == "":
+        direct_parent_id = None
+    supports_direct_parent = adapter.endpoint_id == "activities" or adapter.endpoint_id in _N1_CHILD_ENDPOINTS
+    if direct_parent_id and not supports_direct_parent:
+        reason_codes.append("parent_id_not_supported_for_endpoint")
+    if direct_parent_id and adapter.endpoint_id in _N1_CHILD_EXTRA_PARENT_PARAMS:
+        reason_codes.append("parent_id_requires_parent_metadata")
 
     # 2. Determine mode and enforce write-path guardrails
     mode = mode_hint or ("live_apply" if apply else "live_dry_run")
@@ -871,21 +931,27 @@ def run_live_sync(
     if end_date:
         get_params["end_date"] = str(end_date)
 
+    items: List[Dict[str, Any]] = []
+    if direct_parent_id and adapter.endpoint_id == "activities":
+        items = [{"schedule_id": direct_parent_id}]
+    elif direct_parent_id and adapter.endpoint_id in _N1_CHILD_ENDPOINTS:
+        items = [{"id": direct_parent_id}]
     try:
-        items_iter = client.paginate(
-            path=path,
-            params=get_params or None,
-            per_page=min(max_items, 100),
-            max_pages=max_pages,
-            max_items=max_items,
-        )
-        items: List[Dict[str, Any]] = []
-        for item in items_iter:
-            request_count = max(request_count, 1)
-            items.append(item)
-            retrieved_count += 1
-            if retrieved_count >= max_items:
-                break
+        if not direct_parent_id:
+            items_iter = client.paginate(
+                path=path,
+                params=get_params or None,
+                per_page=min(max_items, 100),
+                max_pages=max_pages,
+                max_items=max_items,
+                retry_policy=_LIVE_SYNC_RETRY_POLICY,
+            )
+            for item in items_iter:
+                request_count = max(request_count, 1)
+                items.append(item)
+                retrieved_count += 1
+                if retrieved_count >= max_items:
+                    break
     except ProcoreAuthRequired:
         reason_codes.append("token_provider_unavailable")
         attempt_count = transport_calls["count"]
@@ -1030,13 +1096,28 @@ def run_live_sync(
             schedule_id = schedule_summary.get("schedule_id")
             if schedule_id is None or schedule_id == "":
                 continue
+            if not _should_fetch_child_records(
+                project_key=project_key,
+                child_endpoint_id=adapter.endpoint_id,
+                parent_id=str(schedule_id),
+                parent_summary=schedule_summary,
+                now_utc=started_dt,
+                db_path=db_path,
+            ):
+                continue
             activities_path = (
                 f"/rest/v2.0/companies/{COMPANY_ID}/projects/{procore_project_id}"
                 f"/schedules/{schedule_id}/activities"
             )
             try:
                 activity_iter = list(
-                    client.paginate(activities_path, per_page=100, max_pages=3, max_items=200)
+                    client.paginate(
+                        activities_path,
+                        per_page=100,
+                        max_pages=max_pages,
+                        max_items=max_items,
+                        retry_policy=_LIVE_SYNC_RETRY_POLICY,
+                    )
                 )
             except ProcoreAPIError as exc:
                 redacted_errors.append(
@@ -1077,7 +1158,13 @@ def run_live_sync(
             detail_path = f"/rest/v1.1/projects/{procore_project_id}/meetings/{meeting_id}"
             try:
                 detail_iter = list(
-                    client.paginate(detail_path, per_page=1, max_pages=1, max_items=1)
+                    client.paginate(
+                        detail_path,
+                        per_page=1,
+                        max_pages=1,
+                        max_items=1,
+                        retry_policy=_LIVE_SYNC_RETRY_POLICY,
+                    )
                 )
             except ProcoreAPIError as exc:
                 redacted_errors.append(
@@ -1113,6 +1200,23 @@ def run_live_sync(
         child_error_count = 0
         cap_reached = False
         for idx, parent_summary in enumerate(items):
+            if not isinstance(parent_summary, dict):
+                child_skipped_count += 1
+                continue
+            parent_id = parent_summary.get("id")
+            if parent_id is None or parent_id == "":
+                child_skipped_count += 1
+                continue
+            if not _should_fetch_child_records(
+                project_key=project_key,
+                child_endpoint_id=adapter.endpoint_id,
+                parent_id=str(parent_id),
+                parent_summary=parent_summary,
+                now_utc=started_dt,
+                db_path=db_path,
+            ):
+                child_skipped_count += 1
+                continue
             # Bounded fan-out: cap the number of child GETs to limit rate-limit /
             # long-run exposure. When the cap is hit the remaining parents are counted
             # as skipped and the loop stops; a later run (or a higher --max-child-requests)
@@ -1121,13 +1225,6 @@ def run_live_sync(
                 cap_reached = True
                 child_skipped_count += parent_count - idx
                 break
-            if not isinstance(parent_summary, dict):
-                child_skipped_count += 1
-                continue
-            parent_id = parent_summary.get("id")
-            if parent_id is None or parent_id == "":
-                child_skipped_count += 1
-                continue
             child_path = _resolve_child_path(adapter, str(procore_project_id), str(parent_id))
             # v1.0 child endpoints (e.g. /rest/v1.0/requisitions/{id}/contract_items) carry
             # no {project_id} path segment and require it as a query param; v2.0 children
@@ -1143,6 +1240,7 @@ def run_live_sync(
                         per_page=min(max_items, 100),
                         max_pages=max_pages,
                         max_items=max_items,
+                        retry_policy=_LIVE_SYNC_RETRY_POLICY,
                     )
                 )
             except ProcoreAPIError as exc:

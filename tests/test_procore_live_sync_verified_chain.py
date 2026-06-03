@@ -1654,6 +1654,166 @@ def test_activities_apply_list_plus_n_per_schedule(
         assert raw_body == 0
 
 
+def test_activities_daily_sync_skips_existing_children_when_schedule_not_recently_updated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    initial_transport = _PathAwareFakeTransport(
+        {
+            "/rest/v2.0/companies/5280/projects/2525840/schedules/100/activities": {
+                "data": [{"activity_id": "A1", "activity_name": "Initial", "schedule_id": "100"}]
+            },
+            "/rest/v2.0/companies/5280/projects/2525840/schedules": {
+                "data": [{"schedule_id": "100", "schedule_name": "S1"}]
+            },
+        }
+    )
+    first = run_live_sync(
+        project_key="tropical",
+        endpoint="activities",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=initial_transport,
+    )
+    assert first["sqlite_upserted_count"] == 1
+
+    daily_transport = _PathAwareFakeTransport(
+        {
+            "/rest/v2.0/companies/5280/projects/2525840/schedules/100/activities": {
+                "data": [{"activity_id": "A2", "activity_name": "Should not fetch", "schedule_id": "100"}]
+            },
+            "/rest/v2.0/companies/5280/projects/2525840/schedules": {
+                "data": [
+                    {
+                        "schedule_id": "100",
+                        "schedule_name": "S1",
+                        "updated_at": "2000-01-01T00:00:00Z",
+                    }
+                ]
+            },
+        }
+    )
+    second = run_live_sync(
+        project_key="tropical",
+        endpoint="activities",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=daily_transport,
+    )
+
+    assert second["state"] == "success"
+    assert second["request_count"] == 1
+    assert second["retrieved_count"] == 0
+    assert second["sqlite_upserted_count"] == 0
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="activities", db_path=db
+    ) == 1
+    assert not any(
+        call["url"].endswith("/schedules/100/activities")
+        for call in daily_transport.calls
+    )
+
+
+def test_activities_single_schedule_can_return_hundreds_without_internal_child_cap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    list_payload = {"data": [{"schedule_id": "100", "schedule_name": "S1"}]}
+    activities_100 = {
+        "data": [
+            {
+                "activity_id": f"A{i:03d}",
+                "activity_name": f"Activity {i:03d}",
+                "schedule_id": "100",
+            }
+            for i in range(250)
+        ]
+    }
+    transport = _PathAwareFakeTransport(
+        {
+            "/rest/v2.0/companies/5280/projects/2525840/schedules/100/activities": activities_100,
+            "/rest/v2.0/companies/5280/projects/2525840/schedules": list_payload,
+        }
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="activities",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=300,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["retrieved_count"] == 250
+    assert receipt["sqlite_upserted_count"] == 250
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="activities", db_path=db
+    ) == 250
+    activity_calls = [
+        call for call in transport.calls
+        if call["url"].endswith("/schedules/100/activities")
+    ]
+    assert len(activity_calls) == 1
+
+
+def test_activities_parent_id_skips_schedule_list_and_fetches_one_schedule(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    activities_100 = {
+        "data": [
+            {"activity_id": "A1", "activity_name": "Activity 1"},
+            {"activity_id": "A2", "activity_name": "Activity 2"},
+        ]
+    }
+    transport = _PathAwareFakeTransport(
+        {
+            "/rest/v2.0/companies/5280/projects/2525840/schedules/100/activities": activities_100,
+            "/rest/v2.0/companies/5280/projects/2525840/schedules": {"data": []},
+        }
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="activities",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        parent_id="100",
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["request_count"] == 1
+    assert receipt["retrieved_count"] == 2
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="activities", db_path=db
+    ) == 2
+    urls = [call["url"] for call in transport.calls]
+    assert urls == [
+        "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/100/activities"
+    ]
+
+
 # ---------------------------------------------------------------------------
 # inspections + inspection-items: list+N+1 dispatch with project_id as query
 # parameter on the per-list sub-fetch (the same query-param shape punch-items

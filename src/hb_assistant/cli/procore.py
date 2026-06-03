@@ -890,12 +890,17 @@ def live_sync(
     endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id (e.g. rfis, submittals, projects, daily-log-weather)."),
     apply: bool = typer.Option(False, "--apply", help="Required for live intent."),
     sqlite_only: bool = typer.Option(True, "--sqlite-only", help="Required guardrail; no source-system mutation."),
-    max_pages: int = typer.Option(3, "--max-pages", min=1),
-    max_items: int = typer.Option(100, "--max-items", min=1),
+    max_pages: int = typer.Option(1000, "--max-pages", min=1),
+    max_items: int = typer.Option(100000, "--max-items", min=1),
     max_child_requests: int = typer.Option(
-        50, "--max-child-requests", min=1,
+        100000, "--max-child-requests", min=1,
         help="Bounded N+1 fan-out: max child GETs per run (one per parent). When reached, "
         "remaining parents are skipped and a later run backfills idempotently.",
+    ),
+    parent_id: Optional[str] = typer.Option(
+        None,
+        "--parent-id",
+        help="Optional known parent Procore id for child endpoints; skips the parent-list GET.",
     ),
     confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
     start_date: Optional[str] = typer.Option(None, "--start-date", help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections)."),
@@ -909,7 +914,7 @@ def live_sync(
 
     Operator template:
     HB_PROCORE_LIVE=1 hb-assistant procore live sync --project tropical
-      --endpoint rfis --apply --sqlite-only --max-pages 3 --max-items 100
+      --endpoint rfis --apply --sqlite-only
       --confirm-live-get --json
     """
     from hb_assistant.procore.live_sync import run_live_sync
@@ -923,6 +928,7 @@ def live_sync(
         max_pages=max_pages,
         max_items=max_items,
         max_child_requests=max_child_requests,
+        parent_id=parent_id,
         mode_hint="live_apply" if apply else "live_dry_run",
         evidence_path="docs/evidence/construction-intelligence-phase-04a/02-endpoint-command-matrix.md",
         start_date=start_date,

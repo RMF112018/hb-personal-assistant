@@ -23,6 +23,7 @@ from hb_assistant.procore.errors import (
     ProcoreRateLimitError,
 )
 from hb_assistant.procore.http_client import ProcoreHTTPClient
+from hb_assistant.procore.pagination import RetryPolicy
 from hb_assistant.procore.token_provider import (
     MissingTokenProvider,
     StaticTokenProvider,
@@ -244,6 +245,59 @@ def test_paginate_returns_normalized_items_and_honors_max_bounds():
         )
     )
     assert rows == [{"id": "1"}, {"id": "2"}, {"id": "3"}]
+
+
+def test_paginate_stops_without_explicit_continuation_signal():
+    transport, calls = make_recording_transport(
+        [
+            FakeResponse(200, [{"id": "1"}, {"id": "2"}], headers={}),
+            FakeResponse(200, [{"id": "unexpected"}], headers={}),
+        ]
+    )
+    client = ProcoreHTTPClient(
+        environment="sandbox",
+        transport=transport,
+        access_token_provider=_stub_token_provider,
+    )
+
+    rows = list(
+        client.paginate(
+            "/rest/v1.1/projects",
+            params={"page": 1},
+            per_page=100,
+            max_pages=1000,
+            max_items=100000,
+        )
+    )
+
+    assert rows == [{"id": "1"}, {"id": "2"}]
+    assert len(calls) == 1
+
+
+def test_paginate_can_disable_429_retries_for_live_sync_policy():
+    transport, calls = make_recording_transport(
+        [
+            FakeResponse(429, {}, headers={"Retry-After": "2"}),
+            FakeResponse(200, [{"id": "unexpected"}], headers={}),
+        ]
+    )
+    client = ProcoreHTTPClient(
+        environment="sandbox",
+        transport=transport,
+        access_token_provider=_stub_token_provider,
+    )
+
+    with pytest.raises(ProcoreRateLimitError):
+        list(
+            client.paginate(
+                "/rest/v1.1/projects",
+                max_pages=1000,
+                max_items=100000,
+                retry_policy=RetryPolicy(max_retries=0, jitter=False),
+            )
+        )
+
+    assert len(calls) == 1
 
 
 def test_paginate_retries_429_with_retry_after(monkeypatch: pytest.MonkeyPatch):

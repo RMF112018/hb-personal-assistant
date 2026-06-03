@@ -81,6 +81,50 @@ class _PathAwareTransport:
         return _FakeResponse({"data": []})
 
 
+class _DailyCommitmentTransport:
+    def __init__(self, *, parent_updated_at: Optional[str], child_id: int) -> None:
+        self.parent_updated_at = parent_updated_at
+        self.child_id = child_id
+        self.calls: List[str] = []
+
+    def __call__(
+        self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]
+    ) -> _FakeResponse:
+        self.calls.append(url)
+        if url.rstrip("/").endswith("/commitment_contracts"):
+            parent: Dict[str, Any] = {"id": 501}
+            if self.parent_updated_at is not None:
+                parent["updated_at"] = self.parent_updated_at
+            return _FakeResponse({"data": [parent]})
+        if "/commitment_contracts/501/line_items" in url:
+            return _FakeResponse({"data": [{"id": self.child_id, "amount": "100.00"}]})
+        return _FakeResponse({"data": []})
+
+
+class _ManyLineItemsTransport:
+    """One parent contract and hundreds of line items from a single child GET."""
+
+    def __init__(self) -> None:
+        self.calls: List[str] = []
+
+    def __call__(
+        self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]
+    ) -> _FakeResponse:
+        self.calls.append(url)
+        if url.rstrip("/").endswith("/commitment_contracts"):
+            return _FakeResponse({"data": [{"id": 501}]})
+        if "/commitment_contracts/501/line_items" in url:
+            return _FakeResponse(
+                {
+                    "data": [
+                        {"id": 501000 + i, "amount": "100.00"}
+                        for i in range(250)
+                    ]
+                }
+            )
+        return _FakeResponse({"data": []})
+
+
 class _ReqItemsTransport:
     """v1.0 requisition contract-items: parent list on `/requisitions`, items on
     `/requisitions/{id}/contract_items` — the child GET MUST carry ?project_id."""
@@ -185,6 +229,123 @@ def test_commitment_line_items_n1_fetch_projects_with_parent_id(
     # per-parent child transport error captured, run not aborted
     assert receipt["projection_error_count"] == 0
     assert any("detail_transport_error" in e for e in receipt["redacted_errors"])
+
+
+def test_commitment_line_items_daily_sync_skips_existing_children_when_parent_stale(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-bearer-token")
+    _promote(monkeypatch, "commitment-line-items")
+    db = _db()
+
+    first_transport = _DailyCommitmentTransport(parent_updated_at=None, child_id=5011)
+    first = run_live_sync(
+        project_key="tropical",
+        endpoint="commitment-line-items",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=50,
+        db_path=db,
+        transport=first_transport,
+    )
+    assert first["sqlite_upserted_count"] == 1
+    assert sum("/line_items" in u for u in first_transport.calls) == 1
+
+    second_transport = _DailyCommitmentTransport(
+        parent_updated_at="2000-01-01T00:00:00Z",
+        child_id=5012,
+    )
+    second = run_live_sync(
+        project_key="tropical",
+        endpoint="commitment-line-items",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=50,
+        db_path=db,
+        transport=second_transport,
+    )
+
+    assert second["state"] == "success"
+    assert second["request_count"] == 1
+    assert second["retrieved_count"] == 0
+    assert second["sqlite_upserted_count"] == 0
+    assert second["n1_fanout"]["child_request_count"] == 0
+    assert second["n1_fanout"]["child_skipped_count"] == 1
+    assert sum("/line_items" in u for u in second_transport.calls) == 0
+    live = [r for r in _rows(db, "procore_live_records") if r["endpoint_id"] == "commitment-line-items"]
+    assert len(live) == 1
+    assert live[0]["procore_record_id"] == "5011"
+
+
+def test_commitment_line_items_single_parent_can_return_hundreds_in_one_child_get(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-bearer-token")
+    _promote(monkeypatch, "commitment-line-items")
+    db = _db()
+    transport = _ManyLineItemsTransport()
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="commitment-line-items",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1000,
+        max_items=300,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["retrieved_count"] == 250
+    assert receipt["sqlite_upserted_count"] == 250
+    assert receipt["n1_fanout"]["child_request_count"] == 1
+    assert sum("/line_items" in u for u in transport.calls) == 1
+    live = [r for r in _rows(db, "procore_live_records") if r["endpoint_id"] == "commitment-line-items"]
+    assert len(live) == 250
+    assert {r["parent_procore_id"] for r in live} == {"501"}
+
+
+def test_commitment_line_items_parent_id_skips_parent_list(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-bearer-token")
+    _promote(monkeypatch, "commitment-line-items")
+    db = _db()
+    transport = _ManyLineItemsTransport()
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="commitment-line-items",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        parent_id="501",
+        max_pages=1000,
+        max_items=300,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["request_count"] == 1
+    assert receipt["retrieved_count"] == 250
+    assert receipt["n1_fanout"]["parent_count"] == 1
+    assert receipt["n1_fanout"]["child_request_count"] == 1
+    assert transport.calls == [
+        "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/commitment_contracts/501/line_items"
+    ]
+    live = [r for r in _rows(db, "procore_live_records") if r["endpoint_id"] == "commitment-line-items"]
+    assert len(live) == 250
+    assert {r["parent_procore_id"] for r in live} == {"501"}
 
 
 def test_v1_child_get_carries_project_id_query_param(monkeypatch: pytest.MonkeyPatch) -> None:

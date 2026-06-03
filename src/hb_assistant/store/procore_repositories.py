@@ -278,6 +278,28 @@ def count_procore_live_records(
     return int(row[0]) if row and row[0] is not None else 0
 
 
+def count_procore_live_child_records_for_parent(
+    *,
+    project_key: str,
+    endpoint_id: str,
+    parent_procore_id: str,
+    db_path: Optional[Path] = None,
+) -> int:
+    """Return child-record count for one endpoint/parent pair."""
+    conn = _open(db_path)
+    cur = conn.execute(
+        """
+        SELECT COUNT(1) FROM procore_live_records
+         WHERE project_key = ?
+           AND endpoint_id = ?
+           AND parent_procore_id = ?
+        """,
+        (project_key, endpoint_id, str(parent_procore_id)),
+    )
+    row = cur.fetchone()
+    return int(row[0]) if row and row[0] is not None else 0
+
+
 def get_first_procore_record_id(
     *,
     project_key: str,
