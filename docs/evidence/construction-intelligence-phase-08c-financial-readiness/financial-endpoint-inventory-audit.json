@@ -1,0 +1,759 @@
+{
+  "generated_utc": "2026-06-03T13:53:05.513840Z",
+  "repo_head": "82fe1986617838d67676a7aa07c0c74011ee702a",
+  "target_08b_closeout": "dcecea875ee8eb643cff8665c362eb0f1927df0a",
+  "schema_version": 35,
+  "total": 32,
+  "by_classification": {
+    "live-verified": 29,
+    "fail-closed": 3,
+    "deferred": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "endpoints": [
+    {
+      "endpoint_id": "prime-contracts",
+      "family": "owner_contracts",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/prime_contracts",
+      "normalizers": [
+        "financial.py",
+        "owner_contract.py"
+      ],
+      "amount_fields": [
+        "grand_total",
+        "original_contract_sum",
+        "revised_contract_sum",
+        "approved_change_orders_amount",
+        "pending_change_orders_amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code",
+        "base_currency_iso_code",
+        "currency_exchange_rate"
+      ],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05; uses parse_amount -> TEXT str; advisory only"
+    },
+    {
+      "endpoint_id": "prime-contract-line-items",
+      "family": "owner_contracts",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/prime_contracts/{id}/line_items",
+      "normalizers": [
+        "financial.py",
+        "owner_contract.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_line_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "wbs_description_redacted"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "prime-contract-attachments",
+      "family": "owner_contracts",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/prime_contracts/{id}/attachments",
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05; attachments metadata"
+    },
+    {
+      "endpoint_id": "prime-change-orders",
+      "family": "owner_contracts",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/prime_contracts/{id}/change_orders",
+      "normalizers": [
+        "financial.py",
+        "owner_contract.py"
+      ],
+      "amount_fields": [
+        "grand_total",
+        "schedule_impact_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "prime-change-order-line-items",
+      "family": "owner_contracts",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/prime_contracts/{id}/change_orders/{co_id}/line_items",
+      "normalizers": [
+        "financial.py",
+        "owner_contract.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_line_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "payment-applications",
+      "family": "billing",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/projects/{project_id}/payment_applications",
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [
+        "total_amount_paid",
+        "total_retainage",
+        "contract_sum_to_date"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "commitment-contracts",
+      "family": "commitments",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/commitment_contracts",
+      "normalizers": [
+        "financial.py",
+        "commitment_contract.py"
+      ],
+      "amount_fields": [
+        "grand_total",
+        "original_contract_sum",
+        "revised_contract_sum",
+        "approved_change_orders_amount",
+        "pending_change_orders_amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code",
+        "base_currency_iso_code",
+        "currency_exchange_rate"
+      ],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "commitment-line-items",
+      "family": "commitments",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/commitment_contracts/{id}/line_items",
+      "normalizers": [
+        "financial.py",
+        "commitment_contract.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_line_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "wbs_description_redacted"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "commitment-attachments",
+      "family": "commitments",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/commitment_contracts/{id}/attachments",
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "commitment-compliance",
+      "family": "commitments",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/commitment_contracts/{id}/compliance",
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "commitment-change-orders",
+      "family": "commitments",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/commitment_contracts/{id}/change_orders",
+      "normalizers": [
+        "financial.py",
+        "commitment_contract.py"
+      ],
+      "amount_fields": [
+        "grand_total",
+        "schedule_impact_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "commitment-change-order-line-items",
+      "family": "commitments",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v2.0/companies/{company_id}/projects/{project_id}/commitment_contracts/{id}/change_orders/{co_id}/line_items",
+      "normalizers": [
+        "financial.py",
+        "commitment_contract.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_line_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "purchase-order-contracts",
+      "family": "purchase_orders",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/purchase_order_contracts",
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [
+        "grand_total"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "purchase-order-line-items",
+      "family": "purchase_orders",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/purchase_order_contracts/{id}/line_items",
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_line_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "purchase-order-detail-line-items",
+      "family": "purchase_orders",
+      "live_verified": false,
+      "state": "not_live_verified",
+      "verification_reason": "phase05_shell_pending_live_smoke",
+      "path_template": "/rest/v1.0/purchase_order_contracts/{id}/detail_line_items",
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_line_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_field_path_support": false,
+      "classification": "fail-closed",
+      "notes": "shell_pending; fail-closed per phase05"
+    },
+    {
+      "endpoint_id": "billing-periods",
+      "family": "billing",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/projects/{project_id}/billing_periods",
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "subcontractor-invoices",
+      "family": "subcontractor_invoices",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.1/requisitions",
+      "normalizers": [
+        "financial.py",
+        "subcontractor_invoice.py"
+      ],
+      "amount_fields": [
+        "total_claimed_amount",
+        "original_contract_sum",
+        "contract_sum_to_date",
+        "total_completed_and_stored_to_date"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "subcontractor-invoice-contract-items",
+      "family": "subcontractor_invoices",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.1/requisitions/{id}/contract_items",
+      "normalizers": [
+        "financial.py",
+        "subcontractor_invoice.py"
+      ],
+      "amount_fields": [
+        "subcontractor_claimed_amount",
+        "scheduled_value"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [
+        "cost_code_id",
+        "wbs_flat_code"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "subcontractor-invoice-contract-detail-items",
+      "family": "subcontractor_invoices",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.1/requisitions/{id}/contract_detail_items",
+      "normalizers": [
+        "financial.py",
+        "subcontractor_invoice.py"
+      ],
+      "amount_fields": [
+        "subcontractor_claimed_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [
+        "cost_code_id",
+        "wbs_flat_code"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "subcontractor-invoice-change-order-items",
+      "family": "subcontractor_invoices",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.1/requisitions/{id}/change_order_items",
+      "normalizers": [
+        "financial.py",
+        "subcontractor_invoice.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "rfqs",
+      "family": "change_management",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/rfqs",
+      "normalizers": [
+        "financial.py",
+        "rfq_change_event.py"
+      ],
+      "amount_fields": [
+        "estimated_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "rfq-responses",
+      "family": "change_management",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/rfqs/{id}/responses",
+      "normalizers": [
+        "financial.py",
+        "rfq_change_event.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "rfq-quotes",
+      "family": "change_management",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/rfqs/{id}/quotes",
+      "normalizers": [
+        "financial.py",
+        "rfq_change_event.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "change-events",
+      "family": "change_management",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.1/change_events",
+      "normalizers": [
+        "financial.py",
+        "rfq_change_event.py"
+      ],
+      "amount_fields": [
+        "owner_cost_amount",
+        "commitment_cost_amount",
+        "schedule_impact_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "change-event-comments",
+      "family": "change_management",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.1/change_events/{id}/comments",
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "budget-views",
+      "family": "budget",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/budget_views",
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "budget-detail-columns",
+      "family": "budget",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/budget_detail_columns",
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "budget-details",
+      "family": "budget",
+      "live_verified": false,
+      "state": "not_live_verified",
+      "verification_reason": "phase05_unresolved_path_fail_closed_prompt00-3.2",
+      "path_template": "unresolved:budget-details",
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "fail-closed",
+      "notes": "fail-closed unresolved per prompt00-3.2; path sentinel; no live"
+    },
+    {
+      "endpoint_id": "budget-detail-rows",
+      "family": "budget",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/budget_detail_rows",
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "budget-change-history",
+      "family": "budget",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/budget_change_history",
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [
+        "adjustment_amount",
+        "from_amount",
+        "to_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    },
+    {
+      "endpoint_id": "budget-change-line-items",
+      "family": "budget",
+      "live_verified": false,
+      "state": "not_live_verified",
+      "verification_reason": "phase05_shell_pending_live_smoke",
+      "path_template": "/rest/v1.0/budget_change_history/{id}/line_items",
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [
+        "adjustment_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_field_path_support": false,
+      "classification": "fail-closed",
+      "notes": "shell_pending; fail-closed per phase05"
+    },
+    {
+      "endpoint_id": "budget-modifications",
+      "family": "budget",
+      "live_verified": true,
+      "state": "live_eligible",
+      "verification_reason": "phase05_live_smoke_verified_2026-05-29",
+      "path_template": "/rest/v1.0/budget_modifications",
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_fields": [],
+      "line_item_type_field": null,
+      "source_field_path_support": false,
+      "classification": "live-verified",
+      "notes": "phase05"
+    }
+  ],
+  "normalizer_coverage": [
+    "financial.py (shared parse_amount:str, extract_currency_config, extract_wbs_cost_code; never float coercion for storage)",
+    "owner_contract.py",
+    "commitment_contract.py",
+    "subcontractor_invoice.py",
+    "rfq_change_event.py",
+    "budget.py"
+  ],
+  "sensitive_validated_note": "4 endpoints marked sensitive_validated in procore_endpoint_contract.seed.yaml (high: contracts, invoices, change, budget families)",
+  "money_handling": "parse_amount returns Optional[str] (verbatim source str or shortest repr); persisted as TEXT in procore_financial_*; 08C uses canonical_decimal_text TEXT + minor_units INTEGER; Decimal used only for >0/delta checks, never float/REAL for money; no binary float calculations.",
+  "source_trace": "amount_facts use source_field_path; projections/coercion preserve str; no raw payloads in tables (CHECK raw_*_persisted=0 including raw_financial_source_payload_persisted).",
+  "cli_surfaces": [
+    "procore live financial summary|contracts|changes|invoices|exposure|coverage|budget|risk --json (read-only, str amounts, GUARDRAILS + Advisory/review aid only)",
+    "procore obsidian financial (register, --apply opt-in)",
+    "second-brain financial readiness|coverage|exposure-summary|review-items --json (advisory_only=true, guardrails dict, no det)",
+    "second-brain data-quality phase-08c-gates --json"
+  ],
+  "notes": "32 financial endpoints from procore endpoint registry (owner_contracts 6, commitments 6, purchase_orders 3, billing 2, subcontractor_invoices 5, change_management 5, budget 7). 29 live-verified phase05_live_smoke. 3 fail-closed: purchase-order-detail-line-items (shell_pending), budget-details (unresolved per prompt00-3.2), budget-change-line-items (shell_pending). All under live_gate where applicable. No raw, no float money. Advisory only. This audit is metadata only."
+}

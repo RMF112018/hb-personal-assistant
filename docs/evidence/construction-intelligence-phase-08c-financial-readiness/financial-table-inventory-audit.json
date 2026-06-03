@@ -1,0 +1,540 @@
+{
+  "generated_utc": "2026-06-03T13:53:27.697949Z",
+  "repo_head": "82fe1986617838d67676a7aa07c0c74011ee702a",
+  "target_08b_closeout": "dcecea875ee8eb643cff8665c362eb0f1927df0a",
+  "schema_version": 35,
+  "total": 25,
+  "procore_financial_tables": 15,
+  "second_brain_08c_tables": 10,
+  "tables": [
+    {
+      "name": "procore_financial_contracts",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [
+        "grand_total",
+        "original_contract_sum",
+        "revised_contract_sum",
+        "approved_change_orders_amount",
+        "pending_change_orders_amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code",
+        "base_currency_iso_code",
+        "currency_exchange_rate"
+      ],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": "owner/prime contracts; amounts TEXT str from parse_amount"
+    },
+    {
+      "name": "procore_financial_line_items",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [
+        "amount",
+        "scheduled_value"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_line_item_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "wbs_description_redacted"
+      ],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": "line items for contracts; wbs present"
+    },
+    {
+      "name": "procore_financial_change_orders",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [
+        "grand_total",
+        "schedule_impact_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": ""
+    },
+    {
+      "name": "procore_financial_payment_applications",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [
+        "total_amount_paid",
+        "total_retainage",
+        "contract_sum_to_date"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": ""
+    },
+    {
+      "name": "procore_financial_invoice_items",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [
+        "subcontractor_claimed_amount",
+        "scheduled_value",
+        "total_completed_and_stored_to_date"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [
+        "cost_code_id",
+        "wbs_flat_code"
+      ],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": ""
+    },
+    {
+      "name": "procore_financial_rfqs",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [
+        "estimated_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": ""
+    },
+    {
+      "name": "procore_financial_change_events",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [
+        "schedule_impact_amount",
+        "owner_cost_amount",
+        "commitment_cost_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": ""
+    },
+    {
+      "name": "procore_financial_budget_views",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": ""
+    },
+    {
+      "name": "procore_financial_budget_rows",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": "wbs/cost codes"
+    },
+    {
+      "name": "procore_financial_amount_facts",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [
+        "amount_value"
+      ],
+      "currency_fields": [
+        "currency_iso_code",
+        "base_currency_iso_code"
+      ],
+      "wbs_cost_line_item_fields": [
+        "wbs_code_id",
+        "cost_code_id"
+      ],
+      "source_fields": [
+        "source_field_path"
+      ],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": "central facts; source_field_path for traceability"
+    },
+    {
+      "name": "procore_financial_change_order_line_items",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_line_item_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": ""
+    },
+    {
+      "name": "procore_financial_budget_changes",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [
+        "adjustment_amount",
+        "from_amount",
+        "to_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": ""
+    },
+    {
+      "name": "procore_financial_compliance_documents",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": "notes redacted"
+    },
+    {
+      "name": "procore_financial_billing_periods",
+      "version": "V9",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": ""
+    },
+    {
+      "name": "procore_financial_subcontractor_invoices",
+      "version": "V8",
+      "phase_owner": "05",
+      "lifecycle_status": "operational_populated",
+      "expected_population": "populated",
+      "key_amount_fields": [
+        "total_claimed_amount",
+        "original_contract_sum",
+        "contract_sum_to_date",
+        "total_completed_and_stored_to_date"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_body_persisted=0"
+      ],
+      "notes": ""
+    },
+    {
+      "name": "second_brain_financial_fact_normalization_runs",
+      "version": "V35",
+      "phase_owner": "08C",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population": "empty_expected",
+      "key_amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_financial_source_payload_persisted=0",
+        "financial_determination_performed=0",
+        "payment_determination_performed=0",
+        "claim_or_entitlement_determination_performed=0",
+        "advisory_only=1",
+        "raw_email_body_persisted=0",
+        "raw_document_text_persisted=0",
+        "raw_calendar_payload_persisted=0",
+        "raw_procore_payload_persisted=0",
+        "raw_prompt_persisted=0",
+        "raw_response_persisted=0"
+      ],
+      "notes": "run log for normalization; full 08C guards"
+    },
+    {
+      "name": "second_brain_financial_amount_facts_normalized",
+      "version": "V35",
+      "phase_owner": "08C",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population": "empty_expected",
+      "key_amount_fields": [
+        "canonical_decimal_text",
+        "minor_units"
+      ],
+      "currency_fields": [
+        "currency_code",
+        "currency_status"
+      ],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [
+        "source_record_ref",
+        "source_field_path"
+      ],
+      "guard_columns": [
+        "raw_financial_source_payload_persisted=0",
+        "financial_determination_performed=0",
+        "payment_determination_performed=0",
+        "claim_or_entitlement_determination_performed=0",
+        "advisory_only=1",
+        "+ other raw_*=0"
+      ],
+      "notes": "normalized facts; canonical_decimal_text TEXT + minor_units INTEGER; source refs only; no raw value"
+    },
+    {
+      "name": "second_brain_financial_currency_completeness_snapshots",
+      "version": "V35",
+      "phase_owner": "08C",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population": "empty_expected",
+      "key_amount_fields": [],
+      "currency_fields": [
+        "currency_status"
+      ],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_financial_source_payload_persisted=0",
+        "advisory_only=1",
+        "financial_determination_performed=0",
+        "+7 other raw/det"
+      ],
+      "notes": "currency completeness counts/status"
+    },
+    {
+      "name": "second_brain_financial_wbs_cost_code_snapshots",
+      "version": "V35",
+      "phase_owner": "08C",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population": "empty_expected",
+      "key_amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [
+        "wbs_present_count",
+        "cost_code_present_count",
+        "line_item_type_present_count"
+      ],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_financial_source_payload_persisted=0",
+        "advisory_only=1",
+        "financial_determination_performed=0",
+        "+7 other"
+      ],
+      "notes": "wbs/cost/line_item_type presence counts"
+    },
+    {
+      "name": "second_brain_financial_source_coverage_snapshots",
+      "version": "V35",
+      "phase_owner": "08C",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population": "empty_expected",
+      "key_amount_fields": [
+        "amount_field_count"
+      ],
+      "currency_fields": [
+        "currency_field_count"
+      ],
+      "wbs_cost_line_item_fields": [
+        "wbs_cost_code_field_count"
+      ],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_financial_source_payload_persisted=0",
+        "advisory_only=1",
+        "financial_determination_performed=0",
+        "+7 other"
+      ],
+      "notes": "source field coverage counts"
+    },
+    {
+      "name": "second_brain_financial_exposure_summary_items",
+      "version": "V35",
+      "phase_owner": "08C",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population": "empty_expected",
+      "key_amount_fields": [
+        "normalized_amount_ref"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_financial_source_payload_persisted=0",
+        "advisory_only=1",
+        "financial_determination_performed=0",
+        "payment_determination_performed=0",
+        "claim_or_entitlement_determination_performed=0",
+        "+6 other raw_*=0"
+      ],
+      "notes": "exposure marts; amount_ref (no value)"
+    },
+    {
+      "name": "second_brain_financial_forecast_readiness_runs",
+      "version": "V35",
+      "phase_owner": "08C",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population": "empty_expected",
+      "key_amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_financial_source_payload_persisted=0",
+        "advisory_only=1",
+        "financial_determination_performed=0",
+        "+7 other"
+      ],
+      "notes": "forecast readiness substrate"
+    },
+    {
+      "name": "second_brain_financial_review_required_items",
+      "version": "V35",
+      "phase_owner": "08C",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population": "empty_expected",
+      "key_amount_fields": [
+        "amount_ref"
+      ],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_financial_source_payload_persisted=0",
+        "advisory_only=1",
+        "financial_determination_performed=0",
+        "+7 other"
+      ],
+      "notes": "review items; amount_ref"
+    },
+    {
+      "name": "second_brain_financial_readiness_agent_runs",
+      "version": "V35",
+      "phase_owner": "08C",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population": "empty_expected",
+      "key_amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_financial_source_payload_persisted=0",
+        "advisory_only=1",
+        "financial_determination_performed=0",
+        "+7 other"
+      ],
+      "notes": "readiness agent run log"
+    },
+    {
+      "name": "second_brain_phase_08c_validation_runs",
+      "version": "V35",
+      "phase_owner": "08C",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population": "empty_expected",
+      "key_amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_line_item_fields": [],
+      "source_fields": [],
+      "guard_columns": [
+        "raw_financial_source_payload_persisted=0",
+        "advisory_only=1",
+        "financial_determination_performed=0",
+        "+7 other"
+      ],
+      "notes": "validation run log for 08C gates"
+    }
+  ],
+  "amount_persistence": "procore_* : amount fields persisted as TEXT (canonical str from parse_amount or source verbatim); 08C normalized: canonical_decimal_text TEXT + minor_units INTEGER (when scale known); snapshots use counts/refs only (amount_field_count, normalized_amount_ref, amount_ref); no REAL column for money values; no float() in projections/normalizers for persisted amounts (Decimal(str) only for safe positive/delta checks).",
+  "currency_handling": "currency_iso_code / base / exchange_rate / currency_code / currency_status / *_field_count in snapshots; completeness via 08C snapshots.",
+  "wbs_cost_line_item": "wbs_code_id, wbs_flat_code, cost_code_id, line_item_type_id (and _present_count in 08C snapshots); wbs_description_redacted (PII excerpt mask).",
+  "source_refs": "procore_financial_amount_facts.source_field_path; 08C amount_facts_normalized.source_field_path + source_record_ref; coverage snapshots count fields; projections carry source traceability; never raw payload.",
+  "guard_columns": "All 25 tables enforce: raw_email_body_persisted=0, raw_document_text_persisted=0, raw_calendar_payload_persisted=0, raw_procore_payload_persisted=0 (or raw_body_persisted for procore), raw_financial_source_payload_persisted=0 (08C+), raw_prompt_persisted=0, raw_response_persisted=0, financial_determination_performed=0, payment_determination_performed=0, claim_or_entitlement_determination_performed=0, advisory_only=1. Enforced at DDL + 08c-gates + no-writeback-proof.",
+  "lifecycle": "15 procore (V8/V9, phase_owner=05, operational_populated); 10 08C (V35, phase_owner=08C, operational_empty_expected). Total tables in contract: 161.",
+  "cli_surfaces": [
+    "procore live financial * (summary/contracts/changes/invoices/exposure/coverage/budget/risk --json)",
+    "procore obsidian financial (register --apply opt-in, marker bounded)",
+    "second-brain financial (readiness/coverage/exposure-summary/review-items --json; all advisory_only + guardrails)",
+    "second-brain data-quality (phase-08c-gates, no-writeback-proof)"
+  ],
+  "money_handling_policy": "Money never calculated with binary floating point. Decimal in Python for >0/delta/variance only. Persist as canonical strings (TEXT) and/or integer minor units (when scale/currency known). All financial outputs advisory review aids only; not payment approvals, claims, entitlements, contract interpretations, forecasts, or executive determinations.",
+  "notes": "Inventory from migrator.py DDL + table_lifecycle_status_contract.json + 08c-gates + no-writeback-proof. 08C tables ship empty (operational_empty_expected); substrate for future normalization/coverage/exposure/review without raw or determinations. Procore tables from phase05 (populated via sync, guarded). No schema change in this prompt. All inspection repo-truth (CLI + code parse)."
+}
