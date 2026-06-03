@@ -797,7 +797,7 @@ class AutomationExecutor:
                 )
 
             # P05: replay run + link (new run, preserve original; link via reason + marker step)
-            is_replay = req.mode == "replay" and req.original_run_registry_id
+            is_replay: bool = (req.mode == "replay") and bool(req.original_run_registry_id)
             if is_replay:
                 start_reason = "REPLAY_EXECUTION"
                 # override the just-registered reason for clarity (or re-register; here record extra)
@@ -1296,14 +1296,17 @@ class AutomationExecutor:
             "reason_code": "EXECUTOR_FAILED",
             "suggested_next": [
                 "hb-assistant second-brain automation run-recovery --mode=apply --confirm",
-                "hb-assistant second-brain automation execute --apply --confirm --mode=replay --replay-of {run_registry_id} --replay-selector failed-only".format(
-                    run_registry_id=run_registry_id or "<id>"
+                "hb-assistant second-brain automation run --kind daily-brief --date $(date +%Y-%m-%d) --apply --confirm --json",
+                "hb-assistant second-brain automation replay --run-id {run_registry_id} --stage failed-only --apply --confirm --json".format(
+                    run_registry_id=run_registry_id or "<run-id>"
                 ),
-                "hb-assistant second-brain automation execute --apply --confirm --mode=replay --replay-of {run_registry_id} --replay-selector failed-and-following".format(
-                    run_registry_id=run_registry_id or "<id>"
+                "hb-assistant second-brain automation replay --run-id {run_registry_id} --stage failed-and-following --apply --confirm --json".format(
+                    run_registry_id=run_registry_id or "<run-id>"
                 ),
-                "hb-assistant second-brain automation run-registry-status --limit 5",
-                "hb-assistant second-brain automation receipts --brief-date $(date +%Y-%m-%d)",
+                "hb-assistant second-brain automation status --json",
+                "hb-assistant second-brain automation diagnostics --run-id {run_registry_id} --json".format(
+                    run_registry_id=run_registry_id or "<run-id>"
+                ),
             ],
             "guardrails": {"local_only": True, "no_external": True, "explicit_confirm": True},
         }
@@ -1994,3 +1997,182 @@ def build_safe_replay_execution_proof() -> dict[str, Any]:
             json.dumps(proof, indent=2, default=str)
         )
         return proof
+
+
+# P06: builders for status/diagnostics previews (read-only aggregation; used by CLI + evidence gen)
+# Produce JSON with required fields: command, mode, status, run id, target date, stage summary, retry summary, lock status, replay eligibility, recovery command redacted, guardrails.
+
+
+def _redact_recovery_cmd(rec: dict | None, run_id: str | None) -> str:
+    """Redact recovery command (use new P06 grammar; never leak raw ids if sensitive)."""
+    if not rec:
+        return "hb-assistant second-brain automation status --json ; hb-assistant second-brain automation diagnostics --run-id <id> --json"
+    suggested = rec.get("suggested_next", [])
+    # Prefer new grammar examples; redact concrete ids
+    for s in suggested:
+        if "replay" in str(s).lower() or "run --" in str(s):
+            return (
+                str(s)
+                .replace(str(run_id or ""), "<run-id>")
+                .replace(" --apply --confirm", " [--apply --confirm]")
+            )
+    return "hb-assistant second-brain automation run --kind daily-brief --date <date> --apply --confirm --json ; hb-assistant second-brain automation replay --run-id <run-id> --stage failed-only --apply --confirm --json"
+
+
+def build_automation_status(
+    kind: str = "daily_brief", db_path: str | None = None, locks_dir: str | None = None
+) -> dict[str, Any]:
+    """P06 status preview (latest run + lock + eligibility + summaries + redacted recovery)."""
+    from .run_registry import (
+        read_latest_run_registry,
+        read_run_lock,
+        read_run_steps,
+    )
+
+    try:
+        from .retry_recovery import read_latest_retry_receipts
+    except Exception:
+        read_latest_retry_receipts = None  # type: ignore
+
+    rows = read_latest_run_registry(db_path=db_path, limit=5) or []
+    latest = rows[0] if rows else {}
+    run_id = latest.get("run_registry_id")
+    target = latest.get("started_utc", "").split("T")[0] if latest else None
+
+    steps = read_run_steps(run_id, db_path=db_path) if run_id else []
+    stage_summary = {
+        "total": len(steps),
+        "succeeded": sum(1 for s in steps if s.get("status") == "succeeded"),
+        "failed": sum(1 for s in steps if s.get("status") == "failed"),
+        "skipped": sum(1 for s in steps if "skip" in str(s.get("status", ""))),
+        "stages": [
+            {"name": s.get("step_name"), "status": s.get("status"), "reason": s.get("reason_code")}
+            for s in steps[:8]
+        ],
+    }
+
+    retry_summary = {"attempts": 0, "backoffs": [], "outcomes": []}
+    retry_receipts_fn = read_latest_retry_receipts
+    if run_id and retry_receipts_fn is not None:
+        try:
+            rrs = retry_receipts_fn(db_path=db_path, limit=10) or []
+            for r in rrs:
+                if str(r.get("run_registry_id")) == str(run_id):
+                    retry_summary["attempts"] = int(retry_summary.get("attempts", 0)) + 1
+                    if r.get("backoff_seconds"):
+                        retry_summary["backoffs"].append(r.get("backoff_seconds"))
+                    retry_summary["outcomes"].append(r.get("outcome"))
+        except Exception:
+            pass
+
+    lock = read_run_lock(locks_dir=locks_dir)
+    lock_status = (
+        getattr(lock, "status", None)
+        or (lock.get("status") if isinstance(lock, dict) else "absent")
+        or "absent"
+    )
+
+    # replay eligibility (reuse P05 validate if possible, else heuristic)
+    replay_eligibility = "unknown"
+    if run_id and latest.get("status") in ("failed", "skipped"):
+        try:
+            ok, why = _validate_safe_replay(
+                ExecutionRequest(run_kind=kind, mode="replay", original_run_registry_id=run_id),
+                db_path=db_path,
+                locks_dir=locks_dir,
+            )
+            replay_eligibility = "eligible" if ok else (why or "not_eligible")
+        except Exception:
+            replay_eligibility = "check_failed_or_not_failed_run"
+
+    rec_cmd = _redact_recovery_cmd(latest.get("recovery_recommendation") or None, run_id)
+
+    payload = {
+        "command": "second-brain automation status",
+        "mode": "status",
+        "status": latest.get("status", "unknown"),
+        "run_id": run_id,
+        "target_date": target,
+        "stage_summary": stage_summary,
+        "retry_summary": retry_summary,
+        "lock_status": lock_status,
+        "replay_eligibility": replay_eligibility,
+        "recovery_command_redacted": rec_cmd,
+        "guardrails": {
+            "local_first": True,
+            "read_only_for_status": True,
+            "no_external": True,
+            "recovery_redacted": True,
+            "dry_run_default": True,
+            "apply_requires_explicit_confirm": True,
+        },
+    }
+    return payload
+
+
+def build_automation_diagnostics(
+    run_id: str, db_path: str | None = None, locks_dir: str | None = None
+) -> dict[str, Any]:
+    """P06 diagnostics for specific run (detailed steps + retries + elg + redacted rec)."""
+    from .run_registry import read_run_lock, read_run_steps
+
+    steps = read_run_steps(run_id, db_path=db_path) or []
+    stage_summary = {
+        "total": len(steps),
+        "succeeded": sum(1 for s in steps if s.get("status") == "succeeded"),
+        "failed": sum(1 for s in steps if s.get("status") == "failed"),
+        "details": steps,
+    }
+
+    retry_summary = {"receipts": []}
+    try:
+        from .retry_recovery import read_latest_retry_receipts
+
+        rrs = read_latest_retry_receipts(db_path=db_path, limit=20) or []
+        for r in rrs:
+            if str(r.get("run_registry_id", "")) == str(run_id):
+                retry_summary["receipts"].append(r)
+    except Exception:
+        pass
+
+    lock = read_run_lock(locks_dir=locks_dir) or {}
+
+    # eligibility for this run
+    replay_eligibility = "n/a"
+    try:
+        # infer kind from steps or default; use validate
+        ok, why = _validate_safe_replay(
+            ExecutionRequest(
+                run_kind="daily_brief", mode="replay", original_run_registry_id=run_id
+            ),
+            db_path=db_path,
+            locks_dir=locks_dir,
+        )
+        replay_eligibility = "eligible" if ok else (why or "not_eligible")
+    except Exception:
+        pass
+
+    rec_cmd = _redact_recovery_cmd(None, run_id)
+
+    payload = {
+        "command": "second-brain automation diagnostics",
+        "mode": "diagnostics",
+        "status": "ok" if steps else "not_found",
+        "run_id": run_id,
+        "target_date": (steps[0].get("started_utc", "").split("T")[0] if steps else None),
+        "stage_summary": stage_summary,
+        "retry_summary": retry_summary,
+        "lock_status": getattr(lock, "status", None)
+        or (lock.get("status") if isinstance(lock, dict) else "unknown")
+        or "unknown",
+        "replay_eligibility": replay_eligibility,
+        "recovery_command_redacted": rec_cmd,
+        "guardrails": {
+            "local_first": True,
+            "read_only": True,
+            "no_external": True,
+            "recovery_redacted": True,
+            "dry_run_default": True,
+        },
+    }
+    return payload

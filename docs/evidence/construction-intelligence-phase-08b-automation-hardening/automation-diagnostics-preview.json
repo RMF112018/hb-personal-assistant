@@ -1,0 +1,26 @@
+{
+  "command": "second-brain automation diagnostics",
+  "mode": "diagnostics",
+  "status": "not_found",
+  "run_id": "preview-run-id",
+  "target_date": null,
+  "stage_summary": {
+    "total": 0,
+    "succeeded": 0,
+    "failed": 0,
+    "details": []
+  },
+  "retry_summary": {
+    "receipts": []
+  },
+  "lock_status": "absent",
+  "replay_eligibility": "eligible",
+  "recovery_command_redacted": "hb-assistant second-brain automation status --json ; hb-assistant second-brain automation diagnostics --run-id <id> --json",
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external": true,
+    "recovery_redacted": true,
+    "dry_run_default": true
+  }
+}

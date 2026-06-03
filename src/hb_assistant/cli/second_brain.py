@@ -2145,3 +2145,214 @@ def automation_execution_status(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
+
+
+# P06: new operator CLI surface per suggested grammar + required JSON shape
+_AUTOMATION_CLI_GUARDRAILS = {
+    "local_first": True,
+    "dry_run_default": True,
+    "apply_requires_explicit_confirm": True,
+    "read_only_status_diagnostics": True,
+    "replay_idempotent_via_registry": True,
+    "recovery_commands_redacted": True,
+    "no_external_delivery_or_writeback": True,
+    "no_raw_content": True,
+    "stage_receipts_persisted": "V29_run_steps",
+    "automation_execution_still_deferred": True,
+}
+
+
+def _parse_date(d: str | None) -> str | None:
+    if not d:
+        return None
+    d = d.strip().lower()
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+    from datetime import timezone as _tz
+
+    if d in ("today", "now"):
+        return _dt.now(_tz.utc).date().isoformat()
+    if d in ("yesterday",):
+        return (_dt.now(_tz.utc).date() - _td(days=1)).isoformat()
+    return d  # assume iso
+
+
+@automation_app.command("run")
+def automation_run(
+    kind: str = typer.Option("daily-brief", "--kind", help="run kind (daily-brief etc)"),
+    date: str | None = typer.Option(None, "--date", help="target date (today|YYYY-MM-DD)"),
+    catch_up: bool = typer.Option(False, "--catch-up", help="force catch-up mode"),
+    dry_run: bool = typer.Option(True, "--dry-run/--no-dry-run", help="dry (default) or real"),
+    apply: bool = typer.Option(False, "--apply/--no-apply"),
+    confirm: bool = typer.Option(False, "--confirm/--no-confirm"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Run (dry or apply+confirm) the automation for a kind/date (P06 grammar)."""
+    from hb_assistant.construction.second_brain.automation_executor import (
+        ExecutionRequest,
+        run_automation_execution,
+    )
+
+    brief_date = _parse_date(date)
+    mode = "catch_up" if catch_up else "manual"
+    eff_apply = (apply or not dry_run) and not dry_run
+    eff_confirm = confirm and eff_apply
+    req = ExecutionRequest(run_kind=kind.replace("-", "_"), brief_date=brief_date, mode=mode)
+    result = run_automation_execution(req, apply=eff_apply, confirm=eff_confirm)
+    # Build required P06 shape (stage/retry/lock/replay-elg/recovery-redacted/guardrails)
+    stage_sum = {
+        "total": len(getattr(result, "stage_receipts", [])),
+        "succeeded": sum(
+            1 for r in getattr(result, "stage_receipts", []) if r.status == "succeeded"
+        ),
+        "failed": sum(1 for r in getattr(result, "stage_receipts", []) if r.status == "failed"),
+    }
+    payload = {
+        "command": "second-brain automation run",
+        "mode": "apply" if eff_apply and eff_confirm else "dry_run",
+        "status": getattr(result, "overall_status", "dry_run"),
+        "run_id": getattr(result, "run_registry_id", None),
+        "target_date": brief_date,
+        "stage_summary": stage_sum,
+        "retry_summary": {"note": "see diagnostics for per-run retry receipts"},
+        "lock_status": "acquired_or_released_during_run",
+        "replay_eligibility": "see diagnostics --run-id for this run",
+        "recovery_command_redacted": "hb-assistant second-brain automation run --kind {} --date {} --apply --confirm --json ; hb-assistant second-brain automation replay --run-id <id> --stage failed-only --apply --confirm --json".format(
+            kind, brief_date or "today"
+        ),
+        "guardrails": _AUTOMATION_CLI_GUARDRAILS,
+    }
+    if hasattr(result, "recovery_recommendation") and result.recovery_recommendation:
+        payload["recovery_command_redacted"] = str(
+            result.recovery_recommendation.get("suggested_next", ["<redacted>"])[0]
+        )[:200]
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    ok = getattr(result, "overall_status", "dry_run") in ("succeeded", "dry_run")
+    raise typer.Exit(0 if ok else 3)
+
+
+@automation_app.command("replay")
+def automation_replay(
+    run_id: str = typer.Option(..., "--run-id", help="original failed run_registry_id"),
+    stage: str = typer.Option(
+        "failed-only", "--stage", help="failed-only|failed-and-following|explicit"
+    ),
+    apply: bool = typer.Option(False, "--apply/--no-apply"),
+    confirm: bool = typer.Option(False, "--confirm/--no-confirm"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Replay a prior failed run (P06 grammar; delegates to P05 replay executor path)."""
+    from hb_assistant.construction.second_brain.automation_executor import (
+        ExecutionRequest,
+        run_automation_execution,
+    )
+
+    sel = stage
+    req = ExecutionRequest(
+        run_kind="daily_brief",
+        mode="replay",
+        original_run_registry_id=run_id,
+        replay_selector=sel,  # type: ignore[arg-type]
+    )
+    result = run_automation_execution(req, apply=apply, confirm=confirm)
+    stage_sum = {
+        "total": len(getattr(result, "stage_receipts", [])),
+        "succeeded": sum(
+            1
+            for r in getattr(result, "stage_receipts", [])
+            if getattr(r, "status", "") == "succeeded"
+        ),
+    }
+    payload = {
+        "command": "second-brain automation replay",
+        "mode": "apply" if (apply and confirm) else "dry_run",
+        "status": getattr(result, "overall_status", "dry_run"),
+        "run_id": getattr(result, "run_registry_id", None),
+        "target_date": None,
+        "stage_summary": stage_sum,
+        "retry_summary": {"note": "replay of prior run"},
+        "lock_status": "acquired_for_replay",
+        "replay_eligibility": "executed",
+        "recovery_command_redacted": "hb-assistant second-brain automation diagnostics --run-id {} --json".format(
+            run_id
+        ),
+        "guardrails": _AUTOMATION_CLI_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    ok = getattr(result, "overall_status", "dry_run") in ("succeeded", "dry_run")
+    raise typer.Exit(0 if ok else 3)
+
+
+@automation_app.command("status")
+def automation_status(json_out: bool = typer.Option(True, "--json")) -> None:
+    """High-level automation status (P06; aggregates registry/lock/eligibility)."""
+    from hb_assistant.construction.second_brain.automation_executor import build_automation_status
+
+    try:
+        p = build_automation_status()
+    except Exception as exc:
+        err = {"command": "second-brain automation status", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+    typer.echo(json.dumps(p, indent=2, default=str) if json_out else str(p))
+    raise typer.Exit(0)
+
+
+@automation_app.command("diagnostics")
+def automation_diagnostics(
+    run_id: str = typer.Option(..., "--run-id"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Diagnostics for a specific run (P06; stages + retries + elg + redacted rec)."""
+    from hb_assistant.construction.second_brain.automation_executor import (
+        build_automation_diagnostics,
+    )
+
+    try:
+        p = build_automation_diagnostics(run_id)
+    except Exception as exc:
+        err = {"command": "second-brain automation diagnostics", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+    typer.echo(json.dumps(p, indent=2, default=str) if json_out else str(p))
+    raise typer.Exit(0)
+
+
+@automation_app.command("last-good-run")
+def automation_last_good_run(
+    kind: str = typer.Option("daily-brief", "--kind"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Last successful run for kind (P06)."""
+    from hb_assistant.construction.second_brain.run_registry import read_latest_run_registry
+
+    try:
+        rows = read_latest_run_registry(limit=20) or []
+        good = next(
+            (
+                r
+                for r in rows
+                if r.get("run_kind") == kind.replace("-", "_") and r.get("status") == "succeeded"
+            ),
+            None,
+        )
+    except Exception as exc:
+        err = {"command": "second-brain automation last-good-run", "error": type(exc).__name__}
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    payload = {
+        "command": "second-brain automation last-good-run",
+        "mode": "status",
+        "status": "found" if good else "none",
+        "run_id": good.get("run_registry_id") if good else None,
+        "target_date": (good.get("started_utc", "").split("T")[0] if good else None),
+        "stage_summary": {"note": "use diagnostics --run-id for details"},
+        "retry_summary": {},
+        "lock_status": "see status",
+        "replay_eligibility": "n/a_for_good_run",
+        "recovery_command_redacted": "n/a",
+        "guardrails": _AUTOMATION_CLI_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)

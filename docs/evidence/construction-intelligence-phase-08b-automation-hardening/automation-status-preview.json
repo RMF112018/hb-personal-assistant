@@ -1,0 +1,30 @@
+{
+  "command": "second-brain automation status",
+  "mode": "status",
+  "status": "unknown",
+  "run_id": null,
+  "target_date": null,
+  "stage_summary": {
+    "total": 0,
+    "succeeded": 0,
+    "failed": 0,
+    "skipped": 0,
+    "stages": []
+  },
+  "retry_summary": {
+    "attempts": 0,
+    "backoffs": [],
+    "outcomes": []
+  },
+  "lock_status": "absent",
+  "replay_eligibility": "unknown",
+  "recovery_command_redacted": "hb-assistant second-brain automation status --json ; hb-assistant second-brain automation diagnostics --run-id <id> --json",
+  "guardrails": {
+    "local_first": true,
+    "read_only_for_status": true,
+    "no_external": true,
+    "recovery_redacted": true,
+    "dry_run_default": true,
+    "apply_requires_explicit_confirm": true
+  }
+}

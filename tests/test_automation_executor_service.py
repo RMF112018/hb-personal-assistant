@@ -376,3 +376,22 @@ def test_p05_safe_replay_execution_proof() -> None:
     assert proof["schema_version"] == 34
     assert proof.get("safe_replay_contract_satisfied") is True
     assert "failed-only" in str(proof.get("selectors_supported") or "")
+
+
+# P06 CLI automation status/diagnostics builders (shapes + required keys)
+def test_p06_automation_status_diagnostics_builders() -> None:
+    from hb_assistant.construction.second_brain.automation_executor import (
+        build_automation_diagnostics,
+        build_automation_status,
+    )
+
+    st = build_automation_status()
+    assert st["command"] == "second-brain automation status"
+    for k in ("mode", "status", "run_id", "target_date", "stage_summary", "retry_summary", "lock_status", "replay_eligibility", "recovery_command_redacted", "guardrails"):
+        assert k in st
+
+    # diagnostics needs a plausible id (may be None rows, still must return shape)
+    dg = build_automation_diagnostics("nonexistent-for-test")
+    assert dg["command"] == "second-brain automation diagnostics"
+    for k in ("mode", "status", "run_id", "stage_summary", "retry_summary", "lock_status", "replay_eligibility", "recovery_command_redacted", "guardrails"):
+        assert k in dg
