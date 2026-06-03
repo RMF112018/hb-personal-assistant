@@ -2068,6 +2068,16 @@ def automation_execute(
         help="REQUIRED together with --apply to execute (two-factor explicit approval).",
     ),
     json_out: bool = typer.Option(True, "--json"),
+    # P05 safe replay flags (additive; only meaningful with --mode=replay)
+    replay_of: str | None = typer.Option(
+        None, "--replay-of", help="original run_registry_id when --mode=replay"
+    ),
+    replay_selector: str | None = typer.Option(
+        None, "--replay-selector", help="failed-only|failed-and-following|explicit"
+    ),
+    replay_stages: str | None = typer.Option(
+        None, "--replay-stages", help="comma-separated explicit stage names"
+    ),
 ) -> None:
     """Execute (or dry-run) the daily brief automation plan.
 
@@ -2081,7 +2091,18 @@ def automation_execute(
         run_automation_execution,
     )
 
-    req = ExecutionRequest(run_kind="daily_brief", mode=mode, day_offset=day_offset)  # type: ignore[arg-type]
+    rsel = replay_selector  # type: ignore[assignment]
+    rstages = (
+        [s.strip() for s in (replay_stages or "").split(",") if s.strip()] if replay_stages else []
+    )
+    req = ExecutionRequest(
+        run_kind="daily_brief",
+        mode=mode,
+        day_offset=day_offset,
+        original_run_registry_id=replay_of,
+        replay_selector=rsel,  # type: ignore[arg-type]
+        replay_stages=rstages,
+    )  # type: ignore[arg-type]
     result = run_automation_execution(req, apply=apply, confirm=confirm)
     payload = {
         "command": "second-brain automation execute",

@@ -357,3 +357,22 @@ def test_p04_duplicate_prevention_proof() -> None:
     assert proof["no_raw"] is True
     assert proof["schema_version"] == 34
     assert proof["overall_status"] == "skipped"
+
+
+# P05 safe replay tests
+def test_p05_safe_replay_execution_proof() -> None:
+    from hb_assistant.construction.second_brain.automation_executor import (
+        build_safe_replay_execution_proof,
+    )
+
+    proof = build_safe_replay_execution_proof()
+    assert proof["proof_passed"] is True
+    assert proof["replay_run_created"] is True
+    assert proof["original_preserved"] is True
+    assert proof["replay_linked"] is True
+    assert proof["fakes_used"] is True
+    assert proof["lock_released"] is True
+    assert proof["no_raw"] is True
+    assert proof["schema_version"] == 34
+    assert proof.get("safe_replay_contract_satisfied") is True
+    assert "failed-only" in str(proof.get("selectors_supported") or "")

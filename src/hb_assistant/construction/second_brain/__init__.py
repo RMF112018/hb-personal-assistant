@@ -29,6 +29,7 @@ from .automation_executor import (
     build_duplicate_prevention_proof,
     build_first_run_after_wake_proof,
     build_retry_backoff_execution_proof,
+    build_safe_replay_execution_proof,
     build_weekend_catchup_proof,
     run_automation_execution,
 )
@@ -264,6 +265,7 @@ __all__ = [
     "build_duplicate_prevention_proof",
     "build_first_run_after_wake_proof",
     "build_retry_backoff_execution_proof",
+    "build_safe_replay_execution_proof",
     "build_weekend_catchup_proof",
     "run_automation_execution",
 ]
