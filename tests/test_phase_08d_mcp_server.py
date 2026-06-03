@@ -22,7 +22,7 @@ from hb_assistant.construction.second_brain.mcp import (
     serve_stdio,
 )
 from hb_assistant.construction.second_brain.mcp.config_preview import _server_entry
-from hb_assistant.construction.second_brain.mcp.policy import _BROKER_BLOCKER
+from hb_assistant.construction.second_brain.mcp.policy import _WRAPPERS_BLOCKER
 from hb_assistant.construction.second_brain.mcp.store import write_mcp_server_config_snapshot
 
 
@@ -51,7 +51,7 @@ def test_status_is_not_ready_to_serve_with_broker_blocker() -> None:
     assert status["foundation_ok"] is True
     assert status["ready_to_serve"] is False
     assert status["mcp_tools_registered"] == 0
-    assert _BROKER_BLOCKER in status["serve_blockers"]
+    assert _WRAPPERS_BLOCKER in status["serve_blockers"]
     assert "no_raw_access_proof_pending_prompt_13" in status["serve_blockers"]
     assert "no_writeback_proof_pending_prompt_14" in status["serve_blockers"]
     # SDK is an optional extra and absent in CI.
@@ -99,7 +99,7 @@ def test_serve_is_fail_closed_and_opens_nothing() -> None:
     result = serve_stdio()
     assert result["served"] is False
     assert result["ready_to_serve"] is False
-    assert _BROKER_BLOCKER in result["reasons"]
+    assert _WRAPPERS_BLOCKER in result["reasons"]
     assert result["transport"] == "stdio"
 
 

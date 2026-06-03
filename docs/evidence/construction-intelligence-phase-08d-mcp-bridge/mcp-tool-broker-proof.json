@@ -1,0 +1,98 @@
+{
+  "proof": "phase_08d_mcp_tool_broker",
+  "phase": "08D",
+  "proof_passed": true,
+  "registries": {
+    "allowed_tools": 9,
+    "denied_actions": 27
+  },
+  "denial_reason_codes": [
+    "action_denied_by_policy",
+    "tool_not_allowed",
+    "wrapper_unavailable",
+    "invalid_arguments",
+    "unsafe_output",
+    "broker_error"
+  ],
+  "scenarios": {
+    "denied_action": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "receipt_id_present": true,
+      "expected": {
+        "decision": "denied",
+        "reason_code": "action_denied_by_policy"
+      },
+      "pass": true
+    },
+    "unknown_tool": {
+      "decision": "denied",
+      "reason_code": "tool_not_allowed",
+      "receipt_id_present": true,
+      "expected": {
+        "decision": "denied",
+        "reason_code": "tool_not_allowed"
+      },
+      "pass": true
+    },
+    "wrapper_unavailable": {
+      "decision": "denied",
+      "reason_code": "wrapper_unavailable",
+      "receipt_id_present": true,
+      "expected": {
+        "decision": "denied",
+        "reason_code": "wrapper_unavailable"
+      },
+      "pass": true
+    },
+    "allowed_success": {
+      "decision": "allowed",
+      "reason_code": null,
+      "receipt_id_present": true,
+      "expected": {
+        "decision": "allowed",
+        "reason_code": null
+      },
+      "pass": true
+    },
+    "unsafe_output": {
+      "decision": "denied",
+      "reason_code": "unsafe_output",
+      "receipt_id_present": true,
+      "expected": {
+        "decision": "denied",
+        "reason_code": "unsafe_output"
+      },
+      "pass": true
+    },
+    "denied_token_in_args": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "receipt_id_present": true,
+      "expected": {
+        "decision": "denied",
+        "reason_code": "action_denied_by_policy"
+      },
+      "pass": true
+    }
+  },
+  "receipt_counts": {
+    "tool_call": 1,
+    "denial": 5
+  },
+  "metadata_only": {
+    "receipt_tables_have_no_raw_columns": true,
+    "all_guard_columns_zero": true,
+    "args_and_results_hashed_only": true
+  },
+  "deferred": {
+    "workflow_wrappers": "implemented in Prompt 05 (allowed_success here uses an injected test wrapper)",
+    "stdio_exposure": "broker not yet exposed over stdio (serve fail-closed)"
+  },
+  "guardrails": {
+    "deny_first": true,
+    "metadata_only_receipts": true,
+    "bounded_output": true,
+    "no_raw_no_writeback_no_determination": true
+  }
+}

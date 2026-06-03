@@ -102,6 +102,105 @@ def write_mcp_claude_desktop_config_preview(
     return preview_id
 
 
+def write_mcp_tool_call_receipt(
+    *,
+    tool_name: str,
+    decision: str,
+    workflow_wrapper: str | None,
+    policy_version: str,
+    output_classification: str | None,
+    source_count: int,
+    result_count: int,
+    args_hash: str | None,
+    result_hash: str | None,
+    client_name: str | None = None,
+    correlation_id: str | None = None,
+    evidence_path: str | None = None,
+    db_path: str | None = None,
+) -> str:
+    """Insert one metadata-only MCP tool-call receipt; returns the ``receipt_id``.
+
+    Persists hashes/counts/classification only — never raw arguments or results. All
+    twenty guard columns stay at 0 (DB CHECK enforced).
+    """
+    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+
+    receipt_id = uuid.uuid4().hex
+    conn = get_connection(Path(db_path) if db_path is not None else None)
+    with transaction(conn):
+        conn.execute(
+            """
+            INSERT INTO second_brain_mcp_tool_call_receipts
+                (receipt_id, created_at, client_name, tool_name, decision, workflow_wrapper,
+                 policy_version, schema_version, output_classification, source_count,
+                 result_count, evidence_path, correlation_id, args_hash, result_hash)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                receipt_id,
+                _now(),
+                client_name,
+                tool_name,
+                decision,
+                workflow_wrapper,
+                policy_version,
+                LATEST_SCHEMA_VERSION,
+                output_classification,
+                int(source_count),
+                int(result_count),
+                evidence_path,
+                correlation_id,
+                args_hash,
+                result_hash,
+            ),
+        )
+    return receipt_id
+
+
+def write_mcp_denial_receipt(
+    *,
+    requested_action: str,
+    denial_reason_code: str,
+    policy_version: str,
+    client_name: str | None = None,
+    correlation_id: str | None = None,
+    request_hash: str | None = None,
+    db_path: str | None = None,
+) -> str:
+    """Insert one metadata-only MCP denial receipt; returns the ``receipt_id``.
+
+    Stores the action name, reason code, hashes, and versions only — never the raw
+    requested content. ``decision`` is pinned to ``denied`` (DB CHECK). All twenty guard
+    columns stay at 0.
+    """
+    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+
+    receipt_id = uuid.uuid4().hex
+    conn = get_connection(Path(db_path) if db_path is not None else None)
+    with transaction(conn):
+        conn.execute(
+            """
+            INSERT INTO second_brain_mcp_denial_receipts
+                (receipt_id, created_at, client_name, requested_action, decision,
+                 denial_reason_code, policy_version, schema_version, correlation_id,
+                 request_hash)
+            VALUES (?, ?, ?, ?, 'denied', ?, ?, ?, ?, ?)
+            """,
+            (
+                receipt_id,
+                _now(),
+                client_name,
+                requested_action,
+                denial_reason_code,
+                policy_version,
+                LATEST_SCHEMA_VERSION,
+                correlation_id,
+                request_hash,
+            ),
+        )
+    return receipt_id
+
+
 def _sha256(payload: Any) -> str:
     import hashlib
 
