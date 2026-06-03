@@ -161,6 +161,7 @@ def build_mcp_status(*, db_path: str | None = None, persist: bool = True) -> dic
 
     # The broker (Prompt 04) and the nine workflow wrappers (Prompt 05) are wired; serving
     # over stdio still waits on the Prompt 13/14 guard proofs (and the optional SDK).
+    from .resources import load_resources  # noqa: PLC0415 - avoid import cycle at module load
     from .wrappers import (
         build_wrapper_registry,  # noqa: PLC0415 - avoid import cycle at module load
     )
@@ -169,10 +170,12 @@ def build_mcp_status(*, db_path: str | None = None, persist: bool = True) -> dic
         allowed_tool_specs = len(load_allowed_tools())
         denied_actions = len(load_denied_actions())
         tools_registered = len(build_wrapper_registry())
+        resources_count = len(load_resources())
     except Exception:  # noqa: BLE001 - a missing registry is reported, not raised, by status
         allowed_tool_specs = 0
         denied_actions = 0
         tools_registered = 0
+        resources_count = 0
 
     serve_blockers: list[str] = list(_DEFERRED_SERVE_BLOCKERS)
     if not mcp_sdk_available:
@@ -214,6 +217,7 @@ def build_mcp_status(*, db_path: str | None = None, persist: bool = True) -> dic
         "mcp_tools_registered": tools_registered,
         "mcp_allowed_tool_specs": allowed_tool_specs,
         "mcp_denied_actions": denied_actions,
+        "mcp_resources": resources_count,
         "checks": startup["checks"],
         "deferred": startup["deferred"],
         "serve_blockers": serve_blockers,

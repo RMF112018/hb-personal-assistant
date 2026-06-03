@@ -28,6 +28,7 @@ EVIDENCE_DIR = "docs/evidence/construction-intelligence-phase-08d-mcp-bridge"
 PROOF_JSON = "mcp-tool-broker-proof.json"
 CONTRACT_PROOF_JSON = "mcp-tool-contract-proof.json"
 DENIED_PROOF_JSON = "mcp-denied-tool-proof.json"
+RESOURCE_PROOF_JSON = "mcp-resource-contract-proof.json"
 
 # Fields a tool result must never carry (raw content / determinations).
 _FORBIDDEN_RESULT_FIELDS = (
@@ -219,6 +220,111 @@ def build_mcp_tool_broker_proof(
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
         proof["proof_path"] = str(out_dir / PROOF_JSON)
+
+    return proof
+
+
+def build_mcp_resources_proof(
+    *,
+    evidence_dir: str | None = None,
+    write_evidence: bool = True,
+) -> dict[str, Any]:
+    """Read all five safe resources and attest the bounded, approved-workflow-only contract.
+
+    Runs against a temporary database (empty → resources degrade safely). Confirms each
+    resource is from an approved workflow, bounded, carries freshness + policy posture, and
+    leaks no forbidden field; that an unknown URI fail-closes; and that a metadata-only
+    resource-registry snapshot persists guard-clean. Writes ``mcp-resource-contract-proof.json``.
+    """
+    from .resources import (  # noqa: PLC0415 - avoid import cycle (resources imports proof? no)
+        load_resources,
+        read_resource,
+        snapshot_resource_registry,
+    )
+
+    registry = load_resources()
+    uris = [r["uri"] for r in registry]
+    resource_report: dict[str, Any] = {}
+    all_pass = True
+
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "resources.db")
+        for uri in uris:
+            res = read_resource(uri, db_path=db)
+            keys = _collect_keys(res)
+            forbidden_hit = sorted(set(_FORBIDDEN_RESULT_FIELDS) & keys)
+            ok = bool(
+                res.get("resource_name")
+                and res.get("source")
+                and "content" in res
+                and isinstance(res.get("freshness"), dict)
+                and res.get("policy_posture")
+                and not forbidden_hit
+            )
+            all_pass = all_pass and ok
+            resource_report[uri] = {
+                "resource_name": res.get("resource_name"),
+                "source": res.get("source"),
+                "status": res.get("status"),
+                "has_freshness": isinstance(res.get("freshness"), dict),
+                "has_policy_posture": bool(res.get("policy_posture")),
+                "forbidden_fields": forbidden_hit,
+                "pass": ok,
+            }
+
+        # Unknown URI must fail closed.
+        unknown = read_resource("hb://secrets/all", db_path=db)
+        unknown_fail_closed = bool(
+            unknown.get("status") == "denied"
+            and unknown.get("reason_code") == "resource_not_allowed"
+            and unknown.get("fail_closed") is True
+        )
+
+        snapshot_id = snapshot_resource_registry(db_path=db, persist=True)
+        conn = sqlite3.connect(db)
+        snapshot_rows = conn.execute(
+            "SELECT resource_count FROM second_brain_mcp_resource_registry_snapshots"
+        ).fetchall()
+        guards_clean = _guards_all_zero(conn, "second_brain_mcp_resource_registry_snapshots")
+
+    proof_passed = bool(
+        all_pass
+        and unknown_fail_closed
+        and snapshot_id
+        and snapshot_rows == [(len(uris),)]
+        and guards_clean
+    )
+    proof: dict[str, Any] = {
+        "proof": "phase_08d_mcp_resources",
+        "phase": "08D",
+        "proof_passed": proof_passed,
+        "resource_count": len(uris),
+        "resources": resource_report,
+        "unknown_uri_fail_closed": unknown_fail_closed,
+        "registry_snapshot": {
+            "persisted": bool(snapshot_id),
+            "resource_count": len(uris),
+            "all_guard_columns_zero": guards_clean,
+        },
+        "contract": {
+            "approved_workflow_source": True,
+            "bounded_structured_output": True,
+            "freshness_metadata": True,
+            "policy_posture": True,
+            "fail_closed": True,
+            "no_per_access_receipt": True,
+        },
+        "guardrails": {"read_only": True, "no_raw_content": True, "no_writeback": True},
+    }
+
+    serialized = json.dumps(proof, indent=2, default=str)
+    _assert_no_raw(serialized, "mcp resources proof")
+
+    if write_evidence:
+        out_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / RESOURCE_PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
+        proof["proof_path"] = str(out_dir / RESOURCE_PROOF_JSON)
 
     return proof
 

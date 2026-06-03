@@ -13,9 +13,11 @@ from .policy import build_mcp_status, evaluate_startup_checks
 from .proof import (
     build_mcp_allowed_tools_proof,
     build_mcp_denied_tools_proof,
+    build_mcp_resources_proof,
     build_mcp_tool_broker_proof,
 )
 from .registry import load_allowed_tools, load_denied_actions, load_global_requirements
+from .resources import load_resources, read_all_resources, read_resource
 from .server import MCPUnavailable, serve_stdio
 from .wrappers import build_wrapper_registry
 
@@ -36,6 +38,7 @@ __all__ = [
     "build_default_broker",
     "build_mcp_allowed_tools_proof",
     "build_mcp_denied_tools_proof",
+    "build_mcp_resources_proof",
     "build_mcp_status",
     "build_mcp_tool_broker_proof",
     "build_wrapper_registry",
@@ -43,5 +46,8 @@ __all__ = [
     "load_allowed_tools",
     "load_denied_actions",
     "load_global_requirements",
+    "load_resources",
+    "read_all_resources",
+    "read_resource",
     "serve_stdio",
 ]

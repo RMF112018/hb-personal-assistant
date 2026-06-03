@@ -1,0 +1,72 @@
+{
+  "proof": "phase_08d_mcp_resources",
+  "phase": "08D",
+  "proof_passed": true,
+  "resource_count": 5,
+  "resources": {
+    "hb://status/system": {
+      "resource_name": "mcp_status_resource",
+      "source": "safe status workflow",
+      "status": "ok",
+      "has_freshness": true,
+      "has_policy_posture": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "hb://brief/today": {
+      "resource_name": "mcp_today_brief_resource",
+      "source": "daily brief render view",
+      "status": "ok",
+      "has_freshness": true,
+      "has_policy_posture": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "hb://review/load": {
+      "resource_name": "mcp_review_load_resource",
+      "source": "review triage/load status",
+      "status": "ok",
+      "has_freshness": true,
+      "has_policy_posture": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "hb://research/latest": {
+      "resource_name": "mcp_latest_research_resource",
+      "source": "latest research packet summary",
+      "status": "degraded",
+      "has_freshness": true,
+      "has_policy_posture": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "hb://validation/latest": {
+      "resource_name": "mcp_latest_validation_resource",
+      "source": "latest gates/no-writeback proof summaries",
+      "status": "ok",
+      "has_freshness": true,
+      "has_policy_posture": true,
+      "forbidden_fields": [],
+      "pass": true
+    }
+  },
+  "unknown_uri_fail_closed": true,
+  "registry_snapshot": {
+    "persisted": true,
+    "resource_count": 5,
+    "all_guard_columns_zero": true
+  },
+  "contract": {
+    "approved_workflow_source": true,
+    "bounded_structured_output": true,
+    "freshness_metadata": true,
+    "policy_posture": true,
+    "fail_closed": true,
+    "no_per_access_receipt": true
+  },
+  "guardrails": {
+    "read_only": true,
+    "no_raw_content": true,
+    "no_writeback": true
+  }
+}

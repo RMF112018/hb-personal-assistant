@@ -102,6 +102,35 @@ def write_mcp_claude_desktop_config_preview(
     return preview_id
 
 
+def write_mcp_resource_registry_snapshot(
+    *,
+    resource_count: int,
+    registry_hash: str,
+    policy_version: str,
+    db_path: str | None = None,
+) -> str:
+    """Insert one MCP resource-registry snapshot; returns the ``snapshot_id``.
+
+    Local-only, additive, metadata-only (count + hash + versions). All guard columns 0.
+    """
+    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+
+    snapshot_id = uuid.uuid4().hex
+    conn = get_connection(Path(db_path) if db_path is not None else None)
+    with transaction(conn):
+        conn.execute(
+            """
+            INSERT INTO second_brain_mcp_resource_registry_snapshots
+                (snapshot_id, created_at, resource_count, registry_hash, policy_version,
+                 schema_version)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (snapshot_id, _now(), int(resource_count), registry_hash, policy_version,
+             LATEST_SCHEMA_VERSION),
+        )
+    return snapshot_id
+
+
 def write_mcp_tool_call_receipt(
     *,
     tool_name: str,
