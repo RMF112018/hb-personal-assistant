@@ -1,0 +1,24 @@
+{
+  "proof": "phase_08b_first_run_after_wake",
+  "proof_passed": true,
+  "catchup_proceeded": true,
+  "catchup_metadata_persisted": true,
+  "fakes_used": true,
+  "fakes_called_count": 5,
+  "lock_released": true,
+  "overall_status": "succeeded",
+  "no_raw": true,
+  "schema_version": 34,
+  "run_reason": "see steps",
+  "catchup_steps": [
+    {
+      "run_step_id": "ec33755c8a81458a80f749764a8d2d94",
+      "step_name": "catchup_decision",
+      "step_order": -1,
+      "status": "succeeded",
+      "reason_code": "CATCH_UP_NEEDED",
+      "detail": "first-run-after-wake; proceeding with catch-up run",
+      "created_utc": "2026-06-03T08:57:21.520386+00:00"
+    }
+  ]
+}

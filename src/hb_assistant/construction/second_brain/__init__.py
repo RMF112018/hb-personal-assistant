@@ -21,6 +21,17 @@ from .agents import (
     validate_agent_registry,
     validate_model_profiles,
 )
+from .automation_executor import (
+    AutomationExecutor,
+    ExecutionResult,
+    StageReceipt,
+    build_automation_execution_proof,
+    build_duplicate_prevention_proof,
+    build_first_run_after_wake_proof,
+    build_retry_backoff_execution_proof,
+    build_weekend_catchup_proof,
+    run_automation_execution,
+)
 from .config import SecondBrainConfig, load_second_brain_config
 from .contracts import (
     PHASE_08A_CONTRACT_FILES,
@@ -136,13 +147,6 @@ from .synthesis import (
     synthesize_answer,
     write_evaluation_run,
 )
-from .automation_executor import (
-    AutomationExecutor,
-    ExecutionResult,
-    StageReceipt,
-    build_automation_execution_proof,
-    run_automation_execution,
-)
 
 __all__ = [
     "AgentDefinition",
@@ -257,5 +261,9 @@ __all__ = [
     "ExecutionResult",
     "StageReceipt",
     "build_automation_execution_proof",
+    "build_duplicate_prevention_proof",
+    "build_first_run_after_wake_proof",
+    "build_retry_backoff_execution_proof",
+    "build_weekend_catchup_proof",
     "run_automation_execution",
 ]

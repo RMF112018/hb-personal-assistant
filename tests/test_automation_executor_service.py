@@ -294,3 +294,66 @@ def test_reason_codes_and_versions_from_p01_substrate_still_present() -> None:
     assert "policy_version" in sim["plan"]
     # guardrails present
     assert sim["guardrails"]["apply_requires_explicit_confirm"] is True
+
+
+# --- P04 retry/backoff, weekend, catch-up, dup prevention (injected fakes + clock/sleep) ---
+
+
+def test_p04_retry_backoff_execution_proof() -> None:
+    from hb_assistant.construction.second_brain.automation_executor import (
+        build_retry_backoff_execution_proof,
+    )
+
+    proof = build_retry_backoff_execution_proof()
+    assert proof["proof_passed"] is True
+    assert proof["transient_retries_used"] is True
+    assert proof["fakes_used"] is True
+    assert proof["lock_released"] is True
+    assert proof["schema_version"] == 34
+    assert proof["no_raw"] is True
+    assert len(proof["sleep_calls"]) >= 1
+    assert "simulated_result" in proof
+
+
+def test_p04_weekend_catchup_proof() -> None:
+    from hb_assistant.construction.second_brain.automation_executor import (
+        build_weekend_catchup_proof,
+    )
+
+    proof = build_weekend_catchup_proof()
+    assert proof["proof_passed"] is True
+    assert proof["is_weekend"] is True
+    assert proof["weekend_skipped"] is True
+    assert proof["fakes_called"] == 0
+    assert proof["no_raw"] is True
+    assert proof["schema_version"] == 34
+    assert "WEEKEND" in str(proof.get("weekend_reason") or "")
+
+
+def test_p04_first_run_after_wake_proof() -> None:
+    from hb_assistant.construction.second_brain.automation_executor import (
+        build_first_run_after_wake_proof,
+    )
+
+    proof = build_first_run_after_wake_proof()
+    assert proof["proof_passed"] is True
+    assert proof["catchup_proceeded"] is True
+    assert proof["catchup_metadata_persisted"] is True
+    assert proof["fakes_used"] is True
+    assert proof["fakes_called_count"] >= 1
+    assert proof["no_raw"] is True
+    assert proof["schema_version"] == 34
+
+
+def test_p04_duplicate_prevention_proof() -> None:
+    from hb_assistant.construction.second_brain.automation_executor import (
+        build_duplicate_prevention_proof,
+    )
+
+    proof = build_duplicate_prevention_proof()
+    assert proof["proof_passed"] is True
+    assert proof["duplicate_prevented"] is True
+    assert proof["fakes_called"] == 0
+    assert proof["no_raw"] is True
+    assert proof["schema_version"] == 34
+    assert proof["overall_status"] == "skipped"

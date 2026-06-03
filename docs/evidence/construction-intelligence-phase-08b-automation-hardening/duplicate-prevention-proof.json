@@ -1,0 +1,11 @@
+{
+  "proof": "phase_08b_duplicate_prevention",
+  "proof_passed": true,
+  "duplicate_prevented": true,
+  "fakes_called": 0,
+  "overall_status": "skipped",
+  "lock_released": true,
+  "no_raw": true,
+  "schema_version": 34,
+  "receipts_with_dup_reason": 8
+}

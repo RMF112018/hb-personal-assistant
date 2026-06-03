@@ -518,3 +518,59 @@ def build_retry_recovery_proof() -> dict[str, Any]:
             "model_direct_external_api_access": False,
         },
     }
+
+
+def classify_execution_failure(
+    e: Exception | None = None,
+    stage_name: str | None = None,
+    result: dict[str, Any] | None = None,
+) -> tuple[bool, str]:
+    """Classify a stage execution failure as transient (local, retryable) or permanent (policy/safety/no-input/no-writeback etc).
+
+    Returns (is_transient_local, reason_code).
+    - Transient local: DB/IO/lock contention, certain transient surface errors that are local-only.
+    - Permanent (do not retry for this run): policy/safety/missing input, no-writeback violations, already delivered, disabled_by_policy, eval hard fail, external asset etc.
+    Used by P04 executor to decide whether to call evaluate_retry + sleep/record V30 or immediate fail + downstream skip.
+    """
+    text = ""
+    if e is not None:
+        text = str(e).lower()
+    if result is not None:
+        text += " " + str(result).lower()
+    text = text or ""
+
+    # Permanent / do-not-retry (policy, safety, no-input, no-writeback, already done, disabled, hard eval fail, external)
+    permanent_markers = (
+        "policy",
+        "safety",
+        "no_input",
+        "no writeback",
+        "writeback",
+        "already_delivered",
+        "disabled_by_policy",
+        "external_asset",
+        "eval_failed",
+        "hard fail",
+        "blocked",
+    )
+    if any(m in text for m in permanent_markers):
+        return False, "RETRY_PERMANENT_POLICY_OR_SAFETY"
+
+    # Transient local (DB lock, IO, contention, temp unavail, retryable local surface)
+    transient_markers = (
+        "lock",
+        "database is locked",
+        "sqlite",
+        "ioerror",
+        "oserror",
+        "timeout",
+        "temporarily",
+        "stale",
+        "contention",
+        "busy",
+    )
+    if any(m in text for m in transient_markers):
+        return True, "RETRY_TRANSIENT_LOCAL"
+
+    # Default: treat unknown as non-transient (fail closed for retry to avoid loops on unexpected)
+    return False, "RETRY_PERMANENT_UNKNOWN"

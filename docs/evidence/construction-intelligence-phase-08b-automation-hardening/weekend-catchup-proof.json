@@ -1,0 +1,61 @@
+{
+  "proof": "phase_08b_weekend_catchup",
+  "proof_passed": true,
+  "is_weekend": true,
+  "weekend_skipped": true,
+  "weekend_reason": "WEEKEND_GATE_SKIPPED",
+  "fakes_called": 0,
+  "overall_status": "skipped",
+  "lock_released": true,
+  "no_raw": true,
+  "schema_version": 34,
+  "decisions": [
+    {
+      "kind": "catch_up",
+      "decision": "proceed",
+      "reason_code": "CATCH_UP_NEEDED",
+      "detail": "first-run-after-wake or stale schedule"
+    },
+    {
+      "kind": "weekend_gate",
+      "decision": "skip",
+      "reason_code": "WEEKEND_GATE_SKIPPED",
+      "detail": "weekend behavior=skip (policy)"
+    }
+  ],
+  "stage_receipts_sample": [
+    {
+      "stage": "preflight_status",
+      "order": 0,
+      "status": "skipped_downstream",
+      "started_utc": "2026-06-06T09:30:00+00:00",
+      "finished_utc": "2026-06-06T09:30:00+00:00",
+      "duration_ms": null,
+      "reason_code": "WEEKEND_GATE_SKIPPED",
+      "detail": null,
+      "receipt_ids": []
+    },
+    {
+      "stage": "source_freshness_check",
+      "order": 1,
+      "status": "skipped_downstream",
+      "started_utc": "2026-06-06T09:30:00+00:00",
+      "finished_utc": "2026-06-06T09:30:00+00:00",
+      "duration_ms": null,
+      "reason_code": "WEEKEND_GATE_SKIPPED",
+      "detail": null,
+      "receipt_ids": []
+    },
+    {
+      "stage": "daily_brief_generate",
+      "order": 2,
+      "status": "skipped_downstream",
+      "started_utc": "2026-06-06T09:30:00+00:00",
+      "finished_utc": "2026-06-06T09:30:00+00:00",
+      "duration_ms": null,
+      "reason_code": "WEEKEND_GATE_SKIPPED",
+      "detail": null,
+      "receipt_ids": []
+    }
+  ]
+}
