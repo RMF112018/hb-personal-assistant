@@ -15,6 +15,7 @@ touched and no DB row is written.
 from __future__ import annotations
 
 import re
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -140,6 +141,7 @@ EVIDENCE_DIR_REL = "docs/evidence/construction-intelligence-phase-04a"
 DEFAULT_MAX_PAGES = 1000
 DEFAULT_MAX_ITEMS = 100000
 DEFAULT_MAX_CHILD_REQUESTS = 100000
+DEFAULT_CHILD_REQUEST_DELAY_SECONDS = 0.0
 CHILD_REFRESH_LOOKBACK_HOURS = 26
 
 
@@ -661,6 +663,7 @@ def run_live_sync(
     max_pages: int = DEFAULT_MAX_PAGES,
     max_items: int = DEFAULT_MAX_ITEMS,
     max_child_requests: int = DEFAULT_MAX_CHILD_REQUESTS,
+    child_request_delay_seconds: float = DEFAULT_CHILD_REQUEST_DELAY_SECONDS,
     parent_id: Optional[str] = None,
     mode_hint: Optional[str] = None,
     db_path: Optional[Path] = None,
@@ -1090,7 +1093,7 @@ def run_live_sync(
     # parent_procore_id can be derived at upsert time without a kwarg.
     if adapter.endpoint_id == "activities" and items:
         activity_items: List[Dict[str, Any]] = []
-        for schedule_summary in items:
+        for idx, schedule_summary in enumerate(items):
             if not isinstance(schedule_summary, dict):
                 continue
             schedule_id = schedule_summary.get("schedule_id")
@@ -1109,6 +1112,8 @@ def run_live_sync(
                 f"/rest/v2.0/companies/{COMPANY_ID}/projects/{procore_project_id}"
                 f"/schedules/{schedule_id}/activities"
             )
+            if child_request_delay_seconds > 0 and idx > 0:
+                time.sleep(child_request_delay_seconds)
             try:
                 activity_iter = list(
                     client.paginate(
@@ -1119,6 +1124,17 @@ def run_live_sync(
                         retry_policy=_LIVE_SYNC_RETRY_POLICY,
                     )
                 )
+            except ProcoreRateLimitError as exc:
+                last_retry_after = exc.retry_after
+                reason_codes.append("activities_rate_limited")
+                redacted_errors.append(
+                    {
+                        "detail_transport_error": exc.code or "rate_limited",
+                        "status": exc.status,
+                        "schedule_id": schedule_id,
+                    }
+                )
+                break
             except ProcoreAPIError as exc:
                 redacted_errors.append(
                     {
@@ -1145,17 +1161,21 @@ def run_live_sync(
     # meeting-detail per-meeting N+1 detail fetch. The orchestrator already
     # has the meetings list (`items`); now issue one detail GET per meeting
     # and REPLACE items with the rich detail payloads. Rate-limit / 5xx on
-    # any single detail call is recorded in redacted_errors and the loop
-    # continues to the next meeting.
+    # non-rate-limit detail errors are recorded in redacted_errors and the loop
+    # continues to the next meeting. A 429 stops the loop immediately so one
+    # endpoint run cannot turn a saturated rate window into a burst of failing
+    # detail calls.
     if adapter.endpoint_id == "meeting-detail" and items:
         detail_items: List[Dict[str, Any]] = []
-        for meeting_summary in items:
+        for idx, meeting_summary in enumerate(items):
             if not isinstance(meeting_summary, dict):
                 continue
             meeting_id = meeting_summary.get("id")
             if meeting_id is None or meeting_id == "":
                 continue
             detail_path = f"/rest/v1.1/projects/{procore_project_id}/meetings/{meeting_id}"
+            if child_request_delay_seconds > 0 and idx > 0:
+                time.sleep(child_request_delay_seconds)
             try:
                 detail_iter = list(
                     client.paginate(
@@ -1166,6 +1186,17 @@ def run_live_sync(
                         retry_policy=_LIVE_SYNC_RETRY_POLICY,
                     )
                 )
+            except ProcoreRateLimitError as exc:
+                last_retry_after = exc.retry_after
+                reason_codes.append("meeting_detail_rate_limited")
+                redacted_errors.append(
+                    {
+                        "detail_transport_error": exc.code or "rate_limited",
+                        "status": exc.status,
+                        "meeting_id": meeting_id,
+                    }
+                )
+                break
             except ProcoreAPIError as exc:
                 redacted_errors.append(
                     {
@@ -1199,6 +1230,8 @@ def run_live_sync(
         child_skipped_count = 0
         child_error_count = 0
         cap_reached = False
+        rate_limit_stopped = False
+        rate_limit_parent_id: Optional[str] = None
         for idx, parent_summary in enumerate(items):
             if not isinstance(parent_summary, dict):
                 child_skipped_count += 1
@@ -1231,6 +1264,8 @@ def run_live_sync(
             # already embed /projects/{project_id}/ in the path. RFQ children also need the
             # parent-derived contract_id (see _child_query_params).
             child_params = _child_query_params(adapter, str(procore_project_id), parent_summary)
+            if child_request_delay_seconds > 0 and child_request_count > 0:
+                time.sleep(child_request_delay_seconds)
             child_request_count += 1  # counted even on error (a GET was attempted)
             try:
                 child_iter = list(
@@ -1243,6 +1278,21 @@ def run_live_sync(
                         retry_policy=_LIVE_SYNC_RETRY_POLICY,
                     )
                 )
+            except ProcoreRateLimitError as exc:
+                child_error_count += 1
+                rate_limit_stopped = True
+                rate_limit_parent_id = str(parent_id)
+                last_retry_after = exc.retry_after
+                reason_codes.append("n1_child_rate_limited")
+                child_skipped_count += parent_count - idx - 1
+                redacted_errors.append(
+                    {
+                        "detail_transport_error": exc.code or "rate_limited",
+                        "status": exc.status,
+                        token: parent_id,
+                    }
+                )
+                break
             except ProcoreAPIError as exc:
                 child_error_count += 1
                 redacted_errors.append(
@@ -1273,6 +1323,9 @@ def run_live_sync(
             "child_error_count": child_error_count,
             "cap": max_child_requests,
             "cap_reached": cap_reached,
+            "rate_limit_stopped": rate_limit_stopped,
+            "rate_limit_parent_id": rate_limit_parent_id,
+            "child_request_delay_seconds": child_request_delay_seconds,
         }
 
     # Normalize + upsert. After each parent upsert, perform an N+1 child GET if

@@ -1,0 +1,123 @@
+{
+  "child_request_delay_seconds": 0.5,
+  "endpoints": {
+    "budget-detail-columns": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": null,
+      "redacted_errors": null,
+      "request_count_observed": 0,
+      "request_count_receipt": null,
+      "retrieved_count": null,
+      "retry_count": null,
+      "sqlite_upserted_count": null,
+      "state": null,
+      "status": null,
+      "statuses_observed": {}
+    },
+    "budget-detail-rows": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": null,
+      "redacted_errors": null,
+      "request_count_observed": 0,
+      "request_count_receipt": null,
+      "retrieved_count": null,
+      "retry_count": null,
+      "sqlite_upserted_count": null,
+      "state": null,
+      "status": null,
+      "statuses_observed": {}
+    },
+    "change-event-comments": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": null,
+      "redacted_errors": null,
+      "request_count_observed": 0,
+      "request_count_receipt": null,
+      "retrieved_count": null,
+      "retry_count": null,
+      "sqlite_upserted_count": null,
+      "state": null,
+      "status": null,
+      "statuses_observed": {}
+    },
+    "rfq-quotes": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": null,
+      "redacted_errors": null,
+      "request_count_observed": 0,
+      "request_count_receipt": null,
+      "retrieved_count": null,
+      "retry_count": null,
+      "sqlite_upserted_count": null,
+      "state": null,
+      "status": null,
+      "statuses_observed": {}
+    },
+    "rfq-responses": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": null,
+      "redacted_errors": null,
+      "request_count_observed": 0,
+      "request_count_receipt": null,
+      "retrieved_count": null,
+      "retry_count": null,
+      "sqlite_upserted_count": null,
+      "state": null,
+      "status": null,
+      "statuses_observed": {}
+    },
+    "subcontractor-invoice-change-order-items": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": null,
+      "redacted_errors": null,
+      "request_count_observed": 0,
+      "request_count_receipt": null,
+      "retrieved_count": null,
+      "retry_count": null,
+      "sqlite_upserted_count": null,
+      "state": null,
+      "status": null,
+      "statuses_observed": {}
+    },
+    "subcontractor-invoice-contract-detail-items": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    }
+  },
+  "max_child_requests": 2,
+  "receipts_path": "docs/evidence/procore-live-request-audit/20260603T092259Z-remaining-parent-child-receipts.json",
+  "request_count_observed": 1,
+  "requests_path": "docs/evidence/procore-live-request-audit/20260603T092259Z-remaining-parent-child-requests.jsonl",
+  "stamp": "20260603T092259Z",
+  "stop_on_rate_limit": true,
+  "unverified_not_run": [
+    "purchase-order-detail-line-items",
+    "budget-details",
+    "budget-change-line-items"
+  ]
+}

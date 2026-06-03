@@ -1414,6 +1414,54 @@ def test_meeting_detail_apply_persists_meeting_and_nested_topics(
         assert raw_body_persisted == 0
 
 
+def test_meeting_detail_stops_detail_fanout_on_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup_env(monkeypatch)
+    db = _db()
+    list_payload = [
+        {"id": 11},
+        {"id": 22},
+        {"id": 33},
+    ]
+    detail_11 = {
+        "id": 11,
+        "title": "Meeting Eleven",
+        "starts_at": "2026-03-01T15:00:00Z",
+        "attendees": [],
+        "meeting_categories": [],
+    }
+    transport = _PathAwareFakeTransport(
+        {
+            "/rest/v1.1/projects/2525840/meetings/11": [detail_11],
+            "/rest/v1.1/projects/2525840/meetings": list_payload,
+        },
+        error_paths={"/rest/v1.1/projects/2525840/meetings/22": 429},
+    )
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="meeting-detail",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    called_urls = [call["url"] for call in transport.calls]
+    assert any(url.endswith("/meetings/11") for url in called_urls)
+    assert any(url.endswith("/meetings/22") for url in called_urls)
+    assert not any(url.endswith("/meetings/33") for url in called_urls)
+    assert "meeting_detail_rate_limited" in receipt["reason_codes"]
+    assert receipt["state"] == "partial_success"
+    assert count_procore_live_records(
+        project_key="tropical", endpoint_id="meeting-detail", db_path=db
+    ) == 1
+
+
 # ----------------------------------------------------------------------------
 # punch-items: standalone /punch_items endpoint with project_id query param
 # ----------------------------------------------------------------------------

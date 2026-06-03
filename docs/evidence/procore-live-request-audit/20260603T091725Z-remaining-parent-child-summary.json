@@ -1,0 +1,824 @@
+{
+  "child_request_delay_seconds": 0.0,
+  "endpoints": {
+    "budget-detail-columns": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "budget-detail-rows": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "change-event-comments": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "commitment-attachments": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "commitment-change-order-line-items": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "commitment-compliance": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "commitment-line-items": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "meeting-detail": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [],
+      "redacted_errors": [
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11102333,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11100381,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11030284,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10972613,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10883983,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10773765,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10702667,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10547830,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10484524,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10313922,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10303657,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10217214,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12866629,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12818851,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12783729,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12734572,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12693361,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12655844,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12655552,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12333155,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12291060,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12248317,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12169838,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12164804,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12097740,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12035515,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12035508,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12035464,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11889517,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11815092,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11705637,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11701742,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11625871,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11588087,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11549999,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11512305,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11473698,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11440563,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11402515,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11364960,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11328666,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11328552,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11291547,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11291309,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11254217,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11217037,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11109955,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11041796,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10890509,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10783622,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10778893,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10738781,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10675182,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10533020,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10496790,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10466484,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10454051,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10338505,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10297128,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12366557,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12219076,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12175183,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12174149,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12174091,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12174027,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 12160237,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11963283,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11735484,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10837041,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11797064,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11788100,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11371838,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 11104915,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 10100546,
+          "status": 429
+        },
+        {
+          "detail_transport_error": null,
+          "meeting_id": 9861580,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 97,
+      "request_count_receipt": 97,
+      "retrieved_count": 21,
+      "retry_count": 0,
+      "sqlite_upserted_count": 415,
+      "state": "partial_success",
+      "status": "partial",
+      "statuses_observed": {
+        "200": 22,
+        "429": 75
+      }
+    },
+    "prime-change-order-line-items": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "prime-contract-attachments": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "prime-contract-line-items": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "purchase-order-line-items": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "rfi-responses": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "normalizer_missing"
+      ],
+      "redacted_errors": [],
+      "request_count_observed": 0,
+      "request_count_receipt": 0,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "fail_closed_unsupported",
+      "status": "error",
+      "statuses_observed": {}
+    },
+    "rfq-quotes": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "rfq-responses": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "subcontractor-invoice-change-order-items": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "subcontractor-invoice-contract-detail-items": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "subcontractor-invoice-contract-items": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "transport_error:429_rate_limited"
+      ],
+      "redacted_errors": [
+        {
+          "code": null,
+          "status": 429
+        }
+      ],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "transport_error",
+      "status": "error",
+      "statuses_observed": {
+        "429": 1
+      }
+    },
+    "submittal-packages": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [],
+      "redacted_errors": [],
+      "request_count_observed": 1,
+      "request_count_receipt": 1,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "success",
+      "status": "success",
+      "statuses_observed": {
+        "200": 1
+      }
+    },
+    "submittal-responses": {
+      "last_retry_after": null,
+      "n1_fanout": null,
+      "reason_codes": [
+        "normalizer_missing"
+      ],
+      "redacted_errors": [],
+      "request_count_observed": 0,
+      "request_count_receipt": 0,
+      "retrieved_count": 0,
+      "retry_count": 0,
+      "sqlite_upserted_count": 0,
+      "state": "fail_closed_unsupported",
+      "status": "error",
+      "statuses_observed": {}
+    }
+  },
+  "max_child_requests": 100000,
+  "receipts_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-receipts.json",
+  "request_count_observed": 114,
+  "requests_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+  "stamp": "20260603T091725Z",
+  "unverified_not_run": [
+    "purchase-order-detail-line-items",
+    "budget-details",
+    "budget-change-line-items"
+  ]
+}

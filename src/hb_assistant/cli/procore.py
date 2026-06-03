@@ -897,6 +897,12 @@ def live_sync(
         help="Bounded N+1 fan-out: max child GETs per run (one per parent). When reached, "
         "remaining parents are skipped and a later run backfills idempotently.",
     ),
+    child_request_delay_seconds: float = typer.Option(
+        0.25,
+        "--child-request-delay-seconds",
+        min=0.0,
+        help="Delay inserted between N+1 child GETs to avoid Procore burst rate limits.",
+    ),
     parent_id: Optional[str] = typer.Option(
         None,
         "--parent-id",
@@ -928,6 +934,7 @@ def live_sync(
         max_pages=max_pages,
         max_items=max_items,
         max_child_requests=max_child_requests,
+        child_request_delay_seconds=child_request_delay_seconds,
         parent_id=parent_id,
         mode_hint="live_apply" if apply else "live_dry_run",
         evidence_path="docs/evidence/construction-intelligence-phase-04a/02-endpoint-command-matrix.md",

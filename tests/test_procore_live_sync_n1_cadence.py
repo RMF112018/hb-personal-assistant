@@ -58,10 +58,16 @@ def _setup(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class _FakeResponse:
-    def __init__(self, body: Any) -> None:
+    def __init__(
+        self,
+        body: Any,
+        *,
+        status_code: int = 200,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> None:
         self._body = body
-        self.status_code = 200
-        self.headers: Dict[str, str] = {}
+        self.status_code = status_code
+        self.headers: Dict[str, str] = dict(headers or {})
         self.text = ""
 
     def json(self) -> Any:
@@ -100,6 +106,64 @@ class _ManyParentsTransport:
         return _FakeResponse({"data": []})
 
 
+class _RateLimitOnChildTransport(_ManyParentsTransport):
+    """Return a Procore-style 429 on one child GET; later parents must not be called."""
+
+    def __init__(self, parent_ids: List[int], rate_limited_parent_id: int) -> None:
+        super().__init__(parent_ids)
+        self.rate_limited_parent_id = rate_limited_parent_id
+
+    def __call__(
+        self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]
+    ) -> _FakeResponse:
+        if "/commitment_contracts/" in url and url.endswith("/line_items"):
+            pid = url.split("/commitment_contracts/")[1].split("/")[0]
+            self.calls.append(url)
+            self.child_calls.append(pid)
+            if int(pid) == self.rate_limited_parent_id:
+                return _FakeResponse(
+                    {"error": "rate_limited"},
+                    status_code=429,
+                    headers={"Retry-After": "2"},
+                )
+            return _FakeResponse(
+                {"data": [{"id": int(pid) * 10 + 1, "amount": "100.00"}]}
+            )
+        return super().__call__(method, url, headers, params)
+
+
+class _EmptyChildTransport:
+    """Generic N+1 transport: parent list has many rows, every child list is empty."""
+
+    def __init__(self, endpoint_id: str, parent_ids: List[int]) -> None:
+        adapter = ep_registry.get(endpoint_id)
+        assert adapter is not None and adapter.parent_path_template is not None
+        self.endpoint_id = endpoint_id
+        self.parent_path = (
+            adapter.parent_path_template
+            .replace("{project_id}", "2525840")
+            .replace("{company_id}", "5280")
+        )
+        self.parent_ids = parent_ids
+        self.calls: List[str] = []
+        self.child_calls: List[str] = []
+
+    def __call__(
+        self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]
+    ) -> _FakeResponse:
+        self.calls.append(url)
+        if url.endswith(self.parent_path):
+            rows: List[Dict[str, Any]] = []
+            for parent_id in self.parent_ids:
+                row: Dict[str, Any] = {"id": parent_id}
+                if self.endpoint_id in {"rfq-responses", "rfq-quotes"}:
+                    row["commitment_contract_id"] = "701973"
+                rows.append(row)
+            return _FakeResponse({"data": rows})
+        self.child_calls.append(url)
+        return _FakeResponse({"data": []})
+
+
 def _run(db: Path, transport: Any, *, max_child_requests: int) -> Dict[str, Any]:
     return run_live_sync(
         project_key="tropical",
@@ -133,6 +197,9 @@ def test_bounded_fanout_caps_child_requests(monkeypatch: pytest.MonkeyPatch) -> 
         "child_error_count": 0,
         "cap": 2,
         "cap_reached": True,
+        "rate_limit_stopped": False,
+        "rate_limit_parent_id": None,
+        "child_request_delay_seconds": 0.0,
     }
     assert "n1_child_cap_reached" in receipt["reason_codes"]
     # only the capped parents' children landed (501, 502).
@@ -184,6 +251,69 @@ def test_partial_success_continues_on_child_error(monkeypatch: pytest.MonkeyPatc
     # the two healthy parents' children still persisted with linkage.
     rows = _child_rows(db)
     assert {r["parent_procore_id"] for r in rows} == {"501", "502"}
+
+
+# --- Rate limit: stop this endpoint's fanout immediately ------------------------------
+def test_rate_limited_child_stops_remaining_fanout(monkeypatch: pytest.MonkeyPatch) -> None:
+    _setup(monkeypatch)
+    db = _db()
+    transport = _RateLimitOnChildTransport([501, 502, 503, 504], rate_limited_parent_id=503)
+    receipt = _run(db, transport, max_child_requests=50)
+
+    fan = receipt["n1_fanout"]
+    assert fan["child_request_count"] == 3
+    assert fan["child_error_count"] == 1
+    assert fan["child_skipped_count"] == 1
+    assert fan["rate_limit_stopped"] is True
+    assert fan["rate_limit_parent_id"] == "503"
+    assert receipt["last_retry_after"] == 2
+    assert "n1_child_rate_limited" in receipt["reason_codes"]
+    assert transport.child_calls == ["501", "502", "503"]
+    rows = _child_rows(db)
+    assert {r["parent_procore_id"] for r in rows} == {"501", "502"}
+
+
+@pytest.mark.parametrize(
+    "endpoint_id",
+    [
+        "subcontractor-invoice-contract-detail-items",
+        "subcontractor-invoice-change-order-items",
+        "rfq-responses",
+        "rfq-quotes",
+        "change-event-comments",
+        "budget-detail-columns",
+        "budget-detail-rows",
+    ],
+)
+def test_unreached_n1_endpoints_share_bounded_fanout(
+    monkeypatch: pytest.MonkeyPatch, endpoint_id: str
+) -> None:
+    _setup(monkeypatch)
+    _promote(monkeypatch, endpoint_id)
+    db = _db()
+    transport = _EmptyChildTransport(endpoint_id, [501, 502, 503, 504])
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint=endpoint_id,
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=50,
+        max_child_requests=2,
+        db_path=db,
+        transport=transport,
+    )
+
+    fan = receipt["n1_fanout"]
+    assert fan["parent_count"] == 4
+    assert fan["child_request_count"] == 2
+    assert fan["child_skipped_count"] == 2
+    assert fan["cap_reached"] is True
+    assert fan["rate_limit_stopped"] is False
+    assert "n1_child_cap_reached" in receipt["reason_codes"]
+    assert len(transport.child_calls) == 2
 
 
 # --- No raw error leakage --------------------------------------------------------------

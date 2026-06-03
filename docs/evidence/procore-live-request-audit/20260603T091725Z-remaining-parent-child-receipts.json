@@ -1,0 +1,1474 @@
+{
+  "budget-detail-columns": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "budget-detail-columns",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:09.375841+00:00",
+    "endpoint_family": "budget",
+    "endpoint_id": "budget-detail-columns",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "453a3021-0088-4be5-b710-9cbe195fa983",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": true,
+      "path_scope": "flat",
+      "path_template_redacted": "/rest/v1.0/budget_views/{budget_view_id}/[token-redacted]",
+      "project_id_param": "query"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 5,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:09.156082+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "453a3021-0088-4be5-b710-9cbe195fa983"
+  },
+  "budget-detail-rows": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "budget-detail-rows",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:09.587188+00:00",
+    "endpoint_family": "budget",
+    "endpoint_id": "budget-detail-rows",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "3eba0493-bde8-424a-9234-0a0cba88637b",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": true,
+      "path_scope": "flat",
+      "path_template_redacted": "/rest/v1.0/budget_views/{budget_view_id}/detail_rows",
+      "project_id_param": "query"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 5,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:09.376325+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "3eba0493-bde8-424a-9234-0a0cba88637b"
+  },
+  "change-event-comments": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "change-event-comments",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:09.155404+00:00",
+    "endpoint_family": "change_management",
+    "endpoint_id": "change-event-comments",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "d96a20b3-a3aa-438b-b7f7-94a38596e335",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v2.0",
+      "n_plus_1": true,
+      "path_scope": "company_project",
+      "path_template_redacted": "/rest/v2.0/companies/{company_id}/projects/{project_id}/change_events/{change_event_id}/comments",
+      "project_id_param": "path"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 0,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:08.929725+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "d96a20b3-a3aa-438b-b7f7-94a38596e335"
+  },
+  "commitment-attachments": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "commitment-attachments",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:07.006120+00:00",
+    "endpoint_family": "commitments",
+    "endpoint_id": "commitment-attachments",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "da684973-91ce-468a-b612-938e7247daef",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v2.0",
+      "n_plus_1": true,
+      "path_scope": "company_project",
+      "path_template_redacted": "/rest/v2.0/companies/{company_id}/projects/{project_id}/[token-redacted]/{[token-redacted]}/attachments",
+      "project_id_param": "path"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 89,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:06.772667+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "da684973-91ce-468a-b612-938e7247daef"
+  },
+  "commitment-change-order-line-items": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "commitment-change-order-line-items",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:07.508244+00:00",
+    "endpoint_family": "commitments",
+    "endpoint_id": "commitment-change-order-line-items",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "90a87110-a488-4b28-b6b3-0d05273aad04",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v2.0",
+      "n_plus_1": true,
+      "path_scope": "company_project",
+      "path_template_redacted": "/rest/v2.0/companies/{company_id}/projects/{project_id}/[token-redacted]/{[token-redacted]}/line_items",
+      "project_id_param": "path"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 120,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:07.236080+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "90a87110-a488-4b28-b6b3-0d05273aad04"
+  },
+  "commitment-compliance": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "commitment-compliance",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:07.235414+00:00",
+    "endpoint_family": "commitments",
+    "endpoint_id": "commitment-compliance",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "6279cf53-c3e6-4a86-ae80-2a2dfa30c55a",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": true,
+      "path_scope": "project",
+      "path_template_redacted": "/rest/v1.0/projects/{project_id}/[token-redacted]/{contract_id}/compliance",
+      "project_id_param": "path"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 53,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:07.006645+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "6279cf53-c3e6-4a86-ae80-2a2dfa30c55a"
+  },
+  "commitment-line-items": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "commitment-line-items",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:06.772168+00:00",
+    "endpoint_family": "commitments",
+    "endpoint_id": "commitment-line-items",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "2f7268e1-f477-4401-ba39-07d9a9f7ccf1",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v2.0",
+      "n_plus_1": true,
+      "path_scope": "company_project",
+      "path_template_redacted": "/rest/v2.0/companies/{company_id}/projects/{project_id}/[token-redacted]/{[token-redacted]}/line_items",
+      "project_id_param": "path"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 226,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:06.539197+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "2f7268e1-f477-4401-ba39-07d9a9f7ccf1"
+  },
+  "meeting-detail": {
+    "attempt_count": 97,
+    "child_endpoint_id": "meeting-topics",
+    "child_errors_count": 0,
+    "child_normalized_count": 394,
+    "child_retrieved_count": 394,
+    "child_upserted_count": 394,
+    "command_endpoint": "meeting-detail",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:05.826523+00:00",
+    "endpoint_family": "meetings",
+    "endpoint_id": "meeting-detail",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 415,
+    "parent_normalized_count": 21,
+    "parent_retrieved_count": 21,
+    "parent_upserted_count": 21,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [],
+    "receipt_id": "c2901da4-5b30-49be-b284-22d8b1c11e84",
+    "redacted_errors": [
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11102333,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11100381,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11030284,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10972613,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10883983,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10773765,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10702667,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10547830,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10484524,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10313922,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10303657,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10217214,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12866629,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12818851,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12783729,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12734572,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12693361,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12655844,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12655552,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12333155,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12291060,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12248317,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12169838,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12164804,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12097740,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12035515,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12035508,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12035464,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11889517,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11815092,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11705637,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11701742,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11625871,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11588087,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11549999,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11512305,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11473698,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11440563,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11402515,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11364960,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11328666,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11328552,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11291547,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11291309,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11254217,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11217037,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11109955,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11041796,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10890509,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10783622,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10778893,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10738781,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10675182,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10533020,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10496790,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10466484,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10454051,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10338505,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10297128,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12366557,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12219076,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12175183,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12174149,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12174091,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12174027,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 12160237,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11963283,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11735484,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10837041,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11797064,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11788100,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11371838,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 11104915,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 10100546,
+        "status": 429
+      },
+      {
+        "detail_transport_error": null,
+        "meeting_id": 9861580,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v1.1",
+      "n_plus_1": false,
+      "path_scope": "project",
+      "path_template_redacted": "/rest/v1.1/projects/{project_id}/meetings/{id}",
+      "project_id_param": "path"
+    },
+    "request_count": 97,
+    "retrieved_count": 21,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 96,
+    "sqlite_upserted_count": 415,
+    "started_at": "2026-06-03T09:17:26.410005+00:00",
+    "state": "partial_success",
+    "status": "partial",
+    "sync_run_id": "c2901da4-5b30-49be-b284-22d8b1c11e84"
+  },
+  "prime-change-order-line-items": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "prime-change-order-line-items",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:06.538669+00:00",
+    "endpoint_family": "owner_contracts",
+    "endpoint_id": "prime-change-order-line-items",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "36d15b99-db48-4d51-afd6-9495f423c201",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v2.0",
+      "n_plus_1": true,
+      "path_scope": "company_project",
+      "path_template_redacted": "/rest/v2.0/companies/{company_id}/projects/{project_id}/prime_change_orders/{[token-redacted]}/line_items",
+      "project_id_param": "path"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 132,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:06.280727+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "36d15b99-db48-4d51-afd6-9495f423c201"
+  },
+  "prime-contract-attachments": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "prime-contract-attachments",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:06.280101+00:00",
+    "endpoint_family": "owner_contracts",
+    "endpoint_id": "prime-contract-attachments",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "d8461f32-8744-45a3-93eb-0baf86deb323",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v2.0",
+      "n_plus_1": true,
+      "path_scope": "company_project",
+      "path_template_redacted": "/rest/v2.0/companies/{company_id}/projects/{project_id}/prime_contracts/{prime_contract_id}/attachments",
+      "project_id_param": "path"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 0,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:06.076549+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "d8461f32-8744-45a3-93eb-0baf86deb323"
+  },
+  "prime-contract-line-items": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "prime-contract-line-items",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:06.076107+00:00",
+    "endpoint_family": "owner_contracts",
+    "endpoint_id": "prime-contract-line-items",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "4888ba4a-6fe7-4850-ac84-fb55426e6513",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v2.0",
+      "n_plus_1": true,
+      "path_scope": "company_project",
+      "path_template_redacted": "/rest/v2.0/companies/{company_id}/projects/{project_id}/prime_contracts/{prime_contract_id}/line_items",
+      "project_id_param": "path"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 46,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:05.835661+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "4888ba4a-6fe7-4850-ac84-fb55426e6513"
+  },
+  "purchase-order-line-items": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "purchase-order-line-items",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:07.710884+00:00",
+    "endpoint_family": "purchase_orders",
+    "endpoint_id": "purchase-order-line-items",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "d343ae97-565c-4ec6-a842-6a1f3823fe54",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": true,
+      "path_scope": "flat",
+      "path_template_redacted": "/rest/v1.0/[token-redacted]/{[token-redacted]}/line_items",
+      "project_id_param": "query"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 43,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:07.508723+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "d343ae97-565c-4ec6-a842-6a1f3823fe54"
+  },
+  "rfi-responses": {
+    "attempt_count": 0,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "rfi-responses",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:17:25.860288+00:00",
+    "endpoint_family": "rfis",
+    "endpoint_id": "rfi-responses",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": true,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "normalizer_missing"
+    ],
+    "receipt_id": "0eef78f4-4670-4c1e-8e2d-5c1c6bffdc9f",
+    "redacted_errors": [],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": false,
+      "path_scope": "project",
+      "path_template_redacted": "/rest/v1.0/projects/{project_id}/rfis/{rfi_id}/replies",
+      "project_id_param": "path"
+    },
+    "request_count": 0,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 0,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:17:25.840720+00:00",
+    "state": "fail_closed_unsupported",
+    "status": "error",
+    "sync_run_id": "0eef78f4-4670-4c1e-8e2d-5c1c6bffdc9f"
+  },
+  "rfq-quotes": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "rfq-quotes",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:08.929261+00:00",
+    "endpoint_family": "change_management",
+    "endpoint_id": "rfq-quotes",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "b9dc56b9-d441-4462-9cdc-6e7955728102",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": true,
+      "path_scope": "flat",
+      "path_template_redacted": "/rest/v1.0/rfqs/{rfq_id}/quotes",
+      "project_id_param": "query"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 0,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:08.689328+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "b9dc56b9-d441-4462-9cdc-6e7955728102"
+  },
+  "rfq-responses": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "rfq-responses",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:08.688845+00:00",
+    "endpoint_family": "change_management",
+    "endpoint_id": "rfq-responses",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "8910cfe3-7449-4784-b227-74438e2ef709",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": true,
+      "path_scope": "flat",
+      "path_template_redacted": "/rest/v1.0/rfqs/{rfq_id}/responses",
+      "project_id_param": "query"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 0,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:08.397447+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "8910cfe3-7449-4784-b227-74438e2ef709"
+  },
+  "subcontractor-invoice-change-order-items": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "subcontractor-invoice-change-order-items",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:08.396844+00:00",
+    "endpoint_family": "subcontractor_invoices",
+    "endpoint_id": "subcontractor-invoice-change-order-items",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "3571a134-e52d-4654-a333-f5dc271e0463",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": true,
+      "path_scope": "flat",
+      "path_template_redacted": "/rest/v1.0/requisitions/{requisition_id}/change_order_items",
+      "project_id_param": "query"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 5,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:08.176434+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "3571a134-e52d-4654-a333-f5dc271e0463"
+  },
+  "subcontractor-invoice-contract-detail-items": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "subcontractor-invoice-contract-detail-items",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:08.175921+00:00",
+    "endpoint_family": "subcontractor_invoices",
+    "endpoint_id": "subcontractor-invoice-contract-detail-items",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "b71cd222-0c2b-4bfd-bd6f-62cb3d9cf51b",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": true,
+      "path_scope": "flat",
+      "path_template_redacted": "/rest/v1.0/requisitions/{requisition_id}/[token-redacted]",
+      "project_id_param": "query"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 5,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:07.952575+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "b71cd222-0c2b-4bfd-bd6f-62cb3d9cf51b"
+  },
+  "subcontractor-invoice-contract-items": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "subcontractor-invoice-contract-items",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:18:07.952115+00:00",
+    "endpoint_family": "subcontractor_invoices",
+    "endpoint_id": "subcontractor-invoice-contract-items",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "6c2c0861-17b5-444f-a93b-df5f193633bb",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": true,
+      "path_scope": "flat",
+      "path_template_redacted": "/rest/v1.0/requisitions/{requisition_id}/contract_items",
+      "project_id_param": "query"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 0,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:18:07.711352+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "6c2c0861-17b5-444f-a93b-df5f193633bb"
+  },
+  "submittal-packages": {
+    "attempt_count": 1,
+    "child_endpoint_id": "submittal-responses",
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "submittal-packages",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:17:26.399828+00:00",
+    "endpoint_family": "submittals",
+    "endpoint_id": "submittal-packages",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [],
+    "receipt_id": "9818bffa-cbf3-4924-813a-cc77a9627989",
+    "redacted_errors": [],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": false,
+      "path_scope": "project",
+      "path_template_redacted": "/rest/v1.0/projects/{project_id}/submittal_packages",
+      "project_id_param": "path"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 0,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:17:25.868857+00:00",
+    "state": "success",
+    "status": "success",
+    "sync_run_id": "9818bffa-cbf3-4924-813a-cc77a9627989"
+  },
+  "submittal-responses": {
+    "attempt_count": 0,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "submittal-responses",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:17:25.868842+00:00",
+    "endpoint_family": "submittals",
+    "endpoint_id": "submittal-responses",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T091725Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": true,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "normalizer_missing"
+    ],
+    "receipt_id": "dc907ece-d358-468d-a6c7-a599a7963726",
+    "redacted_errors": [],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": false,
+      "path_scope": "project",
+      "path_template_redacted": "/rest/v1.0/projects/{project_id}/submittals/{submittal_id}/responses",
+      "project_id_param": "path"
+    },
+    "request_count": 0,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 0,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:17:25.860356+00:00",
+    "state": "fail_closed_unsupported",
+    "status": "error",
+    "sync_run_id": "dc907ece-d358-468d-a6c7-a599a7963726"
+  }
+}

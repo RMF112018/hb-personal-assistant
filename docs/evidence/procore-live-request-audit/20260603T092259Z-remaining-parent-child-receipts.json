@@ -1,0 +1,58 @@
+{
+  "subcontractor-invoice-contract-detail-items": {
+    "attempt_count": 1,
+    "child_endpoint_id": null,
+    "child_errors_count": 0,
+    "child_normalized_count": 0,
+    "child_retrieved_count": 0,
+    "child_upserted_count": 0,
+    "command_endpoint": "subcontractor-invoice-contract-detail-items",
+    "company_id": "5280",
+    "completed_at": "2026-06-03T09:22:59.574410+00:00",
+    "endpoint_family": "subcontractor_invoices",
+    "endpoint_id": "subcontractor-invoice-contract-detail-items",
+    "evidence_path": "docs/evidence/procore-live-request-audit/20260603T092259Z-remaining-parent-child-requests.jsonl",
+    "http_method": "GET",
+    "last_retry_after": null,
+    "legacy_endpoint_alias": null,
+    "mode": "live_apply",
+    "n1_fanout": null,
+    "no_live_call_performed": false,
+    "normalized_count": 0,
+    "parent_normalized_count": 0,
+    "parent_retrieved_count": 0,
+    "parent_upserted_count": 0,
+    "phase": "phase04a",
+    "procore_project_id": "2525840",
+    "project_key": "tropical",
+    "projection_error_count": 0,
+    "raw_body_persisted": false,
+    "reason_codes": [
+      "transport_error:429_rate_limited"
+    ],
+    "receipt_id": "7e6d9a9e-e50c-4723-93d4-676a20dbd2cc",
+    "redacted_errors": [
+      {
+        "code": null,
+        "status": 429
+      }
+    ],
+    "request_classification": {
+      "api_version": "v1.0",
+      "n_plus_1": true,
+      "path_scope": "flat",
+      "path_template_redacted": "/rest/v1.0/requisitions/{requisition_id}/[token-redacted]",
+      "project_id_param": "query"
+    },
+    "request_count": 1,
+    "retrieved_count": 0,
+    "retry_count": 0,
+    "secrets_redacted": true,
+    "sqlite_total_count_after": 5,
+    "sqlite_upserted_count": 0,
+    "started_at": "2026-06-03T09:22:59.138998+00:00",
+    "state": "transport_error",
+    "status": "error",
+    "sync_run_id": "7e6d9a9e-e50c-4723-93d4-676a20dbd2cc"
+  }
+}
