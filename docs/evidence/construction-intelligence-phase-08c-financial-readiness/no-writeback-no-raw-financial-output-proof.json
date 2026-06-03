@@ -4,8 +4,8 @@
   "proof_passed": true,
   "phase": "08C",
   "advisory_only": true,
-  "generated_utc": "2026-06-03T19:41:39.513019+00:00",
-  "repo_sha": "7a2b6ce95799e40c27bc584971533ace5a57b7f3",
+  "generated_utc": "2026-06-03T20:52:52.210470+00:00",
+  "repo_sha": "01d7c198f3e452bbb68dc96c0da9230aff1955f6",
   "schema_version": 36,
   "scanned_modules": [
     "construction/second_brain/contracts.py",
@@ -194,67 +194,93 @@
             {
               "column": "raw_email_body_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_document_text_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_calendar_payload_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_procore_payload_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_financial_source_payload_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_prompt_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_response_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "signed_url_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "download_url_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "external_writeback_performed",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "financial_determination_performed",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "payment_decision_performed",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "claim_or_entitlement_decision_performed",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             }
           ]
         },
@@ -265,67 +291,93 @@
             {
               "column": "raw_email_body_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_document_text_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_calendar_payload_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_procore_payload_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_financial_source_payload_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_prompt_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_response_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "signed_url_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "download_url_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "external_writeback_performed",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "financial_determination_performed",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "payment_decision_performed",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "claim_or_entitlement_decision_performed",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             }
           ]
         },
@@ -336,67 +388,93 @@
             {
               "column": "raw_email_body_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_document_text_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_calendar_payload_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_procore_payload_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_financial_source_payload_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_prompt_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "raw_response_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "signed_url_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "download_url_persisted",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "external_writeback_performed",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "financial_determination_performed",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "payment_decision_performed",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             },
             {
               "column": "claim_or_entitlement_decision_performed",
               "has_check": true,
-              "distinct_values": []
+              "distinct_values": [
+                0
+              ]
             }
           ]
         },

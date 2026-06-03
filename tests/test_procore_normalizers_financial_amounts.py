@@ -5,16 +5,17 @@ Covers parse_amount strict, to_canonical, minor_units, hash, classify_amount
 of float for money. All money paths use Decimal(str) only; no float() calc.
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 
 # Import from the module under test (pure, no side effects)
 from hb_assistant.procore.normalizers.financial import (
-    parse_amount,
-    to_canonical_decimal_text,
-    compute_minor_units,
-    source_value_hash,
     classify_amount,
+    compute_minor_units,
+    parse_amount,
+    source_value_hash,
+    to_canonical_decimal_text,
 )
 
 
@@ -113,6 +114,7 @@ def test_classify_amount_uses_policy_for_review():
 def test_no_float_literal_in_money_helpers_source():
     # Static guard: the money helpers file should not contain float( used for amounts
     import inspect
+
     import hb_assistant.procore.normalizers.financial as mod
     src = inspect.getsource(mod)
     # allow in comments/docs for prohibition, but not executable money calc

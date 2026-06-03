@@ -1,8 +1,8 @@
 {
-  "generated_utc": "2026-06-03T17:20:56.452748Z",
+  "generated_utc": "2026-06-03T20:52:49.443339Z",
   "repo_head": "phase-08c review-required routing",
   "schema_version": 36,
-  "run_id": "08c-review-544b4a86",
+  "run_id": "08c-review-6fcb2ab6",
   "project_key": null,
   "policy": {
     "review_tiers": [
@@ -40,23 +40,32 @@
       "determination_attempt": "high"
     }
   },
-  "items_evaluated": 1281,
-  "review_required_count": 641,
+  "items_evaluated": 1929,
+  "review_required_count": 747,
   "by_trigger": {
-    "missing_wbs_cost_code_or_line_item_type": 641
+    "missing_wbs_cost_code_or_line_item_type": 667,
+    "relationship_ambiguity": 80
   },
   "by_tier": {
-    "operator_review": 641
+    "operator_review": 667,
+    "financial_review": 80
   },
   "by_confidence": {
-    "medium": 641
+    "medium": 667,
+    "low": 80
   },
   "detail": [
     {
       "trigger_category": "missing_wbs_cost_code_or_line_item_type",
       "review_tier": "operator_review",
       "confidence_label": "medium",
-      "count": 641
+      "count": 667
+    },
+    {
+      "trigger_category": "relationship_ambiguity",
+      "review_tier": "financial_review",
+      "confidence_label": "low",
+      "count": 80
     }
   ],
   "samples": [

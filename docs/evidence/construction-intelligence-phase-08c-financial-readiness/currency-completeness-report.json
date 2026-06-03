@@ -1,29 +1,42 @@
 {
-  "generated_utc": "2026-06-03T14:19:16.106569Z",
-  "repo_head": "d5cb0e8daabbdf67fea854b97ecf4bab2a71663f",
+  "generated_utc": "2026-06-03T20:48:25.846893Z",
+  "repo_head": "post-p03",
   "schema_version": 35,
-  "run_id": "comp-e5d2c9ff",
+  "run_id": "08c-comp-4e2206e5",
   "by_project": {
+    "tropc": {
+      "status": "aggregated",
+      "items": 1
+    },
     "trop": {
-      "explicit": 3,
-      "default": 1,
-      "missing": 1
+      "status": "aggregated",
+      "items": 2
     },
     "trop2": {
-      "explicit": 2,
-      "inconsistent": 1
+      "status": "aggregated",
+      "items": 2
+    },
+    "trop3": {
+      "status": "aggregated",
+      "items": 1
     }
   },
   "totals": {
-    "explicit_source_currency": 5,
-    "evidence_backed_project_default": 2,
+    "explicit_source_currency": 1,
+    "evidence_backed_project_default": 0,
     "missing_currency": 1,
-    "inconsistent_currency": 1,
-    "ambiguous_currency": 0,
-    "review_required": 3,
-    "project_default_applied_total": 2
+    "inconsistent_currency": 2,
+    "ambiguous_currency": 2,
+    "review_required": 0,
+    "project_default_applied_total": 0
   },
   "contract": {
+    "phase": "08C",
+    "advisory_only_required": true,
+    "no_writeback_required": true,
+    "financial_determination_forbidden": true,
+    "raw_financial_payload_forbidden": true,
+    "contract_name": "phase_08c_currency_completeness_contract",
     "currency_status_values": [
       "explicit_source_currency",
       "evidence_backed_project_default",
@@ -42,7 +55,8 @@
   "policy_conditions": [
     "documented_project_default_exists",
     "source_family_policy_allows_default",
-    "no_line_level_conflict"
+    "no_line_level_conflict",
+    "output_marks_default_as_derived"
   ],
   "advisory_only": true,
   "guardrails": {
@@ -53,5 +67,5 @@
     "financial_determination_forbidden": true,
     "advisory_only": true
   },
-  "notes": "project default currency applied ONLY when all evidence-backed conditions met and output explicitly marked as derived. Source amounts preserved verbatim in procore_financial_* tables. No raw payloads. Advisory review aid only. Decimal only (reused helpers)."
+  "notes": "project default currency applied ONLY when all evidence-backed conditions met and output explicitly marked as derived. Source amounts preserved verbatim in procore_financial_* tables. No raw payloads. Advisory review aid only."
 }

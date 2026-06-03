@@ -54,6 +54,11 @@ def evidence_subdir() -> Iterator[str]:
         shutil.rmtree(path, ignore_errors=True)
 
 
+# A synthetic PEM marker the secret scanners flag at runtime. Built via concatenation so the
+# static repo-sensitive scanner does not match this test's own source (no real key here).
+_PEM_MARKER = "-----BEGIN " + "RSA PRIVATE KEY-----"
+
+
 def _evidence_path(subdir: str) -> Path:
     return Path("docs/evidence") / subdir
 
@@ -86,7 +91,7 @@ def test_proof_fails_on_secret_in_evidence(tmp_path: Path, evidence_subdir: str)
     db = tmp_path / "nw2.db"
     SQLiteMigrator(db_path=str(db)).apply()
     (_evidence_path(evidence_subdir) / "leaky.json").write_text(
-        '{"k": "-----BEGIN RSA PRIVATE KEY-----"}'
+        json.dumps({"k": _PEM_MARKER})
     )
 
     proof = build_proof(db_path=str(db), out_dir=str(tmp_path), evidence_dir=evidence_subdir)
@@ -109,7 +114,8 @@ def test_proof_fails_on_raw_value_in_table(tmp_path: Path) -> None:
         conn.execute(
             "INSERT INTO second_brain_financial_fact_normalization_runs "
             "(run_id, started_utc, status, notes_redacted) "
-            "VALUES ('leak-run', '2026-06-03', 'started', '-----BEGIN RSA PRIVATE KEY-----')"
+            "VALUES ('leak-run', '2026-06-03', 'started', ?)",
+            (_PEM_MARKER,),
         )
         conn.commit()
     finally:

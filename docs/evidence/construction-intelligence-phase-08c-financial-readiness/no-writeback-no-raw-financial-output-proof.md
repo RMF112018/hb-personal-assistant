@@ -4,7 +4,7 @@ Deterministic, read-only safety scan extending the second-brain safety proof ove
 
 ## Summary
 - Proof passed: true
-- Repo SHA: 7a2b6ce95799e40c27bc584971533ace5a57b7f3
+- Repo SHA: 01d7c198f3e452bbb68dc96c0da9230aff1955f6
 - Schema version: 36
 
 ## Checks
@@ -34,4 +34,4 @@ Deterministic, read-only safety scan extending the second-brain safety proof ove
 ## Notes
 Extends the second-brain no-writeback safety proof over Phase 08C: static mutation scan of the financial modules, guard-column + content-leak scan of the ten V35 tables, and a raw/secret scan of the 08C evidence directory (which holds the read-only operator CLI outputs). Advisory review aid only. Findings record locations/labels only, never raw values. Fail-closed on any finding or absent expected table.
 
-Generated: 2026-06-03T19:41:39.513019+00:00
+Generated: 2026-06-03T20:52:52.210470+00:00

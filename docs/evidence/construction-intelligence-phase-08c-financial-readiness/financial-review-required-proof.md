@@ -3,19 +3,21 @@
 Deterministic routing of sensitive/ambiguous financial signals to review. Every item below is an advisory review aid only — not a payment approval, claim position, entitlement determination, contract interpretation, forecast, or executive financial determination. No financial values are computed or summed here.
 
 ## Summary
-- Run id: 08c-review-544b4a86
+- Run id: 08c-review-6fcb2ab6
 - Project key: all
 - Schema version: 36
-- Items evaluated: 1281
-- Review items routed: 641
+- Items evaluated: 1929
+- Review items routed: 747
 
 ## By trigger category (reason code)
 | Trigger category (reason code) | Review tier | Confidence | Count |
 | --- | --- | --- | --- |
-| missing_wbs_cost_code_or_line_item_type | operator_review | medium | 641 |
+| missing_wbs_cost_code_or_line_item_type | operator_review | medium | 667 |
+| relationship_ambiguity | financial_review | low | 80 |
 
 ## Review tiers in use
-- operator_review: 641
+- financial_review: 80
+- operator_review: 667
 
 ## Policy (loaded + enforced)
 - Review tiers: none, operator_review, financial_review, executive_review, legal_contract_review
@@ -42,4 +44,4 @@ Deterministic routing of the seven review-required financial signal categories f
 - docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json
 - docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json
 
-Generated: 2026-06-03T17:20:56.452748Z | run_id: 08c-review-544b4a86
+Generated: 2026-06-03T20:52:49.443339Z | run_id: 08c-review-6fcb2ab6

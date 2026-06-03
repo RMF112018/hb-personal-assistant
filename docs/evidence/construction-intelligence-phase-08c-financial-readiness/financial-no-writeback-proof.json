@@ -4,7 +4,7 @@
   "proof_passed": true,
   "phase": "08C",
   "project_key": null,
-  "generated_utc": "2026-06-03T17:20:58.210036Z",
+  "generated_utc": "2026-06-03T20:52:50.195037Z",
   "advisory_only": true,
   "checks_detail": {
     "guard_columns": {
@@ -43,6 +43,8 @@
         "financial-source-coverage-matrix.json",
         "financial-table-inventory-audit.json",
         "forecast-readiness-proof.json",
+        "no-writeback-no-raw-financial-output-proof.json",
+        "phase-08c-gates-proof.json",
         "wbs-cost-code-coverage-report.json"
       ],
       "findings": []

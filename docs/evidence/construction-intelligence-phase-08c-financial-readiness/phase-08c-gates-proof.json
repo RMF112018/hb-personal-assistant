@@ -1,18 +1,18 @@
 {
   "proof": "phase_08c_data_quality_gates",
   "command": "second-brain data-quality phase-08c-gates",
-  "proof_passed": false,
-  "ok": false,
+  "proof_passed": true,
+  "ok": true,
   "phase": "08C",
-  "generated_utc": "2026-06-03T19:26:01.356362Z",
+  "generated_utc": "2026-06-03T20:52:51.514337Z",
   "schema_version": 36,
   "schema_version_expected": 35,
   "contract_version": "phase_08c_data_quality_gates-v1",
   "advisory_only": true,
   "status_counts": {
-    "pass": 18,
-    "warning": 3,
-    "fail_blocking": 1,
+    "pass": 21,
+    "warning": 1,
+    "fail_blocking": 0,
     "deferred_not_blocking": 0
   },
   "by_field_status": {
@@ -29,12 +29,12 @@
     "second_brain_financial_readiness_agent_runs": "pass",
     "second_brain_phase_08c_validation_runs": "pass",
     "amount_normalization": "pass",
-    "currency_completeness": "warning",
-    "wbs_cost_code_completeness": "warning",
-    "source_coverage": "warning",
+    "currency_completeness": "pass",
+    "wbs_cost_code_completeness": "pass",
+    "source_coverage": "pass",
     "exposure_marts": "pass",
     "readiness_agent": "pass",
-    "forecast_readiness": "fail_blocking",
+    "forecast_readiness": "warning",
     "review_required_policy": "pass",
     "cli_operator_status": "pass",
     "no_writeback_no_raw_financial_output": "pass"
@@ -126,7 +126,7 @@
         "sqlite_real_allowed": false
       },
       "normalization": {
-        "run_id": "08c-amount-norm-f15396d6a490",
+        "run_id": "08c-amount-norm-5e00bc98f7f1",
         "stats": {
           "parseable": 0,
           "rejected": 0,
@@ -142,21 +142,54 @@
     },
     {
       "gate_name": "currency_completeness",
-      "gate_status": "warning",
+      "gate_status": "pass",
       "blocking": 0,
-      "reason": "11 values for 12 columns"
+      "reason": null,
+      "explicit_source_currency": 0,
+      "evidence_backed_project_default": 0,
+      "missing_currency": 85521,
+      "inconsistent_currency": 0,
+      "review_required": 0,
+      "policy_enforced": true
     },
     {
       "gate_name": "wbs_cost_code_completeness",
-      "gate_status": "warning",
+      "gate_status": "pass",
       "blocking": 0,
-      "reason": "11 values for 12 columns"
+      "reason": null,
+      "wbs_present": 1849,
+      "cost_present": 1226,
+      "line_present": 0,
+      "missing_wbs": 0,
+      "review_count": 1290
     },
     {
       "gate_name": "source_coverage",
-      "gate_status": "warning",
+      "gate_status": "pass",
       "blocking": 0,
-      "reason": "11 values for 12 columns"
+      "reason": null,
+      "families": [
+        "owner_contracts",
+        "commitments",
+        "purchase_orders",
+        "subcontractor_invoices",
+        "payment_applications",
+        "budget",
+        "budget_changes",
+        "change_events",
+        "rfqs",
+        "direct_costs"
+      ],
+      "matrix_total_sources": 32,
+      "matrix_by_status": {
+        "covered_ready": 0,
+        "covered_review_required": 0,
+        "covered_missing_context": 29,
+        "fail_closed": 3,
+        "deferred_not_blocking": 5,
+        "blocked": 0
+      },
+      "matrix_no_raw": true
     },
     {
       "gate_name": "exposure_marts",
@@ -171,15 +204,15 @@
       "gate_status": "pass",
       "blocking": 0,
       "reason": null,
-      "run_id": "08c-fact-b749e03f",
+      "run_id": "08c-fact-d67b0a29",
       "items": 80
     },
     {
       "gate_name": "forecast_readiness",
-      "gate_status": "fail_blocking",
+      "gate_status": "warning",
       "blocking": 0,
       "reason": null,
-      "readiness_status": "blocked_by_guardrail",
+      "readiness_status": "ready_with_review_required",
       "context_items": 37,
       "review_items": 72,
       "proof_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-proof.json",
@@ -190,7 +223,7 @@
       "gate_status": "pass",
       "blocking": 0,
       "reason": null,
-      "routed_review_items": 0
+      "routed_review_items": 1290
     },
     {
       "gate_name": "cli_operator_status",
@@ -207,7 +240,7 @@
     }
   ],
   "required_fields_covered": true,
-  "readiness_overstated": true,
+  "readiness_overstated": false,
   "missing_required_evidence": [],
   "stop_checks": {
     "gates_passed_with_missing_evidence": false,

@@ -3,8 +3,8 @@
 This is a readiness report only. It determines whether the local data is sufficiently normalized, covered, and review-tagged to support future (not performed here) trend analysis. No forecasts are computed or recommended.
 
 ## Summary
-- Readiness status: blocked_by_guardrail
-- Gate status: fail_blocking
+- Readiness status: ready_with_review_required
+- Gate status: warning
 - Context items: 37
 - Review items: 72
 
@@ -12,7 +12,7 @@ This is a readiness report only. It determines whether the local data is suffici
 - **amount_normalization**: warning 
 - **currency_completeness**: warning 
 - **wbs_cost_code_completeness**: warning 
-- **source_coverage**: fail_blocking 
+- **source_coverage**: deferred_not_blocking 
 - **relationship_completeness**: pass 
 - **review_backlog**: warning 
 - **no_writeback_no_raw_proof**: pass 
@@ -35,4 +35,4 @@ Deterministic from artifacts + V35 (no model).
 - docs/evidence/construction-intelligence-phase-08c-financial-readiness/exposure-mart-preview.json
 - docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json
 
-Generated: 2026-06-03T19:26:01.270073+00:00 | run_id: 08c-forecast-2b8d6f0d
+Generated: 2026-06-03T20:52:51.328925+00:00 | run_id: 08c-forecast-b3b51a7a

@@ -11,9 +11,8 @@ import datetime
 import json
 import os
 import uuid
-from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from hb_assistant.procore.normalizers.financial import (
     classify_amount,
@@ -82,7 +81,6 @@ def build_amount_normalization_proof(
     except Exception:
         pass
     # Use pure classify on samples (store logic in run_amount_normalization)
-    from hb_assistant.procore.normalizers.financial import classify_amount
     seed_samples = [
         ("procore_financial_contracts.grand_total", "10200000.50"),
         ("procore_financial_line_items.amount", "1.1"),

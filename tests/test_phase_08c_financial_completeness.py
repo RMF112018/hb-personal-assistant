@@ -40,15 +40,27 @@ def _seed_amount_facts(conn, rows):
 
 
 def _seed_line_items(conn, rows):
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS procore_financial_line_items ("
-        "project_key TEXT, wbs_code_id TEXT, cost_code_id TEXT, line_item_type_id TEXT)"
-    )
-    for r in rows:
+    # Insert into the real V8 procore_financial_line_items table (NOT NULL provenance
+    # columns required); rows are (project_key, wbs_code_id, cost_code_id, line_item_type_id).
+    for i, r in enumerate(rows):
+        project_key, wbs, cost, line_item_type = r
         conn.execute(
-            "INSERT INTO procore_financial_line_items (project_key, wbs_code_id, cost_code_id, line_item_type_id) "
-            "VALUES (?, ?, ?, ?)",
-            r,
+            "INSERT INTO procore_financial_line_items "
+            "(line_item_key, project_key, parent_record_key, endpoint_id, line_item_id, "
+            " line_item_kind, wbs_code_id, cost_code_id, line_item_type_id, "
+            " raw_body_persisted, redaction_applied) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)",
+            (
+                f"li{i}",
+                project_key,
+                f"parent{i}",
+                "line-items",
+                f"lid{i}",
+                "commitment",
+                wbs,
+                cost,
+                line_item_type,
+            ),
         )
     conn.commit()
 
@@ -62,6 +74,7 @@ def test_currency_explicit_and_missing_and_inconsistent_and_default_policy(tmp_p
     _seed_amount_facts(
         conn,
         [
+            ("tropc", "fc", "USD", "ac", "parseable"),  # clean explicit (only USD)
             ("trop", "f1", "USD", "a1", "parseable"),
             ("trop", "f2", None, "a2", "parseable"),  # missing
             ("trop2", "f3", "EUR", "a3", "parseable"),
@@ -69,9 +82,6 @@ def test_currency_explicit_and_missing_and_inconsistent_and_default_policy(tmp_p
             ("trop3", "f5", None, "a5", "parseable"),  # will use default (documented + policy)
         ],
     )
-
-    # Policy marker for documented default on trop3
-    pol = {"_documented_project_default_exists": True, "default_currency_allowed": True}
 
     res = run_financial_completeness(conn=conn, project_key=None)
     c = res["currency"]["stats"]
@@ -115,7 +125,7 @@ def test_wbs_cost_line_source_missing_routes_to_review(tmp_path):
         conn,
         [
             ("trop", "WBS1", "CC1", "LIT1"),  # present
-            ("trop", "l2", None, "CC2", None),  # missing wbs + line
+            ("trop", None, "CC2", None),  # missing wbs + line_item_type
         ],
     )
 
@@ -144,9 +154,6 @@ def test_default_currency_blocked_when_policy_condition_missing(tmp_path):
             ("trop", "f1", None, "a1", "parseable"),  # no documented -> blocked
         ],
     )
-
-    # Policy says documented required but we set False
-    pol = {"_documented_project_default_exists": False}
 
     res = run_financial_completeness(conn=conn)
     c = res["currency"]["stats"]

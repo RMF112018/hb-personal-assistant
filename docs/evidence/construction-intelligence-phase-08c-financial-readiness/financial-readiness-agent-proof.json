@@ -1,13 +1,55 @@
 {
-  "generated_utc": "2026-06-03T19:26:01.241665+00:00",
+  "generated_utc": "2026-06-03T20:52:51.123124+00:00",
   "repo_head": "644938c (post P06)",
-  "run_id": "08c-fact-b749e03f",
+  "run_id": "08c-fact-d67b0a29",
   "project_key": null,
   "status": "succeeded",
   "items_evaluated": 80,
   "review_required_count": 72,
   "sub_results": {
-    "completeness_error": "run_financial_completeness() got an unexpected keyword argument 'db_path'",
+    "completeness": {
+      "currency": {
+        "explicit_source_currency": 0,
+        "evidence_backed_project_default": 0,
+        "missing_currency": 85521,
+        "inconsistent_currency": 0,
+        "ambiguous_currency": 0,
+        "review_required": 0,
+        "project_default_applied_total": 0
+      },
+      "wbs": {
+        "run_id": "08c-comp-9531c96b",
+        "present": {
+          "wbs": 1849,
+          "cost_code": 1226,
+          "line_item_type": 0,
+          "source_field_path": 0
+        },
+        "missing": {
+          "wbs": 0,
+          "cost_code": 623,
+          "line_item_type": 667,
+          "source_field_path": 0
+        },
+        "review_required_count": 1290,
+        "ambiguous": 0
+      },
+      "source": {
+        "run_id": "08c-comp-9531c96b",
+        "families": [
+          "owner_contracts",
+          "commitments",
+          "purchase_orders",
+          "subcontractor_invoices",
+          "payment_applications",
+          "budget",
+          "budget_changes",
+          "change_events",
+          "rfqs",
+          "direct_costs"
+        ]
+      }
+    },
     "coverage": {
       "total_endpoints_in_inventory": 32,
       "required_families": 10,
@@ -49,16 +91,16 @@
       "review_required_count": 0
     },
     "forecast_readiness": {
-      "readiness_status": "blocked_by_guardrail",
-      "gate_status": "fail_blocking",
+      "readiness_status": "ready_with_review_required",
+      "gate_status": "warning",
       "summary": {
-        "overall_readiness": "blocked_by_guardrail",
-        "gate_status": "fail_blocking",
+        "overall_readiness": "ready_with_review_required",
+        "gate_status": "warning",
         "by_gate_status": {
           "pass": 3,
           "warning": 4,
-          "fail_blocking": 1,
-          "deferred_not_blocking": 0
+          "fail_blocking": 0,
+          "deferred_not_blocking": 1
         },
         "context_items_count": 37,
         "review_items_count": 72

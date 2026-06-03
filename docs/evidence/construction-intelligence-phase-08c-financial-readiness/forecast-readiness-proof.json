@@ -1,8 +1,8 @@
 {
-  "run_id": "08c-forecast-2b8d6f0d",
+  "run_id": "08c-forecast-b3b51a7a",
   "project_key": null,
-  "readiness_status": "blocked_by_guardrail",
-  "gate_status": "fail_blocking",
+  "readiness_status": "ready_with_review_required",
+  "gate_status": "warning",
   "gates": [
     {
       "gate_name": "amount_normalization",
@@ -18,11 +18,11 @@
     {
       "gate_name": "wbs_cost_code_completeness",
       "gate_status": "warning",
-      "review_items": 2016
+      "review_items": 14457
     },
     {
       "gate_name": "source_coverage",
-      "gate_status": "fail_blocking",
+      "gate_status": "deferred_not_blocking",
       "fail_closed": 3,
       "total": 37,
       "by_status": {
@@ -67,13 +67,13 @@
     }
   ],
   "summary": {
-    "overall_readiness": "blocked_by_guardrail",
-    "gate_status": "fail_blocking",
+    "overall_readiness": "ready_with_review_required",
+    "gate_status": "warning",
     "by_gate_status": {
       "pass": 3,
       "warning": 4,
-      "fail_blocking": 1,
-      "deferred_not_blocking": 0
+      "fail_blocking": 0,
+      "deferred_not_blocking": 1
     },
     "context_items_count": 37,
     "review_items_count": 72

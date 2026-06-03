@@ -3,12 +3,12 @@
 Deterministic, read-only gate evaluation over the V35 financial substrate. Advisory review aid only — not a determination, approval, claim, entitlement, or forecast. Gates never pass when required evidence (tables / contracts / guard columns) is missing.
 
 ## Summary
-- Proof passed: false
-- ok (no fail_blocking): false
+- Proof passed: true
+- ok (no fail_blocking): true
 - Schema version: 36 (expected >= 35)
-- Status counts: {'pass': 18, 'warning': 3, 'fail_blocking': 1, 'deferred_not_blocking': 0}
+- Status counts: {'pass': 21, 'warning': 1, 'fail_blocking': 0, 'deferred_not_blocking': 0}
 - Required fields covered: true
-- Readiness overstated: true
+- Readiness overstated: false
 - Missing required evidence: none
 
 ## Gates
@@ -27,12 +27,12 @@ Deterministic, read-only gate evaluation over the V35 financial substrate. Advis
 | second_brain_financial_readiness_agent_runs | pass |
 | second_brain_phase_08c_validation_runs | pass |
 | amount_normalization | pass |
-| currency_completeness | warning |
-| wbs_cost_code_completeness | warning |
-| source_coverage | warning |
+| currency_completeness | pass |
+| wbs_cost_code_completeness | pass |
+| source_coverage | pass |
 | exposure_marts | pass |
 | readiness_agent | pass |
-| forecast_readiness | fail_blocking |
+| forecast_readiness | warning |
 | review_required_policy | pass |
 | cli_operator_status | pass |
 | no_writeback_no_raw_financial_output | pass |
@@ -54,4 +54,4 @@ Deterministic, read-only gate evaluation over the V35 financial substrate. Advis
 ## Notes
 Deterministic Phase 08C data-quality gate evaluation across schema/contracts, the ten V35 tables + guard columns, amount normalization, currency, WBS/cost-code, source coverage, exposure marts, readiness agent, forecast-readiness, review-required policy, CLI, and no-writeback/no-raw. Advisory review aid only — not a determination, approval, claim, entitlement, or forecast. proof_passed is False when required evidence is missing.
 
-Generated: 2026-06-03T19:26:01.356362Z
+Generated: 2026-06-03T20:52:51.514337Z
