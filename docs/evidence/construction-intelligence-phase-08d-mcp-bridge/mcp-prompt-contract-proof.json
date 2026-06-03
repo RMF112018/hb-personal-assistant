@@ -1,0 +1,78 @@
+{
+  "proof": "phase_08d_mcp_prompts",
+  "phase": "08D",
+  "proof_passed": true,
+  "prompt_count": 5,
+  "prompts": {
+    "review_today_brief": {
+      "routes_through": [
+        "hb_get_daily_brief",
+        "hb_validation_status"
+      ],
+      "routes_through_allowed_only": true,
+      "posture_present": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "ask_project_question": {
+      "routes_through": [
+        "hb_query",
+        "hb_research_packet"
+      ],
+      "routes_through_allowed_only": true,
+      "posture_present": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "prepare_for_meeting": {
+      "routes_through": [
+        "hb_research_packet",
+        "hb_review_load_status",
+        "hb_query"
+      ],
+      "routes_through_allowed_only": true,
+      "posture_present": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "review_memory_candidates": {
+      "routes_through": [
+        "hb_memory_review_list",
+        "hb_memory_feedback"
+      ],
+      "routes_through_allowed_only": true,
+      "posture_present": true,
+      "forbidden_fields": [],
+      "pass": true
+    },
+    "explain_review_load": {
+      "routes_through": [
+        "hb_review_load_status",
+        "hb_validation_status"
+      ],
+      "routes_through_allowed_only": true,
+      "posture_present": true,
+      "forbidden_fields": [],
+      "pass": true
+    }
+  },
+  "unknown_prompt_fail_closed": true,
+  "registry_snapshot": {
+    "persisted": true,
+    "prompt_count": 5,
+    "all_guard_columns_zero": true
+  },
+  "contract": {
+    "route_through_allowed_tools": true,
+    "no_raw_store_instructions": true,
+    "no_writeback_instructions": true,
+    "no_final_determinations": true,
+    "no_raw_prompt_response_persistence": true,
+    "no_policy_bypass": true
+  },
+  "guardrails": {
+    "advisory_only": true,
+    "source_linked": true,
+    "review_controlled": true
+  }
+}

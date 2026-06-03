@@ -10,9 +10,11 @@ from __future__ import annotations
 from .broker import DENIAL_REASONS, ToolBroker
 from .config_preview import assess_config_safety, build_claude_desktop_config_preview
 from .policy import build_mcp_status, evaluate_startup_checks
+from .prompts import load_prompts, render_all_prompts, render_prompt
 from .proof import (
     build_mcp_allowed_tools_proof,
     build_mcp_denied_tools_proof,
+    build_mcp_prompts_proof,
     build_mcp_resources_proof,
     build_mcp_tool_broker_proof,
 )
@@ -38,6 +40,7 @@ __all__ = [
     "build_default_broker",
     "build_mcp_allowed_tools_proof",
     "build_mcp_denied_tools_proof",
+    "build_mcp_prompts_proof",
     "build_mcp_resources_proof",
     "build_mcp_status",
     "build_mcp_tool_broker_proof",
@@ -46,8 +49,11 @@ __all__ = [
     "load_allowed_tools",
     "load_denied_actions",
     "load_global_requirements",
+    "load_prompts",
     "load_resources",
     "read_all_resources",
     "read_resource",
+    "render_all_prompts",
+    "render_prompt",
     "serve_stdio",
 ]

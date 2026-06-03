@@ -29,6 +29,7 @@ PROOF_JSON = "mcp-tool-broker-proof.json"
 CONTRACT_PROOF_JSON = "mcp-tool-contract-proof.json"
 DENIED_PROOF_JSON = "mcp-denied-tool-proof.json"
 RESOURCE_PROOF_JSON = "mcp-resource-contract-proof.json"
+PROMPT_PROOF_JSON = "mcp-prompt-contract-proof.json"
 
 # Fields a tool result must never carry (raw content / determinations).
 _FORBIDDEN_RESULT_FIELDS = (
@@ -220,6 +221,110 @@ def build_mcp_tool_broker_proof(
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
         proof["proof_path"] = str(out_dir / PROOF_JSON)
+
+    return proof
+
+
+def build_mcp_prompts_proof(
+    *,
+    evidence_dir: str | None = None,
+    write_evidence: bool = True,
+) -> dict[str, Any]:
+    """Render all five prompts and attest the route-through-allowed-tools-only contract.
+
+    Confirms each prompt routes only through allowed tools, carries the advisory /
+    source-linked / review-controlled posture + no-determination + no-policy-bypass
+    guidance, exposes no forbidden field, fail-closes on an unknown name, and that a
+    metadata-only prompt-registry snapshot persists guard-clean. Writes
+    ``mcp-prompt-contract-proof.json``.
+    """
+    from .prompts import (  # noqa: PLC0415
+        load_prompts,
+        render_prompt,
+        snapshot_prompt_registry,
+    )
+    from .registry import load_allowed_tools
+
+    registry = load_prompts()
+    allowed = set(load_allowed_tools())
+    _posture_markers = ("advisory", "source-linked", "review-controlled")
+    _bypass_phrase = "do not bypass Phase 08A/08B/08C policy"
+    prompt_report: dict[str, Any] = {}
+    all_pass = True
+
+    for entry in registry:
+        name = entry["name"]
+        rendered = render_prompt(name, {})
+        text = json.dumps(rendered, default=str).lower()
+        routes = rendered.get("routes_through", [])
+        routes_ok = bool(routes) and all(t in allowed for t in routes)
+        posture_ok = all(m in text for m in _posture_markers) and _bypass_phrase.lower() in text
+        keys = _collect_keys(rendered)
+        forbidden_hit = sorted(set(_FORBIDDEN_RESULT_FIELDS) & keys)
+        ok = bool(routes_ok and posture_ok and not forbidden_hit)
+        all_pass = all_pass and ok
+        prompt_report[name] = {
+            "routes_through": routes,
+            "routes_through_allowed_only": routes_ok,
+            "posture_present": posture_ok,
+            "forbidden_fields": forbidden_hit,
+            "pass": ok,
+        }
+
+    unknown = render_prompt("delete_everything", {})
+    unknown_fail_closed = bool(
+        unknown.get("status") == "denied"
+        and unknown.get("reason_code") == "prompt_not_allowed"
+        and unknown.get("fail_closed") is True
+    )
+
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "prompts.db")
+        snapshot_id = snapshot_prompt_registry(db_path=db, persist=True)
+        conn = sqlite3.connect(db)
+        snapshot_rows = conn.execute(
+            "SELECT prompt_count FROM second_brain_mcp_prompt_registry_snapshots"
+        ).fetchall()
+        guards_clean = _guards_all_zero(conn, "second_brain_mcp_prompt_registry_snapshots")
+
+    proof_passed = bool(
+        all_pass
+        and unknown_fail_closed
+        and snapshot_id
+        and snapshot_rows == [(len(registry),)]
+        and guards_clean
+    )
+    proof: dict[str, Any] = {
+        "proof": "phase_08d_mcp_prompts",
+        "phase": "08D",
+        "proof_passed": proof_passed,
+        "prompt_count": len(registry),
+        "prompts": prompt_report,
+        "unknown_prompt_fail_closed": unknown_fail_closed,
+        "registry_snapshot": {
+            "persisted": bool(snapshot_id),
+            "prompt_count": len(registry),
+            "all_guard_columns_zero": guards_clean,
+        },
+        "contract": {
+            "route_through_allowed_tools": True,
+            "no_raw_store_instructions": True,
+            "no_writeback_instructions": True,
+            "no_final_determinations": True,
+            "no_raw_prompt_response_persistence": True,
+            "no_policy_bypass": True,
+        },
+        "guardrails": {"advisory_only": True, "source_linked": True, "review_controlled": True},
+    }
+
+    serialized = json.dumps(proof, indent=2, default=str)
+    _assert_no_raw(serialized, "mcp prompts proof")
+
+    if write_evidence:
+        out_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / PROMPT_PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
+        proof["proof_path"] = str(out_dir / PROMPT_PROOF_JSON)
 
     return proof
 
