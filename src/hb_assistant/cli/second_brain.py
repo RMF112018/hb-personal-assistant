@@ -2464,8 +2464,12 @@ def financial_exposure_summary(
 ) -> None:
     """Exposure summary items (advisory marts from V35)."""
     from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
+    from hb_assistant.construction.second_brain.financial_completeness import (
+        build_financial_exposure_mart_preview,
+    )
 
     contract = load_phase_08c_contract("exposure_summary_contract")
+    preview = build_financial_exposure_mart_preview(project_key=project)
     payload = {
         "command": "second-brain financial exposure-summary",
         "ok": True,
@@ -2473,8 +2477,10 @@ def financial_exposure_summary(
         "project_key": project,
         "advisory_only": True,
         "categories": contract.get("exposure_categories", []),
+        "exposure_mart_preview_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/exposure-mart-preview.json",
+        "summary": preview.get("summary", {}),
         "guardrails": _08C_GUARDRAILS,
-        "note": "amounts via normalized refs only; never summed",
+        "note": "amounts via normalized refs only; never summed. Deterministic vs candidate distinguished. Advisory marts only — not determinations.",
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
 

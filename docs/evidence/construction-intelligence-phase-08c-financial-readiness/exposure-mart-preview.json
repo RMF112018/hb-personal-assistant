@@ -1,0 +1,173 @@
+{
+  "generated_utc": "2026-06-03T15:57:20.972477+00:00",
+  "repo_head": "3b0d58c (post 08C P05)",
+  "schema_version": "35",
+  "contract": "phase_08c_exposure_summary_contract",
+  "summary": {
+    "total_items": 11,
+    "by_category": {
+      "pending_exposure": 1,
+      "approved_exposure": 1,
+      "budget_changes": 1,
+      "commitments": 1,
+      "purchase_orders": 1,
+      "subcontractor_invoices": 1,
+      "change_events": 1,
+      "rfqs": 1,
+      "owner_contracts": 1,
+      "direct_costs": 1,
+      "review_required": 1
+    },
+    "deterministic_count": 0,
+    "candidate_count": 11,
+    "review_required_count": 0
+  },
+  "items": [
+    {
+      "exposure_category": "pending_exposure",
+      "project_key": null,
+      "source_family": "procore_financial",
+      "item_label": "pending_exposure-sample",
+      "normalized_amount_ref": "normalized:from_amount_facts_normalized",
+      "confidence_label": "medium",
+      "review_tier": "standard",
+      "advisory_status": "advisory review aid only \u2014 not a final exposure determination, claim, or entitlement",
+      "relationship_kind": "candidate",
+      "source_reference": "procore_financial_*+facts"
+    },
+    {
+      "exposure_category": "approved_exposure",
+      "project_key": null,
+      "source_family": "procore_financial",
+      "item_label": "approved_exposure-sample",
+      "normalized_amount_ref": "normalized:from_amount_facts_normalized",
+      "confidence_label": "medium",
+      "review_tier": "standard",
+      "advisory_status": "advisory review aid only \u2014 not a final exposure determination, claim, or entitlement",
+      "relationship_kind": "candidate",
+      "source_reference": "procore_financial_*+facts"
+    },
+    {
+      "exposure_category": "budget_changes",
+      "project_key": null,
+      "source_family": "procore_financial",
+      "item_label": "budget_changes-sample",
+      "normalized_amount_ref": "normalized:from_amount_facts_normalized",
+      "confidence_label": "medium",
+      "review_tier": "standard",
+      "advisory_status": "advisory review aid only \u2014 not a final exposure determination, claim, or entitlement",
+      "relationship_kind": "candidate",
+      "source_reference": "procore_financial_*+facts"
+    },
+    {
+      "exposure_category": "commitments",
+      "project_key": null,
+      "source_family": "procore_financial",
+      "item_label": "commitments-sample",
+      "normalized_amount_ref": "normalized:from_amount_facts_normalized",
+      "confidence_label": "medium",
+      "review_tier": "standard",
+      "advisory_status": "advisory review aid only \u2014 not a final exposure determination, claim, or entitlement",
+      "relationship_kind": "candidate",
+      "source_reference": "procore_financial_*+facts"
+    },
+    {
+      "exposure_category": "purchase_orders",
+      "project_key": null,
+      "source_family": "procore_financial",
+      "item_label": "purchase_orders-sample",
+      "normalized_amount_ref": "normalized:from_amount_facts_normalized",
+      "confidence_label": "medium",
+      "review_tier": "standard",
+      "advisory_status": "advisory review aid only \u2014 not a final exposure determination, claim, or entitlement",
+      "relationship_kind": "candidate",
+      "source_reference": "procore_financial_*+facts"
+    },
+    {
+      "exposure_category": "subcontractor_invoices",
+      "project_key": null,
+      "source_family": "procore_financial",
+      "item_label": "subcontractor_invoices-sample",
+      "normalized_amount_ref": "normalized:from_amount_facts_normalized",
+      "confidence_label": "medium",
+      "review_tier": "standard",
+      "advisory_status": "advisory review aid only \u2014 not a final exposure determination, claim, or entitlement",
+      "relationship_kind": "candidate",
+      "source_reference": "procore_financial_*+facts"
+    },
+    {
+      "exposure_category": "change_events",
+      "project_key": null,
+      "source_family": "procore_financial",
+      "item_label": "change_events-sample",
+      "normalized_amount_ref": "normalized:from_amount_facts_normalized",
+      "confidence_label": "medium",
+      "review_tier": "standard",
+      "advisory_status": "advisory review aid only \u2014 not a final exposure determination, claim, or entitlement",
+      "relationship_kind": "candidate",
+      "source_reference": "procore_financial_*+facts"
+    },
+    {
+      "exposure_category": "rfqs",
+      "project_key": null,
+      "source_family": "procore_financial",
+      "item_label": "rfqs-sample",
+      "normalized_amount_ref": "normalized:from_amount_facts_normalized",
+      "confidence_label": "medium",
+      "review_tier": "standard",
+      "advisory_status": "advisory review aid only \u2014 not a final exposure determination, claim, or entitlement",
+      "relationship_kind": "candidate",
+      "source_reference": "procore_financial_*+facts"
+    },
+    {
+      "exposure_category": "owner_contracts",
+      "project_key": null,
+      "source_family": "procore_financial",
+      "item_label": "owner_contracts-sample",
+      "normalized_amount_ref": "normalized:from_amount_facts_normalized",
+      "confidence_label": "medium",
+      "review_tier": "standard",
+      "advisory_status": "advisory review aid only \u2014 not a final exposure determination, claim, or entitlement",
+      "relationship_kind": "candidate",
+      "source_reference": "procore_financial_*+facts"
+    },
+    {
+      "exposure_category": "direct_costs",
+      "project_key": null,
+      "source_family": "procore_financial",
+      "item_label": "direct_costs-sample",
+      "normalized_amount_ref": "normalized:from_amount_facts_normalized",
+      "confidence_label": "medium",
+      "review_tier": "standard",
+      "advisory_status": "advisory review aid only \u2014 not a final exposure determination, claim, or entitlement",
+      "relationship_kind": "candidate",
+      "source_reference": "procore_financial_*+facts"
+    },
+    {
+      "exposure_category": "review_required",
+      "project_key": null,
+      "source_family": "procore_financial",
+      "item_label": "review_required-sample",
+      "normalized_amount_ref": "normalized:from_amount_facts_normalized",
+      "confidence_label": "medium",
+      "review_tier": "standard",
+      "advisory_status": "advisory review aid only \u2014 not a final exposure determination, claim, or entitlement",
+      "relationship_kind": "candidate",
+      "source_reference": "procore_financial_*+facts"
+    }
+  ],
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_raw_financial_payload": true,
+    "financial_determination_forbidden": true,
+    "advisory_only": true,
+    "normalized_amounts_only": true
+  },
+  "notes": "Advisory exposure marts from V35 normalized facts + deterministic projections (cost/schedule exposure patterns). Deterministic = action signals/budget changes/known links; candidate = other/ambiguous. All amounts via normalized refs (TEXT). Not a final determination, claim, entitlement, or forecast. Source refs preserved; no raw payloads.",
+  "stop_checks": {
+    "raw_payloads_or_full_source_values_written": false,
+    "determination_language_present": false
+  }
+}

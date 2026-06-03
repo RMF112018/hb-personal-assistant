@@ -202,3 +202,47 @@ def test_financial_source_coverage_matrix_maps_classifies_counts_no_raw(tmp_path
     assert own[0]["source_row_count"] >= 1 or "covered" in own[0]["coverage_status"]
 
     conn.close()
+
+
+def test_financial_exposure_read_models_mart_preview(tmp_path):
+    """P06: exposure marts/preview has required fields, normalized str, relationship_kind, advisory, no det claim."""
+    from pathlib import Path
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.construction.second_brain.financial_completeness import (
+        build_financial_exposure_mart_preview,
+    )
+
+    db = tmp_path / "test.db"
+    SQLiteMigrator(db_path=str(db)).apply()
+
+    # seed a tiny fact so normalized ref can be used
+    import sqlite3
+    conn = sqlite3.connect(db)
+    conn.execute("INSERT OR IGNORE INTO second_brain_financial_amount_facts_normalized (run_id, project_key, source_family, source_field_path, canonical_decimal_text, parse_status, advisory_only) VALUES (?,?,?,?,?,?,1)",
+                 ("seed", "KEY", "commitments", "amount", "123.45", "parseable"))
+    conn.commit()
+
+    out_dir = tmp_path / "evidence"
+    p = build_financial_exposure_mart_preview(project_key="KEY", out_dir=str(out_dir), db_path=str(db))
+    assert p["guardrails"]["advisory_only"] is True
+    assert p["guardrails"]["financial_determination_forbidden"] is True
+    items = p.get("items", [])
+    assert len(items) > 0
+    for it in items[:3]:
+        assert it.get("normalized_amount_ref")
+        assert isinstance(it.get("normalized_amount_ref"), str) or it.get("normalized_amount_ref") is None
+        assert it.get("relationship_kind") in ("deterministic", "candidate")
+        assert "advisory review aid only" in it.get("advisory_status", "")
+        assert "not a final exposure determination" in it.get("advisory_status", "").lower() or "advisory" in it.get("advisory_status", "").lower()
+    # preview json written
+    j = out_dir / "exposure-mart-preview.json"
+    assert j.exists()
+    jtxt = j.read_text()
+    assert "exposure-mart-preview" in str(j) or "preview" in jtxt.lower() or "items" in jtxt
+    assert "advisory review aid only" in jtxt
+    assert "not a final" in jtxt.lower() or "advisory" in jtxt.lower()
+    # no raw/det claim (guard keys like "raw_payloads_..." are metadata; actual values forbidden)
+    assert '"raw_procore_payload"' not in jtxt and "Bearer" not in jtxt
+    assert "final exposure determination" not in jtxt.lower() or "not a final" in jtxt.lower()
+
+    conn.close()

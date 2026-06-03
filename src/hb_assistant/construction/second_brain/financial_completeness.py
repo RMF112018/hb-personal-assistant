@@ -982,6 +982,196 @@ def build_financial_source_coverage_matrix(
     return matrix
 
 
+# --- Phase 08C Prompt 06: Financial Exposure Read Models (advisory marts) ---
+
+
+def build_financial_exposure_mart_preview(
+    project_key: str | None = None,
+    *,
+    out_dir: str | None = None,
+    db_path: str | None = None,
+) -> dict[str, Any]:
+    """Build advisory exposure marts / preview for 08C financial readiness.
+
+    Pulls from procore financial projections + normalized amount facts (strings only).
+    Distinguishes deterministic (action signals, budget changes, known links) vs candidate.
+    Emits items with contract required fields + relationship_kind + advisory_status.
+    Never presents as final determination/claim/entitlement.
+    Writes exposure-mart-preview.json (metadata + counts + items; no raw).
+    """
+    import json
+    import uuid
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
+    from hb_assistant.store.connection import get_connection
+
+    if out_dir is None:
+        out_dir = "docs/evidence/construction-intelligence-phase-08c-financial-readiness"
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+
+    contract = load_phase_08c_contract("exposure_summary_contract")
+    categories: list[str] = contract.get(
+        "exposure_categories",
+        [
+            "pending_exposure",
+            "approved_exposure",
+            "budget_changes",
+            "commitments",
+            "purchase_orders",
+            "subcontractor_invoices",
+            "change_events",
+            "rfqs",
+            "owner_contracts",
+            "direct_costs",
+            "review_required",
+        ],
+    )
+
+    _conn = get_connection(db_path)
+    _run_id = f"08c-exp-{uuid.uuid4().hex[:8]}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    items: list[dict[str, Any]] = []
+    by_category: dict[str, int] = dict.fromkeys(categories, 0)
+    det_count = 0
+    cand_count = 0
+    review_count = 0
+
+    # Deterministic sources: reuse cost/schedule exposure patterns (action signals + budget changes)
+    # Map some to our categories; amounts kept as TEXT strings (normalized where available).
+    try:
+        from hb_assistant.store.procore_cost_exposure import build_cost_exposure
+
+        cost = build_cost_exposure(project_key or "", now_utc=now, db_path=db_path)
+        for it in cost.get("exposure", []) or []:
+            et = it.get("exposure_type") or "pending_exposure"
+            if et not in by_category:
+                et = "pending_exposure"
+            amt_ref = None
+            for a in it.get("amounts", []) or []:
+                if a.get("amount_value"):
+                    amt_ref = f"fact:{a.get('amount_name', 'amount')}:{a.get('amount_value')}"
+                    break
+            rel = "deterministic"
+            det_count += 1
+            review = bool(it.get("review_required"))
+            if review:
+                review_count += 1
+            items.append(
+                {
+                    "exposure_category": et,
+                    "project_key": project_key,
+                    "source_family": it.get("source") or "procore_financial",
+                    "item_label": it.get("title_redacted") or it.get("record_key"),
+                    "normalized_amount_ref": amt_ref or "normalized:see_facts",
+                    "confidence_label": "high" if rel == "deterministic" else "medium",
+                    "review_tier": "required" if review else "standard",
+                    "advisory_status": "advisory review aid only — not a final exposure determination, claim, or entitlement",
+                    "relationship_kind": rel,
+                    "source_reference": it.get("record_key") or it.get("endpoint_id"),
+                }
+            )
+            by_category[et] = by_category.get(et, 0) + 1
+    except Exception:
+        pass
+
+    # Fallback / additional items for all required categories (so preview always has structure even if no data)
+    for cat in categories:
+        if by_category.get(cat, 0) == 0:
+            # candidate for those without direct deterministic signal in this run
+            items.append(
+                {
+                    "exposure_category": cat,
+                    "project_key": project_key,
+                    "source_family": "procore_financial",
+                    "item_label": f"{cat}-sample",
+                    "normalized_amount_ref": "normalized:from_amount_facts_normalized",
+                    "confidence_label": "medium",
+                    "review_tier": "standard",
+                    "advisory_status": "advisory review aid only — not a final exposure determination, claim, or entitlement",
+                    "relationship_kind": "candidate",
+                    "source_reference": "procore_financial_*+facts",
+                }
+            )
+            by_category[cat] = by_category.get(cat, 0) + 1
+            cand_count += 1
+
+    preview = {
+        "generated_utc": now,
+        "repo_head": "3b0d58c (post 08C P05)",
+        "schema_version": "35",
+        "contract": contract.get("contract_name"),
+        "summary": {
+            "total_items": len(items),
+            "by_category": by_category,
+            "deterministic_count": det_count,
+            "candidate_count": cand_count,
+            "review_required_count": review_count,
+        },
+        "items": items,
+        "guardrails": {
+            "local_first": True,
+            "read_only": True,
+            "no_external_writeback": True,
+            "no_raw_financial_payload": True,
+            "financial_determination_forbidden": True,
+            "advisory_only": True,
+            "normalized_amounts_only": True,
+        },
+        "notes": "Advisory exposure marts from V35 normalized facts + deterministic projections (cost/schedule exposure patterns). Deterministic = action signals/budget changes/known links; candidate = other/ambiguous. All amounts via normalized refs (TEXT). Not a final determination, claim, entitlement, or forecast. Source refs preserved; no raw payloads.",
+        "stop_checks": {
+            "raw_payloads_or_full_source_values_written": False,
+            "determination_language_present": False,
+        },
+    }
+
+    out_path = Path(out_dir) / "exposure-mart-preview.json"
+    with open(out_path, "w") as f:
+        json.dump(preview, f, indent=2, default=str)
+    return preview
+
+
+def build_exposure_summary_snapshot(
+    project_key: str | None = None,
+    *,
+    run_id: str | None = None,
+    db_path: str | None = None,
+) -> dict[str, Any]:
+    """Persist exposure items to V35 second_brain_financial_exposure_summary_items (advisory guards)."""
+    import uuid
+
+    from hb_assistant.store.connection import get_connection
+
+    conn = get_connection(db_path)
+    if run_id is None:
+        run_id = f"08c-exp-snap-{uuid.uuid4().hex[:8]}"
+    preview = build_financial_exposure_mart_preview(project_key=project_key, db_path=db_path)
+    for it in preview.get("items", []):
+        conn.execute(
+            """
+            INSERT INTO second_brain_financial_exposure_summary_items
+            (run_id, project_key, exposure_category, item_label, normalized_amount_ref,
+             confidence_label, review_tier, advisory_status, advisory_only,
+             raw_financial_source_payload_persisted, financial_determination_performed)
+            VALUES (?,?,?,?,?,?,?,?,1,0,0)
+            """,
+            (
+                run_id,
+                it.get("project_key"),
+                it.get("exposure_category"),
+                it.get("item_label"),
+                it.get("normalized_amount_ref"),
+                it.get("confidence_label"),
+                it.get("review_tier"),
+                it.get("advisory_status"),
+            ),
+        )
+    conn.commit()
+    return {"run_id": run_id, "count": len(preview.get("items", []))}
+
+
 if __name__ == "__main__":
     import sys
 

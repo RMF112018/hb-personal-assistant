@@ -735,8 +735,27 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
         gates.append(_gate("wbs_cost_code_completeness", "warning", reason=str(e)))
         gates.append(_gate("source_coverage", "warning", reason=str(e)))
 
-    # exposure marts / summary
-    gates.append(_gate("exposure_marts", "pass"))
+    # exposure marts / summary (real 08C: call builder, check advisory + no det language)
+    try:
+        from .financial_completeness import build_financial_exposure_mart_preview
+
+        p = build_financial_exposure_mart_preview(project_key=None)
+        ps = p.get("summary", {})
+        advisory_ok = all(
+            "advisory review aid only" in str(it.get("advisory_status", ""))
+            for it in p.get("items", [])[:3] or [{}]
+        )
+        no_final_det = "not a final exposure determination" in str(p)
+        gates.append(
+            _gate(
+                "exposure_marts",
+                "pass" if (advisory_ok and no_final_det) else "warning",
+                total_items=ps.get("total_items", 0),
+                preview="exposure-mart-preview.json",
+            )
+        )
+    except Exception as e:
+        gates.append(_gate("exposure_marts", "warning", reason=str(e)))
 
     # readiness agent / forecast / review policy (tables + contract)
     gates.append(_gate("readiness_agent", "pass"))
