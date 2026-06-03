@@ -3,7 +3,7 @@
 Deterministic routing of sensitive/ambiguous financial signals to review. Every item below is an advisory review aid only — not a payment approval, claim position, entitlement determination, contract interpretation, forecast, or executive financial determination. No financial values are computed or summed here.
 
 ## Summary
-- Run id: 08c-review-31b7b8a8
+- Run id: 08c-review-544b4a86
 - Project key: all
 - Schema version: 36
 - Items evaluated: 1281
@@ -42,4 +42,4 @@ Deterministic routing of the seven review-required financial signal categories f
 - docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json
 - docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json
 
-Generated: 2026-06-03T17:01:14.860777Z | run_id: 08c-review-31b7b8a8
+Generated: 2026-06-03T17:20:56.452748Z | run_id: 08c-review-544b4a86

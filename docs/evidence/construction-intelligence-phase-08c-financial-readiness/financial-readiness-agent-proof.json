@@ -1,11 +1,11 @@
 {
-  "generated_utc": "2026-06-03T16:06:22.431179+00:00",
+  "generated_utc": "2026-06-03T19:26:01.241665+00:00",
   "repo_head": "644938c (post P06)",
-  "run_id": "08c-fact-b0339273",
+  "run_id": "08c-fact-b749e03f",
   "project_key": null,
   "status": "succeeded",
-  "items_evaluated": 43,
-  "review_required_count": 0,
+  "items_evaluated": 80,
+  "review_required_count": 72,
   "sub_results": {
     "completeness_error": "run_financial_completeness() got an unexpected keyword argument 'db_path'",
     "coverage": {
@@ -48,9 +48,23 @@
       "candidate_count": 11,
       "review_required_count": 0
     },
-    "forecast": {
-      "contract": "phase_08c_forecast_readiness_contract",
-      "status": "deterministic_stub"
+    "forecast_readiness": {
+      "readiness_status": "blocked_by_guardrail",
+      "gate_status": "fail_blocking",
+      "summary": {
+        "overall_readiness": "blocked_by_guardrail",
+        "gate_status": "fail_blocking",
+        "by_gate_status": {
+          "pass": 3,
+          "warning": 4,
+          "fail_blocking": 1,
+          "deferred_not_blocking": 0
+        },
+        "context_items_count": 37,
+        "review_items_count": 72
+      },
+      "proof_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-proof.json",
+      "md_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-gates.md"
     },
     "review_required": {
       "contract": "phase_08c_review_required_financial_policy_contract",
