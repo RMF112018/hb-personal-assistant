@@ -2390,11 +2390,40 @@ _08C_GUARDRAILS = {
     "advisory_only": True,
 }
 
+# Explicit "no determination / no payment / no writeback" attestation block carried by every
+# Phase 08C financial operator surface (advisory aids only).
+_08C_ATTESTATIONS = {
+    "financial_determination_performed": False,
+    "payment_decision_performed": False,
+    "claim_or_entitlement_decision_performed": False,
+    "external_writeback_performed": False,
+    "raw_financial_payload_persisted": False,
+    "live_procore_call_performed": False,
+}
+
+
+def _emit_08c(
+    payload: dict,
+    *,
+    json_out: bool,
+    human: list[str],
+    exit_code: int = 0,
+) -> None:
+    """Emit a Phase 08C operator payload as JSON (default) or human-readable lines."""
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+    else:
+        for line in human:
+            typer.echo(line)
+    raise typer.Exit(exit_code)
+
 
 @financial_app.command("readiness")
 def financial_readiness(
     project: str | None = typer.Option(None, "--project", help="Optional project key."),
-    json_out: bool = typer.Option(True, "--json"),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
 ) -> None:
     """Financial readiness snapshot (V35 tables + contracts; advisory, read-only)."""
     from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
@@ -2416,20 +2445,31 @@ def financial_readiness(
         "contract": contract.get("contract_name"),
         "agent_run_receipt": {"run_id": agent.get("run_id"), "status": agent.get("status")},
         "proof_path": agent.get("proof_path"),
+        "evidence_paths": [agent.get("proof_path")],
         "summary": {
             "items_evaluated": agent.get("items_evaluated"),
             "review_required_count": agent.get("review_required_count"),
         },
         "guardrails": _08C_GUARDRAILS,
+        "attestations": _08C_ATTESTATIONS,
         "note": "deterministic Financial Fact Readiness Agent (Prompt 07); model use absent or mock-safe only; advisory review aids only — no determinations.",
     }
-    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    human = [
+        "Phase 08C financial readiness (advisory only — no determinations)",
+        f"  project: {project or 'all'}",
+        f"  run: {agent.get('run_id')} status={agent.get('status')}",
+        f"  items evaluated: {agent.get('items_evaluated')} | review required: {agent.get('review_required_count')}",
+        f"  proof: {agent.get('proof_path')}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human)
 
 
 @financial_app.command("coverage")
 def financial_coverage(
-    project: str | None = typer.Option(None, "--project"),
-    json_out: bool = typer.Option(True, "--json"),
+    project: str | None = typer.Option(None, "--project", help="Optional project key."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
 ) -> None:
     """Financial source coverage (from V35 snapshots + contract)."""
     from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
@@ -2448,6 +2488,11 @@ def financial_coverage(
         mtx = build_financial_source_coverage_matrix()
     except Exception:
         mtx = {}
+    matrix_path = (
+        "docs/evidence/construction-intelligence-phase-08c-financial-readiness/"
+        "financial-source-coverage-matrix.json"
+    )
+    by_status = mtx.get("summary", {}).get("by_status", {})
     payload = {
         "command": "second-brain financial coverage",
         "ok": True,
@@ -2459,19 +2504,29 @@ def financial_coverage(
         "financial_source_coverage_matrix": {
             "summary": mtx.get("summary", {}),
             "total_sources": mtx.get("total_sources", 0),
-            "by_status": mtx.get("summary", {}).get("by_status", {}),
-            "matrix_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json",
+            "by_status": by_status,
+            "matrix_path": matrix_path,
             "advisory_note": "Full matrix (mappings + counts + 6-status classification + no-raw attest) written to matrix_path. See JSON for endpoint family details.",
         },
+        "evidence_paths": [matrix_path],
         "guardrails": _08C_GUARDRAILS,
+        "attestations": _08C_ATTESTATIONS,
     }
-    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    human = [
+        "Phase 08C financial source coverage (advisory only)",
+        f"  project: {project or 'all'}",
+        f"  total sources: {mtx.get('total_sources', 0)} | by status: {by_status}",
+        f"  matrix: {matrix_path}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human)
 
 
 @financial_app.command("exposure-summary")
 def financial_exposure_summary(
-    project: str | None = typer.Option(None, "--project"),
-    json_out: bool = typer.Option(True, "--json"),
+    project: str | None = typer.Option(None, "--project", help="Optional project key."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
 ) -> None:
     """Exposure summary items (advisory marts from V35)."""
     from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
@@ -2481,6 +2536,10 @@ def financial_exposure_summary(
 
     contract = load_phase_08c_contract("exposure_summary_contract")
     preview = build_financial_exposure_mart_preview(project_key=project)
+    preview_path = (
+        "docs/evidence/construction-intelligence-phase-08c-financial-readiness/"
+        "exposure-mart-preview.json"
+    )
     payload = {
         "command": "second-brain financial exposure-summary",
         "ok": True,
@@ -2488,18 +2547,28 @@ def financial_exposure_summary(
         "project_key": project,
         "advisory_only": True,
         "categories": contract.get("exposure_categories", []),
-        "exposure_mart_preview_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/exposure-mart-preview.json",
+        "exposure_mart_preview_path": preview_path,
+        "evidence_paths": [preview_path],
         "summary": preview.get("summary", {}),
         "guardrails": _08C_GUARDRAILS,
+        "attestations": _08C_ATTESTATIONS,
         "note": "amounts via normalized refs only; never summed. Deterministic vs candidate distinguished. Advisory marts only — not determinations.",
     }
-    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    human = [
+        "Phase 08C financial exposure summary (advisory only — not a determination)",
+        f"  project: {project or 'all'}",
+        f"  summary: {preview.get('summary', {})}",
+        f"  preview: {preview_path}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human)
 
 
 @financial_app.command("review-items")
 def financial_review_items(
     project: str | None = typer.Option(None, "--project", help="Optional project key."),
-    json_out: bool = typer.Option(True, "--json"),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
 ) -> None:
     """Route review-required financial signals and emit the routing proof (V35/V36).
 
@@ -2521,6 +2590,7 @@ def financial_review_items(
         "advisory_only": True,
         "run_id": proof.get("run_id"),
         "proof_path": proof.get("proof_path"),
+        "evidence_paths": [proof.get("proof_path")],
         "summary": {
             "items_evaluated": proof.get("items_evaluated"),
             "review_required_count": proof.get("review_required_count"),
@@ -2529,16 +2599,28 @@ def financial_review_items(
             "by_confidence": proof.get("by_confidence"),
         },
         "guardrails": _08C_GUARDRAILS,
+        "attestations": _08C_ATTESTATIONS,
         "note": "deterministic review-required routing of the 7 financial signal categories; "
         "advisory review aids only — no determinations, approvals, claims, entitlements, or forecasts.",
     }
-    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    human = [
+        "Phase 08C review-required routing (advisory only — no determinations)",
+        f"  project: {project or 'all'}",
+        f"  run: {proof.get('run_id')}",
+        f"  evaluated: {proof.get('items_evaluated')} | routed: {proof.get('review_required_count')}",
+        f"  by tier: {proof.get('by_tier')}",
+        f"  proof: {proof.get('proof_path')}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human)
 
 
 # data-quality phase-08c-gates under data_quality_app for the expected command path
 @data_quality_app.command("phase-08c-gates")
 def data_quality_phase_08c_gates(
-    json_out: bool = typer.Option(True, "--json"),
+    project: str | None = typer.Option(None, "--project", help="Optional project key (gates are global)."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
 ) -> None:
     """Phase 08C financial data-quality gates (V35 tables + contracts + guards)."""
     from hb_assistant.construction.second_brain.data_quality import (
@@ -2546,8 +2628,70 @@ def data_quality_phase_08c_gates(
     )
 
     report = evaluate_phase_08c_data_quality_gates()
-    typer.echo(
-        json.dumps({**report, "guardrails": _08C_GUARDRAILS}, indent=2, default=str)
-        if json_out
-        else str(report)
+    evidence_dir = "docs/evidence/construction-intelligence-phase-08c-financial-readiness"
+    payload = {
+        "command": "second-brain data-quality phase-08c-gates",
+        "phase": "08C",
+        "project_key": project,
+        "advisory_only": True,
+        **report,
+        "evidence_paths": [
+            f"{evidence_dir}/forecast-readiness-proof.json",
+            f"{evidence_dir}/financial-source-coverage-matrix.json",
+            f"{evidence_dir}/exposure-mart-preview.json",
+        ],
+        "guardrails": _08C_GUARDRAILS,
+        "attestations": _08C_ATTESTATIONS,
+    }
+    human = [
+        "Phase 08C financial data-quality gates (advisory only)",
+        f"  project: {project or 'all'}",
+        f"  ok: {report.get('ok')} | status counts: {report.get('status_counts')}",
+        f"  schema version: {report.get('schema_version')}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human)
+
+
+@financial_app.command("no-writeback-proof")
+def financial_no_writeback_proof(
+    project: str | None = typer.Option(None, "--project", help="Optional project key."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 08C financial no-writeback / no-raw attestation proof (read-only).
+
+    Empirically attests advisory-only / no-writeback / no-raw / no-determination / no-float
+    guardrails over the V35 financial tables and the 08C evidence directory. Exit 0 when the
+    proof passes, 3 otherwise.
+    """
+    from hb_assistant.construction.second_brain.financial_no_writeback import (
+        build_financial_no_writeback_proof,
     )
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    SQLiteMigrator().apply()
+    proof = build_financial_no_writeback_proof(project_key=project)
+    checks = {k: v.get("passed") for k, v in proof.get("checks_detail", {}).items()}
+    payload = {
+        "command": "second-brain financial no-writeback-proof",
+        "ok": proof.get("proof_passed"),
+        "phase": "08C",
+        "project_key": project,
+        "advisory_only": True,
+        "proof_passed": proof.get("proof_passed"),
+        "checks": checks,
+        "proof_path": proof.get("proof_path"),
+        "evidence_paths": [proof.get("proof_path"), proof.get("proof_json_path")],
+        "guardrails": _08C_GUARDRAILS,
+        "attestations": _08C_ATTESTATIONS,
+        "note": "deterministic read-only attestation; advisory review aid only — not a determination.",
+    }
+    human = [
+        "Phase 08C financial no-writeback / no-raw proof",
+        f"  project: {project or 'all'}",
+        f"  proof passed: {proof.get('proof_passed')}",
+        f"  checks: {checks}",
+        f"  proof: {proof.get('proof_path')}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3)

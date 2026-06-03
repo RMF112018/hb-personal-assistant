@@ -1,0 +1,90 @@
+{
+  "command": "second-brain financial no-writeback-proof",
+  "ok": true,
+  "proof_passed": true,
+  "phase": "08C",
+  "project_key": null,
+  "generated_utc": "2026-06-03T17:20:58.210036Z",
+  "advisory_only": true,
+  "checks_detail": {
+    "guard_columns": {
+      "passed": true,
+      "tables_checked": [
+        "second_brain_financial_fact_normalization_runs",
+        "second_brain_financial_amount_facts_normalized",
+        "second_brain_financial_currency_completeness_snapshots",
+        "second_brain_financial_wbs_cost_code_snapshots",
+        "second_brain_financial_source_coverage_snapshots",
+        "second_brain_financial_exposure_summary_items",
+        "second_brain_financial_forecast_readiness_runs",
+        "second_brain_financial_review_required_items",
+        "second_brain_financial_readiness_agent_runs",
+        "second_brain_phase_08c_validation_runs"
+      ],
+      "missing_guard_columns": [],
+      "violating_tables": []
+    },
+    "money_not_float": {
+      "passed": true,
+      "real_typed_money_columns": [],
+      "canonical_decimal_text_is_text": true,
+      "minor_units_is_integer": true
+    },
+    "evidence_redaction": {
+      "passed": true,
+      "files_scanned": [
+        "amount-normalization-proof.json",
+        "amount-normalization-rejected-values.json",
+        "currency-completeness-report.json",
+        "exposure-mart-preview.json",
+        "financial-endpoint-inventory-audit.json",
+        "financial-readiness-agent-proof.json",
+        "financial-review-required-proof.json",
+        "financial-source-coverage-matrix.json",
+        "financial-table-inventory-audit.json",
+        "forecast-readiness-proof.json",
+        "wbs-cost-code-coverage-report.json"
+      ],
+      "findings": []
+    },
+    "no_live_no_writeback": {
+      "passed": true,
+      "live_procore_call_performed": false,
+      "external_writeback_performed": false,
+      "note": "read-only local attestation; performs no Procore/Graph call and no external mutation"
+    }
+  },
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_raw_financial_payload": true,
+    "financial_determination_forbidden": true,
+    "money_never_binary_float": true,
+    "advisory_only": true
+  },
+  "attestations": {
+    "financial_determination_performed": false,
+    "payment_decision_performed": false,
+    "claim_or_entitlement_decision_performed": false,
+    "external_writeback_performed": false,
+    "raw_financial_payload_persisted": false,
+    "live_procore_call_performed": false
+  },
+  "stop_conditions_checked": [
+    "raw_financial_payload_persisted",
+    "external_writeback_performed",
+    "financial_determination_performed",
+    "money_stored_as_binary_float",
+    "raw_value_in_evidence",
+    "live_procore_call"
+  ],
+  "evidence_paths": [
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json",
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json",
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-review-required-proof.json"
+  ],
+  "notes": "Deterministic, read-only attestation that Phase 08C financial surfaces keep advisory-only / no-writeback / no-raw / no-determination / no-float guardrails, proven empirically over the V35 financial tables and the 08C evidence directory. Advisory review aid only \u2014 not a determination, approval, claim, entitlement, or forecast.",
+  "proof_json_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-no-writeback-proof.json",
+  "proof_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-no-writeback-proof.md"
+}
