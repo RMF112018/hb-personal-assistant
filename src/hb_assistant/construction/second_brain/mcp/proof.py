@@ -27,6 +27,7 @@ from .registry import load_allowed_tools, load_denied_actions
 EVIDENCE_DIR = "docs/evidence/construction-intelligence-phase-08d-mcp-bridge"
 PROOF_JSON = "mcp-tool-broker-proof.json"
 CONTRACT_PROOF_JSON = "mcp-tool-contract-proof.json"
+DENIED_PROOF_JSON = "mcp-denied-tool-proof.json"
 
 # Fields a tool result must never carry (raw content / determinations).
 _FORBIDDEN_RESULT_FIELDS = (
@@ -218,6 +219,124 @@ def build_mcp_tool_broker_proof(
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
         proof["proof_path"] = str(out_dir / PROOF_JSON)
+
+    return proof
+
+
+def build_mcp_denied_tools_proof(
+    *,
+    evidence_dir: str | None = None,
+    write_evidence: bool = True,
+) -> dict[str, Any]:
+    """Exercise every denied action and attest metadata-only, no-raw-echo denial receipts.
+
+    Runs against a temporary database. Confirms each of the explicit denied actions is
+    denied with a denial receipt that names the action, that a denied token riding in an
+    allowed tool's arguments is denied, and that raw requested content embedded in
+    arguments never lands in any denial-receipt column (only the hash is stored).
+    """
+    from .broker import REASON_ACTION_DENIED, ToolBroker  # noqa: PLC0415
+
+    denied_actions = sorted(load_denied_actions())
+    secret_marker = "RAW-SECRET-9f3a2b-do-not-persist"
+    fake_url = "https://example.com/secret-download"
+
+    action_report: dict[str, Any] = {}
+    all_pass = True
+
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "denied.db")
+        broker = ToolBroker(wrappers={}, db_path=db, persist=True)
+
+        for action in denied_actions:
+            env = broker.dispatch(action, {})
+            ok = bool(
+                env.get("decision") == "denied"
+                and env.get("reason_code") == REASON_ACTION_DENIED
+                and env.get("receipt_id")
+                and env.get("tool") == action
+            )
+            all_pass = all_pass and ok
+            action_report[action] = {
+                "decision": env.get("decision"),
+                "reason_code": env.get("reason_code"),
+                "requested_action": env.get("tool"),
+                "receipt_id_present": bool(env.get("receipt_id")),
+                "pass": ok,
+            }
+
+        # Denied token riding in an allowed tool's arguments → denied, names the token.
+        token_env = broker.dispatch("hb_status", {"mode": "graph_api_call"})
+        token_pass = bool(
+            token_env.get("decision") == "denied"
+            and token_env.get("tool") == "graph_api_call"
+            and token_env.get("reason_code") == REASON_ACTION_DENIED
+        )
+
+        # Raw content embedded in a denied request must never be persisted.
+        broker.dispatch("arbitrary_sql", {"sql": secret_marker, "body": fake_url})
+
+        conn = sqlite3.connect(db)
+        denial_cols = [
+            r[1] for r in conn.execute("PRAGMA table_info(second_brain_mcp_denial_receipts)")
+        ]
+        # Concatenate every text value across all denial rows and scan for the markers.
+        all_text = " ".join(
+            str(v)
+            for row in conn.execute(
+                f"SELECT {', '.join(denial_cols)} FROM second_brain_mcp_denial_receipts"
+            )
+            for v in row
+            if v is not None
+        )
+        no_raw_echo = secret_marker not in all_text and fake_url not in all_text
+        no_raw_columns = not (
+            {"raw_requested_content", "raw_args", "raw_prompt", "raw_response", "raw_sql"}
+            & set(denial_cols)
+        )
+        guards_clean = _guards_all_zero(conn, "second_brain_mcp_denial_receipts")
+        denial_rows = conn.execute(
+            "SELECT COUNT(*) FROM second_brain_mcp_denial_receipts"
+        ).fetchone()[0]
+
+    proof_passed = bool(
+        all_pass and token_pass and no_raw_echo and no_raw_columns and guards_clean
+    )
+    proof: dict[str, Any] = {
+        "proof": "phase_08d_mcp_denied_tools",
+        "phase": "08D",
+        "proof_passed": proof_passed,
+        "denied_action_count": len(denied_actions),
+        "denied_actions": denied_actions,
+        "reason_code": REASON_ACTION_DENIED,
+        "per_action": action_report,
+        "denied_token_in_args": {
+            "decision": token_env.get("decision"),
+            "requested_action": token_env.get("tool"),
+            "pass": token_pass,
+        },
+        "denial_receipts_written": denial_rows,
+        "metadata_only": {
+            "no_raw_requested_content_echoed": no_raw_echo,
+            "denial_table_has_no_raw_columns": no_raw_columns,
+            "all_guard_columns_zero": guards_clean,
+            "request_hash_only": True,
+        },
+        "guardrails": {
+            "deny_first": True,
+            "metadata_only_denial_receipts": True,
+            "no_raw_echo": True,
+        },
+    }
+
+    serialized = json.dumps(proof, indent=2, default=str)
+    _assert_no_raw(serialized, "mcp denied-tools proof")
+
+    if write_evidence:
+        out_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / DENIED_PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
+        proof["proof_path"] = str(out_dir / DENIED_PROOF_JSON)
 
     return proof
 

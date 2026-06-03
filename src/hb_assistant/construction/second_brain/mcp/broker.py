@@ -102,11 +102,15 @@ class ToolBroker:
 
         try:
             # 2. deny first — explicit denied action by name, or a denied token in args.
+            # The denial receipt names the specific denied action (the tool name when the
+            # tool itself is denied, or the matched denied token when it rides in arguments).
             if name in self._denied:
                 return self._deny(name, REASON_ACTION_DENIED, args, correlation_id, client_name)
             denied_token = self._denied_token_in_args(args)
             if denied_token is not None:
-                return self._deny(name, REASON_ACTION_DENIED, args, correlation_id, client_name)
+                return self._deny(
+                    denied_token, REASON_ACTION_DENIED, args, correlation_id, client_name
+                )
 
             # 3. allowed registry.
             spec = self._allowed.get(name)

@@ -1,0 +1,244 @@
+{
+  "proof": "phase_08d_mcp_denied_tools",
+  "phase": "08D",
+  "proof_passed": true,
+  "denied_action_count": 27,
+  "denied_actions": [
+    "arbitrary_sql",
+    "calendar_update",
+    "claim_decision",
+    "download_url_access",
+    "email_send",
+    "entitlement_decision",
+    "external_delivery",
+    "final_financial_determination",
+    "graph_api_call",
+    "payment_decision",
+    "procore_api_call",
+    "push_notification_send",
+    "raw_calendar_payload_access",
+    "raw_document_text_access",
+    "raw_email_body_access",
+    "raw_file_read",
+    "raw_financial_payload_access",
+    "raw_obsidian_read",
+    "raw_procore_payload_access",
+    "raw_prompt_access",
+    "raw_response_access",
+    "raw_sqlite_query",
+    "signed_url_access",
+    "slack_send",
+    "sms_send",
+    "source_system_writeback",
+    "teams_send"
+  ],
+  "reason_code": "action_denied_by_policy",
+  "per_action": {
+    "arbitrary_sql": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "arbitrary_sql",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "calendar_update": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "calendar_update",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "claim_decision": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "claim_decision",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "download_url_access": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "download_url_access",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "email_send": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "email_send",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "entitlement_decision": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "entitlement_decision",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "external_delivery": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "external_delivery",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "final_financial_determination": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "final_financial_determination",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "graph_api_call": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "graph_api_call",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "payment_decision": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "payment_decision",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "procore_api_call": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "procore_api_call",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "push_notification_send": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "push_notification_send",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "raw_calendar_payload_access": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "raw_calendar_payload_access",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "raw_document_text_access": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "raw_document_text_access",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "raw_email_body_access": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "raw_email_body_access",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "raw_file_read": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "raw_file_read",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "raw_financial_payload_access": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "raw_financial_payload_access",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "raw_obsidian_read": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "raw_obsidian_read",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "raw_procore_payload_access": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "raw_procore_payload_access",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "raw_prompt_access": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "raw_prompt_access",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "raw_response_access": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "raw_response_access",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "raw_sqlite_query": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "raw_sqlite_query",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "signed_url_access": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "signed_url_access",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "slack_send": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "slack_send",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "sms_send": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "sms_send",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "source_system_writeback": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "source_system_writeback",
+      "receipt_id_present": true,
+      "pass": true
+    },
+    "teams_send": {
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy",
+      "requested_action": "teams_send",
+      "receipt_id_present": true,
+      "pass": true
+    }
+  },
+  "denied_token_in_args": {
+    "decision": "denied",
+    "requested_action": "graph_api_call",
+    "pass": true
+  },
+  "denial_receipts_written": 29,
+  "metadata_only": {
+    "no_raw_requested_content_echoed": true,
+    "denial_table_has_no_raw_columns": true,
+    "all_guard_columns_zero": true,
+    "request_hash_only": true
+  },
+  "guardrails": {
+    "deny_first": true,
+    "metadata_only_denial_receipts": true,
+    "no_raw_echo": true
+  }
+}
