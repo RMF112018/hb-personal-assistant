@@ -1,0 +1,17 @@
+# Phase 08B Addendum Prompt 01 — automation executor behavior policy.
+# High-level wiring only; full stage/retry/weekend details in sibling seeds.
+# Loaded by new load_phase_08b_automation_executor_policy_seed().
+version: phase_08b_automation_executor_policy_v1
+executor:
+  enabled: true
+  dry_run_default: true
+  apply_requires_explicit_confirm: true
+  max_duration_seconds: 300
+  fail_closed: true
+stage_wiring:
+  requires_run_registry: true
+  requires_retry_receipts: true
+  requires_08b_delivery_receipts: true
+  requires_08b_html_render_receipts: true
+  requires_08b_notification_receipts: true
+  requires_08b_open_receipts: true

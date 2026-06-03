@@ -63,6 +63,12 @@ PHASE_08B_CONTRACT_FILES: dict[str, str] = {
     "agent_receipts_contract": "phase_08b_agent_receipts_contract.json",
     "data_quality_gates_contract": "phase_08b_data_quality_gates.json",
     "automation_policy_contract": "phase_08b_automation_policy_contract.json",
+    # Phase 08B Addendum Prompt 01 — executor policy, stages, safe replay, execution gate, validation matrix (declarative substrate only; executor impl deferred).
+    "automation_executor_contract": "phase_08b_automation_executor_contract.json",
+    "executor_stage_contract": "phase_08b_executor_stage_contract.json",
+    "safe_replay_contract": "phase_08b_safe_replay_contract.json",
+    "automation_execution_gate_contract": "phase_08b_automation_execution_gate_contract.json",
+    "executor_validation_matrix": "phase_08b_executor_validation_matrix.json",
 }
 
 

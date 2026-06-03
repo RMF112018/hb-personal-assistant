@@ -1,0 +1,26 @@
+all imports ok
+5 contracts loaded
+4 seeds loaded
+validate still valid
+{
+  "proof": "phase_08b_automation_executor_policy_contract",
+  "proof_passed": true,
+  "repo_sha": "e2104602d8735cc045119964e3c37fd03e906bd0",
+  "schema_version": 34,
+  "contracts_loaded": [
+    "automation_executor_contract",
+    "executor_stage_contract",
+    "safe_replay_contract",
+    "automation_execution_gate_contract",
+    "executor_validation_matrix"
+  ],
+  "seeds_loaded": 4,
+  "all_versions_prefixed_phase_08b": true,
+  "new_reason_codes_count": 18,
+  "loaders_added": 4,
+  "required_fields_covered": true,
+  "no_schema_change": true,
+  "guardrails": {
+    "automation_execution_still_deferred": true
+  }
+}

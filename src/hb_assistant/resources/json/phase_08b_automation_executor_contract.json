@@ -1,0 +1,19 @@
+{
+  "version": "phase_08b_automation_executor-v1",
+  "purpose": "Declarative substrate for the Phase 08B automation executor (Prompt 01 addendum). Defines executor behavior, stage wiring, dry-run/apply posture, local-only guarantees. The executor implementation and flipping of the automation_execution gate are deferred to later prompts in the addendum. No schema change; additive only.",
+  "required_sections": [
+    "executor",
+    "stage_wiring"
+  ],
+  "guardrails": {
+    "local_first": true,
+    "dry_run_default": true,
+    "apply_requires_explicit_confirm": true,
+    "no_external_delivery": true,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "fail_closed": true,
+    "idempotent_replay_supported": true,
+    "weekend_catchup_respected": true
+  }
+}

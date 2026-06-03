@@ -31,6 +31,8 @@ Remediation context: implementation reached `v1.3.0`, but acceptance is gated on
 
 For the full phased plan and research, see `docs/plans/my-pa-phase-0/`.
 
+- `87-phase-08b-executor-policy-contracts-and-no-schema-rebaseline.md` — Phase 08B Addendum Prompt 01: 5 executor contracts (automation_executor, executor_stage, safe_replay, automation_execution_gate, validation_matrix) + registration in PHASE_08B_CONTRACT_FILES; 4 dedicated policy seeds + high-level sections + reason codes in main 08b automation policy seed/contract + gates contract; 4 load_*_seed fns in automation_policy.py; tests in contracts_and_seed.py; explicit no-schema confirmation (V34/151); proof evidence. Executor impl + gate flip still deferred.
+
 **P07 addition**: Public operator-facing documentation for the local MVP (no code reading required) lives at `docs/operations/mvp-local-runtime-operator-guide.md` + supporting evidence at `docs/evidence/mvp-local-runtime/07-operator-runbook-and-limitations.md` and `06-known-limitations.md`. Covers venv, diagnostics, morning dry-run, launchd management, what gets written vs never, Graph deferred / Prompt 9 readiness, and all operational paths.
 
 **Phase 03 Prompt 01A (Endpoint Reference & Contract Enrichment):** See `docs/evidence/construction-intelligence-phase-03/01A-procore-endpoint-reference-verification.md` + matrix JSON + search result. Modern REST v1.x paths reconciled for core operational/financial endpoints against official developers.procore.com/reference/rest; unverified candidate catalog materialized from the Phase 03 package; new test file + guardrail tests added; all hard GET-only/excluded/deferred/sensitive-review rules preserved. Minimal pointer only (surgical).

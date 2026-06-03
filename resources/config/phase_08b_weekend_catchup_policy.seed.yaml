@@ -1,0 +1,12 @@
+# Phase 08B Addendum Prompt 01 — weekend + catch-up policy for executor.
+version: phase_08b_weekend_catchup_policy_v1
+weekend_behavior: skip          # skip | run
+weekend_reason_code: WEEKEND_GATE_SKIPPED
+first_run_after_wake:
+  enabled: true
+  stale_after_days: 3
+  needed_reason_code: CATCH_UP_NEEDED
+  not_needed_reason_code: CATCH_UP_NOT_NEEDED
+  stale_reason_code: CATCH_UP_STALE
+catch_up:
+  enabled: true

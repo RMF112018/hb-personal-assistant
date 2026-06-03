@@ -1,0 +1,30 @@
+{
+  "version": "phase_08b_safe_replay-v1",
+  "purpose": "Rules for safe replay / idempotent execution of the Phase 08B automation executor. Uses run registry status, lock state, delivery/HTML receipts, and content hashes to decide replay-allowed vs. blocked (never duplicate side effects). Declarative only; enforcement in executor impl (deferred).",
+  "replay_safety_checks": [
+    "run_not_in_progress",
+    "lock_not_held_or_stale_reclaimable",
+    "brief_not_already_delivered_for_date",
+    "html_not_already_rendered_for_date",
+    "content_hash_matches_for_idempotency",
+    "no_inflight_agent_run_for_kind"
+  ],
+  "idempotency_keys": [
+    "brief_date",
+    "content_hash",
+    "run_kind",
+    "last_good_run_id"
+  ],
+  "blocked_reasons": [
+    "SAFE_REPLAY_BLOCKED_BY_LOCK",
+    "SAFE_REPLAY_BLOCKED_BY_RUN_STATUS",
+    "SAFE_REPLAY_BLOCKED_BY_DELIVERY",
+    "SAFE_REPLAY_IDEMPOTENT_SKIP"
+  ],
+  "guardrails": {
+    "replay_never_mutates_external": true,
+    "hash_used_for_skip_not_replay": true,
+    "lock_atomicity_enforced": true,
+    "receipts_are_source_of_truth": true
+  }
+}

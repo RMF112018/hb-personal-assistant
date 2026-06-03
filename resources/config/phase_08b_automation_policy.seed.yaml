@@ -172,6 +172,23 @@ run_registry:
   registered_reason_code: RUN_REGISTERED
   step_recorded_reason_code: RUN_STEP_RECORDED
 
+# Phase 08B Addendum Prompt 01 — executor policy, stage registry, retry/backoff, weekend/catch-up
+# (high-level wiring + policy versions; full details live in the dedicated phase_08b_*_executor*.seed.yaml
+# files created in Prompt 01. These sections + new reason codes are additive; the base required_sections
+# in the automation policy contract and validate remain unchanged).
+automation_executor:
+  enabled: true
+  policy_version: phase_08b_automation_executor_policy_v1
+  stage_registry_version: phase_08b_executor_stage_registry_v1
+  retry_backoff_version: phase_08b_retry_backoff_policy_v1
+  weekend_catchup_version: phase_08b_weekend_catchup_policy_v1
+  dry_run_default: true
+  apply_requires_explicit_confirm: true
+
+executor_stage_registry:
+  enabled: true
+  # See dedicated seed for the full stages map + execution_order.
+
 reason_codes:
   - HEALTH_CHECK_FAILED
   - RETRY_EXHAUSTED
@@ -250,3 +267,23 @@ reason_codes:
   - STATUS_DELIVERED
   - STATUS_PARTIAL
   - STATUS_COMPLETE
+  # Prompt 01 addendum executor / stage / replay / weekend executor codes (union vocab; also appended to
+  # automation_policy_contract + data_quality_gates contracts; asserted via new tests in contracts_and_seed).
+  - EXECUTOR_STARTED
+  - EXECUTOR_SUCCEEDED
+  - EXECUTOR_FAILED
+  - EXECUTOR_DRY_RUN
+  - EXECUTOR_APPLY
+  - STAGE_PREFLIGHT_PASSED
+  - STAGE_HEALTH_PASSED
+  - STAGE_WEEKEND_SKIPPED
+  - STAGE_CATCH_UP_DONE
+  - STAGE_LOCK_ACQUIRED
+  - STAGE_RUN_REGISTERED
+  - STAGE_CORE_COMPLETE
+  - STAGE_DELIVERED
+  - STAGE_HTML_RENDERED
+  - STAGE_NOTIFY_EMITTED
+  - STAGE_REPLAY_SAFE
+  - STAGE_REPLAY_BLOCKED
+  - EXECUTOR_COMPLETE

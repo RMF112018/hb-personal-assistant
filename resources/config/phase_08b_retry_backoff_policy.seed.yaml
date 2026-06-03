@@ -1,0 +1,8 @@
+# Phase 08B Addendum Prompt 01 — retry/backoff policy for executor.
+version: phase_08b_retry_backoff_policy_v1
+retry:
+  max_attempts: 3
+  backoff_seconds: [60, 300, 900]
+  exhausted_reason_code: RETRY_EXHAUSTED
+  scheduled_reason_code: RETRY_SCHEDULED
+  succeeded_reason_code: RETRY_SUCCEEDED

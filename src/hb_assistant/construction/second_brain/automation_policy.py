@@ -22,6 +22,20 @@ from .contracts import load_phase_08b_contract
 _SEED_RELATIVE = Path("resources") / "config" / "phase_08b_automation_policy.seed.yaml"
 AUTOMATION_POLICY_SEED_ENV_VAR = "HB_SECOND_BRAIN_08B_AUTOMATION_POLICY"
 
+# Prompt 01 addendum — dedicated executor policy seeds (details for the deferred automation executor;
+# high-level refs live in the main automation policy seed; reason codes are in the shared vocab).
+_EXECUTOR_POLICY_RELATIVE = Path("resources") / "config" / "phase_08b_automation_executor_policy.seed.yaml"
+EXECUTOR_POLICY_SEED_ENV_VAR = "HB_SECOND_BRAIN_08B_EXECUTOR_POLICY"
+
+_STAGE_REGISTRY_RELATIVE = Path("resources") / "config" / "phase_08b_executor_stage_registry.seed.yaml"
+STAGE_REGISTRY_SEED_ENV_VAR = "HB_SECOND_BRAIN_08B_STAGE_REGISTRY"
+
+_RETRY_BACKOFF_RELATIVE = Path("resources") / "config" / "phase_08b_retry_backoff_policy.seed.yaml"
+RETRY_BACKOFF_SEED_ENV_VAR = "HB_SECOND_BRAIN_08B_RETRY_BACKOFF"
+
+_WEEKEND_CATCHUP_RELATIVE = Path("resources") / "config" / "phase_08b_weekend_catchup_policy.seed.yaml"
+WEEKEND_CATCHUP_SEED_ENV_VAR = "HB_SECOND_BRAIN_08B_WEEKEND_CATCHUP"
+
 
 class AutomationPolicyError(RuntimeError):
     """Raised when the Phase 08B automation policy seed cannot be loaded."""
@@ -39,6 +53,37 @@ def load_phase_08b_automation_policy_seed() -> dict[str, Any]:
     if not isinstance(data, dict):
         raise AutomationPolicyError(f"{candidate} must contain a mapping at top level")
     return data
+
+
+def _load_yaml(relative: Path, env_var: str) -> dict[str, Any]:
+    """Internal loader (duplicated pattern for the 4 Prompt-01 executor seeds; keeps changes minimal)."""
+    candidate = PathPolicy().resolve_repo_root() / relative
+    env_value = os.environ.get(env_var)
+    if env_value:
+        candidate = Path(env_value).expanduser()
+    if not candidate.exists():
+        raise AutomationPolicyError(f"seed not found at {candidate}")
+    with candidate.open("r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    if not isinstance(data, dict):
+        raise AutomationPolicyError(f"{candidate} must contain a mapping at top level")
+    return data
+
+
+def load_phase_08b_automation_executor_policy_seed() -> dict[str, Any]:
+    return _load_yaml(_EXECUTOR_POLICY_RELATIVE, EXECUTOR_POLICY_SEED_ENV_VAR)
+
+
+def load_phase_08b_executor_stage_registry_seed() -> dict[str, Any]:
+    return _load_yaml(_STAGE_REGISTRY_RELATIVE, STAGE_REGISTRY_SEED_ENV_VAR)
+
+
+def load_phase_08b_retry_backoff_policy_seed() -> dict[str, Any]:
+    return _load_yaml(_RETRY_BACKOFF_RELATIVE, RETRY_BACKOFF_SEED_ENV_VAR)
+
+
+def load_phase_08b_weekend_catchup_policy_seed() -> dict[str, Any]:
+    return _load_yaml(_WEEKEND_CATCHUP_RELATIVE, WEEKEND_CATCHUP_SEED_ENV_VAR)
 
 
 def validate_phase_08b_automation_policy() -> dict[str, Any]:

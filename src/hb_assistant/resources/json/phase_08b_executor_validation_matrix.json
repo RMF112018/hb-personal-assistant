@@ -1,0 +1,24 @@
+{
+  "version": "phase_08b_executor_validation_matrix-v1",
+  "phase": "08B-Addendum-Prompt-01",
+  "evidence_root": "docs/evidence/construction-intelligence-phase-08b-automation-hardening",
+  "commands": [
+    "python -m compileall src tests",
+    "ruff check .",
+    "mypy src",
+    "pytest -m \"not live and not integration and not manual\" -k \"08b or executor or automation_policy or contracts_and_seed\"",
+    "hb-assistant construction-agent validate --json",
+    "hb-assistant second-brain data-quality phase-08b-gates --json",
+    "hb-assistant second-brain data-quality no-writeback-proof --json",
+    "python -c \"from hb_assistant.construction.second_brain.contracts import load_phase_08b_contract, load_all_phase_08b_contracts; from hb_assistant.construction.second_brain.automation_policy import load_phase_08b_automation_executor_policy_seed, load_phase_08b_executor_stage_registry_seed, load_phase_08b_retry_backoff_policy_seed, load_phase_08b_weekend_catchup_policy_seed; print('loads ok'); cs=load_all_phase_08b_contracts(); [load_phase_08b_contract(n) for n in ['automation_executor_contract','executor_stage_contract','safe_replay_contract','automation_execution_gate_contract','executor_validation_matrix']]; print('all 5 contracts + 4 seeds loaded')\""
+  ],
+  "stop_on": [
+    "unsafe_persistence",
+    "external_writeback",
+    "readiness_overstatement",
+    "missing_evidence_refs",
+    "unclassified_validation_failure",
+    "contract_load_failure",
+    "seed_contract_mismatch"
+  ]
+}

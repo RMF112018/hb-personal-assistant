@@ -1,0 +1,24 @@
+{
+  "version": "phase_08b_automation_execution_gate-v1",
+  "purpose": "Shape and expectations for the automation_execution gate proof (still deferred_not_blocking until executor is implemented and proven). Lists the proof fields the eventual executor must satisfy for the gate to flip to pass. Separate from the data_quality_gates_contract (which continues to list automation_execution as the sole deferred surface).",
+  "required_proof_fields": [
+    "executor_policy_loaded",
+    "all_stages_declared_in_registry",
+    "safe_replay_contract_satisfied",
+    "retry_backoff_policy_present",
+    "weekend_catchup_policy_present",
+    "reason_codes_covered_in_shared_vocab",
+    "dry_run_default_enforced",
+    "no_external_delivery_or_writeback",
+    "lock_and_registry_used_for_overlap",
+    "receipts_emitted_for_all_stages"
+  ],
+  "gate_status_when_complete": "pass",
+  "expected_while_deferred": "deferred_not_blocking",
+  "deferred_reason": "HEALTH_RETRY_WEEKEND_ALERTING_EXECUTION_DEFERRED",
+  "guardrails": {
+    "no_readiness_overstatement": true,
+    "deferred_until_real_impl": true,
+    "proof_must_cover_all_stages": true
+  }
+}

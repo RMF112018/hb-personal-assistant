@@ -1,0 +1,93 @@
+{
+  "version": "phase_08b_executor_stage-v1",
+  "purpose": "Canonical registry of executor stages and their ordering/dependencies for the Phase 08B automation executor. Stages are declarative; the actual stage runner + wiring is deferred. Safe replay and lock registry are prerequisites for all mutating stages.",
+  "stages": {
+    "preflight": {
+      "enabled": true,
+      "required": true,
+      "produces": "agent_run_receipt",
+      "depends_on": []
+    },
+    "health_check": {
+      "enabled": true,
+      "required": true,
+      "produces": "agent_run_receipt",
+      "depends_on": ["preflight"]
+    },
+    "weekend_gate": {
+      "enabled": true,
+      "required": false,
+      "behavior": "skip|run",
+      "reason_code_ref": "STAGE_WEEKEND_SKIPPED",
+      "depends_on": ["health_check"]
+    },
+    "catch_up": {
+      "enabled": true,
+      "required": false,
+      "depends_on": ["weekend_gate"]
+    },
+    "acquire_lock": {
+      "enabled": true,
+      "required": true,
+      "produces": "lock_acquired",
+      "depends_on": ["catch_up"]
+    },
+    "register_run": {
+      "enabled": true,
+      "required": true,
+      "produces": "run_registry_entry",
+      "depends_on": ["acquire_lock"]
+    },
+    "core_08a": {
+      "enabled": true,
+      "required": true,
+      "invokes": "daily-brief generate --mode apply --emit-receipt",
+      "depends_on": ["register_run"]
+    },
+    "deliver": {
+      "enabled": true,
+      "required": false,
+      "depends_on": ["core_08a"]
+    },
+    "render_html": {
+      "enabled": true,
+      "required": false,
+      "depends_on": ["core_08a"]
+    },
+    "notify": {
+      "enabled": true,
+      "required": false,
+      "fail_closed_by": "daily_brief_notification.emit",
+      "depends_on": ["deliver"]
+    },
+    "record_receipts": {
+      "enabled": true,
+      "required": true,
+      "depends_on": ["deliver", "render_html", "notify"]
+    },
+    "release_lock": {
+      "enabled": true,
+      "required": true,
+      "depends_on": ["record_receipts"]
+    }
+  },
+  "execution_order": [
+    "preflight",
+    "health_check",
+    "weekend_gate",
+    "catch_up",
+    "acquire_lock",
+    "register_run",
+    "core_08a",
+    "deliver",
+    "render_html",
+    "notify",
+    "record_receipts",
+    "release_lock"
+  ],
+  "guardrails": {
+    "lock_required_for_mutating_stages": true,
+    "idempotent_after_release": true,
+    "no_external_side_effects_in_preflight": true
+  }
+}

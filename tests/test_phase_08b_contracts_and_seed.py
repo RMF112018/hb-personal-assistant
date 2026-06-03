@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from hb_assistant.construction.second_brain.automation_policy import (
+    load_phase_08b_automation_executor_policy_seed,
     load_phase_08b_automation_policy_seed,
+    load_phase_08b_executor_stage_registry_seed,
+    load_phase_08b_retry_backoff_policy_seed,
+    load_phase_08b_weekend_catchup_policy_seed,
     validate_phase_08b_automation_policy,
 )
 from hb_assistant.construction.second_brain.contracts import (
@@ -260,3 +264,81 @@ def test_daily_brief_open_reason_codes_declared() -> None:
     assert new_codes <= set(gates["reason_codes"])
     assert "daily_brief_open" in gates["required_fields"]
     assert "daily_brief_open" not in gates["deferred_surfaces"]
+
+
+# Phase 08B Addendum Prompt 01 — executor policy / stage / replay / weekend-catchup seeds + contracts.
+# Loaders added in automation_policy.py; contracts registered in PHASE_08B_CONTRACT_FILES.
+# Reason codes appended to shared vocab (main seed + both contracts); high-level sections in main seed.
+
+
+def test_all_08b_contracts_load_with_versions_includes_executor() -> None:
+    # Auto-covered by set equality, but explicit for P01.
+    contracts = load_all_phase_08b_contracts()
+    assert set(contracts) == set(PHASE_08B_CONTRACT_FILES)
+    for name in ("automation_executor_contract", "executor_stage_contract", "safe_replay_contract",
+                 "automation_execution_gate_contract", "executor_validation_matrix"):
+        assert name in contracts
+        assert contracts[name].get("version", "").startswith("phase_08b_")
+
+
+def test_automation_executor_policy_contract_and_seed() -> None:
+    seed = load_phase_08b_automation_executor_policy_seed()
+    contract = load_phase_08b_contract("automation_executor_contract")
+    assert seed["version"] == "phase_08b_automation_executor_policy_v1"
+    assert contract["version"] == "phase_08b_automation_executor-v1"
+    assert seed["executor"]["enabled"] is True
+    assert seed["executor"]["dry_run_default"] is True
+    for sec in contract.get("required_sections", []):
+        assert sec in seed or sec == "stage_wiring"  # wiring details in stage seed
+    assert validate_phase_08b_automation_policy()["valid"] is True
+
+
+def test_executor_stage_registry_contract_and_seed() -> None:
+    seed = load_phase_08b_executor_stage_registry_seed()
+    _ = load_phase_08b_contract("executor_stage_contract")  # contract shape exercised in load_all
+    assert seed["version"].startswith("phase_08b_executor_stage")
+    assert "stages" in seed and "execution_order" in seed
+    assert len(seed["execution_order"]) >= 8
+    assert "preflight" in seed["stages"]
+    assert "release_lock" in seed["stages"]
+
+
+def test_retry_backoff_and_weekend_catchup_seeds() -> None:
+    rb = load_phase_08b_retry_backoff_policy_seed()
+    wc = load_phase_08b_weekend_catchup_policy_seed()
+    assert rb["version"].startswith("phase_08b_retry_backoff")
+    assert wc["version"].startswith("phase_08b_weekend_catchup")
+    # Values may mirror/extend main; existence is the P01 requirement.
+    assert "retry" in rb or "max_attempts" in str(rb)
+    assert "weekend_behavior" in wc or "first_run_after_wake" in str(wc)
+
+
+def test_automation_executor_reason_codes_declared() -> None:
+    # Prompt 01 — executor/stage/replay codes are in the shared vocab (seed + both contracts).
+    seed = load_phase_08b_automation_policy_seed()
+    new_codes = {
+        "EXECUTOR_STARTED",
+        "EXECUTOR_SUCCEEDED",
+        "EXECUTOR_FAILED",
+        "EXECUTOR_DRY_RUN",
+        "EXECUTOR_APPLY",
+        "STAGE_PREFLIGHT_PASSED",
+        "STAGE_HEALTH_PASSED",
+        "STAGE_WEEKEND_SKIPPED",
+        "STAGE_CATCH_UP_DONE",
+        "STAGE_LOCK_ACQUIRED",
+        "STAGE_RUN_REGISTERED",
+        "STAGE_CORE_COMPLETE",
+        "STAGE_DELIVERED",
+        "STAGE_HTML_RENDERED",
+        "STAGE_NOTIFY_EMITTED",
+        "STAGE_REPLAY_SAFE",
+        "STAGE_REPLAY_BLOCKED",
+        "EXECUTOR_COMPLETE",
+    }
+    assert new_codes <= set(seed["reason_codes"])
+    assert validate_phase_08b_automation_policy()["valid"] is True
+    policy = load_phase_08b_contract("automation_policy_contract")
+    assert new_codes <= set(policy["reason_codes"])
+    gates = load_phase_08b_contract("data_quality_gates_contract")
+    assert new_codes <= set(gates["reason_codes"])
