@@ -627,6 +627,56 @@ def build_source_coverage_snapshot(
     return {"run_id": run_id, "families": families}
 
 
+# Deterministic fallback routing maps. The review policy seed
+# (phase_08c_review_required_financial_policy.seed.yaml) is authoritative when it
+# carries tier_by_trigger / confidence_by_trigger; these keep hermetic/fallback
+# runs deterministic. confidence_label is the advisory quality of the routing
+# signal — NOT certainty of any financial outcome.
+_DEFAULT_TIER_BY_TRIGGER: dict[str, str] = {
+    "amount_parse_ambiguous_or_rejected": "operator_review",
+    "missing_source_field_path": "operator_review",
+    "missing_wbs_cost_code_or_line_item_type": "operator_review",
+    "missing_or_inconsistent_currency": "financial_review",
+    "relationship_ambiguity": "financial_review",
+    "fail_closed_required_source": "financial_review",
+    "determination_attempt": "legal_contract_review",
+}
+_DEFAULT_CONFIDENCE_BY_TRIGGER: dict[str, str] = {
+    "amount_parse_ambiguous_or_rejected": "low",
+    "relationship_ambiguity": "low",
+    "missing_source_field_path": "medium",
+    "missing_wbs_cost_code_or_line_item_type": "medium",
+    "missing_or_inconsistent_currency": "medium",
+    "fail_closed_required_source": "high",
+    "determination_attempt": "high",
+}
+
+
+def resolve_tier_and_confidence(
+    trigger_category: str, policy: dict | None = None
+) -> tuple[str, str]:
+    """Deterministically resolve ``(review_tier, confidence_label)`` for a trigger.
+
+    Policy seed maps are authoritative when present; falls back to the module
+    defaults otherwise. The resolved tier is validated against the policy
+    ``review_tiers`` vocabulary when that list is available (membership
+    enforcement).
+    """
+    policy = policy or {}
+    tier_map = policy.get("tier_by_trigger") or _DEFAULT_TIER_BY_TRIGGER
+    conf_map = policy.get("confidence_by_trigger") or _DEFAULT_CONFIDENCE_BY_TRIGGER
+    tier = tier_map.get(
+        trigger_category, _DEFAULT_TIER_BY_TRIGGER.get(trigger_category, "operator_review")
+    )
+    confidence = conf_map.get(
+        trigger_category, _DEFAULT_CONFIDENCE_BY_TRIGGER.get(trigger_category, "medium")
+    )
+    tiers = policy.get("review_tiers")
+    if tiers and tier not in tiers:
+        tier = "operator_review" if "operator_review" in tiers else tiers[-1]
+    return tier, confidence
+
+
 def route_to_review(
     *,
     conn: Any | None = None,
@@ -635,26 +685,35 @@ def route_to_review(
     trigger_category: str,
     source_ref: str | None = None,
     amount_ref: str | None = None,
+    confidence_label: str | None = None,
     policy: dict | None = None,
 ) -> None:
     if conn is None:
         conn = _get_conn()
     if policy is None:
         policy = _load_policy(REVIEW_POLICY_PATH)
-    tier = "operator_review"
-    tiers = policy.get("review_tiers", [])
-    if "financial_review" in tiers and "currency" in trigger_category:
-        tier = "financial_review"
+    tier, default_conf = resolve_tier_and_confidence(trigger_category, policy)
+    if confidence_label is None:
+        confidence_label = default_conf
     with transaction(conn):
         conn.execute(
             """
             INSERT INTO second_brain_financial_review_required_items
             (run_id, project_key, trigger_category, source_ref, amount_ref, review_tier,
+             confidence_label,
              advisory_only, raw_financial_source_payload_persisted, financial_determination_performed,
              payment_decision_performed, claim_or_entitlement_decision_performed)
-            VALUES (?, ?, ?, ?, ?, ?, 1, 0, 0, 0, 0)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, 0, 0, 0)
             """,
-            (run_id, project_key, trigger_category, source_ref, amount_ref, tier),
+            (
+                run_id,
+                project_key,
+                trigger_category,
+                source_ref,
+                amount_ref,
+                tier,
+                confidence_label,
+            ),
         )
 
 

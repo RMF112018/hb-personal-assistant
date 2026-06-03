@@ -18,3 +18,23 @@ triggers:
   - relationship_ambiguity
   - fail_closed_required_source
   - determination_attempt
+# Deterministic, policy-driven routing maps. Each trigger resolves to exactly one
+# review tier and one confidence label (advisory quality of the routing signal,
+# not certainty of any financial outcome). Routing enforces tier membership in
+# review_tiers and trigger membership in triggers above.
+tier_by_trigger:
+  amount_parse_ambiguous_or_rejected: operator_review
+  missing_source_field_path: operator_review
+  missing_wbs_cost_code_or_line_item_type: operator_review
+  missing_or_inconsistent_currency: financial_review
+  relationship_ambiguity: financial_review
+  fail_closed_required_source: financial_review
+  determination_attempt: legal_contract_review
+confidence_by_trigger:
+  amount_parse_ambiguous_or_rejected: low
+  relationship_ambiguity: low
+  missing_source_field_path: medium
+  missing_wbs_cost_code_or_line_item_type: medium
+  missing_or_inconsistent_currency: medium
+  fail_closed_required_source: high
+  determination_attempt: high

@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 35
+LATEST_SCHEMA_VERSION = 36
 
 
 class SQLiteMigrator:
@@ -3975,6 +3975,16 @@ class SQLiteMigrator:
         """,
     ]
 
+    # v36 Phase 08C — review-required routing: persist a confidence label on each
+    # routed review item (additive column only; V1-V35 tables otherwise untouched).
+    # The existing trigger_category is the reason code, source_ref/amount_ref are
+    # the (metadata-only) source references, review_tier is the tier, and the 14
+    # guard columns are already present on the table.
+    V36_STATEMENTS: list[str] = [
+        "ALTER TABLE second_brain_financial_review_required_items "
+        "ADD COLUMN confidence_label TEXT;",
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -4421,6 +4431,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (35, 'v35_phase_08c_financial_fact_normalization_and_readiness', ?)",
+                    (now,),
+                )
+
+            # v36 Phase 08C — review-required routing confidence label (additive
+            # column on second_brain_financial_review_required_items). ALTER ADD
+            # COLUMN is not idempotent, so it is gated on the migration row.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 36")
+            if cur.fetchone() is None:
+                for stmt in self.V36_STATEMENTS:
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (36, 'v36_phase_08c_review_required_confidence_label', ?)",
                     (now,),
                 )
 

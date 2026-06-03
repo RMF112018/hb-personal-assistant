@@ -2498,17 +2498,39 @@ def financial_exposure_summary(
 
 @financial_app.command("review-items")
 def financial_review_items(
-    project: str | None = typer.Option(None, "--project"),
+    project: str | None = typer.Option(None, "--project", help="Optional project key."),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
-    """Review required financial items (from V35)."""
+    """Route review-required financial signals and emit the routing proof (V35/V36).
+
+    Deterministic, advisory, read-only externally: writes review items to the local
+    SQLite store and the evidence proof only (no external writeback, no determinations).
+    """
+    from hb_assistant.construction.second_brain.financial_review_routing import (
+        build_financial_review_required_proof,
+    )
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    SQLiteMigrator().apply()
+    proof = build_financial_review_required_proof(project_key=project)
     payload = {
         "command": "second-brain financial review-items",
         "ok": True,
         "phase": "08C",
         "project_key": project,
         "advisory_only": True,
+        "run_id": proof.get("run_id"),
+        "proof_path": proof.get("proof_path"),
+        "summary": {
+            "items_evaluated": proof.get("items_evaluated"),
+            "review_required_count": proof.get("review_required_count"),
+            "by_trigger": proof.get("by_trigger"),
+            "by_tier": proof.get("by_tier"),
+            "by_confidence": proof.get("by_confidence"),
+        },
         "guardrails": _08C_GUARDRAILS,
+        "note": "deterministic review-required routing of the 7 financial signal categories; "
+        "advisory review aids only — no determinations, approvals, claims, entitlements, or forecasts.",
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
 

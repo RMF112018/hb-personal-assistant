@@ -1,0 +1,138 @@
+{
+  "generated_utc": "2026-06-03T17:01:14.860777Z",
+  "repo_head": "phase-08c review-required routing",
+  "schema_version": 36,
+  "run_id": "08c-review-31b7b8a8",
+  "project_key": null,
+  "policy": {
+    "review_tiers": [
+      "none",
+      "operator_review",
+      "financial_review",
+      "executive_review",
+      "legal_contract_review"
+    ],
+    "triggers": [
+      "amount_parse_ambiguous_or_rejected",
+      "missing_or_inconsistent_currency",
+      "missing_wbs_cost_code_or_line_item_type",
+      "missing_source_field_path",
+      "relationship_ambiguity",
+      "fail_closed_required_source",
+      "determination_attempt"
+    ],
+    "tier_by_trigger": {
+      "amount_parse_ambiguous_or_rejected": "operator_review",
+      "missing_source_field_path": "operator_review",
+      "missing_wbs_cost_code_or_line_item_type": "operator_review",
+      "missing_or_inconsistent_currency": "financial_review",
+      "relationship_ambiguity": "financial_review",
+      "fail_closed_required_source": "financial_review",
+      "determination_attempt": "legal_contract_review"
+    },
+    "confidence_by_trigger": {
+      "amount_parse_ambiguous_or_rejected": "low",
+      "relationship_ambiguity": "low",
+      "missing_source_field_path": "medium",
+      "missing_wbs_cost_code_or_line_item_type": "medium",
+      "missing_or_inconsistent_currency": "medium",
+      "fail_closed_required_source": "high",
+      "determination_attempt": "high"
+    }
+  },
+  "items_evaluated": 1281,
+  "review_required_count": 641,
+  "by_trigger": {
+    "missing_wbs_cost_code_or_line_item_type": 641
+  },
+  "by_tier": {
+    "operator_review": 641
+  },
+  "by_confidence": {
+    "medium": 641
+  },
+  "detail": [
+    {
+      "trigger_category": "missing_wbs_cost_code_or_line_item_type",
+      "review_tier": "operator_review",
+      "confidence_label": "medium",
+      "count": 641
+    }
+  ],
+  "samples": [
+    {
+      "trigger_category": "missing_wbs_cost_code_or_line_item_type",
+      "source_ref": "procore_financial_line_items:1",
+      "amount_ref": null
+    },
+    {
+      "trigger_category": "missing_wbs_cost_code_or_line_item_type",
+      "source_ref": "procore_financial_line_items:2",
+      "amount_ref": null
+    },
+    {
+      "trigger_category": "missing_wbs_cost_code_or_line_item_type",
+      "source_ref": "procore_financial_line_items:3",
+      "amount_ref": null
+    },
+    {
+      "trigger_category": "missing_wbs_cost_code_or_line_item_type",
+      "source_ref": "procore_financial_line_items:4",
+      "amount_ref": null
+    },
+    {
+      "trigger_category": "missing_wbs_cost_code_or_line_item_type",
+      "source_ref": "procore_financial_line_items:5",
+      "amount_ref": null
+    },
+    {
+      "trigger_category": "missing_wbs_cost_code_or_line_item_type",
+      "source_ref": "procore_financial_line_items:6",
+      "amount_ref": null
+    },
+    {
+      "trigger_category": "missing_wbs_cost_code_or_line_item_type",
+      "source_ref": "procore_financial_line_items:7",
+      "amount_ref": null
+    },
+    {
+      "trigger_category": "missing_wbs_cost_code_or_line_item_type",
+      "source_ref": "procore_financial_line_items:8",
+      "amount_ref": null
+    },
+    {
+      "trigger_category": "missing_wbs_cost_code_or_line_item_type",
+      "source_ref": "procore_financial_line_items:9",
+      "amount_ref": null
+    },
+    {
+      "trigger_category": "missing_wbs_cost_code_or_line_item_type",
+      "source_ref": "procore_financial_line_items:10",
+      "amount_ref": null
+    }
+  ],
+  "advisory_only": true,
+  "guardrails": {
+    "local_first": true,
+    "read_only_external": true,
+    "no_external_writeback": true,
+    "no_raw_financial_payload": true,
+    "financial_determination_forbidden": true,
+    "payment_decision_forbidden": true,
+    "claim_or_entitlement_decision_forbidden": true,
+    "advisory_only": true,
+    "model_use": "absent"
+  },
+  "stop_checks": {
+    "raw_payloads_or_full_source_values_written": false,
+    "financial_determination_performed": false,
+    "model_required": false
+  },
+  "proof_json_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-review-required-proof.json",
+  "proof_md_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-review-required-proof.md",
+  "sibling_artifacts": [
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json",
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json"
+  ],
+  "notes": "Deterministic routing of the seven review-required financial signal categories from V35 normalized facts + coverage snapshots + procore_financial_* source tables. trigger_category is the reason code; source_ref/amount_ref are metadata references only (no amounts, URLs, tokens, bodies, or payloads). confidence_label is the advisory quality of the routing signal, not certainty of any financial outcome. All outputs are advisory review aids only \u2014 not determinations, approvals, claims, entitlements, or forecasts. Source preserved in procore_financial_* tables."
+}
