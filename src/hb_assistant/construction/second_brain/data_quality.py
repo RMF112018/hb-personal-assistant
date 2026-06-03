@@ -8,8 +8,8 @@ memory provenance, daily-brief handoff) into one conformance report. Mirrors the
 
 Readiness is never overstated: offline/mock synthesis is reported as a ``warning`` (runtime
 is ready, but live synthesis is not), and unimplemented surfaces (MCP exposure, V27 model-
-call/agent-run receipt persistence, Phase 08B automation hardening) are ``deferred_not_blocking``
-— never ``pass``. Persists nothing; no external systems are touched.
+call/agent-run receipt persistence) are ``deferred_not_blocking`` — never ``pass``.
+(Phase 08B automation hardening surfaces are proven pass post P08 executor work.) Persists nothing; no external systems are touched.
 """
 
 from __future__ import annotations
@@ -343,8 +343,8 @@ def _receipt_gate(name: str, conn: Any, table: str) -> dict[str, Any]:
 def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict[str, Any]:
     """Evaluate the Phase 08B substrate readiness gate set. Read-only; persists nothing.
 
-    Mirrors the 08A gate report shape + status vocabulary. Readiness is never overstated:
-    surfaces whose execution is owned by a later 08B prompt are ``deferred_not_blocking``.
+    Mirrors the 08A gate report shape + status vocabulary. Readiness is never overstated.
+    All 08B automation execution surfaces are proven pass (P08); other future items (e.g. 08D) remain deferred.
     """
     generated = datetime.now(timezone.utc).isoformat()
     try:

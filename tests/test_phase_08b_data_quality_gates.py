@@ -29,7 +29,7 @@ def test_report_covers_all_contract_gates() -> None:
 def test_statuses_pass_and_defer_no_fail() -> None:
     counts = evaluate_phase_08b_data_quality_gates()["status_counts"]
     assert counts["pass"] >= 1
-    assert counts["deferred_not_blocking"] >= 1
+    assert counts["deferred_not_blocking"] == 0
     assert counts["fail_blocking"] == 0
 
 
@@ -37,8 +37,8 @@ def test_no_readiness_overstatement() -> None:
     report = evaluate_phase_08b_data_quality_gates()
     assert report["readiness_overstated"] is False
     by = report["by_field_status"]
-    # The automation execution layer (retry/backoff/weekend) is owned by a later prompt -> deferred.
-    assert by["automation_execution"] == "deferred_not_blocking"
+    # The automation execution (P02-P08 consolidated) is now proven pass via build_automation_execution_proof (P08 gate flip).
+    assert by["automation_execution"] == "pass"
     # Substrate surfaces this prompt ships are pass.
     assert by["agent_run_receipt_persistence"] == "pass"
     assert by["agent_model_receipt_persistence"] == "pass"
@@ -67,10 +67,10 @@ def test_no_readiness_overstatement() -> None:
 def test_gates_carry_structured_reason_codes() -> None:
     gates = {g["gate_name"]: g for g in evaluate_phase_08b_data_quality_gates()["gates"]}
     assert gates["agent_run_receipt_persistence"]["reason"] == "RECEIPT_PERSISTENCE_OK"
-    assert (
-        gates["automation_execution"]["reason"]
-        == "HEALTH_RETRY_WEEKEND_ALERTING_EXECUTION_DEFERRED"
-    )
+    # automation_execution is proof-backed pass (P08); _proof_gate sets no reason (or proofs_passed extra)
+    auto = gates["automation_execution"]
+    assert auto["gate_status"] == "pass"
+    assert auto.get("proofs_passed") == 1
     # launchd_install is now an implemented proof-gate (pass), not a deferred surface.
     assert gates["launchd_install"]["gate_status"] == "pass"
 

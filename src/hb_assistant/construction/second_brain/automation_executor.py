@@ -23,7 +23,7 @@ job_health_update, closeout.
 
 Additive; local-first; dry-run default; no external writeback/delivery/raw;
 artifacts (locks etc.) outside repo; fail-closed; reason codes from P01 seeds/contracts;
-no schema change; automation_execution gate remains deferred_not_blocking.
+no schema change; automation_execution gate is pass (P08 proof-backed).
 
 No full executor runner (apply of stages) or gate flip here — planner only.
 """

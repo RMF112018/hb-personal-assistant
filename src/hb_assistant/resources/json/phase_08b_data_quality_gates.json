@@ -1,6 +1,6 @@
 {
   "version": "phase_08b_data_quality_gates-v1",
-  "purpose": "Phase 08B (Automation Delivery & Observability) substrate readiness gate set. Mirrors the Phase 08A gate report shape + status vocabulary. Readiness is never overstated: surfaces whose execution is owned by a later 08B prompt are deferred_not_blocking, never pass.",
+  "purpose": "Phase 08B (Automation Delivery & Observability) substrate readiness gate set. Mirrors the Phase 08A gate report shape + status vocabulary. Readiness is never overstated. All 08B execution surfaces (Prompts 02-09 incl. automation_execution) are proven pass via deterministic builders; remaining deferreds (e.g. 08D mcp) stay deferred_not_blocking.",
   "required_fields": [
     "agent_run_receipt_persistence",
     "agent_model_receipt_persistence",
@@ -25,9 +25,7 @@
     "fail_blocking",
     "deferred_not_blocking"
   ],
-  "deferred_surfaces": [
-    "automation_execution"
-  ],
+  "deferred_surfaces": [],
   "reason_codes": [
     "RECEIPT_PERSISTENCE_OK",
     "RECEIPT_TABLE_ABSENT",
@@ -78,6 +76,7 @@
     "JOB_NEVER_RUN",
     "DAILY_BRIEF_JOB_HEALTH_OK",
     "HEALTH_RETRY_WEEKEND_ALERTING_EXECUTION_DEFERRED",
+    "AUTOMATION_EXECUTION_PROOF_PASSED",
     "REAL_LAUNCHD_INSTALL_DEFERRED",
     "DELIVERY_NEVER_GENERATED",
     "DELIVERY_BLOCKED",

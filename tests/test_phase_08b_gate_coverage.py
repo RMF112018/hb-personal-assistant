@@ -67,8 +67,8 @@ def test_every_receipt_table_is_in_no_writeback_scan_scope() -> None:
 def test_gate_set_matches_contract_required_fields() -> None:
     contract = load_phase_08b_contract("data_quality_gates_contract")
     assert tuple(sorted(PHASE_08B_GATE_NAMES)) == tuple(sorted(contract["required_fields"]))
-    # The lone deferred surface is declared in the contract.
-    assert contract["deferred_surfaces"] == ["automation_execution"]
+    # Post P08 gate flip: automation_execution proven pass; no deferred surfaces remain in 08b contract.
+    assert contract["deferred_surfaces"] == []
 
 
 def test_fresh_db_gate_evaluation_is_fail_free_and_not_overstated() -> None:
@@ -78,10 +78,10 @@ def test_fresh_db_gate_evaluation_is_fail_free_and_not_overstated() -> None:
         report = evaluate_phase_08b_data_quality_gates(db_path=db)
     counts = report["status_counts"]
     assert counts["fail_blocking"] == 0
-    assert counts["deferred_not_blocking"] == 1
+    assert counts["deferred_not_blocking"] == 0
     assert report["required_fields_covered"] is True
     assert report["readiness_overstated"] is False
-    assert report["by_field_status"]["automation_execution"] == "deferred_not_blocking"
+    assert report["by_field_status"]["automation_execution"] == "pass"
     # Exactly the declared gate names are evaluated (no missing / no extra).
     assert sorted(report["by_field_status"].keys()) == sorted(PHASE_08B_GATE_NAMES)
 
