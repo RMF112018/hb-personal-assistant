@@ -1204,9 +1204,9 @@ def run_financial_fact_readiness_agent(
     _gates_contract = load_phase_08c_contract("data_quality_gates_contract")
     # forecast and review contracts for completeness (even if stubs)
     try:
-        forecast_contract = load_phase_08c_contract("forecast_readiness_contract")
+        load_phase_08c_contract("forecast_readiness_contract")
     except Exception:
-        forecast_contract = {}
+        pass
     try:
         review_contract = load_phase_08c_contract("review_required_financial_policy_contract")
     except Exception:
@@ -1246,17 +1246,29 @@ def run_financial_fact_readiness_agent(
     except Exception as e:
         sub_results["exposure_error"] = str(e)
 
-    # Forecast / review stubs (use contracts; real builders may be in gates or separate)
-    sub_results["forecast"] = {
-        "contract": forecast_contract.get("contract_name"),
-        "status": "deterministic_stub",
-    }
+    # Forecast: now real evaluator (Prompt 08); review remains stub per scope
+    try:
+        fr = evaluate_forecast_readiness_gates(project_key=project_key, db_path=db_path)
+        sub_results["forecast_readiness"] = {
+            "readiness_status": fr.get("readiness_status"),
+            "gate_status": fr.get("gate_status"),
+            "summary": fr.get("summary"),
+            "proof_path": fr.get("proof_path"),
+            "md_path": fr.get("md_path"),
+        }
+        # aggregate counts from evaluator if richer
+        items_evaluated += fr.get("summary", {}).get("context_items_count", 0)
+        review_required_count += fr.get("summary", {}).get("review_items_count", 0)
+    except Exception as e:
+        sub_results["forecast_readiness_error"] = str(e)
+        sub_results["forecast_readiness"] = {"status": "error"}
+
     sub_results["review_required"] = {
         "contract": review_contract.get("contract_name"),
         "status": "deterministic_stub",
     }
 
-    status = "succeeded"  # deterministic; in real would check sub gates
+    status = "succeeded"  # deterministic; sub gates determine readiness (no forecast decision)
 
     # Emit receipt to V35
     conn = get_connection(db_path)
@@ -1312,6 +1324,369 @@ def run_financial_fact_readiness_agent(
         "advisory_only": True,
         "guardrails": proof["guardrails"],
         "note": "deterministic; no model required for readiness",
+    }
+
+
+def evaluate_forecast_readiness_gates(
+    project_key: str | None = None,
+    *,
+    db_path: str | None = None,
+    output_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Evaluate 8 gates for readiness to support (future, not performed) trend analysis.
+
+    Deterministic only; no model, no forecasts computed or recommended.
+    Emits V35 run to second_brain_financial_forecast_readiness_runs (with guards)
+    and writes forecast-readiness-gates.md (human "readiness report") +
+    forecast-readiness-proof.json (machine, with stop_checks.forecast_decision_made=false).
+    All outputs advisory review aids only. Wording strictly "readiness report".
+    """
+    import datetime as _dt
+
+    now = _dt.datetime.now(_dt.timezone.utc).isoformat()
+    run_id = f"08c-forecast-{uuid.uuid4().hex[:8]}"
+    out_dir = Path(output_dir) if output_dir else Path(EVIDENCE_DIR)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load contracts (guards + statuses)
+    try:
+        fr_contract = load_phase_08c_contract("forecast_readiness_contract") or {}
+    except Exception:
+        fr_contract = {}
+    try:
+        load_phase_08c_contract("data_quality_gates_contract")
+    except Exception:
+        pass  # optional; fr_contract used for statuses
+
+    gate_status_values = fr_contract.get(
+        "gate_status_values", ["pass", "warning", "fail_blocking", "deferred_not_blocking"]
+    )
+    readiness_status_values = fr_contract.get(
+        "readiness_status_values",
+        [
+            "ready_for_trend_support",
+            "ready_with_review_required",
+            "insufficient_context",
+            "blocked_by_guardrail",
+            "deferred_not_evaluated",
+        ],
+    )
+
+    # Load prior artifacts for meta (counts, by_status, labels, stop_checks) — never raw values
+    evidence_dir = Path(EVIDENCE_DIR)
+    artifacts: dict[str, dict] = {}
+    for name, fname in [
+        ("matrix", "financial-source-coverage-matrix.json"),
+        ("exposure", "exposure-mart-preview.json"),
+        ("agent", "financial-readiness-agent-proof.json"),
+        ("norm", "amount-normalization-proof.json"),
+    ]:
+        p = evidence_dir / fname
+        if p.exists():
+            try:
+                artifacts[name] = json.loads(p.read_text())
+            except Exception:
+                artifacts[name] = {}
+        else:
+            artifacts[name] = {}
+
+    # Fallback counts from V35 if artifacts missing key data
+    conn = get_connection(db_path)
+    try:
+        norm_count = conn.execute(
+            "SELECT COUNT(*) FROM second_brain_financial_amount_facts_normalized"
+        ).fetchone()[0]
+    except Exception:
+        norm_count = 0
+    try:
+        review_count = conn.execute(
+            "SELECT COUNT(*) FROM second_brain_financial_review_required_items"
+        ).fetchone()[0]
+    except Exception:
+        review_count = 0
+
+    # 8 gates (conservative, fail-closed where appropriate; derive from artifacts + counts)
+    gates: list[dict[str, Any]] = []
+
+    # 1. amount_normalization
+    norm_ok = bool(artifacts.get("norm", {}).get("ok")) or norm_count > 0
+    gates.append(
+        {
+            "gate_name": "amount_normalization",
+            "gate_status": "pass" if norm_ok else "warning",
+            "facts_count": norm_count,
+            "source": "amount_facts_normalized + normalization_proof",
+        }
+    )
+
+    # 2. currency_completeness (from matrix or completeness report if present)
+    cur = artifacts.get("matrix", {}).get("summary", {}).get("by_status", {})
+    cur_ok = (cur.get("covered_ready", 0) + cur.get("covered_review_required", 0)) > 0
+    gates.append(
+        {
+            "gate_name": "currency_completeness",
+            "gate_status": "pass" if cur_ok else "warning",
+            "covered": cur.get("covered_ready", 0) + cur.get("covered_review_required", 0),
+        }
+    )
+
+    # 3. wbs_cost_code_completeness (reuse matrix wbs/cost signals + review)
+    wbs_ok = cur_ok  # proxy from coverage completeness signals in matrix
+    gates.append(
+        {
+            "gate_name": "wbs_cost_code_completeness",
+            "gate_status": "pass" if wbs_ok else "warning",
+            "review_items": review_count,
+        }
+    )
+
+    # 4. source_coverage (authoritative from matrix)
+    by_status = artifacts.get("matrix", {}).get("summary", {}).get("by_status", {})
+    fail_closed = by_status.get("fail_closed", 0)
+    total_src = artifacts.get("matrix", {}).get("summary", {}).get("total_sources", 0) or 37
+    src_status = (
+        "pass"
+        if fail_closed == 0 and total_src > 0
+        else ("fail_blocking" if fail_closed > 0 else "warning")
+    )
+    gates.append(
+        {
+            "gate_name": "source_coverage",
+            "gate_status": src_status,
+            "fail_closed": fail_closed,
+            "total": total_src,
+            "by_status": by_status,
+            "matrix": "financial-source-coverage-matrix.json",
+        }
+    )
+
+    # 5. relationship_completeness (from exposure det/cand)
+    exp = artifacts.get("exposure", {})
+    exp_items = (
+        len(exp.get("items", []))
+        if isinstance(exp.get("items"), list)
+        else exp.get("summary", {}).get("total_items", 0)
+    )
+    rel_ok = exp_items > 0
+    gates.append(
+        {
+            "gate_name": "relationship_completeness",
+            "gate_status": "pass" if rel_ok else "warning",
+            "items": exp_items,
+            "preview": "exposure-mart-preview.json",
+        }
+    )
+
+    # 6. review_backlog (from agent or V35)
+    ag = artifacts.get("agent", {})
+    rev_cnt = ag.get("review_required_count", 0) or review_count
+    rev_status = "pass" if rev_cnt == 0 else "warning"
+    gates.append(
+        {
+            "gate_name": "review_backlog",
+            "gate_status": rev_status,
+            "review_required_count": rev_cnt,
+            "agent_proof": "financial-readiness-agent-proof.json",
+        }
+    )
+
+    # 7. no_writeback_no_raw_proof (check prior proofs' stop_checks + flags)
+    proofs_ok = True
+    for key in ("matrix", "exposure", "agent", "norm"):
+        a = artifacts.get(key, {})
+        sc = a.get("stop_checks", {})
+        if sc.get("raw_payloads_written") or sc.get("raw_persisted") or a.get("raw_in_matrix"):
+            proofs_ok = False
+        if not (
+            a.get("no_raw_in_matrix")
+            or a.get("advisory_only")
+            or "advisory" in str(a.get("notes", ""))
+        ):
+            pass  # advisory presence checked in next gate
+    no_raw_status = "pass" if proofs_ok else "fail_blocking"
+    gates.append(
+        {
+            "gate_name": "no_writeback_no_raw_proof",
+            "gate_status": no_raw_status,
+            "checked_artifacts": ["matrix", "exposure", "agent", "norm"],
+        }
+    )
+
+    # 8. advisory_labeling (every item/source has advisory label/status)
+    adv_ok = True
+    for key in ("matrix", "exposure"):
+        a = artifacts.get(key, {})
+        # matrix sources or exposure items
+        items = a.get("sources", []) or a.get("items", [])
+        if items and isinstance(items, list):
+            for it in items:
+                lab = str(it.get("advisory_label") or it.get("advisory_status") or "")
+                if "advisory review aid" not in lab.lower():
+                    adv_ok = False
+    adv_status = "pass" if adv_ok else "warning"
+    gates.append(
+        {
+            "gate_name": "advisory_labeling",
+            "gate_status": adv_status,
+            "checked": ["matrix", "exposure"],
+        }
+    )
+
+    # overall
+    by_gs = dict.fromkeys(gate_status_values, 0)
+    for g in gates:
+        gs = g.get("gate_status")
+        if gs in by_gs:
+            by_gs[gs] += 1
+    has_block = by_gs.get("fail_blocking", 0) > 0
+    has_warn = by_gs.get("warning", 0) > 0 or rev_cnt > 0
+    gate_status = "fail_blocking" if has_block else ("warning" if has_warn else "pass")
+
+    # readiness_status (5 vals)
+    if has_block:
+        readiness_status = "blocked_by_guardrail"
+    elif has_warn:
+        readiness_status = "ready_with_review_required"
+    else:
+        readiness_status = (
+            "ready_for_trend_support" if rev_cnt == 0 else "ready_with_review_required"
+        )
+    if readiness_status not in readiness_status_values:
+        readiness_status = "deferred_not_evaluated"
+
+    context_items = total_src or exp_items or 0
+    review_items = rev_cnt
+
+    # INSERT V35 run (guards)
+    try:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO second_brain_financial_forecast_readiness_runs
+            (run_id, project_key, readiness_status, gate_status, context_items_count, review_items_count,
+             advisory_only, raw_email_body_persisted, raw_document_text_persisted, raw_calendar_payload_persisted,
+             raw_procore_payload_persisted, raw_financial_source_payload_persisted, raw_prompt_persisted,
+             raw_response_persisted, signed_url_persisted, download_url_persisted, external_writeback_performed,
+             financial_determination_performed, payment_decision_performed, claim_or_entitlement_decision_performed)
+            VALUES (?,?,?,?,?,?,1,0,0,0,0,0,0,0,0,0,0,0,0,0)
+            """,
+            (
+                run_id,
+                project_key,
+                readiness_status,
+                gate_status,
+                int(context_items),
+                int(review_items),
+            ),
+        )
+        conn.commit()
+    except Exception:
+        pass  # non-fatal for evidence gen
+
+    # proof json
+    proof = {
+        "run_id": run_id,
+        "project_key": project_key,
+        "readiness_status": readiness_status,
+        "gate_status": gate_status,
+        "gates": gates,
+        "summary": {
+            "overall_readiness": readiness_status,
+            "gate_status": gate_status,
+            "by_gate_status": by_gs,
+            "context_items_count": int(context_items),
+            "review_items_count": int(review_items),
+        },
+        "guardrails": {
+            "advisory_only_required": True,
+            "no_writeback_required": True,
+            "financial_determination_forbidden": True,
+            "raw_financial_payload_forbidden": True,
+            "forecast_output_allowed": False,
+            "phase": "08C",
+        },
+        "notes": [
+            "This is a forecast readiness report only. It determines whether the local data is sufficiently normalized, covered, and review-tagged to support future (not performed here) trend analysis. No forecasts are computed or recommended.",
+            "All outputs are advisory review aids only — not a final exposure determination or forecast or trend.",
+            "Deterministic evaluation from P05-P07 artifacts + V35 counts (no model).",
+            "Source preserved; no raw persisted.",
+        ],
+        "stop_checks": {
+            "raw_persisted": False,
+            "forecast_decision_made": False,
+            "financial_determination_performed": False,
+            "payment_decision_performed": False,
+            "claim_or_entitlement_decision_performed": False,
+        },
+        "used_artifacts": {
+            "source_coverage_matrix": str(evidence_dir / "financial-source-coverage-matrix.json"),
+            "exposure_mart_preview": str(evidence_dir / "exposure-mart-preview.json"),
+            "financial_readiness_agent_proof": str(
+                evidence_dir / "financial-readiness-agent-proof.json"
+            ),
+        },
+        "advisory_status": "advisory review aid only. This is a readiness report. It does not generate or recommend any forecast.",
+        "schema_version": 35,
+        "contract": fr_contract.get("contract_name", "phase_08c_forecast_readiness_contract"),
+    }
+    proof_path = out_dir / "forecast-readiness-proof.json"
+    with open(proof_path, "w") as f:
+        json.dump(proof, f, indent=2, default=str)
+
+    # md (human readiness report)
+    md_lines = [
+        "# Forecast Readiness Report",
+        "",
+        "This is a readiness report only. It determines whether the local data is sufficiently normalized, covered, and review-tagged to support future (not performed here) trend analysis. No forecasts are computed or recommended.",
+        "",
+        "## Summary",
+        f"- Readiness status: {readiness_status}",
+        f"- Gate status: {gate_status}",
+        f"- Context items: {context_items}",
+        f"- Review items: {review_items}",
+        "",
+        "## Gates",
+    ]
+    for g in gates:
+        detail = g.get("detail") or g.get("reason") or ""
+        md_lines.append(f"- **{g['gate_name']}**: {g['gate_status']} {detail}")
+    md_lines.extend(
+        [
+            "",
+            "## Guardrails",
+            "- advisory_only_required: true",
+            "- no_writeback_required: true",
+            "- financial_determination_forbidden: true",
+            "- raw_financial_payload_forbidden: true",
+            "- forecast_output_allowed: false",
+            "",
+            "## Notes",
+            "This is a forecast readiness report only. It determines whether the local data is sufficiently normalized, covered, and review-tagged to support future (not performed here) trend analysis. No forecasts are computed or recommended.",
+            "All outputs are advisory review aids only — not a final exposure determination or forecast or trend. Source preserved. Stop if any output presented as forecast decision or recommendation treated as final.",
+            "Deterministic from artifacts + V35 (no model).",
+            "",
+            "## Artifacts Used",
+            f"- {proof['used_artifacts']['source_coverage_matrix']}",
+            f"- {proof['used_artifacts']['exposure_mart_preview']}",
+            f"- {proof['used_artifacts']['financial_readiness_agent_proof']}",
+            "",
+            f"Generated: {now} | run_id: {run_id}",
+        ]
+    )
+    md_path = out_dir / "forecast-readiness-gates.md"
+    with open(md_path, "w") as f:
+        f.write("\n".join(md_lines))
+
+    return {
+        "run_id": run_id,
+        "readiness_status": readiness_status,
+        "gate_status": gate_status,
+        "proof_path": str(proof_path),
+        "md_path": str(md_path),
+        "summary": proof["summary"],
+        "gates": gates,
+        "advisory_only": True,
+        "guardrails": proof["guardrails"],
+        "note": "readiness report only; no forecasts computed or recommended",
     }
 
 

@@ -1,0 +1,110 @@
+{
+  "run_id": "08c-forecast-7de3cf4f",
+  "project_key": null,
+  "readiness_status": "blocked_by_guardrail",
+  "gate_status": "fail_blocking",
+  "gates": [
+    {
+      "gate_name": "amount_normalization",
+      "gate_status": "warning",
+      "facts_count": 0,
+      "source": "amount_facts_normalized + normalization_proof"
+    },
+    {
+      "gate_name": "currency_completeness",
+      "gate_status": "warning",
+      "covered": 0
+    },
+    {
+      "gate_name": "wbs_cost_code_completeness",
+      "gate_status": "warning",
+      "review_items": 75
+    },
+    {
+      "gate_name": "source_coverage",
+      "gate_status": "fail_blocking",
+      "fail_closed": 3,
+      "total": 37,
+      "by_status": {
+        "covered_ready": 0,
+        "covered_review_required": 0,
+        "covered_missing_context": 29,
+        "fail_closed": 3,
+        "deferred_not_blocking": 5,
+        "blocked": 0
+      },
+      "matrix": "financial-source-coverage-matrix.json"
+    },
+    {
+      "gate_name": "relationship_completeness",
+      "gate_status": "pass",
+      "items": 11,
+      "preview": "exposure-mart-preview.json"
+    },
+    {
+      "gate_name": "review_backlog",
+      "gate_status": "warning",
+      "review_required_count": 72,
+      "agent_proof": "financial-readiness-agent-proof.json"
+    },
+    {
+      "gate_name": "no_writeback_no_raw_proof",
+      "gate_status": "pass",
+      "checked_artifacts": [
+        "matrix",
+        "exposure",
+        "agent",
+        "norm"
+      ]
+    },
+    {
+      "gate_name": "advisory_labeling",
+      "gate_status": "pass",
+      "checked": [
+        "matrix",
+        "exposure"
+      ]
+    }
+  ],
+  "summary": {
+    "overall_readiness": "blocked_by_guardrail",
+    "gate_status": "fail_blocking",
+    "by_gate_status": {
+      "pass": 3,
+      "warning": 4,
+      "fail_blocking": 1,
+      "deferred_not_blocking": 0
+    },
+    "context_items_count": 37,
+    "review_items_count": 72
+  },
+  "guardrails": {
+    "advisory_only_required": true,
+    "no_writeback_required": true,
+    "financial_determination_forbidden": true,
+    "raw_financial_payload_forbidden": true,
+    "forecast_output_allowed": false,
+    "phase": "08C"
+  },
+  "notes": [
+    "This is a forecast readiness report only. It determines whether the local data is sufficiently normalized, covered, and review-tagged to support future (not performed here) trend analysis. No forecasts are computed or recommended.",
+    "All outputs are advisory review aids only \u2014 not a final exposure determination or forecast or trend.",
+    "Deterministic evaluation from P05-P07 artifacts + V35 counts (no model).",
+    "Source preserved; no raw persisted."
+  ],
+  "stop_checks": {
+    "raw_persisted": false,
+    "forecast_decision_made": false,
+    "financial_determination_performed": false,
+    "payment_decision_performed": false,
+    "claim_or_entitlement_decision_performed": false
+  },
+  "used_artifacts": {
+    "source_coverage_matrix": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json",
+    "exposure_mart_preview": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/exposure-mart-preview.json",
+    "financial_readiness_agent_proof": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json"
+  },
+  "advisory_status": "advisory review aid only. This is a readiness report. It does not generate or recommend any forecast.",
+  "schema_version": 35,
+  "contract": "phase_08c_forecast_readiness_contract"
+}

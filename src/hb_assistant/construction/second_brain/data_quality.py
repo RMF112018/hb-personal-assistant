@@ -40,7 +40,9 @@ from .daily_brief_notify import build_daily_brief_notification_proof
 from .daily_brief_open import build_brief_open_proof
 
 # 08C completeness (currency/wbs/source/review routing) - added Prompt 04
-from .financial_completeness import run_financial_completeness  # noqa: F401 (used in evaluate)
+from .financial_completeness import (
+    evaluate_forecast_readiness_gates,
+)  # noqa: F401 (used in evaluate)
 from .freshness import build_freshness_observability_proof
 from .launchd_scheduler import build_launchd_scheduler_proof
 from .memory import build_memory_curator_agent_proof
@@ -773,7 +775,23 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
         )
     except Exception as e:
         gates.append(_gate("readiness_agent", "warning", reason=str(e)))
-    gates.append(_gate("forecast_readiness", "pass"))
+    # forecast_readiness (Prompt 08): real evaluator, 4 gate_status + 5 readiness_status, 8 sub-gates
+    try:
+        fr = evaluate_forecast_readiness_gates(project_key=None, db_path=db_path)
+        gs = fr.get("gate_status", "warning")
+        gates.append(
+            _gate(
+                "forecast_readiness",
+                gs,
+                readiness_status=fr.get("readiness_status"),
+                context_items=fr.get("summary", {}).get("context_items_count", 0),
+                review_items=fr.get("summary", {}).get("review_items_count", 0),
+                proof_path=fr.get("proof_path"),
+                md_path=fr.get("md_path"),
+            )
+        )
+    except Exception as e:
+        gates.append(_gate("forecast_readiness", "warning", reason=str(e)))
     try:
         comp2 = run_financial_completeness(project_key=None)
         rc = comp2.get("wbs", {}).get("review_required_count", 0) + comp2.get("currency", {}).get(
