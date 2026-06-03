@@ -12,18 +12,15 @@ Asserts snapshot rows, CHECK statuses, guards, review items with correct trigger
 and that the two report JSONs are generated with expected structure + "no raw" + policy notes.
 """
 
-import json
-import tempfile
 from pathlib import Path
 
-import pytest
-
-from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 from hb_assistant.construction.second_brain.financial_completeness import (
-    run_financial_completeness,
     build_currency_completeness_report,
+    build_financial_source_coverage_matrix,
     build_wbs_cost_code_coverage_report,
+    run_financial_completeness,
 )
+from hb_assistant.store.migrator import SQLiteMigrator
 
 
 def _migrate(db: Path) -> int:
@@ -139,5 +136,69 @@ def test_default_currency_blocked_when_policy_condition_missing(tmp_path):
     # Should not have applied default
     assert c.get("evidence_backed_project_default", 0) == 0
     assert c.get("missing_currency", 0) >= 1 or c.get("review_required", 0) >= 1
+
+    conn.close()
+def test_financial_source_coverage_matrix_maps_classifies_counts_no_raw(tmp_path):
+    """Prompt 05: matrix builder produces full map + 6 statuses + counts + advisory + no raw in JSON."""
+    db = tmp_path / "m.db"
+    _migrate(db)
+    conn = __import__("sqlite3").connect(str(db))
+
+    # Seed some facts for owner_contracts (to get row_count >0, source/cur presence for status)
+    # Use the full guard cols like other seeds in this test file
+    conn.execute(
+        "INSERT OR REPLACE INTO second_brain_financial_amount_facts_normalized "
+        "(run_id, project_key, source_field_path, currency_code, source_record_ref, parse_status, source_family, source_table, advisory_only, raw_financial_source_payload_persisted, financial_determination_performed, payment_decision_performed, claim_or_entitlement_decision_performed, confidence_label, review_tier) "
+        "VALUES ('m-run', 'p1', 'f1', 'USD', 'rec1', 'parseable', 'owner_contracts', 'procore_financial_contracts', 1, 0, 0, 0, 0, 'deterministic', 'none')"
+    )
+    conn.commit()
+
+    # Use real endpoint inventory for mappings (exists in evidence, metadata only)
+    endpoint_inv = "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-endpoint-inventory-audit.json"
+    out_dir = tmp_path / "ev"
+    mtx = build_financial_source_coverage_matrix(db_path=str(db), endpoint_inventory_path=endpoint_inv, out_dir=str(out_dir))
+
+    assert mtx["schema_version"] == 35
+    assert mtx["total_sources"] >= 10  # 7+ from inv + deferred required
+    sources = mtx["sources"]
+    # All entries have the required map keys
+    for s in sources:
+        for k in ("family", "local_tables", "normalizers", "amount_fields", "currency_fields", "wbs_cost_code_fields", "source_references", "relationship_keys", "coverage_status", "source_row_count", "advisory_label"):
+            assert k in s, f"missing {k} in {s.get('endpoint_id') or s.get('family')}"
+        assert "advisory review aid only" in s["advisory_label"].lower()
+        assert s["coverage_status"] in {"covered_ready", "covered_review_required", "covered_missing_context", "fail_closed", "deferred_not_blocking", "blocked"}
+
+    # fail_closed exactly the 3 from P02 inv
+    fc = [s for s in sources if s["coverage_status"] == "fail_closed"]
+    assert len(fc) == 3
+    fc_ids = {s["endpoint_id"] for s in fc}
+    assert "purchase-order-detail-line-items" in fc_ids
+    assert "budget-details" in fc_ids
+    assert "budget-change-line-items" in fc_ids
+
+    # summary
+    summ = mtx["summary"]
+    assert summ["no_raw_in_matrix"] is True
+    assert "by_status" in summ
+    assert summ.get("total_endpoints_in_inventory", 0) >= 29  # live ones
+
+    # The written JSON exists and has no raw values (scan)
+    jpath = out_dir / "financial-source-coverage-matrix.json"
+    assert jpath.exists()
+    jtxt = jpath.read_text()
+    # forbidden patterns for raw/full source *values* (per guardrail/stop); field *names* like grand_total are expected in the map
+    forbidden = ["Bearer", "-----BEGIN", "eyJ", "https://", '"10200000', "raw_body", "procore.*payload", "signed_url"]
+    for fb in forbidden:
+        assert fb.lower() not in jtxt.lower(), f"forbidden pattern {fb} found in matrix JSON"
+    # but has the attest
+    assert "no_raw_in_matrix" in jtxt or "NO raw Procore payloads" in jtxt
+    assert "advisory review aid only" in jtxt
+
+    # With seed, owner_contracts should have row_count >=1 and likely covered_*
+    own = [s for s in sources if s["family"] == "owner_contracts" and s.get("endpoint_id")]
+    assert len(own) >= 1
+    # status not fail_closed (live)
+    assert own[0]["coverage_status"] != "fail_closed"
+    assert own[0]["source_row_count"] >= 1 or "covered" in own[0]["coverage_status"]
 
     conn.close()

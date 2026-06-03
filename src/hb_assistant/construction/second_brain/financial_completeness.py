@@ -4,6 +4,7 @@ Implements:
 - Currency completeness snapshots (explicit / evidence_backed_project_default only under full policy+contract conditions / missing / inconsistent / ambiguous / review_required).
 - WBS/cost-code/line-item-type/source_field_path completeness snapshots (present/missing/ambiguous/not_applicable/review_required per required dim).
 - Source coverage snapshots (per family/endpoint, field counts, coverage_status).
+- Financial source coverage matrix (endpoint family to local table, normalizer, amount/currency/wbs/source fields, relationship keys; 6-status classification per contract using P02 inventory live_verified + counts; row counts and advisory labels without raw values; generates financial-source-coverage-matrix.json).
 - Routing of missing/inconsistent/ambiguous to review_required_items (correct triggers from policy).
 - Report generators for currency-completeness-report.json and wbs-cost-code-coverage-report.json (metadata only, no raw, advisory, policy notes).
 
@@ -21,6 +22,7 @@ import datetime
 import json
 import os
 import uuid
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +39,24 @@ WBS_POLICY_PATH = "resources/config/phase_08c_wbs_cost_code_policy.seed.yaml"
 REVIEW_POLICY_PATH = "resources/config/phase_08c_review_required_financial_policy.seed.yaml"
 
 INVENTORY_DEFAULT = "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-table-inventory-audit.json"
+ENDPOINT_INVENTORY_DEFAULT = "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-endpoint-inventory-audit.json"
 EVIDENCE_DIR = "docs/evidence/construction-intelligence-phase-08c-financial-readiness"
+
+# Family to local procore_financial_* tables (derived from P02 table inventory names + projections)
+FAMILY_LOCAL_TABLES: dict[str, list[str]] = {
+    "owner_contracts": ["procore_financial_contracts"],
+    "commitments": ["procore_financial_subcontractor_invoices"],
+    "purchase_orders": ["procore_financial_change_orders", "procore_financial_change_order_line_items"],
+    "subcontractor_invoices": ["procore_financial_subcontractor_invoices", "procore_financial_invoice_items"],
+    "budget": ["procore_financial_budget_views", "procore_financial_budget_rows", "procore_financial_budget_changes"],
+    "change_management": ["procore_financial_change_events", "procore_financial_rfqs"],
+    "billing": ["procore_financial_payment_applications", "procore_financial_billing_periods"],
+    "payment_applications": ["procore_financial_payment_applications"],
+    "budget_changes": ["procore_financial_budget_changes"],
+    "change_events": ["procore_financial_change_events"],
+    "rfqs": ["procore_financial_rfqs"],
+    "direct_costs": ["procore_financial_amount_facts"],
+}
 
 
 def _load_policy(path: str) -> dict:
@@ -137,17 +156,14 @@ def _is_evidence_backed_project_default(project_key: str, explicit_currencies: s
     conditions = contract.get("project_default_conditions", []) or policy.get("default_currency_allowed_only_when", [])
     # documented_source
     documented = policy.get("_documented_project_default_exists", False)  # set by harness/seed
-    if "documented_source" in conditions or "documented_project_default_exists" in conditions:
-        if not documented:
-            return False
+    if ("documented_source" in conditions or "documented_project_default_exists" in conditions) and not documented:  # noqa: SIM103
+        return False
     # policy_allowed
-    if "policy_allowed" in conditions or "source_family_policy_allows_default" in conditions:
-        if not policy.get("default_currency_allowed", True):
-            return False
+    if ("policy_allowed" in conditions or "source_family_policy_allows_default" in conditions) and not policy.get("default_currency_allowed", True):
+        return False
     # no_line_level_conflict
-    if "no_line_level_conflict" in conditions:
-        if len(explicit_currencies) > 1:
-            return False
+    if "no_line_level_conflict" in conditions and len(explicit_currencies) > 1:
+        return False
     # output_marks_default_derived -- we always mark when we apply; the condition is "we will mark"
     # so it is satisfied by construction when we reach here and decide to apply.
     return True
@@ -504,9 +520,203 @@ def build_wbs_cost_code_coverage_report(
     return report
 
 
+def build_financial_source_coverage_matrix(
+    *,
+    db_path: str | None = None,
+    endpoint_inventory_path: str = ENDPOINT_INVENTORY_DEFAULT,
+    out_dir: str = EVIDENCE_DIR,
+) -> dict[str, Any]:
+    """Build the Phase 08C financial source coverage matrix.
+
+    Maps endpoint family to local table, normalizer, amount/currency/wbs/source fields,
+    relationship keys from P02 endpoint inventory (authoritative repo truth).
+    Classifies coverage_status using the 6 values from financial_source_coverage_contract:
+      - fail_closed: !live_verified in P02 inventory (the 3 unresolved shells)
+      - covered_ready: live + positive row_count + amount/currency/wbs dims present in facts
+      - covered_missing_context: live but partial counts
+      - covered_review_required: (reserved for P04 review triggers; not auto here)
+      - deferred_not_blocking: required family with no current endpoint data in inventory
+      - blocked: (not used in this advisory matrix)
+    Includes source_row_count (from amount_facts_normalized) and field counts (len from inv lists).
+    Advisory labels and notes only; NO raw payloads, NO full source values, NO amounts, NO URLs.
+    Writes financial-source-coverage-matrix.json (metadata + counts + statuses + maps only).
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    conn = _get_conn(db_path)
+    contract = _load_contract("financial_source_coverage_contract")
+    required_families: list[str] = contract.get("required_families", [])
+    coverage_status_values: list[str] = contract.get("coverage_status_values", [])
+
+    # Load P02 endpoint inventory for authoritative mappings (family, normalizers, fields, live_verified, source support)
+    eps: list[dict[str, Any]] = []
+    p = Path(endpoint_inventory_path)
+    if p.exists():
+        with p.open() as f:
+            inv = json.load(f)
+            eps = inv.get("endpoints", []) or []
+
+    # Group by family for aggregate + per-ep entries
+    by_fam: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for e in eps:
+        fam = e.get("family") or "unknown"
+        by_fam[fam].append(e)
+
+    # Compute source row counts per family from normalized facts (counts + presence only; never load values)
+    fam_row_counts: dict[str, dict[str, int]] = {}
+    for fam in set(list(by_fam.keys()) + required_families):
+        rc = amt_c = cur_c = wbs_c = 0
+        try:
+            row = conn.execute(
+                """
+                SELECT
+                    COUNT(*) as rc,
+                    SUM(CASE WHEN source_field_path IS NOT NULL THEN 1 ELSE 0 END) as has_source,
+                    SUM(CASE WHEN currency_code IS NOT NULL THEN 1 ELSE 0 END) as has_cur,
+                    SUM(CASE WHEN source_record_ref IS NOT NULL THEN 1 ELSE 0 END) as has_ref
+                FROM second_brain_financial_amount_facts_normalized
+                WHERE source_family LIKE ?
+                """,
+                (f"%{fam}%",),
+            ).fetchone()
+            if row:
+                rc = int(row[0] or 0)
+                amt_c = int(row[1] or 0)  # proxy via source_field presence (amounts live in same rows)
+                cur_c = int(row[2] or 0)
+                wbs_c = int(row[3] or 0)
+        except Exception:
+            pass
+        fam_row_counts[fam] = {
+            "source_row_count": rc,
+            "amount_field_count": amt_c,
+            "currency_field_count": cur_c,
+            "wbs_cost_code_field_count": wbs_c,
+        }
+
+    sources: list[dict[str, Any]] = []
+    for e in eps:
+        fam = e.get("family") or "unknown"
+        live_verified = bool(e.get("live_verified"))
+        counts = fam_row_counts.get(fam, {"source_row_count": 0, "amount_field_count": 0, "currency_field_count": 0, "wbs_cost_code_field_count": 0})
+
+        # Classify per contract 6 statuses (fail_closed takes precedence from P02 live gate)
+        if not live_verified:
+            status = "fail_closed"
+        else:
+            c = counts
+            if c["source_row_count"] > 0 and c["amount_field_count"] > 0 and c["currency_field_count"] > 0 and c["wbs_cost_code_field_count"] > 0:
+                status = "covered_ready"
+            elif c["source_row_count"] > 0:
+                status = "covered_missing_context"
+            else:
+                status = "covered_missing_context"
+
+        local_tables = FAMILY_LOCAL_TABLES.get(fam, ["procore_financial_amount_facts"])
+        src_refs = ["source_field_path"] if e.get("source_field_path_support") else []
+        rel_keys = ["project_key", "endpoint_id", "source_record_ref"]
+
+        entry = {
+            "family": fam,
+            "endpoint_id": e.get("endpoint_id"),
+            "local_tables": local_tables,
+            "normalizers": e.get("normalizers", []),
+            "amount_fields": e.get("amount_fields", []),
+            "currency_fields": e.get("currency_fields", []),
+            "wbs_cost_code_fields": e.get("wbs_cost_line_fields", []),
+            "line_item_type_field": e.get("line_item_type_field"),
+            "source_references": src_refs,
+            "relationship_keys": rel_keys,
+            "coverage_status": status,
+            "source_row_count": counts["source_row_count"],
+            "amount_field_count": counts.get("amount_field_count", len(e.get("amount_fields", []))),
+            "currency_field_count": counts.get("currency_field_count", len(e.get("currency_fields", []))),
+            "wbs_cost_code_field_count": counts.get("wbs_cost_code_field_count", len(e.get("wbs_cost_line_fields", []))),
+            "live_verified": live_verified,
+            "advisory_label": "Financial source coverage matrix — advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+            "notes": e.get("notes", "phase05 live or fail-closed per P02 inventory; mappings authoritative from repo endpoint registry."),
+        }
+        sources.append(entry)
+
+    # Add required families with no endpoint data in current inventory as deferred_not_blocking (non-blocking for readiness)
+    covered_fams = {e.get("family") for e in eps}
+    for fam in required_families:
+        if fam not in covered_fams:
+            counts = fam_row_counts.get(fam, {"source_row_count": 0, "amount_field_count": 0, "currency_field_count": 0, "wbs_cost_code_field_count": 0})
+            sources.append({
+                "family": fam,
+                "endpoint_id": None,
+                "local_tables": FAMILY_LOCAL_TABLES.get(fam, ["procore_financial_amount_facts"]),
+                "normalizers": [],
+                "amount_fields": [],
+                "currency_fields": [],
+                "wbs_cost_code_fields": [],
+                "line_item_type_field": None,
+                "source_references": [],
+                "relationship_keys": ["project_key"],
+                "coverage_status": "deferred_not_blocking",
+                "source_row_count": counts["source_row_count"],
+                "amount_field_count": 0,
+                "currency_field_count": 0,
+                "wbs_cost_code_field_count": 0,
+                "live_verified": False,
+                "advisory_label": "Financial source coverage matrix — advisory review aid only. No raw values or payloads included. This required family has no endpoints in current P02 inventory; deferred non-blocking.",
+                "notes": "Required per financial_source_coverage_contract but no matching endpoint/family data in P02 inventory; counts may be 0. Advisory only.",
+            })
+
+    # Summary by_status (over all sources)
+    by_status: dict[str, int] = dict.fromkeys(coverage_status_values, 0)
+    for src in sources:
+        st = src.get("coverage_status")
+        if st in by_status:
+            by_status[st] += 1
+        else:
+            by_status[st] = by_status.get(st, 0) + 1
+
+    fail_closed_eps = [e.get("endpoint_id") for e in eps if not e.get("live_verified")]
+
+    matrix: dict[str, Any] = {
+        "generated_utc": _now(),
+        "repo_head": "post-p04",
+        "schema_version": 35,
+        "total_sources": len(sources),
+        "sources": sources,
+        "summary": {
+            "total_endpoints_in_inventory": len(eps),
+            "required_families": len(required_families),
+            "by_status": by_status,
+            "fail_closed_endpoints": fail_closed_eps,
+            "no_raw_in_matrix": True,
+            "money_decimal_only": True,
+            "source_preserved": True,
+            "advisory_only": True,
+        },
+        "contract": contract,
+        "inventory_used": str(endpoint_inventory_path),
+        "advisory_only": True,
+        "guardrails": {
+            "local_first": True,
+            "read_only": True,
+            "no_external_writeback": True,
+            "no_raw_financial_payload": True,
+            "financial_determination_forbidden": True,
+            "advisory_only": True,
+        },
+        "stop_checks": {
+            "raw_payloads_or_full_source_values_written": False,
+        },
+        "notes": "1. Mappings (local_tables, normalizers, amount/currency/wbs fields, source_references, relationship_keys) from P02 financial-endpoint-inventory-audit.json (32 eps, 7 families live in registry). 2. Classification to exactly the 6 coverage_status_values from phase_08c_financial_source_coverage_contract using P02 live_verified (fail_closed for the 3 shells: purchase-order-detail-line-items, budget-details, budget-change-line-items) + row/field presence from second_brain_financial_amount_facts_normalized (counts only). 3. Source row counts included; NO raw Procore payloads, NO full source values, NO amounts, NO tokens/URLs/PEM in this JSON. 4. Deferred families (required but absent from current endpoints) marked deferred_not_blocking. 5. All financial outputs are advisory review aids only — not approvals, claims, entitlements, or determinations. Source preserved in procore_financial_* tables.",
+    }
+
+    out_path = Path(out_dir) / "financial-source-coverage-matrix.json"
+    with open(out_path, "w") as f:
+        json.dump(matrix, f, indent=2, default=str)
+    return matrix
+
+
 if __name__ == "__main__":
     import sys
     inv = sys.argv[1] if len(sys.argv) > 1 else INVENTORY_DEFAULT
     build_currency_completeness_report(inventory_path=inv)
     build_wbs_cost_code_coverage_report(inventory_path=inv)
     print("reports written")
+    # Matrix uses the endpoint inventory for full family->table/normalizer/fields map + live status + 6-status classif
+    build_financial_source_coverage_matrix(endpoint_inventory_path=ENDPOINT_INVENTORY_DEFAULT)

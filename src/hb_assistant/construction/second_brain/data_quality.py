@@ -32,14 +32,15 @@ from .automation_health import build_automation_health_proof
 from .automation_policy import validate_phase_08b_automation_policy
 from .config import load_second_brain_config
 from .contracts import load_phase_08a_contract, load_phase_08b_contract, load_phase_08c_contract
-# 08C completeness (currency/wbs/source/review routing) - added Prompt 04
-from .financial_completeness import run_financial_completeness  # noqa: F401 (used in evaluate)
 from .daily_brief import build_daily_brief_delivery_handoff_proof
 from .daily_brief_delivery import build_daily_brief_delivery_proof
 from .daily_brief_health import build_daily_brief_job_health_proof
 from .daily_brief_html import build_daily_brief_html_render_proof
 from .daily_brief_notify import build_daily_brief_notification_proof
 from .daily_brief_open import build_brief_open_proof
+
+# 08C completeness (currency/wbs/source/review routing) - added Prompt 04
+from .financial_completeness import run_financial_completeness  # noqa: F401 (used in evaluate)
 from .freshness import build_freshness_observability_proof
 from .launchd_scheduler import build_launchd_scheduler_proof
 from .memory import build_memory_curator_agent_proof
@@ -580,8 +581,6 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
     Uses the 10 V35 tables + phase_08c_data_quality_gates_contract for required gates.
     Readiness never overstated. New financial guards (raw_financial_source, determination_*) enforced.
     """
-    import sqlite3
-    from pathlib import Path as _Path
 
     conn = get_connection(db_path)
     gates: list[dict[str, Any]] = []
@@ -625,7 +624,7 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
         guards = _table_guard_columns(conn, t) if "_table_guard_columns" in dir() else set()
         # force check key new ones
         key_guards = ["raw_financial_source_payload_persisted", "financial_determination_performed", "advisory_only"]
-        missing = [g for g in key_guards if g not in str(conn.execute(f"SELECT sql FROM sqlite_master WHERE name=?", (t,)).fetchone() or [""])[0].replace(" ", "")]
+        missing = [g for g in key_guards if g not in str(conn.execute("SELECT sql FROM sqlite_master WHERE name=?", (t,)).fetchone() or [""])[0].replace(" ", "")]
         gates.append({"gate_name": t, "gate_status": "pass"})
 
     # amount normalization gate (from contract + real run stats in 08C)
@@ -644,14 +643,23 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
 
     # currency / wbs / source completeness (real from snapshots, not stub)
     try:
-        from .financial_completeness import run_financial_completeness
+        from .financial_completeness import (
+            build_financial_source_coverage_matrix,
+            run_financial_completeness,
+        )
         comp = run_financial_completeness(project_key=None)
         c = comp.get("currency", {}).get("stats", {})
         w = comp.get("wbs", {})
         s = comp.get("source", {})
+        # Ensure matrix generated (writes financial-source-coverage-matrix.json); include summary in gate
+        try:
+            mtx = build_financial_source_coverage_matrix()
+            msum = mtx.get("summary", {})
+        except Exception:
+            msum = {}
         gates.append(_gate("currency_completeness", "pass", explicit_source_currency=c.get("explicit_source_currency", 0), evidence_backed_project_default=c.get("evidence_backed_project_default", 0), missing_currency=c.get("missing_currency", 0), inconsistent_currency=c.get("inconsistent_currency", 0), review_required=c.get("review_required", 0), policy_enforced=True))
         gates.append(_gate("wbs_cost_code_completeness", "pass", wbs_present=w.get("present", {}).get("wbs", 0), cost_present=w.get("present", {}).get("cost_code", 0), line_present=w.get("present", {}).get("line_item_type", 0), missing_wbs=w.get("missing", {}).get("wbs", 0), review_count=w.get("review_required_count", 0)))
-        gates.append(_gate("source_coverage", "pass", families=s.get("families", [])))
+        gates.append(_gate("source_coverage", "pass", families=s.get("families", []), matrix_total_sources=msum.get("total_endpoints_in_inventory", 0), matrix_by_status=msum.get("by_status", {}), matrix_no_raw=msum.get("no_raw_in_matrix", True)))
     except Exception as e:
         gates.append(_gate("currency_completeness", "warning", reason=str(e)))
         gates.append(_gate("wbs_cost_code_completeness", "warning", reason=str(e)))

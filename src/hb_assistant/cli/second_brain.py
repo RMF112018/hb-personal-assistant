@@ -2419,12 +2419,20 @@ def financial_coverage(
 ) -> None:
     """Financial source coverage (from V35 snapshots + contract)."""
     from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
-    from hb_assistant.construction.second_brain.financial_completeness import build_source_coverage_snapshot
+    from hb_assistant.construction.second_brain.financial_completeness import (
+        build_financial_source_coverage_matrix,
+        build_source_coverage_snapshot,
+    )
     contract = load_phase_08c_contract("financial_source_coverage_contract")
     try:
         snap = build_source_coverage_snapshot(project_key=project)
     except Exception:
         snap = {}
+    try:
+        # Generates (or refreshes) the matrix JSON in evidence dir as side-effect of coverage surface
+        mtx = build_financial_source_coverage_matrix()
+    except Exception:
+        mtx = {}
     payload = {
         "command": "second-brain financial coverage",
         "ok": True,
@@ -2433,6 +2441,13 @@ def financial_coverage(
         "advisory_only": True,
         "required_families": contract.get("required_families", []),
         "source_coverage_snapshots": snap,
+        "financial_source_coverage_matrix": {
+            "summary": mtx.get("summary", {}),
+            "total_sources": mtx.get("total_sources", 0),
+            "by_status": mtx.get("summary", {}).get("by_status", {}),
+            "matrix_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json",
+            "advisory_note": "Full matrix (mappings + counts + 6-status classification + no-raw attest) written to matrix_path. See JSON for endpoint family details.",
+        },
         "guardrails": _08C_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
@@ -2479,6 +2494,8 @@ def data_quality_phase_08c_gates(
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Phase 08C financial data-quality gates (V35 tables + contracts + guards)."""
-    from hb_assistant.construction.second_brain.data_quality import evaluate_phase_08c_data_quality_gates
+    from hb_assistant.construction.second_brain.data_quality import (
+        evaluate_phase_08c_data_quality_gates,
+    )
     report = evaluate_phase_08c_data_quality_gates()
     typer.echo(json.dumps({**report, "guardrails": _08C_GUARDRAILS}, indent=2, default=str) if json_out else str(report))

@@ -1,0 +1,1264 @@
+{
+  "generated_utc": "2026-06-03T14:35:21.885989Z",
+  "repo_head": "post-p04",
+  "schema_version": 35,
+  "total_sources": 37,
+  "sources": [
+    {
+      "family": "owner_contracts",
+      "endpoint_id": "prime-contracts",
+      "local_tables": [
+        "procore_financial_contracts"
+      ],
+      "normalizers": [
+        "financial.py",
+        "owner_contract.py"
+      ],
+      "amount_fields": [
+        "grand_total",
+        "original_contract_sum",
+        "revised_contract_sum",
+        "approved_change_orders_amount",
+        "pending_change_orders_amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code",
+        "base_currency_iso_code",
+        "currency_exchange_rate"
+      ],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05; uses parse_amount -> TEXT str; advisory only"
+    },
+    {
+      "family": "owner_contracts",
+      "endpoint_id": "prime-contract-line-items",
+      "local_tables": [
+        "procore_financial_contracts"
+      ],
+      "normalizers": [
+        "financial.py",
+        "owner_contract.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_code_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "wbs_description_redacted"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "owner_contracts",
+      "endpoint_id": "prime-contract-attachments",
+      "local_tables": [
+        "procore_financial_contracts"
+      ],
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05; attachments metadata"
+    },
+    {
+      "family": "owner_contracts",
+      "endpoint_id": "prime-change-orders",
+      "local_tables": [
+        "procore_financial_contracts"
+      ],
+      "normalizers": [
+        "financial.py",
+        "owner_contract.py"
+      ],
+      "amount_fields": [
+        "grand_total",
+        "schedule_impact_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "owner_contracts",
+      "endpoint_id": "prime-change-order-line-items",
+      "local_tables": [
+        "procore_financial_contracts"
+      ],
+      "normalizers": [
+        "financial.py",
+        "owner_contract.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_code_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "billing",
+      "endpoint_id": "payment-applications",
+      "local_tables": [
+        "procore_financial_payment_applications",
+        "procore_financial_billing_periods"
+      ],
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [
+        "total_amount_paid",
+        "total_retainage",
+        "contract_sum_to_date"
+      ],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "commitments",
+      "endpoint_id": "commitment-contracts",
+      "local_tables": [
+        "procore_financial_subcontractor_invoices"
+      ],
+      "normalizers": [
+        "financial.py",
+        "commitment_contract.py"
+      ],
+      "amount_fields": [
+        "grand_total",
+        "original_contract_sum",
+        "revised_contract_sum",
+        "approved_change_orders_amount",
+        "pending_change_orders_amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code",
+        "base_currency_iso_code",
+        "currency_exchange_rate"
+      ],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "commitments",
+      "endpoint_id": "commitment-line-items",
+      "local_tables": [
+        "procore_financial_subcontractor_invoices"
+      ],
+      "normalizers": [
+        "financial.py",
+        "commitment_contract.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_code_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "wbs_description_redacted"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "commitments",
+      "endpoint_id": "commitment-attachments",
+      "local_tables": [
+        "procore_financial_subcontractor_invoices"
+      ],
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "commitments",
+      "endpoint_id": "commitment-compliance",
+      "local_tables": [
+        "procore_financial_subcontractor_invoices"
+      ],
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "commitments",
+      "endpoint_id": "commitment-change-orders",
+      "local_tables": [
+        "procore_financial_subcontractor_invoices"
+      ],
+      "normalizers": [
+        "financial.py",
+        "commitment_contract.py"
+      ],
+      "amount_fields": [
+        "grand_total",
+        "schedule_impact_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "commitments",
+      "endpoint_id": "commitment-change-order-line-items",
+      "local_tables": [
+        "procore_financial_subcontractor_invoices"
+      ],
+      "normalizers": [
+        "financial.py",
+        "commitment_contract.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_code_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "purchase_orders",
+      "endpoint_id": "purchase-order-contracts",
+      "local_tables": [
+        "procore_financial_change_orders",
+        "procore_financial_change_order_line_items"
+      ],
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [
+        "grand_total"
+      ],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "purchase_orders",
+      "endpoint_id": "purchase-order-line-items",
+      "local_tables": [
+        "procore_financial_change_orders",
+        "procore_financial_change_order_line_items"
+      ],
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_code_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "purchase_orders",
+      "endpoint_id": "purchase-order-detail-line-items",
+      "local_tables": [
+        "procore_financial_change_orders",
+        "procore_financial_change_order_line_items"
+      ],
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [
+        "currency_iso_code"
+      ],
+      "wbs_cost_code_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "fail_closed",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": false,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "shell_pending; fail-closed per phase05"
+    },
+    {
+      "family": "billing",
+      "endpoint_id": "billing-periods",
+      "local_tables": [
+        "procore_financial_payment_applications",
+        "procore_financial_billing_periods"
+      ],
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "subcontractor_invoices",
+      "endpoint_id": "subcontractor-invoices",
+      "local_tables": [
+        "procore_financial_subcontractor_invoices",
+        "procore_financial_invoice_items"
+      ],
+      "normalizers": [
+        "financial.py",
+        "subcontractor_invoice.py"
+      ],
+      "amount_fields": [
+        "total_claimed_amount",
+        "original_contract_sum",
+        "contract_sum_to_date",
+        "total_completed_and_stored_to_date"
+      ],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "subcontractor_invoices",
+      "endpoint_id": "subcontractor-invoice-contract-items",
+      "local_tables": [
+        "procore_financial_subcontractor_invoices",
+        "procore_financial_invoice_items"
+      ],
+      "normalizers": [
+        "financial.py",
+        "subcontractor_invoice.py"
+      ],
+      "amount_fields": [
+        "subcontractor_claimed_amount",
+        "scheduled_value"
+      ],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [
+        "cost_code_id",
+        "wbs_flat_code"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "subcontractor_invoices",
+      "endpoint_id": "subcontractor-invoice-contract-detail-items",
+      "local_tables": [
+        "procore_financial_subcontractor_invoices",
+        "procore_financial_invoice_items"
+      ],
+      "normalizers": [
+        "financial.py",
+        "subcontractor_invoice.py"
+      ],
+      "amount_fields": [
+        "subcontractor_claimed_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [
+        "cost_code_id",
+        "wbs_flat_code"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "subcontractor_invoices",
+      "endpoint_id": "subcontractor-invoice-change-order-items",
+      "local_tables": [
+        "procore_financial_subcontractor_invoices",
+        "procore_financial_invoice_items"
+      ],
+      "normalizers": [
+        "financial.py",
+        "subcontractor_invoice.py"
+      ],
+      "amount_fields": [
+        "amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "change_management",
+      "endpoint_id": "rfqs",
+      "local_tables": [
+        "procore_financial_change_events",
+        "procore_financial_rfqs"
+      ],
+      "normalizers": [
+        "financial.py",
+        "rfq_change_event.py"
+      ],
+      "amount_fields": [
+        "estimated_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "change_management",
+      "endpoint_id": "rfq-responses",
+      "local_tables": [
+        "procore_financial_change_events",
+        "procore_financial_rfqs"
+      ],
+      "normalizers": [
+        "financial.py",
+        "rfq_change_event.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "change_management",
+      "endpoint_id": "rfq-quotes",
+      "local_tables": [
+        "procore_financial_change_events",
+        "procore_financial_rfqs"
+      ],
+      "normalizers": [
+        "financial.py",
+        "rfq_change_event.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "change_management",
+      "endpoint_id": "change-events",
+      "local_tables": [
+        "procore_financial_change_events",
+        "procore_financial_rfqs"
+      ],
+      "normalizers": [
+        "financial.py",
+        "rfq_change_event.py"
+      ],
+      "amount_fields": [
+        "owner_cost_amount",
+        "commitment_cost_amount",
+        "schedule_impact_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "change_management",
+      "endpoint_id": "change-event-comments",
+      "local_tables": [
+        "procore_financial_change_events",
+        "procore_financial_rfqs"
+      ],
+      "normalizers": [
+        "financial.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "budget",
+      "endpoint_id": "budget-views",
+      "local_tables": [
+        "procore_financial_budget_views",
+        "procore_financial_budget_rows",
+        "procore_financial_budget_changes"
+      ],
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "budget",
+      "endpoint_id": "budget-detail-columns",
+      "local_tables": [
+        "procore_financial_budget_views",
+        "procore_financial_budget_rows",
+        "procore_financial_budget_changes"
+      ],
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "budget",
+      "endpoint_id": "budget-details",
+      "local_tables": [
+        "procore_financial_budget_views",
+        "procore_financial_budget_rows",
+        "procore_financial_budget_changes"
+      ],
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "fail_closed",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": false,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "fail-closed unresolved per prompt00-3.2; path sentinel; no live"
+    },
+    {
+      "family": "budget",
+      "endpoint_id": "budget-detail-rows",
+      "local_tables": [
+        "procore_financial_budget_views",
+        "procore_financial_budget_rows",
+        "procore_financial_budget_changes"
+      ],
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "budget",
+      "endpoint_id": "budget-change-history",
+      "local_tables": [
+        "procore_financial_budget_views",
+        "procore_financial_budget_rows",
+        "procore_financial_budget_changes"
+      ],
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [
+        "adjustment_amount",
+        "from_amount",
+        "to_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "budget",
+      "endpoint_id": "budget-change-line-items",
+      "local_tables": [
+        "procore_financial_budget_views",
+        "procore_financial_budget_rows",
+        "procore_financial_budget_changes"
+      ],
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [
+        "adjustment_amount"
+      ],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [
+        "wbs_code_id",
+        "wbs_flat_code",
+        "cost_code_id"
+      ],
+      "line_item_type_field": "line_item_type_id",
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "fail_closed",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": false,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "shell_pending; fail-closed per phase05"
+    },
+    {
+      "family": "budget",
+      "endpoint_id": "budget-modifications",
+      "local_tables": [
+        "procore_financial_budget_views",
+        "procore_financial_budget_rows",
+        "procore_financial_budget_changes"
+      ],
+      "normalizers": [
+        "financial.py",
+        "budget.py"
+      ],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key",
+        "endpoint_id",
+        "source_record_ref"
+      ],
+      "coverage_status": "covered_missing_context",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": true,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. Source traceability via field paths and counts only.",
+      "notes": "phase05"
+    },
+    {
+      "family": "payment_applications",
+      "endpoint_id": null,
+      "local_tables": [
+        "procore_financial_payment_applications"
+      ],
+      "normalizers": [],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key"
+      ],
+      "coverage_status": "deferred_not_blocking",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": false,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. This required family has no endpoints in current P02 inventory; deferred non-blocking.",
+      "notes": "Required per financial_source_coverage_contract but no matching endpoint/family data in P02 inventory; counts may be 0. Advisory only."
+    },
+    {
+      "family": "budget_changes",
+      "endpoint_id": null,
+      "local_tables": [
+        "procore_financial_budget_changes"
+      ],
+      "normalizers": [],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key"
+      ],
+      "coverage_status": "deferred_not_blocking",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": false,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. This required family has no endpoints in current P02 inventory; deferred non-blocking.",
+      "notes": "Required per financial_source_coverage_contract but no matching endpoint/family data in P02 inventory; counts may be 0. Advisory only."
+    },
+    {
+      "family": "change_events",
+      "endpoint_id": null,
+      "local_tables": [
+        "procore_financial_change_events"
+      ],
+      "normalizers": [],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key"
+      ],
+      "coverage_status": "deferred_not_blocking",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": false,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. This required family has no endpoints in current P02 inventory; deferred non-blocking.",
+      "notes": "Required per financial_source_coverage_contract but no matching endpoint/family data in P02 inventory; counts may be 0. Advisory only."
+    },
+    {
+      "family": "rfqs",
+      "endpoint_id": null,
+      "local_tables": [
+        "procore_financial_rfqs"
+      ],
+      "normalizers": [],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key"
+      ],
+      "coverage_status": "deferred_not_blocking",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": false,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. This required family has no endpoints in current P02 inventory; deferred non-blocking.",
+      "notes": "Required per financial_source_coverage_contract but no matching endpoint/family data in P02 inventory; counts may be 0. Advisory only."
+    },
+    {
+      "family": "direct_costs",
+      "endpoint_id": null,
+      "local_tables": [
+        "procore_financial_amount_facts"
+      ],
+      "normalizers": [],
+      "amount_fields": [],
+      "currency_fields": [],
+      "wbs_cost_code_fields": [],
+      "line_item_type_field": null,
+      "source_references": [],
+      "relationship_keys": [
+        "project_key"
+      ],
+      "coverage_status": "deferred_not_blocking",
+      "source_row_count": 0,
+      "amount_field_count": 0,
+      "currency_field_count": 0,
+      "wbs_cost_code_field_count": 0,
+      "live_verified": false,
+      "advisory_label": "Financial source coverage matrix \u2014 advisory review aid only. No raw values or payloads included. This required family has no endpoints in current P02 inventory; deferred non-blocking.",
+      "notes": "Required per financial_source_coverage_contract but no matching endpoint/family data in P02 inventory; counts may be 0. Advisory only."
+    }
+  ],
+  "summary": {
+    "total_endpoints_in_inventory": 32,
+    "required_families": 10,
+    "by_status": {
+      "covered_ready": 0,
+      "covered_review_required": 0,
+      "covered_missing_context": 29,
+      "fail_closed": 3,
+      "deferred_not_blocking": 5,
+      "blocked": 0
+    },
+    "fail_closed_endpoints": [
+      "purchase-order-detail-line-items",
+      "budget-details",
+      "budget-change-line-items"
+    ],
+    "no_raw_in_matrix": true,
+    "money_decimal_only": true,
+    "source_preserved": true,
+    "advisory_only": true
+  },
+  "contract": {
+    "phase": "08C",
+    "advisory_only_required": true,
+    "no_writeback_required": true,
+    "financial_determination_forbidden": true,
+    "raw_financial_payload_forbidden": true,
+    "contract_name": "phase_08c_financial_source_coverage_contract",
+    "coverage_status_values": [
+      "covered_ready",
+      "covered_review_required",
+      "covered_missing_context",
+      "fail_closed",
+      "deferred_not_blocking",
+      "blocked"
+    ],
+    "required_families": [
+      "owner_contracts",
+      "commitments",
+      "purchase_orders",
+      "subcontractor_invoices",
+      "payment_applications",
+      "budget",
+      "budget_changes",
+      "change_events",
+      "rfqs",
+      "direct_costs"
+    ]
+  },
+  "inventory_used": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-endpoint-inventory-audit.json",
+  "advisory_only": true,
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_raw_financial_payload": true,
+    "financial_determination_forbidden": true,
+    "advisory_only": true
+  },
+  "stop_checks": {
+    "raw_payloads_or_full_source_values_written": false
+  },
+  "notes": "1. Mappings (local_tables, normalizers, amount/currency/wbs fields, source_references, relationship_keys) from P02 financial-endpoint-inventory-audit.json (32 eps, 7 families live in registry). 2. Classification to exactly the 6 coverage_status_values from phase_08c_financial_source_coverage_contract using P02 live_verified (fail_closed for the 3 shells: purchase-order-detail-line-items, budget-details, budget-change-line-items) + row/field presence from second_brain_financial_amount_facts_normalized (counts only). 3. Source row counts included; NO raw Procore payloads, NO full source values, NO amounts, NO tokens/URLs/PEM in this JSON. 4. Deferred families (required but absent from current endpoints) marked deferred_not_blocking. 5. All financial outputs are advisory review aids only \u2014 not approvals, claims, entitlements, or determinations. Source preserved in procore_financial_* tables."
+}
