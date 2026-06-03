@@ -1,0 +1,11 @@
+phase: 08C
+advisory_only_required: true
+external_writeback_allowed: false
+financial_determination_allowed: false
+raw_financial_source_payload_allowed: false
+raw_prompt_response_allowed: false
+default_currency_allowed_only_when:
+  - documented_project_default_exists
+  - source_family_policy_allows_default
+  - no_line_level_conflict
+  - output_marks_default_as_derived

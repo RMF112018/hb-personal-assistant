@@ -111,3 +111,27 @@ def load_phase_08b_contract(name: str) -> dict[str, Any]:
 def load_all_phase_08b_contracts() -> dict[str, dict[str, Any]]:
     """Load every registered Phase 08B contract (logical name -> parsed dict)."""
     return {name: load_phase_08b_contract(name) for name in PHASE_08B_CONTRACT_FILES}
+
+# Phase 08C contracts (Financial Fact Normalization and Readiness). Registered separately.
+PHASE_08C_CONTRACT_FILES: dict[str, str] = {
+    "data_quality_gates_contract": "phase_08c_data_quality_gates_contract.json",
+    "financial_fact_contract": "phase_08c_financial_fact_contract.json",
+    "amount_normalization_contract": "phase_08c_amount_normalization_contract.json",
+    "currency_completeness_contract": "phase_08c_currency_completeness_contract.json",
+    "wbs_cost_code_completeness_contract": "phase_08c_wbs_cost_code_completeness_contract.json",
+    "financial_source_coverage_contract": "phase_08c_financial_source_coverage_contract.json",
+    "exposure_summary_contract": "phase_08c_exposure_summary_contract.json",
+    "forecast_readiness_contract": "phase_08c_forecast_readiness_contract.json",
+    "review_required_financial_policy_contract": "phase_08c_review_required_financial_policy_contract.json",
+    "validation_matrix": "phase_08c_validation_matrix.json",
+}
+
+def load_phase_08c_contract(name: str) -> dict[str, Any]:
+    """Load a single Phase 08C contract by logical name."""
+    if name not in PHASE_08C_CONTRACT_FILES:
+        raise KeyError(f"unknown phase 08C contract: {name!r}")
+    return _load_json_resource(PHASE_08C_CONTRACT_FILES[name])
+
+def load_all_phase_08c_contracts() -> dict[str, dict[str, Any]]:
+    """Load every registered Phase 08C contract (logical name -> parsed dict)."""
+    return {name: load_phase_08c_contract(name) for name in PHASE_08C_CONTRACT_FILES}

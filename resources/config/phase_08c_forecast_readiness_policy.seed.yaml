@@ -1,0 +1,9 @@
+phase: 08C
+advisory_only_required: true
+external_writeback_allowed: false
+financial_determination_allowed: false
+raw_financial_source_payload_allowed: false
+raw_prompt_response_allowed: false
+forecast_generation_allowed: false
+readiness_report_only: true
+mandatory_label: This output is a financial readiness review aid only. It is not a forecast, payment decision, claim decision, entitlement decision, or final financial determination.

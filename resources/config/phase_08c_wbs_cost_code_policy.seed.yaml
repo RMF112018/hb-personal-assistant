@@ -1,0 +1,12 @@
+phase: 08C
+advisory_only_required: true
+external_writeback_allowed: false
+financial_determination_allowed: false
+raw_financial_source_payload_allowed: false
+raw_prompt_response_allowed: false
+required_dimensions:
+  - cost_code
+  - wbs
+  - line_item_type
+  - source_field_path
+  - project_key

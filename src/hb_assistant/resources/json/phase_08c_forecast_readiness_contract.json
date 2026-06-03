@@ -1,0 +1,22 @@
+{
+  "phase": "08C",
+  "advisory_only_required": true,
+  "no_writeback_required": true,
+  "financial_determination_forbidden": true,
+  "raw_financial_payload_forbidden": true,
+  "contract_name": "phase_08c_forecast_readiness_contract",
+  "readiness_status_values": [
+    "ready_for_trend_support",
+    "ready_with_review_required",
+    "insufficient_context",
+    "blocked_by_guardrail",
+    "deferred_not_evaluated"
+  ],
+  "gate_status_values": [
+    "pass",
+    "warning",
+    "fail_blocking",
+    "deferred_not_blocking"
+  ],
+  "forecast_output_allowed": false
+}

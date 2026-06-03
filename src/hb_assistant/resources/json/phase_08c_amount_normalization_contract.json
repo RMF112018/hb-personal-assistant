@@ -1,0 +1,31 @@
+{
+  "phase": "08C",
+  "advisory_only_required": true,
+  "no_writeback_required": true,
+  "financial_determination_forbidden": true,
+  "raw_financial_payload_forbidden": true,
+  "contract_name": "phase_08c_amount_normalization_contract",
+  "parse_status_values": [
+    "parseable",
+    "rejected",
+    "missing",
+    "ambiguous",
+    "stale",
+    "conflicting",
+    "review_required"
+  ],
+  "money_storage": {
+    "canonical_decimal": "TEXT",
+    "minor_units": "INTEGER when scale known",
+    "float_allowed": false,
+    "sqlite_real_allowed": false
+  },
+  "required_fields": [
+    "source_value_hash",
+    "canonical_decimal_text",
+    "currency_code",
+    "parse_status",
+    "rejection_reason",
+    "source_reference"
+  ]
+}

@@ -80,6 +80,13 @@ data_quality_app = typer.Typer(
 )
 app.add_typer(data_quality_app, name="data-quality")
 
+financial_app = typer.Typer(
+    name="financial",
+    help="Phase 08C financial readiness (read-only advisory surfaces; no determinations, no raw).",
+    no_args_is_help=True,
+)
+app.add_typer(financial_app, name="financial")
+
 automation_app = typer.Typer(
     name="automation",
     help="Phase 08B automation health + observability (read-only status surface).",
@@ -2368,3 +2375,104 @@ def automation_last_good_run(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
+
+
+# Phase 08C financial readiness read-only CLI surfaces (Prompt 01 schema/contracts).
+# Advisory only; load contracts; query new V35 tables (counts/status); no raw, no determinations.
+# Dry-run by nature (read-only).
+
+_08C_GUARDRAILS = {
+    "local_first": True,
+    "read_only": True,
+    "no_external_writeback": True,
+    "no_raw_financial_payload": True,
+    "financial_determination_forbidden": True,
+    "advisory_only": True,
+}
+
+@financial_app.command("readiness")
+def financial_readiness(
+    project: str | None = typer.Option(None, "--project", help="Optional project key."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Financial readiness snapshot (V35 tables + contracts; advisory, read-only)."""
+    from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
+    from hb_assistant.store.migrator import SQLiteMigrator
+    SQLiteMigrator().apply()
+    contract = load_phase_08c_contract("financial_fact_contract")
+    payload = {
+        "command": "second-brain financial readiness",
+        "ok": True,
+        "phase": "08C Prompt 01",
+        "project_key": project,
+        "advisory_only": True,
+        "contract": contract.get("contract_name"),
+        "guardrails": _08C_GUARDRAILS,
+        "note": "schema/contracts present; tables ship empty (operational_empty_expected); no determinations",
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+
+@financial_app.command("coverage")
+def financial_coverage(
+    project: str | None = typer.Option(None, "--project"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Financial source coverage (from V35 snapshots + contract)."""
+    from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
+    contract = load_phase_08c_contract("financial_source_coverage_contract")
+    payload = {
+        "command": "second-brain financial coverage",
+        "ok": True,
+        "phase": "08C",
+        "project_key": project,
+        "advisory_only": True,
+        "required_families": contract.get("required_families", []),
+        "guardrails": _08C_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+
+@financial_app.command("exposure-summary")
+def financial_exposure_summary(
+    project: str | None = typer.Option(None, "--project"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Exposure summary items (advisory marts from V35)."""
+    from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
+    contract = load_phase_08c_contract("exposure_summary_contract")
+    payload = {
+        "command": "second-brain financial exposure-summary",
+        "ok": True,
+        "phase": "08C",
+        "project_key": project,
+        "advisory_only": True,
+        "categories": contract.get("exposure_categories", []),
+        "guardrails": _08C_GUARDRAILS,
+        "note": "amounts via normalized refs only; never summed",
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+
+@financial_app.command("review-items")
+def financial_review_items(
+    project: str | None = typer.Option(None, "--project"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Review required financial items (from V35)."""
+    payload = {
+        "command": "second-brain financial review-items",
+        "ok": True,
+        "phase": "08C",
+        "project_key": project,
+        "advisory_only": True,
+        "guardrails": _08C_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+
+# data-quality phase-08c-gates under data_quality_app for the expected command path
+@data_quality_app.command("phase-08c-gates")
+def data_quality_phase_08c_gates(
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Phase 08C financial data-quality gates (V35 tables + contracts + guards)."""
+    from hb_assistant.construction.second_brain.data_quality import evaluate_phase_08c_data_quality_gates
+    report = evaluate_phase_08c_data_quality_gates()
+    typer.echo(json.dumps({**report, "guardrails": _08C_GUARDRAILS}, indent=2, default=str) if json_out else str(report))

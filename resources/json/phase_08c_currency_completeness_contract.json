@@ -1,0 +1,22 @@
+{
+  "phase": "08C",
+  "advisory_only_required": true,
+  "no_writeback_required": true,
+  "financial_determination_forbidden": true,
+  "raw_financial_payload_forbidden": true,
+  "contract_name": "phase_08c_currency_completeness_contract",
+  "currency_status_values": [
+    "explicit_source_currency",
+    "evidence_backed_project_default",
+    "missing_currency",
+    "inconsistent_currency",
+    "ambiguous_currency",
+    "review_required"
+  ],
+  "project_default_conditions": [
+    "documented_source",
+    "policy_allowed",
+    "no_line_level_conflict",
+    "output_marks_default_derived"
+  ]
+}

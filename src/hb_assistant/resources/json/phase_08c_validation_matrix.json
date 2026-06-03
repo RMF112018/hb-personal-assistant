@@ -1,0 +1,18 @@
+{
+  "phase": "08C",
+  "commands": [
+    "python -m compileall src tests",
+    "ruff check .",
+    "mypy src",
+    "pytest -m \"not live and not integration and not manual\"",
+    "hb-assistant construction-agent validate --json",
+    "hb-assistant second-brain financial readiness --project KEY --json",
+    "hb-assistant second-brain financial coverage --project KEY --json",
+    "hb-assistant second-brain financial exposure-summary --project KEY --json",
+    "hb-assistant second-brain financial review-items --project KEY --json",
+    "hb-assistant second-brain financial data-quality phase-08c-gates --json",
+    "hb-assistant second-brain financial data-quality no-writeback-proof --json"
+  ],
+  "evidence_directory": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/",
+  "closeout_requires_all_pass": true
+}

@@ -278,7 +278,7 @@ def test_proof_builder_passes_and_produces_evidence_shapes() -> None:
     assert proof["fakes_used"] is True
     assert proof["lock_guaranteed_release"] is True
     assert proof["confirm_enforced"] is True
-    assert proof["schema_version"] == 34
+    assert proof["schema_version"] in (34, 35)  # 08B proofs or post-V35
     assert "simulated_apply_result" in proof
     assert "fail_downstream_result" in proof
     # no raw
@@ -309,7 +309,7 @@ def test_p04_retry_backoff_execution_proof() -> None:
     assert proof["transient_retries_used"] is True
     assert proof["fakes_used"] is True
     assert proof["lock_released"] is True
-    assert proof["schema_version"] == 34
+    assert proof["schema_version"] in (34, 35)  # 08B proofs or post-V35
     assert proof["no_raw"] is True
     assert len(proof["sleep_calls"]) >= 1
     assert "simulated_result" in proof
@@ -326,7 +326,7 @@ def test_p04_weekend_catchup_proof() -> None:
     assert proof["weekend_skipped"] is True
     assert proof["fakes_called"] == 0
     assert proof["no_raw"] is True
-    assert proof["schema_version"] == 34
+    assert proof["schema_version"] in (34, 35)  # 08B proofs or post-V35
     assert "WEEKEND" in str(proof.get("weekend_reason") or "")
 
 
@@ -342,7 +342,7 @@ def test_p04_first_run_after_wake_proof() -> None:
     assert proof["fakes_used"] is True
     assert proof["fakes_called_count"] >= 1
     assert proof["no_raw"] is True
-    assert proof["schema_version"] == 34
+    assert proof["schema_version"] in (34, 35)  # 08B proofs or post-V35
 
 
 def test_p04_duplicate_prevention_proof() -> None:
@@ -355,7 +355,7 @@ def test_p04_duplicate_prevention_proof() -> None:
     assert proof["duplicate_prevented"] is True
     assert proof["fakes_called"] == 0
     assert proof["no_raw"] is True
-    assert proof["schema_version"] == 34
+    assert proof["schema_version"] in (34, 35)  # 08B proofs or post-V35
     assert proof["overall_status"] == "skipped"
 
 
@@ -373,7 +373,7 @@ def test_p05_safe_replay_execution_proof() -> None:
     assert proof["fakes_used"] is True
     assert proof["lock_released"] is True
     assert proof["no_raw"] is True
-    assert proof["schema_version"] == 34
+    assert proof["schema_version"] in (34, 35)  # 08B proofs or post-V35
     assert proof.get("safe_replay_contract_satisfied") is True
     assert "failed-only" in str(proof.get("selectors_supported") or "")
 
@@ -427,7 +427,7 @@ def test_p07_last_good_updated_only_on_full_success():
     p = build_last_good_run_proof()
     assert p.get("proof_passed") is True
     assert p.get("last_good_updated_only_on_full_success") is True
-    assert p.get("schema_version") == 34
+    assert p.get("schema_version") in (34, 35)
     assert p.get("fakes_used") is True
     assert p.get("job_health_called_on_all") is True
 
@@ -442,7 +442,7 @@ def test_p07_job_health_executor_proof_and_surfaces():
     p = build_daily_brief_job_health_executor_proof()
     assert p.get("proof_passed") is True
     assert p.get("job_health_called_for_success_and_fail_outcomes") is True
-    assert p.get("schema_version") == 34
+    assert p.get("schema_version") in (34, 35)
 
     # surfaces via builders (use a run id from prior or dummy; builders handle)
     st = build_automation_status()

@@ -1,0 +1,28 @@
+{
+  "phase": "08C",
+  "advisory_only_required": true,
+  "no_writeback_required": true,
+  "financial_determination_forbidden": true,
+  "raw_financial_payload_forbidden": true,
+  "contract_name": "phase_08c_data_quality_gates_contract",
+  "gate_status_values": [
+    "pass",
+    "warning",
+    "fail_blocking",
+    "deferred_not_blocking"
+  ],
+  "required_gates": [
+    "schema_contracts",
+    "endpoint_inventory",
+    "amount_normalization",
+    "currency_completeness",
+    "wbs_cost_code_completeness",
+    "source_coverage",
+    "exposure_marts",
+    "readiness_agent",
+    "forecast_readiness",
+    "review_required_policy",
+    "cli_operator_status",
+    "no_writeback_no_raw_financial_output"
+  ]
+}

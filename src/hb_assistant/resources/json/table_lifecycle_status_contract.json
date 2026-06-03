@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 151,
+  "table_count": 161,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1378,6 +1378,96 @@
       "blocking_for_phase": "none",
       "v": "V34",
       "notes": "Phase 08B local brief-open receipts (one metadata-only row per open of the delivered vault note / rendered HTML; open_target pinned to vault|html by CHECK; redacted path + path hash only, raw content never persisted; guard-checked); populated in 08B Prompt 12 via the brief-open apply path (fail-closed behind daily_brief_open.open)"
+    },
+    "second_brain_financial_fact_normalization_runs": {
+      "table_family": "financial_readiness_v35",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08C",
+      "blocking_for_phase": "none",
+      "v": "V35",
+      "notes": "08C financial fact normalization run ledger (ships empty; full 08C guards + advisory_only=1)"
+    },
+    "second_brain_financial_amount_facts_normalized": {
+      "table_family": "financial_readiness_v35",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08C",
+      "blocking_for_phase": "none",
+      "v": "V35",
+      "notes": "08C normalized amount facts (canonical decimal TEXT + minor_units; source refs only; full guards)"
+    },
+    "second_brain_financial_currency_completeness_snapshots": {
+      "table_family": "financial_readiness_v35",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08C",
+      "blocking_for_phase": "none",
+      "v": "V35",
+      "notes": "08C currency completeness snapshots (full guards + advisory_only)"
+    },
+    "second_brain_financial_wbs_cost_code_snapshots": {
+      "table_family": "financial_readiness_v35",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08C",
+      "blocking_for_phase": "none",
+      "v": "V35",
+      "notes": "08C WBS/cost-code completeness snapshots (full guards + advisory_only)"
+    },
+    "second_brain_financial_source_coverage_snapshots": {
+      "table_family": "financial_readiness_v35",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08C",
+      "blocking_for_phase": "none",
+      "v": "V35",
+      "notes": "08C financial source coverage snapshots (full guards + advisory_only)"
+    },
+    "second_brain_financial_exposure_summary_items": {
+      "table_family": "financial_readiness_v35",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08C",
+      "blocking_for_phase": "none",
+      "v": "V35",
+      "notes": "08C exposure summary items (advisory; full guards + advisory_only)"
+    },
+    "second_brain_financial_forecast_readiness_runs": {
+      "table_family": "financial_readiness_v35",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08C",
+      "blocking_for_phase": "none",
+      "v": "V35",
+      "notes": "08C forecast readiness runs (advisory only; full guards + advisory_only)"
+    },
+    "second_brain_financial_review_required_items": {
+      "table_family": "financial_readiness_v35",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08C",
+      "blocking_for_phase": "none",
+      "v": "V35",
+      "notes": "08C review-required financial items (full guards + advisory_only)"
+    },
+    "second_brain_financial_readiness_agent_runs": {
+      "table_family": "financial_readiness_v35",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08C",
+      "blocking_for_phase": "none",
+      "v": "V35",
+      "notes": "08C financial readiness agent runs (full guards + advisory_only)"
+    },
+    "second_brain_phase_08c_validation_runs": {
+      "table_family": "financial_readiness_v35",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08C",
+      "blocking_for_phase": "none",
+      "v": "V35",
+      "notes": "08C validation runs (full guards + advisory_only)"
     }
   }
 }

@@ -1,0 +1,32 @@
+{
+  "phase": "08C",
+  "advisory_only_required": true,
+  "no_writeback_required": true,
+  "financial_determination_forbidden": true,
+  "raw_financial_payload_forbidden": true,
+  "contract_name": "phase_08c_financial_fact_contract",
+  "required_fields": [
+    "run_id",
+    "project_key",
+    "source_family",
+    "source_table",
+    "source_record_ref",
+    "source_field_path",
+    "advisory_only",
+    "confidence_label",
+    "review_tier"
+  ],
+  "forbidden_fields": [
+    "raw_payload",
+    "raw_prompt",
+    "raw_response",
+    "signed_url",
+    "download_url"
+  ],
+  "status_values": [
+    "source_stated",
+    "derived_readiness",
+    "review_required",
+    "blocked"
+  ]
+}

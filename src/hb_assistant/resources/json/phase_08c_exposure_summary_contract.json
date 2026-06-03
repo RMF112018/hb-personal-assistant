@@ -1,0 +1,31 @@
+{
+  "phase": "08C",
+  "advisory_only_required": true,
+  "no_writeback_required": true,
+  "financial_determination_forbidden": true,
+  "raw_financial_payload_forbidden": true,
+  "contract_name": "phase_08c_exposure_summary_contract",
+  "exposure_categories": [
+    "pending_exposure",
+    "approved_exposure",
+    "budget_changes",
+    "commitments",
+    "purchase_orders",
+    "subcontractor_invoices",
+    "change_events",
+    "rfqs",
+    "owner_contracts",
+    "direct_costs",
+    "review_required"
+  ],
+  "required_fields": [
+    "project_key",
+    "source_family",
+    "item_label",
+    "normalized_amount_ref",
+    "confidence_label",
+    "review_tier",
+    "advisory_status"
+  ],
+  "final_determination_allowed": false
+}

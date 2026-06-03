@@ -1,0 +1,9 @@
+phase: 08C
+advisory_only_required: true
+external_writeback_allowed: false
+financial_determination_allowed: false
+raw_financial_source_payload_allowed: false
+raw_prompt_response_allowed: false
+exposure_outputs_are_final_determinations: false
+require_source_reference: true
+require_review_tier: true

@@ -1,0 +1,28 @@
+{
+  "phase": "08C",
+  "advisory_only_required": true,
+  "no_writeback_required": true,
+  "financial_determination_forbidden": true,
+  "raw_financial_payload_forbidden": true,
+  "contract_name": "phase_08c_financial_source_coverage_contract",
+  "coverage_status_values": [
+    "covered_ready",
+    "covered_review_required",
+    "covered_missing_context",
+    "fail_closed",
+    "deferred_not_blocking",
+    "blocked"
+  ],
+  "required_families": [
+    "owner_contracts",
+    "commitments",
+    "purchase_orders",
+    "subcontractor_invoices",
+    "payment_applications",
+    "budget",
+    "budget_changes",
+    "change_events",
+    "rfqs",
+    "direct_costs"
+  ]
+}

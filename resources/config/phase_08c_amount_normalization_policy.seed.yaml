@@ -1,0 +1,15 @@
+phase: 08C
+advisory_only_required: true
+external_writeback_allowed: false
+financial_determination_allowed: false
+raw_financial_source_payload_allowed: false
+raw_prompt_response_allowed: false
+parse_statuses:
+  - parseable
+  - rejected
+  - missing
+  - ambiguous
+  - stale
+  - conflicting
+  - review_required
+forbid_float_money: true

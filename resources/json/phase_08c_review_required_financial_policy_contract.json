@@ -1,0 +1,25 @@
+{
+  "phase": "08C",
+  "advisory_only_required": true,
+  "no_writeback_required": true,
+  "financial_determination_forbidden": true,
+  "raw_financial_payload_forbidden": true,
+  "contract_name": "phase_08c_review_required_financial_policy_contract",
+  "review_tiers": [
+    "none",
+    "operator_review",
+    "financial_review",
+    "executive_review",
+    "legal_contract_review"
+  ],
+  "trigger_categories": [
+    "amount",
+    "currency",
+    "wbs_cost_code",
+    "source_reference",
+    "relationship",
+    "endpoint_status",
+    "guardrail",
+    "determination_attempt"
+  ]
+}

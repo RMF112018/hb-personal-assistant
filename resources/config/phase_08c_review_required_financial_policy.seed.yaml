@@ -1,0 +1,20 @@
+phase: 08C
+advisory_only_required: true
+external_writeback_allowed: false
+financial_determination_allowed: false
+raw_financial_source_payload_allowed: false
+raw_prompt_response_allowed: false
+review_tiers:
+  - none
+  - operator_review
+  - financial_review
+  - executive_review
+  - legal_contract_review
+triggers:
+  - amount_parse_ambiguous_or_rejected
+  - missing_or_inconsistent_currency
+  - missing_wbs_cost_code_or_line_item_type
+  - missing_source_field_path
+  - relationship_ambiguity
+  - fail_closed_required_source
+  - determination_attempt

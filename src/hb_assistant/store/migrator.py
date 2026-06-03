@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 34
+LATEST_SCHEMA_VERSION = 35
 
 
 class SQLiteMigrator:
@@ -3703,6 +3703,278 @@ class SQLiteMigrator:
         """,
     ]
 
+    V35_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_financial_fact_normalization_runs (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT NOT NULL UNIQUE,
+          project_key TEXT,
+          started_utc TEXT NOT NULL,
+          completed_utc TEXT,
+          status TEXT NOT NULL CHECK(status IN ('started','succeeded','failed','blocked')),
+          advisory_only INTEGER NOT NULL DEFAULT 1 CHECK(advisory_only = 1),
+          notes_redacted TEXT,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_financial_amount_facts_normalized (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          source_family TEXT NOT NULL,
+          source_table TEXT NOT NULL,
+          source_record_ref TEXT NOT NULL,
+          source_field_path TEXT NOT NULL,
+          source_value_hash TEXT,
+          parse_status TEXT NOT NULL CHECK(parse_status IN ('parseable','rejected','missing','ambiguous','stale','conflicting','review_required')),
+          canonical_decimal_text TEXT,
+          minor_units INTEGER,
+          currency_code TEXT,
+          currency_status TEXT,
+          rejection_reason TEXT,
+          confidence_label TEXT NOT NULL,
+          review_tier TEXT NOT NULL,
+          advisory_only INTEGER NOT NULL DEFAULT 1 CHECK(advisory_only = 1),
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_financial_currency_completeness_snapshots (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          project_key TEXT,
+          currency_status TEXT NOT NULL CHECK(currency_status IN ('explicit_source_currency','evidence_backed_project_default','missing_currency','inconsistent_currency','ambiguous_currency','review_required')),
+          project_default_applied INTEGER NOT NULL DEFAULT 0,
+          evidence_backed_count INTEGER NOT NULL DEFAULT 0,
+          inconsistent_count INTEGER NOT NULL DEFAULT 0,
+          missing_count INTEGER NOT NULL DEFAULT 0,
+          advisory_only INTEGER NOT NULL DEFAULT 1 CHECK(advisory_only = 1),
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_financial_wbs_cost_code_snapshots (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          project_key TEXT,
+          wbs_present_count INTEGER NOT NULL DEFAULT 0,
+          cost_code_present_count INTEGER NOT NULL DEFAULT 0,
+          line_item_type_present_count INTEGER NOT NULL DEFAULT 0,
+          missing_wbs_count INTEGER NOT NULL DEFAULT 0,
+          missing_cost_code_count INTEGER NOT NULL DEFAULT 0,
+          ambiguous_count INTEGER NOT NULL DEFAULT 0,
+          review_required_count INTEGER NOT NULL DEFAULT 0,
+          advisory_only INTEGER NOT NULL DEFAULT 1 CHECK(advisory_only = 1),
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_financial_source_coverage_snapshots (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          project_key TEXT,
+          source_family TEXT NOT NULL,
+          endpoint_id TEXT,
+          local_table TEXT,
+          live_verification_status TEXT,
+          coverage_status TEXT NOT NULL,
+          row_count INTEGER NOT NULL DEFAULT 0,
+          amount_field_count INTEGER NOT NULL DEFAULT 0,
+          currency_field_count INTEGER NOT NULL DEFAULT 0,
+          wbs_cost_code_field_count INTEGER NOT NULL DEFAULT 0,
+          relationship_key_count INTEGER NOT NULL DEFAULT 0,
+          advisory_only INTEGER NOT NULL DEFAULT 1 CHECK(advisory_only = 1),
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_financial_exposure_summary_items (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          exposure_category TEXT NOT NULL,
+          item_label TEXT,
+          normalized_amount_ref TEXT,
+          confidence_label TEXT NOT NULL,
+          review_tier TEXT NOT NULL,
+          advisory_status TEXT NOT NULL,
+          advisory_only INTEGER NOT NULL DEFAULT 1 CHECK(advisory_only = 1),
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_financial_forecast_readiness_runs (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT NOT NULL UNIQUE,
+          project_key TEXT,
+          readiness_status TEXT NOT NULL CHECK(readiness_status IN ('ready_for_trend_support','ready_with_review_required','insufficient_context','blocked_by_guardrail','deferred_not_evaluated')),
+          gate_status TEXT NOT NULL,
+          context_items_count INTEGER NOT NULL DEFAULT 0,
+          review_items_count INTEGER NOT NULL DEFAULT 0,
+          advisory_only INTEGER NOT NULL DEFAULT 1 CHECK(advisory_only = 1),
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_financial_review_required_items (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          trigger_category TEXT NOT NULL,
+          source_ref TEXT,
+          amount_ref TEXT,
+          review_tier TEXT NOT NULL,
+          advisory_only INTEGER NOT NULL DEFAULT 1 CHECK(advisory_only = 1),
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_financial_readiness_agent_runs (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT NOT NULL UNIQUE,
+          project_key TEXT,
+          status TEXT NOT NULL CHECK(status IN ('started','succeeded','failed','blocked')),
+          items_evaluated INTEGER NOT NULL DEFAULT 0,
+          review_required_count INTEGER NOT NULL DEFAULT 0,
+          advisory_only INTEGER NOT NULL DEFAULT 1 CHECK(advisory_only = 1),
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_phase_08c_validation_runs (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT NOT NULL UNIQUE,
+          started_utc TEXT NOT NULL,
+          completed_utc TEXT,
+          status TEXT NOT NULL CHECK(status IN ('started','succeeded','failed','blocked')),
+          matrix_json_redacted TEXT,
+          advisory_only INTEGER NOT NULL DEFAULT 1 CHECK(advisory_only = 1),
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -4139,6 +4411,16 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (34, 'v34_daily_brief_open_receipts', ?)",
+                    (now,),
+                )
+
+            # v35 Phase 08C Prompt 01 — financial fact normalization + readiness substrate (additive only; V1-V34 untouched). 10 tables for normalization runs, normalized amount facts (decimal TEXT + minor units), currency/WBS/cost-code/source coverage snapshots, exposure summary, forecast readiness, review items, agent runs, validation runs. All with full no-raw/no-writeback/financial-determination guards + advisory_only=1.
+            for stmt in self.V35_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 35")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (35, 'v35_phase_08c_financial_fact_normalization_and_readiness', ?)",
                     (now,),
                 )
 

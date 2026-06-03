@@ -1,0 +1,12 @@
+phase: 08C
+advisory_only_required: true
+external_writeback_allowed: false
+financial_determination_allowed: false
+raw_financial_source_payload_allowed: false
+raw_prompt_response_allowed: false
+readiness_statuses:
+  - ready_for_trend_support
+  - ready_with_review_required
+  - insufficient_context
+  - blocked_by_guardrail
+  - deferred_not_evaluated
