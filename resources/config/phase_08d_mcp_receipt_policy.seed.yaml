@@ -1,0 +1,9 @@
+phase: 08D
+metadata_only: true
+hash_arguments: true
+hash_results: true
+persist_raw_prompt: false
+persist_raw_response: false
+persist_raw_source_content: false
+persist_tokens_or_secrets: false
+persist_signed_or_download_urls: false

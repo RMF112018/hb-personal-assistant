@@ -1,0 +1,10 @@
+phase: 08D
+local_only: true
+allow_external_writeback: false
+allow_direct_graph_api: false
+allow_direct_procore_api: false
+allow_email_send: false
+allow_calendar_update: false
+allow_arbitrary_sql: false
+allow_raw_store_access: false
+allow_final_financial_determination: false

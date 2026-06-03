@@ -1,0 +1,14 @@
+phase: 08D
+policy_version: 1.4.0-phase-08d-planning
+transport:
+  allowed: [stdio]
+  denied: [http, sse, websocket, tcp, remote]
+startup:
+  fail_closed: true
+  require_schema_version: 37
+  require_allowed_registry: true
+  require_denied_registry: true
+  require_resource_registry: true
+  require_prompt_registry: true
+  require_no_raw_access_proof: true
+  require_no_writeback_proof: true

@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 36
+LATEST_SCHEMA_VERSION = 37
 
 
 class SQLiteMigrator:
@@ -3985,6 +3985,346 @@ class SQLiteMigrator:
         "ADD COLUMN confidence_label TEXT;",
     ]
 
+    # v37 Phase 08D Prompt 02 — local MCP bridge metadata substrate (additive only;
+    # V1-V36 untouched). Ten tables: server-config / tool-registry / resource-registry /
+    # prompt-registry snapshots, tool-call + denial receipts, permission-audit + policy-gate
+    # runs, the Claude Desktop config preview, and the phase-08D validation runs. Every table
+    # is metadata-only (hashes, counts, status, reason codes, policy/schema version, evidence
+    # path, correlation id) and carries the full twenty no-raw / no-writeback / no-direct-api /
+    # no-determination guard columns CHECK(... = 0). No server, broker, or runtime dispatch is
+    # wired in this prompt — the substrate ships empty (operational_empty_expected).
+    V37_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_mcp_server_config_snapshots (
+          snapshot_id TEXT PRIMARY KEY,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          transport TEXT NOT NULL,
+          config_hash TEXT NOT NULL,
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_mcp_tool_registry_snapshots (
+          snapshot_id TEXT PRIMARY KEY,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          allowed_tool_count INTEGER NOT NULL,
+          denied_action_count INTEGER NOT NULL,
+          registry_hash TEXT NOT NULL,
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_mcp_resource_registry_snapshots (
+          snapshot_id TEXT PRIMARY KEY,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          resource_count INTEGER NOT NULL,
+          registry_hash TEXT NOT NULL,
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_mcp_prompt_registry_snapshots (
+          snapshot_id TEXT PRIMARY KEY,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          prompt_count INTEGER NOT NULL,
+          registry_hash TEXT NOT NULL,
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_mcp_tool_call_receipts (
+          receipt_id TEXT PRIMARY KEY,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          client_name TEXT,
+          tool_name TEXT NOT NULL,
+          decision TEXT NOT NULL CHECK(decision IN ('allowed','denied')),
+          workflow_wrapper TEXT,
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          output_classification TEXT,
+          source_count INTEGER NOT NULL DEFAULT 0,
+          result_count INTEGER NOT NULL DEFAULT 0,
+          evidence_path TEXT,
+          correlation_id TEXT,
+          args_hash TEXT,
+          result_hash TEXT,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_mcp_denial_receipts (
+          receipt_id TEXT PRIMARY KEY,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          client_name TEXT,
+          requested_action TEXT NOT NULL,
+          decision TEXT NOT NULL DEFAULT 'denied' CHECK(decision = 'denied'),
+          denial_reason_code TEXT NOT NULL,
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          correlation_id TEXT,
+          request_hash TEXT,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_mcp_permission_audit_runs (
+          audit_run_id TEXT PRIMARY KEY,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          status TEXT NOT NULL,
+          checks_json TEXT NOT NULL,
+          finding_count INTEGER NOT NULL DEFAULT 0,
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          evidence_path TEXT,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_mcp_policy_gate_runs (
+          gate_run_id TEXT PRIMARY KEY,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          ok INTEGER NOT NULL CHECK(ok IN (0,1)),
+          status_counts_json TEXT NOT NULL,
+          readiness_overstated INTEGER NOT NULL DEFAULT 0 CHECK(readiness_overstated IN (0,1)),
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          evidence_path TEXT,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_mcp_claude_desktop_config_previews (
+          preview_id TEXT PRIMARY KEY,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          client_name TEXT NOT NULL,
+          safe INTEGER NOT NULL CHECK(safe IN (0,1)),
+          transport TEXT NOT NULL,
+          command_redacted TEXT NOT NULL,
+          args_json TEXT NOT NULL,
+          env_keys_json TEXT NOT NULL,
+          config_hash TEXT NOT NULL,
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          evidence_path TEXT,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_phase_08d_validation_runs (
+          validation_run_id TEXT PRIMARY KEY,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          ok INTEGER NOT NULL CHECK(ok IN (0,1)),
+          command_count INTEGER NOT NULL,
+          pass_count INTEGER NOT NULL,
+          warning_count INTEGER NOT NULL DEFAULT 0,
+          fail_count INTEGER NOT NULL DEFAULT 0,
+          validation_json TEXT NOT NULL,
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          evidence_path TEXT,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0)
+        );
+        """,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -4443,6 +4783,21 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (36, 'v36_phase_08c_review_required_confidence_label', ?)",
+                    (now,),
+                )
+
+            # v37 Phase 08D Prompt 02 — local MCP bridge metadata substrate (additive only;
+            # V1-V36 untouched). 10 metadata-only tables (server/tool/resource/prompt registry
+            # snapshots, tool-call + denial receipts, permission-audit + policy-gate runs,
+            # Claude Desktop config preview, phase-08D validation runs), each with the full
+            # twenty no-raw / no-writeback / no-direct-api / no-determination guards. Ships
+            # empty; no server or runtime dispatch is wired here.
+            for stmt in self.V37_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 37")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (37, 'v37_phase_08d_mcp_bridge_schema', ?)",
                     (now,),
                 )
 

@@ -1,0 +1,78 @@
+{
+  "contract_name": "phase_08d_mcp_allowed_tools_contract",
+  "version": "1.4.0-phase-08d-planning",
+  "tools": [
+    {
+      "name": "hb_status",
+      "wrapper": "mcp_status_wrapper",
+      "maps_to": "second-brain status + agents status + automation health + latest validation posture",
+      "risk": "low",
+      "receipt_required": true
+    },
+    {
+      "name": "hb_query",
+      "wrapper": "mcp_query_wrapper",
+      "maps_to": "second-brain query / retrieval orchestrator / answer synthesis",
+      "risk": "medium",
+      "receipt_required": true
+    },
+    {
+      "name": "hb_research_packet",
+      "wrapper": "mcp_research_packet_wrapper",
+      "maps_to": "research packet builder",
+      "risk": "medium",
+      "receipt_required": true
+    },
+    {
+      "name": "hb_get_daily_brief",
+      "wrapper": "mcp_get_daily_brief_wrapper",
+      "maps_to": "daily-brief render-view / delivery status safe view",
+      "risk": "low",
+      "receipt_required": true
+    },
+    {
+      "name": "hb_open_daily_brief",
+      "wrapper": "mcp_open_daily_brief_wrapper",
+      "maps_to": "automation open-brief local-only policy",
+      "risk": "medium",
+      "receipt_required": true
+    },
+    {
+      "name": "hb_review_load_status",
+      "wrapper": "mcp_review_load_status_wrapper",
+      "maps_to": "review triage + automation/source freshness observability",
+      "risk": "low",
+      "receipt_required": true
+    },
+    {
+      "name": "hb_memory_review_list",
+      "wrapper": "mcp_memory_review_list_wrapper",
+      "maps_to": "memory curator review candidates/list",
+      "risk": "medium",
+      "receipt_required": true
+    },
+    {
+      "name": "hb_memory_feedback",
+      "wrapper": "mcp_memory_feedback_wrapper",
+      "maps_to": "memory candidate feedback workflow only",
+      "risk": "medium",
+      "receipt_required": true
+    },
+    {
+      "name": "hb_validation_status",
+      "wrapper": "mcp_validation_status_wrapper",
+      "maps_to": "phase 08A/08B/08C/08D gates + no-writeback proofs",
+      "risk": "low",
+      "receipt_required": true
+    }
+  ],
+  "global_requirements": [
+    "workflow_wrapper_only",
+    "metadata_receipt_required",
+    "bounded_output",
+    "policy_posture_required",
+    "no_raw_content",
+    "no_writeback",
+    "no_final_determinations"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "contract_name": "phase_08d_mcp_server_config_contract",
+  "version": "1.4.0-phase-08d-planning",
+  "phase": "08D",
+  "transport_allowed": [
+    "stdio"
+  ],
+  "transport_denied": [
+    "http",
+    "sse",
+    "websocket",
+    "tcp",
+    "remote"
+  ],
+  "startup_fail_closed_on": [
+    "missing_policy",
+    "missing_registry",
+    "stale_schema",
+    "guard_proof_failure",
+    "unsafe_config",
+    "unsupported_transport"
+  ],
+  "local_only": true,
+  "no_external_network_from_mcp_layer": true
+}

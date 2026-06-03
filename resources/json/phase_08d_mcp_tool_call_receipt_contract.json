@@ -1,0 +1,34 @@
+{
+  "contract_name": "phase_08d_mcp_tool_call_receipt_contract",
+  "version": "1.4.0-phase-08d-planning",
+  "metadata_only": true,
+  "allowed_fields": [
+    "receipt_id",
+    "created_at",
+    "client_name",
+    "tool_name",
+    "decision",
+    "workflow_wrapper",
+    "policy_version",
+    "schema_version",
+    "output_classification",
+    "source_count",
+    "result_count",
+    "evidence_path",
+    "correlation_id",
+    "args_hash",
+    "result_hash",
+    "guard_values"
+  ],
+  "forbidden_fields": [
+    "raw_prompt",
+    "raw_response",
+    "raw_sql",
+    "raw_source_content",
+    "secrets",
+    "tokens",
+    "signed_urls",
+    "download_urls",
+    "raw_mcp_payload"
+  ]
+}

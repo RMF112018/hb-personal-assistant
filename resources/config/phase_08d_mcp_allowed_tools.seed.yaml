@@ -1,0 +1,29 @@
+phase: 08D
+allowed_tools:
+  - name: hb_status
+    wrapper: mcp_status_wrapper
+    receipt_required: true
+  - name: hb_query
+    wrapper: mcp_query_wrapper
+    receipt_required: true
+  - name: hb_research_packet
+    wrapper: mcp_research_packet_wrapper
+    receipt_required: true
+  - name: hb_get_daily_brief
+    wrapper: mcp_get_daily_brief_wrapper
+    receipt_required: true
+  - name: hb_open_daily_brief
+    wrapper: mcp_open_daily_brief_wrapper
+    receipt_required: true
+  - name: hb_review_load_status
+    wrapper: mcp_review_load_status_wrapper
+    receipt_required: true
+  - name: hb_memory_review_list
+    wrapper: mcp_memory_review_list_wrapper
+    receipt_required: true
+  - name: hb_memory_feedback
+    wrapper: mcp_memory_feedback_wrapper
+    receipt_required: true
+  - name: hb_validation_status
+    wrapper: mcp_validation_status_wrapper
+    receipt_required: true

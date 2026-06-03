@@ -1,0 +1,29 @@
+phase: 08D
+denied_actions:
+  - arbitrary_sql
+  - raw_file_read
+  - raw_obsidian_read
+  - raw_sqlite_query
+  - graph_api_call
+  - procore_api_call
+  - email_send
+  - calendar_update
+  - source_system_writeback
+  - raw_email_body_access
+  - raw_document_text_access
+  - raw_calendar_payload_access
+  - raw_procore_payload_access
+  - raw_financial_payload_access
+  - raw_prompt_access
+  - raw_response_access
+  - signed_url_access
+  - download_url_access
+  - payment_decision
+  - claim_decision
+  - entitlement_decision
+  - final_financial_determination
+  - external_delivery
+  - slack_send
+  - teams_send
+  - sms_send
+  - push_notification_send

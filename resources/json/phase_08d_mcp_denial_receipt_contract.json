@@ -1,0 +1,25 @@
+{
+  "contract_name": "phase_08d_mcp_denial_receipt_contract",
+  "version": "1.4.0-phase-08d-planning",
+  "metadata_only": true,
+  "required_fields": [
+    "receipt_id",
+    "created_at",
+    "client_name",
+    "requested_action",
+    "decision",
+    "denial_reason_code",
+    "policy_version",
+    "schema_version",
+    "correlation_id",
+    "request_hash"
+  ],
+  "forbidden_fields": [
+    "raw_requested_content",
+    "raw_prompt",
+    "raw_response",
+    "raw_sql",
+    "tokens",
+    "secrets"
+  ]
+}

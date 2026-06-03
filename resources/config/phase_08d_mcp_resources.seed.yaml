@@ -1,0 +1,12 @@
+phase: 08D
+resources:
+  - uri: hb://status/system
+    wrapper: mcp_status_resource
+  - uri: hb://brief/today
+    wrapper: mcp_today_brief_resource
+  - uri: hb://review/load
+    wrapper: mcp_review_load_resource
+  - uri: hb://research/latest
+    wrapper: mcp_latest_research_resource
+  - uri: hb://validation/latest
+    wrapper: mcp_latest_validation_resource

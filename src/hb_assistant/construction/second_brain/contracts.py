@@ -135,3 +135,31 @@ def load_phase_08c_contract(name: str) -> dict[str, Any]:
 def load_all_phase_08c_contracts() -> dict[str, dict[str, Any]]:
     """Load every registered Phase 08C contract (logical name -> parsed dict)."""
     return {name: load_phase_08c_contract(name) for name in PHASE_08C_CONTRACT_FILES}
+
+# Phase 08D contracts (local MCP bridge). Declarative only in Prompt 02 — these are the
+# server/tool/resource/prompt/receipt/denial/permission-audit/gate contracts plus the
+# validation matrix; no server or runtime dispatch consumes them yet. The Claude Desktop
+# config-preview JSON Schema ships alongside as a plain resource (used from Prompt 09), not
+# registered here.
+PHASE_08D_CONTRACT_FILES: dict[str, str] = {
+    "server_config_contract": "phase_08d_mcp_server_config_contract.json",
+    "allowed_tools_contract": "phase_08d_mcp_allowed_tools_contract.json",
+    "denied_tools_contract": "phase_08d_mcp_denied_tools_contract.json",
+    "tool_call_receipt_contract": "phase_08d_mcp_tool_call_receipt_contract.json",
+    "denial_receipt_contract": "phase_08d_mcp_denial_receipt_contract.json",
+    "resources_contract": "phase_08d_mcp_resources_contract.json",
+    "prompts_contract": "phase_08d_mcp_prompts_contract.json",
+    "permission_audit_contract": "phase_08d_mcp_permission_audit_contract.json",
+    "data_quality_gates_contract": "phase_08d_data_quality_gates_contract.json",
+    "validation_matrix": "phase_08d_validation_matrix.json",
+}
+
+def load_phase_08d_contract(name: str) -> dict[str, Any]:
+    """Load a single Phase 08D contract by logical name."""
+    if name not in PHASE_08D_CONTRACT_FILES:
+        raise KeyError(f"unknown phase 08D contract: {name!r}")
+    return _load_json_resource(PHASE_08D_CONTRACT_FILES[name])
+
+def load_all_phase_08d_contracts() -> dict[str, dict[str, Any]]:
+    """Load every registered Phase 08D contract (logical name -> parsed dict)."""
+    return {name: load_phase_08d_contract(name) for name in PHASE_08D_CONTRACT_FILES}

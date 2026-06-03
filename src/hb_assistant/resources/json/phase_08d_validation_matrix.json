@@ -1,0 +1,20 @@
+{
+  "contract_name": "phase_08d_validation_matrix",
+  "version": "1.4.0-phase-08d-planning",
+  "commands": [
+    "python -m compileall src tests",
+    "ruff check .",
+    "mypy src",
+    "pytest -m \"not live and not integration and not manual\"",
+    "hb-assistant construction-agent validate --json",
+    "hb-assistant second-brain status --json",
+    "hb-assistant second-brain data-quality phase-08a-gates --json",
+    "hb-assistant second-brain data-quality phase-08b-gates --json",
+    "hb-assistant second-brain data-quality phase-08c-gates --json",
+    "hb-assistant second-brain mcp status --json",
+    "hb-assistant second-brain mcp config-preview --client claude-desktop --json",
+    "hb-assistant second-brain mcp data-quality phase-08d-gates --json",
+    "hb-assistant second-brain mcp data-quality no-raw-access-proof --json",
+    "hb-assistant second-brain mcp data-quality no-writeback-proof --json"
+  ]
+}

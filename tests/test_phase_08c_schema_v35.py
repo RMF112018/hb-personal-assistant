@@ -5,7 +5,7 @@ Proves V35 additively (1) creates the 10 second_brain_financial_* tables that sh
 + financial_determination_performed + payment_decision_performed + claim_or_entitlement_decision_performed
 + advisory_only=1 CHECK), (3) stores money as canonical_decimal_text TEXT + minor_units INTEGER (no REAL/float),
 (4) is idempotent and leaves V1-V34 intact, and (5) the lifecycle contract classifies the tables
-operational_empty_expected at count 161.
+operational_empty_expected at count 171 (161 at 08C + the ten V37 08D MCP tables).
 """
 
 from __future__ import annotations
@@ -133,7 +133,7 @@ def test_v35_tables_classified_in_lifecycle_contract() -> None:
         db = Path(td) / "v35.db"
         _migrate(db)
         report = build_table_inventory_report(db_path=str(db))
-        assert report["contract_table_count"] == 161
+        assert report["contract_table_count"] == 171
         by_name = {t["table_name"]: t for t in report["tables"]}
         for t in _V35_TABLES:
             assert t in by_name, f"{t} absent from live inventory"

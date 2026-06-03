@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 161,
+  "table_count": 171,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1468,6 +1468,96 @@
       "blocking_for_phase": "none",
       "v": "V35",
       "notes": "08C validation runs (full guards + advisory_only)"
+    },
+    "second_brain_mcp_server_config_snapshots": {
+      "table_family": "mcp_bridge_v37",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08D",
+      "blocking_for_phase": "none",
+      "v": "V37",
+      "notes": "08D MCP server config snapshots (metadata-only; full 20 guards)"
+    },
+    "second_brain_mcp_tool_registry_snapshots": {
+      "table_family": "mcp_bridge_v37",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08D",
+      "blocking_for_phase": "none",
+      "v": "V37",
+      "notes": "08D MCP tool registry snapshots (metadata-only; full 20 guards)"
+    },
+    "second_brain_mcp_resource_registry_snapshots": {
+      "table_family": "mcp_bridge_v37",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08D",
+      "blocking_for_phase": "none",
+      "v": "V37",
+      "notes": "08D MCP resource registry snapshots (metadata-only; full 20 guards)"
+    },
+    "second_brain_mcp_prompt_registry_snapshots": {
+      "table_family": "mcp_bridge_v37",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08D",
+      "blocking_for_phase": "none",
+      "v": "V37",
+      "notes": "08D MCP prompt registry snapshots (metadata-only; full 20 guards)"
+    },
+    "second_brain_mcp_tool_call_receipts": {
+      "table_family": "mcp_bridge_v37",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08D",
+      "blocking_for_phase": "none",
+      "v": "V37",
+      "notes": "08D MCP tool-call receipts (metadata-only: hashes/counts/reason codes; full 20 guards)"
+    },
+    "second_brain_mcp_denial_receipts": {
+      "table_family": "mcp_bridge_v37",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08D",
+      "blocking_for_phase": "none",
+      "v": "V37",
+      "notes": "08D MCP denial receipts (metadata-only; no raw requested content; full 20 guards)"
+    },
+    "second_brain_mcp_permission_audit_runs": {
+      "table_family": "mcp_bridge_v37",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08D",
+      "blocking_for_phase": "none",
+      "v": "V37",
+      "notes": "08D MCP permission audit runs (metadata-only; full 20 guards)"
+    },
+    "second_brain_mcp_policy_gate_runs": {
+      "table_family": "mcp_bridge_v37",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08D",
+      "blocking_for_phase": "none",
+      "v": "V37",
+      "notes": "08D MCP policy gate runs (metadata-only; readiness never overstated; full 20 guards)"
+    },
+    "second_brain_mcp_claude_desktop_config_previews": {
+      "table_family": "mcp_bridge_v37",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08D",
+      "blocking_for_phase": "none",
+      "v": "V37",
+      "notes": "08D Claude Desktop config previews (redacted command; metadata-only; full 20 guards)"
+    },
+    "second_brain_phase_08d_validation_runs": {
+      "table_family": "mcp_bridge_v37",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "08D",
+      "blocking_for_phase": "none",
+      "v": "V37",
+      "notes": "08D validation runs (metadata-only; full 20 guards)"
     }
   }
 }

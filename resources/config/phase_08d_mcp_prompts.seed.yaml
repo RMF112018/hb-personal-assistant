@@ -1,0 +1,12 @@
+phase: 08D
+prompts:
+  - name: review_today_brief
+    routes_through: [hb_get_daily_brief, hb_validation_status]
+  - name: ask_project_question
+    routes_through: [hb_query, hb_research_packet]
+  - name: prepare_for_meeting
+    routes_through: [hb_research_packet, hb_review_load_status, hb_query]
+  - name: review_memory_candidates
+    routes_through: [hb_memory_review_list, hb_memory_feedback]
+  - name: explain_review_load
+    routes_through: [hb_review_load_status, hb_validation_status]

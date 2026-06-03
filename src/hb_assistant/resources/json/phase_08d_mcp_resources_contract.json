@@ -1,0 +1,38 @@
+{
+  "contract_name": "phase_08d_mcp_resources_contract",
+  "version": "1.4.0-phase-08d-planning",
+  "resources": [
+    {
+      "uri": "hb://status/system",
+      "wrapper": "mcp_status_resource",
+      "source": "safe status workflow"
+    },
+    {
+      "uri": "hb://brief/today",
+      "wrapper": "mcp_today_brief_resource",
+      "source": "daily brief render view"
+    },
+    {
+      "uri": "hb://review/load",
+      "wrapper": "mcp_review_load_resource",
+      "source": "review triage/load status"
+    },
+    {
+      "uri": "hb://research/latest",
+      "wrapper": "mcp_latest_research_resource",
+      "source": "latest research packet summary"
+    },
+    {
+      "uri": "hb://validation/latest",
+      "wrapper": "mcp_latest_validation_resource",
+      "source": "latest gates/no-writeback proof summaries"
+    }
+  ],
+  "requirements": [
+    "approved_workflow_source",
+    "bounded_structured_output",
+    "freshness_metadata",
+    "policy_posture",
+    "fail_closed"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "contract_name": "phase_08d_mcp_prompts_contract",
+  "version": "1.4.0-phase-08d-planning",
+  "prompts": [
+    {
+      "name": "review_today_brief",
+      "routes_through": [
+        "hb_get_daily_brief",
+        "hb_validation_status"
+      ],
+      "forbidden": "raw stores, final determinations, writeback"
+    },
+    {
+      "name": "ask_project_question",
+      "routes_through": [
+        "hb_query",
+        "hb_research_packet"
+      ],
+      "forbidden": "arbitrary SQL, direct APIs, unsupported conclusions"
+    },
+    {
+      "name": "prepare_for_meeting",
+      "routes_through": [
+        "hb_research_packet",
+        "hb_review_load_status",
+        "hb_query"
+      ],
+      "forbidden": "legal/claim/final decisions"
+    },
+    {
+      "name": "review_memory_candidates",
+      "routes_through": [
+        "hb_memory_review_list",
+        "hb_memory_feedback"
+      ],
+      "forbidden": "raw source replay, preference overriding safety"
+    },
+    {
+      "name": "explain_review_load",
+      "routes_through": [
+        "hb_review_load_status",
+        "hb_validation_status"
+      ],
+      "forbidden": "raw record inspection"
+    }
+  ],
+  "requirements": [
+    "route_through_allowed_tools",
+    "no_raw_store_instructions",
+    "no_writeback_instructions",
+    "no_final_financial_legal_claim_entitlement_payment_determinations",
+    "no_raw_prompt_response_persistence"
+  ]
+}

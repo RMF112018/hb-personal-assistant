@@ -1,0 +1,16 @@
+{
+  "contract_name": "phase_08d_mcp_permission_audit_contract",
+  "version": "1.4.0-phase-08d-planning",
+  "checks": [
+    "server_config_safe",
+    "allowed_registry_safe",
+    "denied_registry_complete",
+    "resources_safe",
+    "prompts_safe",
+    "receipts_metadata_only",
+    "claude_config_safe",
+    "no_raw_access",
+    "no_writeback",
+    "no_direct_apis"
+  ]
+}

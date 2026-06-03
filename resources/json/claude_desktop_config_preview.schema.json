@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Phase 08D Claude Desktop Config Preview",
+  "type": "object",
+  "required": [
+    "mcpServers"
+  ],
+  "properties": {
+    "mcpServers": {
+      "type": "object",
+      "required": [
+        "hb-personal-assistant"
+      ],
+      "properties": {
+        "hb-personal-assistant": {
+          "type": "object",
+          "required": [
+            "command",
+            "args"
+          ],
+          "properties": {
+            "command": {
+              "const": "hb-assistant"
+            },
+            "args": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "const": "second-brain"
+                },
+                {
+                  "const": "mcp"
+                },
+                {
+                  "const": "serve"
+                },
+                {
+                  "const": "--stdio"
+                },
+                {
+                  "const": "--json"
+                }
+              ]
+            },
+            "env": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "contract_name": "phase_08d_data_quality_gates_contract",
+  "version": "1.4.0-phase-08d-planning",
+  "statuses": [
+    "pass",
+    "warning",
+    "fail_blocking",
+    "deferred_not_blocking"
+  ],
+  "required_gates": [
+    "schema_contracts",
+    "server_config",
+    "allowed_tools",
+    "denied_tools",
+    "resources",
+    "prompts",
+    "receipts",
+    "denials",
+    "workflow_wrappers",
+    "claude_desktop_config",
+    "no_raw_access",
+    "no_writeback",
+    "policy_posture",
+    "validation_matrix"
+  ],
+  "readiness_overstatement_forbidden": true
+}
