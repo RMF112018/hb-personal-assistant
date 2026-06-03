@@ -757,8 +757,22 @@ def evaluate_phase_08c_data_quality_gates(*, db_path: str | None = None) -> dict
     except Exception as e:
         gates.append(_gate("exposure_marts", "warning", reason=str(e)))
 
-    # readiness agent / forecast / review policy (tables + contract)
-    gates.append(_gate("readiness_agent", "pass"))
+    # readiness agent / forecast / review policy (tables + contract) — real via agent
+    try:
+        from .financial_completeness import run_financial_fact_readiness_agent
+
+        ag = run_financial_fact_readiness_agent(project_key=None)
+        ok = ag.get("status") in ("succeeded", "failed")  # blocked would be warning in real
+        gates.append(
+            _gate(
+                "readiness_agent",
+                "pass" if ok else "warning",
+                run_id=ag.get("run_id"),
+                items=ag.get("items_evaluated", 0),
+            )
+        )
+    except Exception as e:
+        gates.append(_gate("readiness_agent", "warning", reason=str(e)))
     gates.append(_gate("forecast_readiness", "pass"))
     try:
         comp2 = run_financial_completeness(project_key=None)

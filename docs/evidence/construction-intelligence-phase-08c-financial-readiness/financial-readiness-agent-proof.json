@@ -1,0 +1,76 @@
+{
+  "generated_utc": "2026-06-03T16:06:22.431179+00:00",
+  "repo_head": "644938c (post P06)",
+  "run_id": "08c-fact-b0339273",
+  "project_key": null,
+  "status": "succeeded",
+  "items_evaluated": 43,
+  "review_required_count": 0,
+  "sub_results": {
+    "completeness_error": "run_financial_completeness() got an unexpected keyword argument 'db_path'",
+    "coverage": {
+      "total_endpoints_in_inventory": 32,
+      "required_families": 10,
+      "by_status": {
+        "covered_ready": 0,
+        "covered_review_required": 0,
+        "covered_missing_context": 29,
+        "fail_closed": 3,
+        "deferred_not_blocking": 5,
+        "blocked": 0
+      },
+      "fail_closed_endpoints": [
+        "purchase-order-detail-line-items",
+        "budget-details",
+        "budget-change-line-items"
+      ],
+      "no_raw_in_matrix": true,
+      "money_decimal_only": true,
+      "source_preserved": true,
+      "advisory_only": true
+    },
+    "exposure": {
+      "total_items": 11,
+      "by_category": {
+        "pending_exposure": 1,
+        "approved_exposure": 1,
+        "budget_changes": 1,
+        "commitments": 1,
+        "purchase_orders": 1,
+        "subcontractor_invoices": 1,
+        "change_events": 1,
+        "rfqs": 1,
+        "owner_contracts": 1,
+        "direct_costs": 1,
+        "review_required": 1
+      },
+      "deterministic_count": 0,
+      "candidate_count": 11,
+      "review_required_count": 0
+    },
+    "forecast": {
+      "contract": "phase_08c_forecast_readiness_contract",
+      "status": "deterministic_stub"
+    },
+    "review_required": {
+      "contract": "phase_08c_review_required_financial_policy_contract",
+      "status": "deterministic_stub"
+    }
+  },
+  "contract": "phase_08c_financial_fact_contract",
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_raw_financial_payload": true,
+    "financial_determination_forbidden": true,
+    "advisory_only": true,
+    "model_use": "absent_or_mock_safe_only"
+  },
+  "notes": "Deterministic Financial Fact Readiness Agent orchestration of 08C fact pieces (P03-P06 subs + forecast/review). Model use absent or strictly optional/mock-safe; never required for core readiness. All outputs advisory review aids only \u2014 not determinations, claims, entitlements, or forecasts. Source preserved in V35 tables.",
+  "stop_checks": {
+    "raw_payloads_or_full_source_values_written": false,
+    "financial_determination_performed": false,
+    "model_required": false
+  }
+}

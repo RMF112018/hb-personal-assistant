@@ -2402,15 +2402,26 @@ def financial_readiness(
 
     SQLiteMigrator().apply()
     contract = load_phase_08c_contract("financial_fact_contract")
+    from hb_assistant.construction.second_brain.financial_completeness import (
+        run_financial_fact_readiness_agent,
+    )
+
+    agent = run_financial_fact_readiness_agent(project_key=project)
     payload = {
         "command": "second-brain financial readiness",
         "ok": True,
-        "phase": "08C Prompt 01",
+        "phase": "08C",
         "project_key": project,
         "advisory_only": True,
         "contract": contract.get("contract_name"),
+        "agent_run_receipt": {"run_id": agent.get("run_id"), "status": agent.get("status")},
+        "proof_path": agent.get("proof_path"),
+        "summary": {
+            "items_evaluated": agent.get("items_evaluated"),
+            "review_required_count": agent.get("review_required_count"),
+        },
         "guardrails": _08C_GUARDRAILS,
-        "note": "schema/contracts present; tables ship empty (operational_empty_expected); no determinations",
+        "note": "deterministic Financial Fact Readiness Agent (Prompt 07); model use absent or mock-safe only; advisory review aids only — no determinations.",
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
 
