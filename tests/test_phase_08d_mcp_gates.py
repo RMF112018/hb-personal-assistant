@@ -25,8 +25,8 @@ from hb_assistant.construction.second_brain.data_quality import (
 
 runner = CliRunner()
 
-# Prompt 13 flipped no_raw_access to pass; only no_writeback + validation_matrix stay deferred.
-_DEFERRED_GATES = {"no_writeback", "validation_matrix"}
+# Prompts 13/14 flipped no_raw_access + no_writeback to pass; only validation_matrix is deferred.
+_DEFERRED_GATES = {"validation_matrix"}
 
 
 def _evaluate(db: str) -> dict:
@@ -51,9 +51,10 @@ def test_deferred_gates_are_never_pass() -> None:
     for gate in _DEFERRED_GATES:
         assert by[gate] == "deferred_not_blocking", gate
         assert by[gate] != "pass"
-    # Prompt 13: no_raw_access now passes (no longer deferred).
+    # Prompts 13/14: no_raw_access + no_writeback now pass (no longer deferred).
     assert by["no_raw_access"] == "pass"
-    assert report["status_counts"]["deferred_not_blocking"] == 2
+    assert by["no_writeback"] == "pass"
+    assert report["status_counts"]["deferred_not_blocking"] == 1
 
 
 def test_ready_to_serve_false_with_explicit_blockers() -> None:
@@ -61,9 +62,9 @@ def test_ready_to_serve_false_with_explicit_blockers() -> None:
         report = _evaluate(str(Path(td) / "a.db"))
     assert report["ready_to_serve"] is False
     blockers = report["serve_blockers"]
-    # Prompt 13: the no-raw-access blocker is gone; writeback + validation remain.
+    # Prompts 13/14: both guard-proof blockers are gone; only validation + sdk remain.
     assert "no_raw_access_proof_pending_prompt_13" not in blockers
-    assert "no_mcp_writeback_proof_pending_prompt_14" in blockers
+    assert "no_mcp_writeback_proof_pending_prompt_14" not in blockers
     assert "full_validation_matrix_pending_prompt_15" in blockers
     assert "mcp_sdk_not_installed" in blockers
 

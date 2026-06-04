@@ -96,9 +96,10 @@ def test_startup_check_passes_and_drops_prompt_13_blocker() -> None:
         status = build_mcp_status(db_path=str(Path(td) / "a.db"), persist=False)
     by_name = {c["name"]: c["status"] for c in status["checks"]}
     assert by_name["no_raw_access_proof"] == "pass"
-    assert by_name["no_writeback_proof"] == "deferred"
+    # Prompt 14 flipped no_writeback_proof to pass as well.
+    assert by_name["no_writeback_proof"] == "pass"
     assert "no_raw_access_proof_pending_prompt_13" not in status["serve_blockers"]
-    assert "no_writeback_proof_pending_prompt_14" in status["serve_blockers"]
+    assert "no_writeback_proof_pending_prompt_14" not in status["serve_blockers"]
     assert status["ready_to_serve"] is False
 
 

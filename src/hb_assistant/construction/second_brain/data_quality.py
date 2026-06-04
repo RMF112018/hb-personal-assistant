@@ -1128,7 +1128,11 @@ def evaluate_phase_08d_data_quality_gates(*, db_path: str | None = None) -> dict
     from .contracts import PHASE_08D_CONTRACT_FILES, load_phase_08d_contract
     from .mcp.audit import run_mcp_permission_audit
     from .mcp.prompts import load_prompts
-    from .mcp.proof import build_mcp_tool_broker_proof, build_no_raw_mcp_access_proof
+    from .mcp.proof import (
+        build_mcp_tool_broker_proof,
+        build_no_mcp_writeback_proof,
+        build_no_raw_mcp_access_proof,
+    )
     from .mcp.registry import load_allowed_tools, load_denied_actions
     from .mcp.resources import load_resources
     from .mcp.wrappers import build_wrapper_registry
@@ -1256,15 +1260,10 @@ def evaluate_phase_08d_data_quality_gates(*, db_path: str | None = None) -> dict
     # 11. No-raw access proof (Prompt 13) — wired live via the dedicated proof.
     gates.append(_proof_gate("no_raw_access", build_no_raw_mcp_access_proof(write_evidence=False)))
 
-    # 12, 14. Deferred — the serve-blocking proof artifacts are pending (never pass).
-    gates.append(
-        _gate(
-            "no_writeback",
-            "deferred_not_blocking",
-            reason="no_mcp_writeback_proof_pending_prompt_14",
-            future_prompt=14,
-        )
-    )
+    # 12. No-writeback proof (Prompt 14) — wired live via the dedicated proof.
+    gates.append(_proof_gate("no_writeback", build_no_mcp_writeback_proof(write_evidence=False)))
+
+    # 14. Deferred — the full validation matrix is pending (never pass).
     gates.append(
         _gate(
             "validation_matrix",

@@ -33,6 +33,8 @@ PROMPT_PROOF_JSON = "mcp-prompt-contract-proof.json"
 RUNBOOK_PROOF_JSON = "mcp-claude-desktop-runbook-proof.json"
 NO_RAW_PROOF_JSON = "no-raw-mcp-access-proof.json"
 NO_RAW_PROOF_MD = "no-raw-mcp-access-proof.md"
+NO_WRITEBACK_PROOF_JSON = "no-mcp-writeback-proof.json"
+NO_WRITEBACK_PROOF_MD = "no-mcp-writeback-proof.md"
 
 # Receipt columns that, if present, would mean a receipt table can persist raw content.
 _FORBIDDEN_RECEIPT_COLUMNS = {
@@ -45,6 +47,28 @@ _FORBIDDEN_RECEIPT_COLUMNS = {
     "raw_body",
     "raw_source_content",
 }
+
+# Denied-action classes the no-writeback proof requires the registry to cover (mirrors the
+# permission audit's no_writeback / no_direct_apis checks).
+_WRITEBACK_ACTIONS = {
+    "email_send",
+    "calendar_update",
+    "source_system_writeback",
+    "external_delivery",
+}
+_DIRECT_API_ACTIONS = {"graph_api_call", "procore_api_call", "arbitrary_sql"}
+_URL_ACTIONS = {"signed_url_access", "download_url_access"}
+
+# Receipt guard columns that prove no writeback / direct API / external delivery was performed.
+_WRITEBACK_GUARD_COLUMNS = (
+    "external_writeback_performed",
+    "graph_api_call_performed",
+    "procore_api_call_performed",
+    "email_send_performed",
+    "calendar_update_performed",
+    "source_system_writeback_performed",
+    "arbitrary_sql_performed",
+)
 
 # Patterns that, if found in mcp source, would mean the code targets the LIVE Claude Desktop
 # config (the preview file `claude-desktop-config-preview.json` is hyphenated and distinct).
@@ -979,5 +1003,240 @@ def build_no_raw_mcp_access_proof(
         (out_dir / NO_RAW_PROOF_MD).write_text(markdown, encoding="utf-8")
         proof["proof_path"] = str(out_dir / NO_RAW_PROOF_JSON)
         proof["proof_md_path"] = str(out_dir / NO_RAW_PROOF_MD)
+
+    return proof
+
+
+# ---------------------------------------------------------------------------
+# Phase 08D no-MCP-writeback proof (Prompt 14).
+#
+# A deterministic, read-only scan proving no MCP surface can perform writeback, a direct
+# Graph/Procore/SQL API call, or external delivery. STATIC/STRUCTURAL ONLY (never dispatches
+# the workflow wrappers): the permission-policy seed has every allow_* flag false, the denied
+# registry covers the writeback / direct-API / URL action classes, the nine tool wrappers are
+# workflow-wrapper-only, the receipt tables carry the writeback guard columns at CHECK(=0),
+# and the config preview never auto-writes the live Claude Desktop config. The server-status
+# and evidence-file surfaces are optional so the server startup check can call this without
+# recursion (the full proof scans them).
+# ---------------------------------------------------------------------------
+
+
+def _receipts_no_writeback(*, db_path: str | None = None) -> dict[str, Any]:
+    """Structurally prove the receipt tables record no writeback (self-contained temp DB)."""
+    from hb_assistant.store.migrator import SQLiteMigrator  # noqa: PLC0415
+
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "receipts.db")
+        SQLiteMigrator(db).apply()
+        conn = sqlite3.connect(db)
+        call_cols = {
+            r[1] for r in conn.execute("PRAGMA table_info(second_brain_mcp_tool_call_receipts)")
+        }
+        denial_cols = {
+            r[1] for r in conn.execute("PRAGMA table_info(second_brain_mcp_denial_receipts)")
+        }
+        writeback_guards_present = set(_WRITEBACK_GUARD_COLUMNS) <= (call_cols & denial_cols)
+        guards_zero = _guards_all_zero(
+            conn, "second_brain_mcp_tool_call_receipts"
+        ) and _guards_all_zero(conn, "second_brain_mcp_denial_receipts")
+        conn.close()
+
+    passed = bool(writeback_guards_present and guards_zero)
+    return {
+        "surface": "receipts",
+        "passed": passed,
+        "detail": "writeback/API guard columns present and CHECK(=0); all guard columns zero",
+        "writeback_guard_columns_present": writeback_guards_present,
+        "guard_columns_zero": guards_zero,
+    }
+
+
+def evaluate_no_writeback_mcp_access(
+    *,
+    db_path: str | None = None,
+    include_server_status: bool = True,
+    include_evidence_scan: bool = True,
+) -> dict[str, Any]:
+    """Scan every MCP surface for writeback / direct-API / external-delivery capability.
+
+    Read-only; persists nothing. Static/structural only — never dispatches the workflow
+    wrappers. The server-status and evidence-file surfaces are optional so the server startup
+    check can call this without recursion or disk scans.
+    """
+    from .config_preview import build_claude_desktop_config_preview  # noqa: PLC0415
+    from .policy import _PERMISSION_POLICY_SEED, _load_seed  # noqa: PLC0415
+    from .registry import load_global_requirements  # noqa: PLC0415
+    from .wrappers import build_wrapper_registry  # noqa: PLC0415
+
+    surfaces: list[dict[str, Any]] = []
+
+    # 1. permission policy — every allow_* flag is false (fail-closed seed).
+    perm = _load_seed(_PERMISSION_POLICY_SEED)
+    allow_flags = {k: v for k, v in perm.items() if k.startswith("allow_")}
+    all_allow_false = bool(allow_flags) and not any(bool(v) for v in allow_flags.values())
+    surfaces.append(
+        {
+            "surface": "permission_policy",
+            "passed": all_allow_false,
+            "detail": f"{len(allow_flags)} allow_* flags, all false={all_allow_false}",
+        }
+    )
+
+    # 2. denied registry covers writeback + direct-API + URL action classes.
+    denied = load_denied_actions()
+    required = _WRITEBACK_ACTIONS | _DIRECT_API_ACTIONS | _URL_ACTIONS
+    surfaces.append(
+        {
+            "surface": "denied_registry",
+            "passed": required <= denied,
+            "detail": "writeback/direct-API/URL actions all denied",
+            "missing": sorted(required - denied),
+        }
+    )
+
+    # 3. tool wrappers — nine workflow-wrapper-only tools; global requirements forbid writeback.
+    wrappers = build_wrapper_registry(db_path=db_path)
+    reqs = set(load_global_requirements())
+    wrappers_ok = len(wrappers) == 9 and {"workflow_wrapper_only", "no_writeback"} <= reqs
+    surfaces.append(
+        {
+            "surface": "tool_wrappers",
+            "passed": wrappers_ok,
+            "detail": "nine workflow-wrapper-only tools; workflow-only + no-writeback required",
+            "wrapper_count": len(wrappers),
+        }
+    )
+
+    # 4. receipts — writeback guard columns present and all guard columns zero.
+    surfaces.append(_receipts_no_writeback(db_path=db_path))
+
+    # 5. config preview — never auto-writes the live Claude Desktop config.
+    preview = build_claude_desktop_config_preview(persist=False, write_evidence=False)
+    cfg = _scan_no_raw("config_preview", preview)
+    cfg["auto_apply"] = bool(preview.get("auto_apply"))
+    cfg["preview_only_no_auto_apply"] = bool(
+        preview.get("guardrails", {}).get("preview_only_no_auto_apply")
+    )
+    if cfg["auto_apply"] or not cfg["preview_only_no_auto_apply"]:
+        cfg["passed"] = False
+    surfaces.append(cfg)
+
+    # 6. server guardrails (optional — skipped by the startup check to avoid recursion).
+    if include_server_status:
+        from .policy import build_mcp_status  # noqa: PLC0415
+
+        status = build_mcp_status(persist=False, db_path=db_path)
+        guards = status.get("guardrails", {})
+        server_ok = all(
+            bool(guards.get(g))
+            for g in ("no_external_writeback", "no_direct_graph_or_procore", "no_arbitrary_sql")
+        )
+        scan = _scan_no_raw("server_guardrails", status)
+        scan["passed"] = scan["passed"] and server_ok
+        surfaces.append(scan)
+
+    # 7. committed evidence artifacts (optional — the generated 08D proof JSONs).
+    if include_evidence_scan:
+        ev_dir = Path(EVIDENCE_DIR)
+        files = sorted(ev_dir.glob("*.json")) if ev_dir.exists() else []
+        scanned: list[str] = []
+        ev_passed = True
+        for f in files:
+            scanned.append(f.name)
+            try:
+                _assert_no_raw(f.read_text(encoding="utf-8"), f"evidence {f.name}")
+            except ValueError:
+                ev_passed = False
+        surfaces.append(
+            {
+                "surface": "evidence",
+                "passed": ev_passed,
+                "detail": f"{len(scanned)} evidence json artifacts scanned",
+                "scanned": scanned,
+            }
+        )
+
+    proof_passed = all(s["passed"] for s in surfaces)
+    return {
+        "proof_passed": proof_passed,
+        "scanned_surface_count": len(surfaces),
+        "surfaces": surfaces,
+        "metadata_only": {
+            "no_writeback_performed": proof_passed,
+            "no_direct_api_performed": proof_passed,
+            "no_external_delivery": proof_passed,
+            "static_scan_no_wrapper_dispatch": True,
+        },
+        "guardrails": {
+            "read_only": True,
+            "no_external_writeback": True,
+            "no_direct_graph_or_procore": True,
+            "no_arbitrary_sql": True,
+            "metadata_only": True,
+        },
+    }
+
+
+def _render_no_writeback_md(proof: dict[str, Any]) -> str:
+    lines = [
+        "# Phase 08D No-MCP-Writeback Proof",
+        "",
+        "Deterministic, read-only scan proving no MCP surface (permission policy, denied "
+        "registry, tool wrappers, receipts, config preview, server guardrails, and the "
+        "committed evidence artifacts) can perform writeback, a direct Graph/Procore/SQL API "
+        "call, or external delivery. Static/structural only — the workflow tools are never "
+        "dispatched; receipts are introspected via a temp-DB PRAGMA.",
+        "",
+        "## Summary",
+        f"- Proof passed: {str(proof['proof_passed']).lower()}",
+        f"- Surfaces scanned: {proof['scanned_surface_count']}",
+        "",
+        "## Surfaces",
+        "| Surface | Passed | Detail |",
+        "| --- | --- | --- |",
+    ]
+    for s in proof["surfaces"]:
+        lines.append(f"| {s['surface']} | {str(s['passed']).lower()} | {s.get('detail', '')} |")
+    lines += ["", "## Guardrails"]
+    for key, value in proof["guardrails"].items():
+        lines.append(f"- {key}: {str(value).lower()}")
+    lines += ["", f"Generated: {proof['generated_utc']}", ""]
+    return "\n".join(lines)
+
+
+def build_no_mcp_writeback_proof(
+    *,
+    db_path: str | None = None,
+    evidence_dir: str | None = None,
+    write_evidence: bool = True,
+) -> dict[str, Any]:
+    """Run the full no-writeback MCP scan and (optionally) write the evidence proof + MD."""
+    from datetime import datetime, timezone  # noqa: PLC0415
+
+    report = evaluate_no_writeback_mcp_access(db_path=db_path)
+    proof: dict[str, Any] = {
+        "proof": "phase_08d_no_mcp_writeback",
+        "command": "second-brain mcp no-writeback",
+        "phase": "08D",
+        "proof_passed": report["proof_passed"],
+        "generated_utc": datetime.now(timezone.utc).isoformat(),
+        "scanned_surface_count": report["scanned_surface_count"],
+        "surfaces": report["surfaces"],
+        "metadata_only": report["metadata_only"],
+        "guardrails": report["guardrails"],
+    }
+
+    serialized = json.dumps(proof, indent=2, default=str)
+    _assert_no_raw(serialized, "mcp no-writeback proof")
+
+    if write_evidence:
+        out_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / NO_WRITEBACK_PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
+        markdown = _render_no_writeback_md(proof)
+        _assert_no_raw(markdown, "mcp no-writeback proof markdown")
+        (out_dir / NO_WRITEBACK_PROOF_MD).write_text(markdown, encoding="utf-8")
+        proof["proof_path"] = str(out_dir / NO_WRITEBACK_PROOF_JSON)
+        proof["proof_md_path"] = str(out_dir / NO_WRITEBACK_PROOF_MD)
 
     return proof

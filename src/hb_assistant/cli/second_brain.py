@@ -3082,3 +3082,23 @@ def mcp_no_raw_access(
         for s in proof["surfaces"]:
             typer.echo(f"  [{'ok' if s['passed'] else 'FAIL'}] {s['surface']}")
     raise typer.Exit(0 if proof.get("proof_passed") else 3)
+
+
+@mcp_app.command("no-writeback")
+def mcp_no_writeback(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the no-writeback proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
+) -> None:
+    """Prove no MCP surface performs writeback/direct-API/external-delivery (Prompt 14)."""
+    from hb_assistant.construction.second_brain.mcp import build_no_mcp_writeback_proof
+
+    proof = build_no_mcp_writeback_proof(write_evidence=evidence)
+    if json_out:
+        typer.echo(json.dumps(proof, indent=2, default=str))
+    else:
+        typer.echo(f"MCP no-writeback proof passed={proof['proof_passed']}")
+        for s in proof["surfaces"]:
+            typer.echo(f"  [{'ok' if s['passed'] else 'FAIL'}] {s['surface']}")
+    raise typer.Exit(0 if proof.get("proof_passed") else 3)

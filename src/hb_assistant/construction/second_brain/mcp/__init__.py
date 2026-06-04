@@ -19,8 +19,10 @@ from .proof import (
     build_mcp_prompts_proof,
     build_mcp_resources_proof,
     build_mcp_tool_broker_proof,
+    build_no_mcp_writeback_proof,
     build_no_raw_mcp_access_proof,
     evaluate_no_raw_mcp_access,
+    evaluate_no_writeback_mcp_access,
 )
 from .registry import load_allowed_tools, load_denied_actions, load_global_requirements
 from .resources import load_resources, read_all_resources, read_resource
@@ -49,9 +51,11 @@ __all__ = [
     "build_mcp_resources_proof",
     "build_mcp_status",
     "build_mcp_tool_broker_proof",
+    "build_no_mcp_writeback_proof",
     "build_no_raw_mcp_access_proof",
     "build_wrapper_registry",
     "evaluate_no_raw_mcp_access",
+    "evaluate_no_writeback_mcp_access",
     "evaluate_startup_checks",
     "load_allowed_tools",
     "load_denied_actions",

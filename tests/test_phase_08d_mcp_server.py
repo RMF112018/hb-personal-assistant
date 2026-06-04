@@ -1,11 +1,11 @@
 """Phase 08D Prompt 03 — MCP server foundation + config-preview surface.
 
 Proves the stdio-only, fail-closed server foundation: the startup checks pass for the
-landed foundation, the no-raw-access guard proof now passes live (Prompt 13), and the
-no-writeback guard proof stays deferred (Prompt 14); the server refuses to serve; the
-Claude Desktop config preview is safe + schema-conformant and flags unsafe variants; and
-the two V37 metadata-only tables get guard-clean rows. No socket is opened and the MCP SDK
-is never required.
+landed foundation, both guard proofs now pass live (no-raw-access: Prompt 13; no-writeback:
+Prompt 14); the server still refuses to serve (the optional MCP SDK is the sole remaining
+serve gate); the Claude Desktop config preview is safe + schema-conformant and flags unsafe
+variants; and the two V37 metadata-only tables get guard-clean rows. No socket is opened and
+the MCP SDK is never required.
 """
 
 from __future__ import annotations
@@ -25,10 +25,10 @@ from hb_assistant.construction.second_brain.mcp import (
 from hb_assistant.construction.second_brain.mcp.config_preview import _server_entry
 from hb_assistant.construction.second_brain.mcp.store import write_mcp_server_config_snapshot
 
-_GUARD_PROOF_BLOCKER = "no_writeback_proof_pending_prompt_14"
+_GUARD_PROOF_BLOCKER = "mcp_sdk_not_installed"
 
 
-def test_startup_checks_foundation_passes_no_raw_and_defers_writeback() -> None:
+def test_startup_checks_foundation_passes_both_guard_proofs() -> None:
     report = evaluate_startup_checks()
     assert report["foundation_ok"] is True
     by_name = {c["name"]: c["status"] for c in report["checks"]}
@@ -43,24 +43,24 @@ def test_startup_checks_foundation_passes_no_raw_and_defers_writeback() -> None:
         "transport_stdio_only",
     ):
         assert by_name[name] == "pass", f"{name} should pass"
-    # Prompt 13: the no-raw-access guard proof now passes live.
+    # Prompts 13/14: both guard proofs now pass live; nothing is deferred.
     assert by_name["no_raw_access_proof"] == "pass"
-    assert by_name["no_writeback_proof"] == "deferred"
-    assert set(report["deferred"]) == {"no_writeback_proof"}
+    assert by_name["no_writeback_proof"] == "pass"
+    assert set(report["deferred"]) == set()
 
 
-def test_status_is_not_ready_to_serve_on_guard_proofs() -> None:
+def test_status_is_not_ready_to_serve_on_sdk_only() -> None:
     status = build_mcp_status(persist=False)
     assert status["foundation_ok"] is True
     assert status["ready_to_serve"] is False
     # Prompt 05: the nine workflow wrappers are registered.
     assert status["mcp_tools_registered"] == 9
-    # Prompt 13: the no-raw-access serve blocker is gone.
+    # Prompts 13/14: both guard-proof serve blockers are gone.
     assert "no_raw_access_proof_pending_prompt_13" not in status["serve_blockers"]
-    assert "no_writeback_proof_pending_prompt_14" in status["serve_blockers"]
-    # SDK is an optional extra and absent in CI.
+    assert "no_writeback_proof_pending_prompt_14" not in status["serve_blockers"]
+    # SDK is an optional extra and absent in CI — the sole remaining serve blocker.
     assert status["mcp_sdk_available"] is False
-    assert "mcp_sdk_not_installed" in status["serve_blockers"]
+    assert status["serve_blockers"] == ["mcp_sdk_not_installed"]
 
 
 def test_status_persists_metadata_only_server_config_snapshot() -> None:

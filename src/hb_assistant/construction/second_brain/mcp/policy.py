@@ -2,10 +2,10 @@
 
 Deterministic, read-only evaluation of the fail-closed startup conditions for the local
 stdio MCP server: schema version, server-policy seed, the four registry contracts, the
-fail-closed permission policy, and stdio-only transport. The no-raw-access guard proof is
-wired in Prompt 13 (the ``no_raw_access_proof`` check now passes/fails live); the
-no-writeback guard proof is still *deferred* to Prompt 14 — so the server is never
-``ready_to_serve`` at this stage and ``serve`` stays fail-closed. Nothing here opens a
+fail-closed permission policy, and stdio-only transport. Both MCP-specific guard proofs are
+now wired and evaluated live: ``no_raw_access_proof`` (Prompt 13) and ``no_writeback_proof``
+(Prompt 14). The only remaining serve gate is the optional MCP SDK (``mcp_sdk_not_installed``),
+and ``serve`` stays fail-closed at the foundation stage regardless. Nothing here opens a
 socket, imports the MCP SDK, or persists raw content.
 """
 
@@ -28,10 +28,10 @@ _DENIED_TRANSPORTS = ("http", "sse", "websocket", "tcp", "remote")
 _SERVER_POLICY_SEED = "resources/config/phase_08d_mcp_server_policy.seed.yaml"
 _PERMISSION_POLICY_SEED = "resources/config/phase_08d_mcp_permission_policy.seed.yaml"
 
-# Guard proofs that gate real serving but are implemented in later prompts. The
-# no-raw-access proof landed in Prompt 13 (evaluated live in evaluate_startup_checks); only
-# the no-writeback proof (Prompt 14) remains a deferred serve blocker.
-_DEFERRED_SERVE_BLOCKERS = ("no_writeback_proof_pending_prompt_14",)
+# Both MCP guard proofs are now wired and evaluated live in evaluate_startup_checks
+# (no-raw-access: Prompt 13; no-writeback: Prompt 14), so no guard proof is a deferred serve
+# blocker. The optional MCP SDK is the only remaining serve gate (appended in build_mcp_status).
+_DEFERRED_SERVE_BLOCKERS: tuple[str, ...] = ()
 _MCP_GUARDRAILS = {
     "local_first": True,
     "transport_stdio_only": True,
@@ -82,9 +82,8 @@ def _registry_present(name: str, logical: str) -> dict[str, str]:
 def evaluate_startup_checks(*, db_path: str | None = None) -> dict[str, Any]:
     """Evaluate the fail-closed startup checks. Read-only; persists nothing.
 
-    ``foundation_ok`` is True iff no check is ``fail``. The ``no_raw_access_proof`` check is
-    evaluated live (Prompt 13); the remaining ``no_writeback_proof`` check stays ``deferred``
-    (Prompt 14) and is recorded as a serve blocker.
+    ``foundation_ok`` is True iff no check is ``fail``. Both guard-proof checks are evaluated
+    live: ``no_raw_access_proof`` (Prompt 13) and ``no_writeback_proof`` (Prompt 14).
     """
     checks: list[dict[str, str]] = []
 
@@ -150,10 +149,22 @@ def evaluate_startup_checks(*, db_path: str | None = None) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001 - any scan failure is fail-closed
         checks.append(_check("no_raw_access_proof", "fail", f"no-raw scan errored: {exc!r}"))
 
-    # 10. MCP no-writeback guard proof — deferred to Prompt 14
-    checks.append(
-        _check("no_writeback_proof", "deferred", "MCP no-writeback proof lands in Prompt 14")
-    )
+    # 10. MCP no-writeback guard proof (Prompt 14) — evaluated live, non-recursively.
+    try:
+        from .proof import evaluate_no_writeback_mcp_access  # noqa: PLC0415 - avoid import cycle
+
+        nwb = evaluate_no_writeback_mcp_access(
+            db_path=db_path, include_server_status=False, include_evidence_scan=False
+        )
+        if nwb["proof_passed"]:
+            checks.append(_check("no_writeback_proof", "pass", "MCP no-writeback proof passes"))
+        else:
+            failed = [s["surface"] for s in nwb["surfaces"] if not s["passed"]]
+            checks.append(
+                _check("no_writeback_proof", "fail", f"no-writeback scan failed: {failed}")
+            )
+    except Exception as exc:  # noqa: BLE001 - any scan failure is fail-closed
+        checks.append(_check("no_writeback_proof", "fail", f"no-writeback scan errored: {exc!r}"))
 
     foundation_ok = not any(c["status"] == "fail" for c in checks)
     deferred = [c["name"] for c in checks if c["status"] == "deferred"]
