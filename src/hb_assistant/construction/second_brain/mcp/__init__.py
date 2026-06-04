@@ -7,6 +7,7 @@ broker, workflow wrappers, resources, prompts, and receipts arrive in Prompts 04
 
 from __future__ import annotations
 
+from .audit import run_mcp_permission_audit, snapshot_all_registries, snapshot_tool_registry
 from .broker import DENIAL_REASONS, ToolBroker
 from .config_preview import assess_config_safety, build_claude_desktop_config_preview
 from .policy import build_mcp_status, evaluate_startup_checks
@@ -57,5 +58,8 @@ __all__ = [
     "read_resource",
     "render_all_prompts",
     "render_prompt",
+    "run_mcp_permission_audit",
     "serve_stdio",
+    "snapshot_all_registries",
+    "snapshot_tool_registry",
 ]

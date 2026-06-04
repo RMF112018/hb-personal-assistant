@@ -1,0 +1,88 @@
+{
+  "proof": "phase_08d_mcp_permission_audit",
+  "phase": "08D",
+  "proof_passed": true,
+  "status": "ok",
+  "finding_count": 0,
+  "contract_checks": [
+    "server_config_safe",
+    "allowed_registry_safe",
+    "denied_registry_complete",
+    "resources_safe",
+    "prompts_safe",
+    "receipts_metadata_only",
+    "claude_config_safe",
+    "no_raw_access",
+    "no_writeback",
+    "no_direct_apis"
+  ],
+  "checks": [
+    {
+      "name": "server_config_safe",
+      "passed": true,
+      "detail": "stdio transport + foundation checks pass"
+    },
+    {
+      "name": "allowed_registry_safe",
+      "passed": true,
+      "detail": "nine approved workflow tools; workflow-only/no-raw/no-writeback/no-determination required"
+    },
+    {
+      "name": "denied_registry_complete",
+      "passed": true,
+      "detail": "raw/api/writeback/determination/url actions all denied"
+    },
+    {
+      "name": "resources_safe",
+      "passed": true,
+      "detail": "five approved-workflow resources"
+    },
+    {
+      "name": "prompts_safe",
+      "passed": true,
+      "detail": "five prompts, allowed-tools only"
+    },
+    {
+      "name": "receipts_metadata_only",
+      "passed": true,
+      "detail": "tool-call + denial receipts: hashes only, no raw columns, guards 0"
+    },
+    {
+      "name": "claude_config_safe",
+      "passed": true,
+      "detail": "stdio preview, never auto-written"
+    },
+    {
+      "name": "no_raw_access",
+      "passed": true,
+      "detail": "no raw stores/files/payloads via tools/resources/prompts"
+    },
+    {
+      "name": "no_writeback",
+      "passed": true,
+      "detail": "permission policy allow_* false + writeback actions denied"
+    },
+    {
+      "name": "no_direct_apis",
+      "passed": true,
+      "detail": "permission policy allow_* false + direct-API/SQL actions denied"
+    }
+  ],
+  "registry_snapshots": {
+    "server_config": true,
+    "tool_registry": true,
+    "resource_registry": true,
+    "prompt_registry": true
+  },
+  "receipts": {
+    "metadata_only": true,
+    "tool_call_table": "second_brain_mcp_tool_call_receipts",
+    "denial_table": "second_brain_mcp_denial_receipts",
+    "stored": "hashes/counts/reason codes only"
+  },
+  "guardrails": {
+    "read_only": true,
+    "metadata_only": true,
+    "no_raw_content": true
+  }
+}

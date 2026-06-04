@@ -131,6 +131,68 @@ def write_mcp_resource_registry_snapshot(
     return snapshot_id
 
 
+def write_mcp_tool_registry_snapshot(
+    *,
+    allowed_tool_count: int,
+    denied_action_count: int,
+    registry_hash: str,
+    policy_version: str,
+    db_path: str | None = None,
+) -> str:
+    """Insert one MCP tool-registry snapshot; returns the ``snapshot_id``.
+
+    Local-only, additive, metadata-only (counts + hash + versions). All guard columns 0.
+    """
+    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+
+    snapshot_id = uuid.uuid4().hex
+    conn = get_connection(Path(db_path) if db_path is not None else None)
+    with transaction(conn):
+        conn.execute(
+            """
+            INSERT INTO second_brain_mcp_tool_registry_snapshots
+                (snapshot_id, created_at, allowed_tool_count, denied_action_count,
+                 registry_hash, policy_version, schema_version)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (snapshot_id, _now(), int(allowed_tool_count), int(denied_action_count),
+             registry_hash, policy_version, LATEST_SCHEMA_VERSION),
+        )
+    return snapshot_id
+
+
+def write_mcp_permission_audit_run(
+    *,
+    status: str,
+    checks_json: str,
+    finding_count: int,
+    policy_version: str,
+    evidence_path: str | None = None,
+    db_path: str | None = None,
+) -> str:
+    """Insert one MCP permission-audit run; returns the ``audit_run_id``.
+
+    ``checks_json`` is the metadata-only check report (names/booleans/short reason codes) —
+    never raw content. All guard columns 0.
+    """
+    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+
+    audit_run_id = uuid.uuid4().hex
+    conn = get_connection(Path(db_path) if db_path is not None else None)
+    with transaction(conn):
+        conn.execute(
+            """
+            INSERT INTO second_brain_mcp_permission_audit_runs
+                (audit_run_id, created_at, status, checks_json, finding_count, policy_version,
+                 schema_version, evidence_path)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (audit_run_id, _now(), status, checks_json, int(finding_count), policy_version,
+             LATEST_SCHEMA_VERSION, evidence_path),
+        )
+    return audit_run_id
+
+
 def write_mcp_prompt_registry_snapshot(
     *,
     prompt_count: int,
