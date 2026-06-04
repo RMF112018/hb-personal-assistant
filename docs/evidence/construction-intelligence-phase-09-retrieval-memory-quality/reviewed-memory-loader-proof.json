@@ -1,0 +1,65 @@
+{
+  "proof": "phase_09_reviewed_memory_loader",
+  "command": "second-brain retrieval memory-loader proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-04T22:33:56.867965+00:00",
+  "repo_sha": "9115c9ae31a2ff9c1fc58cdae10f02ce8245e1fd",
+  "accepted_loaded_count": 1,
+  "pending_loaded_count": 0,
+  "case_count": 5,
+  "cases": [
+    {
+      "name": "safe_memory_node",
+      "expected_loaded": true,
+      "loaded": true,
+      "violations": [],
+      "passed": true
+    },
+    {
+      "name": "non_embeddable_family",
+      "expected_loaded": false,
+      "loaded": false,
+      "violations": [
+        "source_family_excluded:raw_prompt"
+      ],
+      "passed": true
+    },
+    {
+      "name": "missing_metadata",
+      "expected_loaded": false,
+      "loaded": false,
+      "violations": [
+        "missing_metadata:content_hash"
+      ],
+      "passed": true
+    },
+    {
+      "name": "raw_shape_statement",
+      "expected_loaded": false,
+      "loaded": false,
+      "violations": [
+        "raw_content_shape:text_redacted"
+      ],
+      "passed": true
+    },
+    {
+      "name": "unresolved_review",
+      "expected_loaded": false,
+      "loaded": false,
+      "violations": [
+        "unresolved_review_required"
+      ],
+      "passed": true
+    }
+  ],
+  "metadata_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "reviewed_only_accepted": true,
+    "exclude_unresolved_high_impact": true,
+    "local_first": true
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "command": "second-brain retrieval memory-loader status",
+  "phase": "09",
+  "generated_utc": "2026-06-04T22:33:56.286825+00:00",
+  "repo_sha": "9115c9ae31a2ff9c1fc58cdae10f02ce8245e1fd",
+  "source_family": "accepted_long_term_memory",
+  "loaded_count": 0,
+  "status": "empty",
+  "nodes": [],
+  "warnings": [
+    "no_reviewed_memory"
+  ],
+  "reviewed_only": true,
+  "read_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "metadata_only": true,
+    "reviewed_only_accepted": true,
+    "exclude_unresolved_high_impact": true,
+    "source_linked_only": true,
+    "local_first": true
+  }
+}

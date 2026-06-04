@@ -104,6 +104,26 @@ hb-assistant second-brain retrieval obsidian-loader proof --json
 - `proof` demonstrates an apply-mode fixture index loads nodes while a dry-run-only index loads 0, and
   the guardrail rejects tier-3/raw/non-embeddable candidates. Builds no embeddings; persists nothing.
 
+## 7. Reviewed memory loader (Prompt 17)
+
+The reviewed-memory loader prepares only reviewed (accepted) long-term memory as safe nodes for the
+future embed/index step. Inspect it (read-only) and run the reviewed-only / no-raw proof:
+
+```bash
+hb-assistant second-brain retrieval memory-loader status --json
+hb-assistant second-brain retrieval memory-loader proof --json
+```
+
+- `status` loads only `long_term_memory_items` with `review_status='accepted'` (pending/rejected/
+  superseded are never loaded) and reports a **metadata-only** node set (counts + per-node hashes; no
+  statement text). Each node is validated by the embedding guardrail. With no accepted memory the loader
+  is `empty`.
+- `proof` demonstrates an accepted-memory fixture loads nodes while a pending-only fixture loads 0, and
+  the guardrail rejects non-embeddable/raw/missing-metadata/unresolved candidates. Builds no embeddings;
+  persists nothing.
+
+Together with the Obsidian loader (§6) this completes the per-category node-preparation loaders.
+
 ## Guardrails
 
 - Optional + lazy: the SDK is imported only inside Phase 09 retrieval code paths; the base install,

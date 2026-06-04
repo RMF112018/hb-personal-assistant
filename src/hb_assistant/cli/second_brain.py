@@ -136,6 +136,13 @@ obsidian_loader_app = typer.Typer(
 )
 retrieval_app.add_typer(obsidian_loader_app, name="obsidian-loader")
 
+memory_loader_app = typer.Typer(
+    name="memory-loader",
+    help="Phase 09 reviewed memory loader (read-only status + proof).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(memory_loader_app, name="memory-loader")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3412,6 +3419,107 @@ def retrieval_obsidian_loader_proof(
     human = [
         f"Approved Obsidian loader proof passed={proof['proof_passed']}"
         f" (apply={proof['apply_loaded_count']} dry_run={proof['dry_run_loaded_count']})",
+        *[f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}" for c in proof["cases"]],
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+_MEMORY_LOADER_GUARDRAILS = {
+    "read_only": True,
+    "no_raw": True,
+    "no_writeback": True,
+    "metadata_only": True,
+    "reviewed_only_accepted": True,
+    "exclude_unresolved_high_impact": True,
+    "source_linked_only": True,
+    "local_first": True,
+}
+
+
+@memory_loader_app.command("status")
+def retrieval_memory_loader_status(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 09 reviewed memory loader status (read-only, fail-closed).
+
+    Loads only reviewed (accepted) long-term memory (`review_status='accepted'` — pending/rejected/
+    superseded are never loaded) and reports the **metadata-only** node set (counts + per-node hashes;
+    no statement text). Each node is validated by the embedding guardrail (embeddable family,
+    source-linked metadata, no-raw). Read-only; builds no embeddings/index. Exit 0; exit 3 on a
+    fail-closed contract/schema failure.
+    """
+    from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
+        EmbeddingVectorPolicyError,
+    )
+    from hb_assistant.construction.second_brain.retrieval.memory_loader import (
+        MemoryLoaderError,
+        build_reviewed_memory_loader_report,
+    )
+
+    try:
+        report = build_reviewed_memory_loader_report(project_key=project)
+    except (MemoryLoaderError, EmbeddingVectorPolicyError) as exc:
+        payload = {
+            "command": "second-brain retrieval memory-loader status",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "guardrails": _MEMORY_LOADER_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**report, "guardrails": _MEMORY_LOADER_GUARDRAILS}
+    human = [
+        "Phase 09 reviewed memory loader (read-only, advisory)",
+        f"  status: {report['status']} | loaded nodes: {report['loaded_count']}",
+        f"  warnings: {report['warnings']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@memory_loader_app.command("proof")
+def retrieval_memory_loader_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the loader proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove the memory loader loads only reviewed (accepted) memory (read-only, fail-closed).
+
+    Demonstrates (a) an accepted-memory fixture loads >=1 guard-clean node, (b) a pending-only fixture
+    loads 0 (unreviewed excluded), and (c) the embedding guardrail rejects non-embeddable / raw /
+    missing-metadata / unresolved candidates. Builds no embeddings; persists nothing to the operator DB.
+    Exit 0 if the proof passes.
+    """
+    from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
+        EmbeddingVectorPolicyError,
+    )
+    from hb_assistant.construction.second_brain.retrieval.memory_loader import (
+        MemoryLoaderError,
+        build_reviewed_memory_loader_proof,
+    )
+
+    try:
+        proof = build_reviewed_memory_loader_proof(write_evidence=evidence)
+    except (MemoryLoaderError, EmbeddingVectorPolicyError) as exc:
+        payload = {
+            "command": "second-brain retrieval memory-loader proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _MEMORY_LOADER_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _MEMORY_LOADER_GUARDRAILS}
+    human = [
+        f"Reviewed memory loader proof passed={proof['proof_passed']}"
+        f" (accepted={proof['accepted_loaded_count']} pending={proof['pending_loaded_count']})",
         *[f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}" for c in proof["cases"]],
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)

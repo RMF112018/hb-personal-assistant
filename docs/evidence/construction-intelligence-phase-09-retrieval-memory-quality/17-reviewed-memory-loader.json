@@ -1,0 +1,94 @@
+{
+  "artifact": "phase_09_reviewed_memory_loader",
+  "prompt": "Prompt_17_Reviewed_Memory_Loader",
+  "phase": "09",
+  "classification": "implementation_per_category_node_loader_reviewed_memory",
+  "posture": "metadata_only_local_only_read_only_fail_closed_reviewed_only_accepted_no_embeddings_no_index",
+  "repo_sha": "9115c9ae31a2ff9c1fc58cdae10f02ce8245e1fd",
+  "schema_version": 38,
+  "operator_loader": {
+    "status": "empty",
+    "loaded_count": 0,
+    "warnings": [
+      "no_reviewed_memory"
+    ],
+    "note": "operator has 0 accepted long-term memory items -> loader yields 0 nodes (honest no_reviewed_memory warning; pending/rejected/superseded never loaded)"
+  },
+  "reviewed_only_gate": {
+    "proof_accepted_loaded_count": 1,
+    "proof_pending_loaded_count": 0,
+    "note": "strict WHERE review_status='accepted'; pending/rejected-only store loads 0"
+  },
+  "no_raw_proof": {
+    "proof_passed": true,
+    "case_count": 5,
+    "cases": [
+      {
+        "name": "safe_memory_node",
+        "expected_loaded": true,
+        "loaded": true,
+        "violations": []
+      },
+      {
+        "name": "non_embeddable_family",
+        "expected_loaded": false,
+        "loaded": false,
+        "violations": [
+          "source_family_excluded:raw_prompt"
+        ]
+      },
+      {
+        "name": "missing_metadata",
+        "expected_loaded": false,
+        "loaded": false,
+        "violations": [
+          "missing_metadata:content_hash"
+        ]
+      },
+      {
+        "name": "raw_shape_statement",
+        "expected_loaded": false,
+        "loaded": false,
+        "violations": [
+          "raw_content_shape:text_redacted"
+        ]
+      },
+      {
+        "name": "unresolved_review",
+        "expected_loaded": false,
+        "loaded": false,
+        "violations": [
+          "unresolved_review_required"
+        ]
+      }
+    ],
+    "proof_companion_json": "reviewed-memory-loader-proof.json",
+    "proof_companion_md": "reviewed-memory-loader-proof.md"
+  },
+  "operator_db": {
+    "schema_version": 38,
+    "long_term_memory_items_total": 0,
+    "long_term_memory_items_accepted": 0,
+    "operator_db_unmutated": true,
+    "note": "loader is read-only (mode=ro); persists nothing; memory tables unchanged"
+  },
+  "validation": {
+    "compileall_exit": 0,
+    "ruff": "clean",
+    "mypy_source_files": 286,
+    "pytest_passed": 3119,
+    "pytest_failed": 0,
+    "pytest_deselected": 1,
+    "new_tests": 9,
+    "construction_agent_validate": "4/4 schema V38",
+    "table_inventory": "190 contract / 0 unmapped",
+    "cli_matrix_all_exit_0": true,
+    "phase_08c_gates_skipped_reason": "append-only ledger writes operator DB (disclosed Prompts 02/05)"
+  },
+  "deferred_items": [
+    "embedding + vector index build (Prompts 18-19; consumes Obsidian + memory loader nodes)"
+  ],
+  "completes": "per-category node-preparation loaders (Prompt 16 Obsidian + Prompt 17 reviewed memory)",
+  "stop_condition_triggered": false,
+  "generated_utc": "2026-06-04T22:34:44.790867+00:00"
+}
