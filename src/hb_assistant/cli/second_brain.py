@@ -3112,6 +3112,123 @@ def retrieval_llamaindex_status(
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if ready else 3)
 
 
+_VECTOR_INDEX_GUARDRAILS = {
+    "read_only": True,
+    "no_raw": True,
+    "no_writeback": True,
+    "metadata_only": True,
+    "approved_manifest_only_input": True,
+    "no_raw_vector_content_in_sqlite": True,
+    "dry_run_no_embeddings": True,
+    "local_first": True,
+}
+
+
+@llamaindex_app.command("build")
+def retrieval_llamaindex_build(
+    apply: bool = typer.Option(
+        False, "--apply/--dry-run", help="Apply build (deferred to Prompt 19); default dry-run plan."
+    ),
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 09 vector index build — dry-run plan over the approved manifest (read-only, fail-closed).
+
+    Produces a metadata-only plan (per-family node counts, planned chunk count, config/plan hashes,
+    no-raw attestation) over the approved manifest's loader nodes, rejecting any node lacking review
+    tier / confidence / source ref / freshness / no-raw proof. Computes **no embeddings** and writes
+    **no vector store**. `--apply` is deferred to Prompt 19 (fail-closed). Exit 0 on a dry-run plan; 3
+    on `--apply` or a fail-closed contract/schema failure.
+    """
+    from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
+        EmbeddingVectorPolicyError,
+    )
+    from hb_assistant.construction.second_brain.retrieval.vector_index import (
+        VectorIndexBuildError,
+        build_vector_index_dry_run,
+    )
+
+    if apply:
+        payload = {
+            "command": "second-brain retrieval llamaindex build",
+            "status": "apply_not_enabled",
+            "detail": "vector-index apply is deferred to Phase 09 Prompt 19; only --dry-run is enabled.",
+            "guardrails": _VECTOR_INDEX_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[payload["detail"]], exit_code=3)
+        return
+
+    try:
+        plan = build_vector_index_dry_run(project_key=project)
+    except (VectorIndexBuildError, EmbeddingVectorPolicyError) as exc:
+        payload = {
+            "command": "second-brain retrieval llamaindex build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "guardrails": _VECTOR_INDEX_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**plan, "guardrails": _VECTOR_INDEX_GUARDRAILS}
+    human = [
+        "Phase 09 vector index build — dry-run plan (read-only, advisory)",
+        f"  status: {plan['status']} | total nodes: {plan['total_nodes']}"
+        f" | planned chunks: {plan['planned_chunk_count']}",
+        f"  per-family: {plan['per_family_node_count']} | rejected: {plan['rejected_node_count']}",
+        f"  sdk available: {plan['sdk_available']} | ready to apply: {plan['ready_to_apply']}"
+        f" | vectors in sqlite: {plan['vectors_persisted_to_sqlite']}",
+        f"  warnings: {plan['warnings']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@llamaindex_app.command("build-proof")
+def retrieval_llamaindex_build_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the dry-run build proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove the dry-run vector build over the approved manifest is safe (read-only, fail-closed).
+
+    Demonstrates a controlled approved index loads indexable nodes, the build rule rejects nodes lacking
+    metadata / no-raw proof, and a guard-clean `status='dry_run'` run record persists (no vectors in
+    SQLite). Computes no embeddings; persists nothing to the operator DB. Exit 0 if the proof passes.
+    """
+    from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
+        EmbeddingVectorPolicyError,
+    )
+    from hb_assistant.construction.second_brain.retrieval.vector_index import (
+        VectorIndexBuildError,
+        build_vector_index_dry_run_proof,
+    )
+
+    try:
+        proof = build_vector_index_dry_run_proof(write_evidence=evidence)
+    except (VectorIndexBuildError, EmbeddingVectorPolicyError) as exc:
+        payload = {
+            "command": "second-brain retrieval llamaindex build-proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _VECTOR_INDEX_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _VECTOR_INDEX_GUARDRAILS}
+    human = [
+        f"Vector index dry-run proof passed={proof['proof_passed']}"
+        f" (total_nodes={proof['proof_total_nodes']}, record={proof['dry_run_record_persisted']})",
+        *[f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}" for c in proof["cases"]],
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
 _EMBEDDING_POLICY_GUARDRAILS = {
     "read_only": True,
     "no_raw": True,

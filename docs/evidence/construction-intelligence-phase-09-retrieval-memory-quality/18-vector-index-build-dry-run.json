@@ -1,0 +1,126 @@
+{
+  "artifact": "phase_09_vector_index_build_dry_run",
+  "prompt": "Prompt_18_Vector_Index_Build_Dry_Run",
+  "phase": "09",
+  "classification": "implementation_dry_run_vector_build_plan_over_approved_manifest",
+  "posture": "metadata_only_local_only_read_only_dry_run_no_embeddings_no_vector_store_fail_closed",
+  "repo_sha": "64339cd736e69033f93a3c47b388f733823d01ff",
+  "schema_version": 38,
+  "operator_plan": {
+    "status": "dry_run",
+    "total_nodes": 0,
+    "per_family_node_count": {},
+    "planned_chunk_count": 0,
+    "sdk_available": false,
+    "ready_to_apply": false,
+    "vectors_persisted_to_sqlite": false,
+    "warnings": [
+      "no_approved_nodes",
+      "generated_outputs_loader_deferred"
+    ],
+    "note": "operator has 0 approved Obsidian + 0 accepted memory -> 0 indexable nodes (honest no_approved_nodes warning); generated-outputs loader deferred"
+  },
+  "config": {
+    "embedding_model_label": "BAAI/bge-small-en-v1.5",
+    "index_kind": "vector_store",
+    "vector_store_kind": "simple",
+    "config_hash": "c1aac21b856a8156307b7093772eab34a9bdc03c47e08073c204fad52e6662d3"
+  },
+  "dry_run_proof": {
+    "proof_passed": true,
+    "proof_total_nodes": 3,
+    "dry_run_record_persisted": true,
+    "dry_run_record_guard_clean": true,
+    "vectors_persisted_to_sqlite": false,
+    "case_count": 7,
+    "cases": [
+      {
+        "name": "safe_node",
+        "expected_indexable": true,
+        "indexable": true,
+        "violations": []
+      },
+      {
+        "name": "missing_review_tier",
+        "expected_indexable": false,
+        "indexable": false,
+        "violations": [
+          "missing_review_tier",
+          "missing_metadata:review_tier"
+        ]
+      },
+      {
+        "name": "missing_confidence",
+        "expected_indexable": false,
+        "indexable": false,
+        "violations": [
+          "missing_confidence_class",
+          "missing_metadata:confidence_class"
+        ]
+      },
+      {
+        "name": "missing_source_ref",
+        "expected_indexable": false,
+        "indexable": false,
+        "violations": [
+          "missing_source_ref",
+          "missing_metadata:source_ref"
+        ]
+      },
+      {
+        "name": "missing_freshness",
+        "expected_indexable": false,
+        "indexable": false,
+        "violations": [
+          "missing_freshness_label",
+          "missing_metadata:freshness_label"
+        ]
+      },
+      {
+        "name": "raw_shape_text",
+        "expected_indexable": false,
+        "indexable": false,
+        "violations": [
+          "raw_content_shape:text_redacted"
+        ]
+      },
+      {
+        "name": "non_embeddable_family",
+        "expected_indexable": false,
+        "indexable": false,
+        "violations": [
+          "source_family_excluded:raw_prompt"
+        ]
+      }
+    ],
+    "proof_companion_json": "vector-index-dry-run-proof.json",
+    "proof_companion_md": "vector-index-dry-run-proof.md"
+  },
+  "operator_db": {
+    "schema_version": 38,
+    "vector_index_runs_rows": 0,
+    "vector_index_items_rows": 0,
+    "operator_db_unmutated": true,
+    "note": "dry-run build is read-only/plan-only (mode=ro); persists nothing; vectors never enter SQLite"
+  },
+  "validation": {
+    "compileall_exit": 0,
+    "ruff": "clean",
+    "mypy_source_files": 287,
+    "pytest_passed": 3127,
+    "pytest_failed": 0,
+    "pytest_deselected": 1,
+    "new_tests": 8,
+    "construction_agent_validate": "4/4 schema V38",
+    "table_inventory": "190 contract / 0 unmapped",
+    "cli_matrix_all_exit_0": true,
+    "phase_08c_gates_skipped_reason": "append-only ledger writes operator DB (disclosed Prompts 02/05)"
+  },
+  "deferred_items": [
+    "vector index APPLY build \u2014 embeddings + vector store (Prompt 19)",
+    "generated-outputs (research packets) loader \u2014 not yet built",
+    "vector_index_items population \u2014 apply build (Prompt 19)"
+  ],
+  "stop_condition_triggered": false,
+  "generated_utc": "2026-06-04T22:54:55.983398+00:00"
+}

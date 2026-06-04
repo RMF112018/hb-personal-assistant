@@ -124,6 +124,24 @@ hb-assistant second-brain retrieval memory-loader proof --json
 
 Together with the Obsidian loader (§6) this completes the per-category node-preparation loaders.
 
+## 8. Vector index build — dry run (Prompt 18)
+
+The dry-run vector build plans what would be embedded/indexed over the approved manifest's loader nodes,
+**computing no embeddings and writing no vector store**:
+
+```bash
+hb-assistant second-brain retrieval llamaindex build --json          # dry-run plan (default)
+hb-assistant second-brain retrieval llamaindex build-proof --json
+```
+
+- `build` (dry-run by default) reports a metadata-only plan — per-family node counts, planned chunk
+  count, config/plan hashes, `ready_to_apply`, `vectors_persisted_to_sqlite: false`. It rejects any node
+  lacking review tier / confidence / source ref / freshness / no-raw proof, and the approved manifest is
+  the only input. With no approved nodes the plan is honestly empty.
+- `build --apply` is **deferred to Prompt 19** (fail-closed `apply_not_enabled`).
+- `build-proof` demonstrates the dry-run plan + build rule + a guard-clean `status='dry_run'` run record
+  on a controlled fixture; persists nothing to the operator DB.
+
 ## Guardrails
 
 - Optional + lazy: the SDK is imported only inside Phase 09 retrieval code paths; the base install,
