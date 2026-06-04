@@ -2833,3 +2833,137 @@ def mcp_serve(
     else:
         typer.echo(f"MCP serve served={payload['served']} reasons={payload['reasons']}")
     raise typer.Exit(1)
+
+
+@mcp_app.command("tools")
+def mcp_tools(
+    snapshot: bool = typer.Option(
+        True, "--snapshot/--no-snapshot", help="Persist a metadata-only tool-registry snapshot."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
+) -> None:
+    """List the allowed MCP tool registry (read-only; lists metadata, never dispatches)."""
+    from hb_assistant.construction.second_brain.mcp import (
+        load_allowed_tools,
+        load_denied_actions,
+        load_global_requirements,
+        snapshot_tool_registry,
+    )
+
+    allowed = load_allowed_tools()
+    tools = [
+        {
+            "name": name,
+            "wrapper": spec.get("wrapper"),
+            "maps_to": spec.get("maps_to"),
+            "risk": spec.get("risk"),
+            "receipt_required": spec.get("receipt_required"),
+        }
+        for name, spec in sorted(allowed.items())
+    ]
+    denied = sorted(load_denied_actions())
+    snapshot_id = snapshot_tool_registry(persist=snapshot)
+    payload = {
+        "command": "second-brain mcp tools",
+        "phase": "08D",
+        "allowed_tool_count": len(tools),
+        "denied_action_count": len(denied),
+        "tools": tools,
+        "global_requirements": load_global_requirements(),
+        "denied_actions": denied,
+        "snapshot_id": snapshot_id,
+        "guardrails": {"read_only": True, "metadata_only": True, "no_dispatch": True},
+    }
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+    else:
+        typer.echo(f"MCP tools: {len(tools)} allowed / {len(denied)} denied")
+        for t in tools:
+            typer.echo(f"  {t['name']} -> {t['wrapper']} ({t['risk']})")
+    raise typer.Exit(0)
+
+
+@mcp_app.command("resources")
+def mcp_resources(
+    snapshot: bool = typer.Option(
+        True, "--snapshot/--no-snapshot", help="Persist a metadata-only resource-registry snapshot."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
+) -> None:
+    """List the safe MCP resource registry (read-only; lists URIs, never reads content)."""
+    from hb_assistant.construction.second_brain.contracts import load_phase_08d_contract
+    from hb_assistant.construction.second_brain.mcp import load_resources
+    from hb_assistant.construction.second_brain.mcp.resources import snapshot_resource_registry
+
+    resources = load_resources()
+    contract = load_phase_08d_contract("resources_contract")
+    snapshot_id = snapshot_resource_registry(persist=snapshot)
+    payload = {
+        "command": "second-brain mcp resources",
+        "phase": "08D",
+        "resource_count": len(resources),
+        "resources": resources,
+        "requirements": contract.get("requirements", []),
+        "snapshot_id": snapshot_id,
+        "guardrails": {"read_only": True, "metadata_only": True, "no_content_read": True},
+    }
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+    else:
+        typer.echo(f"MCP resources: {len(resources)}")
+        for r in resources:
+            typer.echo(f"  {r['uri']} -> {r['wrapper']}")
+    raise typer.Exit(0)
+
+
+@mcp_app.command("prompts")
+def mcp_prompts(
+    snapshot: bool = typer.Option(
+        True, "--snapshot/--no-snapshot", help="Persist a metadata-only prompt-registry snapshot."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
+) -> None:
+    """List the reusable MCP prompt registry (read-only; lists routing, never executes)."""
+    from hb_assistant.construction.second_brain.contracts import load_phase_08d_contract
+    from hb_assistant.construction.second_brain.mcp import load_prompts
+    from hb_assistant.construction.second_brain.mcp.prompts import snapshot_prompt_registry
+
+    prompts = load_prompts()
+    contract = load_phase_08d_contract("prompts_contract")
+    snapshot_id = snapshot_prompt_registry(persist=snapshot)
+    payload = {
+        "command": "second-brain mcp prompts",
+        "phase": "08D",
+        "prompt_count": len(prompts),
+        "prompts": prompts,
+        "requirements": contract.get("requirements", []),
+        "snapshot_id": snapshot_id,
+        "guardrails": {"read_only": True, "metadata_only": True, "routes_through_allowed_only": True},
+    }
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+    else:
+        typer.echo(f"MCP prompts: {len(prompts)}")
+        for p in prompts:
+            typer.echo(f"  {p['name']} -> {p['routes_through']}")
+    raise typer.Exit(0)
+
+
+@mcp_app.command("audit")
+def mcp_audit(
+    snapshot: bool = typer.Option(
+        True, "--snapshot/--no-snapshot", help="Persist the registry snapshots + audit run."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
+) -> None:
+    """Run the MCP permission audit (ten checks; read-only; persists a metadata-only run)."""
+    from hb_assistant.construction.second_brain.mcp import run_mcp_permission_audit
+
+    report = run_mcp_permission_audit(persist=snapshot, write_evidence=False)
+    if json_out:
+        typer.echo(json.dumps(report, indent=2, default=str))
+    else:
+        typer.echo(f"MCP audit status={report['status']} findings={report['finding_count']}")
+        for c in report["checks"]:
+            typer.echo(f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}")
+    raise typer.Exit(0 if report.get("proof_passed") else 3)
