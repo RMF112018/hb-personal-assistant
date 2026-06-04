@@ -31,6 +31,20 @@ DENIED_PROOF_JSON = "mcp-denied-tool-proof.json"
 RESOURCE_PROOF_JSON = "mcp-resource-contract-proof.json"
 PROMPT_PROOF_JSON = "mcp-prompt-contract-proof.json"
 RUNBOOK_PROOF_JSON = "mcp-claude-desktop-runbook-proof.json"
+NO_RAW_PROOF_JSON = "no-raw-mcp-access-proof.json"
+NO_RAW_PROOF_MD = "no-raw-mcp-access-proof.md"
+
+# Receipt columns that, if present, would mean a receipt table can persist raw content.
+_FORBIDDEN_RECEIPT_COLUMNS = {
+    "raw_args",
+    "raw_result",
+    "raw_prompt",
+    "raw_response",
+    "raw_sql",
+    "raw_requested_content",
+    "raw_body",
+    "raw_source_content",
+}
 
 # Patterns that, if found in mcp source, would mean the code targets the LIVE Claude Desktop
 # config (the preview file `claude-desktop-config-preview.json` is hyphenated and distinct).
@@ -160,10 +174,14 @@ def build_mcp_tool_broker_proof(
             conn, "second_brain_mcp_tool_call_receipts"
         ) and _guards_all_zero(conn, "second_brain_mcp_denial_receipts")
         # No raw argument/result columns exist on the receipt tables (hashes only).
-        call_cols = {r[1] for r in conn.execute("PRAGMA table_info(second_brain_mcp_tool_call_receipts)")}
-        no_raw_columns = not (
-            {"raw_args", "raw_result", "raw_prompt", "raw_response"} & call_cols
-        ) and "args_hash" in call_cols and "result_hash" in call_cols
+        call_cols = {
+            r[1] for r in conn.execute("PRAGMA table_info(second_brain_mcp_tool_call_receipts)")
+        }
+        no_raw_columns = (
+            not ({"raw_args", "raw_result", "raw_prompt", "raw_response"} & call_cols)
+            and "args_hash" in call_cols
+            and "result_hash" in call_cols
+        )
 
     expectations = {
         "denied_action": ("denied", REASON_ACTION_DENIED),
@@ -190,11 +208,7 @@ def build_mcp_tool_broker_proof(
         }
 
     proof_passed = bool(
-        all_pass
-        and guards_clean
-        and no_raw_columns
-        and tool_call_rows == 1
-        and denial_rows == 5
+        all_pass and guards_clean and no_raw_columns and tool_call_rows == 1 and denial_rows == 5
     )
 
     proof: dict[str, Any] = {
@@ -607,9 +621,7 @@ def build_mcp_denied_tools_proof(
             "SELECT COUNT(*) FROM second_brain_mcp_denial_receipts"
         ).fetchone()[0]
 
-    proof_passed = bool(
-        all_pass and token_pass and no_raw_echo and no_raw_columns and guards_clean
-    )
+    proof_passed = bool(all_pass and token_pass and no_raw_echo and no_raw_columns and guards_clean)
     proof: dict[str, Any] = {
         "proof": "phase_08d_mcp_denied_tools",
         "phase": "08D",
@@ -744,5 +756,228 @@ def build_mcp_allowed_tools_proof(
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / CONTRACT_PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
         proof["proof_path"] = str(out_dir / CONTRACT_PROOF_JSON)
+
+    return proof
+
+
+# ---------------------------------------------------------------------------
+# Phase 08D no-raw MCP access proof (Prompt 13).
+#
+# A deterministic, read-only scan over every MCP surface — registries, resources, prompts,
+# receipts, the Claude Desktop config preview, the server status, and the committed evidence
+# artifacts — proving none exposes raw content. STATIC/STRUCTURAL ONLY: it never dispatches
+# read_resource / the workflow wrappers (those route hb_research_packet through retrieval),
+# so resources/prompts are scanned at the registry/template level and receipts via a
+# self-contained temp-DB PRAGMA. The server-status and evidence-file surfaces are optional so
+# the server startup check (policy.evaluate_startup_checks) can call this without recursion.
+# ---------------------------------------------------------------------------
+
+
+def _scan_no_raw(label: str, payload: Any) -> dict[str, Any]:
+    """Scan one MCP surface payload for raw exposure (never echoes any offending text)."""
+    forbidden_keys = sorted(_collect_keys(payload) & set(_FORBIDDEN_RESULT_FIELDS))
+    passed = True
+    detail = "no raw keys/patterns"
+    try:
+        _assert_no_raw(json.dumps(payload, default=str), label)
+    except ValueError as exc:
+        # exc names the matched PATTERN + the surface label, never the matched text.
+        passed = False
+        detail = str(exc)
+    if forbidden_keys:
+        passed = False
+        detail = f"forbidden result keys present: {forbidden_keys}"
+    return {"surface": label, "passed": passed, "detail": detail}
+
+
+def _receipts_no_raw(*, db_path: str | None = None) -> dict[str, Any]:
+    """Structurally prove the receipt tables expose no raw content (self-contained temp DB)."""
+    from hb_assistant.store.migrator import SQLiteMigrator  # noqa: PLC0415
+
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "receipts.db")
+        SQLiteMigrator(db).apply()
+        conn = sqlite3.connect(db)
+        call_cols = {
+            r[1] for r in conn.execute("PRAGMA table_info(second_brain_mcp_tool_call_receipts)")
+        }
+        denial_cols = {
+            r[1] for r in conn.execute("PRAGMA table_info(second_brain_mcp_denial_receipts)")
+        }
+        no_raw_columns = not (_FORBIDDEN_RECEIPT_COLUMNS & (call_cols | denial_cols))
+        hashes_present = {"args_hash", "result_hash"} <= call_cols and "request_hash" in denial_cols
+        guards_zero = _guards_all_zero(
+            conn, "second_brain_mcp_tool_call_receipts"
+        ) and _guards_all_zero(conn, "second_brain_mcp_denial_receipts")
+        conn.close()
+
+    passed = bool(no_raw_columns and hashes_present and guards_zero)
+    return {
+        "surface": "receipts",
+        "passed": passed,
+        "detail": "hash-only columns; no raw columns; all guard columns zero",
+        "no_raw_columns": no_raw_columns,
+        "hash_columns_present": hashes_present,
+        "guard_columns_zero": guards_zero,
+    }
+
+
+def evaluate_no_raw_mcp_access(
+    *,
+    db_path: str | None = None,
+    include_server_status: bool = True,
+    include_evidence_scan: bool = True,
+) -> dict[str, Any]:
+    """Scan every MCP surface for raw-content exposure. Read-only; persists nothing.
+
+    Static/structural only — never dispatches the synthesis/retrieval wrappers. The
+    server-status and evidence-file surfaces are optional so the server startup check can call
+    this without recursion or disk scans.
+    """
+    from .config_preview import build_claude_desktop_config_preview  # noqa: PLC0415
+    from .prompts import render_all_prompts  # noqa: PLC0415
+    from .registry import load_global_requirements  # noqa: PLC0415
+    from .resources import load_resources  # noqa: PLC0415
+
+    surfaces: list[dict[str, Any]] = []
+
+    # 1. registries — tool/action NAMES and policy metadata only, no raw values.
+    surfaces.append(
+        _scan_no_raw(
+            "registries",
+            {
+                "allowed_tools": load_allowed_tools(),
+                "denied_actions": sorted(load_denied_actions()),
+                "global_requirements": load_global_requirements(),
+            },
+        )
+    )
+
+    # 2. resources — static registry listing (NO read_resource dispatch).
+    surfaces.append(_scan_no_raw("resources", load_resources()))
+
+    # 3. prompts — static rendered templates (no tool execution).
+    surfaces.append(_scan_no_raw("prompts", render_all_prompts()))
+
+    # 4. receipts — structural (temp-DB PRAGMA).
+    surfaces.append(_receipts_no_raw(db_path=db_path))
+
+    # 5. config preview — env key NAMES only; never persists env values.
+    preview = build_claude_desktop_config_preview(persist=False, write_evidence=False)
+    cfg = _scan_no_raw("config_preview", preview)
+    cfg["env_values_persisted"] = bool(preview.get("guardrails", {}).get("env_values_persisted"))
+    cfg["config_safe"] = bool(preview.get("safe"))
+    if cfg["env_values_persisted"] or not cfg["config_safe"]:
+        cfg["passed"] = False
+    surfaces.append(cfg)
+
+    # 6. server status (optional — skipped by the startup check to avoid recursion).
+    if include_server_status:
+        from .policy import build_mcp_status  # noqa: PLC0415
+
+        surfaces.append(
+            _scan_no_raw("server_status", build_mcp_status(persist=False, db_path=db_path))
+        )
+
+    # 7. committed evidence artifacts (optional — the generated 08D proof JSONs).
+    if include_evidence_scan:
+        ev_dir = Path(EVIDENCE_DIR)
+        files = sorted(ev_dir.glob("*.json")) if ev_dir.exists() else []
+        scanned: list[str] = []
+        ev_passed = True
+        for f in files:
+            scanned.append(f.name)
+            try:
+                _assert_no_raw(f.read_text(encoding="utf-8"), f"evidence {f.name}")
+            except ValueError:
+                ev_passed = False
+        surfaces.append(
+            {
+                "surface": "evidence",
+                "passed": ev_passed,
+                "detail": f"{len(scanned)} evidence json artifacts scanned",
+                "scanned": scanned,
+            }
+        )
+
+    proof_passed = all(s["passed"] for s in surfaces)
+    return {
+        "proof_passed": proof_passed,
+        "scanned_surface_count": len(surfaces),
+        "surfaces": surfaces,
+        "metadata_only": {
+            "no_raw_requested_content": proof_passed,
+            "static_scan_no_wrapper_dispatch": True,
+            "receipts_hash_only": True,
+        },
+        "guardrails": {
+            "read_only": True,
+            "no_raw_content": True,
+            "no_resource_dispatch": True,
+            "metadata_only": True,
+        },
+    }
+
+
+def _render_no_raw_md(proof: dict[str, Any]) -> str:
+    lines = [
+        "# Phase 08D No-Raw MCP Access Proof",
+        "",
+        "Deterministic, read-only scan over every MCP surface (registries, resources, prompts, "
+        "receipts, config preview, server status, and the committed evidence artifacts) proving "
+        "none exposes raw content. Static/structural only — the synthesis/retrieval workflow "
+        "tools are never dispatched; receipts are introspected via a temp-DB PRAGMA.",
+        "",
+        "## Summary",
+        f"- Proof passed: {str(proof['proof_passed']).lower()}",
+        f"- Surfaces scanned: {proof['scanned_surface_count']}",
+        "",
+        "## Surfaces",
+        "| Surface | Passed | Detail |",
+        "| --- | --- | --- |",
+    ]
+    for s in proof["surfaces"]:
+        lines.append(f"| {s['surface']} | {str(s['passed']).lower()} | {s.get('detail', '')} |")
+    lines += ["", "## Guardrails"]
+    for key, value in proof["guardrails"].items():
+        lines.append(f"- {key}: {str(value).lower()}")
+    lines += ["", f"Generated: {proof['generated_utc']}", ""]
+    return "\n".join(lines)
+
+
+def build_no_raw_mcp_access_proof(
+    *,
+    db_path: str | None = None,
+    evidence_dir: str | None = None,
+    write_evidence: bool = True,
+) -> dict[str, Any]:
+    """Run the full no-raw MCP access scan and (optionally) write the evidence proof + MD."""
+    from datetime import datetime, timezone  # noqa: PLC0415
+
+    report = evaluate_no_raw_mcp_access(db_path=db_path)
+    proof: dict[str, Any] = {
+        "proof": "phase_08d_no_raw_mcp_access",
+        "command": "second-brain mcp no-raw-access",
+        "phase": "08D",
+        "proof_passed": report["proof_passed"],
+        "generated_utc": datetime.now(timezone.utc).isoformat(),
+        "scanned_surface_count": report["scanned_surface_count"],
+        "surfaces": report["surfaces"],
+        "metadata_only": report["metadata_only"],
+        "guardrails": report["guardrails"],
+    }
+
+    serialized = json.dumps(proof, indent=2, default=str)
+    _assert_no_raw(serialized, "mcp no-raw-access proof")
+
+    if write_evidence:
+        out_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / NO_RAW_PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
+        markdown = _render_no_raw_md(proof)
+        _assert_no_raw(markdown, "mcp no-raw-access proof markdown")
+        (out_dir / NO_RAW_PROOF_MD).write_text(markdown, encoding="utf-8")
+        proof["proof_path"] = str(out_dir / NO_RAW_PROOF_JSON)
+        proof["proof_md_path"] = str(out_dir / NO_RAW_PROOF_MD)
 
     return proof

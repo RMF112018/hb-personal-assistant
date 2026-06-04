@@ -6,11 +6,11 @@ Deterministic, read-only, registry/contract-level gate evaluation over the Phase
 - Proof passed: true
 - ok (no fail_blocking): true
 - Schema version: 37 (expected 37)
-- Status counts: {'pass': 11, 'warning': 0, 'fail_blocking': 0, 'deferred_not_blocking': 3}
+- Status counts: {'pass': 12, 'warning': 0, 'fail_blocking': 0, 'deferred_not_blocking': 2}
 - Required fields covered: true
 - Readiness overstated: false
 - Ready to serve: false
-- Serve blockers: ['no_raw_access_proof_pending_prompt_13', 'no_mcp_writeback_proof_pending_prompt_14', 'full_validation_matrix_pending_prompt_15', 'mcp_sdk_not_installed']
+- Serve blockers: ['no_mcp_writeback_proof_pending_prompt_14', 'full_validation_matrix_pending_prompt_15', 'mcp_sdk_not_installed']
 - Missing required evidence: none
 
 ## Gates
@@ -26,7 +26,7 @@ Deterministic, read-only, registry/contract-level gate evaluation over the Phase
 | receipts | pass |
 | denials | pass |
 | claude_desktop_config | pass |
-| no_raw_access | deferred_not_blocking |
+| no_raw_access | pass |
 | no_writeback | deferred_not_blocking |
 | validation_matrix | deferred_not_blocking |
 | policy_posture | pass |
@@ -34,7 +34,7 @@ Deterministic, read-only, registry/contract-level gate evaluation over the Phase
 ## Stop checks
 - gates_passed_with_missing_evidence: false
 - readiness_overstated: false
-- deferred_gate_reported_as_pass: false
+- ready_to_serve_overstated: false
 
 ## Guardrails
 - local_first: true
@@ -48,4 +48,4 @@ Deterministic, read-only, registry/contract-level gate evaluation over the Phase
 ## Notes
 Deterministic Phase 08D MCP-bridge data-quality gate evaluation across schema/contracts (V37 + ten 08D contracts), server config, the nine allowed workflow tools, the denied registry, five resources, five prompts, metadata-only receipts, deny-first denial enforcement, nine workflow wrappers, the Claude Desktop config preview, and the overall permission-audit policy posture. Evaluated at the registry/contract level only — the synthesis/retrieval workflow tools are never dispatched. no_raw_access (Prompt 13), no_writeback (Prompt 14), and the full validation_matrix (Prompt 15) are deferred_not_blocking; ready_to_serve is False. Advisory only — not a determination, approval, or serve attestation.
 
-Generated: 2026-06-04T07:47:01.737035Z
+Generated: 2026-06-04T08:08:03.733142Z

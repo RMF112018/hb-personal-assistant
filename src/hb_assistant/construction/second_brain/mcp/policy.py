@@ -2,11 +2,11 @@
 
 Deterministic, read-only evaluation of the fail-closed startup conditions for the local
 stdio MCP server: schema version, server-policy seed, the four registry contracts, the
-fail-closed permission policy, and stdio-only transport. The two MCP-specific guard
-proofs (no-raw-access, no-writeback) are *deferred* to Prompts 13/14, and the tool broker
-is not wired until Prompt 04 — so the server is never ``ready_to_serve`` at this stage and
-``serve`` stays fail-closed. Nothing here opens a socket, imports the MCP SDK, or persists
-raw content.
+fail-closed permission policy, and stdio-only transport. The no-raw-access guard proof is
+wired in Prompt 13 (the ``no_raw_access_proof`` check now passes/fails live); the
+no-writeback guard proof is still *deferred* to Prompt 14 — so the server is never
+``ready_to_serve`` at this stage and ``serve`` stays fail-closed. Nothing here opens a
+socket, imports the MCP SDK, or persists raw content.
 """
 
 from __future__ import annotations
@@ -28,11 +28,10 @@ _DENIED_TRANSPORTS = ("http", "sse", "websocket", "tcp", "remote")
 _SERVER_POLICY_SEED = "resources/config/phase_08d_mcp_server_policy.seed.yaml"
 _PERMISSION_POLICY_SEED = "resources/config/phase_08d_mcp_permission_policy.seed.yaml"
 
-# Guard proofs that gate real serving but are implemented in later prompts.
-_DEFERRED_SERVE_BLOCKERS = (
-    "no_raw_access_proof_pending_prompt_13",
-    "no_writeback_proof_pending_prompt_14",
-)
+# Guard proofs that gate real serving but are implemented in later prompts. The
+# no-raw-access proof landed in Prompt 13 (evaluated live in evaluate_startup_checks); only
+# the no-writeback proof (Prompt 14) remains a deferred serve blocker.
+_DEFERRED_SERVE_BLOCKERS = ("no_writeback_proof_pending_prompt_14",)
 _MCP_GUARDRAILS = {
     "local_first": True,
     "transport_stdio_only": True,
@@ -80,11 +79,12 @@ def _registry_present(name: str, logical: str) -> dict[str, str]:
     return _check(name, "pass", f"loaded {contract.get('contract_name')}")
 
 
-def evaluate_startup_checks() -> dict[str, Any]:
+def evaluate_startup_checks(*, db_path: str | None = None) -> dict[str, Any]:
     """Evaluate the fail-closed startup checks. Read-only; persists nothing.
 
-    ``foundation_ok`` is True iff no check is ``fail``. The two ``deferred`` guard-proof
-    checks do not flip ``foundation_ok`` but are recorded as serve blockers.
+    ``foundation_ok`` is True iff no check is ``fail``. The ``no_raw_access_proof`` check is
+    evaluated live (Prompt 13); the remaining ``no_writeback_proof`` check stays ``deferred``
+    (Prompt 14) and is recorded as a serve blocker.
     """
     checks: list[dict[str, str]] = []
 
@@ -128,14 +128,29 @@ def evaluate_startup_checks() -> dict[str, Any]:
     # 8. transport stdio-only (denied list covers all network transports)
     denied = transport.get("denied") if isinstance(transport, dict) else None
     if isinstance(denied, list) and all(t in denied for t in _DENIED_TRANSPORTS):
-        checks.append(_check("transport_stdio_only", "pass", "http/sse/websocket/tcp/remote denied"))
+        checks.append(
+            _check("transport_stdio_only", "pass", "http/sse/websocket/tcp/remote denied")
+        )
     else:
         checks.append(_check("transport_stdio_only", "fail", "network transports not all denied"))
 
-    # 9-10. MCP-specific guard proofs — deferred to Prompts 13/14
-    checks.append(
-        _check("no_raw_access_proof", "deferred", "MCP no-raw-access proof lands in Prompt 13")
-    )
+    # 9. MCP no-raw-access guard proof (Prompt 13) — evaluated live, non-recursively
+    # (server-status + evidence-file surfaces are excluded here; the full proof scans them).
+    try:
+        from .proof import evaluate_no_raw_mcp_access  # noqa: PLC0415 - avoid import cycle
+
+        nra = evaluate_no_raw_mcp_access(
+            db_path=db_path, include_server_status=False, include_evidence_scan=False
+        )
+        if nra["proof_passed"]:
+            checks.append(_check("no_raw_access_proof", "pass", "MCP no-raw-access proof passes"))
+        else:
+            failed = [s["surface"] for s in nra["surfaces"] if not s["passed"]]
+            checks.append(_check("no_raw_access_proof", "fail", f"no-raw scan failed: {failed}"))
+    except Exception as exc:  # noqa: BLE001 - any scan failure is fail-closed
+        checks.append(_check("no_raw_access_proof", "fail", f"no-raw scan errored: {exc!r}"))
+
+    # 10. MCP no-writeback guard proof — deferred to Prompt 14
     checks.append(
         _check("no_writeback_proof", "deferred", "MCP no-writeback proof lands in Prompt 14")
     )
@@ -156,7 +171,7 @@ def build_mcp_status(*, db_path: str | None = None, persist: bool = True) -> dic
     ``ready_to_serve``. When ``persist`` is True a metadata-only
     ``second_brain_mcp_server_config_snapshots`` row is written.
     """
-    startup = evaluate_startup_checks()
+    startup = evaluate_startup_checks(db_path=db_path)
     mcp_sdk_available = importlib.util.find_spec("mcp") is not None
 
     # The broker (Prompt 04) and the nine workflow wrappers (Prompt 05) are wired; serving

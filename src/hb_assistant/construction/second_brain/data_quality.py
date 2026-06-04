@@ -1103,12 +1103,6 @@ def _compute_08d_readiness_overstated(gates: list[dict[str, Any]]) -> bool:
     return bool(ready_claimed and any_fail)
 
 
-def _deferred_reported_as_pass_08d(gates: list[dict[str, Any]]) -> bool:
-    """True if any readiness gate is reported as pass (a stop condition — must stay False)."""
-    by = {g.get("gate_name"): g.get("gate_status") for g in gates}
-    return any(by.get(name) == "pass" for name in _08D_READINESS_GATES)
-
-
 def _required_fields_covered_08d(by_field_status: dict[str, str]) -> bool:
     """True iff every required gate name from the 08D contract is present (default True)."""
     try:
@@ -1134,7 +1128,7 @@ def evaluate_phase_08d_data_quality_gates(*, db_path: str | None = None) -> dict
     from .contracts import PHASE_08D_CONTRACT_FILES, load_phase_08d_contract
     from .mcp.audit import run_mcp_permission_audit
     from .mcp.prompts import load_prompts
-    from .mcp.proof import build_mcp_tool_broker_proof
+    from .mcp.proof import build_mcp_tool_broker_proof, build_no_raw_mcp_access_proof
     from .mcp.registry import load_allowed_tools, load_denied_actions
     from .mcp.resources import load_resources
     from .mcp.wrappers import build_wrapper_registry
@@ -1259,15 +1253,10 @@ def evaluate_phase_08d_data_quality_gates(*, db_path: str | None = None) -> dict
         )
     )
 
-    # 11-12, 14. Deferred — the serve-blocking proof artifacts are pending (never pass).
-    gates.append(
-        _gate(
-            "no_raw_access",
-            "deferred_not_blocking",
-            reason="no_raw_access_proof_pending_prompt_13",
-            future_prompt=13,
-        )
-    )
+    # 11. No-raw access proof (Prompt 13) — wired live via the dedicated proof.
+    gates.append(_proof_gate("no_raw_access", build_no_raw_mcp_access_proof(write_evidence=False)))
+
+    # 12, 14. Deferred — the serve-blocking proof artifacts are pending (never pass).
     gates.append(
         _gate(
             "no_writeback",
@@ -1373,7 +1362,7 @@ def _render_phase_08d_gates_md(proof: dict[str, Any]) -> str:
         "## Stop checks",
         f"- gates_passed_with_missing_evidence: {str(proof['stop_checks']['gates_passed_with_missing_evidence']).lower()}",
         f"- readiness_overstated: {str(proof['stop_checks']['readiness_overstated']).lower()}",
-        f"- deferred_gate_reported_as_pass: {str(proof['stop_checks']['deferred_gate_reported_as_pass']).lower()}",
+        f"- ready_to_serve_overstated: {str(proof['stop_checks']['ready_to_serve_overstated']).lower()}",
         "",
         "## Guardrails",
     ]
@@ -1430,10 +1419,11 @@ def build_phase_08d_gates_proof(
         ],
         "stop_checks": {
             # all three must be False — the proof never passes on missing evidence,
-            # overstatement, or a deferred gate masquerading as pass.
+            # readiness overstatement, or serve-readiness claimed while blockers remain.
             "gates_passed_with_missing_evidence": bool(missing) and proof_passed,
             "readiness_overstated": report["readiness_overstated"],
-            "deferred_gate_reported_as_pass": _deferred_reported_as_pass_08d(report["gates"]),
+            "ready_to_serve_overstated": bool(report["ready_to_serve"])
+            and bool(report["serve_blockers"]),
         },
         "guardrails": report["guardrails"],
         "evidence_paths": [f"{EVIDENCE_DIR}/{PHASE_08D_GATES_PROOF_JSON}"],

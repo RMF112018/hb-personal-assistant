@@ -1,10 +1,11 @@
 """Phase 08D Prompt 03 — MCP server foundation + config-preview surface.
 
 Proves the stdio-only, fail-closed server foundation: the startup checks pass for the
-landed foundation and defer the Prompt 13/14 guard proofs; the server refuses to serve
-(no tool broker yet); the Claude Desktop config preview is safe + schema-conformant and
-flags unsafe variants; and the two V37 metadata-only tables get guard-clean rows.
-No socket is opened and the MCP SDK is never required.
+landed foundation, the no-raw-access guard proof now passes live (Prompt 13), and the
+no-writeback guard proof stays deferred (Prompt 14); the server refuses to serve; the
+Claude Desktop config preview is safe + schema-conformant and flags unsafe variants; and
+the two V37 metadata-only tables get guard-clean rows. No socket is opened and the MCP SDK
+is never required.
 """
 
 from __future__ import annotations
@@ -24,10 +25,10 @@ from hb_assistant.construction.second_brain.mcp import (
 from hb_assistant.construction.second_brain.mcp.config_preview import _server_entry
 from hb_assistant.construction.second_brain.mcp.store import write_mcp_server_config_snapshot
 
-_GUARD_PROOF_BLOCKER = "no_raw_access_proof_pending_prompt_13"
+_GUARD_PROOF_BLOCKER = "no_writeback_proof_pending_prompt_14"
 
 
-def test_startup_checks_foundation_passes_and_defers_guard_proofs() -> None:
+def test_startup_checks_foundation_passes_no_raw_and_defers_writeback() -> None:
     report = evaluate_startup_checks()
     assert report["foundation_ok"] is True
     by_name = {c["name"]: c["status"] for c in report["checks"]}
@@ -42,9 +43,10 @@ def test_startup_checks_foundation_passes_and_defers_guard_proofs() -> None:
         "transport_stdio_only",
     ):
         assert by_name[name] == "pass", f"{name} should pass"
-    assert by_name["no_raw_access_proof"] == "deferred"
+    # Prompt 13: the no-raw-access guard proof now passes live.
+    assert by_name["no_raw_access_proof"] == "pass"
     assert by_name["no_writeback_proof"] == "deferred"
-    assert set(report["deferred"]) == {"no_raw_access_proof", "no_writeback_proof"}
+    assert set(report["deferred"]) == {"no_writeback_proof"}
 
 
 def test_status_is_not_ready_to_serve_on_guard_proofs() -> None:
@@ -53,7 +55,8 @@ def test_status_is_not_ready_to_serve_on_guard_proofs() -> None:
     assert status["ready_to_serve"] is False
     # Prompt 05: the nine workflow wrappers are registered.
     assert status["mcp_tools_registered"] == 9
-    assert "no_raw_access_proof_pending_prompt_13" in status["serve_blockers"]
+    # Prompt 13: the no-raw-access serve blocker is gone.
+    assert "no_raw_access_proof_pending_prompt_13" not in status["serve_blockers"]
     assert "no_writeback_proof_pending_prompt_14" in status["serve_blockers"]
     # SDK is an optional extra and absent in CI.
     assert status["mcp_sdk_available"] is False
@@ -151,7 +154,12 @@ def test_config_preview_flags_unsafe_variants() -> None:
 
     # non-stdio args
     bad_args = _server_entry({"HB_MCP_TRANSPORT": "stdio"})
-    bad_args["mcpServers"]["hb-personal-assistant"]["args"] = ["second-brain", "mcp", "serve", "--http"]
+    bad_args["mcpServers"]["hb-personal-assistant"]["args"] = [
+        "second-brain",
+        "mcp",
+        "serve",
+        "--http",
+    ]
     report2 = assess_config_safety(bad_args)
     assert report2["safe"] is False
     assert "unsafe_args" in report2["unsafe_reasons"]

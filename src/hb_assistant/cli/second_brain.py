@@ -3062,3 +3062,23 @@ def mcp_audit(
         for c in report["checks"]:
             typer.echo(f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}")
     raise typer.Exit(0 if report.get("proof_passed") else 3)
+
+
+@mcp_app.command("no-raw-access")
+def mcp_no_raw_access(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the no-raw-access proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
+) -> None:
+    """Prove no MCP surface exposes raw content (Prompt 13; read-only, static scan)."""
+    from hb_assistant.construction.second_brain.mcp import build_no_raw_mcp_access_proof
+
+    proof = build_no_raw_mcp_access_proof(write_evidence=evidence)
+    if json_out:
+        typer.echo(json.dumps(proof, indent=2, default=str))
+    else:
+        typer.echo(f"MCP no-raw-access proof passed={proof['proof_passed']}")
+        for s in proof["surfaces"]:
+            typer.echo(f"  [{'ok' if s['passed'] else 'FAIL'}] {s['surface']}")
+    raise typer.Exit(0 if proof.get("proof_passed") else 3)
