@@ -1,0 +1,148 @@
+{
+  "artifact": "phase_09_mcp_runtime_receipt_and_denial_smoke",
+  "prompt": "Prompt_04_MCP_Runtime_Receipt_And_Denial_Smoke_Preflight",
+  "gap": "G-02",
+  "posture": "in_process_real_broker_smoke_no_sdk_into_labeled_proof_db_outside_repo",
+  "proof_db_path_outside_repo": "/tmp/claude-501/hb-phase09-prompt04-proof.sqlite",
+  "operator_db_pristine": {
+    "before": {
+      "second_brain_mcp_tool_call_receipts": 0,
+      "second_brain_mcp_denial_receipts": 0
+    },
+    "after": {
+      "second_brain_mcp_tool_call_receipts": 0,
+      "second_brain_mcp_denial_receipts": 0
+    },
+    "unchanged": true,
+    "note": "operator MCP receipt tables untouched; receipts written only to the throwaway proof DB"
+  },
+  "dispatched": [
+    {
+      "tool": "hb_status",
+      "decision": "allowed",
+      "reason_code": null
+    },
+    {
+      "tool": "arbitrary_sql",
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy"
+    },
+    {
+      "tool": "graph_api_call",
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy"
+    },
+    {
+      "tool": "email_send",
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy"
+    },
+    {
+      "tool": "source_system_writeback",
+      "decision": "denied",
+      "reason_code": "action_denied_by_policy"
+    },
+    {
+      "tool": "hb_delete_everything",
+      "decision": "denied",
+      "reason_code": "tool_not_allowed"
+    }
+  ],
+  "smoke_proof": {
+    "proof": "phase_09_mcp_receipt_smoke",
+    "schema_version": 37,
+    "schema_version_expected": 37,
+    "populated": true,
+    "proof_passed": true,
+    "missing_tables": [],
+    "allowed_receipt_count": 1,
+    "denial_receipt_count": 5,
+    "guard_columns_checked": 20,
+    "guard_columns_zero": {
+      "second_brain_mcp_tool_call_receipts": true,
+      "second_brain_mcp_denial_receipts": true
+    },
+    "tool_call_decisions": [
+      "allowed"
+    ],
+    "denial_decisions": [
+      "denied"
+    ],
+    "tool_call_decisions_ok": true,
+    "denial_decisions_ok": true,
+    "allowed_tools_valid": true,
+    "denial_reason_codes": [
+      "action_denied_by_policy",
+      "tool_not_allowed"
+    ],
+    "denials_missing_reason": 0,
+    "raw_content_findings": [],
+    "structural_no_raw": {
+      "surface": "receipts",
+      "passed": true,
+      "detail": "hash-only columns; no raw columns; all guard columns zero",
+      "no_raw_columns": true,
+      "hash_columns_present": true,
+      "guard_columns_zero": true
+    },
+    "structural_no_writeback": {
+      "surface": "receipts",
+      "passed": true,
+      "detail": "writeback/API guard columns present and CHECK(=0); all guard columns zero",
+      "writeback_guard_columns_present": true,
+      "guard_columns_zero": true
+    },
+    "guardrails": {
+      "read_only": true,
+      "metadata_only": true,
+      "no_raw_content": true,
+      "no_external_writeback": true,
+      "deny_first": true,
+      "advisory_only": true
+    }
+  },
+  "allowed_receipt_sample": [
+    {
+      "tool_name": "hb_status",
+      "decision": "allowed",
+      "workflow_wrapper": "mcp_status_wrapper",
+      "output_classification": "bounded_summary",
+      "source_count": 3,
+      "result_count": 1,
+      "args_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "result_hash": "284e6ddd4ffffbc600b44249591e8847bf84b1e75e9add10ecadf3b60e4db4e5"
+    }
+  ],
+  "denial_receipt_sample": [
+    {
+      "requested_action": "arbitrary_sql",
+      "decision": "denied",
+      "denial_reason_code": "action_denied_by_policy",
+      "request_hash": "fd83e882b6fb58e46db60809eebc0889a5d8c4cbc1129199afbead8ea341e76d"
+    },
+    {
+      "requested_action": "graph_api_call",
+      "decision": "denied",
+      "denial_reason_code": "action_denied_by_policy",
+      "request_hash": "c4358a96ef1b7bb37c67340e9348c1e86f94d8521713473988c08b53cba5ca22"
+    },
+    {
+      "requested_action": "email_send",
+      "decision": "denied",
+      "denial_reason_code": "action_denied_by_policy",
+      "request_hash": "83c880bcb721fdb0e76562cab3078e53d7e331362939e5de99e9bb53b8902ed3"
+    },
+    {
+      "requested_action": "source_system_writeback",
+      "decision": "denied",
+      "denial_reason_code": "action_denied_by_policy",
+      "request_hash": "241d767ee7cf991570622d69b79888ce6ec25b167a0a9d090f11978b51cdc496"
+    },
+    {
+      "requested_action": "hb_delete_everything",
+      "decision": "denied",
+      "denial_reason_code": "tool_not_allowed",
+      "request_hash": "f465875d021844aed653bfdee8e3cb493228de8887c65ce6dd2a290e74fe7104"
+    }
+  ]
+}

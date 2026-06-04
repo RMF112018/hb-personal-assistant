@@ -1,0 +1,42 @@
+{
+  "command": "construction-agent validate",
+  "checks": [
+    {
+      "name": "schema",
+      "ok": true,
+      "detail": "schema_version=37",
+      "error": null
+    },
+    {
+      "name": "source_registry",
+      "ok": true,
+      "detail": "6 projects, 14 sources",
+      "error": null
+    },
+    {
+      "name": "review_rules",
+      "ok": true,
+      "detail": "version=1; 25 rules; threshold=0.7",
+      "error": null
+    },
+    {
+      "name": "model_routing",
+      "ok": true,
+      "detail": "version=1; default_model=llama3.2:1b; tasks=['classification', 'review_reason']",
+      "error": null
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "ok": true
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "metadata_only": true,
+    "command_role": "read_only_dashboard"
+  }
+}
+EXIT=0

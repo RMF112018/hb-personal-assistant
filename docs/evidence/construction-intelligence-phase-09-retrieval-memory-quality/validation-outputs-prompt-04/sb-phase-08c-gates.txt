@@ -1,0 +1,67 @@
+{
+  "command": "second-brain data-quality phase-08c-gates",
+  "phase": "08C",
+  "project_key": null,
+  "advisory_only": true,
+  "ok": true,
+  "proof_passed": true,
+  "schema_version": 37,
+  "schema_version_expected": 35,
+  "status_counts": {
+    "pass": 21,
+    "warning": 1,
+    "fail_blocking": 0,
+    "deferred_not_blocking": 0
+  },
+  "by_field_status": {
+    "schema_contracts": "pass",
+    "endpoint_inventory": "pass",
+    "second_brain_financial_fact_normalization_runs": "pass",
+    "second_brain_financial_amount_facts_normalized": "pass",
+    "second_brain_financial_currency_completeness_snapshots": "pass",
+    "second_brain_financial_wbs_cost_code_snapshots": "pass",
+    "second_brain_financial_source_coverage_snapshots": "pass",
+    "second_brain_financial_exposure_summary_items": "pass",
+    "second_brain_financial_forecast_readiness_runs": "pass",
+    "second_brain_financial_review_required_items": "pass",
+    "second_brain_financial_readiness_agent_runs": "pass",
+    "second_brain_phase_08c_validation_runs": "pass",
+    "amount_normalization": "pass",
+    "currency_completeness": "pass",
+    "wbs_cost_code_completeness": "pass",
+    "source_coverage": "pass",
+    "exposure_marts": "pass",
+    "readiness_agent": "pass",
+    "forecast_readiness": "warning",
+    "review_required_policy": "pass",
+    "cli_operator_status": "pass",
+    "no_writeback_no_raw_financial_output": "pass"
+  },
+  "required_fields_covered": true,
+  "readiness_overstated": false,
+  "missing_required_evidence": [],
+  "proof_path": "docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.md",
+  "evidence_paths": [
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.json",
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-proof.json",
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json",
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-no-writeback-proof.json"
+  ],
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_raw_financial_payload": true,
+    "financial_determination_forbidden": true,
+    "advisory_only": true
+  },
+  "attestations": {
+    "financial_determination_performed": false,
+    "payment_decision_performed": false,
+    "claim_or_entitlement_decision_performed": false,
+    "external_writeback_performed": false,
+    "raw_financial_payload_persisted": false,
+    "live_procore_call_performed": false
+  }
+}
+EXIT=0
