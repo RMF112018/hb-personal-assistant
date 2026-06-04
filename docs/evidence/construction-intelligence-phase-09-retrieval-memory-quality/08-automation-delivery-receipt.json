@@ -1,0 +1,124 @@
+{
+  "artifact": "phase_09_automation_delivery_receipt",
+  "prompt": "Prompt_08_Automation_Delivery_Receipt_Preflight",
+  "gap": "G-06",
+  "posture": "controlled_no_external_receipt_population_into_labeled_proof_db_outside_repo",
+  "operator_db_unmutated": true,
+  "operator_receipt_counts_before_after": {
+    "before": {
+      "daily_brief_delivery_receipts": 0,
+      "daily_brief_notification_receipts": 0,
+      "daily_brief_html_render_receipts": 0,
+      "daily_brief_open_receipts": 0,
+      "second_brain_agent_run_receipts": 0,
+      "second_brain_run_registry": 0,
+      "launchd_schedule_previews": 0
+    },
+    "after": {
+      "daily_brief_delivery_receipts": 0,
+      "daily_brief_notification_receipts": 0,
+      "daily_brief_html_render_receipts": 0,
+      "daily_brief_open_receipts": 0,
+      "second_brain_agent_run_receipts": 0,
+      "second_brain_run_registry": 0,
+      "launchd_schedule_previews": 0
+    }
+  },
+  "dispatched_reason_codes": {
+    "delivery": "DELIVERY_COMPLETED",
+    "notification_gated": "NOTIFY_EMITTED",
+    "html": "HTML_RENDER_COMPLETED",
+    "open": "OPEN_DISABLED_BY_POLICY"
+  },
+  "fake_notifier_calls": 1,
+  "no_real_macos_notification": true,
+  "vault_html_dirs_temp_only": true,
+  "proof": {
+    "proof": "phase_09_automation_delivery",
+    "schema_version": 37,
+    "schema_version_expected": 37,
+    "populated": true,
+    "proof_passed": true,
+    "total_receipts": 10,
+    "delivery_receipt_count": 1,
+    "agent_run_receipt_count": 7,
+    "guard_violation": false,
+    "channel_or_mode_violation": false,
+    "external_writeback_total": 0,
+    "no_external_delivery": true,
+    "tables": {
+      "daily_brief_delivery_receipts": {
+        "present": true,
+        "count": 1,
+        "guard_columns": 9,
+        "guard_sum": 0,
+        "channels": [
+          "obsidian_vault"
+        ],
+        "modes": [
+          "apply"
+        ]
+      },
+      "daily_brief_notification_receipts": {
+        "present": true,
+        "count": 1,
+        "guard_columns": 9,
+        "guard_sum": 0,
+        "channels": [
+          "local_macos"
+        ],
+        "modes": [
+          "apply"
+        ]
+      },
+      "daily_brief_html_render_receipts": {
+        "present": true,
+        "count": 1,
+        "guard_columns": 9,
+        "guard_sum": 0,
+        "channels": [],
+        "modes": [
+          "apply"
+        ]
+      },
+      "daily_brief_open_receipts": {
+        "present": true,
+        "count": 0,
+        "guard_columns": 9,
+        "guard_sum": 0,
+        "channels": [],
+        "modes": []
+      },
+      "second_brain_agent_run_receipts": {
+        "present": true,
+        "count": 7,
+        "guard_columns": 9,
+        "guard_sum": 0,
+        "channels": [],
+        "modes": []
+      },
+      "second_brain_run_registry": {
+        "present": true,
+        "count": 0,
+        "guard_columns": 9,
+        "guard_sum": 0,
+        "channels": [],
+        "modes": []
+      },
+      "launchd_schedule_previews": {
+        "present": true,
+        "count": 0,
+        "guard_columns": 1,
+        "guard_sum": 0,
+        "channels": [],
+        "modes": []
+      }
+    },
+    "guardrails": {
+      "read_only": true,
+      "metadata_only": true,
+      "no_external_delivery": true,
+      "local_channels_only": true
+    }
+  }
+}
