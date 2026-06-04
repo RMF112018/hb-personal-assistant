@@ -143,6 +143,12 @@ DEFAULT_MAX_ITEMS = 100000
 DEFAULT_MAX_CHILD_REQUESTS = 100000
 DEFAULT_CHILD_REQUEST_DELAY_SECONDS = 0.0
 CHILD_REFRESH_LOOKBACK_HOURS = 26
+_ENDPOINT_PER_PAGE_LIMITS = {
+    # Live smoke evidence: Procore returns HTTP 500 for this endpoint at
+    # per_page=100, while per_page=10 succeeds.
+    "meeting-topics": 10,
+}
+_COMMITMENT_COMPLIANCE_COMPATIBLE_PARENT_TYPES = {"WorkOrderContract"}
 
 
 def _now_utc() -> str:
@@ -192,6 +198,24 @@ def _should_fetch_child_records(
     if parent_updated_at is None:
         return True
     return parent_updated_at >= now_utc - timedelta(hours=CHILD_REFRESH_LOOKBACK_HOURS)
+
+
+def _per_page_for_endpoint(endpoint_id: str, max_items: int) -> int:
+    if endpoint_id in _ENDPOINT_PER_PAGE_LIMITS:
+        return _ENDPOINT_PER_PAGE_LIMITS[endpoint_id]
+    return min(max_items, 100)
+
+
+def _is_compatible_n1_parent(endpoint_id: str, parent_summary: Dict[str, Any]) -> bool:
+    if endpoint_id != "commitment-compliance":
+        return True
+    parent_type = parent_summary.get("type")
+    if parent_type is None:
+        # Older fixtures and defensive live payloads may not carry type; do not
+        # silently drop potentially compatible parents unless Procore identified
+        # them as an incompatible commitment class.
+        return True
+    return str(parent_type) in _COMMITMENT_COMPLIANCE_COMPATIBLE_PARENT_TYPES
 
 
 def _normalize_project(
@@ -978,7 +1002,7 @@ def run_live_sync(
                     items_iter = client.paginate(
                         path=path,
                         params=get_params or None,
-                        per_page=min(max_items, 100),
+                        per_page=_per_page_for_endpoint(adapter.endpoint_id, max_items),
                         max_pages=max_pages,
                         max_items=max_items,
                         retry_policy=_LIVE_SYNC_RETRY_POLICY,
@@ -1293,6 +1317,7 @@ def run_live_sync(
         child_records: List[Dict[str, Any]] = []
         child_request_count = 0
         child_skipped_count = 0
+        child_incompatible_parent_skipped_count = 0
         child_error_count = 0
         cap_reached = False
         rate_limit_stopped = False
@@ -1304,6 +1329,10 @@ def run_live_sync(
             parent_id = parent_summary.get("id")
             if parent_id is None or parent_id == "":
                 child_skipped_count += 1
+                continue
+            if not _is_compatible_n1_parent(adapter.endpoint_id, parent_summary):
+                child_skipped_count += 1
+                child_incompatible_parent_skipped_count += 1
                 continue
             if not _should_fetch_child_records(
                 project_key=project_key,
@@ -1338,7 +1367,7 @@ def run_live_sync(
                         client.paginate(
                             child_path,
                             params=child_params,
-                            per_page=min(max_items, 100),
+                            per_page=_per_page_for_endpoint(adapter.endpoint_id, max_items),
                             max_pages=max_pages,
                             max_items=max_items,
                             retry_policy=_LIVE_SYNC_RETRY_POLICY,
@@ -1393,6 +1422,7 @@ def run_live_sync(
             "parent_count": parent_count,
             "child_request_count": child_request_count,
             "child_skipped_count": child_skipped_count,
+            "child_incompatible_parent_skipped_count": child_incompatible_parent_skipped_count,
             "child_error_count": child_error_count,
             "cap": max_child_requests,
             "cap_reached": cap_reached,

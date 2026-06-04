@@ -192,6 +192,41 @@ class _EmptyChildTransport:
         return _FakeResponse({"data": []})
 
 
+class _CommitmentComplianceTransport:
+    def __init__(self) -> None:
+        self.calls: List[str] = []
+        self.child_calls: List[str] = []
+
+    def __call__(
+        self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]
+    ) -> _FakeResponse:
+        self.calls.append(url)
+        page = int((params or {}).get("page", 1))
+        if url.rstrip("/").endswith("/commitment_contracts"):
+            if page != 1:
+                return _FakeResponse({"data": []})
+            return _FakeResponse(
+                {
+                    "data": [
+                        {"id": 101, "type": "WorkOrderContract"},
+                        {"id": 202, "type": "PurchaseOrderContract"},
+                        {"id": 303, "type": "WorkOrderContract"},
+                    ]
+                }
+            )
+        if "/work_order_contracts/" in url and url.endswith("/compliance"):
+            contract_id = url.split("/work_order_contracts/")[1].split("/")[0]
+            self.child_calls.append(contract_id)
+            return _FakeResponse(
+                {
+                    "contract_id": contract_id,
+                    "compliance_status": "compliant",
+                    "insurance_status": "compliant",
+                }
+            )
+        return _FakeResponse({"data": []})
+
+
 class _RateLimitThenSuccessParentTransport(_ManyParentsTransport):
     """The parent list gets one 429 without Retry-After, then succeeds."""
 
@@ -228,6 +263,37 @@ def _run(db: Path, transport: Any, *, max_child_requests: int) -> Dict[str, Any]
     )
 
 
+def test_commitment_compliance_skips_purchase_order_contract_parents(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _setup(monkeypatch)
+    _promote(monkeypatch, "commitment-compliance")
+    db = _db()
+    transport = _CommitmentComplianceTransport()
+
+    receipt = run_live_sync(
+        project_key="tropical",
+        endpoint="commitment-compliance",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=1,
+        max_items=10,
+        max_child_requests=10,
+        db_path=db,
+        transport=transport,
+    )
+
+    assert receipt["state"] == "success"
+    assert receipt["status"] == "success"
+    assert transport.child_calls == ["101", "303"]
+    assert receipt["n1_fanout"]["parent_count"] == 3
+    assert receipt["n1_fanout"]["child_request_count"] == 2
+    assert receipt["n1_fanout"]["child_skipped_count"] == 1
+    assert receipt["n1_fanout"]["child_incompatible_parent_skipped_count"] == 1
+    assert receipt["sqlite_upserted_count"] == 2
+
+
 # --- Bounded fan-out: cap < parents ----------------------------------------------------
 def test_bounded_fanout_caps_child_requests(monkeypatch: pytest.MonkeyPatch) -> None:
     _setup(monkeypatch)
@@ -243,6 +309,7 @@ def test_bounded_fanout_caps_child_requests(monkeypatch: pytest.MonkeyPatch) -> 
         "parent_count": 5,
         "child_request_count": 2,
         "child_skipped_count": 3,
+        "child_incompatible_parent_skipped_count": 0,
         "child_error_count": 0,
         "cap": 2,
         "cap_reached": True,

@@ -1222,6 +1222,7 @@ def test_meeting_topics_apply_persists_as_standalone_endpoint(
     assert receipt["normalized_count"] == 2
     assert receipt["sqlite_upserted_count"] == 2
     assert len(transport.calls) == 1
+    assert transport.calls[0]["params"]["per_page"] == 10
     assert count_procore_live_records(
         project_key="tropical", endpoint_id="meeting-topics", db_path=db
     ) == 2
