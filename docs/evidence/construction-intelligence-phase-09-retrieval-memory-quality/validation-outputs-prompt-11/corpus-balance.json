@@ -1,0 +1,147 @@
+{
+  "command": "second-brain data-quality corpus-balance",
+  "phase": "09",
+  "project_key": null,
+  "advisory_only": true,
+  "proof_passed": true,
+  "schema_version": 37,
+  "schema_version_expected": 37,
+  "policy_loaded": true,
+  "no_determination_attested": true,
+  "guard_violation": false,
+  "raw_content_findings": [],
+  "corpus_balance_ok": false,
+  "verdict": "imbalanced",
+  "total_corpus_rows": 5973,
+  "covered_family_count": 5,
+  "empty_families": [
+    "approved_obsidian_generated_outputs",
+    "accepted_long_term_memory"
+  ],
+  "dominant_family": "phase_07d_source_evidence_trails",
+  "dominant_share": 0.3147,
+  "warnings": [
+    "no_read_model:meeting_prep_brief_sections",
+    "no_read_model:review_controlled_correspondence_context",
+    "empty_family:approved_obsidian_generated_outputs",
+    "empty_family:accepted_long_term_memory"
+  ],
+  "gate": {
+    "fail_closed": true,
+    "corpus_balance_ok": false,
+    "verdict": "imbalanced",
+    "covered_family_count": 5,
+    "min_covered_families": 7,
+    "dominant_family": "phase_07d_source_evidence_trails",
+    "dominant_share": 0.3147,
+    "max_dominant_family_share": 0.6,
+    "blocking_reasons": [
+      "too_few_covered_families:5<7"
+    ],
+    "advisory_only": true
+  },
+  "mart": {
+    "mart": "phase_09_corpus_balance",
+    "schema_version": 37,
+    "project_scope": "all",
+    "total_corpus_rows": 5973,
+    "families": {
+      "phase_07d_source_evidence_trails": {
+        "has_reader": true,
+        "table": "source_evidence_trails",
+        "row_count": 1880,
+        "coverage_status": "covered",
+        "share": 0.3147
+      },
+      "meeting_prep_brief_sections": {
+        "has_reader": false,
+        "row_count": 0,
+        "coverage_status": "deferred_no_reader"
+      },
+      "project_issue_history_items": {
+        "has_reader": true,
+        "table": "project_issue_history_items",
+        "row_count": 598,
+        "coverage_status": "covered",
+        "share": 0.1001
+      },
+      "project_risk_digest_items": {
+        "has_reader": true,
+        "table": "project_risk_digest_items",
+        "row_count": 44,
+        "coverage_status": "covered",
+        "share": 0.0074
+      },
+      "aging_exposure_report_items": {
+        "has_reader": true,
+        "table": "aging_exposure_report_items",
+        "row_count": 1780,
+        "coverage_status": "covered",
+        "share": 0.298
+      },
+      "review_controlled_correspondence_context": {
+        "has_reader": false,
+        "row_count": 0,
+        "coverage_status": "deferred_no_reader"
+      },
+      "approved_obsidian_generated_outputs": {
+        "has_reader": true,
+        "table": "obsidian_index_entries",
+        "row_count": 0,
+        "coverage_status": "empty"
+      },
+      "accepted_long_term_memory": {
+        "has_reader": true,
+        "table": "long_term_memory_items",
+        "row_count": 0,
+        "coverage_status": "empty"
+      },
+      "cross_source_relationships": {
+        "has_reader": true,
+        "table": "cross_source_relationships",
+        "row_count": 1671,
+        "coverage_status": "covered",
+        "share": 0.2798
+      }
+    },
+    "covered_families": [
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "aging_exposure_report_items",
+      "cross_source_relationships"
+    ],
+    "empty_families": [
+      "approved_obsidian_generated_outputs",
+      "accepted_long_term_memory"
+    ],
+    "deferred_families": [
+      "meeting_prep_brief_sections",
+      "review_controlled_correspondence_context"
+    ],
+    "covered_family_count": 5,
+    "dominant_family": "phase_07d_source_evidence_trails",
+    "dominant_share": 0.3147,
+    "warnings": [
+      "no_read_model:meeting_prep_brief_sections",
+      "no_read_model:review_controlled_correspondence_context",
+      "empty_family:approved_obsidian_generated_outputs",
+      "empty_family:accepted_long_term_memory"
+    ],
+    "excluded_raw_families_count": 15,
+    "advisory_only": true,
+    "note": "Coverage + balance signals only over the retrieval corpus (allowlisted families). No raw families counted; no promotion, no writes, no determination.",
+    "guardrails": {
+      "read_only": true,
+      "metadata_only": true,
+      "advisory_only_no_determination": true,
+      "no_external_writeback": true
+    }
+  },
+  "guardrails": {
+    "read_only": true,
+    "metadata_only": true,
+    "advisory_only_no_determination": true,
+    "no_external_writeback": true
+  }
+}

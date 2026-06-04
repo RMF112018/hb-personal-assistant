@@ -1,0 +1,21 @@
+# Phase 09 Prompt 11 — retrieval corpus-balance policy (read-only, advisory).
+#
+# Thresholds for the fail-closed corpus-balance gate over the retrieval corpus
+# (the families the Retrieval Broker may read; the family universe itself comes from
+# ALLOWLISTED_SOURCE_FAMILIES in retrieval/policy.py and is NOT re-listed here).
+# Thresholds are advisory balance signals — never a determination.
+version: phase_09_corpus_balance_policy_v1
+
+# A corpus is "balanced" only if at least this many reader-backed families are covered
+# (have rows) AND no single family exceeds the dominant-share ceiling. There are 7
+# reader-backed allowlisted families (9 allowlisted minus the 2 deferred-no-reader); a
+# balanced corpus requires every one to carry data, so empty generated-output / memory
+# families (gaps owned by sibling Phase 09 prompts) keep the gate fail-closed.
+min_covered_families: 7
+max_dominant_family_share: 0.6
+
+# Allowlisted families with no reader by design — excused from the coverage requirement
+# (they surface a no_read_model coverage warning, not an empty-family failure).
+deferred_families:
+  - meeting_prep_brief_sections
+  - review_controlled_correspondence_context

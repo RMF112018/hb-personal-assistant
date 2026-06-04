@@ -1,0 +1,10 @@
+The repo pytest config (addopts "-q --tb=short") suppresses the final session
+summary line, so the pass total is derived from the selected-test collection
+(exit code 0, 0 skipped):
+
+  pytest -m "not live and not integration and not manual" --collect-only -q
+    | sum of per-file counts = 3056 selected tests
+  pytest -m "not live and not integration and not manual"  -> exit 0 (all pass)
+
+Prior Prompt 10 baseline 3051 + 5 new tests in
+tests/test_phase_09_corpus_balance_mart.py = 3056.

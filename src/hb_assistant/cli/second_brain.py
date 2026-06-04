@@ -2889,6 +2889,69 @@ def data_quality_relationship_quality(
     )
 
 
+@data_quality_app.command("corpus-balance")
+def data_quality_corpus_balance(
+    project: str | None = typer.Option(
+        None, "--project", help="Optional project key (the mart is computed across all projects)."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 09 retrieval corpus-balance + source-family coverage mart + fail-closed gate (read-only).
+
+    Profiles per-family coverage (covered / empty / deferred) over the retrieval corpus, reports the
+    dominant-family share and balance metrics, and evaluates a fail-closed corpus-balance gate against
+    the committed threshold policy. Read-only over the DB; advisory only; never a determination. The
+    gate's `corpus_balance_ok` is reported separately from the proof — at preflight the corpus is
+    expected to be imbalanced. Exit 0 when the proof passes, 3 otherwise.
+    """
+    from hb_assistant.construction.second_brain.corpus_balance_mart import (
+        build_corpus_balance_proof,
+    )
+
+    proof = build_corpus_balance_proof()
+    mart = proof["mart"]
+    gate = proof["gate"]
+    payload = {
+        "command": "second-brain data-quality corpus-balance",
+        "phase": "09",
+        "project_key": project,
+        "advisory_only": True,
+        "proof_passed": proof.get("proof_passed"),
+        "schema_version": proof.get("schema_version"),
+        "schema_version_expected": proof.get("schema_version_expected"),
+        "policy_loaded": proof.get("policy_loaded"),
+        "no_determination_attested": proof.get("no_determination_attested"),
+        "guard_violation": proof.get("guard_violation"),
+        "raw_content_findings": proof.get("raw_content_findings"),
+        "corpus_balance_ok": proof.get("corpus_balance_ok"),
+        "verdict": gate.get("verdict"),
+        "total_corpus_rows": mart.get("total_corpus_rows"),
+        "covered_family_count": mart.get("covered_family_count"),
+        "empty_families": mart.get("empty_families"),
+        "dominant_family": mart.get("dominant_family"),
+        "dominant_share": mart.get("dominant_share"),
+        "warnings": mart.get("warnings"),
+        "gate": gate,
+        "mart": mart,
+        "guardrails": mart.get("guardrails"),
+    }
+    human = [
+        "Phase 09 corpus-balance mart + gate (advisory only, read-only)",
+        f"  project: {project or 'all'}",
+        f"  proof passed: {proof.get('proof_passed')} | corpus_balance_ok: {proof.get('corpus_balance_ok')}",
+        f"  verdict: {gate.get('verdict')} | total rows: {mart.get('total_corpus_rows')}",
+        f"  covered families: {mart.get('covered_family_count')} | "
+        f"dominant: {mart.get('dominant_family')} ({mart.get('dominant_share')})",
+        f"  empty families: {len(mart.get('empty_families') or [])} | "
+        f"warnings: {len(mart.get('warnings') or [])}",
+    ]
+    _emit_08c(
+        payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3
+    )
+
+
 @financial_app.command("no-writeback-proof")
 def financial_no_writeback_proof(
     project: str | None = typer.Option(None, "--project", help="Optional project key."),
