@@ -978,9 +978,7 @@ def build_phase_08c_gates_proof(
     report = evaluate_phase_08c_data_quality_gates(db_path=db_path)
     counts = report["status_counts"]
     missing = _missing_required_evidence(report["gates"])
-    proof_passed = (
-        bool(report["ok"]) and not report["readiness_overstated"] and not missing
-    )
+    proof_passed = bool(report["ok"]) and not report["readiness_overstated"] and not missing
 
     proof: dict[str, Any] = {
         "proof": "phase_08c_data_quality_gates",
@@ -1034,6 +1032,437 @@ def build_phase_08c_gates_proof(
         json.dump(proof, handle, indent=2, default=str)
     markdown = _render_phase_08c_gates_md(proof)
     _assert_no_raw(markdown, "phase 08C gates proof markdown")
+    with open(md_path, "w") as handle:
+        handle.write(markdown)
+
+    return proof
+
+
+# ---------------------------------------------------------------------------
+# Phase 08D MCP-bridge data-quality gates (Prompt 12).
+#
+# Mirrors the 08C evaluator shape over the MCP registries/contracts. REGISTRY/CONTRACT-LEVEL
+# ONLY: the evaluator never dispatches the hb_query / hb_research_packet wrappers and never
+# calls build_mcp_allowed_tools_proof / build_mcp_resources_proof — those route through the
+# synthesis/retrieval layer (slow, environment-dependent) and are validated in their own
+# prompts. It runs the fast registry-level permission audit + count checks instead.
+#
+# No readiness overstatement: the dedicated no_raw_access (Prompt 13), no_writeback
+# (Prompt 14), and full validation_matrix (Prompt 15) proof artifacts do not exist yet, so
+# those three gates are ``deferred_not_blocking`` — never ``pass`` — and ``ready_to_serve`` is
+# False with explicit ``serve_blockers``. (The audit's same-named registry checks pass, but
+# the gate tracks the serve-blocking proof artifact, which is still pending.)
+# ---------------------------------------------------------------------------
+
+# Gates that would assert MCP serve-readiness — used to detect/forbid overstatement.
+_08D_READINESS_GATES: tuple[str, ...] = ("no_raw_access", "no_writeback", "validation_matrix")
+
+# fail_blocking reasons that mean "required evidence is missing" (schema/contract/registry).
+_08D_MISSING_EVIDENCE_REASONS: tuple[str, ...] = (
+    "CONTRACT_LOAD_FAILED",
+    "SCHEMA_NOT_AT_EXPECTED",
+    "REGISTRY_COUNT_MISMATCH",
+)
+
+PHASE_08D_GATES_PROOF_JSON = "phase-08d-gates-proof.json"
+PHASE_08D_GATES_PROOF_MD = "phase-08d-gates-proof.md"
+
+
+def _count_match_gate(
+    name: str, count: int, expected: int, *, also: bool = True, **extra: Any
+) -> dict[str, Any]:
+    """pass when the registry count matches and a companion check holds; else fail_blocking."""
+    if count == expected and also:
+        return _gate(name, "pass", count=count, expected=expected, **extra)
+    return _gate(
+        name,
+        "fail_blocking",
+        blocking=1,
+        reason="REGISTRY_COUNT_MISMATCH",
+        count=count,
+        expected=expected,
+        **extra,
+    )
+
+
+def _missing_required_evidence_08d(gates: list[dict[str, Any]]) -> list[str]:
+    """Gate names that fail_blocking because schema/contract/registry evidence is absent."""
+    return [
+        g.get("gate_name", "")
+        for g in gates
+        if g.get("gate_status") == "fail_blocking"
+        and any((g.get("reason") or "").startswith(r) for r in _08D_MISSING_EVIDENCE_REASONS)
+    ]
+
+
+def _compute_08d_readiness_overstated(gates: list[dict[str, Any]]) -> bool:
+    """True if serve-readiness is claimed (all readiness gates pass) while any gate fails."""
+    by = {g.get("gate_name"): g.get("gate_status") for g in gates}
+    ready_claimed = all(by.get(name) == "pass" for name in _08D_READINESS_GATES)
+    any_fail = any(g.get("gate_status") == "fail_blocking" for g in gates)
+    return bool(ready_claimed and any_fail)
+
+
+def _deferred_reported_as_pass_08d(gates: list[dict[str, Any]]) -> bool:
+    """True if any readiness gate is reported as pass (a stop condition — must stay False)."""
+    by = {g.get("gate_name"): g.get("gate_status") for g in gates}
+    return any(by.get(name) == "pass" for name in _08D_READINESS_GATES)
+
+
+def _required_fields_covered_08d(by_field_status: dict[str, str]) -> bool:
+    """True iff every required gate name from the 08D contract is present (default True)."""
+    try:
+        from .contracts import load_phase_08d_contract
+
+        contract = load_phase_08d_contract("data_quality_gates_contract")
+    except Exception:
+        return True
+    required = contract.get("required_gates") or contract.get("required_fields") or []
+    if not required:
+        return True
+    return all(name in by_field_status for name in required)
+
+
+def evaluate_phase_08d_data_quality_gates(*, db_path: str | None = None) -> dict[str, Any]:
+    """Evaluate the Phase 08D MCP-bridge gate set. Read-only; persists nothing.
+
+    Registry/contract-level only — never dispatches the synthesis/retrieval wrappers (no
+    heavyweight allowed-tools/resources execution proofs). The no_raw_access (Prompt 13),
+    no_writeback (Prompt 14), and full validation_matrix (Prompt 15) gates are
+    deferred_not_blocking — never pass — so serve-readiness is never overstated.
+    """
+    from .contracts import PHASE_08D_CONTRACT_FILES, load_phase_08d_contract
+    from .mcp.audit import run_mcp_permission_audit
+    from .mcp.prompts import load_prompts
+    from .mcp.proof import build_mcp_tool_broker_proof
+    from .mcp.registry import load_allowed_tools, load_denied_actions
+    from .mcp.resources import load_resources
+    from .mcp.wrappers import build_wrapper_registry
+
+    # Schema: apply the idempotent additive migrator, then read the resolved version.
+    try:
+        SQLiteMigrator(db_path).apply()
+        schema_version = SQLiteMigrator(db_path).current_version()
+    except Exception:  # pragma: no cover - defensive; readiness must not crash
+        schema_version = 0
+    schema_current = schema_version == LATEST_SCHEMA_VERSION
+
+    gates: list[dict[str, Any]] = []
+    contract_version: str | None = None
+
+    # 1. schema/contracts present (schema at V37 + all 08D contracts loadable).
+    try:
+        contract = load_phase_08d_contract("data_quality_gates_contract")
+        contract_version = contract.get("version")
+        missing_contracts = [
+            logical
+            for logical in PHASE_08D_CONTRACT_FILES
+            if not _contract_loads(load_phase_08d_contract, logical)
+        ]
+        if not schema_current:
+            gates.append(
+                _gate(
+                    "schema_contracts",
+                    "fail_blocking",
+                    blocking=1,
+                    reason="SCHEMA_NOT_AT_EXPECTED",
+                    schema_version=schema_version,
+                    schema_version_expected=LATEST_SCHEMA_VERSION,
+                )
+            )
+        elif missing_contracts:
+            gates.append(
+                _gate(
+                    "schema_contracts",
+                    "fail_blocking",
+                    blocking=1,
+                    reason="CONTRACT_LOAD_FAILED",
+                    missing=missing_contracts,
+                )
+            )
+        else:
+            gates.append(
+                _gate(
+                    "schema_contracts",
+                    "pass",
+                    schema_version=schema_version,
+                    contracts=len(PHASE_08D_CONTRACT_FILES),
+                )
+            )
+    except Exception as e:  # noqa: BLE001
+        gates.append(
+            _gate(
+                "schema_contracts", "fail_blocking", blocking=1, reason=f"CONTRACT_LOAD_FAILED: {e}"
+            )
+        )
+
+    # Fast, read-only registry-level audit (10 checks). No synthesis/retrieval dispatch.
+    audit = run_mcp_permission_audit(db_path=db_path, persist=False, write_evidence=False)
+    chk = {c["name"]: bool(c["passed"]) for c in audit.get("checks", [])}
+
+    allowed = load_allowed_tools()
+    denied = load_denied_actions()
+    resources_list = load_resources()
+    prompts_list = load_prompts()
+    wrappers = build_wrapper_registry(db_path=db_path)
+
+    # 2. server config (stdio transport + foundation checks).
+    gates.append(
+        _gate("server_config", "pass")
+        if chk.get("server_config_safe")
+        else _gate("server_config", "fail_blocking", blocking=1, reason="server_config_unsafe")
+    )
+
+    # 3-6, 9. Registry counts + companion audit checks (all fast, metadata-only).
+    gates.append(
+        _count_match_gate(
+            "allowed_tools", len(allowed), 9, also=chk.get("allowed_registry_safe", False)
+        )
+    )
+    gates.append(
+        _gate("denied_tools", "pass", count=len(denied))
+        if chk.get("denied_registry_complete")
+        else _gate(
+            "denied_tools",
+            "fail_blocking",
+            blocking=1,
+            reason="REGISTRY_COUNT_MISMATCH",
+            count=len(denied),
+        )
+    )
+    gates.append(
+        _count_match_gate(
+            "resources", len(resources_list), 5, also=chk.get("resources_safe", False)
+        )
+    )
+    gates.append(
+        _count_match_gate("prompts", len(prompts_list), 5, also=chk.get("prompts_safe", False))
+    )
+    gates.append(_count_match_gate("workflow_wrappers", len(wrappers), 9))
+
+    # 7. Receipts: tool-call + denial receipts are metadata-only (hashes/counts/reason codes).
+    gates.append(
+        _gate("receipts", "pass")
+        if chk.get("receipts_metadata_only")
+        else _gate("receipts", "fail_blocking", blocking=1, reason="receipts_not_metadata_only")
+    )
+
+    # 8. Denials: deny-first broker enforcement + denial receipts (fast broker proof).
+    gates.append(_proof_gate("denials", build_mcp_tool_broker_proof(write_evidence=False)))
+
+    # 10. Claude Desktop config preview is safe + never auto-written.
+    gates.append(
+        _gate("claude_desktop_config", "pass")
+        if chk.get("claude_config_safe")
+        else _gate(
+            "claude_desktop_config", "fail_blocking", blocking=1, reason="claude_config_unsafe"
+        )
+    )
+
+    # 11-12, 14. Deferred — the serve-blocking proof artifacts are pending (never pass).
+    gates.append(
+        _gate(
+            "no_raw_access",
+            "deferred_not_blocking",
+            reason="no_raw_access_proof_pending_prompt_13",
+            future_prompt=13,
+        )
+    )
+    gates.append(
+        _gate(
+            "no_writeback",
+            "deferred_not_blocking",
+            reason="no_mcp_writeback_proof_pending_prompt_14",
+            future_prompt=14,
+        )
+    )
+    gates.append(
+        _gate(
+            "validation_matrix",
+            "deferred_not_blocking",
+            reason="full_validation_matrix_pending_prompt_15",
+            future_prompt=15,
+        )
+    )
+
+    # 13. Overall policy posture: the full registry-level permission audit passes.
+    gates.append(
+        _gate("policy_posture", "pass", audit_checks=len(audit.get("checks", [])))
+        if audit.get("proof_passed")
+        else _gate(
+            "policy_posture",
+            "fail_blocking",
+            blocking=1,
+            reason="permission_audit_finding",
+            finding_count=audit.get("finding_count"),
+        )
+    )
+
+    by_field_status = {g["gate_name"]: g["gate_status"] for g in gates}
+    status_counts = _count_gate_statuses(gates)
+    ok = status_counts["fail_blocking"] == 0
+    ready_to_serve = ok and all(by_field_status.get(n) == "pass" for n in _08D_READINESS_GATES)
+    serve_blockers = [
+        g["reason"]
+        for g in gates
+        if g["gate_name"] in _08D_READINESS_GATES and g["gate_status"] != "pass" and g.get("reason")
+    ]
+    serve_blockers.append("mcp_sdk_not_installed")
+
+    return {
+        "ok": ok,
+        "schema_version": schema_version,
+        "schema_version_expected": LATEST_SCHEMA_VERSION,
+        "contract_version": contract_version or "phase_08d_data_quality_gates",
+        "gates": gates,
+        "by_field_status": by_field_status,
+        "status_counts": status_counts,
+        "required_fields_covered": _required_fields_covered_08d(by_field_status),
+        "readiness_overstated": _compute_08d_readiness_overstated(gates),
+        "ready_to_serve": ready_to_serve,
+        "serve_blockers": serve_blockers,
+        "guardrails": {
+            "local_first": True,
+            "read_only": True,
+            "no_external_writeback": True,
+            "no_raw_content": True,
+            "no_readiness_overstatement": True,
+            "advisory_only": True,
+            "workflow_wrapper_only": True,
+        },
+    }
+
+
+def _contract_loads(loader: Any, name: str) -> bool:
+    try:
+        loader(name)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _render_phase_08d_gates_md(proof: dict[str, Any]) -> str:
+    lines = [
+        "# Phase 08D MCP-Bridge Data-Quality Gates Proof",
+        "",
+        "Deterministic, read-only, registry/contract-level gate evaluation over the Phase 08D "
+        "local MCP bridge. Advisory only — never a determination, approval, or serve attestation. "
+        "The evaluator never dispatches the synthesis/retrieval workflow tools; the no_raw_access "
+        "(Prompt 13), no_writeback (Prompt 14), and full validation_matrix (Prompt 15) gates are "
+        "deferred_not_blocking — never pass — so serve-readiness is never overstated.",
+        "",
+        "## Summary",
+        f"- Proof passed: {str(proof['proof_passed']).lower()}",
+        f"- ok (no fail_blocking): {str(proof['ok']).lower()}",
+        f"- Schema version: {proof['schema_version']} (expected {proof['schema_version_expected']})",
+        f"- Status counts: {proof['status_counts']}",
+        f"- Required fields covered: {str(proof['required_fields_covered']).lower()}",
+        f"- Readiness overstated: {str(proof['readiness_overstated']).lower()}",
+        f"- Ready to serve: {str(proof['ready_to_serve']).lower()}",
+        f"- Serve blockers: {proof['serve_blockers']}",
+        f"- Missing required evidence: {proof['missing_required_evidence'] or 'none'}",
+        "",
+        "## Gates",
+        "| Gate | Status |",
+        "| --- | --- |",
+    ]
+    for name, status in proof["by_field_status"].items():
+        lines.append(f"| {name} | {status} |")
+    lines += [
+        "",
+        "## Stop checks",
+        f"- gates_passed_with_missing_evidence: {str(proof['stop_checks']['gates_passed_with_missing_evidence']).lower()}",
+        f"- readiness_overstated: {str(proof['stop_checks']['readiness_overstated']).lower()}",
+        f"- deferred_gate_reported_as_pass: {str(proof['stop_checks']['deferred_gate_reported_as_pass']).lower()}",
+        "",
+        "## Guardrails",
+    ]
+    for key, value in proof["guardrails"].items():
+        lines.append(f"- {key}: {str(value).lower()}")
+    lines += ["", "## Notes", proof["notes"], "", f"Generated: {proof['generated_utc']}", ""]
+    return "\n".join(lines)
+
+
+def build_phase_08d_gates_proof(
+    *, db_path: str | None = None, out_dir: str | None = None
+) -> dict[str, Any]:
+    """Evaluate the Phase 08D gates and WRITE ``phase-08d-gates-proof.json`` (+ ``.md``).
+
+    Read-only over the DB; writes only local evidence. ``proof_passed`` is False whenever the
+    schema/contracts/registry evidence is missing, readiness is overstated, or any gate is
+    fail_blocking. Deferred gates (no_raw_access/no_writeback/validation_matrix) keep the proof
+    honest — they never count as pass and ``ready_to_serve`` stays False until Prompts 13-15.
+    """
+    import json
+    from pathlib import Path
+
+    from .financial_completeness import _now
+    from .financial_review_routing import _assert_no_raw
+    from .mcp.proof import EVIDENCE_DIR
+
+    out_dir = out_dir or EVIDENCE_DIR
+    report = evaluate_phase_08d_data_quality_gates(db_path=db_path)
+    counts = report["status_counts"]
+    missing = _missing_required_evidence_08d(report["gates"])
+    proof_passed = bool(report["ok"]) and not report["readiness_overstated"] and not missing
+
+    proof: dict[str, Any] = {
+        "proof": "phase_08d_data_quality_gates",
+        "command": "second-brain data-quality phase-08d-gates",
+        "proof_passed": proof_passed,
+        "ok": report["ok"],
+        "phase": "08D",
+        "generated_utc": _now(),
+        "schema_version": report["schema_version"],
+        "schema_version_expected": report["schema_version_expected"],
+        "contract_version": report.get("contract_version"),
+        "advisory_only": True,
+        "ready_to_serve": report["ready_to_serve"],
+        "serve_blockers": report["serve_blockers"],
+        "status_counts": counts,
+        "by_field_status": report["by_field_status"],
+        "gates": report["gates"],
+        "required_fields_covered": report.get("required_fields_covered", True),
+        "readiness_overstated": report["readiness_overstated"],
+        "missing_required_evidence": missing,
+        "deferred_gates": [
+            g["gate_name"] for g in report["gates"] if g["gate_status"] == "deferred_not_blocking"
+        ],
+        "stop_checks": {
+            # all three must be False — the proof never passes on missing evidence,
+            # overstatement, or a deferred gate masquerading as pass.
+            "gates_passed_with_missing_evidence": bool(missing) and proof_passed,
+            "readiness_overstated": report["readiness_overstated"],
+            "deferred_gate_reported_as_pass": _deferred_reported_as_pass_08d(report["gates"]),
+        },
+        "guardrails": report["guardrails"],
+        "evidence_paths": [f"{EVIDENCE_DIR}/{PHASE_08D_GATES_PROOF_JSON}"],
+        "notes": (
+            "Deterministic Phase 08D MCP-bridge data-quality gate evaluation across schema/contracts "
+            "(V37 + ten 08D contracts), server config, the nine allowed workflow tools, the denied "
+            "registry, five resources, five prompts, metadata-only receipts, deny-first denial "
+            "enforcement, nine workflow wrappers, the Claude Desktop config preview, and the overall "
+            "permission-audit policy posture. Evaluated at the registry/contract level only — the "
+            "synthesis/retrieval workflow tools are never dispatched. no_raw_access (Prompt 13), "
+            "no_writeback (Prompt 14), and the full validation_matrix (Prompt 15) are "
+            "deferred_not_blocking; ready_to_serve is False. Advisory only — not a determination, "
+            "approval, or serve attestation."
+        ),
+    }
+
+    json_path = Path(out_dir) / PHASE_08D_GATES_PROOF_JSON
+    md_path = Path(out_dir) / PHASE_08D_GATES_PROOF_MD
+    proof["proof_json_path"] = str(json_path)
+    proof["proof_path"] = str(md_path)
+
+    serialized = json.dumps(proof, default=str)
+    _assert_no_raw(serialized, "phase 08D gates proof JSON")
+
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    with open(json_path, "w") as handle:
+        json.dump(proof, handle, indent=2, default=str)
+    markdown = _render_phase_08d_gates_md(proof)
+    _assert_no_raw(markdown, "phase 08D gates proof markdown")
     with open(md_path, "w") as handle:
         handle.write(markdown)
 

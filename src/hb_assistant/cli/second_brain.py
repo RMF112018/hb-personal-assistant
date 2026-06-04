@@ -2409,6 +2409,25 @@ _08C_ATTESTATIONS = {
 }
 
 
+_08D_GUARDRAILS = {
+    "local_first": True,
+    "read_only": True,
+    "no_external_writeback": True,
+    "no_raw_content": True,
+    "no_readiness_overstatement": True,
+    "advisory_only": True,
+}
+
+# Explicit "no raw / no writeback / no direct API / no determination" attestation block carried
+# by the Phase 08D MCP-bridge operator surfaces (workflow exposure only; advisory aids).
+_08D_ATTESTATIONS = {
+    "external_writeback_performed": False,
+    "raw_store_exposed": False,
+    "direct_graph_or_procore_call_performed": False,
+    "final_determination_performed": False,
+}
+
+
 def _emit_08c(
     payload: dict,
     *,
@@ -2624,7 +2643,9 @@ def financial_review_items(
 # data-quality phase-08c-gates under data_quality_app for the expected command path
 @data_quality_app.command("phase-08c-gates")
 def data_quality_phase_08c_gates(
-    project: str | None = typer.Option(None, "--project", help="Optional project key (gates are global)."),
+    project: str | None = typer.Option(
+        None, "--project", help="Optional project key (gates are global)."
+    ),
     json_out: bool = typer.Option(
         True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
     ),
@@ -2664,6 +2685,66 @@ def data_quality_phase_08c_gates(
         f"  project: {project or 'all'}",
         f"  proof passed: {proof.get('proof_passed')} | ok: {proof.get('ok')}",
         f"  status counts: {proof.get('status_counts')}",
+        f"  readiness overstated: {proof.get('readiness_overstated')}",
+        f"  missing required evidence: {proof.get('missing_required_evidence') or 'none'}",
+        f"  proof: {proof.get('proof_path')}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human)
+
+
+# data-quality phase-08d-gates under data_quality_app (sibling of phase-08c-gates).
+@data_quality_app.command("phase-08d-gates")
+def data_quality_phase_08d_gates(
+    project: str | None = typer.Option(
+        None, "--project", help="Optional project key (gates are global)."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 08D MCP-bridge data-quality gates (registries + contracts + permission audit).
+
+    Evaluates the 14 contract gates at the registry/contract level (never dispatches the
+    synthesis/retrieval workflow tools) and writes phase-08d-gates-proof.json/.md to the 08D
+    evidence dir (read-only over the DB; advisory only). no_raw_access (Prompt 13),
+    no_writeback (Prompt 14), and the full validation_matrix (Prompt 15) are
+    deferred_not_blocking — never pass — so ready_to_serve stays False until those land.
+    """
+    from hb_assistant.construction.second_brain.data_quality import (
+        build_phase_08d_gates_proof,
+    )
+
+    proof = build_phase_08d_gates_proof()
+    payload = {
+        "command": "second-brain data-quality phase-08d-gates",
+        "phase": "08D",
+        "project_key": project,
+        "advisory_only": True,
+        "ok": proof.get("ok"),
+        "proof_passed": proof.get("proof_passed"),
+        "schema_version": proof.get("schema_version"),
+        "schema_version_expected": proof.get("schema_version_expected"),
+        "status_counts": proof.get("status_counts"),
+        "by_field_status": proof.get("by_field_status"),
+        "required_fields_covered": proof.get("required_fields_covered"),
+        "readiness_overstated": proof.get("readiness_overstated"),
+        "ready_to_serve": proof.get("ready_to_serve"),
+        "serve_blockers": proof.get("serve_blockers"),
+        "deferred_gates": proof.get("deferred_gates"),
+        "missing_required_evidence": proof.get("missing_required_evidence"),
+        "proof_path": proof.get("proof_path"),
+        "evidence_paths": proof.get("evidence_paths"),
+        "guardrails": _08D_GUARDRAILS,
+        "attestations": _08D_ATTESTATIONS,
+    }
+    human = [
+        "Phase 08D MCP-bridge data-quality gates (advisory only)",
+        f"  project: {project or 'all'}",
+        f"  proof passed: {proof.get('proof_passed')} | ok: {proof.get('ok')}",
+        f"  status counts: {proof.get('status_counts')}",
+        f"  ready to serve: {proof.get('ready_to_serve')}",
+        f"  serve blockers: {proof.get('serve_blockers')}",
+        f"  deferred gates: {proof.get('deferred_gates')}",
         f"  readiness overstated: {proof.get('readiness_overstated')}",
         f"  missing required evidence: {proof.get('missing_required_evidence') or 'none'}",
         f"  proof: {proof.get('proof_path')}",
@@ -2713,7 +2794,9 @@ def financial_no_writeback_proof(
         f"  checks: {checks}",
         f"  proof: {proof.get('proof_path')}",
     ]
-    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3)
+    _emit_08c(
+        payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3
+    )
 
 
 @data_quality_app.command("phase-08c-no-writeback-proof")
@@ -2756,7 +2839,9 @@ def data_quality_phase_08c_no_writeback_proof(
         f"  confirmations: {proof.get('confirmations')}",
         f"  proof: {proof.get('proof_path')}",
     ]
-    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3)
+    _emit_08c(
+        payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -2781,8 +2866,12 @@ def mcp_status(
     if json_out:
         typer.echo(json.dumps(payload, indent=2, default=str))
     else:
-        typer.echo(f"MCP foundation_ok={payload['foundation_ok']} ready_to_serve={payload['ready_to_serve']}")
-        typer.echo(f"  sdk_available={payload['mcp_sdk_available']} tools={payload['mcp_tools_registered']}")
+        typer.echo(
+            f"MCP foundation_ok={payload['foundation_ok']} ready_to_serve={payload['ready_to_serve']}"
+        )
+        typer.echo(
+            f"  sdk_available={payload['mcp_sdk_available']} tools={payload['mcp_tools_registered']}"
+        )
         for check in payload["checks"]:
             typer.echo(f"  [{check['status']}] {check['name']}: {check['detail']}")
         typer.echo(f"  serve_blockers: {payload['serve_blockers']}")
@@ -2816,7 +2905,9 @@ def mcp_config_preview(
 
 @mcp_app.command("serve")
 def mcp_serve(
-    stdio: bool = typer.Option(False, "--stdio", help="Local stdio transport (the only allowed transport)."),
+    stdio: bool = typer.Option(
+        False, "--stdio", help="Local stdio transport (the only allowed transport)."
+    ),
     json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
 ) -> None:
     """Attempt to start the local stdio MCP server — fail-closed at the foundation stage.
@@ -2938,7 +3029,11 @@ def mcp_prompts(
         "prompts": prompts,
         "requirements": contract.get("requirements", []),
         "snapshot_id": snapshot_id,
-        "guardrails": {"read_only": True, "metadata_only": True, "routes_through_allowed_only": True},
+        "guardrails": {
+            "read_only": True,
+            "metadata_only": True,
+            "routes_through_allowed_only": True,
+        },
     }
     if json_out:
         typer.echo(json.dumps(payload, indent=2, default=str))

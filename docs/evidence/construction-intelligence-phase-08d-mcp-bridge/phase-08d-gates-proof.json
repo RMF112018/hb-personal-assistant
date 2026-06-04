@@ -1,0 +1,171 @@
+{
+  "proof": "phase_08d_data_quality_gates",
+  "command": "second-brain data-quality phase-08d-gates",
+  "proof_passed": true,
+  "ok": true,
+  "phase": "08D",
+  "generated_utc": "2026-06-04T07:47:01.737035Z",
+  "schema_version": 37,
+  "schema_version_expected": 37,
+  "contract_version": "1.4.0-phase-08d-planning",
+  "advisory_only": true,
+  "ready_to_serve": false,
+  "serve_blockers": [
+    "no_raw_access_proof_pending_prompt_13",
+    "no_mcp_writeback_proof_pending_prompt_14",
+    "full_validation_matrix_pending_prompt_15",
+    "mcp_sdk_not_installed"
+  ],
+  "status_counts": {
+    "pass": 11,
+    "warning": 0,
+    "fail_blocking": 0,
+    "deferred_not_blocking": 3
+  },
+  "by_field_status": {
+    "schema_contracts": "pass",
+    "server_config": "pass",
+    "allowed_tools": "pass",
+    "denied_tools": "pass",
+    "resources": "pass",
+    "prompts": "pass",
+    "workflow_wrappers": "pass",
+    "receipts": "pass",
+    "denials": "pass",
+    "claude_desktop_config": "pass",
+    "no_raw_access": "deferred_not_blocking",
+    "no_writeback": "deferred_not_blocking",
+    "validation_matrix": "deferred_not_blocking",
+    "policy_posture": "pass"
+  },
+  "gates": [
+    {
+      "gate_name": "schema_contracts",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "schema_version": 37,
+      "contracts": 10
+    },
+    {
+      "gate_name": "server_config",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "allowed_tools",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "count": 9,
+      "expected": 9
+    },
+    {
+      "gate_name": "denied_tools",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "count": 27
+    },
+    {
+      "gate_name": "resources",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "count": 5,
+      "expected": 5
+    },
+    {
+      "gate_name": "prompts",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "count": 5,
+      "expected": 5
+    },
+    {
+      "gate_name": "workflow_wrappers",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "count": 9,
+      "expected": 9
+    },
+    {
+      "gate_name": "receipts",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "denials",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "claude_desktop_config",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "no_raw_access",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "no_raw_access_proof_pending_prompt_13",
+      "future_prompt": 13
+    },
+    {
+      "gate_name": "no_writeback",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "no_mcp_writeback_proof_pending_prompt_14",
+      "future_prompt": 14
+    },
+    {
+      "gate_name": "validation_matrix",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "full_validation_matrix_pending_prompt_15",
+      "future_prompt": 15
+    },
+    {
+      "gate_name": "policy_posture",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "audit_checks": 10
+    }
+  ],
+  "required_fields_covered": true,
+  "readiness_overstated": false,
+  "missing_required_evidence": [],
+  "deferred_gates": [
+    "no_raw_access",
+    "no_writeback",
+    "validation_matrix"
+  ],
+  "stop_checks": {
+    "gates_passed_with_missing_evidence": false,
+    "readiness_overstated": false,
+    "deferred_gate_reported_as_pass": false
+  },
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "no_readiness_overstatement": true,
+    "advisory_only": true,
+    "workflow_wrapper_only": true
+  },
+  "evidence_paths": [
+    "docs/evidence/construction-intelligence-phase-08d-mcp-bridge/phase-08d-gates-proof.json"
+  ],
+  "notes": "Deterministic Phase 08D MCP-bridge data-quality gate evaluation across schema/contracts (V37 + ten 08D contracts), server config, the nine allowed workflow tools, the denied registry, five resources, five prompts, metadata-only receipts, deny-first denial enforcement, nine workflow wrappers, the Claude Desktop config preview, and the overall permission-audit policy posture. Evaluated at the registry/contract level only \u2014 the synthesis/retrieval workflow tools are never dispatched. no_raw_access (Prompt 13), no_writeback (Prompt 14), and the full validation_matrix (Prompt 15) are deferred_not_blocking; ready_to_serve is False. Advisory only \u2014 not a determination, approval, or serve attestation.",
+  "proof_json_path": "docs/evidence/construction-intelligence-phase-08d-mcp-bridge/phase-08d-gates-proof.json",
+  "proof_path": "docs/evidence/construction-intelligence-phase-08d-mcp-bridge/phase-08d-gates-proof.md"
+}
