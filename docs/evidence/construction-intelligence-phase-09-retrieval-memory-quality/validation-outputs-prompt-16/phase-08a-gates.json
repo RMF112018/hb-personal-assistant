@@ -1,0 +1,131 @@
+{
+  "command": "second-brain data-quality phase-08a-gates",
+  "ok": true,
+  "schema_version": 38,
+  "schema_version_expected": 38,
+  "contract_version": "phase_08a_data_quality_gates-v1",
+  "generated_utc": "2026-06-04T21:50:15.099697+00:00",
+  "gates": [
+    {
+      "gate_name": "runtime_readiness",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "config_status": "offline_disabled",
+      "schema_version": 38
+    },
+    {
+      "gate_name": "agent_registry",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 2
+    },
+    {
+      "gate_name": "model_profile",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "retrieval",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "research_packet",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "evaluation",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "memory_provenance",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "daily_brief_handoff",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "synthesis_liveness",
+      "gate_status": "warning",
+      "blocking": 0,
+      "reason": "synthesis_offline_or_mock_runtime_ready_but_not_live",
+      "synthesis_mode": "disabled"
+    },
+    {
+      "gate_name": "mcp_exposure",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "mcp_not_implemented",
+      "future_phase": "08D"
+    },
+    {
+      "gate_name": "model_call_receipt_persistence",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "agent_receipt_tables_persisted_v28_assessed_in_phase_08b_gates",
+      "future_phase": "08B"
+    },
+    {
+      "gate_name": "automation_hardening",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "health_checks_retries_weekend_alerting_owned_by_phase_08b",
+      "future_phase": "08B"
+    }
+  ],
+  "by_field_status": {
+    "runtime_readiness": "pass",
+    "agent_registry": "pass",
+    "model_profile": "pass",
+    "retrieval": "pass",
+    "research_packet": "pass",
+    "evaluation": "pass",
+    "memory_provenance": "pass",
+    "daily_brief_handoff": "pass",
+    "synthesis_liveness": "warning",
+    "mcp_exposure": "deferred_not_blocking",
+    "model_call_receipt_persistence": "deferred_not_blocking",
+    "automation_hardening": "deferred_not_blocking"
+  },
+  "status_counts": {
+    "pass": 8,
+    "warning": 1,
+    "fail_blocking": 0,
+    "deferred_not_blocking": 3
+  },
+  "required_fields_covered": true,
+  "synthesis_mode": "disabled",
+  "readiness_overstated": false,
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "no_raw_content": true,
+    "no_readiness_overstatement": true,
+    "advisory_only": true
+  },
+  "stop_conditions_checked": [
+    "offline_or_mock_synthesis_reported_as_warning_not_pass",
+    "unimplemented_surfaces_deferred_not_passed",
+    "no_raw_content_in_gate_report",
+    "fail_blocking_gate_marks_report_not_ok"
+  ]
+}

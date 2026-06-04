@@ -129,6 +129,13 @@ approved_sources_app = typer.Typer(
 )
 retrieval_app.add_typer(approved_sources_app, name="approved-sources")
 
+obsidian_loader_app = typer.Typer(
+    name="obsidian-loader",
+    help="Phase 09 approved Obsidian output loader (read-only status + proof).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(obsidian_loader_app, name="obsidian-loader")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3305,6 +3312,106 @@ def retrieval_approved_sources_proof(
     payload = {**proof, "guardrails": _APPROVED_SOURCES_GUARDRAILS}
     human = [
         f"Approved source manifest proof passed={proof['proof_passed']}",
+        *[f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}" for c in proof["cases"]],
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+_OBSIDIAN_LOADER_GUARDRAILS = {
+    "read_only": True,
+    "no_raw": True,
+    "no_writeback": True,
+    "metadata_only": True,
+    "apply_manifests_only": True,
+    "exclude_unresolved_high_impact": True,
+    "source_linked_only": True,
+    "local_first": True,
+}
+
+
+@obsidian_loader_app.command("status")
+def retrieval_obsidian_loader_status(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 09 approved Obsidian output loader status (read-only, fail-closed).
+
+    Loads only approved, source-linked generated Obsidian notes (the latest `mode='apply'` index
+    manifest — dry-run/unapproved manifests are never loaded) and reports the **metadata-only** node
+    set (counts + per-node hashes; no text). Each node is validated by the embedding guardrail
+    (embeddable family, source-linked metadata, no-raw, no unresolved high-impact). Read-only; builds
+    no embeddings/index. Exit 0; exit 3 on a fail-closed contract/schema failure.
+    """
+    from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
+        EmbeddingVectorPolicyError,
+    )
+    from hb_assistant.construction.second_brain.retrieval.obsidian_loader import (
+        ObsidianLoaderError,
+        build_obsidian_loader_report,
+    )
+
+    try:
+        report = build_obsidian_loader_report(project_key=project)
+    except (ObsidianLoaderError, EmbeddingVectorPolicyError) as exc:
+        payload = {
+            "command": "second-brain retrieval obsidian-loader status",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "guardrails": _OBSIDIAN_LOADER_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**report, "guardrails": _OBSIDIAN_LOADER_GUARDRAILS}
+    human = [
+        "Phase 09 approved Obsidian output loader (read-only, advisory)",
+        f"  status: {report['status']} | loaded nodes: {report['loaded_count']}",
+        f"  warnings: {report['warnings']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@obsidian_loader_app.command("proof")
+def retrieval_obsidian_loader_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the loader proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove the Obsidian loader loads only approved (apply-mode) source-linked notes (fail-closed).
+
+    Demonstrates (a) an apply-mode fixture index loads >=1 guard-clean node, (b) a dry-run-only index
+    loads 0 (unapproved excluded), and (c) the embedding guardrail rejects tier-3/raw/non-embeddable
+    candidates. Builds no embeddings; persists nothing to the operator DB. Exit 0 if the proof passes.
+    """
+    from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
+        EmbeddingVectorPolicyError,
+    )
+    from hb_assistant.construction.second_brain.retrieval.obsidian_loader import (
+        ObsidianLoaderError,
+        build_obsidian_loader_proof,
+    )
+
+    try:
+        proof = build_obsidian_loader_proof(write_evidence=evidence)
+    except (ObsidianLoaderError, EmbeddingVectorPolicyError) as exc:
+        payload = {
+            "command": "second-brain retrieval obsidian-loader proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _OBSIDIAN_LOADER_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _OBSIDIAN_LOADER_GUARDRAILS}
+    human = [
+        f"Approved Obsidian loader proof passed={proof['proof_passed']}"
+        f" (apply={proof['apply_loaded_count']} dry_run={proof['dry_run_loaded_count']})",
         *[f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}" for c in proof["cases"]],
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)

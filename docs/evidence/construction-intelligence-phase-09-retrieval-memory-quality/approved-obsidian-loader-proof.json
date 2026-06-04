@@ -1,0 +1,65 @@
+{
+  "proof": "phase_09_approved_obsidian_loader",
+  "command": "second-brain retrieval obsidian-loader proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-04T21:50:34.821223+00:00",
+  "repo_sha": "d2e5e331dc93674e472c2c9ab2541062de620669",
+  "apply_loaded_count": 2,
+  "dry_run_loaded_count": 0,
+  "case_count": 5,
+  "cases": [
+    {
+      "name": "safe_obsidian_node",
+      "expected_loaded": true,
+      "loaded": true,
+      "violations": [],
+      "passed": true
+    },
+    {
+      "name": "tier3_review_required",
+      "expected_loaded": false,
+      "loaded": false,
+      "violations": [
+        "unresolved_review_required"
+      ],
+      "passed": true
+    },
+    {
+      "name": "non_embeddable_family",
+      "expected_loaded": false,
+      "loaded": false,
+      "violations": [
+        "source_family_excluded:raw_email_body"
+      ],
+      "passed": true
+    },
+    {
+      "name": "missing_metadata",
+      "expected_loaded": false,
+      "loaded": false,
+      "violations": [
+        "missing_metadata:content_hash"
+      ],
+      "passed": true
+    },
+    {
+      "name": "raw_shape_text",
+      "expected_loaded": false,
+      "loaded": false,
+      "violations": [
+        "raw_content_shape:text_redacted"
+      ],
+      "passed": true
+    }
+  ],
+  "metadata_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "apply_manifests_only": true,
+    "exclude_unresolved_high_impact": true,
+    "local_first": true
+  }
+}

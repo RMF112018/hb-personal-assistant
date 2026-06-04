@@ -1,0 +1,62 @@
+I001 [*] Import block is un-sorted or un-formatted
+    --> src/hb_assistant/cli/second_brain.py:3347:5
+     |
+3345 |       no embeddings/index. Exit 0; exit 3 on a fail-closed contract/schema failure.
+3346 |       """
+3347 | /     from hb_assistant.construction.second_brain.retrieval.obsidian_loader import (
+3348 | |         ObsidianLoaderError,
+3349 | |         build_obsidian_loader_report,
+3350 | |     )
+3351 | |     from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
+3352 | |         EmbeddingVectorPolicyError,
+3353 | |     )
+     | |_____^
+3354 |
+3355 |       try:
+     |
+help: Organize imports
+
+I001 [*] Import block is un-sorted or un-formatted
+    --> src/hb_assistant/cli/second_brain.py:3391:5
+     |
+3389 |       candidates. Builds no embeddings; persists nothing to the operator DB. Exit 0 if the proof passes.
+3390 |       """
+3391 | /     from hb_assistant.construction.second_brain.retrieval.obsidian_loader import (
+3392 | |         ObsidianLoaderError,
+3393 | |         build_obsidian_loader_proof,
+3394 | |     )
+3395 | |     from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
+3396 | |         EmbeddingVectorPolicyError,
+3397 | |     )
+     | |_____^
+3398 |
+3399 |       try:
+     |
+help: Organize imports
+
+F401 [*] `..corpus_balance_mart._FORBIDDEN` imported but unused
+  --> src/hb_assistant/construction/second_brain/retrieval/obsidian_loader.py:35:35
+   |
+33 | from hb_assistant.config.path_policy import PathPolicy
+34 |
+35 | from ..corpus_balance_mart import _FORBIDDEN
+   |                                   ^^^^^^^^^^
+36 | from ..financial_review_routing import _assert_no_raw
+37 | from .embedding_policy import (
+   |
+help: Remove unused import: `..corpus_balance_mart._FORBIDDEN`
+
+F401 [*] `.embedding_policy.EmbeddingVectorPolicyError` imported but unused
+  --> src/hb_assistant/construction/second_brain/retrieval/obsidian_loader.py:38:5
+   |
+36 | from ..financial_review_routing import _assert_no_raw
+37 | from .embedding_policy import (
+38 |     EmbeddingVectorPolicyError,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+39 |     load_embedding_vector_policy_contract,
+40 |     load_embedding_vector_policy_seed,
+   |
+help: Remove unused import: `.embedding_policy.EmbeddingVectorPolicyError`
+
+Found 4 errors.
+[*] 4 fixable with the `--fix` option.

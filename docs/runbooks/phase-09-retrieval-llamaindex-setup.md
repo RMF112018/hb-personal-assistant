@@ -87,6 +87,23 @@ hb-assistant second-brain retrieval approved-sources proof --json
 
 Override the manifest config during testing with `HB_SECOND_BRAIN_APPROVED_SOURCE_MANIFEST`.
 
+## 6. Approved Obsidian output loader (Prompt 16)
+
+The Obsidian loader prepares only approved, source-linked generated Obsidian notes as safe nodes for
+the future embed/index step. Inspect it (read-only) and run the apply-only / no-raw proof:
+
+```bash
+hb-assistant second-brain retrieval obsidian-loader status --json
+hb-assistant second-brain retrieval obsidian-loader proof --json
+```
+
+- `status` loads only the entries of the latest **`mode='apply'`** Obsidian index manifest (dry-run /
+  unapproved manifests are never loaded) and reports a **metadata-only** node set (counts + per-node
+  hashes; no text). Each node is validated by the embedding guardrail (embeddable family, source-linked
+  metadata, no-raw, no unresolved high-impact tier-3). With no apply manifest the loader is `empty`.
+- `proof` demonstrates an apply-mode fixture index loads nodes while a dry-run-only index loads 0, and
+  the guardrail rejects tier-3/raw/non-embeddable candidates. Builds no embeddings; persists nothing.
+
 ## Guardrails
 
 - Optional + lazy: the SDK is imported only inside Phase 09 retrieval code paths; the base install,

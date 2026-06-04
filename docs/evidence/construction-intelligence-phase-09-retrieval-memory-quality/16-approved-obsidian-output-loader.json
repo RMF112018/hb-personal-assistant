@@ -1,0 +1,95 @@
+{
+  "artifact": "phase_09_approved_obsidian_output_loader",
+  "prompt": "Prompt_16_Approved_Obsidian_Output_Loader",
+  "phase": "09",
+  "classification": "implementation_per_category_node_loader_obsidian",
+  "posture": "metadata_only_local_only_read_only_fail_closed_apply_manifests_only_no_embeddings_no_index",
+  "repo_sha": "d2e5e331dc93674e472c2c9ab2541062de620669",
+  "schema_version": 38,
+  "operator_loader": {
+    "status": "empty",
+    "loaded_count": 0,
+    "warnings": [
+      "no_approved_obsidian_notes"
+    ],
+    "note": "operator has 0 apply-mode obsidian manifests (1 dry-run, 0 apply entries) -> loader yields 0 nodes (honest source-coverage warning; dry-run/unapproved never loaded)"
+  },
+  "apply_only_gate": {
+    "proof_apply_loaded_count": 2,
+    "proof_dry_run_loaded_count": 0,
+    "note": "strict WHERE mode='apply' read; dry-run-only index loads 0"
+  },
+  "no_raw_proof": {
+    "proof_passed": true,
+    "case_count": 5,
+    "cases": [
+      {
+        "name": "safe_obsidian_node",
+        "expected_loaded": true,
+        "loaded": true,
+        "violations": []
+      },
+      {
+        "name": "tier3_review_required",
+        "expected_loaded": false,
+        "loaded": false,
+        "violations": [
+          "unresolved_review_required"
+        ]
+      },
+      {
+        "name": "non_embeddable_family",
+        "expected_loaded": false,
+        "loaded": false,
+        "violations": [
+          "source_family_excluded:raw_email_body"
+        ]
+      },
+      {
+        "name": "missing_metadata",
+        "expected_loaded": false,
+        "loaded": false,
+        "violations": [
+          "missing_metadata:content_hash"
+        ]
+      },
+      {
+        "name": "raw_shape_text",
+        "expected_loaded": false,
+        "loaded": false,
+        "violations": [
+          "raw_content_shape:text_redacted"
+        ]
+      }
+    ],
+    "proof_companion_json": "approved-obsidian-loader-proof.json",
+    "proof_companion_md": "approved-obsidian-loader-proof.md"
+  },
+  "operator_db": {
+    "schema_version": 38,
+    "obsidian_apply_manifests": 0,
+    "obsidian_entries": 0,
+    "operator_db_unmutated": true,
+    "note": "loader is read-only (mode=ro); persists nothing; obsidian tables unchanged"
+  },
+  "validation": {
+    "compileall_exit": 0,
+    "ruff": "clean",
+    "mypy_source_files": 285,
+    "pytest_passed": 3110,
+    "pytest_failed": 0,
+    "pytest_deselected": 1,
+    "new_tests": 9,
+    "construction_agent_validate": "4/4 schema V38",
+    "table_inventory": "190 contract / 0 unmapped",
+    "cli_matrix_all_exit_0": true,
+    "phase_08c_gates_skipped_reason": "append-only ledger writes operator DB (disclosed Prompts 02/05)"
+  },
+  "deferred_items": [
+    "embedding + vector index build (Prompts 18-19)",
+    "reviewed-memory loader (Prompt 17)",
+    "node text enrichment beyond the indexed redacted heading (build phase)"
+  ],
+  "stop_condition_triggered": false,
+  "generated_utc": "2026-06-04T21:51:21.695177+00:00"
+}

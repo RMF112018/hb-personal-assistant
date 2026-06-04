@@ -1,0 +1,25 @@
+{
+  "command": "second-brain retrieval obsidian-loader status",
+  "phase": "09",
+  "generated_utc": "2026-06-04T21:50:33.911383+00:00",
+  "repo_sha": "d2e5e331dc93674e472c2c9ab2541062de620669",
+  "source_family": "approved_obsidian_generated_outputs",
+  "loaded_count": 0,
+  "status": "empty",
+  "nodes": [],
+  "warnings": [
+    "no_approved_obsidian_notes"
+  ],
+  "apply_manifests_only": true,
+  "read_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "metadata_only": true,
+    "apply_manifests_only": true,
+    "exclude_unresolved_high_impact": true,
+    "source_linked_only": true,
+    "local_first": true
+  }
+}
