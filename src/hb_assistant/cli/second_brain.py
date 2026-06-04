@@ -2828,6 +2828,67 @@ def data_quality_review_load(
     )
 
 
+@data_quality_app.command("relationship-quality")
+def data_quality_relationship_quality(
+    project: str | None = typer.Option(
+        None, "--project", help="Optional project key (the mart is computed across all projects)."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 09 cross-source relationship-quality mart (read-only, advisory only).
+
+    Reports link ratios (promotion / review / determinism / human-promotion shares), the
+    confidence-class distribution and score spread, and orphan / duplicate quality signals
+    (promoted edges without a candidate parent, candidates/relationships without an evidence
+    trail, stale tallies, multi-edge pairs). Read-only over the DB; never promotes, rejects,
+    writes, or makes a determination. Exit 0 when the proof passes, 3 otherwise.
+    """
+    from hb_assistant.construction.second_brain.relationship_quality_mart import (
+        build_relationship_quality_proof,
+    )
+
+    proof = build_relationship_quality_proof()
+    mart = proof["mart"]
+    cand = mart.get("candidates", {})
+    rel = mart.get("relationships", {})
+    orphan = mart.get("orphan_duplicate", {})
+    payload = {
+        "command": "second-brain data-quality relationship-quality",
+        "phase": "09",
+        "project_key": project,
+        "advisory_only": True,
+        "proof_passed": proof.get("proof_passed"),
+        "schema_version": proof.get("schema_version"),
+        "schema_version_expected": proof.get("schema_version_expected"),
+        "no_determination_attested": proof.get("no_determination_attested"),
+        "guard_violation": proof.get("guard_violation"),
+        "raw_content_findings": proof.get("raw_content_findings"),
+        "candidate_count": cand.get("total"),
+        "relationship_count": rel.get("total"),
+        "promotion_rate": mart.get("promotion_rate_candidates_to_relationships"),
+        "orphan_total": orphan.get("orphan_total"),
+        "multi_edge_pairs": orphan.get("multi_edge_pairs"),
+        "warnings": mart.get("warnings"),
+        "mart": mart,
+        "guardrails": mart.get("guardrails"),
+    }
+    human = [
+        "Phase 09 relationship-quality mart (advisory only, read-only)",
+        f"  project: {project or 'all'}",
+        f"  proof passed: {proof.get('proof_passed')}",
+        f"  candidates: {cand.get('total')} | relationships: {rel.get('total')} "
+        f"(promotion rate {mart.get('promotion_rate_candidates_to_relationships')})",
+        f"  orphan total: {orphan.get('orphan_total')} | "
+        f"multi-edge pairs: {orphan.get('multi_edge_pairs')}",
+        f"  warnings: {len(mart.get('warnings') or [])}",
+    ]
+    _emit_08c(
+        payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3
+    )
+
+
 @financial_app.command("no-writeback-proof")
 def financial_no_writeback_proof(
     project: str | None = typer.Option(None, "--project", help="Optional project key."),

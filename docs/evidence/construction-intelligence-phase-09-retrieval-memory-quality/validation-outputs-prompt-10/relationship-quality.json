@@ -1,0 +1,120 @@
+{
+  "command": "second-brain data-quality relationship-quality",
+  "phase": "09",
+  "project_key": null,
+  "advisory_only": true,
+  "proof_passed": true,
+  "schema_version": 37,
+  "schema_version_expected": 37,
+  "no_determination_attested": true,
+  "guard_violation": false,
+  "raw_content_findings": [],
+  "candidate_count": 1880,
+  "relationship_count": 1671,
+  "promotion_rate": 0.8888,
+  "orphan_total": 0,
+  "multi_edge_pairs": 46,
+  "warnings": [
+    "multi_edge_pairs=46 (advisory near-duplicate warning)"
+  ],
+  "mart": {
+    "mart": "phase_09_relationship_quality",
+    "schema_version": 37,
+    "project_scope": "all",
+    "present_relationship_tables": [
+      "cross_source_relationship_candidates",
+      "cross_source_relationships",
+      "source_evidence_trails"
+    ],
+    "populated": true,
+    "candidates": {
+      "total": 1880,
+      "by_confidence_class": {
+        "deterministic": 1671,
+        "strong_heuristic": 51,
+        "weak_heuristic": 158,
+        "model_proposed": 0,
+        "human_promoted": 0,
+        "rejected": 0,
+        "stale_or_unresolved": 0
+      },
+      "confidence_score": {
+        "applicable": true,
+        "min": 0.4,
+        "avg": 0.9571,
+        "max": 1.0
+      },
+      "promotion_status_promoted": 0,
+      "review_required": 159,
+      "sensitive_high_impact": 1,
+      "deterministic": 1671,
+      "model_proposed": 0,
+      "high_impact_relationship_types": {
+        "personnel": 22,
+        "contractual": 132,
+        "financial": 301,
+        "schedule_impact": 5
+      },
+      "link_ratios": {
+        "promoted_share": 0.0,
+        "review_required_share": 0.0846,
+        "deterministic_share": 0.8888,
+        "model_proposed_share": 0.0,
+        "sensitive_high_impact_share": 0.0005
+      }
+    },
+    "relationships": {
+      "total": 1671,
+      "by_confidence_class": {
+        "deterministic": 1671,
+        "strong_heuristic": 0,
+        "weak_heuristic": 0,
+        "model_proposed": 0,
+        "human_promoted": 0,
+        "rejected": 0,
+        "stale_or_unresolved": 0
+      },
+      "promoted_by_human": 0,
+      "promoted_by_deterministic": 1671,
+      "review_required": 0,
+      "link_ratios": {
+        "human_promoted_share": 0.0,
+        "review_required_share": 0.0
+      }
+    },
+    "evidence_trails": {
+      "total": 1880
+    },
+    "promotion_rate_candidates_to_relationships": 0.8888,
+    "orphan_duplicate": {
+      "orphan_total": 0,
+      "promoted_missing_candidate": 0,
+      "candidate_missing_evidence_trail": 0,
+      "relationship_evidence_unreachable": 0,
+      "relationship_direct_evidence_trail_absent": 1671,
+      "stale_or_unresolved_candidates": 0,
+      "stale_or_unresolved_relationships": 0,
+      "multi_edge_pairs": 46,
+      "note": "Orphan = promoted edge without a candidate parent, a candidate without an evidence trail, or a relationship that reaches a trail by neither its own evidence_trail_id nor its candidate. relationship_direct_evidence_trail_absent is informational only (denormalization \u2014 still traceable via candidate). Multi-edge = one source\u2192target pair under >1 relationship_type (exact duplicates are blocked by the UNIQUE edge constraint). Advisory signals only."
+    },
+    "warnings": [
+      "multi_edge_pairs=46 (advisory near-duplicate warning)"
+    ],
+    "advisory_only": true,
+    "note": "Quality signals only \u2014 link ratios, confidence distribution, and orphan/duplicate counts. No promotion, no rejection, no writes, no determination.",
+    "guardrails": {
+      "read_only": true,
+      "metadata_only": true,
+      "advisory_only_no_determination": true,
+      "no_external_writeback": true,
+      "no_automatic_promotion": true
+    }
+  },
+  "guardrails": {
+    "read_only": true,
+    "metadata_only": true,
+    "advisory_only_no_determination": true,
+    "no_external_writeback": true,
+    "no_automatic_promotion": true
+  }
+}
