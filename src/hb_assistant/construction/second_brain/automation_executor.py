@@ -2512,7 +2512,9 @@ def build_last_good_run_proof() -> dict[str, Any]:
             or "RETRY_PERMANENT_POLICY_OR_SAFETY"
         )
 
-        # 3. retry exhaustion (always transient)
+        # 3. retry exhaustion (always transient). Inject a no-op sleep so this fakes-only
+        # proof never wall-clock-sleeps the real retry backoff (was 60+300s) — it asserts
+        # retry_exhausted/failure_class, not timing. Mirrors build_retry_backoff_execution_proof.
         ext = AutomationExecutor(
             dry_run=False,
             confirm=True,
@@ -2524,6 +2526,7 @@ def build_last_good_run_proof() -> dict[str, Any]:
             deliver=_Fake("dt"),
             job_health=_Fake("jt"),
             now=fixed,
+            sleep_fn=lambda _s: None,
         )
         res_t = ext.execute(req)
         exh_t = res_t.retry_exhausted

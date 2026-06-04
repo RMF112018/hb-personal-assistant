@@ -1,0 +1,37 @@
+{
+  "proof": "phase_08d_validation_matrix",
+  "command": "second-brain mcp data-quality phase-08d-gates",
+  "phase": "08D",
+  "proof_passed": true,
+  "generated_utc": "2026-06-04T10:33:08.294900+00:00",
+  "scanned_surface_count": 3,
+  "surfaces": [
+    {
+      "surface": "validation_matrix_contract",
+      "passed": true,
+      "detail": "contract loaded; 14 commands",
+      "contract_version": "1.4.0-phase-08d-planning"
+    },
+    {
+      "surface": "dual_tree_parity",
+      "passed": true,
+      "detail": "2/2 contract copies in parity"
+    },
+    {
+      "surface": "evidence_bundle",
+      "passed": true,
+      "detail": "11/11 required artifacts present",
+      "missing": []
+    }
+  ],
+  "metadata_only": {
+    "static_scan_no_command_execution": true,
+    "sdk_agnostic": true
+  },
+  "guardrails": {
+    "read_only": true,
+    "no_command_execution": true,
+    "no_raw_content": true,
+    "metadata_only": true
+  }
+}

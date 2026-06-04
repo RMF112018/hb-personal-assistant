@@ -56,11 +56,13 @@ dev = [
 second-brain = [
   "anthropic>=0.40",
 ]
-# Phase 08D local MCP bridge — opt-in stdio-only server SDK. Lazy-imported inside
-# the serve entrypoint only; the base install, migrations, full test suite, the
-# `mcp status` / `config-preview` surfaces, and every guard proof all run with NO
-# MCP SDK present (local-first default; serving stays fail-closed until installed
-# and the tool broker lands in Prompt 04).
+# Phase 08D local MCP bridge — opt-in stdio-only server SDK. Lazy-imported inside the
+# serve adapter only; the base install, migrations, full test suite, the `mcp status` /
+# `config-preview` surfaces, and every guard proof all run with NO MCP SDK present
+# (local-first default). Install it (`pip install -e ".[mcp]"`) to make the local stdio
+# server operational — `second-brain mcp serve --stdio` then serves the safe broker /
+# resources / prompts to a local client (e.g. Claude Desktop); without it, serving stays
+# fail-closed.
 mcp = [
   "mcp>=1.0",
 ]

@@ -26,6 +26,9 @@ _ALLOWED_PREFIXES_BY_RULE: dict[str, tuple[str, ...]] = {
         "tests/test_procore_sensitive_routing_proof_corpus.py",
         "tests/test_construction_manifests.py",
         "tests/test_procore_no_writeback_proof.py",
+        # Phase 08D: synthetic "Bearer abc…xyz" fixture asserting the evidence-collector
+        # safety scanner *flags* a token (no real secret).
+        "tests/test_phase_08d_agent_data_evaluation_evidence_collector.py",
         "docs/",
     ),
     "jwt_like": (

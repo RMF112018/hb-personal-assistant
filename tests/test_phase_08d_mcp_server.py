@@ -1,11 +1,12 @@
-"""Phase 08D Prompt 03 — MCP server foundation + config-preview surface.
+"""Phase 08D MCP server foundation + config-preview surface.
 
-Proves the stdio-only, fail-closed server foundation: the startup checks pass for the
-landed foundation, both guard proofs now pass live (no-raw-access: Prompt 13; no-writeback:
-Prompt 14); the server still refuses to serve (the optional MCP SDK is the sole remaining
-serve gate); the Claude Desktop config preview is safe + schema-conformant and flags unsafe
-variants; and the two V37 metadata-only tables get guard-clean rows. No socket is opened and
-the MCP SDK is never required.
+Proves the stdio-only server: the startup checks pass for the landed foundation, both guard
+proofs pass live (no-raw-access: Prompt 13; no-writeback: Prompt 14); serve readiness tracks
+the optional MCP SDK (Prompt 15 — operational when installed, fail-closed when absent or on
+an uninitialized DB); the Claude Desktop config preview is safe + schema-conformant and flags
+unsafe variants; and the two V37 metadata-only tables get guard-clean rows. The tests are
+SDK-presence-aware so the suite passes both in a base install and with the SDK installed; no
+test enters the blocking serve loop.
 """
 
 from __future__ import annotations
@@ -49,18 +50,25 @@ def test_startup_checks_foundation_passes_both_guard_proofs() -> None:
     assert set(report["deferred"]) == set()
 
 
-def test_status_is_not_ready_to_serve_on_sdk_only() -> None:
+def test_status_serve_readiness_tracks_sdk_presence() -> None:
+    import importlib.util
+
     status = build_mcp_status(persist=False)
     assert status["foundation_ok"] is True
-    assert status["ready_to_serve"] is False
     # Prompt 05: the nine workflow wrappers are registered.
     assert status["mcp_tools_registered"] == 9
     # Prompts 13/14: both guard-proof serve blockers are gone.
     assert "no_raw_access_proof_pending_prompt_13" not in status["serve_blockers"]
     assert "no_writeback_proof_pending_prompt_14" not in status["serve_blockers"]
-    # SDK is an optional extra and absent in CI — the sole remaining serve blocker.
-    assert status["mcp_sdk_available"] is False
-    assert status["serve_blockers"] == ["mcp_sdk_not_installed"]
+    # Prompt 15: the optional MCP SDK is the sole remaining serve gate; readiness tracks it.
+    if importlib.util.find_spec("mcp") is None:
+        assert status["mcp_sdk_available"] is False
+        assert status["ready_to_serve"] is False
+        assert status["serve_blockers"] == ["mcp_sdk_not_installed"]
+    else:
+        assert status["mcp_sdk_available"] is True
+        assert status["ready_to_serve"] is True
+        assert status["serve_blockers"] == []
 
 
 def test_status_persists_metadata_only_server_config_snapshot() -> None:
@@ -99,12 +107,42 @@ def test_server_config_snapshot_guard_check_enforced() -> None:
             pass
 
 
-def test_serve_is_fail_closed_and_opens_nothing() -> None:
-    result = serve_stdio()
+def test_serve_dry_run_reports_readiness_without_serving() -> None:
+    import importlib.util
+
+    # Dry run never enters the stdio loop, so it is hang-safe whether or not the SDK is present.
+    result = serve_stdio(dry_run=True)
+    assert result["served"] is False
+    assert result["transport"] == "stdio"
+    if importlib.util.find_spec("mcp") is None:
+        assert result["ready_to_serve"] is False
+        assert _GUARD_PROOF_BLOCKER in result["reasons"]
+    else:
+        assert result["ready_to_serve"] is True
+        assert result["reasons"] == []
+
+
+def test_serve_fail_closed_when_not_ready_opens_nothing(monkeypatch) -> None:
+    # When the foundation check fails or the SDK is absent, serve refuses without ever
+    # entering the loop (served=False) — proven here with a forced not-ready status so the
+    # assertion holds deterministically whether or not the SDK is installed.
+    import hb_assistant.construction.second_brain.mcp.server as server_mod
+
+    def _not_ready(*_args, **_kwargs):
+        return {
+            "foundation_ok": False,
+            "mcp_sdk_available": False,
+            "ready_to_serve": False,
+            "serve_blockers": ["mcp_sdk_not_installed"],
+            "guardrails": {},
+        }
+
+    monkeypatch.setattr(server_mod, "build_mcp_status", _not_ready)
+    result = server_mod.serve_stdio()
     assert result["served"] is False
     assert result["ready_to_serve"] is False
-    assert _GUARD_PROOF_BLOCKER in result["reasons"]
-    assert result["transport"] == "stdio"
+    assert "foundation_checks_failed" in result["reasons"]
+    assert "mcp_sdk_not_installed" in result["reasons"]
 
 
 def test_config_preview_is_safe_and_schema_conformant() -> None:

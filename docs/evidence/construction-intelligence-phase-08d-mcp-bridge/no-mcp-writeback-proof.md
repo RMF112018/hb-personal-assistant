@@ -15,7 +15,7 @@ Deterministic, read-only scan proving no MCP surface (permission policy, denied 
 | receipts | true | writeback/API guard columns present and CHECK(=0); all guard columns zero |
 | config_preview | true | no raw keys/patterns |
 | server_guardrails | true | no raw keys/patterns |
-| evidence | true | 10 evidence json artifacts scanned |
+| evidence | true | 12 evidence json artifacts scanned |
 
 ## Guardrails
 - read_only: true
@@ -24,4 +24,4 @@ Deterministic, read-only scan proving no MCP surface (permission policy, denied 
 - no_arbitrary_sql: true
 - metadata_only: true
 
-Generated: 2026-06-04T08:18:11.872186+00:00
+Generated: 2026-06-04T10:33:08.293911+00:00

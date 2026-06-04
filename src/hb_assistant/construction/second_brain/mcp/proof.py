@@ -35,6 +35,30 @@ NO_RAW_PROOF_JSON = "no-raw-mcp-access-proof.json"
 NO_RAW_PROOF_MD = "no-raw-mcp-access-proof.md"
 NO_WRITEBACK_PROOF_JSON = "no-mcp-writeback-proof.json"
 NO_WRITEBACK_PROOF_MD = "no-mcp-writeback-proof.md"
+VALIDATION_MATRIX_PROOF_JSON = "phase-08d-validation-matrix-proof.json"
+VALIDATION_MATRIX_PROOF_MD = "phase-08d-validation-matrix-proof.md"
+
+# Dual-tree contract locations (the 08D JSON contracts live in both resource trees).
+_VALIDATION_MATRIX_CONTRACT_PATHS = (
+    "resources/json/phase_08d_validation_matrix.json",
+    "src/hb_assistant/resources/json/phase_08d_validation_matrix.json",
+)
+
+# Closeout-critical 08D evidence the validation_matrix gate requires to be present (the
+# per-prompt proofs plus the operational-serve proof). Static existence check only.
+_VALIDATION_MATRIX_REQUIRED_EVIDENCE = (
+    "phase-08d-gates-proof.json",
+    "no-raw-mcp-access-proof.json",
+    "no-mcp-writeback-proof.json",
+    "mcp-tool-contract-proof.json",
+    "mcp-resource-contract-proof.json",
+    "mcp-prompt-contract-proof.json",
+    "mcp-audit-receipt-proof.json",
+    "mcp-tool-broker-proof.json",
+    "mcp-server-config-proof.md",
+    "mcp-claude-desktop-runbook-proof.md",
+    "mcp-operational-serve-proof.md",
+)
 
 # Receipt columns that, if present, would mean a receipt table can persist raw content.
 _FORBIDDEN_RECEIPT_COLUMNS = {
@@ -1238,5 +1262,160 @@ def build_no_mcp_writeback_proof(
         (out_dir / NO_WRITEBACK_PROOF_MD).write_text(markdown, encoding="utf-8")
         proof["proof_path"] = str(out_dir / NO_WRITEBACK_PROOF_JSON)
         proof["proof_md_path"] = str(out_dir / NO_WRITEBACK_PROOF_MD)
+
+    return proof
+
+
+def evaluate_phase_08d_validation_matrix(*, evidence_dir: str | None = None) -> dict[str, Any]:
+    """Statically verify the Phase 08D validation matrix is defined and its evidence present.
+
+    Read-only and **SDK-agnostic** (it never imports the ``mcp`` SDK, dispatches a wrapper,
+    or runs the matrix commands), so it is safe to evaluate inside the gates evaluator and
+    in a base install without the optional SDK. It confirms: (1) the validation-matrix
+    contract loads and lists its commands; (2) both resource-tree copies are present and in
+    parity; and (3) the closeout-critical 08D evidence artifacts exist on disk.
+    """
+    from ..contracts import load_phase_08d_contract  # noqa: PLC0415
+
+    surfaces: list[dict[str, Any]] = []
+
+    # 1. contract loads + lists its commands.
+    try:
+        contract = load_phase_08d_contract("validation_matrix")
+        commands = contract.get("commands") if isinstance(contract, dict) else None
+        commands_ok = isinstance(commands, list) and len(commands) >= 14
+        surfaces.append(
+            {
+                "surface": "validation_matrix_contract",
+                "passed": bool(commands_ok),
+                "detail": f"contract loaded; {len(commands) if isinstance(commands, list) else 0} commands",
+                "contract_version": contract.get("version") if isinstance(contract, dict) else None,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001 - a missing/broken contract is reported, not raised
+        surfaces.append(
+            {
+                "surface": "validation_matrix_contract",
+                "passed": False,
+                "detail": f"contract load failed: {type(exc).__name__}",
+            }
+        )
+
+    # 2. dual-tree parity — both copies present with identical contract_name/version/count.
+    loaded: list[dict[str, Any]] = []
+    present = True
+    for rel in _VALIDATION_MATRIX_CONTRACT_PATHS:
+        path = Path(rel)
+        if not path.exists():
+            present = False
+            continue
+        try:
+            loaded.append(json.loads(path.read_text(encoding="utf-8")))
+        except Exception:  # noqa: BLE001
+            present = False
+    parity = (
+        present
+        and len(loaded) == len(_VALIDATION_MATRIX_CONTRACT_PATHS)
+        and len({(d.get("contract_name"), d.get("version"), len(d.get("commands") or [])) for d in loaded})
+        == 1
+    )
+    surfaces.append(
+        {
+            "surface": "dual_tree_parity",
+            "passed": bool(parity),
+            "detail": f"{len(loaded)}/{len(_VALIDATION_MATRIX_CONTRACT_PATHS)} contract copies in parity",
+        }
+    )
+
+    # 3. closeout-critical evidence artifacts present on disk.
+    ev_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
+    missing = [name for name in _VALIDATION_MATRIX_REQUIRED_EVIDENCE if not (ev_dir / name).exists()]
+    surfaces.append(
+        {
+            "surface": "evidence_bundle",
+            "passed": not missing,
+            "detail": f"{len(_VALIDATION_MATRIX_REQUIRED_EVIDENCE) - len(missing)}/"
+            f"{len(_VALIDATION_MATRIX_REQUIRED_EVIDENCE)} required artifacts present",
+            "missing": missing,
+        }
+    )
+
+    proof_passed = all(s["passed"] for s in surfaces)
+    return {
+        "proof_passed": proof_passed,
+        "scanned_surface_count": len(surfaces),
+        "surfaces": surfaces,
+        "metadata_only": {
+            "static_scan_no_command_execution": True,
+            "sdk_agnostic": True,
+        },
+        "guardrails": {
+            "read_only": True,
+            "no_command_execution": True,
+            "no_raw_content": True,
+            "metadata_only": True,
+        },
+    }
+
+
+def _render_validation_matrix_md(proof: dict[str, Any]) -> str:
+    lines = [
+        "# Phase 08D Validation-Matrix Proof",
+        "",
+        "Deterministic, read-only, SDK-agnostic proof that the Phase 08D validation matrix "
+        "is defined (contract + commands), present in both resource trees (parity), and "
+        "backed by the closeout-critical evidence bundle. Static existence/parity checks "
+        "only — the matrix commands are never executed here.",
+        "",
+        "## Summary",
+        f"- Proof passed: {str(proof['proof_passed']).lower()}",
+        f"- Surfaces scanned: {proof['scanned_surface_count']}",
+        "",
+        "## Surfaces",
+        "| Surface | Passed | Detail |",
+        "| --- | --- | --- |",
+    ]
+    for s in proof["surfaces"]:
+        lines.append(f"| {s['surface']} | {str(s['passed']).lower()} | {s.get('detail', '')} |")
+    lines += ["", "## Guardrails"]
+    for key, value in proof["guardrails"].items():
+        lines.append(f"- {key}: {str(value).lower()}")
+    lines += ["", f"Generated: {proof['generated_utc']}", ""]
+    return "\n".join(lines)
+
+
+def build_phase_08d_validation_matrix_proof(
+    *,
+    evidence_dir: str | None = None,
+    write_evidence: bool = True,
+) -> dict[str, Any]:
+    """Run the static validation-matrix scan and (optionally) write the evidence proof + MD."""
+    from datetime import datetime, timezone  # noqa: PLC0415
+
+    report = evaluate_phase_08d_validation_matrix(evidence_dir=evidence_dir)
+    proof: dict[str, Any] = {
+        "proof": "phase_08d_validation_matrix",
+        "command": "second-brain mcp data-quality phase-08d-gates",
+        "phase": "08D",
+        "proof_passed": report["proof_passed"],
+        "generated_utc": datetime.now(timezone.utc).isoformat(),
+        "scanned_surface_count": report["scanned_surface_count"],
+        "surfaces": report["surfaces"],
+        "metadata_only": report["metadata_only"],
+        "guardrails": report["guardrails"],
+    }
+
+    serialized = json.dumps(proof, indent=2, default=str)
+    _assert_no_raw(serialized, "mcp validation-matrix proof")
+
+    if write_evidence:
+        out_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / VALIDATION_MATRIX_PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
+        markdown = _render_validation_matrix_md(proof)
+        _assert_no_raw(markdown, "mcp validation-matrix proof markdown")
+        (out_dir / VALIDATION_MATRIX_PROOF_MD).write_text(markdown, encoding="utf-8")
+        proof["proof_path"] = str(out_dir / VALIDATION_MATRIX_PROOF_JSON)
+        proof["proof_md_path"] = str(out_dir / VALIDATION_MATRIX_PROOF_MD)
 
     return proof

@@ -81,6 +81,11 @@ _PHASE_08A_TABLES: list[str] = [
     "daily_brief_html_render_receipts",
     "daily_brief_notification_receipts",
     "daily_brief_open_receipts",
+    # Phase 08D local MCP bridge (V37): metadata-only receipt ledgers (twenty guard
+    # CHECK(… = 0) columns each). Registered here so the second-brain no-writeback /
+    # no-raw live-data scan covers them too (the 08D no-writeback proof also probes them).
+    "second_brain_mcp_tool_call_receipts",
+    "second_brain_mcp_denial_receipts",
 ]
 
 _PHASE_08A_EVIDENCE_SUBDIR = "construction-intelligence-phase-08a-second-brain-runtime"

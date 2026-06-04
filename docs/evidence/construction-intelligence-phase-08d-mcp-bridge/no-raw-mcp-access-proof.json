@@ -3,7 +3,7 @@
   "command": "second-brain mcp no-raw-access",
   "phase": "08D",
   "proof_passed": true,
-  "generated_utc": "2026-06-04T08:07:52.537321+00:00",
+  "generated_utc": "2026-06-04T10:33:08.037754+00:00",
   "scanned_surface_count": 7,
   "surfaces": [
     {
@@ -44,7 +44,7 @@
     {
       "surface": "evidence",
       "passed": true,
-      "detail": "9 evidence json artifacts scanned",
+      "detail": "12 evidence json artifacts scanned",
       "scanned": [
         "claude-desktop-config-preview.json",
         "mcp-audit-receipt-proof.json",
@@ -54,7 +54,10 @@
         "mcp-resource-contract-proof.json",
         "mcp-tool-broker-proof.json",
         "mcp-tool-contract-proof.json",
-        "phase-08d-gates-proof.json"
+        "no-mcp-writeback-proof.json",
+        "no-raw-mcp-access-proof.json",
+        "phase-08d-gates-proof.json",
+        "phase-08d-validation-matrix-proof.json"
       ]
     }
   ],

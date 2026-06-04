@@ -4,9 +4,11 @@ Deterministic, read-only evaluation of the fail-closed startup conditions for th
 stdio MCP server: schema version, server-policy seed, the four registry contracts, the
 fail-closed permission policy, and stdio-only transport. Both MCP-specific guard proofs are
 now wired and evaluated live: ``no_raw_access_proof`` (Prompt 13) and ``no_writeback_proof``
-(Prompt 14). The only remaining serve gate is the optional MCP SDK (``mcp_sdk_not_installed``),
-and ``serve`` stays fail-closed at the foundation stage regardless. Nothing here opens a
-socket, imports the MCP SDK, or persists raw content.
+(Prompt 14). When every check passes and the optional MCP SDK is installed,
+``ready_to_serve`` is true and the local stdio server serves (Prompt 15, via
+:mod:`.server` / :mod:`.sdk_server`); a missing SDK (``mcp_sdk_not_installed``) keeps
+serving fail-closed. Nothing in *this* module opens a socket, imports the MCP SDK, or
+persists raw content — it only evaluates read-only status.
 """
 
 from __future__ import annotations
@@ -185,8 +187,9 @@ def build_mcp_status(*, db_path: str | None = None, persist: bool = True) -> dic
     startup = evaluate_startup_checks(db_path=db_path)
     mcp_sdk_available = importlib.util.find_spec("mcp") is not None
 
-    # The broker (Prompt 04) and the nine workflow wrappers (Prompt 05) are wired; serving
-    # over stdio still waits on the Prompt 13/14 guard proofs (and the optional SDK).
+    # The broker (Prompt 04) and the nine workflow wrappers (Prompt 05) are wired; the
+    # Prompt 13/14 guard proofs pass, so serving over stdio is gated only on the optional
+    # MCP SDK being installed (``ready_to_serve`` below).
     from .prompts import load_prompts  # noqa: PLC0415 - avoid import cycle at module load
     from .resources import load_resources  # noqa: PLC0415 - avoid import cycle at module load
     from .wrappers import (

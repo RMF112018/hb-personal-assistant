@@ -1,8 +1,11 @@
-"""Phase 08D local MCP bridge (server foundation + config surface).
+"""Phase 08D local MCP bridge (operational local stdio server).
 
-Stdio-only, fail-closed, metadata-only. Exposes the server-foundation status, the
-Claude Desktop config-preview surface, and the fail-closed serve entrypoint. The tool
-broker, workflow wrappers, resources, prompts, and receipts arrive in Prompts 04–08.
+Stdio-only, fail-closed, metadata-only. Exposes the server status, the Claude Desktop
+config-preview surface, the deny-first tool broker + nine workflow wrappers, the safe
+resources/prompts, the metadata-only receipts, and the serve entrypoint. With the
+optional ``mcp`` SDK installed and every guard check passing, ``serve_stdio`` drives a
+real local stdio MCP session (Prompt 15, adapter in :mod:`.sdk_server`); without the SDK
+serving stays fail-closed.
 """
 
 from __future__ import annotations
@@ -21,8 +24,10 @@ from .proof import (
     build_mcp_tool_broker_proof,
     build_no_mcp_writeback_proof,
     build_no_raw_mcp_access_proof,
+    build_phase_08d_validation_matrix_proof,
     evaluate_no_raw_mcp_access,
     evaluate_no_writeback_mcp_access,
+    evaluate_phase_08d_validation_matrix,
 )
 from .registry import load_allowed_tools, load_denied_actions, load_global_requirements
 from .resources import load_resources, read_all_resources, read_resource
@@ -53,9 +58,11 @@ __all__ = [
     "build_mcp_tool_broker_proof",
     "build_no_mcp_writeback_proof",
     "build_no_raw_mcp_access_proof",
+    "build_phase_08d_validation_matrix_proof",
     "build_wrapper_registry",
     "evaluate_no_raw_mcp_access",
     "evaluate_no_writeback_mcp_access",
+    "evaluate_phase_08d_validation_matrix",
     "evaluate_startup_checks",
     "load_allowed_tools",
     "load_denied_actions",

@@ -15,7 +15,7 @@ Deterministic, read-only scan over every MCP surface (registries, resources, pro
 | receipts | true | hash-only columns; no raw columns; all guard columns zero |
 | config_preview | true | no raw keys/patterns |
 | server_status | true | no raw keys/patterns |
-| evidence | true | 9 evidence json artifacts scanned |
+| evidence | true | 12 evidence json artifacts scanned |
 
 ## Guardrails
 - read_only: true
@@ -23,4 +23,4 @@ Deterministic, read-only scan over every MCP surface (registries, resources, pro
 - no_resource_dispatch: true
 - metadata_only: true
 
-Generated: 2026-06-04T08:07:52.537321+00:00
+Generated: 2026-06-04T10:33:08.037754+00:00

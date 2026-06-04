@@ -1,14 +1,17 @@
-"""Phase 08D Prompt 12 — MCP-bridge data-quality gates.
+"""Phase 08D MCP-bridge data-quality gates.
 
 Proves the registry/contract-level gate evaluator covers all 14 contract gates with the
-pass/warning/fail_blocking/deferred_not_blocking taxonomy and no readiness overstatement:
-no_raw_access (Prompt 13), no_writeback (Prompt 14), and the full validation_matrix
-(Prompt 15) stay deferred_not_blocking — never pass — and ready_to_serve is False. The
-evaluator never dispatches the heavyweight synthesis/retrieval workflow proofs.
+pass/warning/fail_blocking/deferred_not_blocking taxonomy and no readiness overstatement.
+After Prompt 15 every gate passes (no_raw_access P13, no_writeback P14, validation_matrix
+P15): the count is 14 pass / 0 deferred regardless of the optional MCP SDK, while
+``ready_to_serve`` tracks the SDK — true when installed (operational), false otherwise
+(``mcp_sdk_not_installed``). The evaluator never dispatches the heavyweight
+synthesis/retrieval workflow proofs.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import tempfile
 from pathlib import Path
@@ -25,8 +28,9 @@ from hb_assistant.construction.second_brain.data_quality import (
 
 runner = CliRunner()
 
-# Prompts 13/14 flipped no_raw_access + no_writeback to pass; only validation_matrix is deferred.
-_DEFERRED_GATES = {"validation_matrix"}
+# Prompt 15 wired the last gate (validation_matrix) to a live proof — no gate is deferred.
+_DEFERRED_GATES: set[str] = set()
+_SDK_PRESENT = importlib.util.find_spec("mcp") is not None
 
 
 def _evaluate(db: str) -> dict:
@@ -44,29 +48,34 @@ def test_evaluator_covers_all_fourteen_contract_gates() -> None:
     assert report["required_fields_covered"] is True
 
 
-def test_deferred_gates_are_never_pass() -> None:
+def test_all_gates_pass_with_no_deferral() -> None:
     with tempfile.TemporaryDirectory() as td:
         report = _evaluate(str(Path(td) / "a.db"))
     by = report["by_field_status"]
-    for gate in _DEFERRED_GATES:
-        assert by[gate] == "deferred_not_blocking", gate
-        assert by[gate] != "pass"
-    # Prompts 13/14: no_raw_access + no_writeback now pass (no longer deferred).
+    # Prompts 13/14/15: the three former readiness gates all pass.
     assert by["no_raw_access"] == "pass"
     assert by["no_writeback"] == "pass"
-    assert report["status_counts"]["deferred_not_blocking"] == 1
+    assert by["validation_matrix"] == "pass"
+    assert report["status_counts"]["deferred_not_blocking"] == 0
+    assert report["status_counts"]["pass"] == 14
 
 
-def test_ready_to_serve_false_with_explicit_blockers() -> None:
+def test_ready_to_serve_tracks_sdk_and_is_never_overstated() -> None:
     with tempfile.TemporaryDirectory() as td:
         report = _evaluate(str(Path(td) / "a.db"))
-    assert report["ready_to_serve"] is False
     blockers = report["serve_blockers"]
-    # Prompts 13/14: both guard-proof blockers are gone; only validation + sdk remain.
+    # The deferred-era blockers are gone.
     assert "no_raw_access_proof_pending_prompt_13" not in blockers
     assert "no_mcp_writeback_proof_pending_prompt_14" not in blockers
-    assert "full_validation_matrix_pending_prompt_15" in blockers
-    assert "mcp_sdk_not_installed" in blockers
+    assert "full_validation_matrix_pending_prompt_15" not in blockers
+    if _SDK_PRESENT:
+        # Operational: every readiness gate passes and the SDK is present.
+        assert report["ready_to_serve"] is True
+        assert blockers == []
+    else:
+        # Base install: fail-closed on the optional SDK only.
+        assert report["ready_to_serve"] is False
+        assert blockers == ["mcp_sdk_not_installed"]
 
 
 def test_ok_and_no_readiness_overstatement() -> None:
@@ -83,7 +92,7 @@ def test_proof_passes_and_writes_guard_clean_artifacts() -> None:
         proof = build_phase_08d_gates_proof(db_path=str(Path(td) / "a.db"), out_dir=td)
         assert proof["proof_passed"] is True
         assert proof["ok"] is True
-        assert proof["ready_to_serve"] is False
+        assert proof["ready_to_serve"] is _SDK_PRESENT
         assert set(proof["deferred_gates"]) == _DEFERRED_GATES
         # every stop check must be False (no missing-evidence pass, no overstatement, no
         # deferred gate masquerading as pass).
@@ -95,9 +104,8 @@ def test_proof_passes_and_writes_guard_clean_artifacts() -> None:
         reloaded = json.loads(json_path.read_text())
         assert reloaded["proof"] == "phase_08d_data_quality_gates"
         assert len(reloaded["gates"]) == 14
-        # no raw markers in the rendered markdown
         md = md_path.read_text()
-        assert "ready to serve: false" in md.lower()
+        assert f"ready to serve: {str(_SDK_PRESENT).lower()}" in md.lower()
 
 
 def test_evaluator_does_not_dispatch_heavyweight_proofs(monkeypatch) -> None:
@@ -128,7 +136,7 @@ def test_cli_phase_08d_gates_emits_passing_advisory_payload() -> None:
     assert result.exit_code == 0, result.output
     payload = json.loads(result.stdout)
     assert payload["proof_passed"] is True
-    assert payload["ready_to_serve"] is False
+    assert payload["ready_to_serve"] is _SDK_PRESENT
     assert len(payload["by_field_status"]) == 14
     assert set(payload["deferred_gates"]) == _DEFERRED_GATES
     assert payload["guardrails"]["no_readiness_overstatement"] is True

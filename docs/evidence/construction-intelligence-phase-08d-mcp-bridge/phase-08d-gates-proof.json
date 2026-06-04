@@ -4,21 +4,18 @@
   "proof_passed": true,
   "ok": true,
   "phase": "08D",
-  "generated_utc": "2026-06-04T08:18:22.135704Z",
+  "generated_utc": "2026-06-04T10:33:07.775306Z",
   "schema_version": 37,
   "schema_version_expected": 37,
   "contract_version": "1.4.0-phase-08d-planning",
   "advisory_only": true,
-  "ready_to_serve": false,
-  "serve_blockers": [
-    "full_validation_matrix_pending_prompt_15",
-    "mcp_sdk_not_installed"
-  ],
+  "ready_to_serve": true,
+  "serve_blockers": [],
   "status_counts": {
-    "pass": 13,
+    "pass": 14,
     "warning": 0,
     "fail_blocking": 0,
-    "deferred_not_blocking": 1
+    "deferred_not_blocking": 0
   },
   "by_field_status": {
     "schema_contracts": "pass",
@@ -33,7 +30,7 @@
     "claude_desktop_config": "pass",
     "no_raw_access": "pass",
     "no_writeback": "pass",
-    "validation_matrix": "deferred_not_blocking",
+    "validation_matrix": "pass",
     "policy_posture": "pass"
   },
   "gates": [
@@ -125,10 +122,10 @@
     },
     {
       "gate_name": "validation_matrix",
-      "gate_status": "deferred_not_blocking",
+      "gate_status": "pass",
       "blocking": 0,
-      "reason": "full_validation_matrix_pending_prompt_15",
-      "future_prompt": 15
+      "reason": null,
+      "proofs_passed": 1
     },
     {
       "gate_name": "policy_posture",
@@ -141,9 +138,7 @@
   "required_fields_covered": true,
   "readiness_overstated": false,
   "missing_required_evidence": [],
-  "deferred_gates": [
-    "validation_matrix"
-  ],
+  "deferred_gates": [],
   "stop_checks": {
     "gates_passed_with_missing_evidence": false,
     "readiness_overstated": false,

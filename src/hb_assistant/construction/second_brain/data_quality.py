@@ -1132,6 +1132,7 @@ def evaluate_phase_08d_data_quality_gates(*, db_path: str | None = None) -> dict
         build_mcp_tool_broker_proof,
         build_no_mcp_writeback_proof,
         build_no_raw_mcp_access_proof,
+        build_phase_08d_validation_matrix_proof,
     )
     from .mcp.registry import load_allowed_tools, load_denied_actions
     from .mcp.resources import load_resources
@@ -1263,13 +1264,11 @@ def evaluate_phase_08d_data_quality_gates(*, db_path: str | None = None) -> dict
     # 12. No-writeback proof (Prompt 14) — wired live via the dedicated proof.
     gates.append(_proof_gate("no_writeback", build_no_mcp_writeback_proof(write_evidence=False)))
 
-    # 14. Deferred — the full validation matrix is pending (never pass).
+    # 14. Validation matrix (Prompt 15) — wired live via the static, SDK-agnostic proof
+    # (contract + dual-tree parity + closeout-critical evidence present; no command execution).
     gates.append(
-        _gate(
-            "validation_matrix",
-            "deferred_not_blocking",
-            reason="full_validation_matrix_pending_prompt_15",
-            future_prompt=15,
+        _proof_gate(
+            "validation_matrix", build_phase_08d_validation_matrix_proof(write_evidence=False)
         )
     )
 
@@ -1286,16 +1285,27 @@ def evaluate_phase_08d_data_quality_gates(*, db_path: str | None = None) -> dict
         )
     )
 
+    import importlib.util  # noqa: PLC0415 - local: SDK presence check (mirrors policy)
+
     by_field_status = {g["gate_name"]: g["gate_status"] for g in gates}
     status_counts = _count_gate_statuses(gates)
     ok = status_counts["fail_blocking"] == 0
-    ready_to_serve = ok and all(by_field_status.get(n) == "pass" for n in _08D_READINESS_GATES)
+    # Derive serve_blockers first, then ready_to_serve, so readiness can never be overstated:
+    # the optional MCP SDK is a blocker only when actually absent (mirrors
+    # policy.build_mcp_status), so ready_to_serve tracks real serve capability — false in a
+    # base install without the SDK, true once it is installed and every readiness gate passes.
     serve_blockers = [
         g["reason"]
         for g in gates
         if g["gate_name"] in _08D_READINESS_GATES and g["gate_status"] != "pass" and g.get("reason")
     ]
-    serve_blockers.append("mcp_sdk_not_installed")
+    if importlib.util.find_spec("mcp") is None:
+        serve_blockers.append("mcp_sdk_not_installed")
+    ready_to_serve = (
+        ok
+        and all(by_field_status.get(n) == "pass" for n in _08D_READINESS_GATES)
+        and not serve_blockers
+    )
 
     return {
         "ok": ok,

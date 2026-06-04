@@ -2909,21 +2909,44 @@ def mcp_serve(
         False, "--stdio", help="Local stdio transport (the only allowed transport)."
     ),
     json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Report serve readiness without entering the stdio loop (diagnostics).",
+    ),
 ) -> None:
-    """Attempt to start the local stdio MCP server — fail-closed at the foundation stage.
+    """Start the local stdio MCP server (or fail-closed with the blocking reasons).
 
-    Serving is refused until the Prompt 04 tool broker and the Prompt 13/14 guard proofs
-    are wired; this never opens a socket or a serve loop. Exits non-zero (fail-closed).
+    With the optional ``mcp`` SDK installed and every foundation/guard check passing this
+    drives a real local stdio MCP session, blocking until the client disconnects (this is
+    the command Claude Desktop launches). ``--dry-run`` reports readiness without serving.
+    Fail-closed: if the SDK is absent or a foundation check fails, serving is refused and
+    the command exits non-zero. While serving, stdout is the JSON-RPC channel — the
+    envelope is emitted to stderr only after the session ends.
     """
     from hb_assistant.construction.second_brain.mcp import serve_stdio
 
-    payload = serve_stdio()
+    payload = serve_stdio(dry_run=dry_run)
     payload["requested_transport"] = "stdio" if stdio else "unspecified"
+    served = bool(payload.get("served"))
+    ready = bool(payload.get("ready_to_serve"))
+
+    if dry_run:
+        # Human diagnostic — safe to print the envelope to stdout. Exit 0 iff ready.
+        if json_out:
+            typer.echo(json.dumps(payload, indent=2, default=str))
+        else:
+            typer.echo(f"MCP serve ready_to_serve={ready} reasons={payload['reasons']}")
+        raise typer.Exit(0 if ready else 1)
+
+    # Real serve invocation (an MCP client launched us): stdout is the JSON-RPC channel,
+    # so the status envelope goes to stderr only — never stdout — whether we served a
+    # full session (exit 0) or fail-closed before serving (exit 1).
     if json_out:
-        typer.echo(json.dumps(payload, indent=2, default=str))
+        typer.echo(json.dumps(payload, indent=2, default=str), err=True)
     else:
-        typer.echo(f"MCP serve served={payload['served']} reasons={payload['reasons']}")
-    raise typer.Exit(1)
+        typer.echo(f"MCP serve served={served} reasons={payload['reasons']}", err=True)
+    raise typer.Exit(0 if served else 1)
 
 
 @mcp_app.command("tools")
