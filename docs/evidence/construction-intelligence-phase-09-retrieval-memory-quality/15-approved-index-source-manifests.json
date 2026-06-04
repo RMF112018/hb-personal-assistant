@@ -1,0 +1,158 @@
+{
+  "artifact": "phase_09_approved_index_source_manifests",
+  "prompt": "Prompt_15_Approved_Index_Source_Manifests",
+  "phase": "09",
+  "classification": "implementation_approved_source_manifest_builder_plus_approval_no_raw_guardrail",
+  "posture": "metadata_only_local_only_read_only_dry_run_default_fail_closed_no_embeddings_no_index",
+  "repo_sha": "3c1004ea99e22f5dae35fa0c95503e40a73300ab",
+  "schema_version": 38,
+  "policy_version": "phase_09_approved_source_manifest_v1",
+  "contract_version": "1.4.0-phase-09",
+  "operator_manifest": {
+    "status": "empty",
+    "manifest_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "approved_family_count": 0,
+    "approved_ref_count": 0,
+    "families": {
+      "generated_outputs": {
+        "candidate_count": 0,
+        "approved_count": 0,
+        "excluded_count": 0,
+        "exclude_reasons": {}
+      },
+      "approved_obsidian_outputs": {
+        "candidate_count": 0,
+        "approved_count": 0,
+        "excluded_count": 0,
+        "exclude_reasons": {}
+      },
+      "reviewed_memory": {
+        "candidate_count": 0,
+        "approved_count": 0,
+        "excluded_count": 0,
+        "exclude_reasons": {}
+      }
+    },
+    "warnings": [
+      "no_approved_sources",
+      "empty_family:generated_outputs",
+      "empty_family:approved_obsidian_outputs",
+      "empty_family:reviewed_memory"
+    ],
+    "note": "operator sources empty (0 research packets / 0 apply-obsidian entries / 0 accepted memory) -> empty manifest (honest source-coverage warning)"
+  },
+  "manifest_categories": [
+    "generated_outputs",
+    "approved_obsidian_outputs",
+    "reviewed_memory"
+  ],
+  "no_raw_proof": {
+    "proof_passed": true,
+    "case_count": 10,
+    "cases": [
+      {
+        "name": "safe_generated_outputs",
+        "expected_approved": true,
+        "approved": true,
+        "violations": []
+      },
+      {
+        "name": "safe_approved_obsidian_outputs",
+        "expected_approved": true,
+        "approved": true,
+        "violations": []
+      },
+      {
+        "name": "safe_reviewed_memory",
+        "expected_approved": true,
+        "approved": true,
+        "violations": []
+      },
+      {
+        "name": "excluded_family",
+        "expected_approved": false,
+        "approved": false,
+        "violations": [
+          "excluded_family:raw_email_body"
+        ]
+      },
+      {
+        "name": "excluded_review_status",
+        "expected_approved": false,
+        "approved": false,
+        "violations": [
+          "excluded_review_status:rejected"
+        ]
+      },
+      {
+        "name": "pending_review_status",
+        "expected_approved": false,
+        "approved": false,
+        "violations": [
+          "excluded_review_status:pending_review"
+        ]
+      },
+      {
+        "name": "unresolved_high_impact",
+        "expected_approved": false,
+        "approved": false,
+        "violations": [
+          "excluded_review_status:review_required",
+          "unresolved_high_impact"
+        ]
+      },
+      {
+        "name": "missing_metadata",
+        "expected_approved": false,
+        "approved": false,
+        "violations": [
+          "missing_metadata:content_hash"
+        ]
+      },
+      {
+        "name": "forbidden_field",
+        "expected_approved": false,
+        "approved": false,
+        "violations": [
+          "forbidden_field:raw_body"
+        ]
+      },
+      {
+        "name": "raw_content_shape",
+        "expected_approved": false,
+        "approved": false,
+        "violations": [
+          "raw_content_shape:content_hash"
+        ]
+      }
+    ],
+    "proof_companion_json": "approved-source-manifest-proof.json",
+    "proof_companion_md": "approved-source-manifest-proof.md"
+  },
+  "operator_db": {
+    "schema_version": 38,
+    "approved_source_manifest_rows": 0,
+    "operator_db_unmutated": true,
+    "note": "build is read-only/dry-run by default (no --apply); persistence demonstrated only in a proof DB test; operator manifest table stays 0 rows"
+  },
+  "validation": {
+    "compileall_exit": 0,
+    "ruff": "clean",
+    "mypy_source_files": 284,
+    "pytest_passed": 3101,
+    "pytest_failed": 0,
+    "pytest_deselected": 1,
+    "new_tests": 10,
+    "construction_agent_validate": "4/4 schema V38",
+    "table_inventory": "190 contract / 0 unmapped",
+    "cli_matrix_all_exit_0": true,
+    "phase_08c_gates_skipped_reason": "append-only ledger writes operator DB (disclosed Prompts 02/05)"
+  },
+  "deferred_items": [
+    "vector index build dry-run/apply (Prompts 18-19)",
+    "evaluation-run generated-output category (deferred; research packets are the canonical generated output)",
+    "manifest persistence to the operator DB (--apply not run; operator stays pristine)"
+  ],
+  "stop_condition_triggered": false,
+  "generated_utc": "2026-06-04T21:24:17.064807+00:00"
+}

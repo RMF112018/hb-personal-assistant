@@ -1,0 +1,46 @@
+{
+  "contract_name": "phase_09_approved_source_manifest_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 15 — approved index source manifest rules. Enumerates which approved, redacted, source-linked records (generated outputs, approved Obsidian outputs, reviewed memory) are eligible for semantic indexing. The manifest is metadata-only (per-family counts + a deterministic hash); no embeddings or index are built here, and no per-entry refs are persisted.",
+  "manifest_categories": ["generated_outputs", "approved_obsidian_outputs", "reviewed_memory"],
+  "category_source_families": {
+    "generated_outputs": "second_brain_research_packets",
+    "approved_obsidian_outputs": "approved_obsidian_generated_outputs",
+    "reviewed_memory": "accepted_long_term_memory"
+  },
+  "approved_review_statuses": ["accepted", "auto_advisory", "review_recommended"],
+  "excluded_review_statuses": ["review_required", "pending_review", "rejected", "superseded"],
+  "max_auto_approval_review_tier": 2,
+  "required_entry_metadata": [
+    "source_family",
+    "source_ref",
+    "content_hash",
+    "review_tier",
+    "review_status",
+    "confidence_class"
+  ],
+  "forbidden_entry_fields": [
+    "raw_url",
+    "download_url",
+    "signed_url",
+    "token",
+    "secret",
+    "raw_body",
+    "raw_document_text",
+    "raw_calendar_payload",
+    "raw_prompt",
+    "raw_response",
+    "statement_redacted",
+    "content_excerpt_redacted"
+  ],
+  "global_requirements": [
+    "source_linked_only",
+    "redacted_only",
+    "no_raw_content",
+    "no_writeback",
+    "exclude_unresolved_high_impact",
+    "only_approved_obsidian_apply_manifests",
+    "metadata_only",
+    "fail_closed"
+  ]
+}

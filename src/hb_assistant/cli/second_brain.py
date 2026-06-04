@@ -122,6 +122,13 @@ embedding_policy_app = typer.Typer(
 )
 retrieval_app.add_typer(embedding_policy_app, name="embedding-policy")
 
+approved_sources_app = typer.Typer(
+    name="approved-sources",
+    help="Phase 09 approved index source manifests (read-only build + proof).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(approved_sources_app, name="approved-sources")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3186,6 +3193,118 @@ def retrieval_embedding_policy_no_raw_proof(
     payload = {**proof, "guardrails": _EMBEDDING_POLICY_GUARDRAILS}
     human = [
         f"Embedding/vector policy no-raw proof passed={proof['proof_passed']}",
+        *[f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}" for c in proof["cases"]],
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+_APPROVED_SOURCES_GUARDRAILS = {
+    "read_only": True,
+    "no_raw": True,
+    "no_writeback": True,
+    "metadata_only": True,
+    "exclude_unresolved_high_impact": True,
+    "only_approved_obsidian_apply_manifests": True,
+    "source_linked_only": True,
+    "local_first": True,
+}
+
+
+@approved_sources_app.command("build")
+def retrieval_approved_sources_build(
+    apply: bool = typer.Option(
+        False, "--apply/--dry-run", help="Persist the manifest summary row (default dry-run)."
+    ),
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 09 approved index source manifest build (read-only; dry-run by default; fail-closed).
+
+    Enumerates approved, redacted, source-linked records from the three categories (generated outputs,
+    approved Obsidian outputs, reviewed memory), excluding unresolved high-impact / non-accepted /
+    non-apply-Obsidian / raw-content entries, and reports the metadata-only manifest (per-family counts
+    + a deterministic hash). `--apply` persists a single guard-clean summary row; default is dry-run
+    (no write). Builds no embeddings/index. Exit 0 when the build succeeds, 3 on a fail-closed
+    contract/seed/schema failure.
+    """
+    from hb_assistant.construction.second_brain.retrieval.source_manifest import (
+        ApprovedSourceManifestError,
+        build_approved_source_manifest,
+        persist_approved_source_manifest,
+    )
+
+    try:
+        manifest = build_approved_source_manifest(project_key=project)
+        persisted_id = None
+        if apply:
+            persisted_id = persist_approved_source_manifest(
+                None, manifest, policy_version=str(manifest["policy_version"])
+            )
+    except ApprovedSourceManifestError as exc:
+        payload = {
+            "command": "second-brain retrieval approved-sources build",
+            "policy_loaded": False,
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "guardrails": _APPROVED_SOURCES_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {
+        **manifest,
+        "applied": apply,
+        "persisted_manifest_id": persisted_id,
+        "guardrails": _APPROVED_SOURCES_GUARDRAILS,
+    }
+    human = [
+        "Phase 09 approved index source manifest (read-only, advisory)",
+        f"  status: {manifest['status']} | approved refs: {manifest['approved_ref_count']}"
+        f" | approved families: {manifest['approved_family_count']}",
+        f"  manifest_hash: {manifest['manifest_hash'][:16]} | applied: {apply}",
+        f"  warnings: {manifest['warnings']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@approved_sources_app.command("proof")
+def retrieval_approved_sources_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the manifest proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove the manifest approval/no-raw guardrail excludes unsafe candidates (read-only, fail-closed).
+
+    Runs `validate_manifest_entry` over controlled safe + planted-unsafe entries (excluded family,
+    excluded/pending review status, unresolved high-impact, missing metadata, forbidden field, raw
+    shape) and attests metadata-only + exclude-unresolved-high-impact. Persists nothing to the operator
+    DB. Exit 0 when the proof passes, 3 otherwise.
+    """
+    from hb_assistant.construction.second_brain.retrieval.source_manifest import (
+        ApprovedSourceManifestError,
+        build_approved_source_manifest_proof,
+    )
+
+    try:
+        proof = build_approved_source_manifest_proof(write_evidence=evidence)
+    except ApprovedSourceManifestError as exc:
+        payload = {
+            "command": "second-brain retrieval approved-sources proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _APPROVED_SOURCES_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _APPROVED_SOURCES_GUARDRAILS}
+    human = [
+        f"Approved source manifest proof passed={proof['proof_passed']}",
         *[f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}" for c in proof["cases"]],
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)

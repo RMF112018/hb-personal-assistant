@@ -1,0 +1,13 @@
+# Phase 09 Prompt 15 — approved index source manifest config (resolved values; read-only/advisory).
+# Metadata-only: which categories are enabled and bounded enumeration limits. The manifest enumerates
+# approved, redacted, source-linked records by hash/ref — never raw content, prompts, responses, tokens,
+# URLs, secrets, or filesystem paths. No embeddings or index are built; no per-entry refs are persisted.
+version: phase_09_approved_source_manifest_v1
+
+enabled_categories:
+  - generated_outputs
+  - approved_obsidian_outputs
+  - reviewed_memory
+
+# Bounded enumeration per category (defensive cap on how many candidate rows are read).
+max_refs_per_category: 2000

@@ -1,0 +1,56 @@
+{
+  "command": "second-brain retrieval approved-sources build",
+  "phase": "09",
+  "generated_utc": "2026-06-04T21:23:37.334443+00:00",
+  "repo_sha": "3c1004ea99e22f5dae35fa0c95503e40a73300ab",
+  "policy_loaded": true,
+  "policy_version": "phase_09_approved_source_manifest_v1",
+  "contract_version": "1.4.0-phase-09",
+  "manifest_id": "asm_e3b0c44298fc1c149afbf4c8996fb924",
+  "manifest_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "schema_version": 38,
+  "schema_version_expected": 38,
+  "approved_family_count": 0,
+  "approved_ref_count": 0,
+  "review_tier_summary": "none",
+  "status": "empty",
+  "families": {
+    "generated_outputs": {
+      "candidate_count": 0,
+      "approved_count": 0,
+      "excluded_count": 0,
+      "exclude_reasons": {}
+    },
+    "approved_obsidian_outputs": {
+      "candidate_count": 0,
+      "approved_count": 0,
+      "excluded_count": 0,
+      "exclude_reasons": {}
+    },
+    "reviewed_memory": {
+      "candidate_count": 0,
+      "approved_count": 0,
+      "excluded_count": 0,
+      "exclude_reasons": {}
+    }
+  },
+  "warnings": [
+    "no_approved_sources",
+    "empty_family:generated_outputs",
+    "empty_family:approved_obsidian_outputs",
+    "empty_family:reviewed_memory"
+  ],
+  "read_only": true,
+  "applied": false,
+  "persisted_manifest_id": null,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "metadata_only": true,
+    "exclude_unresolved_high_impact": true,
+    "only_approved_obsidian_apply_manifests": true,
+    "source_linked_only": true,
+    "local_first": true
+  }
+}

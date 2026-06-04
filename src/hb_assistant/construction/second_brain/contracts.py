@@ -168,6 +168,7 @@ def load_all_phase_08d_contracts() -> dict[str, dict[str, Any]]:
 PHASE_09_CONTRACT_FILES: dict[str, str] = {
     "llamaindex_config_contract": "phase_09_llamaindex_config_contract.json",
     "embedding_vector_policy_contract": "phase_09_embedding_vector_policy_contract.json",
+    "approved_source_manifest_contract": "phase_09_approved_source_manifest_contract.json",
 }
 
 def load_phase_09_contract(name: str) -> dict[str, Any]:

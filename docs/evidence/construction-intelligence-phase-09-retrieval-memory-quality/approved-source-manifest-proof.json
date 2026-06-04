@@ -1,0 +1,106 @@
+{
+  "proof": "phase_09_approved_source_manifest",
+  "command": "second-brain retrieval approved-sources proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-04T21:23:37.771631+00:00",
+  "repo_sha": "3c1004ea99e22f5dae35fa0c95503e40a73300ab",
+  "policy_version": "phase_09_approved_source_manifest_v1",
+  "case_count": 10,
+  "cases": [
+    {
+      "name": "safe_generated_outputs",
+      "expected_approved": true,
+      "approved": true,
+      "violations": [],
+      "passed": true
+    },
+    {
+      "name": "safe_approved_obsidian_outputs",
+      "expected_approved": true,
+      "approved": true,
+      "violations": [],
+      "passed": true
+    },
+    {
+      "name": "safe_reviewed_memory",
+      "expected_approved": true,
+      "approved": true,
+      "violations": [],
+      "passed": true
+    },
+    {
+      "name": "excluded_family",
+      "expected_approved": false,
+      "approved": false,
+      "violations": [
+        "excluded_family:raw_email_body"
+      ],
+      "passed": true
+    },
+    {
+      "name": "excluded_review_status",
+      "expected_approved": false,
+      "approved": false,
+      "violations": [
+        "excluded_review_status:rejected"
+      ],
+      "passed": true
+    },
+    {
+      "name": "pending_review_status",
+      "expected_approved": false,
+      "approved": false,
+      "violations": [
+        "excluded_review_status:pending_review"
+      ],
+      "passed": true
+    },
+    {
+      "name": "unresolved_high_impact",
+      "expected_approved": false,
+      "approved": false,
+      "violations": [
+        "excluded_review_status:review_required",
+        "unresolved_high_impact"
+      ],
+      "passed": true
+    },
+    {
+      "name": "missing_metadata",
+      "expected_approved": false,
+      "approved": false,
+      "violations": [
+        "missing_metadata:content_hash"
+      ],
+      "passed": true
+    },
+    {
+      "name": "forbidden_field",
+      "expected_approved": false,
+      "approved": false,
+      "violations": [
+        "forbidden_field:raw_body"
+      ],
+      "passed": true
+    },
+    {
+      "name": "raw_content_shape",
+      "expected_approved": false,
+      "approved": false,
+      "violations": [
+        "raw_content_shape:content_hash"
+      ],
+      "passed": true
+    }
+  ],
+  "metadata_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "exclude_unresolved_high_impact": true,
+    "only_approved_obsidian_apply_manifests": true,
+    "local_first": true
+  }
+}

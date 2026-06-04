@@ -66,6 +66,27 @@ The policy lives in `resources/config/phase_09_embedding_vector_policy.seed.yaml
 `src/hb_assistant/resources/json/phase_09_embedding_vector_policy_contract.json`); override it during
 testing with `HB_SECOND_BRAIN_EMBEDDING_VECTOR_POLICY`.
 
+## 5. Approved source manifests (Prompt 15)
+
+The approved source manifest enumerates which approved, redacted, source-linked records (generated
+outputs, approved Obsidian outputs, reviewed memory) are eligible for indexing. Build it (read-only,
+dry-run by default) and run the approval/no-raw proof:
+
+```bash
+hb-assistant second-brain retrieval approved-sources build --json          # dry-run (no write)
+hb-assistant second-brain retrieval approved-sources proof --json
+```
+
+- `build` reports the **metadata-only** manifest — per-family approved/excluded counts + a deterministic
+  hash + status + warnings. It excludes unresolved high-impact (tier-3 / `review_required`), non-accepted
+  statuses, non-`apply` Obsidian manifests, and raw-content shapes. With no approved sources present the
+  manifest is honestly `empty`. `--apply` persists a single guard-clean summary row (metadata-only); the
+  default is dry-run (no write).
+- `proof` runs `validate_manifest_entry` over controlled safe + planted-unsafe entries and writes a
+  guard-clean proof companion. Builds no embeddings/index; persists nothing to the operator DB.
+
+Override the manifest config during testing with `HB_SECOND_BRAIN_APPROVED_SOURCE_MANIFEST`.
+
 ## Guardrails
 
 - Optional + lazy: the SDK is imported only inside Phase 09 retrieval code paths; the base install,
