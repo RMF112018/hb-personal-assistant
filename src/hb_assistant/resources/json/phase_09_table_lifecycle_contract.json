@@ -1,0 +1,112 @@
+{
+  "schema": "phase_09_table_lifecycle_contract/v1",
+  "source": "Phase 09 Prompt 12 — V38 retrieval/memory/agent metadata substrate lifecycle vocabulary. Maps each of the nineteen V38 tables to its richer Phase 09 lifecycle state and owning future prompt. All tables ship empty; none is active_operational yet. Read-only advisory contract; loaded fail-closed by hb_assistant.construction.second_brain.phase_09_schema.",
+  "schema_version_introduced": 38,
+  "phase_09_lifecycle_states": [
+    "blocked_preflight",
+    "operational_empty_expected",
+    "pilot_only",
+    "active_operational",
+    "validation_only",
+    "deprecated",
+    "deferred_future_phase"
+  ],
+  "table_count": 19,
+  "tables": {
+    "second_brain_retrieval_llamaindex_config_snapshots": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "13",
+      "notes": "Captured once LlamaIndex dependency + config surface lands (Prompt 13)."
+    },
+    "second_brain_retrieval_approved_source_manifests": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "15",
+      "notes": "Populated by the approved index-source manifest builder (Prompt 15)."
+    },
+    "second_brain_retrieval_vector_index_runs": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "18",
+      "notes": "Written by the vector-index build dry-run/apply (Prompts 18-19)."
+    },
+    "second_brain_retrieval_vector_index_items": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "18",
+      "notes": "Per-item index ledger written by the vector-index build (Prompts 18-19)."
+    },
+    "second_brain_retrieval_embedding_model_evals": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "14",
+      "notes": "Embedding/vector-store policy evaluations (Prompt 14)."
+    },
+    "second_brain_retrieval_hybrid_query_runs": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "20",
+      "notes": "Written by the hybrid retrieval broker (Prompt 20)."
+    },
+    "second_brain_retrieval_hybrid_query_results": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "20",
+      "notes": "Per-result provenance from the hybrid retrieval broker (Prompt 20)."
+    },
+    "second_brain_retrieval_eval_sets": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "24",
+      "notes": "Retrieval quality eval-set registry (Prompt 24)."
+    },
+    "second_brain_retrieval_eval_cases": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "24",
+      "notes": "Gold eval cases (Prompt 24)."
+    },
+    "second_brain_retrieval_eval_runs": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "24",
+      "notes": "Eval-set execution summaries (Prompt 24)."
+    },
+    "second_brain_retrieval_benchmark_runs": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "25",
+      "notes": "Deterministic-vs-semantic / project-specific benchmarks (Prompts 25-26)."
+    },
+    "second_brain_retrieval_source_linked_proof_runs": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "34",
+      "notes": "Source-linked retrieval proof runs (Prompt 34)."
+    },
+    "second_brain_retrieval_unsupported_claim_checks": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "28",
+      "notes": "Unsupported-claim / hallucination-risk checks (Prompts 28-29)."
+    },
+    "second_brain_retrieval_context_budget_runs": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "27",
+      "notes": "Context-budget optimization runs (Prompt 27)."
+    },
+    "second_brain_memory_quality_review_runs": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "30",
+      "notes": "Memory quality-review runs (Prompt 30)."
+    },
+    "second_brain_memory_consolidation_candidates": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "31",
+      "notes": "Memory consolidation candidates preview (Prompt 31)."
+    },
+    "second_brain_memory_consolidation_review_items": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "31",
+      "notes": "Human-in-loop consolidation review items (Prompt 31)."
+    },
+    "second_brain_agent_performance_feedback_runs": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "32",
+      "notes": "Agent performance + feedback runs (Prompt 32)."
+    },
+    "second_brain_phase_09_validation_runs": {
+      "phase_09_lifecycle": "validation_only",
+      "owning_prompt": "36",
+      "notes": "Phase 09 data-quality gates / validation ledger (Prompts 36-39)."
+    }
+  }
+}

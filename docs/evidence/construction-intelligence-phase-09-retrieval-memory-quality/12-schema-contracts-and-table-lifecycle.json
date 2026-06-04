@@ -1,0 +1,113 @@
+{
+  "artifact": "phase_09_schema_contracts_and_table_lifecycle",
+  "prompt": "Prompt_12_Phase_09_Schema_Contracts_And_Table_Lifecycle",
+  "phase": "09",
+  "classification": "implementation_additive_schema_contracts_lifecycle",
+  "posture": "additive_local_only_metadata_only_fail_closed_no_llamaindex_no_vector_no_semantic_retrieval",
+  "repo_sha": "8703bfa1c9da41b0a80c95b2cd0204cbb6f80462",
+  "schema_version_before": 37,
+  "schema_version_after": 38,
+  "schema_version_expected": 38,
+  "v38_table_count": 19,
+  "guard_column_count": 23,
+  "v38_tables": [
+    "second_brain_retrieval_llamaindex_config_snapshots",
+    "second_brain_retrieval_approved_source_manifests",
+    "second_brain_retrieval_vector_index_runs",
+    "second_brain_retrieval_vector_index_items",
+    "second_brain_retrieval_embedding_model_evals",
+    "second_brain_retrieval_hybrid_query_runs",
+    "second_brain_retrieval_hybrid_query_results",
+    "second_brain_retrieval_eval_sets",
+    "second_brain_retrieval_eval_cases",
+    "second_brain_retrieval_eval_runs",
+    "second_brain_retrieval_benchmark_runs",
+    "second_brain_retrieval_source_linked_proof_runs",
+    "second_brain_retrieval_unsupported_claim_checks",
+    "second_brain_retrieval_context_budget_runs",
+    "second_brain_memory_quality_review_runs",
+    "second_brain_memory_consolidation_candidates",
+    "second_brain_memory_consolidation_review_items",
+    "second_brain_agent_performance_feedback_runs",
+    "second_brain_phase_09_validation_runs"
+  ],
+  "guard_columns": [
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_procore_payload_persisted",
+    "raw_financial_source_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
+    "graph_api_call_performed",
+    "procore_api_call_performed",
+    "email_send_performed",
+    "calendar_update_performed",
+    "source_system_writeback_performed",
+    "arbitrary_sql_performed",
+    "raw_store_access_performed",
+    "financial_determination_performed",
+    "payment_decision_performed",
+    "claim_or_entitlement_decision_performed",
+    "unsupported_claim_performed",
+    "raw_vector_content_persisted",
+    "semantic_retrieval_bypassed_policy"
+  ],
+  "phase_09_guard_columns_new_in_v38": [
+    "unsupported_claim_performed",
+    "raw_vector_content_persisted",
+    "semantic_retrieval_bypassed_policy"
+  ],
+  "lifecycle_contract": {
+    "file": "src/hb_assistant/resources/json/table_lifecycle_status_contract.json",
+    "table_count_before": 171,
+    "table_count_after": 190,
+    "new_status_used": "placeholder_deferred",
+    "phase_owner": "09",
+    "v": "V38"
+  },
+  "phase_09_lifecycle_contract": {
+    "file": "src/hb_assistant/resources/json/phase_09_table_lifecycle_contract.json",
+    "schema": "phase_09_table_lifecycle_contract/v1",
+    "tables_mapped": 19
+  },
+  "table_inventory": {
+    "schema_version": 38,
+    "contract_table_count": 190,
+    "in_db_not_in_contract": [],
+    "placeholder_deferred_count": 20
+  },
+  "phase_09_schema_status": {
+    "overall_status": "ready",
+    "schema_version": 38,
+    "all_tables_present": true,
+    "all_guards_present": true,
+    "all_rows_zero": true,
+    "policy_loaded": true,
+    "read_only": true
+  },
+  "operator_db": {
+    "schema_version_after": 38,
+    "v38_data_rows_total": 0,
+    "operator_db_data_unmutated": true,
+    "note": "additive schema migration advanced 37->38 (nineteen empty tables); zero data rows persisted"
+  },
+  "guard_violation": false,
+  "no_determination_attested": true,
+  "validation": {
+    "compileall_exit": 0,
+    "ruff": "clean",
+    "mypy_source_files": 281,
+    "pytest_passed": 3069,
+    "pytest_failed": 0,
+    "pytest_deselected": 1,
+    "construction_agent_validate": "4/4 schema V38",
+    "cli_matrix_all_exit_0": true,
+    "phase_08c_gates_skipped_reason": "append-only ledger writes operator DB (disclosed Prompts 02/05)"
+  },
+  "stop_condition_triggered": false,
+  "generated_utc": "2026-06-04T19:54:45.309993+00:00"
+}

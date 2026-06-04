@@ -1,6 +1,6 @@
 {
   "schema": "table_lifecycle_status_contract/v1",
-  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02).",
+  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 — schema + contracts + table lifecycle; ships empty/placeholder_deferred).",
   "statuses": [
     "operational_populated",
     "operational_empty_expected",
@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 171,
+  "table_count": 190,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1558,6 +1558,177 @@
       "blocking_for_phase": "none",
       "v": "V37",
       "notes": "08D validation runs (metadata-only; full 20 guards)"
+    },
+    "second_brain_retrieval_llamaindex_config_snapshots": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 LlamaIndex/embedding config fingerprints (metadata-only; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_approved_source_manifests": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 approved index-source manifests (counts/hashes; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_vector_index_runs": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 vector-index build run receipts (metadata-only; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_vector_index_items": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 per-item index ledger (refs/hashes; no vectors; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_embedding_model_evals": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 embedding-model evaluation metrics (metadata-only; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_hybrid_query_runs": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 hybrid query-run receipts (query hash only; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_hybrid_query_results": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 per-result provenance (ranked refs/hashes; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_eval_sets": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 retrieval evaluation-set registry (metadata-only; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_eval_cases": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 gold eval cases (question/expected-ref hashes; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_eval_runs": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 eval-set execution summaries (metadata-only; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_benchmark_runs": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 deterministic-vs-semantic benchmark ledger (metadata-only; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_source_linked_proof_runs": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 source-linked proof runs (counts/status; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_unsupported_claim_checks": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 unsupported-claim checks (counts/status; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_retrieval_context_budget_runs": {
+      "table_family": "retrieval_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 context-budget assembly decisions (buckets/counts; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_memory_quality_review_runs": {
+      "table_family": "memory_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 memory quality-review run receipts (metadata-only; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_memory_consolidation_candidates": {
+      "table_family": "memory_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 memory consolidation candidates (refs/cluster hashes; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_memory_consolidation_review_items": {
+      "table_family": "memory_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 human-in-loop consolidation review items (advisory_only; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_agent_performance_feedback_runs": {
+      "table_family": "agent_quality_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 agent-performance feedback runs (advisory signals; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_phase_09_validation_runs": {
+      "table_family": "agent_quality_v38",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V38",
+      "notes": "Phase 09 validation-matrix run ledger (metadata-only; full 23 guards); populated by later Phase 09 prompts (13-39)"
     }
   }
 }

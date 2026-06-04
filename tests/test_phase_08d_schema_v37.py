@@ -5,7 +5,7 @@ empty, (2) declares + enforces the full twenty no-raw / no-writeback / no-direct
 no-determination guard columns CHECK(... = 0) on every table, (3) stores only metadata
 (hashes/counts/status/reason codes) on the receipt tables — no raw argument/result/content
 columns, (4) is idempotent and leaves V1-V36 intact, and (5) the lifecycle contract
-classifies the ten tables operational_empty_expected / phase_owner 08D at count 171.
+classifies the ten tables operational_empty_expected / phase_owner 08D; the live lifecycle contract now totals 190 tables (post-V38).
 
 No server, broker, or runtime dispatch is exercised here — the substrate is schema-only.
 """
@@ -171,7 +171,7 @@ def test_v37_tables_classified_in_lifecycle_contract() -> None:
         db = Path(td) / "v37.db"
         _migrate(db)
         report = build_table_inventory_report(db_path=str(db))
-        assert report["contract_table_count"] == 171
+        assert report["contract_table_count"] == 190
         by_name = {t["table_name"]: t for t in report["tables"]}
         for t in _V37_TABLES:
             assert t in by_name, f"{t} absent from live inventory"

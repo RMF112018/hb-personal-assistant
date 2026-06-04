@@ -2952,6 +2952,66 @@ def data_quality_corpus_balance(
     )
 
 
+_PHASE_09_SCHEMA_GUARDRAILS = {
+    "read_only": True,
+    "no_raw": True,
+    "no_writeback": True,
+    "additive_only": True,
+    "advisory_only": True,
+    "local_only": True,
+    "no_llamaindex_or_vector_runtime": True,
+}
+
+
+@data_quality_app.command("phase-09-schema-status")
+def data_quality_phase_09_schema_status(
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 09 V38 schema + table-lifecycle status (read-only, fail-closed).
+
+    Verifies the local schema is at the expected head (V38), that every one of the nineteen V38
+    retrieval/memory/agent tables exists with the full twenty-three guard columns and ships empty,
+    and that the Phase 09 lifecycle contract loads and classifies all nineteen tables. Read-only
+    over the DB; advisory only; never a determination. Exit 0 when overall_status is `ready`, 3
+    otherwise (including a missing/invalid lifecycle contract — fail-closed).
+    """
+    from hb_assistant.construction.second_brain.phase_09_schema import (
+        Phase09SchemaContractError,
+        build_phase_09_schema_status_report,
+    )
+
+    try:
+        report = build_phase_09_schema_status_report()
+    except Phase09SchemaContractError as exc:
+        payload = {
+            "command": "second-brain data-quality phase-09-schema-status",
+            "policy_loaded": False,
+            "overall_status": "not_ready",
+            "error": type(exc).__name__,
+            "guardrails": _PHASE_09_SCHEMA_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**report, "guardrails": _PHASE_09_SCHEMA_GUARDRAILS}
+    human = [
+        "Phase 09 V38 schema + table-lifecycle status (read-only, advisory)",
+        f"  overall: {report['overall_status']} | schema: {report['schema_version']}"
+        f" (expected {report['schema_version_expected']})",
+        f"  tables present: {report['all_tables_present']} | guards present:"
+        f" {report['all_guards_present']} | all rows zero: {report['all_rows_zero']}",
+        f"  tables: {report['phase_09_table_count']} | guard columns: {report['guard_column_count']}",
+    ]
+    _emit_08c(
+        payload,
+        json_out=json_out,
+        human=human,
+        exit_code=0 if report["overall_status"] == "ready" else 3,
+    )
+
+
 @financial_app.command("no-writeback-proof")
 def financial_no_writeback_proof(
     project: str | None = typer.Option(None, "--project", help="Optional project key."),
