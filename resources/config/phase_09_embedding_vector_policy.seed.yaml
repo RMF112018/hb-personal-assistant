@@ -1,0 +1,27 @@
+# Phase 09 Prompt 14 — embedding + vector-store policy (resolved values; read-only/advisory).
+# Metadata-only: provider/store *kinds*, bounded numeric params, and the embeddable source-family
+# allowlist (the policy MAXIMUM — the selected approved index manifest is narrowed in Prompt 15).
+# No raw content, prompts, responses, tokens, signed/download URLs, secrets, or filesystem paths.
+# `persist_dir_label` is a label only — the real vector-store location is resolved at build time under
+# Application Support and is never stored here. Vectors are never persisted to SQLite (metadata-only
+# ledger). External embedding providers are deferred (see contract deferred_embedding_providers).
+version: phase_09_embedding_vector_policy_v1
+
+embedding_provider: local
+embedding_dim: 384
+vector_store_kind: simple
+max_nodes_per_run: 5000
+
+# Embeddable source families (policy maximum) — the redacted, source-linked read models the broker
+# serves. Excludes the deferred meeting-prep / correspondence families (no reader). EXCLUDED_FAMILIES
+# (raw_*) are hard-forbidden by the guard regardless of this list.
+embeddable_source_families:
+  - phase_07d_source_evidence_trails
+  - project_issue_history_items
+  - project_risk_digest_items
+  - aging_exposure_report_items
+  - accepted_long_term_memory
+  - approved_obsidian_generated_outputs
+  - cross_source_relationships
+
+persist_dir_label: app_support_retrieval_index

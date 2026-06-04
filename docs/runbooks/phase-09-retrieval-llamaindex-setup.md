@@ -44,10 +44,34 @@ model/index **labels** and bounded numeric params, never raw content, URLs, toke
 paths. To point at an alternate config during testing, set `HB_SECOND_BRAIN_LLAMAINDEX_CONFIG` to a
 seed file path.
 
+## 4. Embedding & vector-store policy (Prompt 14)
+
+The embedding/vector-store policy governs what may be embedded and how vectors are persisted. Inspect
+it (read-only) and run the no-raw guardrail proof:
+
+```bash
+hb-assistant second-brain retrieval embedding-policy status --json
+hb-assistant second-brain retrieval embedding-policy no-raw-proof --json
+```
+
+- `status` reports the embedding provider/dimension/vector-store kind, the embeddable source-family
+  allowlist (the redacted, source-linked families — never a raw EXCLUDED family), the persistence rules
+  (**vectors are never persisted to SQLite** — the ledger is metadata-only), and schema readiness.
+- `no-raw-proof` runs the `validate_embedding_candidate` guard over a safe candidate plus planted-unsafe
+  candidates (excluded family, raw body, signed URL, vector blob, secret shape, missing metadata,
+  unresolved review) and attests the persistence rules. `--no-evidence` skips writing the proof
+  companion. Builds no embeddings; persists nothing.
+
+The policy lives in `resources/config/phase_09_embedding_vector_policy.seed.yaml` (validated against
+`src/hb_assistant/resources/json/phase_09_embedding_vector_policy_contract.json`); override it during
+testing with `HB_SECOND_BRAIN_EMBEDDING_VECTOR_POLICY`.
+
 ## Guardrails
 
 - Optional + lazy: the SDK is imported only inside Phase 09 retrieval code paths; the base install,
   migrations, and full test suite run with it absent.
+- Embeddings/vectors: only approved, redacted, source-linked families may be embedded; vectors are
+  never written to SQLite (the V38 `raw_vector_content_persisted` guard enforces it).
 - Read-only: the status surface opens the database read-only and persists nothing.
 - Local-first: `embedding_provider: local` by default. External providers
   (`openai` / `azure_openai` / `huggingface_remote`) are **deferred** — selecting one is flagged as an

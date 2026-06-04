@@ -1,0 +1,49 @@
+{
+  "contract_name": "phase_09_embedding_vector_policy_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 14 — embedding + vector-store policy and no-raw guardrails. Governs which source families may be embedded, the allowed providers/vector stores/embedding dimensions, the required metadata-only node fields, and the persistence rules (vectors never persisted to SQLite). No embeddings are computed and no index is built here.",
+  "allowed_embedding_providers": ["local", "mock"],
+  "deferred_embedding_providers": ["openai", "azure_openai", "huggingface_remote"],
+  "allowed_vector_store_kinds": ["simple"],
+  "embedding_dim_min": 64,
+  "embedding_dim_max": 4096,
+  "required_node_metadata_fields": [
+    "source_family",
+    "source_ref",
+    "content_hash",
+    "confidence_class",
+    "review_tier",
+    "freshness_label"
+  ],
+  "forbidden_node_fields": [
+    "raw_url",
+    "download_url",
+    "signed_url",
+    "token",
+    "secret",
+    "raw_body",
+    "raw_document_text",
+    "raw_calendar_payload",
+    "raw_prompt",
+    "raw_response",
+    "embedding",
+    "vector",
+    "raw_vector"
+  ],
+  "approved_review_statuses": ["approved", "accepted", "resolved"],
+  "persistence_rules": {
+    "sqlite_metadata_only": true,
+    "raw_vector_content_persisted": 0,
+    "vectors_persisted_outside_sqlite": true,
+    "no_raw_text_column": true
+  },
+  "global_requirements": [
+    "local_first",
+    "source_linked_chunks_only",
+    "redacted_only",
+    "no_external_embedding_provider_default",
+    "no_raw_vector_content_in_sqlite",
+    "no_semantic_retrieval_bypass",
+    "fail_closed"
+  ]
+}

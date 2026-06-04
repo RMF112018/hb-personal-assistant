@@ -1,0 +1,155 @@
+{
+  "artifact": "phase_09_embedding_and_vector_store_policy",
+  "prompt": "Prompt_14_Embedding_And_Vector_Store_Policy",
+  "phase": "09",
+  "classification": "implementation_embedding_vector_policy_plus_no_raw_guardrails",
+  "posture": "policy_plus_guardrail_plus_proof_local_only_metadata_only_read_only_fail_closed_no_embeddings_no_index_built",
+  "repo_sha": "b192c19db986e58563a8bc13dcebf84e86b339d5",
+  "schema_version": 38,
+  "schema_version_expected": 38,
+  "policy_version": "phase_09_embedding_vector_policy_v1",
+  "contract_version": "1.4.0-phase-09",
+  "embedding_provider": "local",
+  "embedding_dim": 384,
+  "vector_store_kind": "simple",
+  "embeddable_family_count": 7,
+  "embeddable_families": [
+    "phase_07d_source_evidence_trails",
+    "project_issue_history_items",
+    "project_risk_digest_items",
+    "aging_exposure_report_items",
+    "accepted_long_term_memory",
+    "approved_obsidian_generated_outputs",
+    "cross_source_relationships"
+  ],
+  "forbidden_family_count": 15,
+  "deferred_embedding_providers": [
+    "openai",
+    "azure_openai",
+    "huggingface_remote"
+  ],
+  "persistence_rules": {
+    "sqlite_metadata_only": true,
+    "raw_vector_content_persisted": 0,
+    "vectors_persisted_outside_sqlite": true,
+    "no_raw_text_column": true
+  },
+  "config_valid": true,
+  "config_violations": [],
+  "schema_ready": true,
+  "governed_tables": [
+    "second_brain_retrieval_embedding_model_evals",
+    "second_brain_retrieval_vector_index_runs",
+    "second_brain_retrieval_vector_index_items"
+  ],
+  "no_raw_proof": {
+    "proof_passed": true,
+    "case_count": 9,
+    "cases": [
+      {
+        "name": "safe_candidate",
+        "expected_rejected": false,
+        "rejected": false,
+        "violations": []
+      },
+      {
+        "name": "excluded_family",
+        "expected_rejected": true,
+        "rejected": true,
+        "violations": [
+          "source_family_excluded:raw_email_body"
+        ]
+      },
+      {
+        "name": "non_embeddable_family",
+        "expected_rejected": true,
+        "rejected": true,
+        "violations": [
+          "source_family_not_embeddable:meeting_prep_brief_sections"
+        ]
+      },
+      {
+        "name": "raw_body_field",
+        "expected_rejected": true,
+        "rejected": true,
+        "violations": [
+          "forbidden_field:raw_body"
+        ]
+      },
+      {
+        "name": "signed_url_field",
+        "expected_rejected": true,
+        "rejected": true,
+        "violations": [
+          "forbidden_field:signed_url"
+        ]
+      },
+      {
+        "name": "vector_blob_field",
+        "expected_rejected": true,
+        "rejected": true,
+        "violations": [
+          "forbidden_field:embedding",
+          "raw_vector_content:embedding"
+        ]
+      },
+      {
+        "name": "secret_shape_value",
+        "expected_rejected": true,
+        "rejected": true,
+        "violations": [
+          "raw_content_shape:content_hash"
+        ]
+      },
+      {
+        "name": "missing_metadata",
+        "expected_rejected": true,
+        "rejected": true,
+        "violations": [
+          "missing_metadata:content_hash"
+        ]
+      },
+      {
+        "name": "unresolved_review",
+        "expected_rejected": true,
+        "rejected": true,
+        "violations": [
+          "unresolved_review_required"
+        ]
+      }
+    ],
+    "proof_companion_json": "embedding-vector-policy-no-raw-proof.json",
+    "proof_companion_md": "embedding-vector-policy-no-raw-proof.md"
+  },
+  "operator_db": {
+    "schema_version": 38,
+    "governed_table_rows": {
+      "second_brain_retrieval_embedding_model_evals": 0,
+      "second_brain_retrieval_vector_index_runs": 0,
+      "second_brain_retrieval_vector_index_items": 0
+    },
+    "operator_db_unmutated": true,
+    "note": "policy/status/proof are read-only (mode=ro); persist nothing; vectors never persisted to SQLite"
+  },
+  "validation": {
+    "compileall_exit": 0,
+    "ruff": "clean",
+    "mypy_source_files": 283,
+    "pytest_passed": 3091,
+    "pytest_failed": 0,
+    "pytest_deselected": 1,
+    "new_tests": 11,
+    "construction_agent_validate": "4/4 schema V38",
+    "table_inventory": "190 contract / 0 unmapped",
+    "cli_matrix_all_exit_0": true,
+    "phase_08c_gates_skipped_reason": "append-only ledger writes operator DB (disclosed Prompts 02/05)"
+  },
+  "deferred_items": [
+    "external embedding providers (openai/azure_openai/huggingface_remote)",
+    "approved index source manifest selection (Prompt 15)",
+    "vector index build dry-run/apply (Prompts 18-19)",
+    "post-build no-raw-vector-index proof over the real index (Prompt 35)"
+  ],
+  "stop_condition_triggered": false,
+  "generated_utc": "2026-06-04T20:59:26.585426+00:00"
+}

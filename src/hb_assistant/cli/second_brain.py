@@ -115,6 +115,13 @@ llamaindex_app = typer.Typer(
 )
 retrieval_app.add_typer(llamaindex_app, name="llamaindex")
 
+embedding_policy_app = typer.Typer(
+    name="embedding-policy",
+    help="Phase 09 embedding + vector-store policy and no-raw guardrails (read-only).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(embedding_policy_app, name="embedding-policy")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3082,6 +3089,106 @@ def retrieval_llamaindex_status(
     ]
     ready = report["policy_loaded"] and report["config_valid"] and report["schema_ready"]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if ready else 3)
+
+
+_EMBEDDING_POLICY_GUARDRAILS = {
+    "read_only": True,
+    "no_raw": True,
+    "no_writeback": True,
+    "no_raw_vector_content_in_sqlite": True,
+    "metadata_only": True,
+    "local_first": True,
+    "source_linked_chunks_only": True,
+    "external_embedding_providers_deferred": True,
+}
+
+
+@embedding_policy_app.command("status")
+def retrieval_embedding_policy_status(
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 09 embedding + vector-store policy status (read-only, fail-closed).
+
+    Reports the resolved embedding provider / dimension / vector-store kind, the embeddable
+    source-family allowlist (the redacted, source-linked families — never a raw EXCLUDED family),
+    the persistence rules (vectors never persisted to SQLite), and schema readiness (V38). Read-only
+    over the DB; builds no embeddings/index. Exit 0 when the contract/seed load, the config is valid,
+    and the schema is ready; exit 3 on a fail-closed contract/seed failure, invalid config, or stale
+    schema.
+    """
+    from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
+        EmbeddingVectorPolicyError,
+        build_embedding_vector_policy_status,
+    )
+
+    try:
+        report = build_embedding_vector_policy_status()
+    except EmbeddingVectorPolicyError as exc:
+        payload = {
+            "command": "second-brain retrieval embedding-policy status",
+            "policy_loaded": False,
+            "config_valid": False,
+            "schema_ready": False,
+            "error": type(exc).__name__,
+            "guardrails": _EMBEDDING_POLICY_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**report, "guardrails": _EMBEDDING_POLICY_GUARDRAILS}
+    human = [
+        "Phase 09 embedding + vector-store policy status (read-only, advisory)",
+        f"  provider: {report['embedding_provider']} | dim: {report['embedding_dim']}"
+        f" | vector store: {report['vector_store_kind']}",
+        f"  embeddable families: {report['embeddable_family_count']}"
+        f" | config valid: {report['config_valid']} | schema ready: {report['schema_ready']}",
+        f"  blockers: {report['blockers']}",
+    ]
+    ready = report["policy_loaded"] and report["config_valid"] and report["schema_ready"]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if ready else 3)
+
+
+@embedding_policy_app.command("no-raw-proof")
+def retrieval_embedding_policy_no_raw_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the no-raw proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove the embedding no-raw guardrail rejects raw/unsafe candidates (read-only, fail-closed).
+
+    Runs `validate_embedding_candidate` over controlled safe + planted-unsafe candidates (excluded
+    family, raw body, signed URL, vector blob, secret shape, missing metadata, unresolved review) and
+    attests the persistence rules. Builds no embeddings; persists nothing to the operator DB. Exit 0
+    when the proof passes, 3 otherwise.
+    """
+    from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
+        EmbeddingVectorPolicyError,
+        build_no_raw_vector_policy_proof,
+    )
+
+    try:
+        proof = build_no_raw_vector_policy_proof(write_evidence=evidence)
+    except EmbeddingVectorPolicyError as exc:
+        payload = {
+            "command": "second-brain retrieval embedding-policy no-raw-proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _EMBEDDING_POLICY_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _EMBEDDING_POLICY_GUARDRAILS}
+    human = [
+        f"Embedding/vector policy no-raw proof passed={proof['proof_passed']}",
+        *[f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}" for c in proof["cases"]],
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 
 
 @financial_app.command("no-writeback-proof")

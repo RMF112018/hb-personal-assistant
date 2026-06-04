@@ -1,0 +1,107 @@
+{
+  "proof": "phase_09_no_raw_embedding_vector_policy",
+  "command": "second-brain retrieval embedding-policy no-raw-proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-04T20:58:37.654131+00:00",
+  "repo_sha": "b192c19db986e58563a8bc13dcebf84e86b339d5",
+  "policy_version": "phase_09_embedding_vector_policy_v1",
+  "embeddable_family_count": 7,
+  "case_count": 9,
+  "cases": [
+    {
+      "name": "safe_candidate",
+      "expected_rejected": false,
+      "rejected": false,
+      "violations": [],
+      "passed": true
+    },
+    {
+      "name": "excluded_family",
+      "expected_rejected": true,
+      "rejected": true,
+      "violations": [
+        "source_family_excluded:raw_email_body"
+      ],
+      "passed": true
+    },
+    {
+      "name": "non_embeddable_family",
+      "expected_rejected": true,
+      "rejected": true,
+      "violations": [
+        "source_family_not_embeddable:meeting_prep_brief_sections"
+      ],
+      "passed": true
+    },
+    {
+      "name": "raw_body_field",
+      "expected_rejected": true,
+      "rejected": true,
+      "violations": [
+        "forbidden_field:raw_body"
+      ],
+      "passed": true
+    },
+    {
+      "name": "signed_url_field",
+      "expected_rejected": true,
+      "rejected": true,
+      "violations": [
+        "forbidden_field:signed_url"
+      ],
+      "passed": true
+    },
+    {
+      "name": "vector_blob_field",
+      "expected_rejected": true,
+      "rejected": true,
+      "violations": [
+        "forbidden_field:embedding",
+        "raw_vector_content:embedding"
+      ],
+      "passed": true
+    },
+    {
+      "name": "secret_shape_value",
+      "expected_rejected": true,
+      "rejected": true,
+      "violations": [
+        "raw_content_shape:content_hash"
+      ],
+      "passed": true
+    },
+    {
+      "name": "missing_metadata",
+      "expected_rejected": true,
+      "rejected": true,
+      "violations": [
+        "missing_metadata:content_hash"
+      ],
+      "passed": true
+    },
+    {
+      "name": "unresolved_review",
+      "expected_rejected": true,
+      "rejected": true,
+      "violations": [
+        "unresolved_review_required"
+      ],
+      "passed": true
+    }
+  ],
+  "persistence_rules": {
+    "sqlite_metadata_only": true,
+    "raw_vector_content_persisted": 0,
+    "vectors_persisted_outside_sqlite": true,
+    "no_raw_text_column": true
+  },
+  "metadata_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "no_raw_vector_content_in_sqlite": true,
+    "local_first": true
+  }
+}

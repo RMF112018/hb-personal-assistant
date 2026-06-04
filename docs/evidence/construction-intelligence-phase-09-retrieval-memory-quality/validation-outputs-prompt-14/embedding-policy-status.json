@@ -1,0 +1,62 @@
+{
+  "command": "second-brain retrieval embedding-policy status",
+  "phase": "09",
+  "generated_utc": "2026-06-04T20:58:37.223329+00:00",
+  "repo_sha": "b192c19db986e58563a8bc13dcebf84e86b339d5",
+  "policy_loaded": true,
+  "policy_version": "phase_09_embedding_vector_policy_v1",
+  "contract_version": "1.4.0-phase-09",
+  "embedding_provider": "local",
+  "embedding_dim": 384,
+  "vector_store_kind": "simple",
+  "max_nodes_per_run": 5000,
+  "embeddable_family_count": 7,
+  "embeddable_families": [
+    "phase_07d_source_evidence_trails",
+    "project_issue_history_items",
+    "project_risk_digest_items",
+    "aging_exposure_report_items",
+    "accepted_long_term_memory",
+    "approved_obsidian_generated_outputs",
+    "cross_source_relationships"
+  ],
+  "forbidden_family_count": 15,
+  "deferred_embedding_providers": [
+    "openai",
+    "azure_openai",
+    "huggingface_remote"
+  ],
+  "persistence_rules": {
+    "sqlite_metadata_only": true,
+    "raw_vector_content_persisted": 0,
+    "vectors_persisted_outside_sqlite": true,
+    "no_raw_text_column": true
+  },
+  "config_valid": true,
+  "config_violations": [],
+  "schema_version": 38,
+  "schema_version_expected": 38,
+  "schema_ready": true,
+  "governed_tables": [
+    "second_brain_retrieval_embedding_model_evals",
+    "second_brain_retrieval_vector_index_runs",
+    "second_brain_retrieval_vector_index_items"
+  ],
+  "governed_table_rows": {
+    "second_brain_retrieval_embedding_model_evals": 0,
+    "second_brain_retrieval_vector_index_runs": 0,
+    "second_brain_retrieval_vector_index_items": 0
+  },
+  "blockers": [],
+  "read_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "no_raw_vector_content_in_sqlite": true,
+    "metadata_only": true,
+    "local_first": true,
+    "source_linked_chunks_only": true,
+    "external_embedding_providers_deferred": true
+  }
+}
