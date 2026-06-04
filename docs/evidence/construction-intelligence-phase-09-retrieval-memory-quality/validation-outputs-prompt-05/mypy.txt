@@ -1,0 +1,4 @@
+src/hb_assistant/construction/second_brain/automation_executor.py:2613: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+pyproject.toml: note: unused section(s): module = ['hb_assistant.retrieval.context']
+Success: no issues found in 275 source files
+MYPY_EXIT=0

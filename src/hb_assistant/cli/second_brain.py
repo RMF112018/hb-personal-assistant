@@ -2752,6 +2752,64 @@ def data_quality_phase_08d_gates(
     _emit_08c(payload, json_out=json_out, human=human)
 
 
+@data_quality_app.command("review-load")
+def data_quality_review_load(
+    project: str | None = typer.Option(
+        None, "--project", help="Optional project key (the mart is computed across all projects)."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 09 review-load triage mart + fail-closed review-required promotion gate (read-only).
+
+    Counts review load by DISTINCT review item (the financial review table is an append-only
+    per-run ledger), classifies high-impact blockers, surfaces the review_not_performed posture,
+    and reports the fail-closed promotion gate (unresolved / high-impact / review-required items
+    are blocked from promotion into an approved source manifest). Read-only over the DB;
+    advisory only; never a final determination. Exit 0 when the proof passes, 3 otherwise.
+    """
+    from hb_assistant.construction.second_brain.review_load_mart import build_review_load_proof
+
+    proof = build_review_load_proof()
+    mart = proof["mart"]
+    gate = proof["gate"]
+    payload = {
+        "command": "second-brain data-quality review-load",
+        "phase": "09",
+        "project_key": project,
+        "advisory_only": True,
+        "proof_passed": proof.get("proof_passed"),
+        "schema_version": proof.get("schema_version"),
+        "schema_version_expected": proof.get("schema_version_expected"),
+        "gate_fail_closed_ok": proof.get("gate_fail_closed_ok"),
+        "raw_content_findings": proof.get("raw_content_findings"),
+        "total_distinct_review_items": mart.get("total_distinct_review_items"),
+        "total_raw_rows": mart.get("total_raw_rows"),
+        "total_unresolved": mart.get("total_unresolved"),
+        "total_high_impact_distinct": mart.get("total_high_impact_distinct"),
+        "review_not_performed": mart.get("review_not_performed"),
+        "tables": mart.get("tables"),
+        "gate": gate,
+        "guardrails": mart.get("guardrails"),
+    }
+    human = [
+        "Phase 09 review-load mart + promotion gate (advisory only, read-only)",
+        f"  project: {project or 'all'}",
+        f"  proof passed: {proof.get('proof_passed')}",
+        f"  distinct review items: {mart.get('total_distinct_review_items')} "
+        f"(raw rows {mart.get('total_raw_rows')})",
+        f"  unresolved: {mart.get('total_unresolved')} | "
+        f"high-impact: {mart.get('total_high_impact_distinct')}",
+        f"  review_not_performed: {mart.get('review_not_performed')}",
+        f"  gate: blocked {gate.get('blocked_from_promotion')} / "
+        f"promotable {gate.get('promotable_review_ready')}",
+    ]
+    _emit_08c(
+        payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3
+    )
+
+
 @financial_app.command("no-writeback-proof")
 def financial_no_writeback_proof(
     project: str | None = typer.Option(None, "--project", help="Optional project key."),

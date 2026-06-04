@@ -1,0 +1,43 @@
+{
+  "artifact": "phase_09_review_tier_preservation",
+  "gap": "G-03",
+  "preserved": {
+    "review_tier": {
+      "construction_review_queue": {},
+      "email_review_queue": {},
+      "second_brain_financial_review_required_items": {
+        "financial_review": 19,
+        "operator_review": 785
+      },
+      "memory_update_candidates": {},
+      "construction_document_intelligence_previews": {},
+      "cross_source_relationship_candidates": {}
+    },
+    "impact_category": {
+      "construction_review_queue": {
+        "unclassified": 26
+      },
+      "email_review_queue": {
+        "contractual": 11,
+        "claim": 1,
+        "unclassified": 10
+      },
+      "second_brain_financial_review_required_items": {
+        "unclassified": 22,
+        "cost_impact": 782
+      },
+      "memory_update_candidates": {},
+      "construction_document_intelligence_previews": {
+        "unclassified": 1
+      },
+      "cross_source_relationship_candidates": {
+        "unclassified": 1420,
+        "personnel": 22,
+        "contractual": 132,
+        "financial": 301,
+        "schedule_impact": 5
+      }
+    }
+  },
+  "note": "the mart preserves review tier + impact/confidence classification + source-family per table; counts/enums only, no raw content"
+}

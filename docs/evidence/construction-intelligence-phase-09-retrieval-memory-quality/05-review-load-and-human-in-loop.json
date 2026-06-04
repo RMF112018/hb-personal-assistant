@@ -1,0 +1,165 @@
+{
+  "artifact": "phase_09_review_load_and_human_in_loop",
+  "prompt": "Prompt_05_Review_Load_And_Human_In_Loop_Preflight",
+  "gap": "G-03",
+  "posture": "read_only_derived_mart_over_operator_db_no_schema_no_writes",
+  "operator_db_unmutated": true,
+  "review_table_counts_before_after": {
+    "before": {
+      "construction_review_queue": 26,
+      "email_review_queue": 22,
+      "second_brain_financial_review_required_items": 109284,
+      "memory_update_candidates": 0,
+      "construction_document_intelligence_previews": 1,
+      "cross_source_relationship_candidates": 1880
+    },
+    "after": {
+      "construction_review_queue": 26,
+      "email_review_queue": 22,
+      "second_brain_financial_review_required_items": 109284,
+      "memory_update_candidates": 0,
+      "construction_document_intelligence_previews": 1,
+      "cross_source_relationship_candidates": 1880
+    }
+  },
+  "proof": {
+    "proof": "phase_09_review_load",
+    "schema_version": 37,
+    "schema_version_expected": 37,
+    "proof_passed": true,
+    "gate_fail_closed_ok": true,
+    "raw_content_findings": [],
+    "mart": {
+      "mart": "phase_09_review_load",
+      "schema_version": 37,
+      "project_scope": "all",
+      "present_review_tables": 6,
+      "total_distinct_review_items": 2733,
+      "total_raw_rows": 111213,
+      "total_unresolved": 109492,
+      "total_high_impact_distinct": 1254,
+      "human_review_decisions": 0,
+      "review_not_performed": true,
+      "tables": {
+        "construction_review_queue": {
+          "present": true,
+          "source_family": "construction",
+          "raw_rows": 26,
+          "distinct_items": 26,
+          "append_only_ledger": false,
+          "distinct_run_ids": null,
+          "unresolved": 26,
+          "high_impact_distinct": 0,
+          "by_impact_category": {
+            "unclassified": 26
+          },
+          "by_review_tier": {}
+        },
+        "email_review_queue": {
+          "present": true,
+          "source_family": "email",
+          "raw_rows": 22,
+          "distinct_items": 22,
+          "append_only_ledger": false,
+          "distinct_run_ids": null,
+          "unresolved": 22,
+          "high_impact_distinct": 12,
+          "by_impact_category": {
+            "contractual": 11,
+            "claim": 1,
+            "unclassified": 10
+          },
+          "by_review_tier": {}
+        },
+        "second_brain_financial_review_required_items": {
+          "present": true,
+          "source_family": "financial",
+          "raw_rows": 109284,
+          "distinct_items": 804,
+          "append_only_ledger": true,
+          "distinct_run_ids": 118,
+          "unresolved": 109284,
+          "high_impact_distinct": 782,
+          "by_impact_category": {
+            "unclassified": 22,
+            "cost_impact": 782
+          },
+          "by_review_tier": {
+            "financial_review": 19,
+            "operator_review": 785
+          }
+        },
+        "memory_update_candidates": {
+          "present": true,
+          "source_family": "memory",
+          "raw_rows": 0,
+          "distinct_items": 0,
+          "append_only_ledger": false,
+          "distinct_run_ids": null,
+          "unresolved": 0,
+          "high_impact_distinct": 0,
+          "by_impact_category": {},
+          "by_review_tier": {}
+        },
+        "construction_document_intelligence_previews": {
+          "present": true,
+          "source_family": "document",
+          "raw_rows": 1,
+          "distinct_items": 1,
+          "append_only_ledger": false,
+          "distinct_run_ids": null,
+          "unresolved": 1,
+          "high_impact_distinct": 0,
+          "by_impact_category": {
+            "unclassified": 1
+          },
+          "by_review_tier": {}
+        },
+        "cross_source_relationship_candidates": {
+          "present": true,
+          "source_family": "relationship",
+          "raw_rows": 1880,
+          "distinct_items": 1880,
+          "append_only_ledger": false,
+          "distinct_run_ids": null,
+          "unresolved": 159,
+          "high_impact_distinct": 460,
+          "by_impact_category": {
+            "unclassified": 1420,
+            "personnel": 22,
+            "contractual": 132,
+            "financial": 301,
+            "schedule_impact": 5
+          },
+          "by_review_tier": {}
+        }
+      },
+      "note": "Distinct review items (not raw ledger rows) are the true review burden; second_brain_financial_review_required_items is an append-only per-run ledger.",
+      "guardrails": {
+        "read_only": true,
+        "metadata_only": true,
+        "advisory_only_no_determination": true
+      }
+    },
+    "gate": {
+      "gate": "phase_09_review_required_promotion",
+      "fail_closed": true,
+      "review_not_performed": true,
+      "total_distinct_review_items": 2733,
+      "blocked_from_promotion": 2733,
+      "promotable_review_ready": 0,
+      "unresolved_high_impact_promotable": 0,
+      "blocked_by_reason": {
+        "review_not_performed_blocks_all": true,
+        "unresolved": 109492,
+        "high_impact": 1254
+      },
+      "review_ready_batches": [],
+      "guardrails": {
+        "fail_closed": true,
+        "advisory_only": true,
+        "no_external_writeback": true
+      }
+    }
+  }
+}
