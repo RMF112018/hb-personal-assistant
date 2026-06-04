@@ -1,0 +1,97 @@
+{
+  "proof": "phase_09_vector_index_apply",
+  "command": "second-brain retrieval llamaindex build-apply-proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-04T23:39:45.309062+00:00",
+  "repo_sha": "b0430c959f1955ccdb0188d1b1cce62065542364",
+  "applied_run_id": "vir_apply_1fe305b8bfc3aa7e059010d2bdf9136a",
+  "applied_item_count": 3,
+  "embedding_dim": 384,
+  "vectors_written_outside_sqlite": true,
+  "vectors_persisted_to_sqlite": false,
+  "run_record_guard_clean": true,
+  "item_records_guard_clean": true,
+  "no_forbidden_persisted_columns": true,
+  "blocked_no_indexable_nodes": true,
+  "blocked_sdk_absent": "unit_tested",
+  "case_count": 7,
+  "cases": [
+    {
+      "name": "safe_node",
+      "expected_indexable": true,
+      "indexable": true,
+      "violations": [],
+      "passed": true
+    },
+    {
+      "name": "missing_review_tier",
+      "expected_indexable": false,
+      "indexable": false,
+      "violations": [
+        "missing_review_tier",
+        "missing_metadata:review_tier"
+      ],
+      "passed": true
+    },
+    {
+      "name": "missing_confidence",
+      "expected_indexable": false,
+      "indexable": false,
+      "violations": [
+        "missing_confidence_class",
+        "missing_metadata:confidence_class"
+      ],
+      "passed": true
+    },
+    {
+      "name": "missing_source_ref",
+      "expected_indexable": false,
+      "indexable": false,
+      "violations": [
+        "missing_source_ref",
+        "missing_metadata:source_ref"
+      ],
+      "passed": true
+    },
+    {
+      "name": "missing_freshness",
+      "expected_indexable": false,
+      "indexable": false,
+      "violations": [
+        "missing_freshness_label",
+        "missing_metadata:freshness_label"
+      ],
+      "passed": true
+    },
+    {
+      "name": "raw_shape_text",
+      "expected_indexable": false,
+      "indexable": false,
+      "violations": [
+        "raw_content_shape:text_redacted"
+      ],
+      "passed": true
+    },
+    {
+      "name": "non_embeddable_family",
+      "expected_indexable": false,
+      "indexable": false,
+      "violations": [
+        "source_family_excluded:raw_prompt"
+      ],
+      "passed": true
+    }
+  ],
+  "metadata_only": true,
+  "guardrails": {
+    "read_only": false,
+    "no_raw": true,
+    "no_writeback": true,
+    "approved_manifest_only_input": true,
+    "vectors_outside_sqlite": true,
+    "no_raw_vector_content_in_sqlite": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

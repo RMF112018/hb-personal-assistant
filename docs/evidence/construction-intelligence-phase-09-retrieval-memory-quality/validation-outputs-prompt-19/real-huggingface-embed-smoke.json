@@ -1,0 +1,21 @@
+{
+  "smoke": "phase_09_vector_index_apply_real_huggingface_embed",
+  "embedding_model_label": "BAAI/bge-small-en-v1.5",
+  "status": "applied",
+  "total_items": 3,
+  "embedding_dim": 384,
+  "vectors_persisted_to_sqlite": false,
+  "vector_store_location": "external_filesystem",
+  "vector_store_files_on_disk": [
+    "default__vector_store.json",
+    "docstore.json",
+    "graph_store.json",
+    "image__vector_store.json",
+    "index_store.json"
+  ],
+  "persisted_run": {
+    "status": "applied",
+    "item_count": 3
+  },
+  "persisted_item_rows": 3
+}

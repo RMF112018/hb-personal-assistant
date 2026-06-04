@@ -1,0 +1,22 @@
+# Phase 09 Prompt 19 — vector index build APPLY (resolved values; advisory).
+# Metadata-only: bounded numeric params + status/blocker vocabulary. No raw content, prompts,
+# responses, tokens, signed/download URLs, secrets, or filesystem paths. The real vector-store
+# location is resolved at build time under Application Support (vectors never persisted to SQLite,
+# never stored here). The embedding model/index *kind* labels come from the LlamaIndex config seed.
+version: phase_09_vector_index_apply_v1
+
+# Apply is gated: it only runs when the optional LlamaIndex SDK is installed AND there is >=1
+# indexable node in the approved manifest's loaders. Otherwise it fails closed (apply_blocked).
+max_nodes_per_run: 5000
+vector_store_location: external_filesystem
+vectors_persisted_to_sqlite: false
+
+# Status/blocker vocabulary surfaced to the operator (mirrors the contract).
+status_values:
+  - applied
+  - apply_blocked
+blocker_reasons:
+  - sdk_not_available
+  - no_indexable_nodes
+  - schema_not_ready
+  - policy_unavailable

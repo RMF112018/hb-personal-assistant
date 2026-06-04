@@ -1,0 +1,31 @@
+{
+  "command": "second-brain retrieval llamaindex build --apply",
+  "phase": "09",
+  "generated_utc": "2026-06-04T23:39:44.133757+00:00",
+  "repo_sha": "b0430c959f1955ccdb0188d1b1cce62065542364",
+  "manifest_id": "asm_e3b0c44298fc1c149afbf4c8996fb924",
+  "manifest_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "schema_version": 38,
+  "config_hash": "c1aac21b856a8156307b7093772eab34a9bdc03c47e08073c204fad52e6662d3",
+  "index_plan_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "embedding_model_label": "BAAI/bge-small-en-v1.5",
+  "vector_store_kind": "simple",
+  "persist_dir_label": "app_support_retrieval_index",
+  "vector_store_location": "external_filesystem",
+  "vectors_persisted_to_sqlite": false,
+  "apply_policy_version": "phase_09_vector_index_apply_v1",
+  "policy_version": "phase_09_embedding_vector_policy_v1",
+  "project_key": null,
+  "status": "apply_blocked",
+  "blocker_reason": "no_indexable_nodes",
+  "guardrails": {
+    "no_raw": true,
+    "no_external_writeback": true,
+    "metadata_only_receipts": true,
+    "approved_manifest_only_input": true,
+    "vectors_outside_sqlite": true,
+    "no_raw_vector_content_in_sqlite": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

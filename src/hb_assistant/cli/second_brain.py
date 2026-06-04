@@ -3123,41 +3123,74 @@ _VECTOR_INDEX_GUARDRAILS = {
     "local_first": True,
 }
 
+_VECTOR_INDEX_APPLY_GUARDRAILS = {
+    "no_raw": True,
+    "no_external_writeback": True,
+    "metadata_only_receipts": True,
+    "approved_manifest_only_input": True,
+    "vectors_outside_sqlite": True,
+    "no_raw_vector_content_in_sqlite": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
 
 @llamaindex_app.command("build")
 def retrieval_llamaindex_build(
     apply: bool = typer.Option(
-        False, "--apply/--dry-run", help="Apply build (deferred to Prompt 19); default dry-run plan."
+        False, "--apply/--dry-run", help="Apply build (embed + write vector store); default dry-run."
     ),
     project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
     json_out: bool = typer.Option(
         True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
     ),
 ) -> None:
-    """Phase 09 vector index build — dry-run plan over the approved manifest (read-only, fail-closed).
+    """Phase 09 vector index build — dry-run plan, or `--apply` to embed + persist receipts (fail-closed).
 
-    Produces a metadata-only plan (per-family node counts, planned chunk count, config/plan hashes,
-    no-raw attestation) over the approved manifest's loader nodes, rejecting any node lacking review
-    tier / confidence / source ref / freshness / no-raw proof. Computes **no embeddings** and writes
-    **no vector store**. `--apply` is deferred to Prompt 19 (fail-closed). Exit 0 on a dry-run plan; 3
-    on `--apply` or a fail-closed contract/schema failure.
+    The dry-run produces a metadata-only plan (per-family node counts, planned chunk count, config/plan
+    hashes, no-raw attestation) over the approved manifest's loader nodes, rejecting any node lacking
+    review tier / confidence / source ref / freshness / no-raw proof — computing **no embeddings**.
+    `--apply` embeds those approved nodes via LlamaIndex and writes a vector store on the local
+    filesystem (**never to SQLite**), persisting metadata-only receipts. Apply fails closed
+    (`apply_blocked`) when the optional SDK is absent, there are no indexable nodes, or policy/schema is
+    not ready. Exit 0 on a dry-run plan or an applied build; 3 on `apply_blocked` or a fail-closed failure.
     """
     from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
         EmbeddingVectorPolicyError,
     )
     from hb_assistant.construction.second_brain.retrieval.vector_index import (
         VectorIndexBuildError,
+        build_vector_index_apply,
         build_vector_index_dry_run,
     )
 
     if apply:
-        payload = {
-            "command": "second-brain retrieval llamaindex build",
-            "status": "apply_not_enabled",
-            "detail": "vector-index apply is deferred to Phase 09 Prompt 19; only --dry-run is enabled.",
-            "guardrails": _VECTOR_INDEX_GUARDRAILS,
-        }
-        _emit_08c(payload, json_out=json_out, human=[payload["detail"]], exit_code=3)
+        try:
+            receipt = build_vector_index_apply(project_key=project)
+        except (VectorIndexBuildError, EmbeddingVectorPolicyError) as exc:
+            payload = {
+                "command": "second-brain retrieval llamaindex build --apply",
+                "status": "not_ready",
+                "error": type(exc).__name__,
+                "guardrails": _VECTOR_INDEX_APPLY_GUARDRAILS,
+            }
+            _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+            return
+        applied = receipt.get("status") == "applied"
+        payload = {**receipt, "guardrails": _VECTOR_INDEX_APPLY_GUARDRAILS}
+        payload.pop("items", None)  # per-item rows are persisted, not echoed
+        human = [
+            "Phase 09 vector index build — apply",
+            f"  status: {receipt['status']}"
+            + (
+                f" | items: {receipt.get('total_items')} | embedding_dim: {receipt.get('embedding_dim')}"
+                if applied
+                else f" | blocker: {receipt.get('blocker_reason')}"
+            ),
+            f"  vectors in sqlite: {receipt['vectors_persisted_to_sqlite']}"
+            f" | store: {receipt.get('vector_store_location')}",
+        ]
+        _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if applied else 3)
         return
 
     try:
@@ -3224,6 +3257,53 @@ def retrieval_llamaindex_build_proof(
     human = [
         f"Vector index dry-run proof passed={proof['proof_passed']}"
         f" (total_nodes={proof['proof_total_nodes']}, record={proof['dry_run_record_persisted']})",
+        *[f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}" for c in proof["cases"]],
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+@llamaindex_app.command("build-apply-proof")
+def retrieval_llamaindex_build_apply_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the apply build proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove the apply vector build is safe (embeds approved nodes, vectors outside SQLite, fail-closed).
+
+    Demonstrates a controlled approved index applies to an offline (`MockEmbedding`) LlamaIndex pipeline:
+    vectors are written to a directory **outside SQLite**, a guard-clean `status='applied'` run plus
+    metadata-only per-node item rows persist (no vectors / text / raw in SQLite), and the build blocks
+    when there are no indexable nodes. Computes embeddings only in a temp dir; never touches the operator
+    DB. Exit 0 if the proof passes.
+    """
+    from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
+        EmbeddingVectorPolicyError,
+    )
+    from hb_assistant.construction.second_brain.retrieval.vector_index import (
+        VectorIndexBuildError,
+        build_vector_index_apply_proof,
+    )
+
+    try:
+        proof = build_vector_index_apply_proof(write_evidence=evidence)
+    except (VectorIndexBuildError, EmbeddingVectorPolicyError) as exc:
+        payload = {
+            "command": "second-brain retrieval llamaindex build-apply-proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _VECTOR_INDEX_APPLY_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _VECTOR_INDEX_APPLY_GUARDRAILS}
+    human = [
+        f"Vector index apply proof passed={proof['proof_passed']}"
+        f" (items={proof['applied_item_count']}, dim={proof['embedding_dim']},"
+        f" vectors_outside_sqlite={proof['vectors_written_outside_sqlite']})",
         *[f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}" for c in proof["cases"]],
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)

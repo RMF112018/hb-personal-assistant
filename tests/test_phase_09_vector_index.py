@@ -179,11 +179,22 @@ def test_proof_writes_guard_clean_artifacts(tmp_path: Path) -> None:
     assert not _SECRET_OR_URL.search(pm.read_text())
 
 
-def test_cli_build_apply_deferred_and_proof(monkeypatch: pytest.MonkeyPatch) -> None:
-    # --apply is deferred -> exit 3
+def test_cli_build_apply_blocked_and_proof(monkeypatch: pytest.MonkeyPatch) -> None:
+    # --apply now enabled; fail-closed apply_blocked surfaces exit 3 (no indexable nodes)
+    monkeypatch.setattr(
+        vector_index,
+        "build_vector_index_apply",
+        lambda **kwargs: {
+            "command": "second-brain retrieval llamaindex build --apply",
+            "status": "apply_blocked",
+            "blocker_reason": "no_indexable_nodes",
+            "vectors_persisted_to_sqlite": False,
+            "vector_store_location": "external_filesystem",
+        },
+    )
     res = runner.invoke(app, ["retrieval", "llamaindex", "build", "--apply", "--json"])
     assert res.exit_code == 3
-    assert "apply_not_enabled" in res.stdout
+    assert "apply_blocked" in res.stdout
 
     # build dry-run fail-closed -> exit 3
     def _boom(**kwargs: object) -> dict:

@@ -138,9 +138,31 @@ hb-assistant second-brain retrieval llamaindex build-proof --json
   count, config/plan hashes, `ready_to_apply`, `vectors_persisted_to_sqlite: false`. It rejects any node
   lacking review tier / confidence / source ref / freshness / no-raw proof, and the approved manifest is
   the only input. With no approved nodes the plan is honestly empty.
-- `build --apply` is **deferred to Prompt 19** (fail-closed `apply_not_enabled`).
+- `build --apply` (Prompt 19) embeds the approved nodes via LlamaIndex, writes a `SimpleVectorStore` on
+  the local filesystem under Application Support (`retrieval/vector_store/<run_id>/`, **never SQLite**),
+  and persists metadata-only receipts (a `status='applied'` `vector_index_runs` row + one
+  `vector_index_items` row per node). It **fails closed** (`status='apply_blocked'`, persisting nothing)
+  when the optional SDK is absent (`sdk_not_available`), there are no indexable nodes
+  (`no_indexable_nodes`), or policy/schema is not ready. Exit 0 on `applied`; 3 on `apply_blocked`.
 - `build-proof` demonstrates the dry-run plan + build rule + a guard-clean `status='dry_run'` run record
   on a controlled fixture; persists nothing to the operator DB.
+- `build-apply-proof` demonstrates a guard-clean **apply** on a controlled fixture via an offline
+  `MockEmbedding` writer: vectors are written outside SQLite, a `status='applied'` run + per-node item
+  rows persist with all 23 guard `CHECK(=0)` columns 0, and the blocked-no-nodes path is exercised;
+  persists nothing to the operator DB.
+
+## Installing the optional embedding extra (for `--apply`)
+
+`--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;
+`.[retrieval-local]` adds the HuggingFace embeddings backend for the configured
+`BAAI/bge-small-en-v1.5` (downloads model weights on first use, then runs offline):
+
+```bash
+pip install -e ".[retrieval-local]"
+```
+
+Without it, `--apply` stays fail-closed (`apply_blocked: sdk_not_available`) and the rest of the surface
+(status, dry-run, all proofs) continues to run with the SDK absent.
 
 ## Guardrails
 
@@ -156,5 +178,6 @@ hb-assistant second-brain retrieval llamaindex build-proof --json
 
 ## Handoff to later Phase 09 prompts
 
-Config-snapshot persistence into `second_brain_retrieval_llamaindex_config_snapshots`, the vector-index
-build (dry-run/apply), hybrid retrieval, and evaluation are owned by later Phase 09 prompts (15–39).
+The vector-index build (dry-run + apply) landed in Prompts 18–19. Config-snapshot persistence into
+`second_brain_retrieval_llamaindex_config_snapshots`, hybrid retrieval, and evaluation are owned by later
+Phase 09 prompts (20–39).

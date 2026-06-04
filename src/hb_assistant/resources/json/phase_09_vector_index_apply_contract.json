@@ -1,0 +1,77 @@
+{
+  "contract_name": "phase_09_vector_index_apply_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 19 — vector index build APPLY. Governs the metadata-only receipts persisted to SQLite when approved nodes are embedded and written to a vector store that lives OUTSIDE SQLite (on the local filesystem under Application Support). The approved source manifest is the only authorization input; every node must carry review tier, confidence, source ref, freshness metadata, and pass the no-raw guardrail before it is embedded. Vectors, raw text, prompts, responses, tokens, URLs, and filesystem paths are never persisted to SQLite.",
+  "allowed_status_values": ["applied", "apply_blocked"],
+  "blocker_reasons": [
+    "sdk_not_available",
+    "no_indexable_nodes",
+    "schema_not_ready",
+    "policy_unavailable"
+  ],
+  "vector_store_persistence": "external_filesystem",
+  "vectors_persisted_to_sqlite": false,
+  "run_column_allowlist": [
+    "run_id",
+    "created_at_utc",
+    "policy_version",
+    "schema_version",
+    "manifest_id",
+    "config_snapshot_id",
+    "project_key",
+    "item_count",
+    "status",
+    "config_hash"
+  ],
+  "item_column_allowlist": [
+    "item_id",
+    "created_at_utc",
+    "policy_version",
+    "schema_version",
+    "run_id",
+    "source_family",
+    "source_ref_hash",
+    "content_hash",
+    "confidence_class",
+    "freshness_label",
+    "chunk_count"
+  ],
+  "forbidden_persisted_fields": [
+    "embedding",
+    "vector",
+    "raw_vector",
+    "text",
+    "text_redacted",
+    "raw_body",
+    "raw_document_text",
+    "raw_calendar_payload",
+    "raw_prompt",
+    "raw_response",
+    "raw_url",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret",
+    "source_ref",
+    "persist_dir"
+  ],
+  "required_node_fields": [
+    "source_family",
+    "source_ref",
+    "content_hash",
+    "confidence_class",
+    "review_tier",
+    "freshness_label"
+  ],
+  "global_requirements": [
+    "local_first",
+    "approved_manifest_only_input",
+    "source_linked_chunks_only",
+    "redacted_only",
+    "vectors_outside_sqlite",
+    "no_raw_vector_content_in_sqlite",
+    "no_external_writeback",
+    "no_semantic_retrieval_bypass",
+    "fail_closed"
+  ]
+}

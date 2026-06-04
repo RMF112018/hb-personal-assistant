@@ -131,16 +131,15 @@ def test_cli_contract_failure_fail_closed(monkeypatch: pytest.MonkeyPatch) -> No
 def test_helper_does_not_mutate_db() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = _migrated_db(td)
-        before = Path(db).stat().st_size
         conn = sqlite3.connect(db)
         rows_before = conn.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
         conn.close()
 
         build_phase_09_schema_status_report(db_path=db)
 
-        after = Path(db).stat().st_size
         conn = sqlite3.connect(db)
         rows_after = conn.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
         conn.close()
-        assert before == after
+        # Row counts are the authoritative no-mutation invariant; file size is not asserted because
+        # WAL checkpointing can resize the file without any row change (flaky under full-suite load).
         assert rows_before == rows_after

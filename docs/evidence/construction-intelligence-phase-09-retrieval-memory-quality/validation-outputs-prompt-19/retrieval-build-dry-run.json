@@ -1,0 +1,40 @@
+{
+  "command": "second-brain retrieval llamaindex build",
+  "phase": "09",
+  "generated_utc": "2026-06-04T23:39:43.631311+00:00",
+  "repo_sha": "b0430c959f1955ccdb0188d1b1cce62065542364",
+  "status": "dry_run",
+  "manifest_id": "asm_e3b0c44298fc1c149afbf4c8996fb924",
+  "manifest_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "schema_version": 38,
+  "embedding_model_label": "BAAI/bge-small-en-v1.5",
+  "index_kind": "vector_store",
+  "vector_store_kind": "simple",
+  "config_hash": "c1aac21b856a8156307b7093772eab34a9bdc03c47e08073c204fad52e6662d3",
+  "index_plan_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "total_nodes": 0,
+  "per_family_node_count": {},
+  "rejected_node_count": 0,
+  "rejected_reasons": {},
+  "planned_chunk_count": 0,
+  "sdk_available": true,
+  "ready_to_apply": false,
+  "no_raw_attested": true,
+  "vectors_persisted_to_sqlite": false,
+  "warnings": [
+    "no_approved_nodes",
+    "generated_outputs_loader_deferred"
+  ],
+  "policy_version": "phase_09_embedding_vector_policy_v1",
+  "read_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "metadata_only": true,
+    "approved_manifest_only_input": true,
+    "no_raw_vector_content_in_sqlite": true,
+    "dry_run_no_embeddings": true,
+    "local_first": true
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "prompt": "Phase 09 Prompt 19 — Vector Index Build Apply",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "b0430c959f1955ccdb0188d1b1cce62065542364",
+  "schema_version": 38,
+  "objective": "Implement the policy-gated apply build: embed approved nodes via LlamaIndex, write the vector store on the local filesystem (never SQLite), and persist metadata-only receipts. Fail-closed when the SDK is absent, there are no indexable nodes, or policy/schema is not ready.",
+  "summary": {
+    "new_modules": [],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/retrieval/vector_index.py",
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_vector_index_apply_contract.json"],
+    "new_seeds": ["resources/config/phase_09_vector_index_apply.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_vector_index_apply.py"],
+    "modified_tests": [
+      "tests/test_phase_09_vector_index.py",
+      "tests/test_phase_09_schema_status.py"
+    ],
+    "dependency_change": "Installed the optional .[retrieval-local] extra (llama-index-core + llama-index-embeddings-huggingface). pyproject.toml unchanged (extras declared in Prompt 13).",
+    "migrator_change": "None — V38 already created vector_index_runs + vector_index_items; schema stays 38, contract table count stays 190."
+  },
+  "apply_build": {
+    "entry_points": [
+      "build_vector_index_apply(db_path=None, *, project_key=None, writer=None, persist_root=None) -> dict",
+      "persist_apply_record(db_path, receipt, *, policy_version) -> str",
+      "build_vector_index_apply_proof(*, evidence_dir=None, write_evidence=True) -> dict"
+    ],
+    "writer_port": "Injectable VectorStoreWriter. Default = LlamaIndex VectorStoreIndex + SimpleVectorStore with HuggingFaceEmbedding(BAAI/bge-small-en-v1.5). Proofs/tests inject a MockEmbedding-backed writer so the default-safe suite runs fully offline.",
+    "vector_store_location": "external_filesystem (PathPolicy().get_app_support()/retrieval/vector_store/<run_id>/ by default) — never SQLite",
+    "fail_closed_reasons": ["sdk_not_available", "no_indexable_nodes", "schema_not_ready", "policy_unavailable"],
+    "input_contract": "The approved source manifest is the only input. Every node must carry review tier, confidence, source ref, freshness metadata, and pass the no-raw guardrail (validate_embedding_candidate); the build rule is re-asserted before embedding."
+  },
+  "operator_db_outcome": {
+    "build_apply_status": "apply_blocked",
+    "blocker_reason": "no_indexable_nodes",
+    "rationale": "The operator DB has zero approved sources, so apply honestly blocks and persists nothing.",
+    "vector_index_runs_rows": 0,
+    "vector_index_items_rows": 0,
+    "schema_version": 38,
+    "operator_db_mutated": false
+  },
+  "apply_proof": {
+    "command": "second-brain retrieval llamaindex build-apply-proof --json",
+    "proof_passed": true,
+    "applied_item_count": 3,
+    "embedding_dim": 384,
+    "vectors_written_outside_sqlite": true,
+    "vectors_persisted_to_sqlite": false,
+    "run_record_guard_clean": true,
+    "item_records_guard_clean": true,
+    "no_forbidden_persisted_columns": true,
+    "blocked_no_indexable_nodes": true,
+    "build_rule_cases_all_passed": true,
+    "guard_columns_checked": 23
+  },
+  "real_huggingface_embed_smoke": {
+    "embedding_model_label": "BAAI/bge-small-en-v1.5",
+    "status": "applied",
+    "total_items": 3,
+    "embedding_dim": 384,
+    "vectors_persisted_to_sqlite": false,
+    "vector_store_location": "external_filesystem",
+    "vector_store_files_on_disk": [
+      "default__vector_store.json",
+      "docstore.json",
+      "graph_store.json",
+      "image__vector_store.json",
+      "index_store.json"
+    ],
+    "persisted_run_status": "applied",
+    "persisted_item_rows": 3,
+    "note": "Genuine local embed via the configured HuggingFace model; LlamaIndex SimpleVectorStore persisted JSON on disk outside SQLite. Captured at validation-outputs-prompt-19/real-huggingface-embed-smoke.json. The automated test for this is tests/test_phase_09_vector_index_apply.py::test_apply_real_huggingface_embed_smoke (marked integration; excluded from the default-safe subset)."
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "Success: no issues found in 287 source files",
+    "pytest_not_live_integration_manual": "3135 passed, 0 failed, 2 deselected",
+    "construction_agent_validate": "exit 0 (schema 38)",
+    "data_quality_table_inventory": "exit 0 (contract_table_count=190, in_db_not_in_contract=[] i.e. 0 unmapped)",
+    "data_quality_no_writeback_proof": "exit 0",
+    "second_brain_phase_08a_gates": "exit 0",
+    "second_brain_phase_08b_gates": "exit 0",
+    "second_brain_phase_08c_gates": "SKIPPED — appends ~1,299 financial-ledger rows to the operator DB per call (disclosed defect from Prompts 02/05)",
+    "second_brain_data_quality_phase_08d_gates": "exit 0",
+    "second_brain_mcp_no_raw_access": "exit 0",
+    "second_brain_mcp_no_writeback": "exit 0",
+    "retrieval_llamaindex_status": "exit 0 (sdk available=true, ready_to_index=true)",
+    "retrieval_llamaindex_build_dry_run": "exit 0",
+    "retrieval_llamaindex_build_apply": "exit 3 (apply_blocked: no_indexable_nodes — operator DB has no approved sources; persists nothing)",
+    "retrieval_llamaindex_build_apply_proof": "exit 0 (proof_passed=true)",
+    "post_cli_guard_rerun": "tests/test_repo_sensitive_scan.py + tests/test_second_brain_no_writeback_proof.py — pass"
+  },
+  "command_path_corrections": {
+    "note": "The prompt's exact-command list used stale MCP paths (`second-brain mcp data-quality phase-08d-gates/no-raw-access-proof/no-writeback-proof`). The real commands are `second-brain data-quality phase-08d-gates`, `second-brain mcp no-raw-access`, `second-brain mcp no-writeback` — all run, all exit 0."
+  },
+  "guardrails_enforced": [
+    "approved source manifest is the only input; reject any node lacking review tier / confidence / source ref / freshness / no-raw proof",
+    "vectors written outside SQLite (raw_vector_content_persisted CHECK=0); metadata-only receipts",
+    "no raw source content / prompt / response / tokens / signed-or-download URLs / arbitrary SQL / unsafe paths persisted",
+    "no Graph/Procore/email/calendar/source-system/external-delivery writeback",
+    "fail-closed when SDK absent / no indexable nodes / schema or policy not ready",
+    "operator DB data-pristine (no migration this prompt; apply blocked on empty operator DB)"
+  ],
+  "deferred_items": [
+    "generated_outputs (research-packet) loader still absent — apply covers Obsidian + reviewed memory only (warning: generated_outputs_loader_deferred)",
+    "Hybrid query / semantic retrieval read path, eval sets, benchmarks, memory-quality review — later Phase 09 prompts",
+    "Phase 09 Prompt 07 (G-05 Memory Runtime & Review preflight) remains unrun from the earlier package"
+  ],
+  "blocker_classifications": {
+    "build_blockers": "none (apply machinery implemented + proven; operator apply blocked only by absence of approved sources, which is expected)",
+    "external_blockers": "none"
+  },
+  "incidental_fix": {
+    "test": "tests/test_phase_09_schema_status.py::test_helper_does_not_mutate_db",
+    "change": "Dropped the flaky file-size (st_size) no-mutation assertion; kept the authoritative schema_migrations row-count invariant. The file-size comparison flaked under full-suite load due to WAL checkpointing (documented project guidance: DB-no-mutation tests assert row counts, not file size). The same latent pattern remains in three sibling Phase 09 tests that did not flake and were left untouched (surgical scope)."
+  }
+}
