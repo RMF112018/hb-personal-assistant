@@ -29,6 +29,8 @@ class ObsidianIndexEntry(BaseModel):
     review_tier: int = 1
     review_status: str = "auto_advisory"
     source_ref_count: int = 0
+    note_name_hash: str = ""
+    link_target_hashes: list[str] = []
     stale_unknown_flags: list[str] = []
     approved_root_label: str = ""
 

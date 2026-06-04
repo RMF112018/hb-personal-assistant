@@ -30,11 +30,40 @@ from .policy import (
 
 _PROJECT_FRONTMATTER_RE = re.compile(r"^\s*project(?:_key)?\s*:\s*(.+?)\s*$", re.MULTILINE)
 _H1_RE = re.compile(r"^#\s+(.+?)\s*$", re.MULTILINE)
+_WIKILINK_RE = re.compile(r"\[\[([^\]\n]+)\]\]")
 _MAX_LABEL = 200
 
 
 def _sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def _normalize_link_target(raw: str) -> str:
+    """Reduce a wikilink/note name to a comparable key: drop ``|alias`` and ``#anchor``.
+
+    Returns a lowercased, whitespace-collapsed note stem. Never persisted as text — only
+    its :func:`_sha` digest is stored, so target identity is checkable without raw names.
+    """
+    name = raw.split("|", 1)[0].split("#", 1)[0]
+    return re.sub(r"\s+", " ", name).strip().lower()
+
+
+def _name_hash(note_stem: str) -> str:
+    """Canonical hash of a note's own name, comparable against link-target hashes."""
+    return _sha(_normalize_link_target(note_stem))
+
+
+def _link_target_hashes(section: str) -> list[str]:
+    """Redacted hashes of the distinct ``[[target]]`` wikilinks in a bounded section."""
+    out: list[str] = []
+    for raw in _WIKILINK_RE.findall(section):
+        norm = _normalize_link_target(raw)
+        if not norm:
+            continue
+        digest = _sha(norm)
+        if digest not in out:
+            out.append(digest)
+    return out
 
 
 def _slug(label: str) -> str:
@@ -93,6 +122,7 @@ def scan_approved_notes(
                 modified = None
             source_type = _slug(root_label)
 
+            note_name_hash = _name_hash(note.stem)
             for marker_id in markers:
                 section = _section_text(content, marker_id)
                 entries.append(
@@ -109,6 +139,8 @@ def scan_approved_notes(
                         review_tier=1,
                         review_status="auto_advisory",
                         source_ref_count=section.count("[["),
+                        note_name_hash=note_name_hash,
+                        link_target_hashes=_link_target_hashes(section),
                         stale_unknown_flags=[],
                         approved_root_label=root_label,
                     )
@@ -193,6 +225,8 @@ def write_index_manifest(manifest: ObsidianIndexManifest, *, db_path: str | None
                             "review_tier": entry.review_tier,
                             "approved_root_label": entry.approved_root_label,
                             "source_ref_count": entry.source_ref_count,
+                            "note_name_hash": entry.note_name_hash,
+                            "link_target_hashes": entry.link_target_hashes,
                             "stale_unknown_flags": entry.stale_unknown_flags,
                         }
                     ),

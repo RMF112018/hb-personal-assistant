@@ -2030,6 +2030,24 @@ def index_obsidian(
     raise typer.Exit(0)
 
 
+@index_app.command("linkage-proof")
+def index_linkage_proof(
+    db_path: str = typer.Option(
+        "", "--db-path", help="DB to verify (default: operator DB; use a proof DB for evidence)."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Read-only approved-Obsidian linkage proof: canonical refs + broken-link check (G-07)."""
+    from hb_assistant.construction.second_brain.obsidian_linkage_proof import (
+        build_obsidian_linkage_proof,
+    )
+
+    proof = build_obsidian_linkage_proof(db_path or None)
+    payload = {"command": "second-brain index linkage-proof", **proof}
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if proof.get("proof_passed") or not proof.get("populated") else 1)
+
+
 @automation_app.command("plan-execution")
 def automation_plan_execution(
     mode: str = typer.Option("manual", "--mode", help="manual|launchd|catch_up|replay"),

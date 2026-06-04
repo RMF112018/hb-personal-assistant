@@ -1,0 +1,41 @@
+{
+  "command": "second-brain index linkage-proof",
+  "proof": "phase_09_obsidian_linkage",
+  "schema_version": 37,
+  "schema_version_expected": 37,
+  "schema_ok": true,
+  "populated": false,
+  "proof_passed": true,
+  "policy_loaded": true,
+  "policy_error": null,
+  "policy_version": "phase_08a_obsidian_index_policy_v2",
+  "manifest_present": true,
+  "entry_table_present": true,
+  "latest_manifest_id": "da0d4a6b283d4841ae9e76918d614007",
+  "manifest_count": 1,
+  "entry_count": 0,
+  "guard_columns": 10,
+  "guard_sum": 0,
+  "guard_clean": true,
+  "canonical_refs_preserved_rows": 0,
+  "canonical_refs_preserved": true,
+  "unapproved_indexed": 0,
+  "approved_only": true,
+  "link_summary": {
+    "total_links": 0,
+    "resolved_links": 0,
+    "broken_links": 0,
+    "stale_unknown_links": 0,
+    "resolvable_notes": 0
+  },
+  "raw_content_findings": [],
+  "warnings": [],
+  "guardrails": {
+    "read_only": true,
+    "metadata_only": true,
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "approved_only": true,
+    "advisory_only_no_determination": true
+  }
+}

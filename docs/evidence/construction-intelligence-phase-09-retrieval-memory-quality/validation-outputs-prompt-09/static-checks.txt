@@ -1,0 +1,10 @@
+### compileall
+compileall: exit 0
+
+### ruff check .
+All checks passed!
+exit=0
+
+### mypy src
+pyproject.toml: note: unused section(s): module = ['hb_assistant.retrieval.context']
+Success: no issues found in 278 source files

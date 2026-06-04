@@ -1,0 +1,80 @@
+{
+  "proof": "phase_08d_no_mcp_writeback",
+  "command": "second-brain mcp no-writeback",
+  "phase": "08D",
+  "proof_passed": true,
+  "generated_utc": "2026-06-04T17:03:44.045931+00:00",
+  "scanned_surface_count": 7,
+  "surfaces": [
+    {
+      "surface": "permission_policy",
+      "passed": true,
+      "detail": "8 allow_* flags, all false=True"
+    },
+    {
+      "surface": "denied_registry",
+      "passed": true,
+      "detail": "writeback/direct-API/URL actions all denied",
+      "missing": []
+    },
+    {
+      "surface": "tool_wrappers",
+      "passed": true,
+      "detail": "nine workflow-wrapper-only tools; workflow-only + no-writeback required",
+      "wrapper_count": 9
+    },
+    {
+      "surface": "receipts",
+      "passed": true,
+      "detail": "writeback/API guard columns present and CHECK(=0); all guard columns zero",
+      "writeback_guard_columns_present": true,
+      "guard_columns_zero": true
+    },
+    {
+      "surface": "config_preview",
+      "passed": true,
+      "detail": "no raw keys/patterns",
+      "auto_apply": false,
+      "preview_only_no_auto_apply": true
+    },
+    {
+      "surface": "server_guardrails",
+      "passed": true,
+      "detail": "no raw keys/patterns"
+    },
+    {
+      "surface": "evidence",
+      "passed": true,
+      "detail": "12 evidence json artifacts scanned",
+      "scanned": [
+        "claude-desktop-config-preview.json",
+        "mcp-audit-receipt-proof.json",
+        "mcp-claude-desktop-runbook-proof.json",
+        "mcp-denied-tool-proof.json",
+        "mcp-prompt-contract-proof.json",
+        "mcp-resource-contract-proof.json",
+        "mcp-tool-broker-proof.json",
+        "mcp-tool-contract-proof.json",
+        "no-mcp-writeback-proof.json",
+        "no-raw-mcp-access-proof.json",
+        "phase-08d-gates-proof.json",
+        "phase-08d-validation-matrix-proof.json"
+      ]
+    }
+  ],
+  "metadata_only": {
+    "no_writeback_performed": true,
+    "no_direct_api_performed": true,
+    "no_external_delivery": true,
+    "static_scan_no_wrapper_dispatch": true
+  },
+  "guardrails": {
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_direct_graph_or_procore": true,
+    "no_arbitrary_sql": true,
+    "metadata_only": true
+  },
+  "proof_path": "docs/evidence/construction-intelligence-phase-08d-mcp-bridge/no-mcp-writeback-proof.json",
+  "proof_md_path": "docs/evidence/construction-intelligence-phase-08d-mcp-bridge/no-mcp-writeback-proof.md"
+}

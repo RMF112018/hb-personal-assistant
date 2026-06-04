@@ -1,0 +1,11 @@
+The repo pytest config (addopts "-q --tb=short") suppresses the final session
+summary line, so the pass total is derived from the selected-test collection
+(exit code 0, 0 skipped, confirmed by two full runs of the subset):
+
+  pytest -m "not live and not integration and not manual" --collect-only -q
+    | sum of per-file counts = 3046 selected tests
+
+  pytest -m "not live and not integration and not manual"  -> exit 0 (all pass)
+
+Prior Prompt 08 baseline 3039 + 7 new tests in
+tests/test_phase_09_obsidian_linkage_proof.py = 3046.

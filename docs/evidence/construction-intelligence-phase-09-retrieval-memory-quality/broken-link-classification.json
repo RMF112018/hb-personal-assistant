@@ -1,0 +1,23 @@
+{
+  "source": "controlled proof DB (throwaway fixture vault)",
+  "fixture_expected": {
+    "approved_root_label": "Construction Intelligence/Phase 07A Data Quality",
+    "expected_entries": 2,
+    "expected_excluded": 1,
+    "expected_resolved_links": 2,
+    "expected_broken_links": 1
+  },
+  "manifest_id": "db6867db033c42a18b9b394610e9fa6d",
+  "entry_count": 2,
+  "excluded_count": 1,
+  "link_summary": {
+    "total_links": 3,
+    "resolved_links": 2,
+    "broken_links": 1,
+    "stale_unknown_links": 0,
+    "resolvable_notes": 2
+  },
+  "warnings": [
+    "broken_links=1 (advisory source-coverage warning)"
+  ]
+}
