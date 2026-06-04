@@ -21,7 +21,7 @@
       "brief_date": null,
       "day_offset": 0,
       "force": false,
-      "original_run_registry_id": "cfbd2ca14be9474a87aaa13627a38c58",
+      "original_run_registry_id": "b6c0f1a466534b6fa87f07470a94ef1f",
       "replay_selector": "failed-only",
       "replay_stages": []
     },
@@ -32,7 +32,7 @@
         "brief_date": null,
         "day_offset": 0,
         "force": false,
-        "original_run_registry_id": "cfbd2ca14be9474a87aaa13627a38c58",
+        "original_run_registry_id": "b6c0f1a466534b6fa87f07470a94ef1f",
         "replay_selector": "failed-only",
         "replay_stages": []
       },
@@ -132,7 +132,7 @@
       ],
       "overall_status": "planned",
       "dry_run": true,
-      "generated_utc": "2026-06-03T09:20:09.833760+00:00",
+      "generated_utc": "2026-06-04T07:20:44.935280+00:00",
       "policy_version": "phase_08b_automation_executor_policy_v1",
       "stage_registry_version": "phase_08b_executor_stage_registry_v1",
       "reason_codes_used": [
@@ -240,17 +240,18 @@
         "no_external_writeback": true,
         "no_raw_content": true,
         "fail_closed": true,
-        "automation_execution_still_deferred": true
+        "automation_execution_still_deferred": false,
+        "automation_execution_ready_via_proof": true
       }
     },
-    "run_registry_id": "c3333c739ad94b82a06016b5a406fe13",
+    "run_registry_id": "7534c095b01948e68d06244db75fe824",
     "stage_receipts": [
       {
         "stage": "daily_brief_generate",
         "order": 2,
         "status": "succeeded",
-        "started_utc": "2026-06-03T09:20:09.949774+00:00",
-        "finished_utc": "2026-06-03T09:20:09.949805+00:00",
+        "started_utc": "2026-06-04T07:20:45.079558+00:00",
+        "finished_utc": "2026-06-04T07:20:45.079589+00:00",
         "duration_ms": 0,
         "reason_code": "STAGE_CORE_COMPLETE",
         "detail": null,
@@ -271,10 +272,16 @@
       "fail_closed": true,
       "lock_guaranteed_release": true,
       "stage_receipts_persisted": "V29_run_steps + emit V28+",
-      "automation_execution_still_deferred": true
+      "automation_execution_still_deferred": false,
+      "automation_execution_ready_via_proof": true
     },
     "lock_released": true,
-    "schema_version": 34
+    "schema_version": 34,
+    "last_failed_stage": null,
+    "failure_class": null,
+    "retry_exhausted": false,
+    "catch_up": false,
+    "replay_run": true
   },
   "guardrails": {
     "local_first": true,
@@ -286,7 +293,8 @@
     "fail_closed": true,
     "lock_guaranteed_release": true,
     "stage_receipts_persisted": "V29_run_steps + emit V28+",
-    "automation_execution_still_deferred": true
+    "automation_execution_still_deferred": false,
+    "automation_execution_ready_via_proof": true
   },
   "safe_replay_contract_satisfied": true
 }

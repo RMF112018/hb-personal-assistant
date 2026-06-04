@@ -14,17 +14,18 @@
   },
   "partial_surfaces": {
     "last_failed": "daily_brief_generate",
-    "failure_class": "DUPLICATE_SUCCESSFUL_DELIVERY_PREVENTED",
-    "last_good_unchanged": true
+    "failure_class": "RETRY_PERMANENT_UNKNOWN",
+    "last_good_unchanged": false
   },
   "exhaust_surfaces": {
-    "retry_exhausted": false,
-    "failure_class": null
+    "retry_exhausted": true,
+    "failure_class": "RETRY_TRANSIENT_LOCAL"
   },
   "replayable_elg": false,
   "job_health_called_on_all": true,
   "guardrails": {
-    "automation_execution_still_deferred": true,
+    "automation_execution_still_deferred": false,
+    "automation_execution_ready_via_proof": true,
     "local_first": true
   },
   "evidence_files": [

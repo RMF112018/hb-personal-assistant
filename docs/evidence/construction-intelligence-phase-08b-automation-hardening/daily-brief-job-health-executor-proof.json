@@ -6,11 +6,12 @@
   "lock_released": true,
   "no_raw_content": true,
   "job_health_called_for_success_and_fail_outcomes": true,
-  "job_health_received_outcome_on_fail": false,
+  "job_health_received_outcome_on_fail": true,
   "success_last_failed_none": true,
-  "fail_last_failed_present": false,
+  "fail_last_failed_present": true,
   "guardrails": {
-    "automation_execution_still_deferred": true,
+    "automation_execution_still_deferred": false,
+    "automation_execution_ready_via_proof": true,
     "job_health_after_all_outcomes": true
   }
 }
