@@ -1,0 +1,175 @@
+{
+  "artifact": "phase_09_attached_audit_live_gap_measurement",
+  "repo_truth": {
+    "head_sha": "23e6d870b8033fcea8bf4bacc167f8d2f6c29790",
+    "schema_version": 37,
+    "package_version": "1.3.0",
+    "operator_db": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+    "read_only_mode_ro": true
+  },
+  "gaps": {
+    "G-01_generated_output": {
+      "claim": "0 rows",
+      "live": {
+        "daily_brief_runs": 0,
+        "daily_brief_source_refs": 0,
+        "daily_brief_handoff_lines": 0,
+        "second_brain_research_packets": 0,
+        "parser_outputs": 0,
+        "second_brain_evaluation_runs": 0
+      },
+      "verdict": "confirmed_empty",
+      "owning_prompt": "Prompt_03",
+      "blocks_phase_09": true
+    },
+    "G-02_mcp_runtime": {
+      "claim": "0 receipts",
+      "live": {
+        "second_brain_mcp_tool_call_receipts": 0,
+        "second_brain_mcp_denial_receipts": 0
+      },
+      "verdict": "confirmed_empty",
+      "owning_prompt": "Prompt_04",
+      "blocks_phase_09": true
+    },
+    "G-03_review_queue": {
+      "claim": "~66,466 review items",
+      "live": {
+        "financial_review_required_items": {
+          "total_rows": 101490,
+          "distinct_run_ids": 112,
+          "distinct_review_items": 801,
+          "latest_run_rows": 1299,
+          "guard_sums": {
+            "external_writeback_performed": 0,
+            "raw_financial_source_payload_persisted": 0,
+            "raw_prompt_persisted": 0,
+            "financial_determination_performed": 0,
+            "payment_decision_performed": 0
+          }
+        },
+        "other_review_tables": {
+          "construction_review_queue": 26,
+          "email_review_queue": 22,
+          "memory_update_reviews": 0,
+          "construction_document_intelligence_previews": 1
+        },
+        "attached_audit_claimed_total": 66466,
+        "finding": "append_only_per_run_ledger",
+        "interpretation": "second_brain_financial_review_required_items is an append-only per-run ledger (run_id-tagged); 101490 total rows across 112 routing runs collapse to 801 DISTINCT review items. phase-08c-gates appends a fresh non-pruned routing run per invocation (the table grows ~1,299 rows per full run; repeated validation runs across preflight Prompts 00/01/02 contributed). Distinct financial-review burden ~801, NOT 66k/101k. All guard columns sum to 0 (no external writeback, no raw persistence, no determinations).",
+        "recommendation": "Prompt 05 (review-load preflight) must count DISTINCT review items (e.g. latest run_id or natural key), not raw ledger rows; flag non-pruning ledger as an 08C hygiene improvement (prune-prior-runs or read-only gate evaluation)."
+      },
+      "verdict": "reframed_append_only_ledger_distinct_~801",
+      "owning_prompt": "Prompt_05",
+      "blocks_phase_09": true
+    },
+    "G-04_financial_completeness": {
+      "claim": "currency 100% null; period ~98.7% null; wbs sparse",
+      "live": {
+        "total": 85521,
+        "currency_iso_code": {
+          "null": 85521,
+          "null_rate": 1.0
+        },
+        "period_start": {
+          "null": 84421,
+          "null_rate": 0.9871
+        },
+        "period_end": {
+          "null": 84421,
+          "null_rate": 0.9871
+        },
+        "wbs_code_id": {
+          "null": 2887,
+          "null_rate": 0.0338
+        },
+        "cost_code_id": {
+          "null": 2887,
+          "null_rate": 0.0338
+        }
+      },
+      "verdict": "confirmed",
+      "owning_prompt": "Prompt_06",
+      "blocks_phase_09": true
+    },
+    "G-05_memory": {
+      "claim": "0 populated",
+      "live": {
+        "long_term_memory_items": 0,
+        "long_term_memory_source_refs": 0,
+        "long_term_memory_quality_signals": 0,
+        "memory_update_candidates": 0,
+        "memory_update_reviews": 0,
+        "second_brain_operator_preference_profiles": 0,
+        "second_brain_operator_feedback": 0
+      },
+      "verdict": "confirmed_empty",
+      "owning_prompt": "Prompt_07",
+      "blocks_phase_09": true
+    },
+    "G-06_automation_delivery": {
+      "claim": "0 populated",
+      "live": {
+        "second_brain_run_registry": 0,
+        "second_brain_agent_run_receipts": 0,
+        "daily_brief_delivery_receipts": 0,
+        "daily_brief_notification_receipts": 0,
+        "daily_brief_open_receipts": 0,
+        "daily_brief_html_render_receipts": 0
+      },
+      "verdict": "confirmed_empty",
+      "owning_prompt": "Prompt_08",
+      "blocks_phase_09": true
+    },
+    "G-07_obsidian_linkage": {
+      "claim": "sqlite-linked-by-frontmatter 0",
+      "live": {
+        "obsidian_index_entries": 0,
+        "obsidian_index_manifests": 1
+      },
+      "verdict": "confirmed_empty",
+      "owning_prompt": "Prompt_09",
+      "blocks_phase_09": true
+    },
+    "G-08_relationship_quality": {
+      "claim": "population exists; quality marts absent",
+      "live": {
+        "cross_source_relationship_candidates": 1880,
+        "cross_source_relationships": 1671,
+        "candidates_by_confidence_class": {
+          "deterministic": 1671,
+          "strong_heuristic": 51,
+          "weak_heuristic": 158
+        },
+        "candidates_review_required": 159,
+        "relationship_quality_mart_present": false
+      },
+      "verdict": "confirmed_no_quality_mart",
+      "owning_prompt": "Prompt_10",
+      "blocks_phase_09": true
+    },
+    "G-10_corpus_balance": {
+      "claim": "procore/financial heavy; brief/research/mcp/memory/automation empty",
+      "live": {
+        "procore_live_records": 30035,
+        "procore_record_edges": 30822,
+        "procore_financial_amount_facts": 85521,
+        "procore_financial_invoice_items": 13136,
+        "calendar_event_index": 108,
+        "calendar_event_attendees": 1250,
+        "email_messages": 125,
+        "construction_drive_item_inventory": 401,
+        "obsidian_index_entries": 0,
+        "long_term_memory_items": 0,
+        "second_brain_research_packets": 0,
+        "second_brain_mcp_tool_call_receipts": 0,
+        "second_brain_run_registry": 0
+      },
+      "verdict": "confirmed_imbalance",
+      "owning_prompt": "Prompt_11",
+      "blocks_phase_09": true
+    }
+  },
+  "side_effect_note": "phase-08c-gates appends a fresh financial-review-routing ledger run (~1,299 rows) per invocation; this verification's and prior preflight prompts' runs grew second_brain_financial_review_required_items. Local append-only ledger, guard columns all 0 (no external writeback, no raw persistence). Subsequent prompts should avoid unnecessary phase-08c-gates re-runs and count DISTINCT review items.",
+  "stop_condition_triggered": false
+}

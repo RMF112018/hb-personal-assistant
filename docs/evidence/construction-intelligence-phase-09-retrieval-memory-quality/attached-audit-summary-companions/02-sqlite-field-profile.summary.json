@@ -1,0 +1,30 @@
+{
+  "companion_for": "docs/evidence/construction-intelligence-phase-08d-agent-data-quality-evaluation/02-sqlite-field-profile.json (+ .md)",
+  "gap": "G-11",
+  "purpose": "compact, inspectable summary companion of an oversized field-profile/completeness evidence file (counts + structure only; no per-field/per-row dumps)",
+  "original_files": {
+    "02-sqlite-field-profile.json": {
+      "bytes": 4528050,
+      "lines": 118213,
+      "sha256": "8e47b035dd689e7b4fb9d5334b4562e41da72afd50f2d961a6ebf491ca4ae428"
+    },
+    "02-sqlite-field-profile.md": {
+      "bytes": 4528312,
+      "lines": 118221,
+      "sha256": "2ae70e9e1bfc7512cf0f85e68acb3a3d42b8cc0e646e2282be2f1af3b0722287"
+    }
+  },
+  "headline": {
+    "field_count_profiled": 2761,
+    "raw_content_risk_field_count": 648,
+    "raw_content_risk_fields": {
+      "_type": "list",
+      "_len": 648
+    },
+    "table_count_profiled": 165,
+    "table_profiles": {
+      "_type": "list",
+      "_len": 165
+    }
+  }
+}

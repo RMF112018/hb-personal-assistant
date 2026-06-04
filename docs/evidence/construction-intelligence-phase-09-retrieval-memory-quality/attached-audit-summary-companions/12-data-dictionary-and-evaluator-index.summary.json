@@ -1,0 +1,47 @@
+{
+  "companion_for": "docs/evidence/construction-intelligence-phase-08d-agent-data-quality-evaluation/12-data-dictionary-and-evaluator-index.json (+ .md)",
+  "gap": "G-11",
+  "purpose": "compact, inspectable summary companion of an oversized field-profile/completeness evidence file (counts + structure only; no per-field/per-row dumps)",
+  "original_files": {
+    "12-data-dictionary-and-evaluator-index.json": {
+      "bytes": 476683,
+      "lines": 18327,
+      "sha256": "ba6e9b576f2dc5906888bcc2965fe5539ed47476b60e12e3dea78cce14fb3123"
+    },
+    "12-data-dictionary-and-evaluator-index.md": {
+      "bytes": 485415,
+      "lines": 18694,
+      "sha256": "0f57703df637a4c52843b78799b23bc5487034a2e575c9cf551d97a003fe267b"
+    }
+  },
+  "headline": {
+    "agent_workflow_dictionary": {
+      "_type": "list",
+      "_len": 8
+    },
+    "data_consumer_matrix": {
+      "_type": "list",
+      "_len": 8
+    },
+    "evaluator_use_map": {
+      "_type": "dict",
+      "_len": 9
+    },
+    "evidence_file_dictionary": {
+      "_type": "list",
+      "_len": 16
+    },
+    "field_dictionary": {
+      "_type": "list",
+      "_len": 2761
+    },
+    "source_family_dictionary": {
+      "_type": "dict",
+      "_len": 15
+    },
+    "table_dictionary": {
+      "_type": "list",
+      "_len": 165
+    }
+  }
+}

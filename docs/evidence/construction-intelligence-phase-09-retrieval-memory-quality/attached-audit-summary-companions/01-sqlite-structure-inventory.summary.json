@@ -1,0 +1,233 @@
+{
+  "companion_for": "docs/evidence/construction-intelligence-phase-08d-agent-data-quality-evaluation/01-sqlite-structure-inventory.json (+ .md)",
+  "gap": "G-11",
+  "purpose": "compact, inspectable summary companion of an oversized field-profile/completeness evidence file (counts + structure only; no per-field/per-row dumps)",
+  "original_files": {
+    "01-sqlite-structure-inventory.json": {
+      "bytes": 149258,
+      "lines": 4971,
+      "sha256": "8ebe2ab3e232e09cbc54b10682dcdb3d9d924791e2c6e91510e9aba2d75b31cd"
+    },
+    "01-sqlite-structure-inventory.md": {
+      "bytes": 149526,
+      "lines": 4979,
+      "sha256": "e6de7ff159e0d041e128c590537a991d08953c147d21efbaef1835eabcce3e4e"
+    }
+  },
+  "headline": {
+    "database_path_redacted": "~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+    "empty_tables": {
+      "_type": "list",
+      "_len": 75
+    },
+    "file_size_bytes": 222982144,
+    "high_row_count_tables": {
+      "_type": "list",
+      "_len": 25
+    },
+    "index_count": 279,
+    "last_modified_utc": "2026-06-04T07:26:48.687204+00:00",
+    "migration_history": {
+      "_type": "list",
+      "_len": 37
+    },
+    "read_only_confirmed": true,
+    "schema_version_current": 37,
+    "schema_version_expected": 37,
+    "table_count": 165,
+    "table_list": {
+      "_type": "list",
+      "_len": 165
+    },
+    "table_summaries": {
+      "_type": "list",
+      "_len": 165
+    },
+    "tables_grouped_by_functional_area": {
+      "_type": "dict",
+      "_len": 18
+    },
+    "total_row_count": 375853,
+    "trigger_count": 0,
+    "view_count": 2,
+    "view_list": {
+      "_type": "list",
+      "_len": 2
+    }
+  },
+  "top_high_row_tables": [
+    {
+      "column_count": 15,
+      "functional_area": "Procore",
+      "guard_columns": [
+        "raw_body_persisted"
+      ],
+      "has_json_fields": false,
+      "has_project_entity_reference_fields": true,
+      "has_source_reference_fields": true,
+      "has_timestamp_fields": true,
+      "possible_raw_content_risk_fields": [
+        "amount_name",
+        "raw_body_persisted"
+      ],
+      "row_count": 85521,
+      "source_families": [
+        "procore",
+        "financial"
+      ],
+      "table": "procore_financial_amount_facts"
+    },
+    {
+      "column_count": 22,
+      "functional_area": "financial facts and readiness",
+      "guard_columns": [
+        "raw_email_body_persisted",
+        "raw_document_text_persisted",
+        "raw_calendar_payload_persisted",
+        "raw_procore_payload_persisted",
+        "raw_financial_source_payload_persisted",
+        "raw_prompt_persisted",
+        "raw_response_persisted",
+        "signed_url_persisted",
+        "download_url_persisted"
+      ],
+      "has_json_fields": false,
+      "has_project_entity_reference_fields": true,
+      "has_source_reference_fields": true,
+      "has_timestamp_fields": false,
+      "possible_raw_content_risk_fields": [
+        "raw_email_body_persisted",
+        "raw_document_text_persisted",
+        "raw_calendar_payload_persisted",
+        "raw_procore_payload_persisted",
+        "raw_financial_source_payload_persisted",
+        "raw_prompt_persisted",
+        "raw_response_persisted",
+        "signed_url_persisted",
+        "download_url_persisted"
+      ],
+      "row_count": 66417,
+      "source_families": [
+        "financial",
+        "review_queue"
+      ],
+      "table": "second_brain_financial_review_required_items"
+    },
+    {
+      "column_count": 11,
+      "functional_area": "Procore",
+      "guard_columns": [],
+      "has_json_fields": true,
+      "has_project_entity_reference_fields": true,
+      "has_source_reference_fields": true,
+      "has_timestamp_fields": true,
+      "possible_raw_content_risk_fields": [],
+      "row_count": 30822,
+      "source_families": [
+        "procore"
+      ],
+      "table": "procore_record_edges"
+    },
+    {
+      "column_count": 17,
+      "functional_area": "Procore",
+      "guard_columns": [
+        "raw_body_persisted"
+      ],
+      "has_json_fields": true,
+      "has_project_entity_reference_fields": true,
+      "has_source_reference_fields": true,
+      "has_timestamp_fields": true,
+      "possible_raw_content_risk_fields": [
+        "source_url_redacted",
+        "raw_body_persisted"
+      ],
+      "row_count": 30035,
+      "source_families": [
+        "procore"
+      ],
+      "table": "procore_live_records"
+    },
+    {
+      "column_count": 21,
+      "functional_area": "calendar",
+      "guard_columns": [
+        "raw_body_persisted"
+      ],
+      "has_json_fields": false,
+      "has_project_entity_reference_fields": true,
+      "has_source_reference_fields": true,
+      "has_timestamp_fields": true,
+      "possible_raw_content_risk_fields": [
+        "raw_body_persisted"
+      ],
+      "row_count": 27463,
+      "source_families": [
+        "calendar",
+        "procore"
+      ],
+      "table": "procore_live_record_change_events"
+    },
+    {
+      "column_count": 18,
+      "functional_area": "Procore",
+      "guard_columns": [
+        "raw_body_persisted"
+      ],
+      "has_json_fields": true,
+      "has_project_entity_reference_fields": true,
+      "has_source_reference_fields": true,
+      "has_timestamp_fields": true,
+      "possible_raw_content_risk_fields": [
+        "text_intelligence_hash",
+        "raw_payload_hash",
+        "raw_body_persisted"
+      ],
+      "row_count": 27453,
+      "source_families": [
+        "procore"
+      ],
+      "table": "procore_live_record_snapshots"
+    },
+    {
+      "column_count": 15,
+      "functional_area": "Procore",
+      "guard_columns": [
+        "raw_body_persisted"
+      ],
+      "has_json_fields": false,
+      "has_project_entity_reference_fields": true,
+      "has_source_reference_fields": true,
+      "has_timestamp_fields": true,
+      "possible_raw_content_risk_fields": [
+        "current_text_hash",
+        "raw_body_persisted"
+      ],
+      "row_count": 27440,
+      "source_families": [
+        "procore"
+      ],
+      "table": "procore_live_record_state_index"
+    },
+    {
+      "column_count": 17,
+      "functional_area": "calendar",
+      "guard_columns": [
+        "raw_body_persisted"
+      ],
+      "has_json_fields": true,
+      "has_project_entity_reference_fields": true,
+      "has_source_reference_fields": true,
+      "has_timestamp_fields": true,
+      "possible_raw_content_risk_fields": [
+        "raw_body_persisted"
+      ],
+      "row_count": 27440,
+      "source_families": [
+        "calendar",
+        "procore"
+      ],
+      "table": "procore_record_timeline_events"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "companion_for": "docs/evidence/construction-intelligence-phase-08d-agent-data-quality-evaluation/08-financial-data-structure-quality-evidence.json (+ .md)",
+  "gap": "G-11",
+  "purpose": "compact, inspectable summary companion of an oversized field-profile/completeness evidence file (counts + structure only; no per-field/per-row dumps)",
+  "original_files": {
+    "08-financial-data-structure-quality-evidence.json": {
+      "bytes": 337687,
+      "lines": 9669,
+      "sha256": "a6899377561f0d38c68a0fe9bc45b57c5424e105dc4c3178ebdb65385bcaa8c0"
+    },
+    "08-financial-data-structure-quality-evidence.md": {
+      "bytes": 337970,
+      "lines": 9677,
+      "sha256": "b0494a16a22d40556980dc071653873faba9564bc517db140247d6edd21b00bb"
+    }
+  },
+  "headline": {
+    "financial_determinations_made": false,
+    "financial_field_usefulness_indicators": {
+      "_type": "list",
+      "_len": 502
+    },
+    "financial_row_count_total": 169401,
+    "financial_table_count": 24,
+    "financial_tables": {
+      "_type": "list",
+      "_len": 24
+    }
+  }
+}

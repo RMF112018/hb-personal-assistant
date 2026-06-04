@@ -1,0 +1,72 @@
+{
+  "artifact": "phase_09_attached_audit_package_gap_preflight_remediation",
+  "prompt": "Prompt_02_Attached_Audit_Package_Gap_Preflight_Remediation",
+  "phase": "09",
+  "phase_classification": "preflight_remediation",
+  "posture": "verify_all_attached_audit_gaps_live_plus_resolve_G11_no_schema_no_semantic_retrieval",
+  "generated_local_date": "2026-06-04",
+  "repo_truth": {
+    "head_sha": "23e6d870b8033fcea8bf4bacc167f8d2f6c29790",
+    "schema_version": 37,
+    "package_version": "1.3.0",
+    "attached_audit_packet": "docs/evidence/construction-intelligence-phase-08d-agent-data-quality-evaluation/"
+  },
+  "code_change": {"scope": "none", "runtime_or_schema_or_test_change": false, "semantic_retrieval_code_added": false,
+    "note": "verification (read-only) + summarized companions (evidence files) + docs only"},
+  "live_verification_matrix": {
+    "G-01_generated_output": {"claim": "0 rows", "live": "0/0/0/0 (daily_brief/research/parser/eval)", "verdict": "confirmed_empty", "owning_prompt": "Prompt_03", "blocks_phase_09": true},
+    "G-02_mcp_runtime": {"claim": "0 receipts", "live": "0 tool-call / 0 denial", "verdict": "confirmed_empty", "owning_prompt": "Prompt_04", "blocks_phase_09": true},
+    "G-03_review_queue": {"claim": "~66,466 review items", "live_total_rows": 101490, "distinct_run_ids": 112, "distinct_review_items": 801, "latest_run_rows": 1299, "guard_sums_all_zero": true, "verdict": "REFRAMED_append_only_ledger_distinct_~801", "owning_prompt": "Prompt_05", "blocks_phase_09": true},
+    "G-04_financial_completeness": {"claim": "currency 100% null; period ~98.7% null; wbs sparse", "live": "currency null_rate=1.0000; period_start=0.9871; wbs/cost=0.0338 (of 85,521 amount facts)", "verdict": "confirmed", "owning_prompt": "Prompt_06", "blocks_phase_09": true},
+    "G-05_memory": {"claim": "0 populated", "live": "long_term_memory_items=0; memory_update_candidates=0; preference_profiles=0", "verdict": "confirmed_empty", "owning_prompt": "Prompt_07", "blocks_phase_09": true},
+    "G-06_automation_delivery": {"claim": "0 populated", "live": "run_registry=0; delivery/notification/open receipts=0", "verdict": "confirmed_empty", "owning_prompt": "Prompt_08", "blocks_phase_09": true},
+    "G-07_obsidian_linkage": {"claim": "sqlite-linked-by-frontmatter 0", "live": "obsidian_index_entries=0", "verdict": "confirmed_empty", "owning_prompt": "Prompt_09", "blocks_phase_09": true},
+    "G-08_relationship_quality": {"claim": "population exists; quality marts absent", "live": "candidates=1880 (deterministic 1671 / strong 51 / weak 158); relationships=1671; no relationship_quality_mart", "verdict": "confirmed_no_quality_mart", "owning_prompt": "Prompt_10", "blocks_phase_09": true},
+    "G-09_repo_baseline_literals": {"verdict": "resolved_in_Prompt_00", "owning_prompt": "Prompt_00", "blocks_phase_09": false},
+    "G-10_corpus_balance": {"claim": "procore/financial heavy; brief/research/mcp/memory/automation empty", "live": "procore_live_records=30,035; amount_facts=85,521; record_edges=30,822 vs brief/research/mcp/memory/automation=0", "verdict": "confirmed_imbalance", "owning_prompt": "Prompt_11", "blocks_phase_09": true},
+    "G-11_oversized_evidence": {"verdict": "RESOLVED_this_prompt", "owning_prompt": "Prompt_02", "blocks_phase_09": false}
+  },
+  "g11_resolution": {
+    "companions_dir": "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/attached-audit-summary-companions/",
+    "companions": [
+      {"original": "01-sqlite-structure-inventory.json", "original_bytes": 149258, "companion_bytes": 6594, "sha256_16": "8ebe2ab3e232e09c"},
+      {"original": "02-sqlite-field-profile.json", "original_bytes": 4528050, "companion_bytes": 979, "sha256_16": "8e47b035dd689e7b"},
+      {"original": "06-data-completeness-freshness-shape.json", "original_bytes": 1738702, "companion_bytes": 1051, "sha256_16": "868f9d703015ff6d"},
+      {"original": "08-financial-data-structure-quality-evidence.json", "original_bytes": 337687, "companion_bytes": 1061, "sha256_16": "a6899377561f0d38"},
+      {"original": "12-data-dictionary-and-evaluator-index.json", "original_bytes": 476683, "companion_bytes": 1300, "sha256_16": "ba6e9b576f2dc590"}
+    ],
+    "originals_modified": false,
+    "note": "compact counts/structure only; each companion carries the original's bytes/lines/sha256; .md twins covered in each companion's original_files block"
+  },
+  "key_finding_g03_append_only_ledger": {
+    "summary": "second_brain_financial_review_required_items is an append-only per-run ledger (run_id-tagged). 101,490 total rows across 112 routing runs collapse to ~801 DISTINCT review items. The attached-audit '66,466 review items' headline is substantially a row-count artifact, not distinct burden.",
+    "side_effect": "phase-08c-gates appends a fresh non-pruned routing run (~1,299 rows) per invocation; preflight Prompts 00/01/02 validation runs grew the table. Local append-only ledger; guard columns sum to 0 (no external writeback, no raw persistence, no determinations).",
+    "is_stop_condition": false,
+    "recommendation": "Prompt 05 must count DISTINCT review items (latest run_id or natural key), not raw ledger rows; flag the non-pruning ledger as an 08C hygiene improvement (prune-prior-runs or read-only gate evaluation)."
+  },
+  "validation_commands": [
+    {"name": "compileall src tests", "exit": 0},
+    {"name": "ruff check .", "exit": 0},
+    {"name": "mypy src", "exit": 0, "result": "no issues / 272 files"},
+    {"name": "pytest -m \"not live and not integration and not manual\"", "exit": 0, "passed": 3016, "failed": 0, "skipped": 0},
+    {"name": "construction-agent validate --json", "exit": 0, "ok": true, "schema_version": 37},
+    {"name": "construction-agent data-quality table-inventory --json", "exit": 0, "schema_version": 37, "unmapped_live_tables": 0},
+    {"name": "construction-agent data-quality no-writeback-proof --json", "exit": 0, "proof_passed": true},
+    {"name": "second-brain data-quality phase-08a-gates --json", "exit": 0, "ok": true},
+    {"name": "second-brain data-quality phase-08b-gates --json", "exit": 0, "ok": true},
+    {"name": "second-brain data-quality phase-08c-gates --json", "exit": 0, "ok": true, "proof_passed": true, "side_effect": "appended a financial-review-routing ledger run"},
+    {"name": "second-brain data-quality phase-08d-gates --json", "exit": 0, "ok": true, "ready_to_serve": true},
+    {"name": "second-brain mcp no-raw-access --json", "exit": 0, "proof_passed": true},
+    {"name": "second-brain mcp no-writeback --json", "exit": 0, "proof_passed": true}
+  ],
+  "stop_condition_check": {
+    "raw_content_persistence": false,
+    "external_writeback": false,
+    "missing_no_raw_or_no_writeback_proof": false,
+    "unresolved_high_impact_review_items_in_approved_source_manifest": "n/a (no approved manifest exists)",
+    "unapproved_obsidian_notes_indexed": "n/a",
+    "semantic_retrieval_bypassing_research_packet_or_evaluation": "n/a",
+    "any_stop_condition_triggered": false
+  },
+  "verdict": "All attached-audit gaps verified against live operator-DB truth: G-01/02/05/06/07 confirmed empty; G-04/G-10 confirmed; G-08 population present but no quality mart; G-03 REFRAMED as an append-only ledger (~801 distinct items, not 66k). G-09 resolved (Prompt 00). G-11 RESOLVED here (5 compact companions). G-01..G-08, G-10 carried to owning Prompts 03-11. No stop condition. Proceed to Prompt 03."
+}

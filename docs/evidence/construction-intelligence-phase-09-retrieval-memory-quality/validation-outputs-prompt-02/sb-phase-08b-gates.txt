@@ -1,0 +1,163 @@
+{
+  "command": "second-brain data-quality phase-08b-gates",
+  "ok": true,
+  "schema_version": 37,
+  "schema_version_expected": 37,
+  "contract_version": "phase_08b_data_quality_gates-v1",
+  "generated_utc": "2026-06-04T12:34:32.616821+00:00",
+  "gates": [
+    {
+      "gate_name": "agent_run_receipt_persistence",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": "RECEIPT_PERSISTENCE_OK",
+      "table": "second_brain_agent_run_receipts",
+      "guard_columns": 9
+    },
+    {
+      "gate_name": "agent_model_receipt_persistence",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": "RECEIPT_PERSISTENCE_OK",
+      "table": "second_brain_agent_model_receipts",
+      "guard_columns": 9
+    },
+    {
+      "gate_name": "delivery_handoff_durability",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": "DELIVERY_HANDOFF_DURABLE"
+    },
+    {
+      "gate_name": "automation_policy_seed",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "seed_version": "phase_08b_automation_policy_v1"
+    },
+    {
+      "gate_name": "observability_reason_codes",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": "OBSERVABILITY_REASON_CODES_PRESENT",
+      "reason_code_count": 102
+    },
+    {
+      "gate_name": "automation_health",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "run_registry_locking",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "retry_recovery",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "freshness_observability",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "daily_brief_job_health",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "daily_brief_delivery",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "daily_brief_html_render",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "daily_brief_notification",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "daily_brief_open",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "automation_execution",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    },
+    {
+      "gate_name": "launchd_install",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "proofs_passed": 1
+    }
+  ],
+  "by_field_status": {
+    "agent_run_receipt_persistence": "pass",
+    "agent_model_receipt_persistence": "pass",
+    "delivery_handoff_durability": "pass",
+    "automation_policy_seed": "pass",
+    "observability_reason_codes": "pass",
+    "automation_health": "pass",
+    "run_registry_locking": "pass",
+    "retry_recovery": "pass",
+    "freshness_observability": "pass",
+    "daily_brief_job_health": "pass",
+    "daily_brief_delivery": "pass",
+    "daily_brief_html_render": "pass",
+    "daily_brief_notification": "pass",
+    "daily_brief_open": "pass",
+    "automation_execution": "pass",
+    "launchd_install": "pass"
+  },
+  "status_counts": {
+    "pass": 16,
+    "warning": 0,
+    "fail_blocking": 0,
+    "deferred_not_blocking": 0
+  },
+  "required_fields_covered": true,
+  "readiness_overstated": false,
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "no_raw_content": true,
+    "no_readiness_overstatement": true,
+    "advisory_only": true
+  },
+  "stop_conditions_checked": [
+    "offline_or_mock_synthesis_reported_as_warning_not_pass",
+    "unimplemented_surfaces_deferred_not_passed",
+    "no_raw_content_in_gate_report",
+    "fail_blocking_gate_marks_report_not_ok"
+  ]
+}
+EXIT=0
