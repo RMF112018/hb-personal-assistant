@@ -1,0 +1,70 @@
+{
+  "artifact": "phase_09_source_linked_retrieval_proof",
+  "gap": "G-01",
+  "research_packets": [
+    {
+      "packet_id": "e979f313c1a3b7dfb37b4302176a78c9",
+      "project_key": "tropical",
+      "source_ref_count": 408,
+      "confidence_class": "medium",
+      "review_tier": 1,
+      "context_quality_class": "partial",
+      "retrieval_receipt_id": "0e398e4c5f56435fa779929c69679cdc"
+    },
+    {
+      "packet_id": "f2f8ab4dd7dd840d017bda11ca29dc18",
+      "project_key": "tropical",
+      "source_ref_count": 408,
+      "confidence_class": "medium",
+      "review_tier": 1,
+      "context_quality_class": "partial",
+      "retrieval_receipt_id": "59aefd5eb61e48b48c941f39c0f7bd92"
+    }
+  ],
+  "daily_brief_source_refs_sample": [
+    {
+      "source_family": "cross_source_relationships",
+      "source_ref": "4bfbba07c7fc7682",
+      "confidence_class": null,
+      "review_required": 0
+    },
+    {
+      "source_family": "cross_source_relationships",
+      "source_ref": "4bd0d7801a544324",
+      "confidence_class": null,
+      "review_required": 0
+    },
+    {
+      "source_family": "cross_source_relationships",
+      "source_ref": "4b9d10c12e61caa5",
+      "confidence_class": null,
+      "review_required": 0
+    },
+    {
+      "source_family": "cross_source_relationships",
+      "source_ref": "4b8cdcd2151ed266",
+      "confidence_class": null,
+      "review_required": 0
+    },
+    {
+      "source_family": "cross_source_relationships",
+      "source_ref": "4b7e264fe2eb8191",
+      "confidence_class": null,
+      "review_required": 0
+    }
+  ],
+  "evaluation_runs": [
+    {
+      "evaluation_run_id": "e09ee9f542804e7eb4e1b9d2ac00bed8",
+      "mode": "dry_run",
+      "passed": 1,
+      "score": 1.0,
+      "confidence_class": "medium",
+      "review_tier": 1,
+      "research_packet_id": "e979f313c1a3b7dfb37b4302176a78c9"
+    }
+  ],
+  "source_linked": true,
+  "confidence_present": true,
+  "note": "all generated outputs carry source references (retrieval_receipt_id / research_packet_id / source_family+source_ref) and confidence/review-tier labels; redacted samples only"
+}

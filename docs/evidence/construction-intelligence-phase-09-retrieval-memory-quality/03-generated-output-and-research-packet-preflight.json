@@ -1,0 +1,123 @@
+{
+  "artifact": "phase_09_generated_output_population_proof",
+  "prompt": "Prompt_03_Generated_Output_And_Research_Packet_Preflight",
+  "gap": "G-01",
+  "posture": "controlled_offline_mock_dry_run_no_vault_into_labeled_proof_db_copy",
+  "proof_db_path_outside_repo": "/tmp/claude-501/hb-phase09-prompt03-proof.sqlite",
+  "operator_db_pristine": {
+    "before": {
+      "second_brain_research_packets": 0,
+      "daily_brief_runs": 0,
+      "daily_brief_source_refs": 0,
+      "daily_brief_handoff_lines": 0,
+      "second_brain_evaluation_runs": 0
+    },
+    "after": {
+      "second_brain_research_packets": 0,
+      "daily_brief_runs": 0,
+      "daily_brief_source_refs": 0,
+      "daily_brief_handoff_lines": 0,
+      "second_brain_evaluation_runs": 0
+    },
+    "unchanged": true,
+    "note": "operator generated-output tables untouched; population written only to the throwaway proof-DB copy"
+  },
+  "input_snapshot_hash": "c97a548703eb00904e744b12a24effa1975567e70e296878510f08c711f7d063",
+  "input_snapshot_counts": {
+    "cross_source_relationships": 1671,
+    "cross_source_relationship_candidates": 1880,
+    "procore_live_records": 30035
+  },
+  "output_signature": "2afd8316721d17b482ca9e9395fe8a8c7a47d501681d46fa3287d16e9d4946e3",
+  "population_proof": {
+    "proof": "phase_09_generated_output_population",
+    "schema_version": 37,
+    "schema_version_expected": 37,
+    "populated": true,
+    "proof_passed": true,
+    "total_rows": 820,
+    "missing_tables": [],
+    "guard_violation": false,
+    "raw_content_findings": [],
+    "source_linked": true,
+    "confidence_present": true,
+    "tables": {
+      "second_brain_research_packets": {
+        "present": true,
+        "row_count": 2,
+        "guard_columns": 10,
+        "guard_sum": 0,
+        "source_ref_columns": [
+          "source_ref_count",
+          "retrieval_receipt_id"
+        ],
+        "source_linked_rows": 2,
+        "confidence_columns": [
+          "confidence_class"
+        ],
+        "confidence_labelled_rows": 2
+      },
+      "daily_brief_runs": {
+        "present": true,
+        "row_count": 1,
+        "guard_columns": 9,
+        "guard_sum": 0,
+        "source_ref_columns": [
+          "research_packet_id"
+        ],
+        "source_linked_rows": 1,
+        "confidence_columns": [],
+        "confidence_labelled_rows": 0
+      },
+      "daily_brief_source_refs": {
+        "present": true,
+        "row_count": 408,
+        "guard_columns": 0,
+        "guard_sum": 0,
+        "source_ref_columns": [
+          "source_family",
+          "source_ref"
+        ],
+        "source_linked_rows": 408,
+        "confidence_columns": [],
+        "confidence_labelled_rows": 0
+      },
+      "daily_brief_handoff_lines": {
+        "present": true,
+        "row_count": 408,
+        "guard_columns": 9,
+        "guard_sum": 0,
+        "source_ref_columns": [
+          "source_refs_json"
+        ],
+        "source_linked_rows": 408,
+        "confidence_columns": [],
+        "confidence_labelled_rows": 0
+      },
+      "second_brain_evaluation_runs": {
+        "present": true,
+        "row_count": 1,
+        "guard_columns": 4,
+        "guard_sum": 0,
+        "source_ref_columns": [
+          "research_packet_id"
+        ],
+        "source_linked_rows": 1,
+        "confidence_columns": [
+          "confidence_class"
+        ],
+        "confidence_labelled_rows": 1
+      }
+    },
+    "excluded": {
+      "parser_outputs": "Phase 06A file-extraction artifact; not a second-brain generation surface (classified out of scope)."
+    },
+    "guardrails": {
+      "read_only": true,
+      "no_raw_content": true,
+      "no_external_writeback": true,
+      "advisory_only": true
+    }
+  },
+  "parser_outputs_classification": "Phase 06A file-extraction artifact (not a second-brain generation surface); out of scope for this prompt; deferred"
+}
