@@ -1,0 +1,139 @@
+{
+  "artifact": "phase_09_financial_data_completeness_advisory",
+  "prompt": "Prompt_06_Financial_Data_Completeness_Preflight",
+  "gap": "G-04",
+  "posture": "read_only_advisory_mart_no_schema_no_writes_no_determination_no_ledger_routing",
+  "operator_db_unmutated": true,
+  "financial_table_counts_before_after": {
+    "before": {
+      "procore_financial_amount_facts": 85521,
+      "procore_financial_line_items": 393,
+      "procore_financial_budget_rows": 1182,
+      "procore_financial_change_order_line_items": 274,
+      "second_brain_financial_amount_facts_normalized": 0,
+      "second_brain_financial_review_required_items": 113181
+    },
+    "after": {
+      "procore_financial_amount_facts": 85521,
+      "procore_financial_line_items": 393,
+      "procore_financial_budget_rows": 1182,
+      "procore_financial_change_order_line_items": 274,
+      "second_brain_financial_amount_facts_normalized": 0,
+      "second_brain_financial_review_required_items": 113181
+    }
+  },
+  "proof": {
+    "proof": "phase_09_financial_completeness_advisory",
+    "schema_version": 37,
+    "schema_version_expected": 37,
+    "proof_passed": true,
+    "advisory_only": true,
+    "no_determination_attested": true,
+    "guard_columns": {
+      "second_brain_financial_currency_completeness_snapshots": {
+        "present": true,
+        "guard_sum": 0,
+        "advisory_only_ok": true
+      },
+      "second_brain_financial_wbs_cost_code_snapshots": {
+        "present": true,
+        "guard_sum": 0,
+        "advisory_only_ok": true
+      },
+      "second_brain_financial_source_coverage_snapshots": {
+        "present": true,
+        "guard_sum": 0,
+        "advisory_only_ok": true
+      },
+      "violation": false
+    },
+    "raw_content_findings": [],
+    "mart": {
+      "mart": "phase_09_financial_completeness_advisory",
+      "schema_version": 37,
+      "project_scope": "all",
+      "present_fact_tables": [
+        "procore_financial_amount_facts",
+        "procore_financial_line_items",
+        "procore_financial_budget_rows",
+        "procore_financial_change_order_line_items"
+      ],
+      "normalized_layer_populated": false,
+      "normalized_rows": 0,
+      "currency": {
+        "applicable": true,
+        "total_facts": 85521,
+        "currency_null": 85521,
+        "currency_null_rate": 1.0,
+        "per_project_recommendation": {
+          "alton-hilltop-pbg": {
+            "recommendation": "project_default_currency_required",
+            "dominant_currency": null,
+            "eligible_for_evidence_backed_default": false,
+            "reason": "no source currency present; cannot derive \u2014 requires policy/document default"
+          },
+          "pga-modern-garage": {
+            "recommendation": "project_default_currency_required",
+            "dominant_currency": null,
+            "eligible_for_evidence_backed_default": false,
+            "reason": "no source currency present; cannot derive \u2014 requires policy/document default"
+          },
+          "tropical": {
+            "recommendation": "project_default_currency_required",
+            "dominant_currency": null,
+            "eligible_for_evidence_backed_default": false,
+            "reason": "no source currency present; cannot derive \u2014 requires policy/document default"
+          }
+        },
+        "advisory_label": "currency_advisory_review_required"
+      },
+      "period": {
+        "applicable": true,
+        "total_facts": 85521,
+        "period_null": 84421,
+        "period_null_rate": 0.9871,
+        "recommendation": "period_context_required",
+        "reason": "period is source-context dependent (invoice/contract/budget date) \u2014 not derivable",
+        "advisory_label": "period_advisory_review_required"
+      },
+      "wbs_cost_code": {
+        "applicable": true,
+        "wbs_orphan_or_missing_total": 2887,
+        "cost_code_orphan_or_missing_total": 3510,
+        "per_table": {
+          "procore_financial_amount_facts": {
+            "total": 85521,
+            "wbs_orphan_or_missing": 2887,
+            "cost_code_orphan_or_missing": 2887
+          },
+          "procore_financial_line_items": {
+            "total": 393,
+            "wbs_orphan_or_missing": 0,
+            "cost_code_orphan_or_missing": 349
+          },
+          "procore_financial_budget_rows": {
+            "total": 1182,
+            "wbs_orphan_or_missing": 0,
+            "cost_code_orphan_or_missing": 0
+          },
+          "procore_financial_change_order_line_items": {
+            "total": 274,
+            "wbs_orphan_or_missing": 0,
+            "cost_code_orphan_or_missing": 274
+          }
+        },
+        "recommendation": "wbs_cost_code_context_required",
+        "reason": "no WBS/cost-code parent tables exist \u2014 presence-only detection; reconcile from source",
+        "advisory_label": "wbs_cost_code_advisory_review_required"
+      },
+      "advisory_only": true,
+      "note": "Advisory recommendations + review labels only \u2014 no currency assigned, no period set, no determination, no writes, nothing routed to the review ledger.",
+      "guardrails": {
+        "read_only": true,
+        "advisory_only_no_determination": true,
+        "no_external_writeback": true,
+        "money_never_echoed": true
+      }
+    }
+  }
+}

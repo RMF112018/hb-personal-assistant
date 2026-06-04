@@ -2857,6 +2857,64 @@ def financial_no_writeback_proof(
     )
 
 
+@financial_app.command("completeness-advisory")
+def financial_completeness_advisory(
+    project: str | None = typer.Option(
+        None, "--project", help="Optional project key (recommendations are per-project)."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 09 advisory financial data-completeness mart (read-only, advisory only).
+
+    Profiles currency / period / WBS / cost-code completeness and orphan risk over the
+    financial fact tables and emits ADVISORY recommendations + review labels (project-default
+    currency fallback, period-enrichment, WBS/cost-code reconciliation) before semantic
+    retrieval over financial outputs. Read-only; never assigns a currency, sets a period,
+    makes a determination, writes to the facts, or routes to the review ledger; money values
+    are never echoed. Exit 0 when the proof passes, 3 otherwise.
+    """
+    from hb_assistant.construction.second_brain.financial_completeness_advisory import (
+        build_financial_completeness_advisory_proof,
+    )
+
+    proof = build_financial_completeness_advisory_proof()
+    mart = proof["mart"]
+    payload = {
+        "command": "second-brain financial completeness-advisory",
+        "phase": "09",
+        "project_key": project,
+        "advisory_only": True,
+        "proof_passed": proof.get("proof_passed"),
+        "schema_version": proof.get("schema_version"),
+        "schema_version_expected": proof.get("schema_version_expected"),
+        "no_determination_attested": proof.get("no_determination_attested"),
+        "raw_content_findings": proof.get("raw_content_findings"),
+        "normalized_layer_populated": mart.get("normalized_layer_populated"),
+        "currency": mart.get("currency"),
+        "period": mart.get("period"),
+        "wbs_cost_code": mart.get("wbs_cost_code"),
+        "guard_columns": proof.get("guard_columns"),
+        "guardrails": mart.get("guardrails"),
+        "note": mart.get("note"),
+    }
+    human = [
+        "Phase 09 financial completeness advisory (advisory only, read-only)",
+        f"  project: {project or 'all'}",
+        f"  proof passed: {proof.get('proof_passed')} | no determination: "
+        f"{proof.get('no_determination_attested')}",
+        f"  currency null: {mart.get('currency', {}).get('currency_null_rate')} | "
+        f"period null: {mart.get('period', {}).get('period_null_rate')}",
+        f"  wbs orphans: {mart.get('wbs_cost_code', {}).get('wbs_orphan_or_missing_total')} | "
+        f"cost orphans: {mart.get('wbs_cost_code', {}).get('cost_code_orphan_or_missing_total')}",
+        f"  normalized layer populated: {mart.get('normalized_layer_populated')}",
+    ]
+    _emit_08c(
+        payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3
+    )
+
+
 @data_quality_app.command("phase-08c-no-writeback-proof")
 def data_quality_phase_08c_no_writeback_proof(
     json_out: bool = typer.Option(
