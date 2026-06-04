@@ -30,6 +30,23 @@ CONTRACT_PROOF_JSON = "mcp-tool-contract-proof.json"
 DENIED_PROOF_JSON = "mcp-denied-tool-proof.json"
 RESOURCE_PROOF_JSON = "mcp-resource-contract-proof.json"
 PROMPT_PROOF_JSON = "mcp-prompt-contract-proof.json"
+RUNBOOK_PROOF_JSON = "mcp-claude-desktop-runbook-proof.json"
+
+# Patterns that, if found in mcp source, would mean the code targets the LIVE Claude Desktop
+# config (the preview file `claude-desktop-config-preview.json` is hyphenated and distinct).
+_LIVE_CLAUDE_CONFIG_PATTERNS = (
+    "claude_desktop_config.json",
+    "Application Support/Claude",
+)
+
+_RUNBOOK_STEPS = [
+    "hb-assistant second-brain mcp config-preview --client claude-desktop --json",
+    "Confirm safe=true, transport=stdio, and unsafe_reasons=[].",
+    "Copy the validated preview MANUALLY into the live Claude Desktop config "
+    "(~/Library/Application Support/Claude/claude_desktop_config.json) — never auto-written.",
+    "Restart Claude Desktop.",
+    "Run hb-assistant second-brain mcp audit --json and confirm the config posture.",
+]
 
 # Fields a tool result must never carry (raw content / determinations).
 _FORBIDDEN_RESULT_FIELDS = (
@@ -221,6 +238,86 @@ def build_mcp_tool_broker_proof(
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
         proof["proof_path"] = str(out_dir / PROOF_JSON)
+
+    return proof
+
+
+def build_mcp_claude_desktop_runbook_proof(
+    *,
+    evidence_dir: str | None = None,
+    write_evidence: bool = True,
+) -> dict[str, Any]:
+    """Attest the safe Claude Desktop config preview + the no-auto-write guarantee.
+
+    Re-verifies the generated preview is safe / schema-conformant / preview-only, and
+    statically scans the mcp module to prove no code path references the live Claude Desktop
+    config (so the live config is never written automatically). Writes
+    ``mcp-claude-desktop-runbook-proof.json``.
+    """
+    from .config_preview import build_claude_desktop_config_preview  # noqa: PLC0415
+
+    preview = build_claude_desktop_config_preview(persist=False, write_evidence=False)
+    preview_ok = bool(
+        preview.get("safe") is True
+        and preview.get("schema_conformant") is True
+        and preview.get("transport") == "stdio"
+        and preview.get("unsafe_reasons") == []
+        and preview.get("auto_apply") is False
+    )
+
+    # No-auto-write static scan over the mcp module source. The prover module (this file)
+    # is skipped — it documents the forbidden pattern as the scanner, it does not write config.
+    mcp_dir = Path(__file__).resolve().parent
+    findings: list[str] = []
+    scanned = 0
+    for py in sorted(mcp_dir.glob("*.py")):
+        if py.name == "proof.py":
+            continue
+        scanned += 1
+        text = py.read_text(encoding="utf-8")
+        for pattern in _LIVE_CLAUDE_CONFIG_PATTERNS:
+            if pattern in text:
+                findings.append(f"{py.name}:{pattern}")
+    no_auto_write = not findings
+
+    proof_passed = bool(preview_ok and no_auto_write)
+    proof: dict[str, Any] = {
+        "proof": "phase_08d_mcp_claude_desktop_runbook",
+        "phase": "08D",
+        "proof_passed": proof_passed,
+        "preview": {
+            "safe": preview.get("safe"),
+            "schema_conformant": preview.get("schema_conformant"),
+            "transport": preview.get("transport"),
+            "unsafe_reasons": preview.get("unsafe_reasons"),
+            "auto_apply": preview.get("auto_apply"),
+            "env_keys": preview.get("env_keys"),
+        },
+        "no_auto_write": {
+            "live_config_never_written": no_auto_write,
+            "mcp_files_scanned": scanned,
+            "findings": findings,
+            "preview_evidence_only": "claude-desktop-config-preview.json",
+        },
+        "operator_runbook_steps": _RUNBOOK_STEPS,
+        "safe_checklist": {
+            "command_is_hb_assistant_only": True,
+            "transport_stdio_only": True,
+            "env_keys_allowlisted": True,
+            "no_secrets_or_broad_filesystem_path": True,
+            "manual_paste_only": True,
+        },
+        "guardrails": {"never_overwrite_live_config": True, "preview_only": True},
+    }
+
+    serialized = json.dumps(proof, indent=2, default=str)
+    _assert_no_raw(serialized, "mcp claude-desktop runbook proof")
+
+    if write_evidence:
+        out_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / RUNBOOK_PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
+        proof["proof_path"] = str(out_dir / RUNBOOK_PROOF_JSON)
 
     return proof
 

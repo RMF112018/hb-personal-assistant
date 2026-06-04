@@ -13,6 +13,7 @@ from .policy import build_mcp_status, evaluate_startup_checks
 from .prompts import load_prompts, render_all_prompts, render_prompt
 from .proof import (
     build_mcp_allowed_tools_proof,
+    build_mcp_claude_desktop_runbook_proof,
     build_mcp_denied_tools_proof,
     build_mcp_prompts_proof,
     build_mcp_resources_proof,
@@ -39,6 +40,7 @@ __all__ = [
     "build_claude_desktop_config_preview",
     "build_default_broker",
     "build_mcp_allowed_tools_proof",
+    "build_mcp_claude_desktop_runbook_proof",
     "build_mcp_denied_tools_proof",
     "build_mcp_prompts_proof",
     "build_mcp_resources_proof",

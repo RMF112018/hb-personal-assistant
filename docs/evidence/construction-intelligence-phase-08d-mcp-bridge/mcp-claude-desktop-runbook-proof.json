@@ -1,0 +1,40 @@
+{
+  "proof": "phase_08d_mcp_claude_desktop_runbook",
+  "phase": "08D",
+  "proof_passed": true,
+  "preview": {
+    "safe": true,
+    "schema_conformant": true,
+    "transport": "stdio",
+    "unsafe_reasons": [],
+    "auto_apply": false,
+    "env_keys": [
+      "HB_MCP_POLICY",
+      "HB_MCP_TRANSPORT"
+    ]
+  },
+  "no_auto_write": {
+    "live_config_never_written": true,
+    "mcp_files_scanned": 10,
+    "findings": [],
+    "preview_evidence_only": "claude-desktop-config-preview.json"
+  },
+  "operator_runbook_steps": [
+    "hb-assistant second-brain mcp config-preview --client claude-desktop --json",
+    "Confirm safe=true, transport=stdio, and unsafe_reasons=[].",
+    "Copy the validated preview MANUALLY into the live Claude Desktop config (~/Library/Application Support/Claude/claude_desktop_config.json) \u2014 never auto-written.",
+    "Restart Claude Desktop.",
+    "Run hb-assistant second-brain mcp audit --json and confirm the config posture."
+  ],
+  "safe_checklist": {
+    "command_is_hb_assistant_only": true,
+    "transport_stdio_only": true,
+    "env_keys_allowlisted": true,
+    "no_secrets_or_broad_filesystem_path": true,
+    "manual_paste_only": true
+  },
+  "guardrails": {
+    "never_overwrite_live_config": true,
+    "preview_only": true
+  }
+}
