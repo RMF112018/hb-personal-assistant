@@ -1,0 +1,52 @@
+{
+  "command": "second-brain retrieval llamaindex status",
+  "phase": "09",
+  "generated_utc": "2026-06-04T20:08:24.572533+00:00",
+  "repo_sha": "e7c56db32992e5f305003ffdba037aa801c8e9bb",
+  "sdk": {
+    "package": "llama-index-core",
+    "available": false,
+    "version": null,
+    "install_hint": "pip install -e \".[retrieval]\""
+  },
+  "config": {
+    "version": "phase_09_llamaindex_config_v1",
+    "embedding_provider": "local",
+    "embedding_model_label": "BAAI/bge-small-en-v1.5",
+    "index_kind": "vector_store",
+    "vector_store_kind": "simple",
+    "chunk_size": 512,
+    "chunk_overlap": 64,
+    "persist_dir_label": "app_support_retrieval_index",
+    "config_hash": "c1aac21b856a8156307b7093772eab34a9bdc03c47e08073c204fad52e6662d3"
+  },
+  "config_valid": true,
+  "config_violations": [],
+  "contract_version": "1.4.0-phase-09",
+  "deferred_embedding_providers": [
+    "openai",
+    "azure_openai",
+    "huggingface_remote"
+  ],
+  "schema_version": 38,
+  "schema_version_expected": 38,
+  "schema_ready": true,
+  "snapshot_table_present": true,
+  "snapshot_row_count": 0,
+  "ready_to_index": false,
+  "blockers": [
+    "llama_index_not_installed"
+  ],
+  "policy_loaded": true,
+  "read_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "lazy_import_only": true,
+    "metadata_only": true,
+    "local_first": true,
+    "advisory_only": true,
+    "external_embedding_providers_deferred": true
+  }
+}

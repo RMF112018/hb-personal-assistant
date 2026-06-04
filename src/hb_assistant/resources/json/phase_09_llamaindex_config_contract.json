@@ -1,0 +1,27 @@
+{
+  "contract_name": "phase_09_llamaindex_config_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 13 — allowed values + posture for the optional LlamaIndex retrieval config. Validated against the resolved config seed; the config surface is read-only and metadata-only (no embeddings/index built here).",
+  "required_fields": [
+    "embedding_provider",
+    "embedding_model_label",
+    "index_kind",
+    "vector_store_kind",
+    "chunk_size",
+    "chunk_overlap"
+  ],
+  "allowed_embedding_providers": ["local", "mock"],
+  "allowed_index_kinds": ["vector_store"],
+  "allowed_vector_store_kinds": ["simple"],
+  "deferred_embedding_providers": ["openai", "azure_openai", "huggingface_remote"],
+  "global_requirements": [
+    "lazy_import_only",
+    "metadata_only",
+    "no_raw_content",
+    "no_writeback",
+    "no_external_embedding_provider_default",
+    "local_first",
+    "source_linked_chunks_only",
+    "deferred_external_providers_policy_gated"
+  ]
+}

@@ -163,3 +163,18 @@ def load_phase_08d_contract(name: str) -> dict[str, Any]:
 def load_all_phase_08d_contracts() -> dict[str, dict[str, Any]]:
     """Load every registered Phase 08D contract (logical name -> parsed dict)."""
     return {name: load_phase_08d_contract(name) for name in PHASE_08D_CONTRACT_FILES}
+
+# Phase 09 Prompt 13 — optional LlamaIndex retrieval config contract.
+PHASE_09_CONTRACT_FILES: dict[str, str] = {
+    "llamaindex_config_contract": "phase_09_llamaindex_config_contract.json",
+}
+
+def load_phase_09_contract(name: str) -> dict[str, Any]:
+    """Load a single Phase 09 contract by logical name."""
+    if name not in PHASE_09_CONTRACT_FILES:
+        raise KeyError(f"unknown phase 09 contract: {name!r}")
+    return _load_json_resource(PHASE_09_CONTRACT_FILES[name])
+
+def load_all_phase_09_contracts() -> dict[str, dict[str, Any]]:
+    """Load every registered Phase 09 contract (logical name -> parsed dict)."""
+    return {name: load_phase_09_contract(name) for name in PHASE_09_CONTRACT_FILES}

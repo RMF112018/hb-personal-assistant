@@ -1,0 +1,14 @@
+# Phase 09 Prompt 13 — optional LlamaIndex retrieval config (resolved values; read-only/advisory).
+# Metadata-only: model/index *labels* and bounded numeric params. No raw content, prompts,
+# responses, tokens, signed/download URLs, secrets, or filesystem paths. `persist_dir_label` is a
+# label only — the real index location is resolved at build time under Application Support, never
+# stored here. External embedding providers are deferred (see contract deferred_embedding_providers).
+version: phase_09_llamaindex_config_v1
+
+embedding_provider: local
+embedding_model_label: BAAI/bge-small-en-v1.5
+index_kind: vector_store
+vector_store_kind: simple
+chunk_size: 512
+chunk_overlap: 64
+persist_dir_label: app_support_retrieval_index

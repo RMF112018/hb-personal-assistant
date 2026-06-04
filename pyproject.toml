@@ -66,6 +66,20 @@ second-brain = [
 mcp = [
   "mcp>=1.0",
 ]
+# Phase 09 retrieval — opt-in LlamaIndex semantic-retrieval layer. Lazy-imported inside the
+# Phase 09 retrieval code paths only; the base install, migrations, full test suite, the
+# `second-brain retrieval llamaindex status` surface, and every guard proof all run with NO
+# LlamaIndex present (local-first default). Install it (`pip install -e ".[retrieval]"`) to make
+# the optional vector-index / hybrid-retrieval build paths available (landed in later Phase 09
+# prompts); without it those paths stay fail-closed. `retrieval-local` adds a local embedding
+# integration — external embedding providers stay deferred / policy-gated / receipt-backed.
+retrieval = [
+  "llama-index-core>=0.12",
+]
+retrieval-local = [
+  "llama-index-core>=0.12",
+  "llama-index-embeddings-huggingface>=0.3",
+]
 
 [project.scripts]
 hb-assistant = "hb_assistant.cli.main:cli"

@@ -101,6 +101,20 @@ automation_app = typer.Typer(
 )
 app.add_typer(automation_app, name="automation")
 
+retrieval_app = typer.Typer(
+    name="retrieval",
+    help="Phase 09 semantic-retrieval backend (optional LlamaIndex; local-first, fail-closed).",
+    no_args_is_help=True,
+)
+app.add_typer(retrieval_app, name="retrieval")
+
+llamaindex_app = typer.Typer(
+    name="llamaindex",
+    help="Optional LlamaIndex dependency + retrieval config status (read-only).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(llamaindex_app, name="llamaindex")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3010,6 +3024,64 @@ def data_quality_phase_09_schema_status(
         human=human,
         exit_code=0 if report["overall_status"] == "ready" else 3,
     )
+
+
+_LLAMAINDEX_GUARDRAILS = {
+    "read_only": True,
+    "no_raw": True,
+    "no_writeback": True,
+    "lazy_import_only": True,
+    "metadata_only": True,
+    "local_first": True,
+    "advisory_only": True,
+    "external_embedding_providers_deferred": True,
+}
+
+
+@llamaindex_app.command("status")
+def retrieval_llamaindex_status(
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 09 optional LlamaIndex dependency + retrieval config status (read-only, fail-closed).
+
+    Reports whether the optional `llama-index-core` SDK is installed (probed without importing it),
+    the resolved metadata-only retrieval config + its config_hash, and schema readiness (V38). The
+    SDK is absent by default (local-first) — that is reported, not failed. Read-only over the DB;
+    builds no embeddings/index. Exit 0 when the contract/seed load, the config is valid, and the
+    schema is ready; exit 3 on a fail-closed contract/seed failure, invalid config, or stale schema.
+    """
+    from hb_assistant.construction.second_brain.retrieval.llamaindex_config import (
+        LlamaIndexConfigError,
+        build_llamaindex_config_status,
+    )
+
+    try:
+        report = build_llamaindex_config_status()
+    except LlamaIndexConfigError as exc:
+        payload = {
+            "command": "second-brain retrieval llamaindex status",
+            "policy_loaded": False,
+            "config_valid": False,
+            "schema_ready": False,
+            "ready_to_index": False,
+            "error": type(exc).__name__,
+            "guardrails": _LLAMAINDEX_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**report, "guardrails": _LLAMAINDEX_GUARDRAILS}
+    human = [
+        "Phase 09 LlamaIndex dependency + retrieval config status (read-only, advisory)",
+        f"  sdk available: {report['sdk']['available']} (version {report['sdk']['version']})",
+        f"  config valid: {report['config_valid']} | schema ready: {report['schema_ready']}"
+        f" | ready to index: {report['ready_to_index']}",
+        f"  config_hash: {report['config']['config_hash']} | blockers: {report['blockers']}",
+    ]
+    ready = report["policy_loaded"] and report["config_valid"] and report["schema_ready"]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if ready else 3)
 
 
 @financial_app.command("no-writeback-proof")

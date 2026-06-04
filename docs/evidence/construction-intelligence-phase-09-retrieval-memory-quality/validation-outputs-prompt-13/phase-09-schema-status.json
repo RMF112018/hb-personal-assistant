@@ -1,0 +1,199 @@
+{
+  "command": "second-brain data-quality phase-09-schema-status",
+  "generated_utc": "2026-06-04T20:08:24.068800+00:00",
+  "repo_sha": "e7c56db32992e5f305003ffdba037aa801c8e9bb",
+  "schema_version": 38,
+  "schema_version_expected": 38,
+  "schema_ready": true,
+  "contract_schema": "phase_09_table_lifecycle_contract/v1",
+  "policy_loaded": true,
+  "phase_09_table_count": 19,
+  "guard_column_count": 23,
+  "all_tables_present": true,
+  "all_guards_present": true,
+  "all_rows_zero": true,
+  "overall_status": "ready",
+  "tables": [
+    {
+      "table_name": "second_brain_retrieval_llamaindex_config_snapshots",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "13"
+    },
+    {
+      "table_name": "second_brain_retrieval_approved_source_manifests",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "15"
+    },
+    {
+      "table_name": "second_brain_retrieval_vector_index_runs",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "18"
+    },
+    {
+      "table_name": "second_brain_retrieval_vector_index_items",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "18"
+    },
+    {
+      "table_name": "second_brain_retrieval_embedding_model_evals",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "14"
+    },
+    {
+      "table_name": "second_brain_retrieval_hybrid_query_runs",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "20"
+    },
+    {
+      "table_name": "second_brain_retrieval_hybrid_query_results",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "20"
+    },
+    {
+      "table_name": "second_brain_retrieval_eval_sets",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "24"
+    },
+    {
+      "table_name": "second_brain_retrieval_eval_cases",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "24"
+    },
+    {
+      "table_name": "second_brain_retrieval_eval_runs",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "24"
+    },
+    {
+      "table_name": "second_brain_retrieval_benchmark_runs",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "25"
+    },
+    {
+      "table_name": "second_brain_retrieval_source_linked_proof_runs",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "34"
+    },
+    {
+      "table_name": "second_brain_retrieval_unsupported_claim_checks",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "28"
+    },
+    {
+      "table_name": "second_brain_retrieval_context_budget_runs",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "27"
+    },
+    {
+      "table_name": "second_brain_memory_quality_review_runs",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "30"
+    },
+    {
+      "table_name": "second_brain_memory_consolidation_candidates",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "31"
+    },
+    {
+      "table_name": "second_brain_memory_consolidation_review_items",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "31"
+    },
+    {
+      "table_name": "second_brain_agent_performance_feedback_runs",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "32"
+    },
+    {
+      "table_name": "second_brain_phase_09_validation_runs",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "phase_09_lifecycle": "validation_only",
+      "owning_prompt": "36"
+    }
+  ],
+  "read_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "additive_only": true,
+    "advisory_only": true,
+    "local_only": true,
+    "no_llamaindex_or_vector_runtime": true
+  }
+}
