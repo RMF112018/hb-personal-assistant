@@ -1,0 +1,75 @@
+# 00 Repo Data Baseline
+
+This file is part of an evaluation evidence packet. It records measurable evidence only and does not conclude that the underlying data is usable, meaningful, high quality, or production-ready.
+
+## Machine-Readable Summary
+
+```json
+{
+  "branch": {
+    "command": "git rev-parse --abbrev-ref HEAD",
+    "exit_code": 0,
+    "stderr_lines": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_lines": 1,
+    "stdout_sha256": "6403203dd5a0867eb14d104ee8a73730bd72dd9ad92e78d996a6dba0a5dcfc01"
+  },
+  "command_metadata_collected": [
+    {
+      "command": ".venv/bin/hb-assistant second-brain --help",
+      "exit_code": 0,
+      "stderr_lines": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 34,
+      "stdout_sha256": "b1ca77b50649da31a397e8fc1d3e51afa4531068c448c639a951dfd4e9bbe0fb"
+    },
+    {
+      "command": ".venv/bin/hb-assistant second-brain data-quality --help",
+      "exit_code": 0,
+      "stderr_lines": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 26,
+      "stdout_sha256": "f74fd9051e730c201db7a0fce2a5fb9208117e595b2671aa510290878f25379a"
+    },
+    {
+      "command": ".venv/bin/hb-assistant second-brain mcp --help",
+      "exit_code": 0,
+      "stderr_lines": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 29,
+      "stdout_sha256": "dd9a76eff8d8ac996bc4a6ddc0a31c4fd5ffe0a79ea0e6eb89a8c50042f57f5f"
+    }
+  ],
+  "data_quality_conclusions_made": false,
+  "generated_utc": "2026-06-04T08:30:00.156240+00:00",
+  "head_commit": {
+    "command": "git rev-parse HEAD",
+    "exit_code": 0,
+    "stderr_lines": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_lines": 1,
+    "stdout_sha256": "9cc63940c3abfc26b43104d8269e7d2a5b4a38cf51b233973cc24706c0ad7aac"
+  },
+  "obsidian_vault_exists": true,
+  "obsidian_vault_location_redacted": "~/Documents/Obsidian Vault",
+  "package_version": "1.3.0",
+  "packet_title": "Phase_08A_08D_Agent_Data_Structure_And_Quality_Evaluation_Evidence_Packet",
+  "phase_08a_08d_evidence_directories": [
+    "docs/evidence/construction-intelligence-phase-08a-second-brain-runtime",
+    "docs/evidence/construction-intelligence-phase-08b-automation-hardening",
+    "docs/evidence/construction-intelligence-phase-08c-financial-readiness",
+    "docs/evidence/construction-intelligence-phase-08d-mcp-bridge"
+  ],
+  "sqlite_database_exists": true,
+  "sqlite_database_location_redacted": "~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "sqlite_schema_version_expected": 37,
+  "working_tree_status": {
+    "command": "git status --short",
+    "exit_code": 0,
+    "stderr_lines": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_lines": 5,
+    "stdout_sha256": "79a600e1080481db3592502a24713dc85eac54638234bc1d771a6f2df4cfbb66"
+  }
+}
+```

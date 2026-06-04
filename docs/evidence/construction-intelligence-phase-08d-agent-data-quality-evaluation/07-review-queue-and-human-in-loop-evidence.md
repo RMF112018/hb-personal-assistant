@@ -1,0 +1,1299 @@
+# 07 Review Queue And Human In Loop Evidence
+
+This file is part of an evaluation evidence packet. It records measurable evidence only and does not conclude that the underlying data is usable, meaningful, high quality, or production-ready.
+
+## Machine-Readable Summary
+
+```json
+{
+  "review_item_row_count_total": 66466,
+  "review_not_performed": true,
+  "review_queue_table_count": 7,
+  "review_queue_tables_present": [
+    "construction_document_intelligence_previews",
+    "construction_review_queue",
+    "email_review_queue",
+    "launchd_schedule_previews",
+    "memory_update_reviews",
+    "second_brain_financial_review_required_items",
+    "second_brain_mcp_claude_desktop_config_previews"
+  ],
+  "review_status_fields": [
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "action_items"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "aging_exposure_report_items"
+    },
+    {
+      "field": "missing_status_flag",
+      "missing_review_status_count": 0,
+      "table": "aging_exposure_report_items"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "aging_exposure_report_items"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "assistant_runs"
+    },
+    {
+      "field": "eligibility_status",
+      "missing_review_status_count": 0,
+      "table": "attachments"
+    },
+    {
+      "field": "events_review_required",
+      "missing_review_status_count": 0,
+      "table": "calendar_crawl_runs"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "calendar_crawl_runs"
+    },
+    {
+      "field": "response_status",
+      "missing_review_status_count": 0,
+      "table": "calendar_event_attendees"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "calendar_event_attendees"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "calendar_event_index"
+    },
+    {
+      "field": "review_reasons_json",
+      "missing_review_status_count": 108,
+      "table": "calendar_event_index"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "calendar_project_match_candidates"
+    },
+    {
+      "field": "promotion_status",
+      "missing_review_status_count": 0,
+      "table": "calendar_project_match_candidates"
+    },
+    {
+      "field": "sync_status",
+      "missing_review_status_count": 0,
+      "table": "calendar_sync_state"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "construction_crawl_receipts"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "construction_data_quality_runs"
+    },
+    {
+      "field": "last_status",
+      "missing_review_status_count": 0,
+      "table": "construction_delta_tokens"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "construction_document_cards"
+    },
+    {
+      "field": "needs_review",
+      "missing_review_status_count": 0,
+      "table": "construction_document_cards"
+    },
+    {
+      "field": "review_status",
+      "missing_review_status_count": 0,
+      "table": "construction_document_cards"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "construction_document_cards"
+    },
+    {
+      "field": "review_reasons_json",
+      "missing_review_status_count": 0,
+      "table": "construction_document_cards"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "construction_document_classification_candidates"
+    },
+    {
+      "field": "promotion_status",
+      "missing_review_status_count": 0,
+      "table": "construction_document_classification_candidates"
+    },
+    {
+      "field": "preview_id",
+      "missing_review_status_count": 0,
+      "table": "construction_document_intelligence_previews"
+    },
+    {
+      "field": "preview_kind",
+      "missing_review_status_count": 0,
+      "table": "construction_document_intelligence_previews"
+    },
+    {
+      "field": "preview_redacted",
+      "missing_review_status_count": 0,
+      "table": "construction_document_intelligence_previews"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "construction_document_intelligence_previews"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "construction_document_project_match_candidates"
+    },
+    {
+      "field": "promotion_status",
+      "missing_review_status_count": 0,
+      "table": "construction_document_project_match_candidates"
+    },
+    {
+      "field": "review_required_count",
+      "missing_review_status_count": 0,
+      "table": "construction_document_projection_runs"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "construction_document_projection_runs"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "construction_document_relationship_candidates"
+    },
+    {
+      "field": "promotion_status",
+      "missing_review_status_count": 0,
+      "table": "construction_document_relationship_candidates"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "construction_drive_item_inventory"
+    },
+    {
+      "field": "classification_status",
+      "missing_review_status_count": 100,
+      "table": "construction_drive_items"
+    },
+    {
+      "field": "match_status",
+      "missing_review_status_count": 62,
+      "table": "construction_drive_items"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "construction_drive_items"
+    },
+    {
+      "field": "review_reason",
+      "missing_review_status_count": 74,
+      "table": "construction_drive_items"
+    },
+    {
+      "field": "extraction_status",
+      "missing_review_status_count": 0,
+      "table": "construction_file_extraction_runs"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "construction_file_extraction_runs"
+    },
+    {
+      "field": "decision_id",
+      "missing_review_status_count": 0,
+      "table": "construction_file_ingestion_decisions"
+    },
+    {
+      "field": "ingestion_disposition",
+      "missing_review_status_count": 0,
+      "table": "construction_file_ingestion_decisions"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "construction_file_ingestion_decisions"
+    },
+    {
+      "field": "review_reason",
+      "missing_review_status_count": 4,
+      "table": "construction_file_ingestion_decisions"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "construction_graph_download_receipts"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "construction_graph_link_resolution"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "construction_model_decisions"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "construction_processing_receipts"
+    },
+    {
+      "field": "match_status",
+      "missing_review_status_count": 0,
+      "table": "construction_project_identity"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "construction_project_source_matches"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "construction_review_queue"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "construction_source_crawl_runs"
+    },
+    {
+      "field": "resolution_status",
+      "missing_review_status_count": 0,
+      "table": "construction_source_resolutions"
+    },
+    {
+      "field": "sync_status",
+      "missing_review_status_count": 0,
+      "table": "construction_source_sync_state"
+    },
+    {
+      "field": "lifecycle_status",
+      "missing_review_status_count": 0,
+      "table": "construction_table_lifecycle_registry"
+    },
+    {
+      "field": "expected_population_status",
+      "missing_review_status_count": 0,
+      "table": "construction_table_lifecycle_registry"
+    },
+    {
+      "field": "financial_review_ready",
+      "missing_review_status_count": 0,
+      "table": "cross_domain_context_readiness_mart"
+    },
+    {
+      "field": "overall_status",
+      "missing_review_status_count": 0,
+      "table": "cross_domain_context_readiness_mart"
+    },
+    {
+      "field": "review_required_count",
+      "missing_review_status_count": 0,
+      "table": "cross_source_intelligence_obsidian_runs"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "cross_source_intelligence_obsidian_runs"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "cross_source_relationship_candidates"
+    },
+    {
+      "field": "promotion_status",
+      "missing_review_status_count": 0,
+      "table": "cross_source_relationship_candidates"
+    },
+    {
+      "field": "promotion_status",
+      "missing_review_status_count": 0,
+      "table": "cross_source_relationships"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "cross_source_relationships"
+    },
+    {
+      "field": "delivery_status",
+      "missing_review_status_count": 0,
+      "table": "daily_brief_delivery_receipts"
+    },
+    {
+      "field": "review_tier",
+      "missing_review_status_count": 0,
+      "table": "daily_brief_handoff_lines"
+    },
+    {
+      "field": "render_status",
+      "missing_review_status_count": 0,
+      "table": "daily_brief_html_render_receipts"
+    },
+    {
+      "field": "notify_status",
+      "missing_review_status_count": 0,
+      "table": "daily_brief_notification_receipts"
+    },
+    {
+      "field": "review_required_count",
+      "missing_review_status_count": 0,
+      "table": "daily_brief_notification_receipts"
+    },
+    {
+      "field": "open_status",
+      "missing_review_status_count": 0,
+      "table": "daily_brief_open_receipts"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "daily_brief_runs"
+    },
+    {
+      "field": "review_required_count",
+      "missing_review_status_count": 0,
+      "table": "daily_brief_runs"
+    },
+    {
+      "field": "review_tier",
+      "missing_review_status_count": 0,
+      "table": "daily_brief_runs"
+    },
+    {
+      "field": "review_tier_reason_code",
+      "missing_review_status_count": 0,
+      "table": "daily_brief_runs"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "daily_brief_source_refs"
+    },
+    {
+      "field": "gate_status",
+      "missing_review_status_count": 0,
+      "table": "data_quality_gate_results"
+    },
+    {
+      "field": "review_items_created",
+      "missing_review_status_count": 0,
+      "table": "email_crawl_runs"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "email_crawl_runs"
+    },
+    {
+      "field": "review_required_for_sensitive",
+      "missing_review_status_count": 0,
+      "table": "email_intelligence_active_policy"
+    },
+    {
+      "field": "ollama_invalid_json_routes_to_review",
+      "missing_review_status_count": 0,
+      "table": "email_intelligence_active_policy"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "email_message_attachments"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "email_message_body_vault_refs"
+    },
+    {
+      "field": "body_preview_hash",
+      "missing_review_status_count": 9,
+      "table": "email_messages"
+    },
+    {
+      "field": "body_preview_excerpt_redacted",
+      "missing_review_status_count": 9,
+      "table": "email_messages"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "email_messages"
+    },
+    {
+      "field": "classification_status",
+      "missing_review_status_count": 0,
+      "table": "email_model_classifications"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "email_model_classifications"
+    },
+    {
+      "field": "review_reasons_json",
+      "missing_review_status_count": 0,
+      "table": "email_model_classifications"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "email_processing_receipts"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "email_project_matches"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "email_relationship_candidates"
+    },
+    {
+      "field": "review_id",
+      "missing_review_status_count": 0,
+      "table": "email_review_queue"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "email_review_queue"
+    },
+    {
+      "field": "review_required_before_body_use",
+      "missing_review_status_count": 0,
+      "table": "email_review_queue"
+    },
+    {
+      "field": "body_capture_decision_json",
+      "missing_review_status_count": 15,
+      "table": "email_review_queue"
+    },
+    {
+      "field": "sync_status",
+      "missing_review_status_count": 0,
+      "table": "email_sync_state"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "email_thread_summaries"
+    },
+    {
+      "field": "review_required_count",
+      "missing_review_status_count": 0,
+      "table": "email_thread_summary_materialization_runs"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "email_thread_summary_materialization_runs"
+    },
+    {
+      "field": "download_status",
+      "missing_review_status_count": 0,
+      "table": "files"
+    },
+    {
+      "field": "parse_status",
+      "missing_review_status_count": 0,
+      "table": "files"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "interactive_chat_sessions"
+    },
+    {
+      "field": "launchd_preview_id",
+      "missing_review_status_count": 0,
+      "table": "launchd_schedule_previews"
+    },
+    {
+      "field": "review_status",
+      "missing_review_status_count": 0,
+      "table": "long_term_memory_items"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "long_term_memory_quality_signals"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "long_term_memory_source_refs"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "meeting_email_relationship_candidates"
+    },
+    {
+      "field": "promotion_status",
+      "missing_review_status_count": 0,
+      "table": "meeting_email_relationship_candidates"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "meeting_prep_brief_runs"
+    },
+    {
+      "field": "review_required_count",
+      "missing_review_status_count": 0,
+      "table": "meeting_prep_brief_runs"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "meeting_prep_brief_sections"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "memory_update_candidates"
+    },
+    {
+      "field": "review_tier",
+      "missing_review_status_count": 0,
+      "table": "memory_update_candidates"
+    },
+    {
+      "field": "review_tier_reason_code",
+      "missing_review_status_count": 0,
+      "table": "memory_update_candidates"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "memory_update_candidates"
+    },
+    {
+      "field": "review_id",
+      "missing_review_status_count": 0,
+      "table": "memory_update_reviews"
+    },
+    {
+      "field": "decision",
+      "missing_review_status_count": 0,
+      "table": "memory_update_reviews"
+    },
+    {
+      "field": "reviewer_ref",
+      "missing_review_status_count": 0,
+      "table": "memory_update_reviews"
+    },
+    {
+      "field": "decision_reason_redacted",
+      "missing_review_status_count": 0,
+      "table": "memory_update_reviews"
+    },
+    {
+      "field": "reviewed_utc",
+      "missing_review_status_count": 0,
+      "table": "memory_update_reviews"
+    },
+    {
+      "field": "review_status",
+      "missing_review_status_count": 0,
+      "table": "obsidian_index_entries"
+    },
+    {
+      "field": "extraction_status",
+      "missing_review_status_count": 0,
+      "table": "parser_outputs"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "phase_07d_validation_runs"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "phase_08a_validation_runs"
+    },
+    {
+      "field": "signal_status",
+      "missing_review_status_count": 0,
+      "table": "procore_action_signals"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "procore_financial_billing_periods"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 379,
+      "table": "procore_financial_budget_changes"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "procore_financial_change_events"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "procore_financial_change_orders"
+    },
+    {
+      "field": "reviewed_at_utc",
+      "missing_review_status_count": 23,
+      "table": "procore_financial_change_orders"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "procore_financial_compliance_documents"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "procore_financial_contracts"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "procore_financial_invoice_items"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "procore_financial_payment_applications"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "procore_financial_rfqs"
+    },
+    {
+      "field": "estimated_status",
+      "missing_review_status_count": 0,
+      "table": "procore_financial_rfqs"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "procore_financial_subcontractor_invoices"
+    },
+    {
+      "field": "erp_status",
+      "missing_review_status_count": 0,
+      "table": "procore_financial_subcontractor_invoices"
+    },
+    {
+      "field": "observation_status_ids_json",
+      "missing_review_status_count": 3484,
+      "table": "procore_inspection_evidence_rules"
+    },
+    {
+      "field": "photo_status_ids_json",
+      "missing_review_status_count": 3484,
+      "table": "procore_inspection_evidence_rules"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "procore_inspection_items"
+    },
+    {
+      "field": "response_status",
+      "missing_review_status_count": 0,
+      "table": "procore_inspection_items"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "procore_inspection_records"
+    },
+    {
+      "field": "item_status_id",
+      "missing_review_status_count": 0,
+      "table": "procore_inspection_response_options"
+    },
+    {
+      "field": "status_category",
+      "missing_review_status_count": 0,
+      "table": "procore_inspection_response_options"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "procore_live_record_change_events"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 5118,
+      "table": "procore_live_records"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "procore_live_records"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "procore_live_sync_runs"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "procore_text_intelligence"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "project_issue_history_items"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "project_issue_history_items"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "project_risk_digest_items"
+    },
+    {
+      "field": "quality_status",
+      "missing_review_status_count": 0,
+      "table": "project_source_coverage_mart"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "query_tool_receipts"
+    },
+    {
+      "field": "relationship_status",
+      "missing_review_status_count": 0,
+      "table": "relationship_quality_mart"
+    },
+    {
+      "field": "review_required_count",
+      "missing_review_status_count": 0,
+      "table": "relationship_quality_mart"
+    },
+    {
+      "field": "quality_status",
+      "missing_review_status_count": 0,
+      "table": "relationship_quality_mart"
+    },
+    {
+      "field": "relationship_status",
+      "missing_review_status_count": 0,
+      "table": "relationship_resolution_queue"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "relationship_resolution_queue"
+    },
+    {
+      "field": "promotion_status",
+      "missing_review_status_count": 0,
+      "table": "relationship_resolution_queue"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "retrieval_context_refs"
+    },
+    {
+      "field": "review_required_count",
+      "missing_review_status_count": 0,
+      "table": "retrieval_query_receipts"
+    },
+    {
+      "field": "review_tier",
+      "missing_review_status_count": 0,
+      "table": "retrieval_query_receipts"
+    },
+    {
+      "field": "review_tier_reason_code",
+      "missing_review_status_count": 0,
+      "table": "retrieval_query_receipts"
+    },
+    {
+      "field": "review_tier_reason_code",
+      "missing_review_status_count": 0,
+      "table": "second_brain_agent_model_receipts"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_agent_run_receipts"
+    },
+    {
+      "field": "review_tier",
+      "missing_review_status_count": 0,
+      "table": "second_brain_agent_run_receipts"
+    },
+    {
+      "field": "review_tier",
+      "missing_review_status_count": 0,
+      "table": "second_brain_evaluation_runs"
+    },
+    {
+      "field": "review_tier_reason_code",
+      "missing_review_status_count": 0,
+      "table": "second_brain_evaluation_runs"
+    },
+    {
+      "field": "review_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_evaluation_runs"
+    },
+    {
+      "field": "parse_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_amount_facts_normalized"
+    },
+    {
+      "field": "currency_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_amount_facts_normalized"
+    },
+    {
+      "field": "review_tier",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_amount_facts_normalized"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_amount_facts_normalized"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_amount_facts_normalized"
+    },
+    {
+      "field": "currency_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_currency_completeness_snapshots"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_currency_completeness_snapshots"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_currency_completeness_snapshots"
+    },
+    {
+      "field": "review_tier",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_exposure_summary_items"
+    },
+    {
+      "field": "advisory_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_exposure_summary_items"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_exposure_summary_items"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_exposure_summary_items"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_fact_normalization_runs"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_fact_normalization_runs"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_fact_normalization_runs"
+    },
+    {
+      "field": "readiness_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_forecast_readiness_runs"
+    },
+    {
+      "field": "gate_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_forecast_readiness_runs"
+    },
+    {
+      "field": "review_items_count",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_forecast_readiness_runs"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_forecast_readiness_runs"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_forecast_readiness_runs"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_readiness_agent_runs"
+    },
+    {
+      "field": "review_required_count",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_readiness_agent_runs"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_readiness_agent_runs"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_readiness_agent_runs"
+    },
+    {
+      "field": "review_tier",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_review_required_items"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_review_required_items"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_review_required_items"
+    },
+    {
+      "field": "live_verification_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_source_coverage_snapshots"
+    },
+    {
+      "field": "coverage_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_source_coverage_snapshots"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_source_coverage_snapshots"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_source_coverage_snapshots"
+    },
+    {
+      "field": "review_required_count",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_wbs_cost_code_snapshots"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_wbs_cost_code_snapshots"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_financial_wbs_cost_code_snapshots"
+    },
+    {
+      "field": "preview_id",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_claude_desktop_config_previews"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_claude_desktop_config_previews"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_claude_desktop_config_previews"
+    },
+    {
+      "field": "decision",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_denial_receipts"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_denial_receipts"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_denial_receipts"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_permission_audit_runs"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_permission_audit_runs"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_permission_audit_runs"
+    },
+    {
+      "field": "status_counts_json",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_policy_gate_runs"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_policy_gate_runs"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_policy_gate_runs"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_prompt_registry_snapshots"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_prompt_registry_snapshots"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_resource_registry_snapshots"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_resource_registry_snapshots"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_server_config_snapshots"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_server_config_snapshots"
+    },
+    {
+      "field": "decision",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_tool_call_receipts"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_tool_call_receipts"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_tool_call_receipts"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_tool_registry_snapshots"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_mcp_tool_registry_snapshots"
+    },
+    {
+      "field": "review_tier",
+      "missing_review_status_count": 0,
+      "table": "second_brain_operator_feedback"
+    },
+    {
+      "field": "review_tier_reason_code",
+      "missing_review_status_count": 0,
+      "table": "second_brain_operator_feedback"
+    },
+    {
+      "field": "review_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_operator_preference_profiles"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_phase_08c_validation_runs"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_phase_08c_validation_runs"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_phase_08c_validation_runs"
+    },
+    {
+      "field": "payment_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_phase_08d_validation_runs"
+    },
+    {
+      "field": "claim_or_entitlement_decision_performed",
+      "missing_review_status_count": 0,
+      "table": "second_brain_phase_08d_validation_runs"
+    },
+    {
+      "field": "review_required_count",
+      "missing_review_status_count": 0,
+      "table": "second_brain_research_packets"
+    },
+    {
+      "field": "review_tier",
+      "missing_review_status_count": 0,
+      "table": "second_brain_research_packets"
+    },
+    {
+      "field": "review_tier_reason_code",
+      "missing_review_status_count": 0,
+      "table": "second_brain_research_packets"
+    },
+    {
+      "field": "review_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_research_packets"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_research_packets"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_run_registry"
+    },
+    {
+      "field": "lock_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_run_registry"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_run_steps"
+    },
+    {
+      "field": "config_status",
+      "missing_review_status_count": 0,
+      "table": "second_brain_runtime_config_receipts"
+    },
+    {
+      "field": "dependency_status_json",
+      "missing_review_status_count": 0,
+      "table": "second_brain_runtime_config_receipts"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "source_evidence_trails"
+    },
+    {
+      "field": "review_required_count",
+      "missing_review_status_count": 0,
+      "table": "source_record_summary_mart"
+    },
+    {
+      "field": "quality_status",
+      "missing_review_status_count": 0,
+      "table": "source_record_summary_mart"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "source_records"
+    },
+    {
+      "field": "record_status",
+      "missing_review_status_count": 0,
+      "table": "source_system_record_map"
+    },
+    {
+      "field": "review_required",
+      "missing_review_status_count": 0,
+      "table": "source_system_record_map"
+    },
+    {
+      "field": "status",
+      "missing_review_status_count": 0,
+      "table": "sync_state"
+    }
+  ]
+}
+```

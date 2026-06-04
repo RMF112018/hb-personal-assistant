@@ -1,0 +1,133 @@
+{
+  "agent_consumption_map_status": "dependency_matrix_written",
+  "all_generated_proof_files": [
+    "00-repo-data-baseline.md",
+    "01-sqlite-structure-inventory.md",
+    "02-sqlite-field-profile.md",
+    "03-source-to-table-lineage.md",
+    "04-agent-consumption-map.md",
+    "05-project-entity-relationship-linkage.md",
+    "06-data-completeness-freshness-shape.md",
+    "07-review-queue-and-human-in-loop-evidence.md",
+    "08-financial-data-structure-quality-evidence.md",
+    "09-generated-output-structure-quality-evidence.md",
+    "10-mcp-data-exposure-evidence.md",
+    "11-obsidian-structure-linkage-evidence.md",
+    "12-data-dictionary-and-evaluator-index.md",
+    "13-proof-packet-safety-scan.md",
+    "14-final-evidence-closeout.md",
+    "15-evaluator-readiness-index.md",
+    "00-repo-data-baseline.json",
+    "01-sqlite-structure-inventory.json",
+    "02-sqlite-field-profile.json",
+    "03-source-to-table-lineage.json",
+    "04-agent-consumption-map.json",
+    "05-project-entity-relationship-linkage.json",
+    "06-data-completeness-freshness-shape.json",
+    "07-review-queue-and-human-in-loop-evidence.json",
+    "08-financial-data-structure-quality-evidence.json",
+    "09-generated-output-structure-quality-evidence.json",
+    "10-mcp-data-exposure-evidence.json",
+    "11-obsidian-structure-linkage-evidence.json",
+    "12-data-dictionary-and-evaluator-index.json",
+    "13-proof-packet-safety-scan.json",
+    "14-final-evidence-closeout.json",
+    "15-evaluator-readiness-index.json"
+  ],
+  "commands_not_run": [
+    "No live endpoint calls.",
+    "No MCP workflow dispatch calls.",
+    "No Obsidian note writes.",
+    "No source-system writeback commands."
+  ],
+  "commands_run": [
+    {
+      "command": ".venv/bin/hb-assistant second-brain --help",
+      "exit_code": 0,
+      "stderr_lines": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 34,
+      "stdout_sha256": "b1ca77b50649da31a397e8fc1d3e51afa4531068c448c639a951dfd4e9bbe0fb"
+    },
+    {
+      "command": ".venv/bin/hb-assistant second-brain data-quality --help",
+      "exit_code": 0,
+      "stderr_lines": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 26,
+      "stdout_sha256": "f74fd9051e730c201db7a0fce2a5fb9208117e595b2671aa510290878f25379a"
+    },
+    {
+      "command": ".venv/bin/hb-assistant second-brain mcp --help",
+      "exit_code": 0,
+      "stderr_lines": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 29,
+      "stdout_sha256": "dd9a76eff8d8ac996bc4a6ddc0a31c4fd5ffe0a79ea0e6eb89a8c50042f57f5f"
+    },
+    {
+      "command": ".venv/bin/hb-assistant second-brain mcp tools --help",
+      "exit_code": 0,
+      "stderr_lines": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 15,
+      "stdout_sha256": "03a39040b9db6059881c461034f391155cf38249ab175852b7d710b581c6ad27"
+    },
+    {
+      "command": ".venv/bin/hb-assistant second-brain mcp resources --help",
+      "exit_code": 0,
+      "stderr_lines": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 15,
+      "stdout_sha256": "f49047066daf2a2daca8c270c64c3502a35d1fa052d6bd677c08164d72b50656"
+    },
+    {
+      "command": ".venv/bin/hb-assistant second-brain mcp prompts --help",
+      "exit_code": 0,
+      "stderr_lines": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 15,
+      "stdout_sha256": "d41d37953617bd08071bdc1d087578b0c5d1bc8adcb1ab64a69455357eb2f5bd"
+    },
+    {
+      "command": ".venv/bin/hb-assistant second-brain mcp no-raw-access --help",
+      "exit_code": 0,
+      "stderr_lines": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 14,
+      "stdout_sha256": "4b7e037c25ba8efc2d905b66eb43f5d4a5de2a745d71e17fbd27c42bccac73f3"
+    },
+    {
+      "command": ".venv/bin/hb-assistant second-brain mcp no-writeback --help",
+      "exit_code": 0,
+      "stderr_lines": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 15,
+      "stdout_sha256": "c6f55c8ae215944659544273b538412312d748107608eb66dd40c7da72cb3dd9"
+    },
+    {
+      "command": ".venv/bin/hb-assistant second-brain data-quality phase-08d-gates --help",
+      "exit_code": 0,
+      "stderr_lines": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 22,
+      "stdout_sha256": "90a64baa9d312524ac5caabb27820459ef6d369da3973e0d186eb1d217673d82"
+    }
+  ],
+  "financial_data_proof_status": "structure_and_aggregate_metadata_written",
+  "limitations": [
+    "The scan is deterministic and pattern-based; it cannot prove semantic absence of every possible unsafe value.",
+    "Detector label names may appear in documentation, but values matching unsafe token/URL/body patterns are findings.",
+    "This packet does not perform final data-quality or usefulness evaluation.",
+    "Obsidian body references are not inspected to avoid raw note content exposure."
+  ],
+  "mcp_exposure_proof_status": "registry_and_help_surface_metadata_written",
+  "no_raw_data_persistence_status": "safety_scan_passed",
+  "no_writeback_status": "no_writeback_commands_executed",
+  "obsidian_proof_status": "readable_structure_only",
+  "packet_ready_for_separate_evaluation_session": true,
+  "safety_scan_result": "pass",
+  "source_lineage_proof_status": "measurement_packet_written",
+  "sqlite_proof_status": "read_only_confirmed",
+  "underlying_data_readiness_conclusion": "not_evaluated"
+}

@@ -1,0 +1,412 @@
+{
+  "source_families": {
+    "agent_receipts": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "construction_graph_download_receipts",
+        "construction_processing_receipts",
+        "daily_brief_delivery_receipts",
+        "daily_brief_html_render_receipts",
+        "daily_brief_notification_receipts",
+        "daily_brief_open_receipts",
+        "email_processing_receipts",
+        "interactive_chat_message_receipts",
+        "query_tool_receipts",
+        "retrieval_query_receipts",
+        "second_brain_agent_model_receipts",
+        "second_brain_mcp_denial_receipts",
+        "second_brain_mcp_tool_call_receipts",
+        "second_brain_retry_receipts"
+      ],
+      "ingestion_tables": [
+        "construction_crawl_receipts",
+        "second_brain_agent_run_receipts",
+        "second_brain_financial_readiness_agent_runs",
+        "second_brain_runtime_config_receipts"
+      ],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 6,
+      "receipt_tables": [
+        "construction_crawl_receipts",
+        "construction_graph_download_receipts",
+        "construction_processing_receipts",
+        "daily_brief_delivery_receipts",
+        "daily_brief_html_render_receipts",
+        "daily_brief_notification_receipts",
+        "daily_brief_open_receipts",
+        "email_processing_receipts",
+        "interactive_chat_message_receipts",
+        "query_tool_receipts",
+        "retrieval_query_receipts",
+        "second_brain_agent_model_receipts",
+        "second_brain_agent_run_receipts",
+        "second_brain_mcp_denial_receipts",
+        "second_brain_mcp_tool_call_receipts",
+        "second_brain_retry_receipts",
+        "second_brain_runtime_config_receipts"
+      ],
+      "record_count": 58,
+      "review_tables": [],
+      "source_reference_table_count": 18
+    },
+    "automation": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "daily_brief_delivery_receipts",
+        "daily_brief_notification_receipts"
+      ],
+      "ingestion_tables": [
+        "second_brain_run_registry"
+      ],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 1,
+      "receipt_tables": [
+        "daily_brief_delivery_receipts",
+        "daily_brief_notification_receipts"
+      ],
+      "record_count": 0,
+      "review_tables": [
+        "launchd_schedule_previews"
+      ],
+      "source_reference_table_count": 4
+    },
+    "calendar": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "calendar_event_attendees",
+        "calendar_event_index",
+        "calendar_events",
+        "calendar_project_match_candidates",
+        "meeting_email_relationship_candidates",
+        "meeting_prep_brief_sections",
+        "procore_financial_change_events",
+        "procore_live_record_change_events",
+        "procore_record_timeline_events"
+      ],
+      "ingestion_tables": [
+        "calendar_crawl_runs",
+        "calendar_source_locations",
+        "calendar_sync_state",
+        "meeting_prep_brief_runs"
+      ],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 7,
+      "receipt_tables": [],
+      "record_count": 56590,
+      "review_tables": [],
+      "source_reference_table_count": 13
+    },
+    "daily_brief": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "daily_brief_delivery_receipts",
+        "daily_brief_handoff_lines",
+        "daily_brief_html_render_receipts",
+        "daily_brief_notification_receipts",
+        "daily_brief_open_receipts",
+        "meeting_prep_brief_sections"
+      ],
+      "ingestion_tables": [
+        "daily_brief_runs",
+        "daily_brief_source_refs",
+        "meeting_prep_brief_runs"
+      ],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 3,
+      "receipt_tables": [
+        "daily_brief_delivery_receipts",
+        "daily_brief_html_render_receipts",
+        "daily_brief_notification_receipts",
+        "daily_brief_open_receipts"
+      ],
+      "record_count": 9,
+      "review_tables": [],
+      "source_reference_table_count": 9
+    },
+    "financial": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "procore_financial_amount_facts",
+        "procore_financial_billing_periods",
+        "procore_financial_budget_changes",
+        "procore_financial_budget_rows",
+        "procore_financial_budget_views",
+        "procore_financial_change_events",
+        "procore_financial_change_order_line_items",
+        "procore_financial_change_orders",
+        "procore_financial_compliance_documents",
+        "procore_financial_contracts",
+        "procore_financial_invoice_items",
+        "procore_financial_line_items",
+        "procore_financial_payment_applications",
+        "procore_financial_rfqs",
+        "procore_financial_subcontractor_invoices",
+        "second_brain_financial_amount_facts_normalized",
+        "second_brain_financial_currency_completeness_snapshots",
+        "second_brain_financial_exposure_summary_items",
+        "second_brain_financial_review_required_items",
+        "second_brain_financial_wbs_cost_code_snapshots"
+      ],
+      "ingestion_tables": [
+        "second_brain_financial_fact_normalization_runs",
+        "second_brain_financial_forecast_readiness_runs",
+        "second_brain_financial_readiness_agent_runs",
+        "second_brain_financial_source_coverage_snapshots"
+      ],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 24,
+      "receipt_tables": [],
+      "record_count": 169401,
+      "review_tables": [
+        "second_brain_financial_review_required_items"
+      ],
+      "source_reference_table_count": 20
+    },
+    "local_files": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [],
+      "ingestion_tables": [
+        "construction_file_extraction_runs",
+        "construction_file_ingestion_decisions"
+      ],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 2,
+      "receipt_tables": [],
+      "record_count": 38,
+      "review_tables": [],
+      "source_reference_table_count": 2
+    },
+    "mcp": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "query_tool_receipts",
+        "second_brain_mcp_denial_receipts",
+        "second_brain_mcp_server_config_snapshots",
+        "second_brain_mcp_tool_call_receipts"
+      ],
+      "ingestion_tables": [
+        "second_brain_mcp_permission_audit_runs",
+        "second_brain_mcp_policy_gate_runs",
+        "second_brain_mcp_prompt_registry_snapshots",
+        "second_brain_mcp_resource_registry_snapshots",
+        "second_brain_mcp_tool_registry_snapshots"
+      ],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 1,
+      "receipt_tables": [
+        "query_tool_receipts",
+        "second_brain_mcp_denial_receipts",
+        "second_brain_mcp_tool_call_receipts"
+      ],
+      "record_count": 0,
+      "review_tables": [
+        "second_brain_mcp_claude_desktop_config_previews"
+      ],
+      "source_reference_table_count": 10
+    },
+    "memory": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "long_term_memory_items",
+        "long_term_memory_quality_signals",
+        "memory_update_candidates",
+        "second_brain_operator_feedback",
+        "second_brain_operator_preference_profiles"
+      ],
+      "ingestion_tables": [
+        "long_term_memory_source_refs"
+      ],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 2,
+      "receipt_tables": [],
+      "record_count": 0,
+      "review_tables": [
+        "memory_update_reviews"
+      ],
+      "source_reference_table_count": 3
+    },
+    "microsoft_graph": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "construction_drive_item_inventory",
+        "construction_drive_items",
+        "construction_graph_download_receipts",
+        "construction_graph_link_resolution"
+      ],
+      "ingestion_tables": [],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 2,
+      "receipt_tables": [
+        "construction_graph_download_receipts"
+      ],
+      "record_count": 501,
+      "review_tables": [],
+      "source_reference_table_count": 4
+    },
+    "obsidian": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "email_message_body_vault_refs",
+        "obsidian_index_entries",
+        "obsidian_index_manifests"
+      ],
+      "ingestion_tables": [
+        "cross_source_intelligence_obsidian_runs"
+      ],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 2,
+      "receipt_tables": [],
+      "record_count": 7,
+      "review_tables": [],
+      "source_reference_table_count": 4
+    },
+    "outlook_email": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "construction_email_intelligence_deferred_state",
+        "email_intelligence_active_policy",
+        "email_message_attachments",
+        "email_message_body_vault_refs",
+        "email_message_recipients",
+        "email_messages",
+        "email_model_classifications",
+        "email_processing_receipts",
+        "email_project_matches",
+        "email_relationship_candidates",
+        "email_review_queue",
+        "email_thread_summaries",
+        "emails",
+        "interactive_chat_message_receipts",
+        "meeting_email_relationship_candidates"
+      ],
+      "ingestion_tables": [
+        "email_crawl_runs",
+        "email_source_locations",
+        "email_sync_state",
+        "email_thread_summary_materialization_runs"
+      ],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 11,
+      "receipt_tables": [
+        "email_processing_receipts",
+        "interactive_chat_message_receipts"
+      ],
+      "record_count": 1317,
+      "review_tables": [
+        "email_review_queue"
+      ],
+      "source_reference_table_count": 18
+    },
+    "procore": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "procore_action_signals",
+        "procore_attachment_refs",
+        "procore_company_entities",
+        "procore_custom_field_values",
+        "procore_financial_amount_facts",
+        "procore_financial_billing_periods",
+        "procore_financial_budget_changes",
+        "procore_financial_budget_rows",
+        "procore_financial_budget_views",
+        "procore_financial_change_events",
+        "procore_financial_change_order_line_items",
+        "procore_financial_change_orders",
+        "procore_financial_compliance_documents",
+        "procore_financial_contracts",
+        "procore_financial_invoice_items",
+        "procore_financial_line_items",
+        "procore_financial_payment_applications",
+        "procore_financial_rfqs",
+        "procore_financial_subcontractor_invoices",
+        "procore_inspection_evidence_rules",
+        "procore_inspection_items",
+        "procore_inspection_records",
+        "procore_inspection_response_options",
+        "procore_inspection_response_sets",
+        "procore_inspection_sections",
+        "procore_live_record_change_events",
+        "procore_live_record_snapshots",
+        "procore_live_record_state_index",
+        "procore_live_records",
+        "procore_location_entities",
+        "procore_people_entities",
+        "procore_record_edges",
+        "procore_record_timeline_events",
+        "procore_text_intelligence"
+      ],
+      "ingestion_tables": [
+        "procore_live_sync_runs",
+        "procore_live_sync_watermarks"
+      ],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 34,
+      "receipt_tables": [],
+      "record_count": 295248,
+      "review_tables": [],
+      "source_reference_table_count": 28
+    },
+    "research_packet": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "second_brain_research_packets"
+      ],
+      "ingestion_tables": [],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 1,
+      "receipt_tables": [],
+      "record_count": 0,
+      "review_tables": [],
+      "source_reference_table_count": 1
+    },
+    "review_queue": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "email_review_queue",
+        "second_brain_financial_review_required_items"
+      ],
+      "ingestion_tables": [],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 4,
+      "receipt_tables": [],
+      "record_count": 66466,
+      "review_tables": [
+        "construction_document_intelligence_previews",
+        "construction_review_queue",
+        "email_review_queue",
+        "launchd_schedule_previews",
+        "memory_update_reviews",
+        "second_brain_financial_review_required_items",
+        "second_brain_mcp_claude_desktop_config_previews"
+      ],
+      "source_reference_table_count": 6
+    },
+    "sharepoint_onedrive": {
+      "configured_status": "present_in_schema",
+      "derived_read_model_tables": [
+        "construction_document_cards",
+        "construction_document_classification_candidates",
+        "construction_document_project_match_candidates",
+        "construction_document_relationship_candidates",
+        "construction_drive_item_inventory",
+        "construction_drive_items",
+        "files",
+        "procore_financial_compliance_documents",
+        "second_brain_operator_preference_profiles"
+      ],
+      "ingestion_tables": [
+        "construction_document_projection_runs",
+        "construction_file_extraction_runs",
+        "construction_file_ingestion_decisions"
+      ],
+      "known_gaps_in_lineage": [],
+      "project_linked_table_count": 7,
+      "receipt_tables": [],
+      "record_count": 1971,
+      "review_tables": [
+        "construction_document_intelligence_previews"
+      ],
+      "source_reference_table_count": 13
+    }
+  }
+}
