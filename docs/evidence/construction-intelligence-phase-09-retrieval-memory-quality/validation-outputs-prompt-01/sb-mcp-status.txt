@@ -1,0 +1,84 @@
+{
+  "command": "second-brain mcp status",
+  "phase": "08D",
+  "transport": "stdio",
+  "schema_version": 37,
+  "policy_version": "1.4.0-phase-08d-planning",
+  "foundation_ok": true,
+  "ready_to_serve": true,
+  "mcp_sdk_available": true,
+  "mcp_tools_registered": 9,
+  "mcp_allowed_tool_specs": 9,
+  "mcp_denied_actions": 27,
+  "mcp_resources": 5,
+  "mcp_prompts": 5,
+  "checks": [
+    {
+      "name": "schema_version_v37",
+      "status": "pass",
+      "detail": "schema=37"
+    },
+    {
+      "name": "server_policy_seed_loaded",
+      "status": "pass",
+      "detail": "transport.allowed=[stdio]"
+    },
+    {
+      "name": "allowed_tools_registry_present",
+      "status": "pass",
+      "detail": "loaded phase_08d_mcp_allowed_tools_contract"
+    },
+    {
+      "name": "denied_tools_registry_present",
+      "status": "pass",
+      "detail": "loaded phase_08d_mcp_denied_tools_contract"
+    },
+    {
+      "name": "resource_registry_present",
+      "status": "pass",
+      "detail": "loaded phase_08d_mcp_resources_contract"
+    },
+    {
+      "name": "prompt_registry_present",
+      "status": "pass",
+      "detail": "loaded phase_08d_mcp_prompts_contract"
+    },
+    {
+      "name": "permission_policy_fail_closed",
+      "status": "pass",
+      "detail": "8 allow_* all false"
+    },
+    {
+      "name": "transport_stdio_only",
+      "status": "pass",
+      "detail": "http/sse/websocket/tcp/remote denied"
+    },
+    {
+      "name": "no_raw_access_proof",
+      "status": "pass",
+      "detail": "MCP no-raw-access proof passes"
+    },
+    {
+      "name": "no_writeback_proof",
+      "status": "pass",
+      "detail": "MCP no-writeback proof passes"
+    }
+  ],
+  "deferred": [],
+  "serve_blockers": [],
+  "config_hash": "9035049b1b0e4be53ce2cd76b5eb9854036f60c1d5f34ededd9378516db1f7c3",
+  "snapshot_id": "c4b1b1c8172645fca8f4da1586416274",
+  "guardrails": {
+    "local_first": true,
+    "transport_stdio_only": true,
+    "no_network_from_mcp_layer": true,
+    "fail_closed_startup": true,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "no_direct_graph_or_procore": true,
+    "no_arbitrary_sql": true,
+    "no_final_determination": true,
+    "mcp_tools_exposed": false
+  }
+}
+EXIT=0

@@ -1,0 +1,21 @@
+{
+  "operator_db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "operator_db_exists": true,
+  "mcp_v37_tables": [
+    "second_brain_mcp_claude_desktop_config_previews",
+    "second_brain_mcp_denial_receipts",
+    "second_brain_mcp_permission_audit_runs",
+    "second_brain_mcp_policy_gate_runs",
+    "second_brain_mcp_prompt_registry_snapshots",
+    "second_brain_mcp_resource_registry_snapshots",
+    "second_brain_mcp_server_config_snapshots",
+    "second_brain_mcp_tool_call_receipts",
+    "second_brain_mcp_tool_registry_snapshots"
+  ],
+  "mcp_v37_table_count": 9,
+  "receipt_counts": {
+    "second_brain_mcp_tool_call_receipts": 0,
+    "second_brain_mcp_denial_receipts": 0
+  },
+  "note": "operator-DB MCP runtime receipt population is 0 (gap G-02); operational stdio serve proof used a separate proof DB (1 allow + 1 deny). Operator-DB receipt/denial smoke owned by Prompt 04."
+}

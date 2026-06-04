@@ -1,0 +1,57 @@
+{
+  "command": "second-brain data-quality phase-08d-gates",
+  "phase": "08D",
+  "project_key": null,
+  "advisory_only": true,
+  "ok": true,
+  "proof_passed": true,
+  "schema_version": 37,
+  "schema_version_expected": 37,
+  "status_counts": {
+    "pass": 14,
+    "warning": 0,
+    "fail_blocking": 0,
+    "deferred_not_blocking": 0
+  },
+  "by_field_status": {
+    "schema_contracts": "pass",
+    "server_config": "pass",
+    "allowed_tools": "pass",
+    "denied_tools": "pass",
+    "resources": "pass",
+    "prompts": "pass",
+    "workflow_wrappers": "pass",
+    "receipts": "pass",
+    "denials": "pass",
+    "claude_desktop_config": "pass",
+    "no_raw_access": "pass",
+    "no_writeback": "pass",
+    "validation_matrix": "pass",
+    "policy_posture": "pass"
+  },
+  "required_fields_covered": true,
+  "readiness_overstated": false,
+  "ready_to_serve": true,
+  "serve_blockers": [],
+  "deferred_gates": [],
+  "missing_required_evidence": [],
+  "proof_path": "docs/evidence/construction-intelligence-phase-08d-mcp-bridge/phase-08d-gates-proof.md",
+  "evidence_paths": [
+    "docs/evidence/construction-intelligence-phase-08d-mcp-bridge/phase-08d-gates-proof.json"
+  ],
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_external_writeback": true,
+    "no_raw_content": true,
+    "no_readiness_overstatement": true,
+    "advisory_only": true
+  },
+  "attestations": {
+    "external_writeback_performed": false,
+    "raw_store_exposed": false,
+    "direct_graph_or_procore_call_performed": false,
+    "final_determination_performed": false
+  }
+}
+EXIT=0

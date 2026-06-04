@@ -10,6 +10,7 @@ static throughout — the synthesis/retrieval workflow tools are never dispatche
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import tempfile
 from pathlib import Path
@@ -100,15 +101,27 @@ def test_startup_check_passes_and_drops_prompt_13_blocker() -> None:
     assert by_name["no_writeback_proof"] == "pass"
     assert "no_raw_access_proof_pending_prompt_13" not in status["serve_blockers"]
     assert "no_writeback_proof_pending_prompt_14" not in status["serve_blockers"]
-    assert status["ready_to_serve"] is False
+    # ready_to_serve now depends only on the optional MCP SDK (Prompt 15): true with the
+    # SDK installed, fail-closed (serve_blockers == ["mcp_sdk_not_installed"]) without it.
+    if importlib.util.find_spec("mcp") is not None:
+        assert status["serve_blockers"] == []
+        assert status["ready_to_serve"] is True
+    else:
+        assert status["serve_blockers"] == ["mcp_sdk_not_installed"]
+        assert status["ready_to_serve"] is False
 
 
 def test_data_quality_gate_no_raw_access_now_passes() -> None:
     with tempfile.TemporaryDirectory() as td:
         report = evaluate_phase_08d_data_quality_gates(db_path=str(Path(td) / "a.db"))
     assert report["by_field_status"]["no_raw_access"] == "pass"
-    assert report["ready_to_serve"] is False
     assert "no_raw_access_proof_pending_prompt_13" not in report["serve_blockers"]
+    if importlib.util.find_spec("mcp") is not None:
+        assert report["ready_to_serve"] is True
+        assert report["serve_blockers"] == []
+    else:
+        assert report["ready_to_serve"] is False
+        assert report["serve_blockers"] == ["mcp_sdk_not_installed"]
 
 
 def test_cli_no_raw_access_emits_passing_proof() -> None:

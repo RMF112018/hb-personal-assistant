@@ -1,0 +1,68 @@
+{
+  "artifact": "phase_09_08d_closeout_gap_verification",
+  "prompt": "Prompt_01_08D_Closeout_Gap_Verification",
+  "phase": "09",
+  "phase_classification": "preflight_remediation",
+  "posture": "verify_plus_resolve_or_classify_no_schema_no_semantic_retrieval",
+  "generated_local_date": "2026-06-04",
+  "repo_truth": {
+    "repository": "RMF112018/hb-personal-assistant",
+    "branch": "main",
+    "head_sha": "23e6d870b8033fcea8bf4bacc167f8d2f6c29790",
+    "phase_08d_target_sha": "a24f2a75f5b019d495b891d433edb264c9426d2e",
+    "ahead_of_target": 2,
+    "behind_target": 0,
+    "schema_version": 37,
+    "package_version": "1.3.0",
+    "planning_label": "v1.4.0-phase-09-planning"
+  },
+  "code_change": {
+    "scope": "tests_only",
+    "files": ["tests/test_phase_08d_no_raw_access.py", "tests/test_phase_08d_no_writeback.py"],
+    "runtime_or_schema_change": false,
+    "semantic_retrieval_code_added": false,
+    "description": "Made the ready_to_serve/serve_blockers assertions in 4 Phase-08D tests SDK-state-aware (branch on importlib.util.find_spec('mcp')); kept the Prompt-13/14 no-raw/no-writeback blocker-dropped assertions."
+  },
+  "closeout_verification_matrix": {
+    "mcp_runtime": {"command": "second-brain mcp status --json", "exit": 0, "ready_to_serve": true, "serve_blockers": [], "mcp_sdk_available": true, "foundation_ok": true, "schema_version": 37, "mcp_tools_registered": 9, "mcp_denied_actions": 27, "mcp_resources": 5, "mcp_prompts": 5, "transport": "stdio"},
+    "receipts_substrate": {"v37_receipt_tables": ["second_brain_mcp_tool_call_receipts", "second_brain_mcp_denial_receipts"], "guard_check_columns_each": 20, "present": true},
+    "receipts_operator_db_runtime": {"operator_db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite", "tool_call_receipts": 0, "denial_receipts": 0, "gap": "G-02", "classification": "operator-DB runtime receipt population is 0; operational stdio serve proof used a separate proof DB (1 allow + 1 deny); operator-DB allowed/denied smoke owned by Prompt 04 (deferred, Phase-09 blocker tracked there)"},
+    "gates": {"command": "second-brain data-quality phase-08d-gates --json", "exit": 0, "ok": true, "status_counts": {"pass": 14, "warning": 0, "fail_blocking": 0, "deferred_not_blocking": 0}, "ready_to_serve": true, "serve_blockers": [], "readiness_overstated": false},
+    "no_raw": {"command": "second-brain mcp no-raw-access --json", "exit": 0, "proof_passed": true, "surfaces_scanned": 7},
+    "no_writeback": {"command": "second-brain mcp no-writeback --json", "exit": 0, "proof_passed": true, "surfaces_scanned": 7},
+    "config_preview": {"preview_only": true, "auto_apply": false, "emits": "command + args + env key names only", "secrets_or_paths_persisted": false, "redaction": "_assert_no_raw enforced before write"},
+    "evidence_bundle": {"path": "docs/evidence/construction-intelligence-phase-08d-mcp-bridge/", "complete": true, "internally_consistent": true}
+  },
+  "validation_commands": [
+    {"name": "compileall src tests", "exit": 0},
+    {"name": "ruff check .", "exit": 0, "result": "All checks passed!"},
+    {"name": "mypy src", "exit": 0, "result": "Success: no issues found in 272 source files"},
+    {"name": "pytest -m \"not live and not integration and not manual\"", "exit": 0, "passed": 3016, "failed": 0, "skipped": 0, "deselected": 1, "delta_from_prompt_00": "4 prior Phase-08D SDK-presence failures resolved -> fully green"},
+    {"name": "construction-agent validate --json", "exit": 0, "ok": true, "schema_version": 37},
+    {"name": "construction-agent data-quality table-inventory --json", "exit": 0, "schema_version": 37, "unmapped_live_tables": 0},
+    {"name": "construction-agent data-quality no-writeback-proof --json", "exit": 0, "proof_passed": true, "no_raw_values_persisted": true},
+    {"name": "second-brain data-quality phase-08a-gates --json", "exit": 0, "ok": true, "status_counts": {"pass": 8, "warning": 1, "fail_blocking": 0, "deferred_not_blocking": 3}, "readiness_overstated": false},
+    {"name": "second-brain data-quality phase-08b-gates --json", "exit": 0, "ok": true, "status_counts": {"pass": 16, "warning": 0, "fail_blocking": 0, "deferred_not_blocking": 0}, "readiness_overstated": false},
+    {"name": "second-brain data-quality phase-08c-gates --json", "requested_spelling": "second-brain financial data-quality phase-08c-gates", "exit": 0, "ok": true, "proof_passed": true, "status_counts": {"pass": 21, "warning": 1, "fail_blocking": 0, "deferred_not_blocking": 0}, "readiness_overstated": false},
+    {"name": "second-brain data-quality phase-08d-gates --json", "requested_spelling": "second-brain mcp data-quality phase-08d-gates", "exit": 0, "ok": true, "ready_to_serve": true, "readiness_overstated": false},
+    {"name": "second-brain mcp no-raw-access --json", "requested_spelling": "second-brain mcp data-quality no-raw-access-proof", "exit": 0, "proof_passed": true},
+    {"name": "second-brain mcp no-writeback --json", "requested_spelling": "second-brain mcp data-quality no-writeback-proof", "exit": 0, "proof_passed": true}
+  ],
+  "gap_disposition": {
+    "resolved_this_prompt": ["08D SDK-presence test inconsistency (4 tests made SDK-state-aware; suite green)"],
+    "verified_and_carried_forward": [
+      {"gap": "G-02", "summary": "operator-DB MCP runtime receipt/denial population = 0", "owning_prompt": "Prompt_04_MCP_Runtime_Receipt_And_Denial_Smoke_Preflight", "blocks_phase_09": true}
+    ],
+    "preserved_warnings": ["08C forecast-readiness deferred_not_blocking (external Procore dependency)"]
+  },
+  "stop_condition_check": {
+    "raw_content_persistence": false,
+    "external_writeback": false,
+    "missing_no_raw_or_no_writeback_proof": false,
+    "unresolved_high_impact_review_items_in_approved_source_manifest": "n/a",
+    "unapproved_obsidian_notes_indexed": "n/a",
+    "semantic_retrieval_bypassing_research_packet_or_evaluation": "n/a",
+    "any_stop_condition_triggered": false
+  },
+  "verdict": "Phase 08D closeout holds against current repo truth: MCP runtime operational (ready_to_serve=true, SDK present), receipts substrate + operational proof verified (operator-DB runtime population 0 -> G-02 to Prompt 04), gates 14 pass, no-raw/no-writeback proofs pass, config preview-only and safe, evidence bundle complete. The SDK-presence test gap is resolved (suite fully green, 3016 passed). No stop condition. Proceed to Prompt 02."
+}
