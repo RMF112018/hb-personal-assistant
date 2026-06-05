@@ -1,0 +1,77 @@
+# Phase 09 Prompt 36 — Phase 09 data-quality gates (resolved values; advisory).
+# A read-only, advisory conformance evaluator aggregating the Phase 09 posture into the
+# pass / warning / fail_blocking / deferred_not_blocking taxonomy. Structural + safety gates must pass;
+# per-surface gates whose V38/V39 substrate ships empty are honestly deferred_not_blocking. Read-only:
+# no persistence, no migration, no heavy proof fixtures re-run. Readiness is never overstated.
+version: phase_09_data_quality_gates_v1
+phase: "09"
+
+# Per-surface gate map: each entry is gate_name -> {contract, table, kind}.
+#   kind=static  -> pass on contract load (a static enforcement/advisory policy; no table to populate)
+#   kind=table   -> pass if the table is populated, else deferred_not_blocking (substrate ships empty)
+#   kind=proof   -> pass if the corresponding structural safety gate passes
+surface_gates:
+  llamaindex_config:
+    contract: llamaindex_config_contract
+    table: second_brain_retrieval_llamaindex_config_snapshots
+    kind: table
+  embedding_vector_policy:
+    contract: embedding_vector_policy_contract
+    table: null
+    kind: static
+  approved_source_manifest:
+    contract: approved_source_manifest_contract
+    table: second_brain_retrieval_approved_source_manifests
+    kind: table
+  vector_index:
+    contract: vector_index_apply_contract
+    table: second_brain_retrieval_vector_index_runs
+    kind: table
+  hybrid_retrieval:
+    contract: hybrid_retrieval_contract
+    table: second_brain_retrieval_hybrid_query_runs
+    kind: table
+  metadata_filter:
+    contract: metadata_filter_contract
+    table: null
+    kind: static
+  retrieval_eval_set:
+    contract: retrieval_eval_set_contract
+    table: second_brain_retrieval_eval_sets
+    kind: table
+  retrieval_benchmark:
+    contract: retrieval_benchmark_contract
+    table: second_brain_retrieval_benchmark_runs
+    kind: table
+  context_budget_optimization:
+    contract: context_budget_optimization_contract
+    table: null
+    kind: static
+  unsupported_claim_checks:
+    contract: unsupported_claim_checks_contract
+    table: second_brain_retrieval_unsupported_claim_checks
+    kind: table
+  hallucination_risk_checks:
+    contract: hallucination_risk_checks_contract
+    table: null
+    kind: static
+  memory_quality_review:
+    contract: memory_quality_review_contract
+    table: second_brain_memory_quality_review_runs
+    kind: table
+  memory_consolidation_preview:
+    contract: memory_consolidation_preview_contract
+    table: second_brain_memory_consolidation_candidates
+    kind: table
+  agent_performance_feedback:
+    contract: agent_performance_feedback_contract
+    table: second_brain_agent_performance_feedback_runs
+    kind: table
+  source_linked_retrieval_proof:
+    contract: source_linked_retrieval_proof_contract
+    table: second_brain_retrieval_source_linked_proof_runs
+    kind: table
+  no_raw_vector_index_proof:
+    contract: no_raw_vector_index_proof_contract
+    table: null
+    kind: proof

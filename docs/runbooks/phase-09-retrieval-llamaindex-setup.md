@@ -468,6 +468,29 @@ confirms the scanner flags it). On the live operator DB + evidence tree the proo
 retrieval tables, 0 violations, 0 blob columns, 383 evidence files, 0 findings); writes
 `no-raw-vector-index-proof.{json,md}`. Exit 0 on a clean proof; 3 on fail-closed or findings.
 
+## Phase 09 data-quality gates (Prompt 36)
+
+`second-brain data-quality phase-09-gates` is the read-only, **advisory** Phase-09 gate evaluator,
+mirroring `phase-08a/08b/08c/08d-gates`. It aggregates the Phase-09 posture into the
+pass / warning / fail_blocking / deferred_not_blocking taxonomy. No migration (schema stays **V39**);
+read-only — it persists nothing and re-runs no heavy proof fixtures.
+
+It emits **23 gates** (≥ the contract's `gate_count_minimum` of 18):
+
+- **7 structural/safety** — `phase_09_schema_present` (schema ≥ V39 + all 22 Phase-09 tables + 23
+  guards), `phase_09_guard_columns_clean` (guard columns sum to 0), `no_raw_vector_content`,
+  `no_external_writeback_posture`, `no_semantic_retrieval_bypass`, `gates_contract_loaded`,
+  `lifecycle_contract_loaded` — these must **pass**.
+- **16 per-surface** — `pass` for static enforcement policies (embedding policy / metadata filter /
+  context budget / hallucination risk) and the no-raw-vector proof; `deferred_not_blocking` for
+  table-backed surfaces whose substrate ships empty (the honest Phase-09 state); `fail_blocking` if a
+  contract is missing (fail-closed).
+
+`ok` = no fail_blocking; `readiness_overstated` is always **false** (deferred never passes — no
+surface is reported ready while empty/failing). On the live operator DB: `ok=true`,
+`proof_passed=true`, 23 gates (12 pass / 0 fail / 11 deferred). The CLI exits 0 when `ok`, else 3;
+`build_phase_09_gates_proof(write_evidence=True)` writes `phase-09-gates-proof.{json,md}`.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

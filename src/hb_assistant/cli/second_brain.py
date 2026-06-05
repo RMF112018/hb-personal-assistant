@@ -3919,6 +3919,65 @@ def data_quality_phase_09_schema_status(
     )
 
 
+_PHASE_09_GATES_GUARDRAILS = {
+    "local_first": True,
+    "read_only": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "advisory_only": True,
+    "no_determination": True,
+    "no_readiness_overstatement": True,
+    "fail_closed": True,
+}
+
+
+@data_quality_app.command("phase-09-gates")
+def data_quality_phase_09_gates(
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Evaluate the Phase 09 retrieval/memory/quality data-quality gate set (read-only).
+
+    Aggregates the Phase 09 posture into the pass / warning / fail_blocking / deferred_not_blocking
+    taxonomy: structural + safety gates (schema present, all 22 Phase-09 tables' 23 guard columns
+    clean, no raw vector content, no external writeback, no semantic-retrieval policy bypass, the
+    gates + lifecycle contracts loadable) must pass; per-surface gates whose substrate ships empty are
+    honestly deferred_not_blocking. Read-only; advisory; never overstates readiness; makes no
+    determination. Exit 0 when ok (no fail_blocking); 3 on a fail-closed failure or a blocking gate.
+    """
+    from hb_assistant.construction.second_brain.phase_09_gates import (
+        Phase09GatesError,
+        build_phase_09_gates_proof,
+    )
+
+    try:
+        report = build_phase_09_gates_proof(write_evidence=False)
+    except Phase09GatesError as exc:
+        payload = {
+            "command": "second-brain data-quality phase-09-gates",
+            "ok": False,
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _PHASE_09_GATES_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**report, "guardrails": _PHASE_09_GATES_GUARDRAILS}
+    sc = report["status_counts"]
+    human = [
+        "Phase 09 data-quality gates (read-only, advisory)",
+        f"  ok: {report['ok']} | proof_passed: {report['proof_passed']}"
+        f" | gates: {report['gate_count']} (min {report['gate_count_minimum']})",
+        f"  pass={sc['pass']} warning={sc['warning']} fail_blocking={sc['fail_blocking']}"
+        f" deferred_not_blocking={sc['deferred_not_blocking']}"
+        f" | readiness_overstated={report['readiness_overstated']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if report["ok"] else 3)
+
+
 _LLAMAINDEX_GUARDRAILS = {
     "read_only": True,
     "no_raw": True,
