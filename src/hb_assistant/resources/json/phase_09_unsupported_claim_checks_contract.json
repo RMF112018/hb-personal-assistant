@@ -1,0 +1,58 @@
+{
+  "contract_name": "phase_09_unsupported_claim_checks_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 28 — unsupported claim checks + review routing. Each retrieved item presented as context is a 'claim'; a claim is supported iff it carries a source ref + an allowlisted (non-excluded) source family. Unsupported claims are detected and ROUTED TO HUMAN REVIEW (review_required, tier 3, reason code) so they are never presented as fact; supported-but-review-flagged claims (tier 3 / stale / conflict) are routed to review_recommended. This is advisory only: it makes NO final claim or entitlement determination (the claim_or_entitlement_decision_performed + unsupported_claim_performed guards stay 0), assembles no final answer, and persists metadata-only (no raw claim text/excerpt/source ref — only hashes, counts, family names, review vocabulary, and reasons). Read-only by default; receipts go to the existing V38 second_brain_retrieval_unsupported_claim_checks table.",
+  "support_rule": "source_ref_present_and_allowlisted_non_excluded_source_family",
+  "review_statuses": ["auto_advisory", "review_recommended", "review_required"],
+  "reason_codes": [
+    "unsupported_no_source_link",
+    "unsupported_excluded_family",
+    "supported_review_flagged"
+  ],
+  "status_values": ["clean", "review_routed", "blocked"],
+  "check_column_allowlist": [
+    "check_id",
+    "created_at_utc",
+    "policy_version",
+    "schema_version",
+    "run_id",
+    "claim_count",
+    "unsupported_count",
+    "status"
+  ],
+  "forbidden_emitted_fields": [
+    "claim",
+    "claim_text",
+    "content",
+    "content_excerpt",
+    "content_excerpt_redacted",
+    "excerpt",
+    "text",
+    "text_redacted",
+    "source_ref",
+    "answer",
+    "raw_prompt",
+    "raw_response",
+    "embedding",
+    "vector",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "advisory_only",
+    "no_final_answer",
+    "no_claim_or_entitlement_determination",
+    "route_unsupported_to_review",
+    "preserve_review_tier",
+    "preserve_confidence_class",
+    "preserve_source_references",
+    "preserve_freshness",
+    "preserve_source_coverage_warnings"
+  ]
+}

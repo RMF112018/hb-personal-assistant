@@ -1,0 +1,38 @@
+{
+  "proof": "phase_09_unsupported_claim_checks",
+  "command": "second-brain retrieval claim-checks proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T11:58:36.931480+00:00",
+  "repo_sha": "f33ada032f73f3759e6055ffd319a9380508dc2a",
+  "status": "blocked",
+  "claim_count": 4,
+  "unsupported_count": 1,
+  "unsupported_routed_to_review_required": true,
+  "flagged_routed_to_review_recommended": true,
+  "claim_determination_made": false,
+  "receipt_guard_clean": true,
+  "claim_or_entitlement_decision_performed": 0,
+  "unsupported_claim_performed": 0,
+  "read_only_default_no_persist": true,
+  "no_raw_emitted": true,
+  "by_review_status": {
+    "review_required": 2,
+    "review_recommended": 1
+  },
+  "by_reason": {
+    "unsupported_no_source_link": 1,
+    "supported_review_flagged": 2
+  },
+  "metadata_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "no_final_answer": true,
+    "no_claim_or_entitlement_determination": true,
+    "route_unsupported_to_review": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "prompt": "Phase 09 Prompt 28 — Unsupported Claim Checks + Review Routing",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "f33ada0",
+  "schema_version": 38,
+  "objective": "Implement unsupported claim detection and review routing — each retrieved item is a claim; unsupported claims (lacking source support) are detected and routed to human review, never presented as fact. Advisory only; no claim/entitlement determination.",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/retrieval/unsupported_claim_checks.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_unsupported_claim_checks_contract.json"],
+    "new_seeds": ["resources/config/phase_09_unsupported_claim_checks.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_unsupported_claim_checks.py"],
+    "migrator_change": "None — reuses the existing V38 second_brain_retrieval_unsupported_claim_checks table. Schema stays 38, contract table count stays 190.",
+    "reuse": "Structural support rule from synthesis/semantic_output_evaluation (Prompt 23); the deterministic RetrievalBroker corpus; the review-tier->status mapping (synthesis/reasoning); EXCLUDED_FAMILIES (retrieval/policy)."
+  },
+  "design": {
+    "detection": "A claim (RetrievalItem) is supported iff it has a source_ref + an allowlisted non-excluded source_family; else unsupported.",
+    "review_routing": "unsupported -> review_required (tier 3), reason unsupported_no_source_link / unsupported_excluded_family; supported-but-tier3/stale/conflict -> routed at its tier status (review_required tier 3, review_recommended tier 2), reason supported_review_flagged; clean supported -> not routed. Canonical mapping: 1->auto_advisory, 2->review_recommended, 3->review_required.",
+    "status": "clean / review_routed / blocked (blocked iff any unsupported claim — zero tolerance: an unsupported claim must not be presented as fact).",
+    "doctrine": "Advisory only — assembles_final_answer=false, claim_determination_made=false; makes NO claim or entitlement determination (claim_or_entitlement_decision_performed + unsupported_claim_performed guards stay 0). Metadata-only: hashed per-claim routing records (source_ref_hash, source_family, review_tier, review_status, reason) — no raw claim text/excerpt/source ref.",
+    "read_only": "emit_receipt defaults False (no operator-DB write); receipt persistence (one guard-clean row to the V38 unsupported_claim_checks table) exercised in the proof on a temp DB."
+  },
+  "operator_db_outcome": {
+    "claim_checks_build_status": "clean",
+    "claim_count": 408,
+    "unsupported_count": 0,
+    "routed_count": 0,
+    "read_only": true,
+    "rationale": "On the real operator corpus all 408 retrieved claims are source-supported (status=clean, no unsupported claims) — an honest demonstration that the deterministic corpus is well source-linked. emit_receipt defaulted False -> nothing persisted.",
+    "claim_checks_rows": 0,
+    "schema_version": 38,
+    "operator_db_mutated": false
+  },
+  "claim_checks_proof": {
+    "command": "second-brain retrieval claim-checks proof --json",
+    "proof_passed": true,
+    "status": "blocked",
+    "unsupported_count": 1,
+    "unsupported_routed_to_review_required": true,
+    "flagged_routed_to_review_recommended": true,
+    "claim_determination_made": false,
+    "receipt_guard_clean": true,
+    "claim_or_entitlement_decision_performed": 0,
+    "unsupported_claim_performed": 0,
+    "read_only_default_no_persist": true,
+    "no_raw_emitted": true
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "Success: no issues found in 296 source files",
+    "pytest_not_live_integration_manual": "3209 passed, 0 failed",
+    "construction_agent_validate": "exit 0 (4/4 checks; schema 38)",
+    "data_quality_table_inventory": "exit 0 (schema 38; contract_table_count=190; in_db_not_in_contract=[] -> 0 unmapped live tables)",
+    "data_quality_no_writeback_proof": "exit 0 (ok=true, proof_passed=true)",
+    "phase_08a_gates": "exit 0 (ok=true)",
+    "phase_08b_gates": "exit 1 — PRE-EXISTING ENVIRONMENTAL FAILURE, NOT caused by this change (see blocker_classifications)",
+    "phase_08c_gates": "SKIPPED (its append-only financial ledger mutates the operator DB ~1,299 rows/call)",
+    "phase_08d_gates": "exit 0 (proof_passed=true, ok=true)",
+    "mcp_no_raw_access": "exit 0 (proof_passed=true)",
+    "mcp_no_writeback": "exit 0 (proof_passed=true)",
+    "retrieval_claim_checks_build": "exit 0 (operator DB: status=clean, 408 claims, 0 unsupported, read-only, no persist)",
+    "retrieval_claim_checks_proof": "exit 0 (proof_passed=true)",
+    "repo_sensitive_scan_and_no_writeback_guard_tests": "pass (in the full suite)"
+  },
+  "guard_columns_result": {
+    "claim_checks_guard_sum_on_persisted_row": 0,
+    "claim_or_entitlement_decision_performed": 0,
+    "unsupported_claim_performed": 0,
+    "note": "All 23 CHECK(=0) guard columns remain 0 on the proof-persisted receipt; no raw claim text/excerpt/source-ref/token/url persisted or emitted (only hashes, counts, family names, review vocabulary, reasons)."
+  },
+  "deferred": [
+    "Routing claim-check signals into a unified review queue / promotion gate (the financial review table is domain-specific; this surface routes advisorily via metadata + the receipt).",
+    "Executing/scoring the eval set against the index (eval_runs).",
+    "Wiring semantic context into the default synthesize_answer (A04)."
+  ],
+  "blocker_classifications": {
+    "phase_08b_gates_pre_existing_failure": "phase-08b-gates fails (AssertionError 'assert failed_count >= 1' in automation_executor.build_automation_execution_proof, automation_executor.py:1485). NOT caused by this change (no automation code touched). Reproduces on a pristine checkout of clean HEAD 6c43844 in an isolated git worktree (verified in Prompt 26) -> operator Application-Support automation-state drift; the proof is not fully temp-isolated. The full pytest suite passes (fixtures redirect PathPolicy to a temp root). Documented as pre-existing.",
+    "concurrent_working_tree_status": "The parallel 'Daily Brief Approved Source Population' prompt committed (dc0b74e) earlier; the tree is otherwise clean. This commit stages only the isolated claim-check files. Architecture record uses 148 (145=daily-brief, 146=project-benchmark, 147=context-budget)."
+  }
+}

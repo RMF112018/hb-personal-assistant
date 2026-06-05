@@ -309,6 +309,25 @@ measures and proves the recovery is metadata-safe.
   preserves priority, leaves the authoritative packer unchanged, assembles no answer, and emits no raw;
   the build path performs no DB writes.
 
+## Unsupported claim checks + review routing (Prompt 28)
+
+The `second-brain retrieval claim-checks` group **detects unsupported claims and routes them to human
+review**. Each retrieved item presented as context is a "claim"; a claim is supported iff it carries a
+source ref + an allowlisted (non-excluded) source family. An unsupported claim is routed to
+`review_required` (tier 3, with a reason code) so it is **never presented as fact**; a supported-but-
+review-flagged claim (tier 3 / stale / conflict) is routed to `review_recommended`. It is **advisory
+only** — it makes no claim or entitlement determination, assembles no answer, and persists metadata-only
+(hashes, counts, family names, review vocabulary, reasons — no raw claim text/source ref).
+
+- `claim-checks build [--project P]` — gathers the deterministic corpus and emits a metadata-only summary
+  (`status` clean/review_routed/blocked, `claim_count`, `unsupported_count`, `routed_count`, routing
+  breakdown by review status + reason). Read-only — **persists nothing** to the operator DB by default.
+  Exit 0 on success; 3 fail-closed.
+- `claim-checks proof` — demonstrates unsupported claims detected + routed to `review_required`, a
+  supported-but-flagged claim routed to `review_recommended`, **no claim/entitlement determination**
+  (`claim_or_entitlement_decision_performed` + `unsupported_claim_performed` guards 0), a guard-clean
+  metadata-only receipt, the read-only default persisting nothing, and no raw claim text emitted.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

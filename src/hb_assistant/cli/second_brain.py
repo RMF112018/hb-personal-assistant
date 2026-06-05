@@ -199,6 +199,13 @@ retrieval_context_budget_app = typer.Typer(
 )
 retrieval_app.add_typer(retrieval_context_budget_app, name="context-budget")
 
+retrieval_claim_checks_app = typer.Typer(
+    name="claim-checks",
+    help="Phase 09 unsupported claim checks + review routing (advisory; read-only).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(retrieval_claim_checks_app, name="claim-checks")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3291,6 +3298,19 @@ _RETRIEVAL_CONTEXT_BUDGET_GUARDRAILS = {
     "fail_closed": True,
 }
 
+_RETRIEVAL_CLAIM_CHECKS_GUARDRAILS = {
+    "advisory_only": True,
+    "no_final_answer": True,
+    "no_claim_or_entitlement_determination": True,
+    "route_unsupported_to_review": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "preserve_review_tier_confidence_source_refs_freshness_coverage_warnings": True,
+    "read_only_by_default": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
 
 @llamaindex_app.command("build")
 def retrieval_llamaindex_build(
@@ -4330,6 +4350,85 @@ def retrieval_context_budget_proof(
         f"Context budget optimization proof passed={proof['proof_passed']}"
         f" (recovered={proof['items_recovered']}, within_budget={proof['within_budget']},"
         f" metadata_preserved={proof['metadata_preserved']}, every_drop_warned={proof['every_drop_has_warning']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+@retrieval_claim_checks_app.command("build")
+def retrieval_claim_checks_build(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Detect unsupported claims over the deterministic corpus and route them to review (read-only).
+
+    Each retrieved item is a claim; one lacking a source ref / allowlisted family is unsupported and is
+    routed to review_required (never presented as fact). Emits a metadata-only summary (counts + routing
+    breakdown + hashed records; no raw claim text/source ref); makes no claim/entitlement determination;
+    persists nothing to the operator DB. Exit 0 on success; 3 on a fail-closed failure.
+    """
+    from hb_assistant.construction.second_brain.retrieval.unsupported_claim_checks import (
+        UnsupportedClaimCheckError,
+        build_unsupported_claim_checks,
+    )
+
+    try:
+        result = build_unsupported_claim_checks(project_key=project)
+    except UnsupportedClaimCheckError as exc:
+        payload = {
+            "command": "second-brain retrieval claim-checks build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _RETRIEVAL_CLAIM_CHECKS_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _RETRIEVAL_CLAIM_CHECKS_GUARDRAILS}
+    payload.pop("routing_records", None)  # per-claim hashed records summarized by counts; not echoed in bulk
+    human = [
+        "Phase 09 unsupported claim checks + review routing (read-only, advisory)",
+        f"  status: {result['status']} | claims: {result['claim_count']}"
+        f" | unsupported: {result['unsupported_count']} | routed: {result['routed_count']}",
+        f"  by review status: {result['by_review_status']} | by reason: {result['by_reason']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@retrieval_claim_checks_app.command("proof")
+def retrieval_claim_checks_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the claim-checks proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove unsupported claims are detected + routed to review, with no claim/entitlement determination."""
+    from hb_assistant.construction.second_brain.retrieval.unsupported_claim_checks import (
+        UnsupportedClaimCheckError,
+        build_unsupported_claim_checks_proof,
+    )
+
+    try:
+        proof = build_unsupported_claim_checks_proof(write_evidence=evidence)
+    except UnsupportedClaimCheckError as exc:
+        payload = {
+            "command": "second-brain retrieval claim-checks proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _RETRIEVAL_CLAIM_CHECKS_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _RETRIEVAL_CLAIM_CHECKS_GUARDRAILS}
+    human = [
+        f"Unsupported claim checks proof passed={proof['proof_passed']}"
+        f" (unsupported={proof['unsupported_count']}, routed_review_required={proof['unsupported_routed_to_review_required']},"
+        f" determination_made={proof['claim_determination_made']}, guard_clean={proof['receipt_guard_clean']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 

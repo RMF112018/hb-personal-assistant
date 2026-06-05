@@ -1,0 +1,40 @@
+{
+  "command": "second-brain retrieval claim-checks build",
+  "phase": "09",
+  "generated_utc": "2026-06-05T11:58:36.298374+00:00",
+  "repo_sha": "f33ada032f73f3759e6055ffd319a9380508dc2a",
+  "status": "clean",
+  "run_id": "uclaim_dd5f232454666ece6009e65e8121145e",
+  "check_id": "b772c5c983b9bdd102363e23e1f4ed26f7c2c66371720bc8",
+  "schema_version": 38,
+  "project_key": null,
+  "claim_count": 408,
+  "unsupported_count": 0,
+  "routed_count": 0,
+  "by_review_status": {},
+  "by_reason": {},
+  "coverage_warnings": [
+    "no_read_model:meeting_prep_brief_sections",
+    "no_read_model:review_controlled_correspondence_context"
+  ],
+  "advisory_only": true,
+  "assembles_final_answer": false,
+  "claim_determination_made": false,
+  "routes_unsupported_to_review": true,
+  "policy_version": "phase_09_unsupported_claim_checks_v1",
+  "contract_version": "1.4.0-phase-09",
+  "receipt_emitted": false,
+  "read_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "no_final_answer": true,
+    "no_claim_or_entitlement_determination": true,
+    "route_unsupported_to_review": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "preserve_review_tier_confidence_source_refs_freshness_coverage_warnings": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

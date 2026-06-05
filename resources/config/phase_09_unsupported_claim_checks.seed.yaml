@@ -1,0 +1,16 @@
+# Phase 09 Prompt 28 — unsupported claim checks + review routing (resolved values; advisory).
+# Each retrieved item presented as context is a "claim"; a claim is supported iff it carries a source ref
+# + an allowlisted (non-excluded) source family. Unsupported claims are detected and routed to human
+# review (never presented as fact); supported-but-review-flagged claims are routed to review_recommended.
+# Advisory only — makes no final claim/entitlement determination; assembles no final answer; persists
+# metadata-only (hashes, counts, family names, review vocabulary, reasons). Read-only by default — the
+# builder persists nothing unless emit_receipt is set.
+version: phase_09_unsupported_claim_checks_v1
+
+# Unsupported claims must go to mandatory review (tier 3 -> review_required). Never auto-accepted.
+unsupported_review_tier: 3
+# Reason codes used when routing claims to review.
+reasons:
+  unsupported_no_source_link: unsupported_no_source_link
+  unsupported_excluded_family: unsupported_excluded_family
+  supported_review_flagged: supported_review_flagged
