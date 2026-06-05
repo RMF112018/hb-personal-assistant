@@ -491,6 +491,24 @@ surface is reported ready while empty/failing). On the live operator DB: `ok=tru
 `proof_passed=true`, 23 gates (12 pass / 0 fail / 11 deferred). The CLI exits 0 when `ok`, else 3;
 `build_phase_09_gates_proof(write_evidence=True)` writes `phase-09-gates-proof.{json,md}`.
 
+## Phase 09 no-writeback proof (Prompt 37)
+
+`second-brain data-quality phase-09-no-writeback-proof` is a read-only, **advisory** forensic proof
+that the Phase-09 retrieval / embeddings / memory / MCP-wrapper modules perform **no external
+writeback**. No migration (schema stays **V39**); read-only — persists nothing. It reuses the
+canonical no-writeback scanner over every Phase-09 module and folds in the MCP no-writeback proof.
+
+Seven gates: `modules_no_writeback` (no mutation verbs across the ~50 Phase-09 modules — every `*.py`
+under `retrieval/`, `memory/`, `mcp/` plus the Phase-09 root marts/schema/gates), `modules_no_dangerous_imports`
+(no `requests`/`httpx`/`aiohttp`/`procore`/`msgraph`/`graph`/`msal`), `db_writeback_guards_clean` (the
+6 writeback guard columns sum to 0 across the 22 Phase-09 tables), `db_all_guards_clean` (all 23 guard
+columns 0), `evidence_no_secrets` (the Phase-09 evidence tree carries no PEM/Bearer/JWT/signed-URL
+secrets), `mcp_wrappers_no_writeback` (the MCP wrappers expose workflows only), and
+`scanner_detects_planted` (a non-vacuity arm plants a runtime-assembled synthetic `import requests` +
+`.post(` source and confirms the scanner flags it). On the real repo + operator DB the proof passes
+7/7 (50 modules, 0 writeback, 0 dangerous imports, guard sums 0, 409 evidence files, MCP clean);
+writes `phase-09-no-writeback-proof.{json,md}`. Exit 0 on a clean proof; 3 on fail-closed or findings.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

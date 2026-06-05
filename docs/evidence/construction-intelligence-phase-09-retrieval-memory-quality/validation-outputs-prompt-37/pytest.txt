@@ -1,0 +1,685 @@
+........................................................................ [  2%]
+........................................................................ [  4%]
+........................................................................ [  6%]
+........................................................................ [  8%]
+........................................................................ [ 10%]
+........................................................................ [ 13%]
+........................................................................ [ 15%]
+........................................................................ [ 17%]
+.............................................F.FFF.FFF........FFF.F.FF.. [ 19%]
+........................................................................ [ 21%]
+........................................................................ [ 24%]
+........................................................................ [ 26%]
+........................................................................ [ 28%]
+........................................................................ [ 30%]
+........................................................................ [ 32%]
+........................................................................ [ 35%]
+........................................................................ [ 37%]
+........................................................................ [ 39%]
+........................................................................ [ 41%]
+........................................................................ [ 43%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+.........................F..................................F....F....F. [ 50%]
+.....F......F......F......F................................F............ [ 52%]
+........................................................................ [ 54%]
+...................................F...........................F..FFF... [ 56%]
+...F.................................................................... [ 59%]
+........................................................................ [ 61%]
+........................................................................ [ 63%]
+........................................................................ [ 65%]
+........................................................................ [ 67%]
+........................................................................ [ 70%]
+........................................................................ [ 72%]
+........................................................................ [ 74%]
+........................................................................ [ 76%]
+........................................................................ [ 78%]
+........................................................................ [ 81%]
+........................................................................ [ 83%]
+........................................................................ [ 85%]
+........................................................................ [ 87%]
+........................................................................ [ 89%]
+........................................................................ [ 92%]
+........................................................................ [ 94%]
+..................................FF.F...............................F.. [ 96%]
+........................................................................ [ 98%]
+.............................................                            [100%]
+=================================== FAILURES ===================================
+_____________________ test_daily_brief_agent_proof_passes ______________________
+tests/test_daily_brief_agent.py:284: in test_daily_brief_agent_proof_passes
+    proof = build_daily_brief_agent_proof()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:268: in build_daily_brief_agent_proof
+    applied = run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-1'
+_________ test_context_includes_source_coverage_and_review_tier_counts _________
+tests/test_daily_brief_context.py:73: in test_context_includes_source_coverage_and_review_tier_counts
+    ctx = build_daily_brief_context(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:411: in build_daily_brief_context
+    context, _packet, _assessment, _envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-ok'
+______________________ test_context_builds_all_card_kinds ______________________
+tests/test_daily_brief_context.py:85: in test_context_builds_all_card_kinds
+    ctx = build_daily_brief_context(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:411: in build_daily_brief_context
+    context, _packet, _assessment, _envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-ok'
+______________ test_delivery_handoff_structured_and_source_linked ______________
+tests/test_daily_brief_context.py:99: in test_delivery_handoff_structured_and_source_linked
+    assert any(w.startswith("no_read_model:meeting_prep_brief_sections") for w in ctx.warnings)
+src/hb_assistant/construction/second_brain/daily_brief/context.py:411: in build_daily_brief_context
+    context, _packet, _assessment, _envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-ok'
+___________________ test_emit_persists_run_with_guards_zero ____________________
+tests/test_daily_brief_context.py:125: in test_emit_persists_run_with_guards_zero
+    assert ctx.degradation_mode == "blocked"
+src/hb_assistant/construction/second_brain/daily_brief/context.py:411: in build_daily_brief_context
+    context, _packet, _assessment, _envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-ok'
+______________________ test_output_carries_no_raw_content ______________________
+tests/test_daily_brief_context.py:150: in test_output_carries_no_raw_content
+    ???
+src/hb_assistant/construction/second_brain/daily_brief/context.py:411: in build_daily_brief_context
+    context, _packet, _assessment, _envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-ok'
+______________________ test_context_builder_proof_passes _______________________
+tests/test_daily_brief_context.py:166: in test_context_builder_proof_passes
+    "raw_response",
+        ^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:488: in build_daily_brief_context_builder_proof
+    context = build_daily_brief_context(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:411: in build_daily_brief_context
+    context, _packet, _assessment, _envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-1'
+_______________________ test_emit_persists_handoff_lines _______________________
+tests/test_daily_brief_handoff_durability.py:96: in test_emit_persists_handoff_lines
+    result = _run(db_path, tmp_path / "v", emit=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_daily_brief_handoff_durability.py:76: in _run
+    return run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-1'
+____________________ test_dry_run_persists_no_handoff_lines ____________________
+tests/test_daily_brief_handoff_durability.py:108: in test_dry_run_persists_no_handoff_lines
+    _run(db_path, tmp_path / "v", mode="dry_run", emit=False)
+tests/test_daily_brief_handoff_durability.py:76: in _run
+    return run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-1'
+________________ test_durable_roundtrip_after_fresh_connection _________________
+tests/test_daily_brief_handoff_durability.py:117: in test_durable_roundtrip_after_fresh_connection
+    result = _run(db_path, tmp_path / "v", emit=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_daily_brief_handoff_durability.py:76: in _run
+    return run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-1'
+________________ test_render_view_is_deterministic_and_ordered _________________
+tests/test_daily_brief_handoff_durability.py:141: in test_render_view_is_deterministic_and_ordered
+    result = _run(db_path, tmp_path / "v", emit=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_daily_brief_handoff_durability.py:76: in _run
+    return run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-1'
+____________ test_no_raw_content_in_persisted_lines_and_render_view ____________
+tests/test_daily_brief_handoff_durability.py:161: in test_no_raw_content_in_persisted_lines_and_render_view
+    result = _run(db_path, tmp_path / "v", emit=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_daily_brief_handoff_durability.py:76: in _run
+    return run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-1'
+_____________________ test_handoff_line_guard_columns_zero _____________________
+tests/test_daily_brief_handoff_durability.py:175: in test_handoff_line_guard_columns_zero
+    _run(db_path, tmp_path / "v", emit=True)
+tests/test_daily_brief_handoff_durability.py:76: in _run
+    return run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    what_matters = _build_what_matters_today(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    ranked = _rank_project_priorities(projects, items) if projects else projects
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    return sorted(projects, key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    rec = _project_recency_boost(its)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-1'
+_______________ test_v26_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08a_schema_v26.py:291: in test_v26_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v28_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08b_schema_v28.py:119: in test_v28_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v29_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08b_schema_v29.py:125: in test_v29_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v30_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v30.py:124: in test_v30_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v31_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v31.py:163: in test_v31_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v32_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v32.py:165: in test_v32_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v33_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v33.py:165: in test_v33_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v34_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v34.py:164: in test_v34_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v35_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08c_schema_v35.py:143: in test_v35_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v37_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08d_schema_v37.py:178: in test_v37_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_normal_reproducible_output_and_source_refs ________________
+tests/test_phase_09_daily_brief_reproducibility.py:25: in test_normal_reproducible_output_and_source_refs
+    result = dbr.build_daily_brief_reproducibility(_migrated_db(tmp_path))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:285: in build_daily_brief_reproducibility
+    run_a = _run_once(brief_date, project_key)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:230: in _run_once
+    result = run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    )
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    bullets.append(
+         ^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    ???
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    tier_tie = pc.max_review_tier
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-1'
+______________________ test_unsafe_source_no_raw_emitted _______________________
+tests/test_phase_09_daily_brief_reproducibility.py:58: in test_unsafe_source_no_raw_emitted
+    result = dbr.build_daily_brief_reproducibility(_migrated_db(tmp_path))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:285: in build_daily_brief_reproducibility
+    run_a = _run_once(brief_date, project_key)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:230: in _run_once
+    result = run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    )
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    bullets.append(
+         ^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    ???
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    tier_tie = pc.max_review_tier
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-1'
+_____________________ test_no_raw_no_writeback_proof_clean _____________________
+tests/test_phase_09_daily_brief_reproducibility.py:76: in test_no_raw_no_writeback_proof_clean
+    proof = dbr.build_daily_brief_reproducibility_proof(db_path=db, write_evidence=False)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:378: in build_daily_brief_reproducibility_proof
+    result = build_daily_brief_reproducibility(db_path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:285: in build_daily_brief_reproducibility
+    run_a = _run_once(brief_date, project_key)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:230: in _run_once
+    result = run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    )
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    bullets.append(
+         ^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    ???
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    tier_tie = pc.max_review_tier
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-1'
+___________________ test_proof_writes_guard_clean_artifacts ____________________
+tests/test_phase_09_daily_brief_reproducibility.py:93: in test_proof_writes_guard_clean_artifacts
+    proof = dbr.build_daily_brief_reproducibility_proof(
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:376: in build_daily_brief_reproducibility_proof
+    result = build_daily_brief_reproducibility(gate_db)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:285: in build_daily_brief_reproducibility
+    run_a = _run_once(brief_date, project_key)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:230: in _run_once
+    result = run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    )
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    bullets.append(
+         ^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    ???
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    tier_tie = pc.max_review_tier
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    return max(float(getattr(it, "recency", 0.0)) for it in items_for_pk)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: could not convert string to float: 'rel-1'
+_______________________________ test_normal_path _______________________________
+tests/test_phase_09_embedding_policy.py:72: in test_normal_path
+    assert r["embeddable_family_count"] == 7
+E   assert 8 == 7
+_____________________ test_emit_persists_receipts_success ______________________
+tests/test_second_brain_agent_receipts.py:130: in test_emit_persists_receipts_success
+    _run(db_path, tmp_path / "v", emit=True)
+tests/test_second_brain_agent_receipts.py:77: in _run
+    return run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    envelope,
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    """
+        
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    review_exc = pc.review_required_count
+       ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    if it.project_key:
+          ^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    ???
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    ???
+        
+E   ValueError: could not convert string to float: 'rel-1'
+__________________ test_dry_run_no_emit_persists_no_receipts ___________________
+tests/test_second_brain_agent_receipts.py:152: in test_dry_run_no_emit_persists_no_receipts
+    _run(db_path, tmp_path / "v", mode="dry_run", emit=False)
+tests/test_second_brain_agent_receipts.py:77: in _run
+    return run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    envelope,
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    """
+        
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    review_exc = pc.review_required_count
+       ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    if it.project_key:
+          ^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    ???
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    ???
+        
+E   ValueError: could not convert string to float: 'rel-1'
+_____________________ test_stale_run_emits_receipts_no_raw _____________________
+tests/test_second_brain_agent_receipts.py:172: in test_stale_run_emits_receipts_no_raw
+    _run(db_path, tmp_path / "v", emit=True)
+tests/test_second_brain_agent_receipts.py:77: in _run
+    return run_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/generate.py:87: in run_daily_brief
+    context, packet, assessment, envelope, _packet_receipt_id = _assemble_daily_brief(
+src/hb_assistant/construction/second_brain/daily_brief/context.py:348: in _assemble_daily_brief
+    envelope,
+src/hb_assistant/construction/second_brain/daily_brief/context.py:147: in _build_what_matters_today
+    """
+        
+src/hb_assistant/construction/second_brain/daily_brief/context.py:120: in _rank_project_priorities
+    review_exc = pc.review_required_count
+       ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:114: in key
+    if it.project_key:
+          ^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in _project_recency_boost
+    ???
+src/hb_assistant/construction/second_brain/daily_brief/context.py:86: in <genexpr>
+    ???
+        
+E   ValueError: could not convert string to float: 'rel-1'
+___________________________ test_render_view_by_date ___________________________
+tests/test_second_brain_daily_brief_render_view_cli.py:68: in test_render_view_by_date
+    assert [s["name"] for s in payload["sections"]] == [
+E   AssertionError: assert ['what_matter...ject_signals'] == ['priority_ac...ject_signals']
+E     
+E     At index 0 diff: 'what_matters_today' != 'priority_actions'
+E     Left contains one more item: 'project_signals'
+E     Use -v to get more diff
+=============================== warnings summary ===============================
+tests/test_phase_08c_financial_completeness.py: 6 warnings
+tests/test_phase_08c_financial_no_writeback.py: 2 warnings
+tests/test_phase_08c_gates.py: 2 warnings
+tests/test_phase_08c_review_required_routing.py: 1 warning
+tests/test_phase_08d_mcp_gates.py: 2 warnings
+tests/test_phase_08d_mcp_resources.py: 4 warnings
+tests/test_phase_08d_mcp_wrappers.py: 6 warnings
+  /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/construction/second_brain/financial_completeness.py:135: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return datetime.datetime.utcnow().isoformat() + "Z"
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_daily_brief_agent.py::test_daily_brief_agent_proof_passes
+FAILED tests/test_daily_brief_context.py::test_context_includes_source_coverage_and_review_tier_counts
+FAILED tests/test_daily_brief_context.py::test_context_builds_all_card_kinds
+FAILED tests/test_daily_brief_context.py::test_delivery_handoff_structured_and_source_linked
+FAILED tests/test_daily_brief_context.py::test_emit_persists_run_with_guards_zero
+FAILED tests/test_daily_brief_context.py::test_output_carries_no_raw_content
+FAILED tests/test_daily_brief_context.py::test_context_builder_proof_passes
+FAILED tests/test_daily_brief_handoff_durability.py::test_emit_persists_handoff_lines
+FAILED tests/test_daily_brief_handoff_durability.py::test_dry_run_persists_no_handoff_lines
+FAILED tests/test_daily_brief_handoff_durability.py::test_durable_roundtrip_after_fresh_connection
+FAILED tests/test_daily_brief_handoff_durability.py::test_render_view_is_deterministic_and_ordered
+FAILED tests/test_daily_brief_handoff_durability.py::test_no_raw_content_in_persisted_lines_and_render_view
+FAILED tests/test_daily_brief_handoff_durability.py::test_handoff_line_guard_columns_zero
+FAILED tests/test_phase_08a_schema_v26.py::test_v26_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v28.py::test_v28_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v29.py::test_v29_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v30.py::test_v30_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v31.py::test_v31_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v32.py::test_v32_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v33.py::test_v33_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v34.py::test_v34_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08c_schema_v35.py::test_v35_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_08d_schema_v37.py::test_v37_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_09_daily_brief_reproducibility.py::test_normal_reproducible_output_and_source_refs
+FAILED tests/test_phase_09_daily_brief_reproducibility.py::test_unsafe_source_no_raw_emitted
+FAILED tests/test_phase_09_daily_brief_reproducibility.py::test_no_raw_no_writeback_proof_clean
+FAILED tests/test_phase_09_daily_brief_reproducibility.py::test_proof_writes_guard_clean_artifacts
+FAILED tests/test_phase_09_embedding_policy.py::test_normal_path - assert 8 == 7
+FAILED tests/test_second_brain_agent_receipts.py::test_emit_persists_receipts_success
+FAILED tests/test_second_brain_agent_receipts.py::test_dry_run_no_emit_persists_no_receipts
+FAILED tests/test_second_brain_agent_receipts.py::test_stale_run_emits_receipts_no_raw
+FAILED tests/test_second_brain_daily_brief_render_view_cli.py::test_render_view_by_date
+pytest exit=1

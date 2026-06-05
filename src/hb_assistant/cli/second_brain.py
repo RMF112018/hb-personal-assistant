@@ -3978,6 +3978,68 @@ def data_quality_phase_09_gates(
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if report["ok"] else 3)
 
 
+_PHASE_09_NO_WRITEBACK_GUARDRAILS = {
+    "local_first": True,
+    "read_only": True,
+    "no_external_writeback": True,
+    "no_direct_graph_or_procore": True,
+    "advisory_only": True,
+    "no_determination": True,
+    "scanner_non_vacuous": True,
+    "fail_closed": True,
+}
+
+
+@data_quality_app.command("phase-09-no-writeback-proof")
+def data_quality_phase_09_no_writeback_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the phase-09 no-writeback proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove the Phase 09 retrieval/embeddings/memory/MCP-wrapper modules perform no writeback.
+
+    Read-only forensic proof: statically scans every Phase-09 module for mutation verbs + dangerous
+    HTTP/email imports, confirms the writeback guard columns + all guard columns are 0 across the 22
+    Phase-09 tables, confirms the MCP wrappers expose workflows only (no writeback), scans the Phase-09
+    evidence tree for leaked secrets, and proves the scanner flags a planted synthetic. Persists
+    nothing; advisory only; makes no determination. Exit 0 on a clean proof; 3 on a fail-closed
+    failure or findings.
+    """
+    from hb_assistant.construction.second_brain.phase_09_no_writeback_proof import (
+        Phase09NoWritebackProofError,
+        build_phase_09_no_writeback_proof,
+    )
+
+    try:
+        result = build_phase_09_no_writeback_proof(write_evidence=evidence)
+    except Phase09NoWritebackProofError as exc:
+        payload = {
+            "command": "second-brain data-quality phase-09-no-writeback-proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _PHASE_09_NO_WRITEBACK_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _PHASE_09_NO_WRITEBACK_GUARDRAILS}
+    g = result["gates"]
+    human = [
+        f"Phase 09 no-writeback proof passed={result['proof_passed']}"
+        f" (modules={result['modules_scanned']}, writeback={len(result['writeback_findings'])},"
+        f" bad_imports={len(result['bad_import_findings'])}, writeback_guard_sum="
+        f"{result['writeback_guard_sum']}, mcp_no_writeback={g['mcp_wrappers_no_writeback']},"
+        f" scanner_detects_planted={g['scanner_detects_planted']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
 _LLAMAINDEX_GUARDRAILS = {
     "read_only": True,
     "no_raw": True,

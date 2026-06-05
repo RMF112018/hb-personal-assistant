@@ -1,0 +1,34 @@
+# Phase 09 Prompt 37 — Phase 09 no writeback proof (resolved values; advisory).
+# A read-only, advisory forensic proof that the Phase 09 retrieval / embeddings / memory / MCP-wrapper
+# modules perform NO external writeback. It statically scans every Phase-09 module for mutation verbs
+# + dangerous HTTP/email imports, confirms the writeback guard columns are 0 across the 22 Phase-09
+# tables, folds in the MCP no-writeback proof, scans the Phase-09 evidence tree for leaked secrets, and
+# proves the scanner is non-vacuous. Read-only: persists nothing, no migration. Findings carry
+# module/file + a label only — never the offending value. Makes no determination; fail-closed.
+version: phase_09_no_writeback_proof_v1
+phase: "09"
+
+local_first: true
+advisory_only: true
+fail_closed: true
+external_writeback_allowed: false
+source_system_writeback_allowed: false
+
+# Package directories whose every *.py module is statically scanned for writeback (the retrieval,
+# embeddings, memory, and MCP-wrapper surfaces). Relative to src/hb_assistant/.
+scan_roots:
+  - construction/second_brain/retrieval
+  - construction/second_brain/memory
+  - construction/second_brain/mcp
+# Additional Phase-09 root modules (marts / schema / gates) scanned individually.
+scan_root_files:
+  - construction/second_brain/agent_performance_feedback.py
+  - construction/second_brain/corpus_balance_mart.py
+  - construction/second_brain/review_load_mart.py
+  - construction/second_brain/relationship_quality_mart.py
+  - construction/second_brain/phase_09_schema.py
+  - construction/second_brain/phase_09_gates.py
+# Evidence file extensions scanned under the Phase-09 evidence dir.
+evidence_scan_extensions:
+  - ".json"
+  - ".md"
