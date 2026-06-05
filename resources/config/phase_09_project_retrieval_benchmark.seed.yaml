@@ -1,0 +1,12 @@
+# Phase 09 Prompt 26 — project-specific retrieval benchmarks + coverage reports (resolved values; advisory).
+# Scopes the Prompt 25 deterministic/semantic/hybrid benchmark per project (enumerated from the approved
+# retrieval corpus) and pairs each with the read-only corpus-balance coverage mart. Per-project benchmark
+# metrics reuse the existing V38 second_brain_retrieval_benchmark_runs table; coverage reports are
+# read-only advisory output (never persisted). Read-only by default — the builder persists nothing unless
+# emit_receipt is set. The benchmark assembles no final answer.
+version: phase_09_project_retrieval_benchmark_v1
+
+default_benchmark_name: approved_project_retrieval_benchmark
+# Cap on the number of projects benchmarked per run (no silent truncation — the cap is surfaced as a
+# warning when more projects are present in the corpus).
+max_projects: 25

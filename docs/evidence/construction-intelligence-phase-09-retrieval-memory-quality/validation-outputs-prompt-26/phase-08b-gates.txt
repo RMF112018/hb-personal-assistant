@@ -1,0 +1,11 @@
+phase-08b-gates -> exit 1 (PRE-EXISTING ENVIRONMENTAL FAILURE — NOT caused by this change)
+
+AssertionError in automation_executor.build_automation_execution_proof():
+  assert failed_count >= 1   (automation_executor.py:1485)
+
+Classification: pre-existing / environmental. Reproduced on a pristine checkout of clean HEAD
+6c43844 in an isolated git worktree (same AssertionError) — so it is independent of this
+prompt and of the concurrent daily-brief working-tree changes. It passed in the Prompt-25 CLI
+matrix minutes earlier, indicating shared operator Application-Support automation state drifted
+(the proof is not fully temp-isolated; the full pytest suite passes because pytest fixtures
+redirect PathPolicy to a temp root). This prompt touches no automation/daily-brief code.

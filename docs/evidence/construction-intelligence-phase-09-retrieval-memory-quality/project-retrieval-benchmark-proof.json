@@ -1,0 +1,31 @@
+{
+  "proof": "phase_09_project_retrieval_benchmark",
+  "command": "second-brain retrieval project-benchmark proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T09:56:34.739244+00:00",
+  "repo_sha": "6c4384406dae2c955a849c92517887fc8b410572",
+  "status": "built",
+  "projects_count": 2,
+  "per_project_benchmarks_persisted": true,
+  "per_project_coverage_present": true,
+  "rows_persisted_guard_clean": true,
+  "semantic_retrieval_bypassed_policy": 0,
+  "assembles_final_answer": false,
+  "read_only_default_no_persist": true,
+  "no_raw_emitted": true,
+  "coverage_excludes_raw_families": true,
+  "metadata_only": true,
+  "guardrails": {
+    "deterministic_source_of_truth": true,
+    "semantic_advisory_only": true,
+    "no_final_answer_assembly": true,
+    "no_semantic_retrieval_bypass": true,
+    "approved_outputs_only": true,
+    "coverage_read_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

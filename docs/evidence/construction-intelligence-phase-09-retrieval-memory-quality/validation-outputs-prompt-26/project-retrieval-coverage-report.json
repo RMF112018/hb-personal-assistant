@@ -1,0 +1,100 @@
+{
+  "report": "phase_09_project_retrieval_coverage_report_sample",
+  "note": "Read-only advisory sample over the ALPHA/BETA proof fixture (not the operator DB). Coverage reports are never persisted.",
+  "status": "built",
+  "projects_count": 2,
+  "rollup": {
+    "projects_with_semantic_available": 2,
+    "projects_coverage_complete": 0,
+    "projects_with_empty_families": 2
+  },
+  "per_project": [
+    {
+      "project_key": "ALPHA",
+      "benchmark": {
+        "status": "built",
+        "bench_run_id": "bmk_ffbb2e9f8aba133dba1ffad027593332",
+        "probe_count": 1,
+        "metric_row_count": 7,
+        "semantic_status": "available",
+        "hit_rate_pct": 100,
+        "deterministic_count": 1
+      },
+      "coverage": {
+        "covered_family_count": 1,
+        "covered_families": [
+          "approved_obsidian_generated_outputs"
+        ],
+        "empty_families": [
+          "phase_07d_source_evidence_trails",
+          "project_issue_history_items",
+          "project_risk_digest_items",
+          "aging_exposure_report_items",
+          "accepted_long_term_memory",
+          "cross_source_relationships"
+        ],
+        "deferred_families": [
+          "meeting_prep_brief_sections",
+          "review_controlled_correspondence_context"
+        ],
+        "dominant_family": "approved_obsidian_generated_outputs",
+        "total_corpus_rows": 1,
+        "coverage_complete": false,
+        "warnings": [
+          "empty_family:phase_07d_source_evidence_trails",
+          "no_read_model:meeting_prep_brief_sections",
+          "empty_family:project_issue_history_items",
+          "empty_family:project_risk_digest_items",
+          "empty_family:aging_exposure_report_items",
+          "no_read_model:review_controlled_correspondence_context",
+          "empty_family:accepted_long_term_memory",
+          "empty_family:cross_source_relationships"
+        ]
+      }
+    },
+    {
+      "project_key": "BETA",
+      "benchmark": {
+        "status": "built",
+        "bench_run_id": "bmk_90a00a17846ddf447f11e613450d1e91",
+        "probe_count": 1,
+        "metric_row_count": 7,
+        "semantic_status": "available",
+        "hit_rate_pct": 100,
+        "deterministic_count": 1
+      },
+      "coverage": {
+        "covered_family_count": 1,
+        "covered_families": [
+          "approved_obsidian_generated_outputs"
+        ],
+        "empty_families": [
+          "phase_07d_source_evidence_trails",
+          "project_issue_history_items",
+          "project_risk_digest_items",
+          "aging_exposure_report_items",
+          "accepted_long_term_memory",
+          "cross_source_relationships"
+        ],
+        "deferred_families": [
+          "meeting_prep_brief_sections",
+          "review_controlled_correspondence_context"
+        ],
+        "dominant_family": "approved_obsidian_generated_outputs",
+        "total_corpus_rows": 1,
+        "coverage_complete": false,
+        "warnings": [
+          "empty_family:phase_07d_source_evidence_trails",
+          "no_read_model:meeting_prep_brief_sections",
+          "empty_family:project_issue_history_items",
+          "empty_family:project_risk_digest_items",
+          "empty_family:aging_exposure_report_items",
+          "no_read_model:review_controlled_correspondence_context",
+          "empty_family:accepted_long_term_memory",
+          "empty_family:cross_source_relationships"
+        ]
+      }
+    }
+  ],
+  "assembles_final_answer": false
+}

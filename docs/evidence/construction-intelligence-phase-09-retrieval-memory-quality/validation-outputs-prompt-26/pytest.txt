@@ -1,0 +1,3 @@
+pytest -m "not live and not integration and not manual" -p no:cacheprovider
+-> 3194 passed, 0 failed (exit 0)
+repo_sensitive_scan + second_brain_no_writeback_proof guard tests -> pass

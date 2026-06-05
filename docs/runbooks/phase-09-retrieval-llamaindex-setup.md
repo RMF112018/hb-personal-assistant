@@ -269,6 +269,26 @@ seven bucketed `(metric, mode)` rows reach the V38 `benchmark_runs` table.
   0), semantic floored at review tier 2, the blocked-semantic fail-closed path, unsafe-node exclusion, and
   no raw query/probe/content/source ref emitted; persists nothing to the operator DB.
 
+## Project-specific retrieval benchmarks + coverage (Prompt 26)
+
+The `second-brain retrieval project-benchmark` group scopes the Prompt 25 benchmark **per project** and
+pairs each with a **coverage report**. It enumerates projects from the approved retrieval corpus and, per
+project, runs the deterministic/semantic/hybrid benchmark plus the read-only corpus-balance coverage mart
+(per-family `covered`/`empty`/`deferred_no_reader`). Per-project benchmark metrics reuse the existing V38
+`benchmark_runs` table (project-distinct run ids); coverage reports are read-only advisory output (never
+persisted). It is an orchestration leaf — `assembles_final_answer=false`, semantic context never reaches
+an answer / Research Packet / Evaluation path.
+
+- `project-benchmark build [--project P] [--name NAME]` — enumerates projects (or scopes to `--project P`)
+  and emits a metadata-only summary (`status` built/empty, `projects_count`, a per-project benchmark +
+  coverage report, a cross-project rollup, warnings). The base name is **hashed** (never stored raw);
+  **persists nothing** to the operator DB by default. On the operator DB (no approved corpus → no
+  projects) it is honestly `empty`. Exit 0 on success; 3 fail-closed.
+- `project-benchmark proof` — demonstrates ≥1 project enumerated, per-project guard-clean metadata-only
+  `benchmark_runs` receipts (`semantic_retrieval_bypassed_policy` 0), per-project coverage reports present
+  + advisory, the read-only default persisting nothing, unsafe/excluded families excluded from coverage,
+  and no raw query/probe/content/source ref emitted; persists nothing to the operator DB.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

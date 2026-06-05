@@ -1,0 +1,95 @@
+{
+  "prompt": "Phase 09 Prompt 26 — Project-Specific Retrieval Benchmarks + Coverage Reports",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "6c43844",
+  "schema_version": 38,
+  "objective": "Scope the Prompt 25 deterministic/semantic/hybrid benchmark per project (enumerated from the approved corpus) and pair each with a per-project coverage report — advisory, read-only by default, fail-closed, metadata-only.",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/retrieval/project_benchmark.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_project_retrieval_benchmark_contract.json"],
+    "new_seeds": ["resources/config/phase_09_project_retrieval_benchmark.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_project_retrieval_benchmark.py"],
+    "migrator_change": "None — per-project benchmark metrics reuse the existing V38 second_brain_retrieval_benchmark_runs table (project-distinct run ids); coverage reports are read-only evidence (never persisted). Schema stays 38, contract table count stays 190.",
+    "reuse": "Pure orchestration over build_retrieval_benchmark (Prompt 25, per project) + build_corpus_balance_mart (per project) + RetrievalBroker project enumeration. No new retrieval logic."
+  },
+  "design": {
+    "project_enumeration": "Distinct RetrievalItem.project_key from RetrievalBroker.retrieve(project_key=None) (readers set it from obsidian_index_entries / long_term_memory_items). --project scopes to one; absent requested key skipped with a hashed requested_project_absent warning; capped at max_projects=25 with a surfaced warning.",
+    "per_project_benchmark": "build_retrieval_benchmark(project_key=P) — persists P's project-distinct 7 bucketed benchmark_runs rows iff emit_receipt.",
+    "per_project_coverage": "build_corpus_balance_mart(project_key=P) — per-allowlisted-family covered/empty/deferred_no_reader, shares, coverage warnings. Read-only, never persisted; raw/excluded families never appear (mart iterates only ALLOWLISTED_SOURCE_FAMILIES).",
+    "doctrine": "Orchestration leaf — assembles_final_answer=false and the semantic_retrieval_bypassed_policy guard stays 0; semantic context never reaches an answer / Research Packet / Evaluation path.",
+    "read_only": "emit_receipt defaults False (no operator-DB write); coverage is always read-only. project_key is a non-sensitive config identifier (kebab-case), emitted in plaintext as the existing marts/snapshots do."
+  },
+  "operator_db_outcome": {
+    "project_benchmark_build_status": "built",
+    "projects_count": 1,
+    "warnings": [],
+    "read_only": true,
+    "rationale": "The deterministic broker corpus enumerates 1 project on the operator DB; that project's approved-node benchmark is honestly empty/blocked (no approved Obsidian/reviewed-memory outputs). emit_receipt defaulted False -> nothing persisted.",
+    "benchmark_runs_rows": 0,
+    "schema_version": 38,
+    "operator_db_mutated": false
+  },
+  "project_benchmark_proof": {
+    "command": "second-brain retrieval project-benchmark proof --json",
+    "proof_passed": true,
+    "status": "built",
+    "projects_count": 2,
+    "projects": "ALPHA, BETA (from the _proof_db fixture vault front-matter)",
+    "per_project_benchmarks_persisted": true,
+    "per_project_coverage_present": true,
+    "rows_persisted_guard_clean": true,
+    "semantic_retrieval_bypassed_policy": 0,
+    "assembles_final_answer": false,
+    "read_only_default_no_persist": true,
+    "no_raw_emitted": true,
+    "coverage_excludes_raw_families": true
+  },
+  "coverage_report_sample": {
+    "file": "validation-outputs-prompt-26/project-retrieval-coverage-report.json",
+    "scope": "ALPHA/BETA proof fixture (read-only; not the operator DB)",
+    "rollup": {"projects_with_semantic_available": 2, "projects_coverage_complete": 0, "projects_with_empty_families": 2},
+    "per_project": [
+      {"project_key": "ALPHA", "benchmark_status": "built", "covered_family_count": 1, "coverage_complete": false},
+      {"project_key": "BETA", "benchmark_status": "built", "covered_family_count": 1, "coverage_complete": false}
+    ],
+    "note": "Coverage reports are read-only advisory output and are never persisted to the operator DB."
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "Success: no issues found in 294 source files",
+    "pytest_not_live_integration_manual": "3194 passed, 0 failed",
+    "construction_agent_validate": "exit 0 (4/4 checks: schema, source_registry, review_rules, model_routing; schema 38)",
+    "data_quality_table_inventory": "exit 0 (schema 38; contract_table_count=190; live_table_count=186; in_db_not_in_contract=[] -> 0 unmapped live tables)",
+    "data_quality_no_writeback_proof": "exit 0 (ok=true, proof_passed=true)",
+    "phase_08a_gates": "exit 0 (ok=true)",
+    "phase_08b_gates": "exit 1 — PRE-EXISTING ENVIRONMENTAL FAILURE, NOT caused by this change (see blocker_classifications)",
+    "phase_08c_gates": "SKIPPED (its append-only financial ledger mutates the operator DB ~1,299 rows/call)",
+    "phase_08d_gates": "exit 0 (proof_passed=true, ok=true)",
+    "mcp_no_raw_access": "exit 0 (proof_passed=true)",
+    "mcp_no_writeback": "exit 0 (proof_passed=true)",
+    "retrieval_project_benchmark_build": "exit 0 (operator DB: status=built, 1 project enumerated, read-only, no persist)",
+    "retrieval_project_benchmark_proof": "exit 0 (proof_passed=true; 2 projects, per-project benchmarks persisted + guard-clean, coverage present, no raw, bypass guard 0, read-only default no-persist, unsafe families excluded)",
+    "repo_sensitive_scan_and_no_writeback_guard_tests": "pass (run in the full suite)"
+  },
+  "guard_columns_result": {
+    "benchmark_runs_guard_sum_on_persisted_rows": 0,
+    "semantic_retrieval_bypassed_policy": 0,
+    "note": "All 23 CHECK(=0) guard columns remain 0 on the proof-persisted per-project rows; no raw query/probe/content/source-ref/token/url persisted or emitted (only hashes, bands, counts, plaintext project keys, family names)."
+  },
+  "deferred": [
+    "Executing/scoring the eval set against the index (eval_runs + pass/fail) — a later prompt.",
+    "Wiring semantic context into the default synthesize_answer (A04) — deferred; must route via Research Packet / Evaluation if adopted.",
+    "generated_outputs (research-packet) loader — carried as generated_outputs_loader_deferred."
+  ],
+  "blocker_classifications": {
+    "phase_08b_gates_pre_existing_failure": "phase-08b-gates fails (AssertionError 'assert failed_count >= 1' in automation_executor.build_automation_execution_proof, automation_executor.py:1485). NOT caused by this change — this prompt touches no automation/daily-brief code. Reproduced on a pristine checkout of clean HEAD 6c43844 in an isolated git worktree (same AssertionError), so it is independent of both this prompt and the concurrent daily-brief working-tree changes. It passed in the Prompt-25 CLI matrix minutes earlier -> shared operator Application-Support automation state drifted (the proof is not fully temp-isolated; the full pytest suite still passes because pytest fixtures redirect PathPolicy to a temp root). Documented as pre-existing per operator decision; not a stop condition for this prompt.",
+    "concurrent_working_tree_changes": "During this session a parallel agent's uncommitted changes appeared in the same working tree (a different 'Prompt 26 — Daily Brief Approved Source Population': daily_brief/output.py, research/store.py, daily-brief tests, docs/architecture/68, and an untracked 145-phase-09-prompt-26-daily-brief-approved-source-population.md). To avoid entangling the two tasks, this commit stages ONLY the isolated project-benchmark retrieval files; the other agent's changes were left untouched (not staged, not restored). This prompt's architecture record was renumbered 145 -> 146 to avoid the doc-number collision (the concurrent task owns 145).",
+    "operator_corpus_has_one_project": "Not a defect — the deterministic broker corpus enumerates 1 project on the operator DB; that project's approved-node benchmark is honestly empty/blocked. build is read-only (no persist); benchmark_runs stays 0."
+  }
+}

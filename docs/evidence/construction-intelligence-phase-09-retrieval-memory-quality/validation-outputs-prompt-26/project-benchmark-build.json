@@ -1,0 +1,77 @@
+{
+  "command": "second-brain retrieval project-benchmark build",
+  "phase": "09",
+  "generated_utc": "2026-06-05T09:56:32.116706+00:00",
+  "repo_sha": "6c4384406dae2c955a849c92517887fc8b410572",
+  "status": "built",
+  "name_hash": "45e7f4576e04d12122499ba16b0bc822083f969bcaa6dca3",
+  "schema_version": 38,
+  "deterministic_authoritative": true,
+  "semantic_advisory_only": true,
+  "assembles_final_answer": false,
+  "projects_count": 1,
+  "per_project": [
+    {
+      "project_key": "tropical",
+      "benchmark": {
+        "status": "empty",
+        "bench_run_id": "bmk_33b4e9bb416bbed29dd78b1176e06b59",
+        "probe_count": 0,
+        "metric_row_count": 0,
+        "semantic_status": "n/a",
+        "hit_rate_pct": 0,
+        "deterministic_count": 0
+      },
+      "coverage": {
+        "covered_family_count": 5,
+        "covered_families": [
+          "phase_07d_source_evidence_trails",
+          "project_issue_history_items",
+          "project_risk_digest_items",
+          "aging_exposure_report_items",
+          "cross_source_relationships"
+        ],
+        "empty_families": [
+          "approved_obsidian_generated_outputs",
+          "accepted_long_term_memory"
+        ],
+        "deferred_families": [
+          "meeting_prep_brief_sections",
+          "review_controlled_correspondence_context"
+        ],
+        "dominant_family": "phase_07d_source_evidence_trails",
+        "total_corpus_rows": 5973,
+        "coverage_complete": false,
+        "warnings": [
+          "no_read_model:meeting_prep_brief_sections",
+          "no_read_model:review_controlled_correspondence_context",
+          "empty_family:approved_obsidian_generated_outputs",
+          "empty_family:accepted_long_term_memory"
+        ]
+      }
+    }
+  ],
+  "rollup": {
+    "projects_with_semantic_available": 0,
+    "projects_coverage_complete": 0,
+    "projects_with_empty_families": 1
+  },
+  "warnings": [],
+  "policy_version": "phase_09_project_retrieval_benchmark_v1",
+  "contract_version": "1.4.0-phase-09",
+  "receipt_emitted": false,
+  "read_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "no_final_answer": true,
+    "no_semantic_retrieval_bypass": true,
+    "approved_outputs_only": true,
+    "coverage_read_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "preserve_review_tier_confidence_source_refs_freshness_coverage_warnings": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

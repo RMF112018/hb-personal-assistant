@@ -185,6 +185,13 @@ retrieval_benchmark_app = typer.Typer(
 )
 retrieval_app.add_typer(retrieval_benchmark_app, name="benchmark")
 
+retrieval_project_benchmark_app = typer.Typer(
+    name="project-benchmark",
+    help="Phase 09 project-specific retrieval benchmarks + coverage reports (per project; read-only).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(retrieval_project_benchmark_app, name="project-benchmark")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3248,6 +3255,20 @@ _RETRIEVAL_BENCHMARK_GUARDRAILS = {
     "fail_closed": True,
 }
 
+_RETRIEVAL_PROJECT_BENCHMARK_GUARDRAILS = {
+    "advisory_only": True,
+    "no_final_answer": True,
+    "no_semantic_retrieval_bypass": True,
+    "approved_outputs_only": True,
+    "coverage_read_only": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "preserve_review_tier_confidence_source_refs_freshness_coverage_warnings": True,
+    "read_only_by_default": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
 
 @llamaindex_app.command("build")
 def retrieval_llamaindex_build(
@@ -4121,6 +4142,91 @@ def retrieval_benchmark_proof(
         f"Retrieval benchmark proof passed={proof['proof_passed']}"
         f" (modes={proof['all_three_modes_compared']}, semantic={proof['semantic_available']},"
         f" guard_clean={proof['rows_persisted_guard_clean']}, blocked_path={proof['semantic_blocked_path_status']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+@retrieval_project_benchmark_app.command("build")
+def retrieval_project_benchmark_build(
+    project: str | None = typer.Option(
+        None, "--project", help="Scope to a single project key (default: all enumerated projects)."
+    ),
+    name: str | None = typer.Option(
+        None, "--name", help="Benchmark base name (hashed in the receipt; never stored raw)."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Benchmark + coverage per project over the approved corpus (read-only, fail-closed, advisory).
+
+    Enumerates projects from the approved retrieval corpus and, per project, runs the Prompt 25
+    deterministic/semantic/hybrid benchmark and the read-only corpus-balance coverage mart. Emits a
+    metadata-only summary (no raw query/probe/content/source ref); persists nothing to the operator DB.
+    On the operator DB (no approved corpus) it is honestly empty. Exit 0 on success; 3 fail-closed.
+    """
+    from hb_assistant.construction.second_brain.retrieval.project_benchmark import (
+        ProjectRetrievalBenchmarkError,
+        build_project_retrieval_benchmarks,
+    )
+
+    try:
+        result = build_project_retrieval_benchmarks(
+            projects=(project,) if project else None, name=name
+        )
+    except ProjectRetrievalBenchmarkError as exc:
+        payload = {
+            "command": "second-brain retrieval project-benchmark build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _RETRIEVAL_PROJECT_BENCHMARK_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _RETRIEVAL_PROJECT_BENCHMARK_GUARDRAILS}
+    human = [
+        "Phase 09 project-specific retrieval benchmarks + coverage (read-only, advisory)",
+        f"  status: {result['status']} | projects: {result['projects_count']}"
+        f" | warnings: {result['warnings']}",
+        f"  rollup: {result['rollup']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@retrieval_project_benchmark_app.command("proof")
+def retrieval_project_benchmark_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the project-benchmark proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove per-project benchmarks persist metadata-only + guard-clean, paired with coverage reports."""
+    from hb_assistant.construction.second_brain.retrieval.project_benchmark import (
+        ProjectRetrievalBenchmarkError,
+        build_project_retrieval_benchmarks_proof,
+    )
+
+    try:
+        proof = build_project_retrieval_benchmarks_proof(write_evidence=evidence)
+    except ProjectRetrievalBenchmarkError as exc:
+        payload = {
+            "command": "second-brain retrieval project-benchmark proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _RETRIEVAL_PROJECT_BENCHMARK_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _RETRIEVAL_PROJECT_BENCHMARK_GUARDRAILS}
+    human = [
+        f"Project retrieval benchmark proof passed={proof['proof_passed']}"
+        f" (projects={proof['projects_count']}, persisted={proof['per_project_benchmarks_persisted']},"
+        f" coverage={proof['per_project_coverage_present']}, guard_clean={proof['rows_persisted_guard_clean']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 
