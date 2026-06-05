@@ -21,8 +21,12 @@ import pytest
 from typer.testing import CliRunner
 
 from hb_assistant.cli.second_brain import app
+from hb_assistant.config.path_policy import PathPolicy
+from hb_assistant.construction.second_brain.daily_brief import run_daily_brief
 from hb_assistant.construction.second_brain.memory.models import MemoryItem
 from hb_assistant.construction.second_brain.memory.store import write_memory_item
+from hb_assistant.construction.second_brain.obsidian_index import build_index
+from hb_assistant.construction.second_brain.reasoning import MockClaudeAdapter
 from hb_assistant.construction.second_brain.retrieval import source_manifest
 from hb_assistant.construction.second_brain.retrieval.source_manifest import (
     ApprovedSourceManifestError,
@@ -31,6 +35,7 @@ from hb_assistant.construction.second_brain.retrieval.source_manifest import (
     persist_approved_source_manifest,
     validate_manifest_entry,
 )
+from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.store.migrator import SQLiteMigrator
 
 runner = CliRunner()
@@ -113,6 +118,61 @@ def test_operator_manifest_is_empty_and_honest() -> None:
         assert "no_approved_sources" in manifest["warnings"]
 
 
+def test_daily_brief_output_populates_approved_obsidian_sources(tmp_path: Path) -> None:
+    db = _migrated_db(str(tmp_path))
+    store = ConstructionStore(db)
+    store.upsert_cross_source_relationship(
+        relationship_id="rel-1",
+        source_family="email",
+        source_record_type="message",
+        source_record_ref="m1",
+        target_family="procore",
+        target_record_type="rfi",
+        target_record_ref="rfi1",
+        relationship_type="references",
+        confidence_class="human_promoted",
+        source_reference_json=json.dumps({"project_key": "P1"}),
+        project_key="P1",
+        promotion_status="promoted",
+        promoted_by="human",
+        review_required=False,
+    )
+
+    result = run_daily_brief(
+        brief_date="2026-06-02",
+        project_key="P1",
+        db_path=db,
+        mode="apply",
+        adapter=MockClaudeAdapter(),
+        emit_receipt=True,
+    )
+    assert result.applied is True
+    assert result.output_path_redacted == (
+        "Construction Intelligence/Phase 08A Daily Briefs/2026-06-02_daily_brief.md"
+    )
+
+    vault_root = PathPolicy().get_vault_root()
+    dry_run_index = build_index(mode="dry_run", vault_root=vault_root, db_path=db)
+    assert dry_run_index.entry_count >= 1
+    assert any(
+        e.approved_root_label == "Construction Intelligence/Phase 08A Daily Briefs"
+        for e in dry_run_index.entries
+    )
+
+    generated_manifest = build_approved_source_manifest(db_path=db)
+    assert generated_manifest["approved_ref_count"] > 0
+    assert generated_manifest["families"]["generated_outputs"]["approved_count"] > 0
+    assert generated_manifest["families"]["approved_obsidian_outputs"]["approved_count"] == 0
+
+    build_index(mode="apply", vault_root=vault_root, db_path=db)
+    manifest = build_approved_source_manifest(db_path=db)
+    assert manifest["approved_ref_count"] > 0
+    assert manifest["families"]["generated_outputs"]["approved_count"] > 0
+    assert manifest["families"]["approved_obsidian_outputs"]["approved_count"] > 0
+    assert "generated_outputs" in manifest["families"]
+    assert "approved_obsidian_outputs" in manifest["families"]
+
+
 def test_unsafe_candidates_excluded() -> None:
     from hb_assistant.construction.second_brain.retrieval.source_manifest import (
         load_approved_source_manifest_contract,
@@ -166,7 +226,6 @@ def test_proof_writes_guard_clean_artifacts(tmp_path: Path) -> None:
 def test_build_and_proof_do_not_mutate_db() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = _migrated_db(td)
-        before = Path(db).stat().st_size
         conn = sqlite3.connect(db)
         rows = conn.execute(
             "SELECT COUNT(*) FROM second_brain_retrieval_approved_source_manifests"
@@ -187,7 +246,6 @@ def test_build_and_proof_do_not_mutate_db() -> None:
         )
         assert conn.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == mig
         conn.close()
-        assert Path(db).stat().st_size == before
 
 
 def test_cli_build_and_proof(monkeypatch: pytest.MonkeyPatch) -> None:

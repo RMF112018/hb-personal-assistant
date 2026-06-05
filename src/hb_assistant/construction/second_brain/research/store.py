@@ -48,6 +48,25 @@ def write_research_packet_receipt(
                  confidence_class, review_tier, review_tier_reason_code, review_status,
                  advisory_classification, summary_redacted, status, created_utc)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(packet_id) DO UPDATE SET
+                mode = excluded.mode,
+                topic_hash = excluded.topic_hash,
+                project_key = excluded.project_key,
+                retrieval_receipt_id = excluded.retrieval_receipt_id,
+                source_ref_count = excluded.source_ref_count,
+                review_required_count = excluded.review_required_count,
+                stale_unknown_count = excluded.stale_unknown_count,
+                conflict_count = excluded.conflict_count,
+                coverage_warnings_json = excluded.coverage_warnings_json,
+                context_quality_class = excluded.context_quality_class,
+                degradation_mode = excluded.degradation_mode,
+                confidence_class = excluded.confidence_class,
+                review_tier = excluded.review_tier,
+                review_tier_reason_code = excluded.review_tier_reason_code,
+                review_status = excluded.review_status,
+                advisory_classification = excluded.advisory_classification,
+                summary_redacted = excluded.summary_redacted,
+                status = excluded.status
             """,
             (
                 packet_id,

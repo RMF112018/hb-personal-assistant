@@ -4,9 +4,9 @@
   "description": "Phase 09 Prompt 15 — approved index source manifest rules. Enumerates which approved, redacted, source-linked records (generated outputs, approved Obsidian outputs, reviewed memory) are eligible for semantic indexing. The manifest is metadata-only (per-family counts + a deterministic hash); no embeddings or index are built here, and no per-entry refs are persisted.",
   "manifest_categories": ["generated_outputs", "approved_obsidian_outputs", "reviewed_memory"],
   "category_source_families": {
-    "generated_outputs": "second_brain_research_packets",
-    "approved_obsidian_outputs": "approved_obsidian_generated_outputs",
-    "reviewed_memory": "accepted_long_term_memory"
+    "generated_outputs": ["second_brain_research_packets", "daily_brief_runs"],
+    "approved_obsidian_outputs": ["approved_obsidian_generated_outputs"],
+    "reviewed_memory": ["accepted_long_term_memory"]
   },
   "approved_review_statuses": ["accepted", "auto_advisory", "review_recommended"],
   "excluded_review_statuses": ["review_required", "pending_review", "rejected", "superseded"],

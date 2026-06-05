@@ -1,8 +1,9 @@
 """Phase 09 Prompt 15 — approved index source manifests (read-only, fail-closed).
 
 Builds the **approved source manifest** that enumerates which records from three categories may be
-semantically indexed: generated outputs (`second_brain_research_packets`), approved Obsidian outputs
-(the latest `mode='apply'` `obsidian_index_entries`), and reviewed memory (`long_term_memory_items`
+semantically indexed: generated outputs (`second_brain_research_packets` and applied, source-linked
+`daily_brief_runs`), approved Obsidian outputs (the latest `mode='apply'` `obsidian_index_entries`),
+and reviewed memory (`long_term_memory_items`
 with `review_status='accepted'`). Only **approved, redacted, source-linked** records enter the manifest;
 unresolved high-impact (tier-3 / review_required) items, non-accepted statuses, raw-content shapes, and
 non-apply Obsidian manifests are excluded.
@@ -172,32 +173,61 @@ def _table_exists(conn: sqlite3.Connection, table: str) -> bool:
 
 
 def _read_generated(conn: sqlite3.Connection, project_key: str | None, limit: int) -> list[dict]:
-    if not _table_exists(conn, "second_brain_research_packets"):
-        return []
-    clause = " AND project_key = ?" if project_key is not None else ""
-    params: list[Any] = ["accepted"]
-    if project_key is not None:
-        params.append(project_key)
-    rows = conn.execute(
-        "SELECT packet_id, topic_hash, confidence_class, review_tier, review_status "
-        "FROM second_brain_research_packets WHERE review_status = ?" + clause + " LIMIT ?",
-        (*params, limit),
-    ).fetchall()
     out: list[dict] = []
-    for packet_id, topic_hash, conf, tier, status in rows:
-        out.append(
-            {
-                "source_family": _GENERATED,
-                "source_ref": str(packet_id),
-                "source_ref_hash": _hash(str(packet_id)),
-                "content_hash": str(topic_hash or _hash(str(packet_id))),
-                "review_tier": int(tier) if tier is not None else 1,
-                "review_status": str(status or "accepted"),
-                "confidence_class": str(conf or "unknown"),
-                "freshness_label": "current",
-                "review_required": (int(tier) if tier is not None else 1) >= 3,
-            }
-        )
+    if _table_exists(conn, "second_brain_research_packets"):
+        clause = " AND project_key = ?" if project_key is not None else ""
+        params: list[Any] = ["accepted"]
+        if project_key is not None:
+            params.append(project_key)
+        rows = conn.execute(
+            "SELECT packet_id, topic_hash, confidence_class, review_tier, review_status "
+            "FROM second_brain_research_packets WHERE review_status = ?" + clause + " LIMIT ?",
+            (*params, limit),
+        ).fetchall()
+        for packet_id, topic_hash, conf, tier, status in rows:
+            out.append(
+                {
+                    "source_family": _GENERATED,
+                    "source_ref": str(packet_id),
+                    "source_ref_hash": _hash(str(packet_id)),
+                    "content_hash": str(topic_hash or _hash(str(packet_id))),
+                    "review_tier": int(tier) if tier is not None else 1,
+                    "review_status": str(status or "accepted"),
+                    "confidence_class": str(conf or "unknown"),
+                    "freshness_label": "current",
+                    "review_required": (int(tier) if tier is not None else 1) >= 3,
+                }
+            )
+    if _table_exists(conn, "daily_brief_runs") and len(out) < limit:
+        params = ["apply", "blocked"]
+        if project_key is not None:
+            # daily_brief_runs has no project_key column. Project-specific filtering for generated
+            # daily briefs is therefore unsupported until the table shape changes.
+            return out
+        rows = conn.execute(
+            "SELECT brief_run_id, output_path_hash, review_tier, status "
+            "FROM daily_brief_runs WHERE mode = ? AND status != ? "
+            "AND output_path_hash IS NOT NULL AND source_ref_count > 0 "
+            "ORDER BY generated_utc DESC, brief_run_id DESC LIMIT ?",
+            (*params, limit - len(out)),
+        ).fetchall()
+        for brief_run_id, content_hash, tier, status in rows:
+            resolved_tier = int(tier) if tier is not None else 1
+            out.append(
+                {
+                    "source_family": _GENERATED,
+                    "source_ref": str(brief_run_id),
+                    "source_ref_hash": _hash(str(brief_run_id)),
+                    "content_hash": str(content_hash or _hash(str(brief_run_id))),
+                    "review_tier": resolved_tier,
+                    "review_status": "auto_advisory",
+                    "confidence_class": "high",
+                    "freshness_label": "current",
+                    "review_required": resolved_tier >= 3,
+                    "generated_output_kind": "daily_brief",
+                    "generated_output_status": str(status or "assembled"),
+                }
+            )
     return out
 
 

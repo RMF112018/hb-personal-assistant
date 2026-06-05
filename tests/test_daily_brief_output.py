@@ -15,6 +15,7 @@ from hb_assistant.construction.second_brain.daily_brief import (
 from hb_assistant.construction.second_brain.daily_brief.output import (
     SECTION_END,
     SECTION_START,
+    resolve_brief_path,
 )
 from hb_assistant.construction.store import ConstructionStore
 
@@ -71,6 +72,18 @@ def test_dry_run_writes_nothing(tmp_path: Path, db_path: str) -> None:
     assert res.output_path_redacted is None
     assert res.content_hash  # hash still computed
     assert not vault.exists()
+
+
+def test_default_brief_path_uses_approved_phase_08a_root() -> None:
+    resolved = resolve_brief_path("2026-06-02")
+    assert str(resolved).endswith(
+        "Construction Intelligence/Phase 08A Daily Briefs/2026-06-02_daily_brief.md"
+    )
+
+
+def test_explicit_brief_dir_override_is_unchanged(tmp_path: Path) -> None:
+    resolved = resolve_brief_path("2026-06-02", vault_brief_dir=tmp_path / "briefs")
+    assert resolved == tmp_path / "briefs" / "2026-06-02_daily_brief.md"
 
 
 def test_apply_writes_marker_bounded_file(tmp_path: Path, db_path: str) -> None:

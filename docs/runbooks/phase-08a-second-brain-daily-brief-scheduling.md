@@ -48,7 +48,8 @@ hb-assistant second-brain daily-brief generate --day-offset 1 --json          # 
 ```
 
 When you are ready, an apply run writes to
-`<vault>/Work/HB Personal Assistant/12_Daily_Brief/<date>_daily_brief.md` (evaluation-gated):
+`<vault>/Construction Intelligence/Phase 08A Daily Briefs/<date>_daily_brief.md`
+(evaluation-gated, approved for Phase 09 Obsidian indexing):
 
 ```bash
 hb-assistant second-brain daily-brief generate --day-offset 1 --mode apply --emit-receipt --json

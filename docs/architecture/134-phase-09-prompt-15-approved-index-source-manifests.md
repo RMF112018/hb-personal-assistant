@@ -25,7 +25,8 @@ deterministic `manifest_hash` over the sorted approved-entry hashes — so the m
 without ever storing a raw ref or content.
 
 ### Three categories, reusing existing readers/idioms
-- **generated outputs** = `second_brain_research_packets` (`review_status='accepted'`).
+- **generated outputs** = `second_brain_research_packets` (`review_status='accepted'`) plus, as of
+  Phase 09 record 145, applied source-linked `daily_brief_runs` metadata.
 - **approved Obsidian outputs** = entries of the **latest `mode='apply'`** `obsidian_index_manifests`
   (apply = approved; dry-run excluded — the "unapproved notes" stop condition cannot be hit), reusing
   the latest-apply selection idiom from `corpus_balance_mart`/`obsidian_linkage_proof`.

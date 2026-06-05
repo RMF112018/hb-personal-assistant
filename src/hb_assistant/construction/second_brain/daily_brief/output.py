@@ -2,7 +2,8 @@
 
 Renders a deterministic, redacted, marker-bounded daily-brief markdown document from the
 brief's cards (never from a model response) and writes it — only on explicit apply — into
-the Obsidian vault at ``<vault>/Work/HB Personal Assistant/12_Daily_Brief/<date>_daily_brief.md``.
+the approved Obsidian root at
+``<vault>/Construction Intelligence/Phase 08A Daily Briefs/<date>_daily_brief.md``.
 Dry-run is the default: it returns the would-be content + a content hash and writes nothing.
 The write is marker-bounded (user text outside the markers is preserved) and atomic
 (temp file + ``os.replace``). No raw bodies/document text/URLs/secrets are ever written.
@@ -34,7 +35,7 @@ class BriefWriteResult(NamedTuple):
 
 SECTION_START = "<!-- HB-SECOND-BRAIN-DAILY-BRIEF:START -->"
 SECTION_END = "<!-- HB-SECOND-BRAIN-DAILY-BRIEF:END -->"
-_VAULT_SUBDIR = Path("Work") / "HB Personal Assistant" / "12_Daily_Brief"
+_VAULT_SUBDIR = Path("Construction Intelligence") / "Phase 08A Daily Briefs"
 
 
 def _sha256(text: str) -> str:

@@ -28,8 +28,11 @@ raw-response safety) — the written brief is rendered from the redacted cards (
 - **Contracts.** A05 reuses `evaluation_criteria_contract`; the `daily_brief_agent`
   `output_contract` is `agent_result` (no contract file). No new contract registered.
 - **Apply output target.** Approved output is written to
-  `<vault_root>/Work/HB Personal Assistant/12_Daily_Brief/<date>_daily_brief.md`
+  `<vault_root>/Construction Intelligence/Phase 08A Daily Briefs/<date>_daily_brief.md`
   (`PathPolicy().get_vault_root()`), marker-bounded (`HB-SECOND-BRAIN-DAILY-BRIEF`) + atomic.
+  Phase 09 record 145 supersedes the original Phase 08A `Work/HB Personal Assistant/12_Daily_Brief`
+  default path so new briefs are discoverable by the approved Obsidian index policy. Existing old-path
+  notes are not migrated or deleted automatically.
   This is distinct from the legacy `obsidian/MarkerBoundedWriter` morning-run brief
   (`HB-DAILY-BRIEF` in Daily Notes) — they do not collide.
 - **In-memory receipts.** Model-call / agent-run receipts remain V27-deferred (not persisted).
