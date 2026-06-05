@@ -123,6 +123,13 @@ automation_app = typer.Typer(
 )
 app.add_typer(automation_app, name="automation")
 
+agent_performance_app = typer.Typer(
+    name="agent-performance",
+    help="Phase 09 agent performance + feedback (per-agent corrections/review-burden/coverage; advisory, read-only).",
+    no_args_is_help=True,
+)
+app.add_typer(agent_performance_app, name="agent-performance")
+
 retrieval_app = typer.Typer(
     name="retrieval",
     help="Phase 09 semantic-retrieval backend (optional LlamaIndex; local-first, fail-closed).",
@@ -921,6 +928,103 @@ def memory_consolidation_preview_proof(
         f"Memory consolidation preview proof passed={proof['proof_passed']}"
         f" (clusters={proof['cluster_count']}, members={proof['total_member_count']},"
         f" memory_unchanged={proof['long_term_memory_items_unchanged']}, advisory_only={proof['advisory_only_flag_set']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+_AGENT_PERFORMANCE_FEEDBACK_GUARDRAILS = {
+    "advisory_only": True,
+    "no_determination": True,
+    "recommendations_advisory_only": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "preserve_review_tier_confidence": True,
+    "read_only_by_default": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
+
+@agent_performance_app.command("build")
+def agent_performance_build(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Aggregate per-agent performance + feedback signals (read-only, advisory).
+
+    Per Phase-08A agent, aggregates repeated corrections (operator feedback), review burden (agent run
+    receipts), and weak coverage (corpus balance), and emits advisory policy recommendation codes. Makes
+    no determination; recommendations are advisory. Emits a metadata-only summary (counts + bands + codes;
+    no raw reason text); persists nothing to the operator DB. Exit 0 on success; 3 on a fail-closed failure.
+    """
+    from hb_assistant.construction.second_brain.agent_performance_feedback import (
+        AgentPerformanceFeedbackError,
+        build_agent_performance_feedback,
+    )
+
+    try:
+        result = build_agent_performance_feedback(project_key=project)
+    except AgentPerformanceFeedbackError as exc:
+        payload = {
+            "command": "second-brain agent-performance build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _AGENT_PERFORMANCE_FEEDBACK_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _AGENT_PERFORMANCE_FEEDBACK_GUARDRAILS}
+    payload.pop("per_agent", None)  # per-agent records summarized; not echoed in bulk
+    human = [
+        "Phase 09 agent performance + feedback (read-only, advisory)",
+        f"  status: {result['status']} | agents: {result['agent_count']}"
+        f" | total signals: {result['signal_count']}",
+        "  recommendations: "
+        + ", ".join(
+            f"{a['agent_name']}={a['policy_recommendation']}"
+            for a in result["per_agent"]
+            if a["policy_recommendation"] != "no_action"
+        ),
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@agent_performance_app.command("proof")
+def agent_performance_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the agent-performance proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove per-agent signals + advisory recommendations are computed, with no determination."""
+    from hb_assistant.construction.second_brain.agent_performance_feedback import (
+        AgentPerformanceFeedbackError,
+        build_agent_performance_feedback_proof,
+    )
+
+    try:
+        proof = build_agent_performance_feedback_proof(write_evidence=evidence)
+    except AgentPerformanceFeedbackError as exc:
+        payload = {
+            "command": "second-brain agent-performance proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _AGENT_PERFORMANCE_FEEDBACK_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _AGENT_PERFORMANCE_FEEDBACK_GUARDRAILS}
+    human = [
+        f"Agent performance feedback proof passed={proof['proof_passed']}"
+        f" (corrections={proof['corrections_attributed']}, review_burden={proof['review_burden_computed']},"
+        f" recommendation={proof['recommendation_emitted']}, determination={proof['makes_determination']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 

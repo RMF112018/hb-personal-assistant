@@ -383,6 +383,26 @@ receipt) to the reserved V38 `second_brain_memory_consolidation_candidates` + `�
   (`advisory_only=1`), **`long_term_memory_items` left byte-for-byte unchanged** (never auto-delete/
   supersede), the singleton not proposed, no determination, and no raw memory statement emitted.
 
+## Agent performance and feedback (Prompt 32)
+
+`second-brain agent-performance` is a read-only, **advisory** per-agent performance tracker over the
+Phase-08A agent registry. Per agent it aggregates **repeated_corrections** (operator feedback of class
+`correct`/`reject`, attributed via the `target_kind`→agent map), **review_burden** (agent run review tiers;
+tier-3 share = high burden), and **weak_coverage** (empty/deferred source families, attributed to the
+retrieval coverage owner), and emits an **advisory** `policy_recommendation` code
+(`recommend_review_tier_increase` / `recommend_confidence_tuning` / `recommend_source_expansion` /
+`no_action`). It **makes no determination** — recommendations are suggestions for operator awareness only,
+never applied.
+
+- `agent-performance build [--project P]` — emits a metadata-only summary (`status` built/empty, agent
+  count, signal count, per-agent counts + bucketed bands + recommendation codes; `advisory_only=true`,
+  `makes_determination=false`). Read-only — **persists nothing** to the operator DB by default. On the
+  operator DB it returns honest per-agent signals (9 agents). Exit 0 on success; 3 fail-closed.
+- `agent-performance proof` — seeds receipts (incl. tier-3 runs) + corrections on a `retrieval` target,
+  then demonstrates the four signal categories computed per agent, an advisory recommendation emitted (not
+  a determination), guard-clean metadata-only per-(agent, metric) receipts, read-only default persists
+  nothing, and **no raw feedback reason emitted** (only counts/bands/recommendation codes).
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

@@ -1,0 +1,26 @@
+# Phase 09 Prompt 32 — agent performance and feedback (resolved values; advisory).
+# A read-only, advisory per-agent tracker over the Phase 08A agent registry that aggregates repeated
+# corrections (operator feedback of class correct/reject), review burden (agent_run_receipts review tiers),
+# and weak coverage (corpus-balance empty/deferred families), and emits advisory policy recommendation
+# codes for operator awareness. It makes NO determination; recommendations are advisory suggestions, never
+# applied. Persists metadata-only per-(agent, metric) rows to the reserved V38
+# second_brain_agent_performance_feedback_runs table (read-only by default — the builder persists nothing
+# unless emit_receipt is set). No raw feedback reason / prompt / response is persisted or emitted.
+version: phase_09_agent_performance_feedback_v1
+
+# Advisory recommendation thresholds (deterministic; no determination).
+high_corrections_count: 3      # >= -> recommend_review_tier_increase
+high_tier3_share: 0.50         # review-burden tier-3 share >= -> recommend_confidence_tuning
+# Operator feedback classes that count as a "correction".
+correction_feedback_classes:
+  - correct
+  - reject
+# target_kind -> owning agent (for attributing corrections).
+target_kind_to_agent:
+  retrieval: retrieval_source_broker_agent
+  research_packet: research_packet_agent
+  evaluation: output_evaluation_agent
+  memory: memory_curator_agent
+  daily_brief: daily_brief_agent
+# The agent that owns retrieval coverage (for attributing weak-coverage signals).
+coverage_owner_agent: retrieval_source_broker_agent

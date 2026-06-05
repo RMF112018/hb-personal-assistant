@@ -1,0 +1,45 @@
+╭───────────────────── Traceback (most recent call last) ──────────────────────╮
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/cli/second_brain. │
+│ py:1450 in data_quality_phase_08b_gates                                      │
+│                                                                              │
+│   1447 │   │   evaluate_phase_08b_data_quality_gates,                        │
+│   1448 │   )                                                                 │
+│   1449 │                                                                     │
+│ ❱ 1450 │   report = evaluate_phase_08b_data_quality_gates()                  │
+│   1451 │   typer.echo(json.dumps(report, indent=2, default=str) if json_out  │
+│        else str(report))                                                     │
+│   1452 │   raise typer.Exit(0 if report["ok"] else 3)                        │
+│   1453                                                                       │
+│                                                                              │
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/construction/seco │
+│ nd_brain/data_quality.py:547 in evaluate_phase_08b_data_quality_gates        │
+│                                                                              │
+│    544 │   # (covers dry-run plan, simulated apply, lock use, retry/backoff, │
+│        weekend/catch-up, first-run-after-wake,                               │
+│    545 │   # duplicate prevention, safe replay, last-good-run success-only,  │
+│        metadata-only receipts, no external writeback).                       │
+│    546 │   # Uses _proof_gate so status=pass only when the (extended)        │
+│        builder returns proof_passed=True.                                    │
+│ ❱  547 │   gates.append(_proof_gate("automation_execution",                  │
+│        build_automation_execution_proof()))                                  │
+│    548 │   # LaunchAgent scheduling + first-run-after-wake (Prompt 04) —     │
+│        proof-gate: the install /                                             │
+│    549 │   # uninstall surface is implemented real-but-policy-gated          │
+│        (fail-closed while the seed carries                                   │
+│    550 │   # dry_run_install_only), the not-installed / drift / catch-up     │
+│        evaluators report structured                                          │
+│                                                                              │
+│ /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/construction/seco │
+│ nd_brain/automation_executor.py:1485 in build_automation_execution_proof     │
+│                                                                              │
+│   1482 │   │                                                                 │
+│   1483 │   │   failed_count = sum(1 for r in res_fail.stage_receipts if      │
+│        r.status == "failed")                                                 │
+│   1484 │   │   skipped = sum(1 for r in res_fail.stage_receipts if r.status  │
+│        == "skipped_downstream")                                              │
+│ ❱ 1485 │   │   assert failed_count >= 1                                      │
+│   1486 │   │   assert skipped >= 3                                           │
+│   1487 │   │   assert res_fail.recovery_recommendation is not None           │
+│   1488 │   │   assert "suggested_next" in res_fail.recovery_recommendation   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+AssertionError

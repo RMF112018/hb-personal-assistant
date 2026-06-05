@@ -1,0 +1,30 @@
+{
+  "command": "second-brain agent-performance build",
+  "phase": "09",
+  "generated_utc": "2026-06-05T14:16:14.139705+00:00",
+  "repo_sha": "abbb4582d7bb1523132c8577af542367aedf4116",
+  "status": "built",
+  "run_id": "apf_57a3b7b3f93afa5271db383e13b5cd5e",
+  "schema_version": 39,
+  "project_key": null,
+  "agent_count": 9,
+  "signal_count": 11,
+  "advisory_only": true,
+  "makes_determination": false,
+  "recommendations_advisory_only": true,
+  "policy_version": "phase_09_agent_performance_feedback_v1",
+  "contract_version": "1.4.0-phase-09",
+  "receipt_emitted": false,
+  "read_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "no_determination": true,
+    "recommendations_advisory_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "preserve_review_tier_confidence": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

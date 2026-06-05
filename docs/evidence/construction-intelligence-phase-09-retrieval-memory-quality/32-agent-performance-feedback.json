@@ -1,0 +1,91 @@
+{
+  "prompt": "Phase 09 Prompt 32 — Agent Performance and Feedback",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "abbb458",
+  "schema_version": 39,
+  "objective": "Track per-agent repeated corrections, review burden, weak coverage, and emit advisory policy recommendations for operator awareness. Read-only, advisory — makes no determination.",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/agent_performance_feedback.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_agent_performance_feedback_contract.json"],
+    "new_seeds": ["resources/config/phase_09_agent_performance_feedback.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_agent_performance_feedback.py"],
+    "migrator_change": "None — reuses the reserved V38 second_brain_agent_performance_feedback_runs table (present at V39, already classified). This change adds NO tables; contract_table_count stays 190.",
+    "reuse": "agents.loader.load_agent_registry (9 agents); the STABLE Phase-08B second_brain_agent_run_receipts (review tiers); second_brain_operator_feedback (corrections, never raw reason_redacted); corpus_balance_mart.build_corpus_balance_mart (weak coverage); financial_review_routing._assert_no_raw; the eval_set.py persister pattern."
+  },
+  "design": {
+    "aggregation": "Per agent (over the 9 registry agents): review_burden (run_count, tier3_count, tier-3 share band from agent_run_receipts); repeated_corrections (feedback_class IN ('correct','reject') attributed via target_kind->agent map; count + band; never emits reason_redacted); weak_coverage (empty/deferred source families from corpus_balance_mart, attributed to coverage owner retrieval_source_broker_agent; count + band); policy_recommendation (deterministic advisory code: recommend_review_tier_increase / recommend_confidence_tuning / recommend_source_expansion / no_action).",
+    "advisory": "makes_determination=false, advisory_only=true, recommendations_advisory_only=true. Recommendations are suggestions for the operator only; never applied.",
+    "read_only": "emit_receipt defaults False (no operator-DB write); reads receipts/feedback via mode=ro SQL; only counts, bucketed bands, agent names, metric names, and recommendation codes emitted (raw reason/statement SHA256-hashed or omitted). Persisted rows (on emit_receipt): one second_brain_agent_performance_feedback_runs row per (agent, metric), all 23 guards = 0."
+  },
+  "operator_db_outcome": {
+    "agent_performance_build_status": "built",
+    "agent_count": 9,
+    "signal_count": 11,
+    "advisory_only": true,
+    "makes_determination": false,
+    "read_only": true,
+    "receipt_emitted": false,
+    "schema_version": 39,
+    "operator_db_mutated_by_this_change": false
+  },
+  "agent_performance_proof": {
+    "command": "second-brain agent-performance proof --json",
+    "proof_passed": true,
+    "agent_count": 9,
+    "corrections_attributed": true,
+    "review_burden_computed": true,
+    "weak_coverage_computed": true,
+    "recommendation_emitted": true,
+    "makes_determination": false,
+    "rows_persisted_guard_clean": true,
+    "read_only_default_no_persist": true,
+    "no_raw_emitted": true,
+    "metadata_only": true
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "2 errors — BOTH PRE-EXISTING in review_burden_mart.py (concurrent review_burden work); my agent_performance_feedback.py is CLEAN (301 source files).",
+    "pytest_not_live_integration_manual": "10 failed — ALL are PRE-EXISTING test_v{26,28,29,30,31,32,33,34,35,37}_table_classified_in_lifecycle_contract failures from the concurrent review_burden work (3 unclassified tables). NONE from this change; my 7 new tests pass.",
+    "construction_agent_validate": "exit 0 (schema 39)",
+    "data_quality_table_inventory": "exit 0 (schema 39; contract_table_count=190; in_db_not_in_contract=['second_brain_review_burden_clusters','second_brain_review_burden_policy_evals','second_brain_review_burden_runs'] -> 3 unmapped, ALL from the concurrent review_burden work, NOT this change)",
+    "data_quality_no_writeback_proof": "exit 0",
+    "phase_08a_gates": "exit 0",
+    "phase_08b_gates": "exit 1 — PRE-EXISTING ENVIRONMENTAL FAILURE (automation_executor.py:1485 build_automation_execution_proof), NOT caused by this change",
+    "phase_08c_gates": "SKIPPED — mutates operator DB (~1,299 ledger rows/call)",
+    "phase_08d_gates": "exit 0",
+    "mcp_no_raw_access": "exit 0",
+    "mcp_no_writeback": "exit 0",
+    "agent_performance_build": "exit 0 — built (9 agents), read-only, no persist",
+    "agent_performance_proof": "exit 0 — proof_passed=true",
+    "repo_sensitive_scan_and_no_writeback_proof_tests": "pass"
+  },
+  "preexisting_concurrent_regression": {
+    "owner": "concurrent review_burden Phase-09 work (3759a0a / abbb458)",
+    "mypy_errors": ["review_burden_mart.py:165 arg-type", "review_burden_mart.py:167 return-value"],
+    "pytest_failures": ["test_v{26,28,29,30,31,32,33,34,35,37}_table_classified_in_lifecycle_contract (assert in_db_not_in_contract == [])"],
+    "unmapped_tables": ["second_brain_review_burden_clusters", "second_brain_review_burden_policy_evals", "second_brain_review_burden_runs"],
+    "attribution": "Not caused by this change. Prompt 32 adds no tables, touches no classification contract, and reuses the already-classified V38 feedback-runs table. Its 7 new tests pass and its module is mypy-clean."
+  },
+  "guardrails": {
+    "local_first": true,
+    "fail_closed": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "advisory_only": true,
+    "no_determination": true,
+    "recommendations_advisory_only": true,
+    "preserve_review_tier_confidence": true,
+    "read_only_by_default": true
+  },
+  "deferred": [
+    "Wiring advisory recommendations into a unified operator review queue.",
+    "Applying a recommendation (operator review -> policy change) — a later prompt.",
+    "Trend/time-series of per-agent burden across runs."
+  ]
+}

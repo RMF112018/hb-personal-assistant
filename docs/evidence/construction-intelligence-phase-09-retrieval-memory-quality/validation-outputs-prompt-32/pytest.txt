@@ -1,0 +1,140 @@
+........................................................................ [  2%]
+........................................................................ [  4%]
+........................................................................ [  6%]
+........................................................................ [  8%]
+........................................................................ [ 11%]
+........................................................................ [ 13%]
+........................................................................ [ 15%]
+........................................................................ [ 17%]
+........................................................................ [ 19%]
+........................................................................ [ 22%]
+........................................................................ [ 24%]
+........................................................................ [ 26%]
+........................................................................ [ 28%]
+........................................................................ [ 30%]
+........................................................................ [ 33%]
+........................................................................ [ 35%]
+........................................................................ [ 37%]
+........................................................................ [ 39%]
+........................................................................ [ 42%]
+........................................................................ [ 44%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+.........................F..................................F....F....F. [ 50%]
+.....F......F......F......F................................F............ [ 53%]
+........................................................................ [ 55%]
+...................................F.................................... [ 57%]
+........................................................................ [ 59%]
+........................................................................ [ 61%]
+........................................................................ [ 64%]
+........................................................................ [ 66%]
+........................................................................ [ 68%]
+........................................................................ [ 70%]
+........................................................................ [ 73%]
+........................................................................ [ 75%]
+........................................................................ [ 77%]
+........................................................................ [ 79%]
+........................................................................ [ 81%]
+........................................................................ [ 84%]
+........................................................................ [ 86%]
+........................................................................ [ 88%]
+........................................................................ [ 90%]
+........................................................................ [ 92%]
+........................................................................ [ 95%]
+........................................................................ [ 97%]
+........................................................................ [ 99%]
+............                                                             [100%]
+=================================== FAILURES ===================================
+_______________ test_v26_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08a_schema_v26.py:295: in test_v26_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v28_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08b_schema_v28.py:119: in test_v28_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v29_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08b_schema_v29.py:125: in test_v29_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v30_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v30.py:124: in test_v30_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v31_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v31.py:163: in test_v31_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v32_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v32.py:165: in test_v32_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v33_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v33.py:165: in test_v33_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v34_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v34.py:164: in test_v34_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v35_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08c_schema_v35.py:142: in test_v35_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v37_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08d_schema_v37.py:180: in test_v37_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+=============================== warnings summary ===============================
+tests/test_phase_08c_financial_completeness.py: 6 warnings
+tests/test_phase_08c_financial_no_writeback.py: 2 warnings
+tests/test_phase_08c_gates.py: 2 warnings
+tests/test_phase_08c_review_required_routing.py: 1 warning
+tests/test_phase_08d_mcp_gates.py: 2 warnings
+tests/test_phase_08d_mcp_resources.py: 4 warnings
+tests/test_phase_08d_mcp_wrappers.py: 6 warnings
+  /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/construction/second_brain/financial_completeness.py:135: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return datetime.datetime.utcnow().isoformat() + "Z"
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_phase_08a_schema_v26.py::test_v26_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v28.py::test_v28_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v29.py::test_v29_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v30.py::test_v30_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v31.py::test_v31_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v32.py::test_v32_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v33.py::test_v33_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v34.py::test_v34_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08c_schema_v35.py::test_v35_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_08d_schema_v37.py::test_v37_tables_classified_in_lifecycle_contract

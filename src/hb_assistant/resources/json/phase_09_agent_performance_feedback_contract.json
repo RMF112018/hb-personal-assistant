@@ -1,0 +1,62 @@
+{
+  "contract_name": "phase_09_agent_performance_feedback_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 32 — agent performance and feedback. A read-only, advisory per-agent tracker over the Phase 08A agent registry that aggregates repeated corrections (operator feedback of class correct/reject), review burden (agent_run_receipts review tiers), and weak coverage (corpus-balance empty/deferred families), and emits advisory policy recommendation codes — for operator awareness. It makes NO determination; recommendations are advisory suggestions, never applied. Persists metadata-only per-(agent, metric) rows to the reserved V38 second_brain_agent_performance_feedback_runs table (read-only by default). No raw feedback reason / prompt / response is persisted or emitted — only counts, bucketed bands, agent names, metric names, and recommendation codes.",
+  "signal_categories": ["repeated_corrections", "review_burden", "weak_coverage", "policy_recommendation"],
+  "recommendation_codes": [
+    "recommend_review_tier_increase",
+    "recommend_confidence_tuning",
+    "recommend_source_expansion",
+    "no_action"
+  ],
+  "target_kind_to_agent": {
+    "retrieval": "retrieval_source_broker_agent",
+    "research_packet": "research_packet_agent",
+    "evaluation": "output_evaluation_agent",
+    "memory": "memory_curator_agent",
+    "daily_brief": "daily_brief_agent"
+  },
+  "correction_feedback_classes": ["correct", "reject"],
+  "status_values": ["built", "empty"],
+  "run_column_allowlist": [
+    "run_id",
+    "created_at_utc",
+    "policy_version",
+    "schema_version",
+    "agent_name",
+    "project_key",
+    "signal_count",
+    "metric_name",
+    "metric_value_label",
+    "status"
+  ],
+  "forbidden_emitted_fields": [
+    "reason",
+    "reason_redacted",
+    "decision_reason_redacted",
+    "content",
+    "content_excerpt",
+    "statement",
+    "statement_redacted",
+    "raw_prompt",
+    "raw_response",
+    "source_ref",
+    "embedding",
+    "vector",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "advisory_only",
+    "no_determination",
+    "recommendations_advisory_only",
+    "preserve_review_tier",
+    "preserve_confidence_class"
+  ]
+}
