@@ -127,7 +127,9 @@ def load_review_burden_policy_seed() -> dict[str, Any]:
 
 def _table_exists(conn: sqlite3.Connection, table: str) -> bool:
     return (
-        conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
+        conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone()
         is not None
     )
 
@@ -149,7 +151,9 @@ def _assert_no_raw_on_burden_row(row: dict[str, Any]) -> None:
     """Fail-closed: any guard >0 on a burden row (or its source) violates no-raw/no-writeback."""
     bad = []
     for k, v in row.items():
-        if (k.endswith("_persisted") or k.endswith("_performed") or k.endswith("_allowed")) and int(v or 0) != 0:
+        if (k.endswith("_persisted") or k.endswith("_performed") or k.endswith("_allowed")) and int(
+            v or 0
+        ) != 0:
             bad.append(k)
     if bad:
         raise ReviewBurdenPolicyError(f"guard violation on burden item: {bad}")
@@ -198,7 +202,9 @@ def _two_step_tier(
         return "C", "sensitive_high_impact"  # treat as mandatory
 
     family_ok = source_family in allowed_families
-    impact_high = (impact_category in mandatory) or (impact_category == "unclassified" and is_sensitive_high)
+    impact_high = (impact_category in mandatory) or (
+        impact_category == "unclassified" and is_sensitive_high
+    )
 
     if not family_ok and impact_high:
         return "C", "high_impact_item_outside_allowed_family"
@@ -210,7 +216,11 @@ def _two_step_tier(
     if family_ok:
         # Family eligible + impact not high -> consider A (if other guards)
         # Additional: confidence low or reason weak may push to B
-        if confidence_class in ("weak", "low") or (review_reason or "").lower() in {"weak", "low", "duplicate_candidate"}:
+        if confidence_class in ("weak", "low") or (review_reason or "").lower() in {
+            "weak",
+            "low",
+            "duplicate_candidate",
+        }:
             return "B", "low_confidence_or_weak_reason_after_two_step"
         # Default for clean low-risk metadata: A
         return "A", "two_step_passed_low_risk_advisory_eligible"
@@ -219,14 +229,18 @@ def _two_step_tier(
     return "B", "family_not_eligible_for_auto_advisory"
 
 
-def _cluster_key(project_key: str | None, family: str, impact: str, conf: str | None, reason: str | None) -> str:
-    base = "|".join([
-        (project_key or "").lower(),
-        family,
-        impact,
-        (conf or "unclassified").lower(),
-        (reason or "unknown").lower(),
-    ])
+def _cluster_key(
+    project_key: str | None, family: str, impact: str, conf: str | None, reason: str | None
+) -> str:
+    base = "|".join(
+        [
+            (project_key or "").lower(),
+            family,
+            impact,
+            (conf or "unclassified").lower(),
+            (reason or "unknown").lower(),
+        ]
+    )
     return hashlib.sha256(base.encode("utf-8")).hexdigest()[:16]
 
 
@@ -246,8 +260,23 @@ def _safe_top_example(item: dict[str, Any]) -> dict[str, Any]:
     ex = {k: item.get(k) for k in allowed if k in item}
     # Never allow prohibited even if caller passed
     prohibited = {
-        "subject", "body", "title", "summary", "organizer", "attendee", "email", "location",
-        "url", "download_url", "signed_url", "raw", "payload", "token", "secret", "text", "preview"
+        "subject",
+        "body",
+        "title",
+        "summary",
+        "organizer",
+        "attendee",
+        "email",
+        "location",
+        "url",
+        "download_url",
+        "signed_url",
+        "raw",
+        "payload",
+        "token",
+        "secret",
+        "text",
+        "preview",
     }
     for bad in prohibited:
         ex.pop(bad, None)
@@ -296,24 +325,63 @@ def _collect_review_candidates(
         if dedup_keys and all(k in cols for k in dedup_keys):
             # For financial ledger we still want the distinct (project+cat+ref+amount) but also track raw volume
             select_cols = ", ".join(dedup_keys)
-            rows = conn.execute(
-                f"SELECT DISTINCT {select_cols} FROM {table}"
-            ).fetchall()
+            rows = conn.execute(f"SELECT DISTINCT {select_cols} FROM {table}").fetchall()
             # For volume we also note raw count separately in caller
         else:
-            # Simple distinct on a synthetic key (table rowid or a ref if present)
+            # Simple distinct on a synthetic key (table rowid or a ref if present).
+            # Project key + project_* + impact/reason/conf/status/category/tier/sensitivity cols that
+            # the review queue tables expose (construction_review_queue, email_review_queue, etc).
+            # This replaces weak/unknown review_reason defaults with table-native values (e.g. category,
+            # reason, classification_label, status, promotion_status) so clusters split e.g.
+            # email/unclassified/unknown into finer per-reason groups without changing operator burden
+            # or caps. DISTINCT on the combo preserves per-item distinctness.
             key_col = "source_ref" if "source_ref" in cols else ("id" if "id" in cols else None)
             if key_col:
-                rows = conn.execute(f"SELECT DISTINCT {key_col} FROM {table}").fetchall()
+                extra_cols = [
+                    "project_key",
+                    "project",
+                    "project_id",
+                    "reason",
+                    "category",
+                    "trigger_category",
+                    "review_tier_reason_code",
+                    "review_reason",
+                    "classification_label",
+                    "status",
+                    "promotion_status",
+                    "preview_kind",
+                    "relationship_type",
+                    "review_tier",
+                    "confidence_class",
+                    "confidence",
+                    "confidence_label",
+                    "sensitivity",
+                    "sensitive_high_impact",
+                    "created_utc",
+                    "generated_utc",
+                    "source_ref",
+                    "item_id",
+                    "id",
+                ]
+                to_select = [key_col]
+                for ec in extra_cols:
+                    if ec in cols and ec not in to_select:
+                        to_select.append(ec)
+                select_cols = ", ".join(to_select)
+                rows = conn.execute(f"SELECT DISTINCT {select_cols} FROM {table}").fetchall()
             else:
                 # fallback: take a sample of open rows (bounded)
-                rows = conn.execute(f"SELECT rowid FROM {table} WHERE {unresolved_sql} LIMIT 5000").fetchall()
+                rows = conn.execute(
+                    f"SELECT rowid FROM {table} WHERE {unresolved_sql} LIMIT 5000"
+                ).fetchall()
 
         for r in rows:
-            # r is sqlite row; normalize to dict-like
-            rec: dict[str, Any] = {k: r[k] for k in r} if hasattr(r, "keys") else {}
-            # project
-            pk = rec.get("project_key") or rec.get("project") or None
+            # r is sqlite row; normalize to dict-like.
+            # With row_factory=sqlite3.Row (set in build_mart), r.keys() yields col names from our projected SELECT
+            # (project/reason/status etc); iterating r yields values, so use .keys() explicitly for name keys.
+            rec = {k: r[k] for k in r.keys()} if hasattr(r, "keys") else {}  # noqa: SIM118 - Row requires .keys() to iterate *names* (plain iter yields values); membership form would be wrong here
+            # project (improved to catch project_id too if sources use it)
+            pk = rec.get("project_key") or rec.get("project") or rec.get("project_id") or None
             if project_key is not None and pk is not None and pk != project_key:
                 continue
 
@@ -322,8 +390,17 @@ def _collect_review_candidates(
             for c in impact_cols:
                 if c in rec and rec[c]:
                     impact_vals.append(str(rec[c]))
-            # also try common reason/category fields if present
-            for c in ("reason", "category", "trigger_category", "review_tier_reason_code", "sensitivity"):
+            # also try common reason/category/status fields if present (tables expose these)
+            for c in (
+                "reason",
+                "category",
+                "trigger_category",
+                "review_tier_reason_code",
+                "sensitivity",
+                "classification_label",
+                "status",
+                "promotion_status",
+            ):
                 if c in rec and rec[c]:
                     impact_vals.append(str(rec[c]))
 
@@ -333,16 +410,62 @@ def _collect_review_candidates(
                 always_hit = True  # conservative; the original mart does a separate COUNT
 
             impact_cat = _classify_impact_from_policy(
-                {"high_impact_impact_categories": list(_BASE_HIGH_IMPACT)},  # temp; caller will reclass with contract
+                {
+                    "high_impact_impact_categories": list(_BASE_HIGH_IMPACT)
+                },  # temp; caller will reclass with contract
                 tuple(impact_vals),
                 always_high_sql_hit=always_hit,
             )
 
-            # confidence / tier proxy
-            conf = rec.get("confidence_class") or rec.get("review_tier") or None
-            if isinstance(conf, int):
-                conf = {1: "high", 2: "medium", 3: "low"}.get(conf, "medium")
-            reason = rec.get("review_reason") or rec.get("review_tier_reason_code") or rec.get("reason") or None
+            # confidence / tier proxy -- extended to pull from real columns tables use (REAL confidence,
+            # str enums, review_tier, confidence_label) and normalize int/float/str to high/medium/low/weak
+            raw_conf = (
+                rec.get("confidence_class")
+                or rec.get("review_tier")
+                or rec.get("confidence")
+                or rec.get("confidence_label")
+                or None
+            )
+            conf: str | None = None
+            if isinstance(raw_conf, (int, float)) and not isinstance(raw_conf, bool):
+                if raw_conf >= 0.8 or int(raw_conf) == 1:
+                    conf = "high"
+                elif raw_conf >= 0.4 or int(raw_conf) == 2:
+                    conf = "medium"
+                else:
+                    conf = "low"
+            elif isinstance(raw_conf, str):
+                s = raw_conf.lower().strip()
+                if s in {"high", "h", "1", "strong"}:
+                    conf = "high"
+                elif s in {"medium", "med", "m", "2", "moderate"}:
+                    conf = "medium"
+                elif s in {"low", "l", "3", "weak", "w"}:
+                    conf = "low"
+                else:
+                    conf = s or None
+            else:
+                conf = None
+            # reason: prefer any table-native reason/category/status field the source exposes.
+            # This replaces weak/unknown review_reason defaults (e.g. for email_review_queue's category+reason+status,
+            # construction's reason+classification_label+status, memory's review_tier_reason_code+status,
+            # relationship's relationship_type+promotion_status+confidence_class, etc).
+            # Result: over-broad clusters like email/unclassified/unknown or construction/unclassified/unknown
+            # are split by actual reason/category/status values while keeping operator_visible capped and
+            # high-impact always visible.
+            reason = (
+                rec.get("review_reason")
+                or rec.get("review_tier_reason_code")
+                or rec.get("reason")
+                or rec.get("category")
+                or rec.get("classification_label")
+                or rec.get("trigger_category")
+                or rec.get("status")
+                or rec.get("promotion_status")
+                or rec.get("preview_kind")
+                or rec.get("relationship_type")
+                or None
+            )
 
             # guard presence on this table (many review tables carry the Phase09 guards or subset)
             guard_ok = True
@@ -359,9 +482,12 @@ def _collect_review_candidates(
                     except Exception:
                         guard_ok = True  # do not fail collection on missing; proof will re-assert
 
-            item_hash = rec.get("item_id") or rec.get("id") or rec.get("source_ref") or hashlib.sha256(
-                f"{table}:{pk}:{impact_cat}:{reason}".encode()
-            ).hexdigest()[:12]
+            item_hash = (
+                rec.get("item_id")
+                or rec.get("id")
+                or rec.get("source_ref")
+                or hashlib.sha256(f"{table}:{pk}:{impact_cat}:{reason}".encode()).hexdigest()[:12]
+            )
 
             candidates.append(
                 {
@@ -372,7 +498,9 @@ def _collect_review_candidates(
                     "review_reason_code": reason,
                     "item_hash": item_hash,
                     "source_ref_hash": rec.get("source_ref") or item_hash,
-                    "freshness_bucket": "recent" if rec.get("created_utc") or rec.get("generated_utc") else "unknown",
+                    "freshness_bucket": "recent"
+                    if rec.get("created_utc") or rec.get("generated_utc")
+                    else "unknown",
                     "guard_ok": guard_ok,
                     "sensitive_high_impact": bool(rec.get("sensitive_high_impact") or 0),
                     "table": table,
@@ -416,7 +544,10 @@ def _build_clusters_from_candidates(
     high_impact_total = 0
 
     for c in candidates:
-        if c.get("table") == "second_brain_financial_review_required_items" or c.get("source_family") == "financial":
+        if (
+            c.get("table") == "second_brain_financial_review_required_items"
+            or c.get("source_family") == "financial"
+        ):
             financial_raw += c.get("raw_count_proxy", 1)
             financial_distinct += 1
             # financial always C for promotion, advisory_only, separate
@@ -450,7 +581,11 @@ def _build_clusters_from_candidates(
             batch += 1
         elif tier == "A":
             # only if family allowed + impact safe + guards (re-check two-step result)
-            if c["source_family"] in policy_families and c["impact_category"] not in high_cats and c.get("guard_ok"):
+            if (
+                c["source_family"] in policy_families
+                and c["impact_category"] not in high_cats
+                and c.get("guard_ok")
+            ):
                 auto_advisory += 1
             else:
                 # demote if two-step would not allow
@@ -497,7 +632,9 @@ def _build_clusters_from_candidates(
     visible_high = high_clusters[:daily_budget]
 
     # operator visible = high (capped clusters) + some mandatory/batch if room, but high always represented via summary
-    operator_visible_clusters = visible_high  # high always shown as top; additional low can be added by caller if needed
+    operator_visible_clusters = (
+        visible_high  # high always shown as top; additional low can be added by caller if needed
+    )
 
     suppressed = max(0, (batch + mandatory + auto_advisory) - len(operator_visible_clusters))
 
@@ -527,7 +664,8 @@ def _build_clusters_from_candidates(
         },
         "operator_visible_clusters": operator_visible_clusters,
         "suppressed_or_batched": suppressed,
-        "advisory_retrieval_allowed": auto_advisory > 0 or batch > 0,  # low-risk A + B as unpromoted advisory ok
+        "advisory_retrieval_allowed": auto_advisory > 0
+        or batch > 0,  # low-risk A + B as unpromoted advisory ok
         "blanket_review_block": False,
     }
 
@@ -541,6 +679,7 @@ def build_review_burden_mart(
 
     resolved = db_path or str(PathPolicy().get_db_path())
     conn = sqlite3.connect(f"file:{resolved}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row  # enable name-based access so SELECTed signal cols (project/reason/category/status/conf etc) populate rec in _collect; required for table-native review_reason_code extraction
     try:
         candidates = _collect_review_candidates(conn, project_key=project_key)
 
@@ -585,7 +724,8 @@ def build_review_burden_mart(
             "clusters": clustered["clusters"],
             "operator_visible_count": min(daily, len(clustered["operator_visible_clusters"])),
             "suppressed_noise_count": clustered["suppressed_or_batched"],
-            "advisory_retrieval_allowed_count": auto_a + batch_r,  # B is still usable as unpromoted advisory
+            "advisory_retrieval_allowed_count": auto_a
+            + batch_r,  # B is still usable as unpromoted advisory
             "promotion_blocked_count": promotion_blocked,
             "guardrails": {
                 "read_only": True,
@@ -645,7 +785,13 @@ def evaluate_review_burden_gate(mart: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_review_burden_proof(db_path: str | None = None) -> dict[str, Any]:
-    """Proof wrapper (read-only). Includes raw_content_findings scan (must be empty) and gate."""
+    """Proof wrapper (read-only). Includes raw_content_findings scan (must be empty) and gate.
+
+    proof_passed asserts: no prohibited raw fields leaked into our hash-only structures + blanket_review_block is False.
+    The advisory_retrieval_allowed flag (in gate) is computed truthfully as (auto_advisory + batch > 0) after two-step;
+    it may legitimately be False (e.g. empty DB, or only high-impact/C/financial items present) and is asserted
+    via explicit True/False cases in tests (no "or True" masking).
+    """
     mart = build_review_burden_mart(db_path)
     gate = evaluate_review_burden_gate(mart)
 
@@ -660,11 +806,7 @@ def build_review_burden_proof(db_path: str | None = None) -> dict[str, Any]:
                 if bad in ex:
                     raw_findings.append(f"prohibited_field_in_example:{bad}")
 
-    proof_passed = (
-        len(raw_findings) == 0
-        and gate.get("blanket_review_block") is False
-        and (gate.get("advisory_retrieval_allowed") or True)
-    )
+    proof_passed = len(raw_findings) == 0 and gate.get("blanket_review_block") is False
 
     return {
         "proof": "phase_09_review_burden",

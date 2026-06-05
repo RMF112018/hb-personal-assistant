@@ -113,6 +113,54 @@ Any of the original + the refinement stops (auto-allow by family alone, itemizin
 - Wiring the burden clusters as an additional source family for corpus balance / eval (future prompt).
 - UI surfaces or Obsidian commands to act on the top clusters (operator still uses the Typer review commands).
 
+## Review cluster usefulness improvements (Prompt 34 follow-up) — truthful extraction and advisory assertion (modeled on 121)
+
+Follow-up to this record after Prompt 34 objective: "Improve Phase 09 review cluster usefulness without increasing operator burden."
+
+Requirements implemented (per plan; all surgical, no behavior change to caps or blocking):
+- Replace weak/unknown review_reason defaults where source tables expose better reason/category/status fields: in `_collect_review_candidates`, the non-dedup SELECT now projects the key + project_*/reason/category/trigger/review_tier_reason_code/review_reason/classification_label/status/promotion_status/preview_kind/relationship_type/review_tier/confidence*/sensitivity/sensitive_high_impact/utc cols (instead of only key_col/rowid); extraction for pk/conf/reason extended with table-native preference order + normalization (int/float/str/real from queues) before falling to None.
+- Improve project_key extraction and confidence normalization: pk now also tries "project_id"; conf handles REAL confidence, str labels, numeric tiers with maps for high/medium/low/weak.
+- Split over-broad clusters such as email/unclassified/unknown and construction/unclassified/unknown: with real review_reason_code from e.g. email's category+reason+status or construction's reason+classification_label+status, _cluster_key and cluster "review_reason" now vary (e.g. "newsletter or marketing", "routine follow-up item", "low_risk_correspondence") producing distinct clusters; family still B for non-allowed like email/construction queues.
+- Keep operator_visible capped: unchanged (daily_max from seed, visible_high cap, operator_visible_count = min(daily, ...)).
+- Keep high-impact category totals always visible: unchanged (high_impact_summary, always_visible note, visible_high separate from suppressed).
+- Preserve top_examples hash-only and deduped: no changes to _safe_top_example (9 allowed fields), _example_dedup_key (item_hash > source_ref > composite incl. now-richer reason), max_examples, unique_example_count, prohibited strip.
+- Fix review_burden_proof so advisory_retrieval_allowed is actually asserted via explicit true/false fixture cases: removed `and (gate.get("advisory_retrieval_allowed") or True)` from proof_passed (now only raw_findings==0 and blanket is False); advisory value in gate is computed from (auto+batch>0) and may legitimately be false; updated docstring. Added explicit fixtures in tests (see below) that INSERT low-risk open queue rows (advisory=True, proof=True) vs only-high (advisory=False, proof=True).
+- Do not loosen high-impact promotion blocking: unchanged (Tier C for high_impact_impact_categories or sensitive or outside-family high; financial separate always promotion_blocked; two-step still "high beats family"; evaluate gate still sets promotion_blocked_for_high_impact).
+
+Files changed (this run):
+- `src/hb_assistant/construction/second_brain/review_burden_mart.py` (SELECT projection + pk/conf/reason extraction/normalization in _collect ~305-380; proof_passed + docstring in build_review_burden_proof ~647).
+- `tests/test_phase_09_advisory_retrieval_gate.py` (added `test_advisory_retrieval_allowed_true_for_low_risk_queue_item` and `_false_for_only_high_impact` using direct INSERTs to construction_review_queue + asserts on gate flag + proof_passed + native reason in clusters).
+- `tests/test_phase_09_review_burden_policy.py` (added sqlite3 import; tightened empty-db test to assert advisory=False + proof=True; appended `test_review_burden_proof_asserts_advisory_retrieval_allowed_true_false_explicitly` with construction inserts + native reason checks).
+- `docs/architecture/151-phase-09-review-burden-reduction-and-advisory-promotion.md` (this subsection).
+- `docs/architecture/00-README.md` (added Prompt 34 ledger line under Phase 09).
+
+Validation (executed post-edit):
+- `python -m pip install -e .`
+- ruff check . && ruff format . ; mypy src ; .venv/bin/python -m compileall -q src/hb_assistant/construction/second_brain/review_burden_mart.py
+- `hb-assistant second-brain review policy-status --json`
+- `hb-assistant second-brain review burden --json` (and --project P)
+- `hb-assistant second-brain review queue --top 5 --json`
+- `hb-assistant second-brain review clusters --json`
+- `hb-assistant second-brain data-quality review-load --json`
+- `hb-assistant second-brain daily-brief render-view --date 2026-06-05 --json` (and triage/generate paths)
+- Targeted: pytest tests/test_phase_09_review_burden_policy.py tests/test_phase_09_advisory_retrieval_gate.py tests/test_phase_09_review_burden_cli.py tests/test_phase_09_review_load_mart.py tests/test_daily_brief_review_burden_summary.py tests/test_daily_brief_output.py tests/test_second_brain_daily_brief_render_view_cli.py -q --tb=line
+- `construction-agent validate --json`
+- Confirmed via runs: clusters now split with real review_reason (e.g. "routine..." vs unknown bucket); advisory T/F explicitly asserted True/False in fixtures and empty case; proof_passed True; high-impact still promotes block; caps/visible/top_examples guards preserved (no raw in examples, deduped hashes, unique counts).
+
+Guardrails preserved (no regressions):
+- operator_visible capped at daily budget; high_impact always summarized via high_impact_summary + always_visible.
+- top_examples: only the 9 hash-safe fields, prohibited stripped, deduped by stable key, unique_example_count + item_count.
+- High-impact promotion still blocked (C + financial + hard; two-step).
+- financial separate (advisory_only + promotion_blocked, does not block non-fin low-risk advisory).
+- no-raw/no-writeback asserted in proof + structures (23 guard cols).
+- read-only, metadata-only, source-linked hashes/refs only.
+- base install unaffected; no new deps; schema additive (no bump).
+- proof_passed now truthful (advisory not forced).
+
+This follows the "truthful value reporting without overstatement" discipline from the MCP precedent (sibling record 121 §3, and its appended subsections in 120/121/131/132/137/138/139/00-README): the advisory_retrieval_allowed and review_reason values now reflect actual table state / two-step outcome in status, proofs, and tests (explicit fixtures for T and F paths), just as readiness probes were split to report core vs local accurately. See 121's "LlamaIndex readiness truthful..." append for the pattern.
+
+No other architecture docs required updates (150 etc had no direct overlap with review_burden_mart or the proof expression).
+
 ## References
 
 - review_burden_mart.py (two-step, clustering, hash-only, financial separate, gate)
@@ -121,4 +169,5 @@ Any of the original + the refinement stops (auto-allow by family alone, itemizin
 - daily_brief/output.py (exceptions summary rendering)
 - migrator.py V39 + phase_09_schema.py (additive tables)
 - pyproject.toml + packaged resources under src/hb_assistant/resources/...
+- tests/test_phase_09_review_burden_policy.py , tests/test_phase_09_advisory_retrieval_gate.py (explicit true/false advisory fixtures asserting the flag)
 - Architecture 125 (original review-load) and 120 (repo-truth rebaseline) for history.
