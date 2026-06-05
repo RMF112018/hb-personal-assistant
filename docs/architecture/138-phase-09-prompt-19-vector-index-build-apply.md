@@ -71,6 +71,15 @@ tables 0/0). The full matrix is in the evidence bundle.
 
 ## 6. Deferred
 
-`generated_outputs` (research-packet) loader still absent (apply covers Obsidian + reviewed memory only).
+Generated-outputs loader (research packets + applied source-linked daily briefs) is now wired into gather
+and dry-run/apply paths (see 137 for details). Apply remains gated by SDK presence + indexable nodes +
+all existing build-rule/guard passes; no change to apply safety surface.
+
 Hybrid query / retrieval read path, eval sets, benchmarks, and memory-quality review are later Phase 09
 prompts.
+
+The generated-outputs loader feeds the same apply writer path (in-memory redacted `text_redacted` only;
+`summary_redacted` for packets, joined handoff `title_redacted` for briefs). All nodes still re-assert the
+full build rule and embedding guard before any embedding or vector write. The test in 137 (node count
+increase on applied brief fixture) also validates that apply would see the additional nodes if SDK + other
+gates allow.

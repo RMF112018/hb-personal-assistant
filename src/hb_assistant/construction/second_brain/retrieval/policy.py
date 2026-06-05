@@ -30,6 +30,7 @@ ALLOWLISTED_SOURCE_FAMILIES: tuple[str, ...] = (
     "aging_exposure_report_items",
     "review_controlled_correspondence_context",
     "approved_obsidian_generated_outputs",
+    "generated_outputs",
     "accepted_long_term_memory",
     "cross_source_relationships",
 )

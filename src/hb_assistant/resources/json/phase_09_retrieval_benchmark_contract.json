@@ -4,6 +4,7 @@
   "description": "Phase 09 Prompt 25 — deterministic vs semantic benchmark. Benchmarks the three retrieval modes (deterministic, semantic, hybrid) against each other over the approved Obsidian + reviewed-memory corpus and emits comparative, bucketed, metadata-only metrics. Probes are built at runtime from each approved node's already-redacted excerpt and are never persisted; only labeled metric bands are stored. Deterministic results are authoritative; semantic results are advisory (floored at review tier 2, source-linked, re-validated no-raw). The benchmark is a measurement leaf — it assembles no final answer (assembles_final_answer is always false) and the semantic_retrieval_bypassed_policy guard stays 0; semantic context never reaches an answer / Research Packet / Evaluation path from here.",
   "approved_source_families": [
     "approved_obsidian_generated_outputs",
+    "generated_outputs",
     "accepted_long_term_memory"
   ],
   "benchmark_modes": ["deterministic", "semantic", "hybrid"],

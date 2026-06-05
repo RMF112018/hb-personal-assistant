@@ -22,6 +22,7 @@ embeddable_source_families:
   - aging_exposure_report_items
   - accepted_long_term_memory
   - approved_obsidian_generated_outputs
+  - generated_outputs
   - cross_source_relationships
 
 persist_dir_label: app_support_retrieval_index

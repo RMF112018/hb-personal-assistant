@@ -67,12 +67,94 @@ def _proof_db(tmp: str) -> str:
     return db
 
 
+def _add_generated_output_fixture(db: str) -> None:
+    """Add one manifest-eligible accepted research packet + one apply daily brief (with source refs + handoff lines).
+    This exercises the generated-outputs loader path and increases dry-run node count.
+    Uses raw inserts + explicit guard columns =0; temp DB only.
+    """
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    SQLiteMigrator(db_path=db).apply()  # ensure packet/brief tables exist
+    conn = sqlite3.connect(db)
+    try:
+        now = "2026-06-05T00:00:00+00:00"
+        # Accepted research packet (eligible for generated_outputs)
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO second_brain_research_packets
+            (packet_id, mode, topic_hash, project_key, source_ref_count, review_required_count,
+             stale_unknown_count, conflict_count, context_quality_class, confidence_class,
+             review_tier, review_tier_reason_code, review_status, advisory_classification,
+             summary_redacted, status, created_utc,
+             raw_email_body_persisted, raw_document_text_persisted, raw_calendar_payload_persisted,
+             raw_prompt_persisted, raw_response_persisted, retrieved_context_persisted,
+             signed_url_persisted, download_url_persisted, external_writeback_performed)
+            VALUES (?, 'mock', ?, 'P9', 2, 0, 0, 0, 'high', 'high', 1, 'T1', 'accepted', 'advisory',
+                    '[redacted generated packet summary for vector test]', 'synthesized', ?,
+                    0,0,0,0,0,0,0,0,0)
+            """,
+            ("pkt-gen-vec-1", "t" + "0"*15, now),
+        )
+
+        # Apply daily brief run (eligible)
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO daily_brief_runs
+            (brief_run_id, brief_date, mode, status, project_count, source_ref_count,
+             review_required_count, stale_unknown_count, review_tier, degradation_mode,
+             output_path_redacted, output_path_hash, generated_utc,
+             raw_email_body_persisted, raw_document_text_persisted, raw_calendar_payload_persisted,
+             raw_prompt_persisted, raw_response_persisted, retrieved_context_persisted,
+             signed_url_persisted, download_url_persisted, external_writeback_performed)
+            VALUES (?, '2026-06-05', 'apply', 'synthesized', 1, 1, 0, 0, 1, 'none',
+                    '12_Daily_Brief/2026-06-05_daily_brief.md', ?, ?,
+                    0,0,0,0,0,0,0,0,0)
+            """,
+            ("brf-gen-vec-1", "h" + "0"*15, now),
+        )
+
+        # Source ref for the brief (makes source_ref_count >0 and manifest eligible)
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO daily_brief_source_refs
+            (daily_brief_source_ref_id, brief_run_id, source_family, source_ref, evidence_trail_id,
+             confidence_class, review_required, stale_unknown)
+            VALUES (?, ?, 'cross_source_relationships', 'rel-gen-1', NULL, 'high', 0, 0)
+            """,
+            ("sref-gen-1", "brf-gen-vec-1"),
+        )
+
+        # Handoff lines (provide redacted text_redacted for the brief node)
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO daily_brief_handoff_lines
+            (line_id, brief_run_id, section, line_index, title_redacted, review_tier,
+             source_refs_json, generated_utc,
+             raw_email_body_persisted, raw_document_text_persisted, raw_calendar_payload_persisted,
+             raw_prompt_persisted, raw_response_persisted, retrieved_context_persisted,
+             signed_url_persisted, download_url_persisted, external_writeback_performed)
+            VALUES (?, ?, 'priority_actions', 0, 'Review generated packet pkt-gen-vec-1', 1,
+                    '[{"source_family":"cross_source_relationships","source_ref":"rel-gen-1"}]', ?,
+                    0,0,0,0,0,0,0,0,0)
+            """,
+            ("hl-gen-1", "brf-gen-vec-1", now),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def test_normal_path_dry_run_and_persist() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = _proof_db(td)
+        plan0 = build_vector_index_dry_run(db)
+        count0 = plan0["total_nodes"]
+        # Add manifest-eligible generated outputs (accepted packet + apply brief + refs + handoffs)
+        # This exercises the new generated-outputs loader and must increase the dry-run node count.
+        _add_generated_output_fixture(db)
         plan = build_vector_index_dry_run(db)
         assert plan["status"] == "dry_run"
-        assert plan["total_nodes"] >= 1
+        assert plan["total_nodes"] > count0, "generated outputs loader must contribute additional approved nodes"
         assert plan["planned_chunk_count"] >= plan["total_nodes"]
         assert plan["vectors_persisted_to_sqlite"] is False
         assert plan["read_only"] is True

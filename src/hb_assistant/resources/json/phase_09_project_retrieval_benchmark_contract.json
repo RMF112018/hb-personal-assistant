@@ -4,6 +4,7 @@
   "description": "Phase 09 Prompt 26 — project-specific retrieval benchmarks + coverage reports. Scopes the Prompt 25 deterministic/semantic/hybrid benchmark per project (enumerated from the approved retrieval corpus) and pairs each with the read-only corpus-balance coverage mart (per-family covered/empty/deferred). Per-project benchmark metrics reuse the existing V38 second_brain_retrieval_benchmark_runs table (project-distinct run_ids); coverage reports are read-only advisory output (never persisted). An orchestration leaf: assembles_final_answer is always false and the semantic_retrieval_bypassed_policy guard stays 0; semantic context never reaches an answer / Research Packet / Evaluation path from here. Read-only by default, fail-closed, metadata-only (no raw query/probe/content/source ref — only hashes, bands, counts, project keys, and family names).",
   "approved_source_families": [
     "approved_obsidian_generated_outputs",
+    "generated_outputs",
     "accepted_long_term_memory"
   ],
   "benchmark_modes": ["deterministic", "semantic", "hybrid"],

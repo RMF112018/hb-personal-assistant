@@ -4,6 +4,7 @@
   "description": "Phase 09 Prompt 24 — retrieval quality eval set. Creates source-linked retrieval evaluation cases from approved outputs (the approved Obsidian + reviewed-memory corpus). Each case asserts that a query targeting an approved output should retrieve that source, linked only by a hashed source ref. Eval sets/cases are metadata-only: no raw query text, raw content, answer, or raw source ref is persisted (only hashes). Executing/scoring the set against the index (eval_runs) is a later prompt.",
   "approved_source_families": [
     "approved_obsidian_generated_outputs",
+    "generated_outputs",
     "accepted_long_term_memory"
   ],
   "max_cases_per_set": 5000,

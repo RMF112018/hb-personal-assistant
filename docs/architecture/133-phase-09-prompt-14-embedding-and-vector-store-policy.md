@@ -62,3 +62,14 @@ Policy + guardrail + proof only — no embeddings, no index; read-only over the 
 metadata-only; vectors never in SQLite; external providers deferred + flagged invalid if selected;
 EXCLUDED raw families hard-rejected; review tier / confidence / source refs / freshness preserved as
 required node metadata. No stop condition triggered.
+
+### Generated outputs family (Prompt 18/19)
+
+`generated_outputs` (the manifest category covering accepted research packets and applied source-linked
+daily briefs) is now listed in the embeddable source families seed and in the broker allowlist. The
+generated-outputs loader (new in this phase) produces the nodes using only manifest-eligible selects and
+already-redacted columns (`summary_redacted`; handoff `title_redacted` lines). The loader + guardrail
+enforce the same rules as Obsidian/memory (source-linked, no raw, approved review status, no unresolved
+high-impact). The dry-run/apply plans now include these nodes when present (and suppress the prior
+deferred warning). The embedding policy proof and status continue to report the expanded embeddable set;
+no change to forbidden fields or persistence rules.

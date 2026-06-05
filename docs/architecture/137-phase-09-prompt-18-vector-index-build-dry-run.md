@@ -51,3 +51,22 @@ no-raw/no-writeback proofs pass. Operator DB pristine (schema 38; vector-index t
 Read-only, plan-only (no embeddings / no vector store / no operator-DB writes); approved manifest is the
 only input; build rule rejects nodes lacking review tier / confidence / source ref / freshness / no-raw
 proof; vectors never in SQLite; metadata-only; apply deferred + fail-closed. No stop condition triggered.
+
+### Generated-outputs loader integration (Prompt 18/19)
+
+The dry-run now includes the generated-outputs loader category. `_gather_approved_nodes` calls
+`load_approved_generated_output_nodes`, which selects only manifest-eligible records (accepted
+`second_brain_research_packets` with `summary_redacted`; `mode='apply'` `daily_brief_runs` that carry
+`source_ref_count > 0` and have associated `daily_brief_handoff_lines` for redacted titles). In-memory
+`text_redacted` for briefs is the join of handoff `title_redacted` values (already redacted, source-linked,
+marker-bounded in the handoff sense). All candidates pass the embedding guardrail.
+
+The unconditional `generated_outputs_loader_deferred` warning is now conditional: it is emitted only when
+zero eligible generated nodes are present. When an applied source-linked brief (or accepted packet) is
+present in the DB, the warning is omitted from the plan.
+
+Test evidence (in `test_phase_09_vector_index.py`): the baseline `_proof_db` (obsidian + memory) is
+extended with raw inserts for one accepted packet + one apply brief + source refs + handoff lines; the
+subsequent `build_vector_index_dry_run` reports a strictly higher `total_nodes` (and planned chunks),
+proving the loader contributes approved nodes to the dry-run plan. All other guardrails (no raw, no SQLite
+vectors, manifest-only input) continue to hold.

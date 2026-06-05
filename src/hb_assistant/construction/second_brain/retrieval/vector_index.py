@@ -13,8 +13,9 @@ The **approved source manifest is the only input** (provenance + authorization),
 are the per-category loaders (Obsidian + reviewed memory), which already enforce approved + source-linked
 + guard-clean. Both paths re-assert the build rule on every node: **reject any source lacking review
 tier, confidence, source ref, or freshness metadata, or failing the no-raw proof** (Prompt 14's
-`validate_embedding_candidate`). The third manifest category (generated outputs / research packets) has
-no loader yet and is deferred.
+`validate_embedding_candidate`). The third manifest category (generated outputs) is now served by the
+generated-outputs loader (accepted research packets + applied source-linked daily briefs); only manifest-eligible
+records become nodes and the deferred warning is suppressed when eligible generated nodes are present.
 
 Everything is metadata-only (counts + hashes; no node text, no vectors persisted to SQLite) and
 fail-closed. The embedder/vector-store writer is injectable: the default is a LlamaIndex
@@ -56,6 +57,7 @@ from .embedding_policy import (
     load_embedding_vector_policy_seed,
     validate_embedding_candidate,
 )
+from .generated_outputs_loader import load_approved_generated_output_nodes
 from .llamaindex_config import _llama_index_available, load_llamaindex_config_seed
 from .memory_loader import load_reviewed_memory_nodes
 from .obsidian_loader import load_approved_obsidian_nodes
@@ -178,11 +180,15 @@ def _apply_build_rule(
 def _gather_approved_nodes(
     db_path: str | None, project_key: str | None
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Gather Obsidian + reviewed-memory loader nodes, with the approved manifest as authorization."""
+    """Gather approved nodes from all manifest-eligible categories (Obsidian + reviewed memory + generated outputs),
+    with the approved source manifest as authorization and provenance. Generated outputs are included only when
+    they are manifest-eligible (accepted research packets or apply-mode source-linked daily briefs).
+    """
     manifest = build_approved_source_manifest(db_path, project_key=project_key)
     nodes: list[dict[str, Any]] = []
     nodes.extend(load_approved_obsidian_nodes(db_path, project_key=project_key))
     nodes.extend(load_reviewed_memory_nodes(db_path, project_key=project_key))
+    nodes.extend(load_approved_generated_output_nodes(db_path, project_key=project_key))
     return nodes, manifest
 
 
@@ -233,10 +239,12 @@ def _build_plan(
             )
         )
     )
+    gen_count = per_family.get("generated_outputs", 0)
     warnings: list[str] = []
     if not indexable:
         warnings.append("no_approved_nodes")
-    warnings.append("generated_outputs_loader_deferred")
+    if gen_count == 0:
+        warnings.append("generated_outputs_loader_deferred")
 
     plan = {
         "command": "second-brain retrieval llamaindex build",
