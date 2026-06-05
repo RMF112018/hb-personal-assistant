@@ -1,0 +1,9 @@
+# Phase 09 Prompt 23 — output evaluation integration (resolved values; advisory).
+# Semantic retrieval outputs are routed through the Output Evaluation (A05) checklist + an
+# unsupported-claim check + a source-linked proof. The context is evaluated for fitness but never
+# synthesized into a final answer. Read-only by default: the bridge persists nothing unless emit_receipt
+# is set (metadata-only, guard-clean receipts in the V38 source_linked_proof_runs +
+# unsupported_claim_checks tables). No raw content / query / answer / excerpts are emitted.
+version: phase_09_output_evaluation_integration_v1
+
+default_mode: hybrid

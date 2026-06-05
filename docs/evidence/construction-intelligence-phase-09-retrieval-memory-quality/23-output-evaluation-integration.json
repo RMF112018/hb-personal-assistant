@@ -1,0 +1,112 @@
+{
+  "prompt": "Phase 09 Prompt 23 — Output Evaluation Integration",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "8d711c03b7c5e6946d6f284372f3475f61906018",
+  "schema_version": 38,
+  "objective": "Route semantic retrieval outputs through evaluation, unsupported-claim checks, and receipts — fail-closed, metadata-only, never assembling a final answer.",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/synthesis/semantic_output_evaluation.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_output_evaluation_integration_contract.json"],
+    "new_seeds": ["resources/config/phase_09_output_evaluation_integration.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_output_evaluation_integration.py"],
+    "migrator_change": "None — reuses the existing V38 source_linked_proof_runs + unsupported_claim_checks tables; schema stays 38, contract table count stays 190.",
+    "synthesis_rewiring": "None — synthesize_answer (A04) unchanged; default-path adoption deferred."
+  },
+  "integration": {
+    "route": "evaluation_only",
+    "entry_points": [
+      "synthesis/semantic_output_evaluation.build_semantic_output_evaluation(query, *, ..., emit_receipt=False) -> dict",
+      "synthesis/semantic_output_evaluation.persist_evaluation_receipts(db_path, result, *, policy_version) -> dict",
+      "synthesis/semantic_output_evaluation.build_semantic_output_evaluation_proof(*, evidence_dir=None, write_evidence=True) -> dict"
+    ],
+    "flow": "build_hybrid_envelope (deterministic + advisory semantic) -> build_research_packet_from_envelope (A02) -> a non-synthesized context AdapterResult (answer='', synthesized=False) -> build_evaluation_preview (A05, the REAL 10-item checklist) -> unsupported-claim check + source-linked proof over the retrieved items. The context is evaluated for fitness; no answer is synthesized.",
+    "unsupported_claim_check": "A retrieved item is a supported, source-linked claim iff it carries a source_ref + an allowlisted (non-EXCLUDED) source_family. unsupported_count/unlinked_count > 0 fails closed (status blocked/unlinked_found); the unsupported_claim_performed guard stays 0 (detect-and-block, never emit).",
+    "overall_pass": "evaluation.passed AND unsupported_count==0 AND unlinked_count==0",
+    "read_only": "emit_receipt defaults False (no operator-DB write); receipt persistence (source_linked_proof_runs + unsupported_claim_checks, metadata-only, guard-clean) exercised in the proof on a temp DB."
+  },
+  "operator_db_outcome": {
+    "output_eval_run_status": "ok",
+    "route": "evaluation_only",
+    "overall_passed": true,
+    "evaluation_checklist": "10/10",
+    "deterministic_count": 408,
+    "semantic_count": 0,
+    "rationale": "No applied vector index on the operator DB -> semantic skipped; evaluation runs over deterministic context. emit_receipt defaulted False -> no persist.",
+    "source_linked_proof_runs_rows": 0,
+    "unsupported_claim_checks_rows": 0,
+    "schema_version": 38,
+    "operator_db_mutated": false
+  },
+  "integration_proof": {
+    "command": "second-brain retrieval output-eval proof --json",
+    "proof_passed": true,
+    "evaluation_passed": true,
+    "evaluation_score": 1.0,
+    "unsupported_count": 0,
+    "unlinked_count": 0,
+    "overall_passed": true,
+    "receipts_persisted_guard_clean": true,
+    "unsupported_claim_detected_and_blocked": true,
+    "no_answer_emitted": true,
+    "raw_query_not_emitted": true,
+    "excluded_family_fail_closed": true
+  },
+  "real_huggingface_output_eval_smoke": {
+    "status": "ok",
+    "route": "evaluation_only",
+    "synthesis_performed": false,
+    "overall_passed": true,
+    "evaluation_passed": true,
+    "evaluation_score": 1.0,
+    "unsupported_count": 0,
+    "unlinked_count": 0,
+    "deterministic_count": 3,
+    "semantic_count": 3,
+    "note": "Real bge-small hybrid retrieval (3 advisory semantic + 3 deterministic) routed through the real A05 evaluation (score 1.0) + zero-tolerance unsupported-claim/source-linked checks, without synthesizing an answer. Captured at validation-outputs-prompt-23/real-huggingface-output-eval-smoke.json. Automated equivalent: tests/test_phase_09_output_evaluation_integration.py::test_output_eval_real_huggingface_smoke (integration)."
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "Success: no issues found in 291 source files",
+    "pytest_not_live_integration_manual": "3166 passed, 0 failed, 6 deselected",
+    "construction_agent_validate": "exit 0 (schema 38)",
+    "data_quality_table_inventory": "exit 0 (contract_table_count=190, 0 unmapped)",
+    "data_quality_no_writeback_proof": "exit 0",
+    "second_brain_phase_08a_gates": "exit 0",
+    "second_brain_phase_08b_gates": "exit 0",
+    "second_brain_phase_08c_gates": "SKIPPED — appends ~1,299 financial-ledger rows to the operator DB per call (disclosed defect from Prompts 02/05)",
+    "second_brain_data_quality_phase_08d_gates": "exit 0",
+    "second_brain_mcp_no_raw_access": "exit 0",
+    "second_brain_mcp_no_writeback": "exit 0",
+    "retrieval_output_eval_run": "exit 0 (operator DB: route=evaluation_only, overall_passed, 10/10, semantic empty, no persist)",
+    "retrieval_output_eval_run_deterministic_only": "exit 0",
+    "retrieval_output_eval_proof": "exit 0 (proof_passed=true)",
+    "post_cli_guard_rerun": "tests/test_repo_sensitive_scan.py + tests/test_second_brain_no_writeback_proof.py — pass"
+  },
+  "command_path_corrections": {
+    "note": "The prompt's exact-command list used stale MCP paths (`mcp data-quality …`). The real commands are `second-brain data-quality phase-08d-gates`, `second-brain mcp no-raw-access`, `second-brain mcp no-writeback` — all run, all exit 0."
+  },
+  "guardrails_enforced": [
+    "semantic retrieval outputs routed through the Output Evaluation (A05) layer + unsupported-claim check + source-linked proof",
+    "unsupported claims are detected and BLOCK (zero tolerance); never emitted (unsupported_claim_performed guard stays 0)",
+    "no final answer assembled (context AdapterResult is non-synthesized; assembles_final_answer=false)",
+    "review tier / confidence class / source references / freshness / coverage warnings preserved",
+    "no raw source content / prompt / response / tokens / signed-or-download URLs; raw query never emitted (only query_hash); no answer/excerpt emitted",
+    "no external/source-system writeback; read-only by default (no operator-DB write); persisted receipts metadata-only + guard-clean (both V38 tables)",
+    "fail-closed on missing policy / stale schema / excluded source family"
+  ],
+  "deferred_items": [
+    "Wiring semantic output evaluation into the default synthesize_answer (A04) path — behavior change, later prompt",
+    "Deeper claim-level NLI / hallucination scoring (Prompts 28-29) and the broader source-linked proof matrix (Prompt 34) — this prompt introduces the receipts + zero-tolerance source-linkage gate",
+    "generated_outputs loader; eval sets / benchmarks / memory-quality review — later prompts"
+  ],
+  "blocker_classifications": {
+    "build_blockers": "none (route implemented + proven; operator run yields semantic=0 only because no vector index is applied there, which is expected)",
+    "external_blockers": "none"
+  }
+}

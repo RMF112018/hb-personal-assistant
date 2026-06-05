@@ -164,6 +164,13 @@ retrieval_research_packet_app = typer.Typer(
 )
 retrieval_app.add_typer(retrieval_research_packet_app, name="research-packet")
 
+retrieval_output_eval_app = typer.Typer(
+    name="output-eval",
+    help="Phase 09 output evaluation integration (semantic outputs → evaluation + claim checks; read-only).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(retrieval_output_eval_app, name="output-eval")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3191,6 +3198,18 @@ _RETRIEVAL_RESEARCH_PACKET_GUARDRAILS = {
     "fail_closed": True,
 }
 
+_RETRIEVAL_OUTPUT_EVAL_GUARDRAILS = {
+    "semantic_retrieval_through_evaluation_only": True,
+    "unsupported_claims_blocked_never_emitted": True,
+    "no_final_answer_assembly": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "preserve_review_tier_confidence_source_refs_freshness": True,
+    "read_only_by_default": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
 
 @llamaindex_app.command("build")
 def retrieval_llamaindex_build(
@@ -3783,6 +3802,122 @@ def retrieval_research_packet_proof(
         f" (route_only={proof['route_is_research_packet_only']},"
         f" packet_not_answer={proof['returns_packet_not_answer']},"
         f" no_bypass={proof['synthesis_has_no_semantic_path']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+@retrieval_output_eval_app.command("run")
+def retrieval_output_eval_run(
+    query: str = typer.Argument(
+        ..., help="Query text (never persisted; only its hash is reported)."
+    ),
+    project: str | None = typer.Option(None, "--project", help="Project key filter."),
+    source: str | None = typer.Option(
+        None, "--source", help="Comma-separated allowlisted source family filter."
+    ),
+    max_review_tier: int | None = typer.Option(
+        None, "--max-review-tier", help="Keep items with review_tier <= this (1/2/3)."
+    ),
+    min_confidence: str | None = typer.Option(
+        None, "--min-confidence", help="Keep items at or above this confidence class."
+    ),
+    mode: str = typer.Option("hybrid", "--mode", help="'hybrid' or 'deterministic-only'."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Route semantic retrieval outputs through evaluation + claim/source checks (read-only, fail-closed).
+
+    Runs the Output Evaluation (A05) checklist over a non-synthesized context result, plus an
+    unsupported-claim check and a source-linked proof over the retrieved items. Emits a metadata-only
+    summary (no raw query/answer/excerpts); persists nothing to the operator DB. Exit 0 if the overall
+    evaluation passes; 3 if it fails closed (evaluation fail / unsupported claims / contract/schema/filter).
+    """
+    from hb_assistant.construction.second_brain.retrieval.hybrid_broker import HybridRetrievalError
+    from hb_assistant.construction.second_brain.retrieval.metadata_filter import (
+        MetadataFilter,
+        MetadataFilterError,
+    )
+    from hb_assistant.construction.second_brain.synthesis.semantic_output_evaluation import (
+        SemanticOutputEvaluationError,
+        build_semantic_output_evaluation,
+    )
+
+    normalized_mode = (
+        "deterministic_only" if mode in ("deterministic-only", "deterministic_only") else mode
+    )
+    families = tuple(s.strip() for s in source.split(",") if s.strip()) if source else None
+    spec: MetadataFilter | None = None
+    if families or max_review_tier is not None or min_confidence is not None:
+        spec = MetadataFilter(
+            source_families=families,
+            max_review_tier=max_review_tier,
+            min_confidence=min_confidence,
+        )
+    try:
+        result = build_semantic_output_evaluation(
+            query, project_key=project, mode=normalized_mode, metadata_filter=spec
+        )
+    except (SemanticOutputEvaluationError, HybridRetrievalError, MetadataFilterError) as exc:
+        payload = {
+            "command": "second-brain retrieval output-eval run",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _RETRIEVAL_OUTPUT_EVAL_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _RETRIEVAL_OUTPUT_EVAL_GUARDRAILS}
+    human = [
+        "Phase 09 semantic output evaluation (read-only, advisory)",
+        f"  route: {result['route']} | synthesis_performed: {result['synthesis_performed']}"
+        f" | overall_passed: {result['overall_passed']}",
+        f"  evaluation: {result['evaluation']['checklist_passed']}/{result['evaluation']['checklist_total']}"
+        f" | unsupported: {result['unsupported_claim_check']['unsupported_count']}"
+        f" | unlinked: {result['source_linked_proof']['unlinked_count']}",
+        f"  deterministic: {result['deterministic_count']} | semantic: {result['semantic_count']}",
+    ]
+    _emit_08c(
+        payload, json_out=json_out, human=human, exit_code=0 if result["overall_passed"] else 3
+    )
+
+
+@retrieval_output_eval_app.command("proof")
+def retrieval_output_eval_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the output-evaluation proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove semantic outputs route through evaluation + unsupported-claim + source-linked checks."""
+    from hb_assistant.construction.second_brain.synthesis.semantic_output_evaluation import (
+        SemanticOutputEvaluationError,
+        build_semantic_output_evaluation_proof,
+    )
+
+    try:
+        proof = build_semantic_output_evaluation_proof(write_evidence=evidence)
+    except SemanticOutputEvaluationError as exc:
+        payload = {
+            "command": "second-brain retrieval output-eval proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _RETRIEVAL_OUTPUT_EVAL_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _RETRIEVAL_OUTPUT_EVAL_GUARDRAILS}
+    human = [
+        f"Output evaluation integration proof passed={proof['proof_passed']}"
+        f" (eval={proof['evaluation_passed']}, unsupported={proof['unsupported_count']},"
+        f" receipts_clean={proof['receipts_persisted_guard_clean']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 

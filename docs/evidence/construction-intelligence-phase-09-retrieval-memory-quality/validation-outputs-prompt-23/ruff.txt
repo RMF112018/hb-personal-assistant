@@ -1,0 +1,14 @@
+=== ruff ===
+F401 [*] `hb_assistant.construction.second_brain.retrieval.hybrid_broker.HybridRetrievalError` imported but unused
+  --> tests/test_phase_09_output_evaluation_integration.py:23:5
+   |
+22 | from hb_assistant.construction.second_brain.retrieval.hybrid_broker import (
+23 |     HybridRetrievalError,
+   |     ^^^^^^^^^^^^^^^^^^^^
+24 |     _mock_embed_model,
+25 | )
+   |
+help: Remove unused import: `hb_assistant.construction.second_brain.retrieval.hybrid_broker.HybridRetrievalError`
+
+Found 1 error.
+[*] 1 fixable with the `--fix` option.

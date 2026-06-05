@@ -1,0 +1,13 @@
+{
+  "smoke": "phase_09_output_evaluation_real_huggingface",
+  "status": "ok",
+  "route": "evaluation_only",
+  "synthesis_performed": false,
+  "overall_passed": true,
+  "evaluation_passed": true,
+  "evaluation_score": 1.0,
+  "unsupported_count": 0,
+  "unlinked_count": 0,
+  "deterministic_count": 3,
+  "semantic_count": 3
+}

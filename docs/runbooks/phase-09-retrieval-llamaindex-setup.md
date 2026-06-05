@@ -214,6 +214,24 @@ top-level `second-brain research-packet build` command.)
   semantic→answer bypass (the synthesis agent has no hybrid-broker reference), and excluded-family
   fail-closed; persists nothing to the operator DB.
 
+## Output evaluation integration (Prompt 23)
+
+The `second-brain retrieval output-eval` group routes semantic (vector) retrieval **outputs** through the
+Output Evaluation (A05) layer + an unsupported-claim check + a source-linked proof, persisting
+metadata-only receipts to the V38 `source_linked_proof_runs` + `unsupported_claim_checks` tables. The
+context is evaluated for fitness but **never synthesized into an answer**; every retrieved item must be a
+supported, source-linked claim (zero tolerance) or the run fails closed.
+
+- `output-eval run "<query>" [--project P] [--source a,b] [--max-review-tier 1|2|3]
+  [--min-confidence high|…] [--mode hybrid|deterministic-only]` — runs the A05 checklist over a
+  non-synthesized context result + the unsupported-claim/source-linked checks, and emits a metadata-only
+  summary (`route='evaluation_only'`, `synthesis_performed=false`, `overall_passed`, the checklist,
+  `unsupported_count`/`unlinked_count`). The raw query is **never** emitted (only its hash); no answer is
+  emitted; **persists nothing** to the operator DB. Exit 0 iff the overall evaluation passes; 3 fail-closed.
+- `output-eval proof` — demonstrates the route through the real A05 evaluation + unsupported-claim
+  detection (an item without a source ref is detected and blocks), guard-clean metadata-only receipts in
+  both V38 tables, no answer assembly, and excluded-family fail-closed; persists nothing to the operator DB.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

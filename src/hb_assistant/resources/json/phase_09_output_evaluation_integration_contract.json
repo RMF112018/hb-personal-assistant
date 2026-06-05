@@ -1,0 +1,62 @@
+{
+  "contract_name": "phase_09_output_evaluation_integration_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 23 — output evaluation integration. Routes semantic (vector) retrieval outputs through the Output Evaluation (A05) layer plus an unsupported-claim check and a source-linked proof, persisting metadata-only receipts. Semantic context is evaluated for fitness (source-linkage, review tier, no-raw, degradation honesty) but never assembles a final answer (the context AdapterResult is non-synthesized). Every retrieved item must be a supported, source-linked claim (zero tolerance for unsupported / unlinked items) before the context is usable. Receipts persist only metadata to the V38 source_linked_proof_runs + unsupported_claim_checks tables.",
+  "unsupported_claim_zero_tolerance": true,
+  "source_linked_required": true,
+  "no_answer_assembly": true,
+  "source_linked_run_column_allowlist": [
+    "run_id",
+    "created_at_utc",
+    "policy_version",
+    "schema_version",
+    "project_key",
+    "checked_count",
+    "source_linked_count",
+    "unlinked_count",
+    "status"
+  ],
+  "unsupported_claim_check_column_allowlist": [
+    "check_id",
+    "created_at_utc",
+    "policy_version",
+    "schema_version",
+    "run_id",
+    "claim_count",
+    "unsupported_count",
+    "status"
+  ],
+  "source_linked_status_values": ["source_linked", "unlinked_found"],
+  "unsupported_claim_status_values": ["clean", "blocked"],
+  "forbidden_emitted_fields": [
+    "raw_query",
+    "query",
+    "query_text",
+    "answer",
+    "answer_redacted",
+    "content_excerpt",
+    "content_excerpt_redacted",
+    "embedding",
+    "vector",
+    "raw_vector",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "semantic_retrieval_through_evaluation_only",
+    "unsupported_claims_blocked_never_emitted",
+    "no_final_answer_assembly",
+    "no_semantic_retrieval_bypass",
+    "preserve_review_tier",
+    "preserve_confidence_class",
+    "preserve_source_references",
+    "preserve_freshness",
+    "preserve_coverage_warnings"
+  ]
+}

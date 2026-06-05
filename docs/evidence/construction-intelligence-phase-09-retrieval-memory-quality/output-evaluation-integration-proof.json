@@ -1,0 +1,28 @@
+{
+  "proof": "phase_09_output_evaluation_integration",
+  "command": "second-brain retrieval output-eval proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T08:24:35.308267+00:00",
+  "repo_sha": "8d711c03b7c5e6946d6f284372f3475f61906018",
+  "evaluation_passed": true,
+  "evaluation_score": 1.0,
+  "unsupported_count": 0,
+  "unlinked_count": 0,
+  "overall_passed": true,
+  "receipts_persisted_guard_clean": true,
+  "unsupported_claim_detected_and_blocked": true,
+  "no_answer_emitted": true,
+  "raw_query_not_emitted": true,
+  "excluded_family_fail_closed": true,
+  "metadata_only": true,
+  "guardrails": {
+    "semantic_retrieval_through_evaluation_only": true,
+    "unsupported_claims_blocked_never_emitted": true,
+    "no_final_answer_assembly": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

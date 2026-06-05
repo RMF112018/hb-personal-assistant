@@ -1,0 +1,71 @@
+{
+  "command": "second-brain retrieval output-eval run",
+  "phase": "09",
+  "generated_utc": "2026-06-05T08:24:34.163581+00:00",
+  "repo_sha": "8d711c03b7c5e6946d6f284372f3475f61906018",
+  "status": "ok",
+  "route": "evaluation_only",
+  "synthesis_performed": false,
+  "assembles_final_answer": false,
+  "semantic_advisory_only": true,
+  "run_id": "sle_c7db298f8fa69a48c594f0d3810483db",
+  "query_hash": "c7db298f8fa69a48c594f0d3810483dbf4e8adbef6827f3818fee09d99145d5d",
+  "schema_version": 38,
+  "project_key": null,
+  "mode": "deterministic_only",
+  "semantic_count": 0,
+  "deterministic_count": 408,
+  "semantic_skip_reason": "semantic_disabled_mode",
+  "overall_passed": true,
+  "evaluation": {
+    "passed": true,
+    "score": 1.0,
+    "checklist_passed": 10,
+    "checklist_total": 10,
+    "review_tier": 1,
+    "review_status": "auto_advisory",
+    "checklist": {
+      "source_references_present": true,
+      "review_tiers_assigned": true,
+      "confidence_class_present": true,
+      "stale_unknown_warnings_surfaced": true,
+      "conflict_warnings_surfaced": true,
+      "coverage_warnings_surfaced": true,
+      "advisory_vs_actionable_classified": true,
+      "no_tier_3_treated_as_accepted_fact": true,
+      "no_raw_content_in_output": true,
+      "degradation_mode_set_when_insufficient": true
+    }
+  },
+  "source_linked_proof": {
+    "checked_count": 408,
+    "source_linked_count": 408,
+    "unlinked_count": 0,
+    "status": "source_linked"
+  },
+  "unsupported_claim_check": {
+    "claim_count": 408,
+    "unsupported_count": 0,
+    "status": "clean"
+  },
+  "coverage_warnings": [
+    "no_read_model:meeting_prep_brief_sections",
+    "no_read_model:review_controlled_correspondence_context",
+    "semantic_unavailable:semantic_disabled_mode"
+  ],
+  "policy_version": "phase_09_output_evaluation_integration_v1",
+  "contract_version": "1.4.0-phase-09",
+  "receipt_emitted": false,
+  "read_only": true,
+  "guardrails": {
+    "semantic_retrieval_through_evaluation_only": true,
+    "unsupported_claims_blocked_never_emitted": true,
+    "no_final_answer_assembly": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "preserve_review_tier_confidence_source_refs_freshness": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}
