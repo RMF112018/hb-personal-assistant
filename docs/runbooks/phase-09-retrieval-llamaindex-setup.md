@@ -232,6 +232,21 @@ supported, source-linked claim (zero tolerance) or the run fails closed.
   detection (an item without a source ref is detected and blocks), guard-clean metadata-only receipts in
   both V38 tables, no answer assembly, and excluded-family fail-closed; persists nothing to the operator DB.
 
+## Retrieval quality eval set (Prompt 24)
+
+The `second-brain retrieval eval-set` group creates **source-linked retrieval evaluation cases from
+approved outputs** (the approved Obsidian + reviewed-memory corpus) — one case per approved node, linked
+to its source by a hashed ref. Cases are metadata-only (no raw query/content/source ref — only hashes);
+executing/scoring the set against the index (`eval_runs`) is a later prompt. No embeddings are involved.
+
+- `eval-set build [--project P] [--name NAME]` — enumerates the approved outputs and emits a metadata-only
+  summary (`status` built/empty, `case_count`, per-family counts, `review_tier` summary). The set name is
+  **hashed** (never stored raw); **persists nothing** to the operator DB. On the operator DB (no approved
+  outputs) the set is honestly `empty`. Exit 0 on success; 3 fail-closed.
+- `eval-set proof` — demonstrates source-linked cases built from approved outputs, guard-clean metadata-only
+  `eval_sets` + `eval_cases` receipts, unsafe/unlinked/excluded-family node exclusion, and no raw source
+  ref emitted; persists nothing to the operator DB.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

@@ -171,6 +171,13 @@ retrieval_output_eval_app = typer.Typer(
 )
 retrieval_app.add_typer(retrieval_output_eval_app, name="output-eval")
 
+retrieval_eval_set_app = typer.Typer(
+    name="eval-set",
+    help="Phase 09 retrieval quality eval set (source-linked cases from approved outputs; read-only).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(retrieval_eval_set_app, name="eval-set")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3210,6 +3217,17 @@ _RETRIEVAL_OUTPUT_EVAL_GUARDRAILS = {
     "fail_closed": True,
 }
 
+_RETRIEVAL_EVAL_SET_GUARDRAILS = {
+    "approved_outputs_only": True,
+    "source_linked_cases_only": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "preserve_review_tier_confidence_source_refs_freshness": True,
+    "read_only_by_default": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
 
 @llamaindex_app.command("build")
 def retrieval_llamaindex_build(
@@ -3918,6 +3936,87 @@ def retrieval_output_eval_proof(
         f"Output evaluation integration proof passed={proof['proof_passed']}"
         f" (eval={proof['evaluation_passed']}, unsupported={proof['unsupported_count']},"
         f" receipts_clean={proof['receipts_persisted_guard_clean']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+@retrieval_eval_set_app.command("build")
+def retrieval_eval_set_build(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    name: str | None = typer.Option(
+        None, "--name", help="Eval set name (hashed in the receipt; never stored raw)."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Create source-linked retrieval eval cases from approved outputs (read-only, fail-closed).
+
+    Enumerates the approved Obsidian + reviewed-memory corpus and emits one source-linked eval case per
+    approved node (linked by a hashed source ref). Emits a metadata-only summary (no raw query/content/
+    source ref); persists nothing to the operator DB. Exit 0 on success; 3 on a fail-closed failure.
+    """
+    from hb_assistant.construction.second_brain.retrieval.eval_set import (
+        RetrievalEvalSetError,
+        build_retrieval_eval_set,
+    )
+
+    try:
+        result = build_retrieval_eval_set(project_key=project, name=name)
+    except RetrievalEvalSetError as exc:
+        payload = {
+            "command": "second-brain retrieval eval-set build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _RETRIEVAL_EVAL_SET_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _RETRIEVAL_EVAL_SET_GUARDRAILS}
+    payload.pop("cases", None)  # per-case rows summarized by count; not echoed in bulk
+    human = [
+        "Phase 09 retrieval quality eval set (read-only, advisory)",
+        f"  status: {result['status']} | cases: {result['case_count']}"
+        f" | review tiers: {result['review_tier_summary']}",
+        f"  per-family: {result['per_family_case_count']} | warnings: {result['warnings']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@retrieval_eval_set_app.command("proof")
+def retrieval_eval_set_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the eval-set proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove source-linked eval cases are built from approved outputs + persisted metadata-only."""
+    from hb_assistant.construction.second_brain.retrieval.eval_set import (
+        RetrievalEvalSetError,
+        build_retrieval_eval_set_proof,
+    )
+
+    try:
+        proof = build_retrieval_eval_set_proof(write_evidence=evidence)
+    except RetrievalEvalSetError as exc:
+        payload = {
+            "command": "second-brain retrieval eval-set proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _RETRIEVAL_EVAL_SET_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _RETRIEVAL_EVAL_SET_GUARDRAILS}
+    human = [
+        f"Retrieval eval set proof passed={proof['proof_passed']}"
+        f" (cases={proof['case_count']}, source_linked={proof['cases_source_linked']},"
+        f" unsafe_excluded={proof['unsafe_node_excluded']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 

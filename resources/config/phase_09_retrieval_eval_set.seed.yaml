@@ -1,0 +1,8 @@
+# Phase 09 Prompt 24 — retrieval quality eval set (resolved values; advisory).
+# Creates source-linked retrieval evaluation cases from approved outputs (Obsidian + reviewed memory).
+# Metadata-only: every case links to its source by a hashed ref; no raw query / content / answer / raw
+# source ref is persisted. Read-only by default — the builder persists nothing unless emit_receipt is set
+# (metadata-only, guard-clean eval_sets + eval_cases rows).
+version: phase_09_retrieval_eval_set_v1
+
+default_set_name: approved_retrieval_eval

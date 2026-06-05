@@ -1,0 +1,61 @@
+{
+  "contract_name": "phase_09_retrieval_eval_set_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 24 — retrieval quality eval set. Creates source-linked retrieval evaluation cases from approved outputs (the approved Obsidian + reviewed-memory corpus). Each case asserts that a query targeting an approved output should retrieve that source, linked only by a hashed source ref. Eval sets/cases are metadata-only: no raw query text, raw content, answer, or raw source ref is persisted (only hashes). Executing/scoring the set against the index (eval_runs) is a later prompt.",
+  "approved_source_families": [
+    "approved_obsidian_generated_outputs",
+    "accepted_long_term_memory"
+  ],
+  "max_cases_per_set": 5000,
+  "source_linked_cases_only": true,
+  "eval_set_column_allowlist": [
+    "eval_set_id",
+    "created_at_utc",
+    "policy_version",
+    "schema_version",
+    "name_hash",
+    "case_count",
+    "review_tier",
+    "status"
+  ],
+  "eval_case_column_allowlist": [
+    "eval_case_id",
+    "created_at_utc",
+    "policy_version",
+    "schema_version",
+    "eval_set_id",
+    "question_hash",
+    "expected_source_ref_hash",
+    "confidence_class"
+  ],
+  "status_values": ["built", "empty"],
+  "forbidden_emitted_fields": [
+    "raw_query",
+    "query",
+    "query_text",
+    "answer",
+    "content",
+    "content_excerpt",
+    "content_excerpt_redacted",
+    "source_ref",
+    "embedding",
+    "vector",
+    "raw_vector",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "source_linked_cases_only",
+    "approved_outputs_only",
+    "preserve_review_tier",
+    "preserve_confidence_class",
+    "preserve_source_references",
+    "preserve_freshness"
+  ]
+}

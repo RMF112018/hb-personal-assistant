@@ -1,0 +1,23 @@
+{
+  "proof": "phase_09_retrieval_eval_set",
+  "command": "second-brain retrieval eval-set proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T08:44:29.428065+00:00",
+  "repo_sha": "2e0a783779eb7e0ffa2ce320d884ac34c0df4e49",
+  "case_count": 3,
+  "cases_source_linked": true,
+  "set_persisted_guard_clean": true,
+  "cases_persisted_guard_clean": true,
+  "unsafe_node_excluded": true,
+  "no_raw_source_ref_emitted": true,
+  "metadata_only": true,
+  "guardrails": {
+    "approved_outputs_only": true,
+    "source_linked_cases_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

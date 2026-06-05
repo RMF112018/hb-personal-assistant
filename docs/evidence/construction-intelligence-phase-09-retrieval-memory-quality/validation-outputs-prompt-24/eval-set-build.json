@@ -1,0 +1,32 @@
+{
+  "command": "second-brain retrieval eval-set build",
+  "phase": "09",
+  "generated_utc": "2026-06-05T08:44:28.768177+00:00",
+  "repo_sha": "2e0a783779eb7e0ffa2ce320d884ac34c0df4e49",
+  "status": "empty",
+  "eval_set_id": "res_415e0d2aedd4576b3f70de352814eb0a",
+  "name_hash": "ac275164fe03646935ba8512dbd15ff560f433f47a1d2ad3",
+  "schema_version": 38,
+  "project_key": null,
+  "manifest_id": "asm_e3b0c44298fc1c149afbf4c8996fb924",
+  "case_count": 0,
+  "per_family_case_count": {},
+  "review_tier_summary": "none",
+  "warnings": [
+    "no_approved_outputs"
+  ],
+  "policy_version": "phase_09_retrieval_eval_set_v1",
+  "contract_version": "1.4.0-phase-09",
+  "receipt_emitted": false,
+  "read_only": true,
+  "guardrails": {
+    "approved_outputs_only": true,
+    "source_linked_cases_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "preserve_review_tier_confidence_source_refs_freshness": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

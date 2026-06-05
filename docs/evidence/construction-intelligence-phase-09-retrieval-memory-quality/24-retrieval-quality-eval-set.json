@@ -1,0 +1,85 @@
+{
+  "prompt": "Phase 09 Prompt 24 — Retrieval Quality Eval Set",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "2e0a783779eb7e0ffa2ce320d884ac34c0df4e49",
+  "schema_version": 38,
+  "objective": "Create source-linked retrieval evaluation cases from approved outputs — metadata-only, fail-closed, read-only by default.",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/retrieval/eval_set.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_retrieval_eval_set_contract.json"],
+    "new_seeds": ["resources/config/phase_09_retrieval_eval_set.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_retrieval_eval_set.py"],
+    "migrator_change": "None — reuses the existing V38 eval_sets + eval_cases tables; schema stays 38, contract table count stays 190.",
+    "embeddings": "None — the eval set is pure metadata enumeration of approved outputs (no semantic embedding)."
+  },
+  "eval_set": {
+    "source": "Approved outputs: approved Obsidian generated outputs + reviewed/accepted long-term memory, enumerated via vector_index._gather_approved_nodes.",
+    "case_per_node": "One source-linked eval case per approved node, admitted iff it carries a source_ref + an allowlisted (non-excluded) source_family. eval_case_id = hash(set_id:family:source_ref); expected_source_ref_hash = hash(source_ref) (hashed — never the raw ref); question_hash = hash(family:source_ref:retrieval) (a deterministic query seed hash — no raw query text); confidence_class from the node.",
+    "eval_set": "eval_set_id = res_<set_hash[:32]>; name_hash = hash(name) (set name hashed, never raw); case_count; review_tier summary (e.g. max=2;tiers=1,2); status built/empty.",
+    "read_only": "emit_receipt defaults False (no operator-DB write); receipt persistence (eval_sets + eval_cases, metadata-only, guard-clean) exercised in the proof on a temp DB.",
+    "deferred": "Executing/scoring the eval set against the index (eval_runs + pass/fail) is a later prompt."
+  },
+  "operator_db_outcome": {
+    "eval_set_build_status": "empty",
+    "case_count": 0,
+    "warnings": ["no_approved_outputs"],
+    "rationale": "The operator DB has no approved Obsidian/reviewed-memory outputs -> the set is honestly empty. emit_receipt defaulted False -> no persist.",
+    "eval_sets_rows": 0,
+    "eval_cases_rows": 0,
+    "schema_version": 38,
+    "operator_db_mutated": false
+  },
+  "eval_set_proof": {
+    "command": "second-brain retrieval eval-set proof --json",
+    "proof_passed": true,
+    "case_count": 3,
+    "cases_source_linked": true,
+    "set_persisted_guard_clean": true,
+    "cases_persisted_guard_clean": true,
+    "unsafe_node_excluded": true,
+    "no_raw_source_ref_emitted": true
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "Success: no issues found in 292 source files",
+    "pytest_not_live_integration_manual": "3173 passed, 0 failed, 6 deselected",
+    "construction_agent_validate": "exit 0 (schema 38)",
+    "data_quality_table_inventory": "exit 0 (contract_table_count=190, 0 unmapped)",
+    "data_quality_no_writeback_proof": "exit 0",
+    "second_brain_phase_08a_gates": "exit 0",
+    "second_brain_phase_08b_gates": "exit 0",
+    "second_brain_phase_08c_gates": "SKIPPED — appends ~1,299 financial-ledger rows to the operator DB per call (disclosed defect from Prompts 02/05)",
+    "second_brain_data_quality_phase_08d_gates": "exit 0",
+    "second_brain_mcp_no_raw_access": "exit 0",
+    "second_brain_mcp_no_writeback": "exit 0",
+    "retrieval_eval_set_build": "exit 0 (operator DB: status=empty, 0 cases, no persist)",
+    "retrieval_eval_set_proof": "exit 0 (proof_passed=true; 3 source-linked cases on a fixture; guard-clean receipts)",
+    "post_cli_guard_rerun": "tests/test_repo_sensitive_scan.py + tests/test_second_brain_no_writeback_proof.py — pass"
+  },
+  "command_path_corrections": {
+    "note": "The prompt's exact-command list used stale MCP paths (`mcp data-quality …`). The real commands are `second-brain data-quality phase-08d-gates`, `second-brain mcp no-raw-access`, `second-brain mcp no-writeback` — all run, all exit 0."
+  },
+  "guardrails_enforced": [
+    "eval cases derived from approved outputs only (approved Obsidian + reviewed memory)",
+    "source-linked cases only — each case links to its source by a hashed ref; unsafe/unlinked/excluded-family nodes are excluded",
+    "review tier / confidence class / (hashed) source references / freshness preserved",
+    "no raw source content / query / answer / raw source ref persisted or emitted (only hashes)",
+    "no external/source-system writeback; read-only by default (no operator-DB write); persisted receipts metadata-only + guard-clean (both V38 tables)",
+    "fail-closed on missing policy / stale schema"
+  ],
+  "deferred_items": [
+    "Executing/scoring the eval set against the index (eval_runs + pass/fail) — a later prompt",
+    "generated_outputs loader still absent (eval cases derive from Obsidian + reviewed memory)",
+    "Benchmarks / memory-quality review — later prompts"
+  ],
+  "blocker_classifications": {
+    "build_blockers": "none (eval-set builder implemented + proven; operator build is empty only because the operator DB has no approved outputs, which is expected)",
+    "external_blockers": "none"
+  }
+}
