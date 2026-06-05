@@ -32,9 +32,12 @@ import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from hb_assistant.config.path_policy import PathPolicy
+
+if TYPE_CHECKING:
+    from .metadata_filter import MetadataFilter
 
 from ..financial_review_routing import _assert_no_raw
 from .broker import RetrievalBroker
@@ -357,6 +360,7 @@ def build_hybrid_retrieval(
     embed_model: Any | None = None,
     top_k: int | None = None,
     persist_root: str | None = None,
+    metadata_filter: MetadataFilter | None = None,
 ) -> dict[str, Any]:
     """Combine deterministic + advisory semantic retrieval into one metadata-only result (fail-closed).
 
@@ -364,6 +368,11 @@ def build_hybrid_retrieval(
     JSON-safe, metadata-only summary (counts, per-family + origin split, tier distribution, score
     buckets, degradation, warnings, ``assembles_final_answer=False``, ``query_hash`` — never the raw
     query or any excerpt). Persists nothing; the merged envelope is built in memory.
+
+    When ``metadata_filter`` is provided, the Prompt 21 metadata filter is enforced before retrieval
+    (the resolved family set + project key constrain the deterministic broker; an explicitly requested
+    excluded family fails closed) and after retrieval (items outside the project / family / date window /
+    review-tier ceiling / confidence floor are dropped with recorded reasons + source-coverage warnings).
     """
     contract = load_hybrid_retrieval_contract()
     seed = load_hybrid_retrieval_seed()
@@ -373,6 +382,19 @@ def build_hybrid_retrieval(
     top_k = int(top_k if top_k is not None else seed.get("semantic_top_k", 5))
     top_k = min(top_k, int(contract.get("semantic_max_top_k", 20)))
     thresholds = contract.get("score_bucket_thresholds", {})
+
+    # Pre-retrieval metadata filter: resolve effective families + project (fail-closed on excluded).
+    mf_contract: dict[str, Any] | None = None
+    filter_notes: list[str] = []
+    selected_families: tuple[str, ...] | None = None
+    if metadata_filter is not None:
+        from .metadata_filter import load_metadata_filter_contract, normalize_filter
+
+        mf_contract = load_metadata_filter_contract()
+        project_key, selected_families, filter_notes = normalize_filter(
+            metadata_filter, contract=mf_contract
+        )
+        families = selected_families
 
     started = time.monotonic()
     det_env = RetrievalBroker(db_path).retrieve(
@@ -407,6 +429,17 @@ def build_hybrid_retrieval(
         semantic_items.append(item)
 
     merged = list(det_env.items) + semantic_items
+
+    # Post-retrieval metadata filter: drop items outside the requested window/tier/confidence.
+    dropped_by_reason: dict[str, int] = {}
+    filter_coverage: list[str] = []
+    if metadata_filter is not None and mf_contract is not None:
+        from .metadata_filter import apply_metadata_filter
+
+        merged, dropped_by_reason, filter_coverage = apply_metadata_filter(
+            merged, metadata_filter, contract=mf_contract, selected_families=selected_families
+        )
+
     kept, char_count, truncated, degradation = apply_context_budget(merged, load_context_budget())
 
     coverage_warnings = list(det_env.coverage_warnings)
@@ -414,6 +447,8 @@ def build_hybrid_retrieval(
         coverage_warnings.append(f"semantic_unavailable:{skip_reason}")
     if semantic_items:
         coverage_warnings.append("semantic_advisory_only")
+    coverage_warnings.extend(filter_notes)
+    coverage_warnings.extend(filter_coverage)
 
     tier_distribution = {"1": 0, "2": 0, "3": 0}
     per_family: dict[str, int] = {}
@@ -474,6 +509,18 @@ def build_hybrid_retrieval(
         "stale_unknown_warnings": list(det_env.stale_unknown_warnings),
         "conflict_warnings": list(det_env.conflict_warnings),
         "policy_version": seed.get("version"),
+        "filter_applied": metadata_filter is not None,
+        "filter_summary": (
+            {
+                "dropped_by_reason": dropped_by_reason,
+                "effective_families": (
+                    list(selected_families) if selected_families is not None else None
+                ),
+                "filter_keys": metadata_filter.filter_keys(),
+            }
+            if metadata_filter is not None
+            else None
+        ),
         "results": results,
         "read_only": True,
     }

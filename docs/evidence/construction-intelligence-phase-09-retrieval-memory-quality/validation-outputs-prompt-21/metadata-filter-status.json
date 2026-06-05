@@ -1,0 +1,59 @@
+{
+  "command": "second-brain retrieval metadata-filter status",
+  "phase": "09",
+  "filterable_keys": [
+    "project_key",
+    "source_families",
+    "date_from",
+    "date_to",
+    "max_review_tier",
+    "min_confidence",
+    "require_source_coverage"
+  ],
+  "date_capable_families": [
+    "phase_07d_source_evidence_trails",
+    "project_issue_history_items",
+    "project_risk_digest_items",
+    "aging_exposure_report_items",
+    "approved_obsidian_generated_outputs",
+    "accepted_long_term_memory"
+  ],
+  "confidence_order": [
+    "deterministic",
+    "high",
+    "medium",
+    "low",
+    "unknown"
+  ],
+  "review_tier_bounds": {
+    "min": 1,
+    "max": 3
+  },
+  "drop_reasons": [
+    "project_mismatch",
+    "family_not_selected",
+    "out_of_date_window",
+    "review_tier_above_max",
+    "review_required_excluded",
+    "confidence_below_min"
+  ],
+  "coverage_warning_codes": [
+    "no_results_for_family",
+    "date_filter_not_applicable",
+    "requested_family_not_allowlisted",
+    "source_coverage_incomplete"
+  ],
+  "excluded_families_blocked": true,
+  "policy_version": "phase_09_metadata_filter_v1",
+  "read_only": true,
+  "guardrails": {
+    "fail_closed": true,
+    "excluded_families_never_queried": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "no_final_answer_assembly": true,
+    "preserve_review_tier_confidence_source_refs_freshness": true,
+    "read_only": true,
+    "local_first": true
+  }
+}

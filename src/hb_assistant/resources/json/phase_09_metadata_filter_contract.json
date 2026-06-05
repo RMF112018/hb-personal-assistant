@@ -1,0 +1,67 @@
+{
+  "contract_name": "phase_09_metadata_filter_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 21 — metadata filter enforcement. Enforces project / source / date / review / confidence / source-coverage filters before retrieval (constrain which allowlisted families/sources are queried; reject excluded families) and after retrieval (drop items outside the requested window/tier/confidence and emit source-coverage warnings). Read-only and metadata-only: no raw content/query/excerpt is persisted or echoed, the filter never assembles a final answer, and review tier / confidence class / source references / freshness / coverage warnings are preserved on kept items.",
+  "filterable_keys": [
+    "project_key",
+    "source_families",
+    "date_from",
+    "date_to",
+    "max_review_tier",
+    "min_confidence",
+    "require_source_coverage"
+  ],
+  "date_capable_families": [
+    "phase_07d_source_evidence_trails",
+    "project_issue_history_items",
+    "project_risk_digest_items",
+    "aging_exposure_report_items",
+    "approved_obsidian_generated_outputs",
+    "accepted_long_term_memory"
+  ],
+  "confidence_order": ["deterministic", "high", "medium", "low", "unknown"],
+  "review_tier_bounds": {"min": 1, "max": 3},
+  "excluded_families_blocked": true,
+  "drop_reasons": [
+    "project_mismatch",
+    "family_not_selected",
+    "out_of_date_window",
+    "review_tier_above_max",
+    "review_required_excluded",
+    "confidence_below_min"
+  ],
+  "coverage_warning_codes": [
+    "no_results_for_family",
+    "date_filter_not_applicable",
+    "requested_family_not_allowlisted",
+    "source_coverage_incomplete"
+  ],
+  "forbidden_emitted_fields": [
+    "raw_query",
+    "query",
+    "query_text",
+    "content_excerpt",
+    "content_excerpt_redacted",
+    "embedding",
+    "vector",
+    "raw_vector",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "excluded_families_never_queried",
+    "preserve_review_tier",
+    "preserve_confidence_class",
+    "preserve_source_references",
+    "preserve_freshness",
+    "preserve_coverage_warnings",
+    "no_final_answer_assembly",
+    "no_semantic_retrieval_bypass"
+  ]
+}

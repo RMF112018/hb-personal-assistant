@@ -1,0 +1,68 @@
+{
+  "command": "second-brain retrieval hybrid search",
+  "phase": "09",
+  "generated_utc": "2026-06-05T07:30:55.291890+00:00",
+  "repo_sha": "d8758fc5066f806df81e55a0f2c2a0bb08899874",
+  "status": "ok",
+  "run_id": "hyq_dc0df350398baedaa956e06c3ff23b7d",
+  "schema_version": 38,
+  "project_key": null,
+  "query_hash": "dc0df350398baedaa956e06c3ff23b7d99bc4ee4cc9fad76a62a251ba6deae37",
+  "mode": "hybrid",
+  "deterministic_authoritative": true,
+  "semantic_advisory_only": true,
+  "assembles_final_answer": false,
+  "result_count": 0,
+  "deterministic_count": 0,
+  "semantic_count": 0,
+  "semantic_skip_reason": "semantic_no_applied_index",
+  "per_family_count": {},
+  "tier_distribution": {
+    "1": 0,
+    "2": 0,
+    "3": 0
+  },
+  "degradation_mode": "blocked",
+  "context_char_count": 0,
+  "truncated": false,
+  "latency_bucket": "fast",
+  "coverage_warnings": [
+    "semantic_unavailable:semantic_no_applied_index",
+    "no_results_for_family:project_issue_history_items"
+  ],
+  "stale_unknown_warnings": [],
+  "conflict_warnings": [],
+  "policy_version": "phase_09_hybrid_retrieval_v1",
+  "filter_applied": true,
+  "filter_summary": {
+    "dropped_by_reason": {
+      "review_tier_above_max": 500
+    },
+    "effective_families": [
+      "project_issue_history_items"
+    ],
+    "filter_keys": {
+      "project_key": null,
+      "source_families": [
+        "project_issue_history_items"
+      ],
+      "date_from": null,
+      "date_to": null,
+      "max_review_tier": 2,
+      "min_confidence": "high",
+      "require_source_coverage": false
+    }
+  },
+  "results": [],
+  "read_only": true,
+  "guardrails": {
+    "fail_closed": true,
+    "excluded_families_never_queried": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "no_final_answer_assembly": true,
+    "preserve_review_tier_confidence_source_refs_freshness": true,
+    "read_only": true,
+    "local_first": true
+  }
+}

@@ -150,6 +150,13 @@ hybrid_app = typer.Typer(
 )
 retrieval_app.add_typer(hybrid_app, name="hybrid")
 
+metadata_filter_app = typer.Typer(
+    name="metadata-filter",
+    help="Phase 09 metadata filter enforcement (project/source/date/review/confidence; read-only).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(metadata_filter_app, name="metadata-filter")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3154,6 +3161,17 @@ _HYBRID_RETRIEVAL_GUARDRAILS = {
     "fail_closed": True,
 }
 
+_METADATA_FILTER_GUARDRAILS = {
+    "fail_closed": True,
+    "excluded_families_never_queried": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "no_final_answer_assembly": True,
+    "preserve_review_tier_confidence_source_refs_freshness": True,
+    "read_only": True,
+    "local_first": True,
+}
+
 
 @llamaindex_app.command("build")
 def retrieval_llamaindex_build(
@@ -3462,6 +3480,175 @@ def retrieval_hybrid_proof(
         f"Hybrid retrieval proof passed={proof['proof_passed']}"
         f" (deterministic={proof['deterministic_count']}, semantic={proof['semantic_count']},"
         f" assembles_final_answer={proof['assembles_final_answer']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+@metadata_filter_app.command("status")
+def retrieval_metadata_filter_status(
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Metadata-filter policy view — filterable keys, date-capable families, confidence order (read-only)."""
+    from hb_assistant.construction.second_brain.retrieval.metadata_filter import (
+        MetadataFilterError,
+        load_metadata_filter_contract,
+        load_metadata_filter_seed,
+    )
+
+    try:
+        contract = load_metadata_filter_contract()
+        seed = load_metadata_filter_seed()
+    except MetadataFilterError as exc:
+        payload = {
+            "command": "second-brain retrieval metadata-filter status",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "guardrails": _METADATA_FILTER_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    report = {
+        "command": "second-brain retrieval metadata-filter status",
+        "phase": "09",
+        "filterable_keys": contract.get("filterable_keys"),
+        "date_capable_families": contract.get("date_capable_families"),
+        "confidence_order": seed.get("confidence_order"),
+        "review_tier_bounds": contract.get("review_tier_bounds"),
+        "drop_reasons": contract.get("drop_reasons"),
+        "coverage_warning_codes": contract.get("coverage_warning_codes"),
+        "excluded_families_blocked": contract.get("excluded_families_blocked"),
+        "policy_version": seed.get("version"),
+        "read_only": True,
+    }
+    payload = {**report, "guardrails": _METADATA_FILTER_GUARDRAILS}
+    human = [
+        "Phase 09 metadata filter policy (read-only)",
+        f"  keys: {report['filterable_keys']}",
+        f"  date-capable families: {len(report['date_capable_families'] or [])}",
+        f"  confidence order: {report['confidence_order']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@metadata_filter_app.command("apply")
+def retrieval_metadata_filter_apply(
+    query: str = typer.Argument(
+        ..., help="Query text (never persisted; only its hash is reported)."
+    ),
+    project: str | None = typer.Option(None, "--project", help="Project key filter."),
+    source: str | None = typer.Option(
+        None, "--source", help="Comma-separated allowlisted source family filter."
+    ),
+    date_from: str | None = typer.Option(None, "--date-from", help="ISO date lower bound."),
+    date_to: str | None = typer.Option(None, "--date-to", help="ISO date upper bound."),
+    max_review_tier: int | None = typer.Option(
+        None, "--max-review-tier", help="Keep items with review_tier <= this (1/2/3)."
+    ),
+    min_confidence: str | None = typer.Option(
+        None, "--min-confidence", help="Keep items at or above this confidence class."
+    ),
+    require_coverage: bool = typer.Option(
+        False, "--require-coverage/--no-require-coverage", help="Flag incomplete source coverage."
+    ),
+    mode: str = typer.Option("hybrid", "--mode", help="'hybrid' or 'deterministic-only'."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Apply project/source/date/review/confidence filters to a hybrid retrieval (read-only, fail-closed).
+
+    Enforces the filter before retrieval (constrain families/project; reject excluded families) and after
+    (drop items outside the window/tier/confidence with recorded reasons + source-coverage warnings).
+    Emits a metadata-only summary (no raw query/excerpts); persists nothing to the operator DB. Exit 0 on
+    success; 3 on a fail-closed contract/schema/filter failure.
+    """
+    from hb_assistant.construction.second_brain.retrieval.hybrid_broker import (
+        HybridRetrievalError,
+        build_hybrid_retrieval,
+    )
+    from hb_assistant.construction.second_brain.retrieval.metadata_filter import (
+        MetadataFilter,
+        MetadataFilterError,
+    )
+
+    normalized_mode = (
+        "deterministic_only" if mode in ("deterministic-only", "deterministic_only") else mode
+    )
+    families = tuple(s.strip() for s in source.split(",") if s.strip()) if source else None
+    try:
+        spec = MetadataFilter(
+            project_key=project,
+            source_families=families,
+            date_from=date_from,
+            date_to=date_to,
+            max_review_tier=max_review_tier,
+            min_confidence=min_confidence,
+            require_source_coverage=require_coverage,
+        )
+        result = build_hybrid_retrieval(
+            query, project_key=project, mode=normalized_mode, metadata_filter=spec
+        )
+    except (HybridRetrievalError, MetadataFilterError) as exc:
+        payload = {
+            "command": "second-brain retrieval metadata-filter apply",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _METADATA_FILTER_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _METADATA_FILTER_GUARDRAILS}
+    human = [
+        "Phase 09 metadata-filtered retrieval (read-only, advisory)",
+        f"  mode: {result['mode']} | total: {result['result_count']}"
+        f" | deterministic: {result['deterministic_count']} | semantic: {result['semantic_count']}",
+        f"  dropped: {(result.get('filter_summary') or {}).get('dropped_by_reason')}",
+        f"  per-family: {result['per_family_count']} | tiers: {result['tier_distribution']}",
+        f"  warnings: {result['coverage_warnings']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@metadata_filter_app.command("proof")
+def retrieval_metadata_filter_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the metadata-filter proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove metadata filter enforcement — pre-filter rejects excluded families; post-filter drops by
+    project/family/date/review/confidence with reasons + coverage warnings; no raw, no answer assembly."""
+    from hb_assistant.construction.second_brain.retrieval.metadata_filter import (
+        MetadataFilterError,
+        build_metadata_filter_proof,
+    )
+
+    try:
+        proof = build_metadata_filter_proof(write_evidence=evidence)
+    except MetadataFilterError as exc:
+        payload = {
+            "command": "second-brain retrieval metadata-filter proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _METADATA_FILTER_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _METADATA_FILTER_GUARDRAILS}
+    human = [
+        f"Metadata filter proof passed={proof['proof_passed']}"
+        f" (excluded_rejected={proof['excluded_family_rejected_pre_filter']},"
+        f" drop_matrix={proof['post_filter_drop_matrix_ok']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 

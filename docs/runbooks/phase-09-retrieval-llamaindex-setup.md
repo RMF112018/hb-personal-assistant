@@ -173,6 +173,27 @@ assembles a final answer (`assembles_final_answer=false`) — answer assembly st
   no-applied-index / deterministic-only / unsafe-node paths are exercised; persists nothing to the
   operator DB.
 
+## Metadata filter enforcement (Prompt 21)
+
+The `second-brain retrieval metadata-filter` group enforces **project / source / date / review /
+confidence / source-coverage** filters around the hybrid broker — **before** retrieval (constrain the
+allowlisted families/sources queried; reject excluded families) and **after** retrieval (drop items
+outside the requested window/tier/confidence; emit source-coverage warnings). It is read-only and
+persists nothing; the raw query is never emitted (only its hash); review tier / confidence / source
+references / freshness are preserved on kept items.
+
+- `metadata-filter status` — policy view: filterable keys, date-capable families, confidence order
+  (`deterministic > high > medium > low > unknown`), review-tier bounds.
+- `metadata-filter apply "<query>" [--project P] [--source a,b] [--date-from] [--date-to]
+  [--max-review-tier 1|2|3] [--min-confidence high|…] [--require-coverage] [--mode hybrid|deterministic-only]`
+  — runs a filtered hybrid retrieval and emits a metadata-only summary (counts, per-family + origin
+  split, tier distribution, `dropped_by_reason`, coverage warnings). Date filtering is **family-aware**:
+  families whose `recency` is not a date are kept with a `date_filter_not_applicable` warning rather than
+  dropped. An explicitly requested **excluded** family fails closed (exit 3).
+- `metadata-filter proof` — demonstrates the pre-filter rejection of excluded families and the
+  post-filter drop matrix (project / family / date / review / confidence) with recorded reasons +
+  coverage warnings; persists nothing.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

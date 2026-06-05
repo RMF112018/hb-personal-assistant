@@ -171,6 +171,7 @@ PHASE_09_CONTRACT_FILES: dict[str, str] = {
     "approved_source_manifest_contract": "phase_09_approved_source_manifest_contract.json",
     "vector_index_apply_contract": "phase_09_vector_index_apply_contract.json",
     "hybrid_retrieval_contract": "phase_09_hybrid_retrieval_contract.json",
+    "metadata_filter_contract": "phase_09_metadata_filter_contract.json",
 }
 
 def load_phase_09_contract(name: str) -> dict[str, Any]:

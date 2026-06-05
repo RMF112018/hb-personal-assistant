@@ -1,0 +1,14 @@
+{
+  "smoke": "phase_09_metadata_filter_real_huggingface",
+  "status": "ok",
+  "filter_applied": true,
+  "result_count": 6,
+  "tier_distribution": {
+    "1": 3,
+    "2": 3,
+    "3": 0
+  },
+  "assembles_final_answer": false,
+  "dropped_by_reason": {},
+  "effective_families": null
+}

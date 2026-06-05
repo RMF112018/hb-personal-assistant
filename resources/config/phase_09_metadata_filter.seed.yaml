@@ -1,0 +1,27 @@
+# Phase 09 Prompt 21 — metadata filter enforcement (resolved values; advisory).
+# Metadata-only: filter vocabulary + the confidence ordering (best -> worst) used for the min-confidence
+# threshold and the families whose `recency` is a parseable ISO date (so a date window can apply). No raw
+# content / query / excerpts are persisted or echoed; the filter is read-only and persists nothing.
+version: phase_09_metadata_filter_v1
+
+# Confidence order, best -> worst. The min-confidence threshold keeps items at or above the named class.
+confidence_order:
+  - deterministic
+  - high
+  - medium
+  - low
+  - unknown
+
+# Families whose RetrievalItem.recency is a parseable ISO timestamp (a date window applies to these).
+# Date-incapable families (cross_source_relationships, semantic suggestions) are kept with a
+# `date_filter_not_applicable` coverage warning rather than silently dropped.
+date_capable_families:
+  - phase_07d_source_evidence_trails
+  - project_issue_history_items
+  - project_risk_digest_items
+  - aging_exposure_report_items
+  - approved_obsidian_generated_outputs
+  - accepted_long_term_memory
+
+# Defaults impose no restriction (max tier 3 = keep all tiers; no min-confidence floor).
+default_max_review_tier: 3

@@ -1,0 +1,38 @@
+{
+  "proof": "phase_09_metadata_filter",
+  "command": "second-brain retrieval metadata-filter proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T07:30:56.432619+00:00",
+  "repo_sha": "d8758fc5066f806df81e55a0f2c2a0bb08899874",
+  "excluded_family_rejected_pre_filter": true,
+  "unknown_family_coverage_noted": true,
+  "allowlisted_family_kept": true,
+  "post_filter_drop_matrix_ok": true,
+  "dropped_by_reason": {
+    "out_of_date_window": 1,
+    "review_tier_above_max": 1,
+    "project_mismatch": 1,
+    "family_not_selected": 1
+  },
+  "coverage_warnings": [
+    "no_results_for_family:project_risk_digest_items"
+  ],
+  "kept_source_refs": [
+    "iss-keep"
+  ],
+  "date_incapable_family_noted": true,
+  "hybrid_integration_ok": true,
+  "filter_summary_present": true,
+  "raw_query_not_emitted": true,
+  "metadata_only": true,
+  "guardrails": {
+    "fail_closed": true,
+    "excluded_families_never_queried": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "no_final_answer_assembly": true,
+    "preserve_review_tier_confidence_source_refs_freshness": true,
+    "local_first": true
+  }
+}

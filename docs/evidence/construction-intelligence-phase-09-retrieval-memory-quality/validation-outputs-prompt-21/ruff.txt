@@ -1,0 +1,16 @@
+=== ruff ===
+B008 Do not perform function call `typer.Option` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+    --> src/hb_assistant/cli/second_brain.py:3542:25
+     |
+3540 |       ),
+3541 |       project: str | None = typer.Option(None, "--project", help="Project key filter."),
+3542 |       source: list[str] = typer.Option(
+     |  _________________________^
+3543 | |         None, "--source", help="Allowlisted source family filter (repeatable)."
+3544 | |     ),
+     | |_____^
+3545 |       date_from: str | None = typer.Option(None, "--date-from", help="ISO date lower bound."),
+3546 |       date_to: str | None = typer.Option(None, "--date-to", help="ISO date upper bound."),
+     |
+
+Found 1 error.

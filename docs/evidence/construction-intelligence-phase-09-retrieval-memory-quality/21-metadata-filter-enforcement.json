@@ -1,0 +1,103 @@
+{
+  "prompt": "Phase 09 Prompt 21 — Metadata Filter Enforcement",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "d8758fc5066f806df81e55a0f2c2a0bb08899874",
+  "schema_version": 38,
+  "objective": "Enforce project / source / date / review / confidence / source-coverage filters before retrieval (constrain which allowlisted families/sources are queried; reject excluded families) and after retrieval (drop items outside the requested window/tier/confidence and emit source-coverage warnings), preserving source-of-truth discipline.",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/retrieval/metadata_filter.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/construction/second_brain/retrieval/hybrid_broker.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_metadata_filter_contract.json"],
+    "new_seeds": ["resources/config/phase_09_metadata_filter.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_metadata_filter.py"],
+    "migrator_change": "None — pure filter layer; no new table; schema stays 38, contract table count stays 190.",
+    "persistence": "None — the filter is read-only; CLI apply persists nothing to the operator DB."
+  },
+  "filter_layer": {
+    "spec": "MetadataFilter(project_key, source_families, date_from, date_to, max_review_tier, min_confidence, require_source_coverage)",
+    "pre_retrieval": "normalize_filter — fail-closed (MetadataFilterError) on an explicitly requested EXCLUDED family; allowlisted-but-unknown families dropped with requested_family_not_allowlisted; validates date window / tier bound / confidence value; resolves the effective family set + project that constrain the deterministic broker.",
+    "post_retrieval": "apply_metadata_filter — drops on project_mismatch / family_not_selected / out_of_date_window / review_tier_above_max / confidence_below_min (recorded by reason); date filtering is family-aware (date-incapable families kept with date_filter_not_applicable, never silently dropped); emits no_results_for_family + source_coverage_incomplete; review tier / confidence / source refs / freshness preserved on kept items.",
+    "integration": "build_hybrid_retrieval gains an optional metadata_filter param (pre constrains families/project; post filters the merged items before apply_context_budget); summary gains filter_applied + filter_summary (dropped_by_reason, effective_families, filter_keys — never the raw query).",
+    "confidence_order": ["deterministic", "high", "medium", "low", "unknown"],
+    "date_capable_families": [
+      "phase_07d_source_evidence_trails", "project_issue_history_items", "project_risk_digest_items",
+      "aging_exposure_report_items", "approved_obsidian_generated_outputs", "accepted_long_term_memory"
+    ]
+  },
+  "operator_db_outcome": {
+    "metadata_filter_apply_status": "ok",
+    "filter_applied": true,
+    "result_count": 0,
+    "dropped_by_reason": {"review_tier_above_max": 500},
+    "rationale": "The operator project_issue_history_items are review_tier 3; --max-review-tier 2 drops all 500 — correct enforcement.",
+    "hybrid_query_runs_rows": 0,
+    "hybrid_query_results_rows": 0,
+    "schema_version": 38,
+    "operator_db_mutated": false
+  },
+  "filter_proof": {
+    "command": "second-brain retrieval metadata-filter proof --json",
+    "proof_passed": true,
+    "excluded_family_rejected_pre_filter": true,
+    "unknown_family_coverage_noted": true,
+    "allowlisted_family_kept": true,
+    "post_filter_drop_matrix_ok": true,
+    "dropped_by_reason": {"out_of_date_window": 1, "review_tier_above_max": 1, "project_mismatch": 1, "family_not_selected": 1},
+    "kept_source_refs": ["iss-keep"],
+    "date_incapable_family_noted": true,
+    "hybrid_integration_ok": true,
+    "raw_query_not_emitted": true
+  },
+  "real_huggingface_filtered_smoke": {
+    "status": "ok",
+    "filter_applied": true,
+    "result_count": 6,
+    "tier_distribution": {"1": 3, "2": 3, "3": 0},
+    "assembles_final_answer": false,
+    "note": "Real bge-small hybrid query with MetadataFilter(max_review_tier=2, min_confidence=medium): the tier ceiling is enforced (0 tier-3). Captured at validation-outputs-prompt-21/real-huggingface-filter-smoke.json. Automated equivalent: tests/test_phase_09_metadata_filter.py::test_filtered_hybrid_real_huggingface_smoke (marked integration)."
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "Success: no issues found in 289 source files",
+    "pytest_not_live_integration_manual": "3152 passed, 0 failed, 4 deselected",
+    "construction_agent_validate": "exit 0 (schema 38)",
+    "data_quality_table_inventory": "exit 0 (contract_table_count=190, in_db_not_in_contract=[] i.e. 0 unmapped)",
+    "data_quality_no_writeback_proof": "exit 0",
+    "second_brain_phase_08a_gates": "exit 0",
+    "second_brain_phase_08b_gates": "exit 0",
+    "second_brain_phase_08c_gates": "SKIPPED — appends ~1,299 financial-ledger rows to the operator DB per call (disclosed defect from Prompts 02/05)",
+    "second_brain_data_quality_phase_08d_gates": "exit 0",
+    "second_brain_mcp_no_raw_access": "exit 0",
+    "second_brain_mcp_no_writeback": "exit 0",
+    "retrieval_metadata_filter_status": "exit 0",
+    "retrieval_metadata_filter_apply": "exit 0 (operator DB: filter_applied=true, 500 dropped review_tier_above_max, no persist)",
+    "retrieval_metadata_filter_proof": "exit 0 (proof_passed=true)",
+    "post_cli_guard_rerun": "tests/test_repo_sensitive_scan.py + tests/test_second_brain_no_writeback_proof.py — pass"
+  },
+  "command_path_corrections": {
+    "note": "The prompt's exact-command list used stale MCP paths (`mcp data-quality …`). The real commands are `second-brain data-quality phase-08d-gates`, `second-brain mcp no-raw-access`, `second-brain mcp no-writeback` — all run, all exit 0."
+  },
+  "guardrails_enforced": [
+    "before + after retrieval filter enforcement (project / source / date / review / confidence / source-coverage)",
+    "excluded families never queried (explicit request fails closed)",
+    "review tier / confidence class / source references / freshness / coverage warnings preserved on kept items",
+    "no raw source content / prompt / response / tokens / signed-or-download URLs; raw query never emitted (only query_hash)",
+    "no external/source-system writeback; no final answer assembly (assembles_final_answer=false); no semantic-retrieval bypass",
+    "read-only; persists nothing; operator DB data-pristine (no migration)"
+  ],
+  "deferred_items": [
+    "Wiring the filtered hybrid broker into Research Packet (A02) / Synthesis (A04) — deferred (Prompt 20 carry)",
+    "generated_outputs (research-packet) loader still absent",
+    "Eval sets, benchmarks, memory-quality review — later Phase 09 prompts"
+  ],
+  "blocker_classifications": {
+    "build_blockers": "none (filter implemented + proven; operator apply yields 0 results only because the operator issue items are tier 3 and the demo filter capped tier at 2 — correct enforcement)",
+    "external_blockers": "none"
+  }
+}
