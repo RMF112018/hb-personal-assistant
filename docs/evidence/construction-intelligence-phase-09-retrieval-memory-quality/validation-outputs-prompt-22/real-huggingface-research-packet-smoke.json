@@ -1,0 +1,11 @@
+{
+  "smoke": "phase_09_research_packet_real_huggingface",
+  "status": "ok",
+  "route": "research_packet_only",
+  "synthesis_performed": false,
+  "assembles_final_answer": false,
+  "deterministic_count": 3,
+  "semantic_count": 3,
+  "packet_advisory": "advisory",
+  "packet_review_tier": 2
+}

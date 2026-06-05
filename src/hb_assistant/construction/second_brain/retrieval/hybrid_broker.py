@@ -47,7 +47,7 @@ from .embedding_policy import (
     validate_embedding_candidate,
 )
 from .llamaindex_config import _llama_index_available, load_llamaindex_config_seed
-from .models import RetrievalItem
+from .models import RetrievalEnvelope, RetrievalItem
 from .policy import EXCLUDED_FAMILIES, apply_context_budget, load_context_budget
 
 EVIDENCE_DIR = "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality"
@@ -350,29 +350,23 @@ def build_hybrid_status(
     }
 
 
-def build_hybrid_retrieval(
+def _collect_hybrid(
     query: str,
     *,
-    db_path: str | None = None,
-    project_key: str | None = None,
-    families: tuple[str, ...] | None = None,
-    mode: str = "hybrid",
-    embed_model: Any | None = None,
-    top_k: int | None = None,
-    persist_root: str | None = None,
-    metadata_filter: MetadataFilter | None = None,
+    db_path: str | None,
+    project_key: str | None,
+    families: tuple[str, ...] | None,
+    mode: str,
+    embed_model: Any | None,
+    top_k: int | None,
+    persist_root: str | None,
+    metadata_filter: MetadataFilter | None,
 ) -> dict[str, Any]:
-    """Combine deterministic + advisory semantic retrieval into one metadata-only result (fail-closed).
+    """Shared deterministic + advisory-semantic collection (fail-closed).
 
-    Deterministic results are authoritative; semantic results are advisory and source-linked. Returns a
-    JSON-safe, metadata-only summary (counts, per-family + origin split, tier distribution, score
-    buckets, degradation, warnings, ``assembles_final_answer=False``, ``query_hash`` — never the raw
-    query or any excerpt). Persists nothing; the merged envelope is built in memory.
-
-    When ``metadata_filter`` is provided, the Prompt 21 metadata filter is enforced before retrieval
-    (the resolved family set + project key constrain the deterministic broker; an explicitly requested
-    excluded family fails closed) and after retrieval (items outside the project / family / date window /
-    review-tier ceiling / confidence floor are dropped with recorded reasons + source-coverage warnings).
+    Used by both ``build_hybrid_retrieval`` (metadata-only summary) and ``build_hybrid_envelope`` (the
+    merged ``RetrievalEnvelope`` for the Research Packet layer). Returns the kept items + origin/score
+    maps + warnings + budget accounting. The pre/post metadata filter is applied identically.
     """
     contract = load_hybrid_retrieval_contract()
     seed = load_hybrid_retrieval_seed()
@@ -450,6 +444,70 @@ def build_hybrid_retrieval(
     coverage_warnings.extend(filter_notes)
     coverage_warnings.extend(filter_coverage)
 
+    query_hash = _hash(f"{query}|{project_key or ''}|{mode}|{','.join(sorted(families or ()))}")
+    return {
+        "det_env": det_env,
+        "kept": kept,
+        "semantic_refs": semantic_refs,
+        "score_by_ref": score_by_ref,
+        "dropped_by_reason": dropped_by_reason,
+        "coverage_warnings": coverage_warnings,
+        "char_count": char_count,
+        "truncated": truncated,
+        "degradation": degradation,
+        "project_key": project_key,
+        "selected_families": selected_families,
+        "query_hash": query_hash,
+        "mode": mode,
+        "schema_version": schema_version,
+        "skip_reason": skip_reason,
+        "thresholds": thresholds,
+        "seed": seed,
+        "elapsed": time.monotonic() - started,
+    }
+
+
+def build_hybrid_retrieval(
+    query: str,
+    *,
+    db_path: str | None = None,
+    project_key: str | None = None,
+    families: tuple[str, ...] | None = None,
+    mode: str = "hybrid",
+    embed_model: Any | None = None,
+    top_k: int | None = None,
+    persist_root: str | None = None,
+    metadata_filter: MetadataFilter | None = None,
+) -> dict[str, Any]:
+    """Combine deterministic + advisory semantic retrieval into one metadata-only result (fail-closed).
+
+    Deterministic results are authoritative; semantic results are advisory and source-linked. Returns a
+    JSON-safe, metadata-only summary (counts, per-family + origin split, tier distribution, score
+    buckets, degradation, warnings, ``assembles_final_answer=False``, ``query_hash`` — never the raw
+    query or any excerpt). Persists nothing; the merged envelope is built in memory.
+
+    When ``metadata_filter`` is provided, the Prompt 21 metadata filter is enforced before retrieval
+    (the resolved family set + project key constrain the deterministic broker; an explicitly requested
+    excluded family fails closed) and after retrieval (items outside the project / family / date window /
+    review-tier ceiling / confidence floor are dropped with recorded reasons + source-coverage warnings).
+    """
+    c = _collect_hybrid(
+        query,
+        db_path=db_path,
+        project_key=project_key,
+        families=families,
+        mode=mode,
+        embed_model=embed_model,
+        top_k=top_k,
+        persist_root=persist_root,
+        metadata_filter=metadata_filter,
+    )
+    kept = c["kept"]
+    semantic_refs = c["semantic_refs"]
+    score_by_ref = c["score_by_ref"]
+    thresholds = c["thresholds"]
+    det_env = c["det_env"]
+
     tier_distribution = {"1": 0, "2": 0, "3": 0}
     per_family: dict[str, int] = {}
     deterministic_count = 0
@@ -477,44 +535,40 @@ def build_hybrid_retrieval(
             }
         )
 
-    query_hash = _hash(f"{query}|{project_key or ''}|{mode}|{','.join(sorted(families or ()))}")
-    run_id = f"hyq_{query_hash[:32]}"
-    elapsed = time.monotonic() - started
-
     return {
         "command": "second-brain retrieval hybrid search",
         "phase": "09",
         "generated_utc": _now(),
         "repo_sha": _repo_sha(),
         "status": "ok",
-        "run_id": run_id,
-        "schema_version": schema_version,
-        "project_key": project_key,
-        "query_hash": query_hash,
-        "mode": mode,
+        "run_id": f"hyq_{c['query_hash'][:32]}",
+        "schema_version": c["schema_version"],
+        "project_key": c["project_key"],
+        "query_hash": c["query_hash"],
+        "mode": c["mode"],
         "deterministic_authoritative": True,
         "semantic_advisory_only": True,
         "assembles_final_answer": False,
         "result_count": len(kept),
         "deterministic_count": deterministic_count,
         "semantic_count": semantic_count,
-        "semantic_skip_reason": skip_reason,
+        "semantic_skip_reason": c["skip_reason"],
         "per_family_count": per_family,
         "tier_distribution": tier_distribution,
-        "degradation_mode": degradation,
-        "context_char_count": char_count,
-        "truncated": truncated,
-        "latency_bucket": _latency_bucket(elapsed),
-        "coverage_warnings": coverage_warnings,
+        "degradation_mode": c["degradation"],
+        "context_char_count": c["char_count"],
+        "truncated": c["truncated"],
+        "latency_bucket": _latency_bucket(c["elapsed"]),
+        "coverage_warnings": c["coverage_warnings"],
         "stale_unknown_warnings": list(det_env.stale_unknown_warnings),
         "conflict_warnings": list(det_env.conflict_warnings),
-        "policy_version": seed.get("version"),
+        "policy_version": c["seed"].get("version"),
         "filter_applied": metadata_filter is not None,
         "filter_summary": (
             {
-                "dropped_by_reason": dropped_by_reason,
+                "dropped_by_reason": c["dropped_by_reason"],
                 "effective_families": (
-                    list(selected_families) if selected_families is not None else None
+                    list(c["selected_families"]) if c["selected_families"] is not None else None
                 ),
                 "filter_keys": metadata_filter.filter_keys(),
             }
@@ -524,6 +578,75 @@ def build_hybrid_retrieval(
         "results": results,
         "read_only": True,
     }
+
+
+def build_hybrid_envelope(
+    query: str,
+    *,
+    db_path: str | None = None,
+    project_key: str | None = None,
+    families: tuple[str, ...] | None = None,
+    mode: str = "hybrid",
+    embed_model: Any | None = None,
+    top_k: int | None = None,
+    persist_root: str | None = None,
+    metadata_filter: MetadataFilter | None = None,
+) -> tuple[RetrievalEnvelope, dict[str, Any]]:
+    """Build the merged hybrid ``RetrievalEnvelope`` (deterministic authoritative + advisory semantic).
+
+    Returns ``(envelope, meta)``. This exposes the kept ``RetrievalItem``s — never persisted — so semantic
+    context can be routed **only** through Research Packet generation (Prompt 22). Same fail-closed
+    collection as ``build_hybrid_retrieval``; semantic items are advisory (tier-floored at 2). ``meta``
+    carries the semantic/deterministic counts + skip reason + query hash for the route summary.
+    """
+    c = _collect_hybrid(
+        query,
+        db_path=db_path,
+        project_key=project_key,
+        families=families,
+        mode=mode,
+        embed_model=embed_model,
+        top_k=top_k,
+        persist_root=persist_root,
+        metadata_filter=metadata_filter,
+    )
+    kept = c["kept"]
+    semantic_refs = c["semantic_refs"]
+    det_env = c["det_env"]
+
+    tier_distribution = {"1": 0, "2": 0, "3": 0}
+    semantic_count = 0
+    for it in kept:
+        tier_distribution[str(it.review_tier)] += 1
+        if (it.source_family, it.source_ref) in semantic_refs:
+            semantic_count += 1
+
+    envelope = RetrievalEnvelope(
+        items=kept,
+        degradation_mode=c["degradation"],
+        context_char_count=c["char_count"],
+        truncated=c["truncated"],
+        tier_distribution=tier_distribution,
+        coverage_warnings=c["coverage_warnings"],
+        stale_unknown_warnings=list(det_env.stale_unknown_warnings),
+        conflict_warnings=list(det_env.conflict_warnings),
+        project_key=c["project_key"],
+        query_hash=c["query_hash"],
+    )
+    meta = {
+        "mode": c["mode"],
+        "query_hash": c["query_hash"],
+        "schema_version": c["schema_version"],
+        "result_count": len(kept),
+        "semantic_count": semantic_count,
+        "deterministic_count": len(kept) - semantic_count,
+        "semantic_skip_reason": c["skip_reason"],
+        "effective_families": (
+            list(c["selected_families"]) if c["selected_families"] is not None else None
+        ),
+        "policy_version": c["seed"].get("version"),
+    }
+    return envelope, meta
 
 
 def persist_hybrid_query_record(

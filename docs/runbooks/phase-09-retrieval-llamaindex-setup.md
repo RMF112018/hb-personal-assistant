@@ -194,6 +194,26 @@ references / freshness are preserved on kept items.
   post-filter drop matrix (project / family / date / review / confidence) with recorded reasons +
   coverage warnings; persists nothing.
 
+## Research packet integration (Prompt 22)
+
+The `second-brain retrieval research-packet` group is the sanctioned route for semantic (vector)
+retrieval context to enter answer generation: it builds the hybrid (deterministic authoritative +
+advisory semantic) envelope and routes it through Research Packet generation (A02) only. The bridge
+returns a metadata-only **research packet** (advisory), **never an answer** — semantic results cannot
+assemble a final answer outside the Research Packet / Evaluation layers. (This is distinct from the 08A
+top-level `second-brain research-packet build` command.)
+
+- `research-packet build "<query>" [--project P] [--source a,b] [--max-review-tier 1|2|3]
+  [--min-confidence high|…] [--mode hybrid|deterministic-only]` — routes semantic context into a research
+  packet and emits a metadata-only summary (`route='research_packet_only'`, `synthesis_performed=false`,
+  `assembles_final_answer=false`, packet advisory/quality/degradation, counts). The raw query is **never**
+  emitted (only its hash); **persists nothing** to the operator DB. On the operator DB (no applied vector
+  index) semantic is skipped and the packet is built from deterministic context (honest).
+- `research-packet proof` — demonstrates semantic context routing into an advisory packet, the route
+  returning a packet (not an answer), a guard-clean metadata-only persisted packet receipt, no
+  semantic→answer bypass (the synthesis agent has no hybrid-broker reference), and excluded-family
+  fail-closed; persists nothing to the operator DB.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

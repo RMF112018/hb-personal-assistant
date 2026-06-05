@@ -1,0 +1,9 @@
+# Phase 09 Prompt 22 — research packet integration (resolved values; advisory).
+# Semantic retrieval context is routed through Research Packet generation only. The bridge produces a
+# metadata-only ResearchPacket (advisory), never a final answer, and never calls the synthesis adapter.
+# Read-only by default: the bridge persists nothing unless emit_receipt is explicitly set (the receipt is
+# a metadata-only, guard-clean research-packet row). No raw content / query / excerpts are emitted.
+version: phase_09_research_packet_integration_v1
+
+default_packet_type: interactive_query
+default_mode: hybrid

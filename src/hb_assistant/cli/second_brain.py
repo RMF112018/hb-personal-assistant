@@ -157,6 +157,13 @@ metadata_filter_app = typer.Typer(
 )
 retrieval_app.add_typer(metadata_filter_app, name="metadata-filter")
 
+retrieval_research_packet_app = typer.Typer(
+    name="research-packet",
+    help="Phase 09 research packet integration (route semantic context via research packet; read-only).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(retrieval_research_packet_app, name="research-packet")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3172,6 +3179,18 @@ _METADATA_FILTER_GUARDRAILS = {
     "local_first": True,
 }
 
+_RETRIEVAL_RESEARCH_PACKET_GUARDRAILS = {
+    "semantic_retrieval_through_research_packet_only": True,
+    "no_final_answer_assembly": True,
+    "no_semantic_retrieval_bypass": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "preserve_review_tier_confidence_source_refs_freshness": True,
+    "read_only_by_default": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
 
 @llamaindex_app.command("build")
 def retrieval_llamaindex_build(
@@ -3649,6 +3668,121 @@ def retrieval_metadata_filter_proof(
         f"Metadata filter proof passed={proof['proof_passed']}"
         f" (excluded_rejected={proof['excluded_family_rejected_pre_filter']},"
         f" drop_matrix={proof['post_filter_drop_matrix_ok']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+@retrieval_research_packet_app.command("build")
+def retrieval_research_packet_build(
+    query: str = typer.Argument(
+        ..., help="Query text (never persisted; only its hash is reported)."
+    ),
+    project: str | None = typer.Option(None, "--project", help="Project key filter."),
+    source: str | None = typer.Option(
+        None, "--source", help="Comma-separated allowlisted source family filter."
+    ),
+    max_review_tier: int | None = typer.Option(
+        None, "--max-review-tier", help="Keep items with review_tier <= this (1/2/3)."
+    ),
+    min_confidence: str | None = typer.Option(
+        None, "--min-confidence", help="Keep items at or above this confidence class."
+    ),
+    mode: str = typer.Option("hybrid", "--mode", help="'hybrid' or 'deterministic-only'."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Route semantic retrieval context through Research Packet generation only (read-only, fail-closed).
+
+    Builds the hybrid (deterministic authoritative + advisory semantic) envelope and routes it through
+    `build_research_packet_from_envelope`, producing a metadata-only research packet (advisory) — never an
+    answer (`synthesis_performed=false`). Emits a metadata-only summary (no raw query/excerpts); persists
+    nothing to the operator DB. Exit 0 on success; 3 on a fail-closed contract/schema/filter failure.
+    """
+    from hb_assistant.construction.second_brain.research.semantic_packet import (
+        SemanticPacketError,
+        build_semantic_research_packet,
+    )
+    from hb_assistant.construction.second_brain.retrieval.hybrid_broker import HybridRetrievalError
+    from hb_assistant.construction.second_brain.retrieval.metadata_filter import (
+        MetadataFilter,
+        MetadataFilterError,
+    )
+
+    normalized_mode = (
+        "deterministic_only" if mode in ("deterministic-only", "deterministic_only") else mode
+    )
+    families = tuple(s.strip() for s in source.split(",") if s.strip()) if source else None
+    spec: MetadataFilter | None = None
+    if families or max_review_tier is not None or min_confidence is not None:
+        spec = MetadataFilter(
+            source_families=families,
+            max_review_tier=max_review_tier,
+            min_confidence=min_confidence,
+        )
+    try:
+        result = build_semantic_research_packet(
+            query,
+            project_key=project,
+            mode=normalized_mode,
+            metadata_filter=spec,
+        )
+    except (SemanticPacketError, HybridRetrievalError, MetadataFilterError) as exc:
+        payload = {
+            "command": "second-brain retrieval research-packet build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _RETRIEVAL_RESEARCH_PACKET_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _RETRIEVAL_RESEARCH_PACKET_GUARDRAILS}
+    human = [
+        "Phase 09 semantic context → research packet (read-only, advisory)",
+        f"  route: {result['route']} | synthesis_performed: {result['synthesis_performed']}",
+        f"  deterministic: {result['deterministic_count']} | semantic: {result['semantic_count']}"
+        f" | packet: {result['packet']['advisory_classification']}"
+        f"/{result['packet']['context_quality_class']}/{result['packet']['degradation_mode']}",
+        f"  review tier: {result['packet']['review_tier']} | status: {result['packet']['status']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@retrieval_research_packet_app.command("proof")
+def retrieval_research_packet_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the integration proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove semantic context routes through Research Packet generation only (never an answer)."""
+    from hb_assistant.construction.second_brain.research.semantic_packet import (
+        SemanticPacketError,
+        build_semantic_research_packet_proof,
+    )
+
+    try:
+        proof = build_semantic_research_packet_proof(write_evidence=evidence)
+    except SemanticPacketError as exc:
+        payload = {
+            "command": "second-brain retrieval research-packet proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _RETRIEVAL_RESEARCH_PACKET_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _RETRIEVAL_RESEARCH_PACKET_GUARDRAILS}
+    human = [
+        f"Research packet integration proof passed={proof['proof_passed']}"
+        f" (route_only={proof['route_is_research_packet_only']},"
+        f" packet_not_answer={proof['returns_packet_not_answer']},"
+        f" no_bypass={proof['synthesis_has_no_semantic_path']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 

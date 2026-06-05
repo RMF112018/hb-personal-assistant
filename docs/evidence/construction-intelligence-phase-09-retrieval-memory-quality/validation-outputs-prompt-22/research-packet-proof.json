@@ -1,0 +1,32 @@
+{
+  "proof": "phase_09_research_packet_integration",
+  "command": "second-brain retrieval research-packet proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T08:02:40.519699+00:00",
+  "repo_sha": "660faa62ae769cc1313b87c99248a5be79374327",
+  "route_is_research_packet_only": true,
+  "semantic_context_in_packet": true,
+  "semantic_count": 3,
+  "packet_advisory": true,
+  "returns_packet_not_answer": true,
+  "packet_receipt_persisted_metadata_only": true,
+  "research_packet_rows": 1,
+  "synthesis_has_no_semantic_path": true,
+  "excluded_family_fail_closed": true,
+  "raw_query_not_emitted": true,
+  "metadata_only": true,
+  "guardrails": {
+    "semantic_retrieval_through_research_packet_only": true,
+    "no_final_answer_assembly": true,
+    "no_semantic_retrieval_bypass": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "preserve_review_tier_confidence_source_refs_freshness": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  },
+  "proof_path": "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/research-packet-integration-proof.json",
+  "proof_md_path": "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/research-packet-integration-proof.md"
+}

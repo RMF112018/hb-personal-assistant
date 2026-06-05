@@ -1,0 +1,45 @@
+{
+  "contract_name": "phase_09_research_packet_integration_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 22 — research packet integration. Semantic (vector) retrieval context may enter answer generation ONLY through Research Packet generation: the hybrid broker's merged envelope (deterministic authoritative + advisory semantic) is routed through build_research_packet_from_envelope, producing a metadata-only ResearchPacket (advisory) — never a final answer. The route never calls the synthesis adapter; semantic results never assemble a final answer outside the Research Packet / Evaluation layers. Review tier, confidence class, source references, freshness, and source-coverage warnings are preserved; no raw content / query / excerpt is persisted or emitted.",
+  "semantic_context_route": "research_packet_only",
+  "semantic_advisory_only": true,
+  "no_direct_answer_assembly": true,
+  "allowed_packet_types": ["interactive_query", "research"],
+  "route_attestations": [
+    "route",
+    "synthesis_performed",
+    "assembles_final_answer",
+    "semantic_advisory_only"
+  ],
+  "forbidden_emitted_fields": [
+    "raw_query",
+    "query",
+    "query_text",
+    "content_excerpt",
+    "content_excerpt_redacted",
+    "answer",
+    "answer_redacted",
+    "embedding",
+    "vector",
+    "raw_vector",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "semantic_retrieval_through_research_packet_only",
+    "no_semantic_retrieval_bypass",
+    "no_final_answer_assembly",
+    "preserve_review_tier",
+    "preserve_confidence_class",
+    "preserve_source_references",
+    "preserve_freshness",
+    "preserve_coverage_warnings"
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "command": "second-brain retrieval research-packet build",
+  "phase": "09",
+  "generated_utc": "2026-06-05T08:02:39.342813+00:00",
+  "repo_sha": "660faa62ae769cc1313b87c99248a5be79374327",
+  "status": "ok",
+  "route": "research_packet_only",
+  "synthesis_performed": false,
+  "assembles_final_answer": false,
+  "semantic_advisory_only": true,
+  "mode": "deterministic_only",
+  "query_hash": "417ace2735ab3090c63e499869d22a438caf52ca0e0fdad26c8169ab1d34231c",
+  "schema_version": 38,
+  "project_key": null,
+  "packet_type": "interactive_query",
+  "result_count": 408,
+  "semantic_count": 0,
+  "deterministic_count": 408,
+  "semantic_skip_reason": "semantic_disabled_mode",
+  "packet": {
+    "packet_id": "d5433259167b1277bf23cd6f48174527",
+    "advisory_classification": "advisory",
+    "context_quality_class": "partial",
+    "degradation_mode": "graceful_degraded",
+    "review_tier": 1,
+    "review_tier_reason_code": "T1_SOURCE_BACKED",
+    "review_status": "pending_review",
+    "source_ref_count": 408,
+    "review_required_count": 0,
+    "stale_unknown_count": 0,
+    "conflict_count": 0,
+    "coverage_warnings": [
+      "no_read_model:meeting_prep_brief_sections",
+      "no_read_model:review_controlled_correspondence_context",
+      "semantic_unavailable:semantic_disabled_mode",
+      "source_coverage_below_min:0.14<0.5"
+    ],
+    "status": "assembled"
+  },
+  "assessment": {
+    "families_present": [
+      "cross_source_relationships"
+    ],
+    "families_missing": [
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "aging_exposure_report_items",
+      "approved_obsidian_generated_outputs",
+      "accepted_long_term_memory"
+    ],
+    "source_coverage": 0.1429,
+    "degradation_recommendation": "narrow_claims",
+    "open_questions": [
+      "coverage_gap:no_phase_07d_source_evidence_trails_retrieved",
+      "coverage_gap:no_project_issue_history_items_retrieved",
+      "coverage_gap:no_project_risk_digest_items_retrieved",
+      "coverage_gap:no_aging_exposure_report_items_retrieved",
+      "coverage_gap:no_approved_obsidian_generated_outputs_retrieved",
+      "coverage_gap:no_accepted_long_term_memory_retrieved"
+    ],
+    "policy_warnings": [
+      "no_read_model:meeting_prep_brief_sections",
+      "no_read_model:review_controlled_correspondence_context",
+      "semantic_unavailable:semantic_disabled_mode",
+      "source_coverage_below_min:0.14<0.5"
+    ]
+  },
+  "receipt_emitted": false,
+  "retrieval_receipt_id": null,
+  "packet_receipt_id": null,
+  "policy_version": "phase_09_research_packet_integration_v1",
+  "read_only": true,
+  "guardrails": {
+    "semantic_retrieval_through_research_packet_only": true,
+    "no_final_answer_assembly": true,
+    "no_semantic_retrieval_bypass": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "preserve_review_tier_confidence_source_refs_freshness": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

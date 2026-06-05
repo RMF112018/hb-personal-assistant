@@ -1,0 +1,108 @@
+{
+  "prompt": "Phase 09 Prompt 22 — Research Packet Integration",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "660faa62ae769cc1313b87c99248a5be79374327",
+  "schema_version": 38,
+  "objective": "Route semantic retrieval context through Research Packet generation only — semantic (vector) context may enter answer generation solely via the Research Packet, never assembling a final answer outside the Research Packet / Evaluation layers.",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/research/semantic_packet.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/construction/second_brain/retrieval/hybrid_broker.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_research_packet_integration_contract.json"],
+    "new_seeds": ["resources/config/phase_09_research_packet_integration.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_research_packet_integration.py"],
+    "migrator_change": "None — reuses second_brain_research_packets; schema stays 38, contract table count stays 190.",
+    "hybrid_broker_refactor": "Extracted _collect_hybrid (shared); build_hybrid_retrieval output is byte-for-byte unchanged (Prompt 20/21 tests pass); added build_hybrid_envelope returning the merged RetrievalEnvelope.",
+    "synthesis_rewiring": "None — synthesize_answer (A04) stays deterministic-only; default-path adoption deferred."
+  },
+  "integration": {
+    "route": "research_packet_only",
+    "entry_points": [
+      "retrieval/hybrid_broker.build_hybrid_envelope(query, ...) -> (RetrievalEnvelope, meta)",
+      "research/semantic_packet.build_semantic_research_packet(query, *, ..., emit_receipt=False) -> dict",
+      "research/semantic_packet.build_semantic_research_packet_proof(*, evidence_dir=None, write_evidence=True) -> dict"
+    ],
+    "flow": "build_hybrid_envelope (deterministic authoritative + advisory semantic, tier-floored at 2, source-linked) -> build_research_packet_from_envelope (A02) -> metadata-only ResearchPacket (advisory_classification='advisory'). The bridge never calls the synthesis adapter (synthesis_performed=false, assembles_final_answer=false).",
+    "read_only": "emit_receipt defaults False (no operator-DB packet row); receipt persistence (metadata-only, guard-clean) exercised in the proof on a temp DB.",
+    "no_bypass": "synthesize_answer / synthesis/agent.py has no reference to the hybrid broker; semantic context cannot reach an answer except through the Research Packet."
+  },
+  "operator_db_outcome": {
+    "research_packet_build_status": "ok",
+    "route": "research_packet_only",
+    "synthesis_performed": false,
+    "deterministic_count": 408,
+    "semantic_count": 0,
+    "rationale": "No applied vector index on the operator DB -> semantic skipped; the packet is built from deterministic context (honest). emit_receipt defaulted False -> no persist.",
+    "research_packets_rows": 0,
+    "schema_version": 38,
+    "operator_db_mutated": false
+  },
+  "integration_proof": {
+    "command": "second-brain retrieval research-packet proof --json",
+    "proof_passed": true,
+    "route_is_research_packet_only": true,
+    "semantic_context_in_packet": true,
+    "semantic_count": 3,
+    "packet_advisory": true,
+    "returns_packet_not_answer": true,
+    "packet_receipt_persisted_metadata_only": true,
+    "synthesis_has_no_semantic_path": true,
+    "excluded_family_fail_closed": true,
+    "raw_query_not_emitted": true
+  },
+  "real_huggingface_semantic_packet_smoke": {
+    "status": "ok",
+    "route": "research_packet_only",
+    "synthesis_performed": false,
+    "assembles_final_answer": false,
+    "deterministic_count": 3,
+    "semantic_count": 3,
+    "packet_advisory": "advisory",
+    "packet_review_tier": 2,
+    "note": "Real bge-small hybrid retrieval routed 3 advisory semantic items into a tier-2 advisory research packet without synthesizing an answer. Captured at validation-outputs-prompt-22/real-huggingface-research-packet-smoke.json. Automated equivalent: tests/test_phase_09_research_packet_integration.py::test_semantic_packet_real_huggingface_smoke (integration)."
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "Success: no issues found in 290 source files",
+    "pytest_not_live_integration_manual": "3159 passed, 0 failed, 5 deselected",
+    "construction_agent_validate": "exit 0 (schema 38)",
+    "data_quality_table_inventory": "exit 0 (contract_table_count=190, 0 unmapped)",
+    "data_quality_no_writeback_proof": "exit 0",
+    "second_brain_phase_08a_gates": "exit 0",
+    "second_brain_phase_08b_gates": "exit 0",
+    "second_brain_phase_08c_gates": "SKIPPED — appends ~1,299 financial-ledger rows to the operator DB per call (disclosed defect from Prompts 02/05)",
+    "second_brain_data_quality_phase_08d_gates": "exit 0",
+    "second_brain_mcp_no_raw_access": "exit 0",
+    "second_brain_mcp_no_writeback": "exit 0",
+    "retrieval_research_packet_build": "exit 0 (operator DB: route=research_packet_only, synthesis_performed=false, semantic empty, no persist)",
+    "retrieval_research_packet_build_deterministic_only": "exit 0",
+    "retrieval_research_packet_proof": "exit 0 (proof_passed=true)",
+    "post_cli_guard_rerun": "tests/test_repo_sensitive_scan.py + tests/test_second_brain_no_writeback_proof.py — pass"
+  },
+  "command_path_corrections": {
+    "note": "The prompt's exact-command list used stale MCP paths (`mcp data-quality …`). The real commands are `second-brain data-quality phase-08d-gates`, `second-brain mcp no-raw-access`, `second-brain mcp no-writeback` — all run, all exit 0. Also: the new surface `second-brain retrieval research-packet` is distinct from the existing 08A `second-brain research-packet` build command (both verified)."
+  },
+  "guardrails_enforced": [
+    "semantic retrieval context routes through Research Packet generation only (route='research_packet_only')",
+    "the bridge returns a packet, never an answer (synthesis_performed=false, assembles_final_answer=false)",
+    "no semantic->answer bypass (synthesis agent has no hybrid-broker reference)",
+    "review tier / confidence class / source references / freshness / coverage warnings preserved; semantic advisory + tier-floored at 2",
+    "no raw source content / prompt / response / tokens / signed-or-download URLs; raw query never emitted (only query_hash)",
+    "no external/source-system writeback; read-only by default (no operator-DB write); persisted packet receipt metadata-only + guard-clean",
+    "fail-closed on missing policy / stale schema / excluded source family"
+  ],
+  "deferred_items": [
+    "Wiring the semantic research packet into the default synthesize_answer (A04) path — behavior change, later prompt",
+    "generated_outputs (research-packet) loader still absent",
+    "Eval sets, benchmarks, memory-quality review — later Phase 09 prompts"
+  ],
+  "blocker_classifications": {
+    "build_blockers": "none (route implemented + proven; operator build yields semantic=0 only because no vector index is applied there, which is expected)",
+    "external_blockers": "none"
+  }
+}
