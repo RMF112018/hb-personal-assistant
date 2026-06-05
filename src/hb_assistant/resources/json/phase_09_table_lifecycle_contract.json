@@ -1,6 +1,6 @@
 {
   "schema": "phase_09_table_lifecycle_contract/v1",
-  "source": "Phase 09 Prompt 12 — V38 retrieval/memory/agent metadata substrate lifecycle vocabulary. Maps each of the nineteen V38 tables to its richer Phase 09 lifecycle state and owning future prompt. All tables ship empty; none is active_operational yet. Read-only advisory contract; loaded fail-closed by hb_assistant.construction.second_brain.phase_09_schema.",
+  "source": "Phase 09 Prompt 12 — V38+ retrieval/memory/agent metadata substrate lifecycle vocabulary (V39 additive for review burden). Maps the Phase 09 tables (V38 base + V39 review burden) to lifecycle state and owning prompt. All tables ship empty; none is active_operational yet. Read-only advisory contract; loaded fail-closed by hb_assistant.construction.second_brain.phase_09_schema.",
   "schema_version_introduced": 38,
   "phase_09_lifecycle_states": [
     "blocked_preflight",
@@ -11,7 +11,7 @@
     "deprecated",
     "deferred_future_phase"
   ],
-  "table_count": 19,
+  "table_count": 22,
   "tables": {
     "second_brain_retrieval_llamaindex_config_snapshots": {
       "phase_09_lifecycle": "blocked_preflight",
@@ -107,6 +107,21 @@
       "phase_09_lifecycle": "validation_only",
       "owning_prompt": "36",
       "notes": "Phase 09 data-quality gates / validation ledger (Prompts 36-39)."
+    },
+    "second_brain_review_burden_runs": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "37",
+      "notes": "Review burden runs (Prompt 37, review burden reduction). Additive V39."
+    },
+    "second_brain_review_burden_clusters": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "37",
+      "notes": "Review burden clusters (two-step, hash-only examples, financial separate). Additive V39."
+    },
+    "second_brain_review_burden_policy_evals": {
+      "phase_09_lifecycle": "blocked_preflight",
+      "owning_prompt": "37",
+      "notes": "Review burden policy evaluation snapshots. Additive V39."
     }
   }
 }

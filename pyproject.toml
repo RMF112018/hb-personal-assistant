@@ -92,7 +92,7 @@ Repository = "https://github.com/RMF112018/hb-personal-assistant"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"hb_assistant" = ["py.typed", "resources/json/*.json"]
+"hb_assistant" = ["py.typed", "resources/json/*.json", "resources/config/*.yaml"]
 
 [tool.ruff]
 target-version = "py312"

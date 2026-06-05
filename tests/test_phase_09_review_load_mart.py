@@ -77,6 +77,13 @@ def test_promotion_gate_fail_closed_under_no_review(tmp_path: Path) -> None:
     assert gate["unresolved_high_impact_promotable"] == 0
     assert gate["blocked_from_promotion"] == mart["total_distinct_review_items"]
 
+    # Refinements: the proof now carries the new burden policy view (two-step, no blanket for advisory)
+    proof2 = build_review_load_proof(db)
+    assert "advisory_retrieval_allowed" in proof2
+    assert proof2.get("blanket_review_block") is False
+    assert "financial_review_burden" in proof2
+    assert "high_impact_summary" in proof2
+
 
 def test_proof_passes_and_is_raw_clean(tmp_path: Path) -> None:
     db = str(tmp_path / "review3.sqlite3")

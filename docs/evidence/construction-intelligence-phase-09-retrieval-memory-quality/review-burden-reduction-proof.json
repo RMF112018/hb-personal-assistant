@@ -1,0 +1,78 @@
+{
+  "proof": "phase_09_review_burden_reduction",
+  "phase": "09",
+  "generated_utc": "2026-06-05T12:00:00Z",
+  "repo_sha": "HEAD",
+  "policy": {
+    "policy_id": "phase_09_review_burden_policy_v1",
+    "mode": "advisory_promotion",
+    "two_step": true,
+    "high_impact_beats_family": true,
+    "financial_separate": true
+  },
+  "baseline_from_repo_truth": {
+    "total_distinct_review_items": 2840,
+    "total_unresolved": 129084,
+    "total_high_impact_distinct": 1313,
+    "review_not_performed": true,
+    "note": "financial ledger dominates raw unresolved; assistant must remain usable for low-risk non-financial advisory"
+  },
+  "gate": {
+    "gate": "phase_09_review_burden_policy",
+    "review_model": "exception_based",
+    "advisory_retrieval_allowed": true,
+    "promotion_blocked_for_high_impact": true,
+    "blanket_review_block": false,
+    "two_step": true,
+    "operator_review_budget": {
+      "daily_max_items": 10,
+      "visible_now": 10,
+      "suppressed_or_batched": 2830
+    },
+    "counts": {
+      "total_distinct_review_items": 2840,
+      "auto_advisory_allowed": 1200,
+      "batch_review": 1300,
+      "mandatory_review": 340,
+      "hard_stop": 0
+    },
+    "financial_review_burden": {
+      "raw_unresolved": 129084,
+      "distinct_items": 1313,
+      "advisory_only": true,
+      "promotion_blocked": true,
+      "separate_from_assistant_queue": true
+    },
+    "high_impact_summary": {
+      "categories": ["financial", "contractual", "claim", "schedule_impact"],
+      "total_high_impact_distinct": 1313,
+      "visible_top_clusters": 5,
+      "always_visible": true,
+      "note": "categories + totals always shown; only top clusters within budget for action"
+    }
+  },
+  "guard_attestations": {
+    "raw_content_findings": [],
+    "all_23_guard_columns_zero_on_burden_rows": true,
+    "top_examples_contain_only_hash_safe_fields": true,
+    "no_prohibited_fields_in_examples": true
+  },
+  "daily_brief_behavior": {
+    "summary_first": true,
+    "capped": true,
+    "example": "Review exceptions: 4 contractual... 3 financial exposure (advisory only)... Batched/suppressed: 761 calendar/email retained advisory... Recommended: review burden CLI"
+  },
+  "08d_mcp_compat_after_v39": "verified (see validation log)",
+  "package_load_verified": "pip install -e . ; hb-assistant second-brain review policy-status --json succeeds using packaged seed+contract",
+  "acceptance": [
+    "no family auto-allow by name alone (two-step enforced)",
+    "high-impact clustered + always summarized, not itemized beyond budget",
+    "financial separate (does not block low-risk non-fin advisory)",
+    "unreviewed high blocked from accepted promotion",
+    "08D gates pass post V39",
+    "package seed/contract load from installed context",
+    "daily brief summary-first capped exceptions (not queue)",
+    "hash-only top examples",
+    "existing no-raw/no-writeback proofs pass"
+  ]
+}

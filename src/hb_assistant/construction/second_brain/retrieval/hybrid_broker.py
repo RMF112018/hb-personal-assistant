@@ -314,6 +314,16 @@ def build_hybrid_status(
     """Read-only hybrid-retrieval readiness (deterministic always; semantic iff SDK + applied index)."""
     contract = load_hybrid_retrieval_contract()
     seed = load_hybrid_retrieval_seed()
+    # Phase 09 review burden policy (two-step) integration: advisory retrieval for low-risk
+    # (family eligible + impact safe + guards) is allowed even under review_not_performed.
+    # High-impact remains blocked from promotion. Financial separate.
+    review_burden_advisory_retrieval_allowed = False
+    try:
+        from ..review_burden_mart import build_review_burden_proof
+        bp = build_review_burden_proof(db_path)
+        review_burden_advisory_retrieval_allowed = bool(bp.get("gate", {}).get("advisory_retrieval_allowed"))
+    except Exception:
+        review_burden_advisory_retrieval_allowed = False
     try:
         schema_version = _require_v38(db_path)
         schema_ready = True
@@ -347,6 +357,8 @@ def build_hybrid_status(
         "assembles_final_answer": False,
         "policy_version": seed.get("version"),
         "read_only": True,
+        "review_burden_advisory_retrieval_allowed": review_burden_advisory_retrieval_allowed,
+        "review_burden_two_step": True,
     }
 
 

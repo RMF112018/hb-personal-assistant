@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 38
+LATEST_SCHEMA_VERSION = 39
 
 
 class SQLiteMigrator:
@@ -5040,6 +5040,143 @@ class SQLiteMigrator:
         "ON second_brain_agent_performance_feedback_runs(project_key);",
     ]
 
+    # v39 Phase 09 review burden reduction (additive only). Three metadata-only tables for
+    # the exception-based two-step review burden policy (family eligibility necessary +
+    # item impact/risk decisive; high-impact beats family; financial ledger separate;
+    # high-impact always summarized as clustered + totals within operator budget;
+    # top_examples hash-only; 23 guard columns CHECK=0 on every row). No raw content,
+    # no determinations, no writeback. The tables ship empty; used by review burden
+    # marts/proofs/CLI for clustering, runs, and policy evals.
+    V39_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_review_burden_runs (
+          run_id TEXT PRIMARY KEY,
+          created_at_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          project_key TEXT,
+          total_distinct INTEGER NOT NULL DEFAULT 0,
+          auto_advisory INTEGER NOT NULL DEFAULT 0,
+          batch_review INTEGER NOT NULL DEFAULT 0,
+          mandatory_review INTEGER NOT NULL DEFAULT 0,
+          hard_stop INTEGER NOT NULL DEFAULT 0,
+          financial_raw INTEGER NOT NULL DEFAULT 0,
+          financial_distinct INTEGER NOT NULL DEFAULT 0,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0),
+          unsupported_claim_performed INTEGER NOT NULL DEFAULT 0 CHECK(unsupported_claim_performed = 0),
+          raw_vector_content_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_vector_content_persisted = 0),
+          semantic_retrieval_bypassed_policy INTEGER NOT NULL DEFAULT 0 CHECK(semantic_retrieval_bypassed_policy = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_review_burden_clusters (
+          cluster_id TEXT NOT NULL,
+          run_id TEXT NOT NULL,
+          created_at_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          project_key TEXT,
+          source_family TEXT NOT NULL,
+          impact_category TEXT NOT NULL,
+          confidence_class TEXT,
+          review_reason TEXT,
+          item_count INTEGER NOT NULL DEFAULT 0,
+          top_examples_json TEXT,
+          cluster_hash TEXT,
+          tier TEXT,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0),
+          unsupported_claim_performed INTEGER NOT NULL DEFAULT 0 CHECK(unsupported_claim_performed = 0),
+          raw_vector_content_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_vector_content_persisted = 0),
+          semantic_retrieval_bypassed_policy INTEGER NOT NULL DEFAULT 0 CHECK(semantic_retrieval_bypassed_policy = 0),
+          PRIMARY KEY (cluster_id, run_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS second_brain_review_burden_policy_evals (
+          eval_id TEXT PRIMARY KEY,
+          created_at_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          policy_version TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          run_id TEXT,
+          project_key TEXT,
+          advisory_retrieval_allowed INTEGER NOT NULL DEFAULT 0,
+          promotion_blocked_for_high INTEGER NOT NULL DEFAULT 0,
+          blanket_review_block INTEGER NOT NULL DEFAULT 0,
+          total_distinct INTEGER NOT NULL DEFAULT 0,
+          auto_advisory INTEGER NOT NULL DEFAULT 0,
+          batch_review INTEGER NOT NULL DEFAULT 0,
+          mandatory_review INTEGER NOT NULL DEFAULT 0,
+          hard_stop INTEGER NOT NULL DEFAULT 0,
+          financial_distinct INTEGER NOT NULL DEFAULT 0,
+          operator_visible INTEGER NOT NULL DEFAULT 0,
+          suppressed INTEGER NOT NULL DEFAULT 0,
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+          raw_financial_source_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_financial_source_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          graph_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_api_call_performed = 0),
+          procore_api_call_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_api_call_performed = 0),
+          email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+          calendar_update_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_update_performed = 0),
+          source_system_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(source_system_writeback_performed = 0),
+          arbitrary_sql_performed INTEGER NOT NULL DEFAULT 0 CHECK(arbitrary_sql_performed = 0),
+          raw_store_access_performed INTEGER NOT NULL DEFAULT 0 CHECK(raw_store_access_performed = 0),
+          financial_determination_performed INTEGER NOT NULL DEFAULT 0 CHECK(financial_determination_performed = 0),
+          payment_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(payment_decision_performed = 0),
+          claim_or_entitlement_decision_performed INTEGER NOT NULL DEFAULT 0 CHECK(claim_or_entitlement_decision_performed = 0),
+          unsupported_claim_performed INTEGER NOT NULL DEFAULT 0 CHECK(unsupported_claim_performed = 0),
+          raw_vector_content_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_vector_content_persisted = 0),
+          semantic_retrieval_bypassed_policy INTEGER NOT NULL DEFAULT 0 CHECK(semantic_retrieval_bypassed_policy = 0)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_second_brain_review_burden_clusters_run_id ON second_brain_review_burden_clusters(run_id);",
+        "CREATE INDEX IF NOT EXISTS ix_second_brain_review_burden_runs_project_key ON second_brain_review_burden_runs(project_key);",
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -5527,6 +5664,17 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (38, 'v38_phase_09_retrieval_memory_agent_schema', ?)",
+                    (now,),
+                )
+
+            # v39 Phase 09 review burden reduction (additive; two-step policy marts).
+            # All 23 guard columns present with CHECK=0. Ships empty.
+            for stmt in self.V39_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 39")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (39, 'v39_phase_09_review_burden_reduction', ?)",
                     (now,),
                 )
 

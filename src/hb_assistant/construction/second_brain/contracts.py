@@ -181,6 +181,7 @@ PHASE_09_CONTRACT_FILES: dict[str, str] = {
     "unsupported_claim_checks_contract": "phase_09_unsupported_claim_checks_contract.json",
     "hallucination_risk_checks_contract": "phase_09_hallucination_risk_checks_contract.json",
     "memory_quality_review_contract": "phase_09_memory_quality_review_contract.json",
+    "review_burden_policy_contract": "phase_09_review_burden_policy_contract.json",
 }
 
 def load_phase_09_contract(name: str) -> dict[str, Any]:

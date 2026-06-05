@@ -56,7 +56,7 @@ def test_render_is_redacted_markdown(db_path: str) -> None:
     md = render_brief_markdown(_context(db_path))
     assert md.startswith("# Daily Brief — 2026-06-02")
     assert "## Priority Actions" in md
-    assert "## File Review Queue (mandatory review)" in md
+    assert "Review exceptions" in md or "Batched/suppressed" in md  # new summary-first review burden section (replaced full queue dump)
     for forbidden in ("signed_url", "download_url", "raw_body", "raw_prompt", "raw_response"):
         assert forbidden not in md
 

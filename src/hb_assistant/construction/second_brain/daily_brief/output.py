@@ -115,14 +115,20 @@ def render_brief_markdown(context: DailyBriefContext) -> str:
             or ["_No meeting prep source model available._"]
         ),
         "",
-        "## File Review Queue (mandatory review)",
+        "## Review exceptions (capped; see `second-brain review burden` for full clusters)",
         *(
             [
                 _line(c.title_redacted, c.source_refs, c.review_tier)
-                for c in context.review_required_cards
+                for c in (context.review_required_cards or [])[:10]
             ]
-            or ["_No items pending mandatory review._"]
+            or ["- No Tier-C exceptions in current brief context."]
         ),
+        "",
+        "Batched/suppressed (advisory only; not promoted; high-impact summarized not itemized):",
+        f"- review load from triage: total={getattr(context.review_load, 'total_review_items', 0)} tier3={getattr(context.review_load, 'tier_3_count', 0)}",
+        "- Low-risk metadata-only source-linked signals (after two-step impact classification) are retained as advisory with labels; financial ledger tracked separately and does not block low-risk non-financial advisory.",
+        "- Weak candidates suppressed from standard answers per policy budget and batch rules. High-impact categories always visible in summary + top clusters only within operator daily budget.",
+        "- Recommended: run `hb-assistant second-brain review burden --json` and `second-brain review queue --top 10 --json` for operator action (capped).",
         "",
         "## Project Signals",
         *(

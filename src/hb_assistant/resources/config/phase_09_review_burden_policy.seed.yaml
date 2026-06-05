@@ -1,0 +1,60 @@
+policy_id: phase_09_review_burden_policy_v1
+mode: advisory_promotion
+operator_review_budget:
+  daily_max_items: 10
+  weekly_max_items: 50
+  high_impact_always_visible: true
+auto_allow_advisory:
+  enabled: true
+  requires_source_linked: true
+  requires_metadata_only: true
+  requires_no_raw: true
+  requires_no_writeback: true
+  allowed_families:
+    - approved_obsidian_generated_outputs
+    - generated_outputs
+    - cross_source_relationships
+    - project_issue_history_items
+    - project_risk_digest_items
+    - aging_exposure_report_items
+    - calendar_event_index
+    - email_thread_summaries
+batch_review:
+  enabled: true
+  group_by:
+    - source_family
+    - project_key
+    - impact_category
+    - confidence_class
+    - review_reason
+  suppress_weak_by_default: true
+  max_examples_per_group: 5
+mandatory_review:
+  impact_categories:
+    - financial
+    - cost_impact
+    - contractual
+    - claim
+    - entitlement
+    - schedule_impact
+    - safety
+    - legal
+    - payment
+  required_for:
+    - accepted_memory_promotion
+    - final_determination
+    - external_delivery
+    - source_system_writeback
+hard_denials:
+  - raw_content_indexing
+  - external_writeback
+  - final_financial_determination
+  - payment_decision
+  - claim_or_entitlement_decision
+  - legal_determination
+  - safety_determination
+financial_review:
+  separate_burden: true
+  never_auto_advisory: true
+  promotion_block: always
+  advisory_only: true

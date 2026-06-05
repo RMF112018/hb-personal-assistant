@@ -1,0 +1,135 @@
+{
+  "contract": "phase_09_review_burden_policy_contract",
+  "version": "1",
+  "description": "Phase 09 review burden reduction and advisory promotion policy contract. Defines the spec for risk-tiered (two-step) advisory eligibility, batching, operator budgets, mandatory high-impact review, hard denials, and guardrails. Family eligibility is necessary but not sufficient; item impact/risk classification is decisive. High-impact items from any family require mandatory review before promotion.",
+  "required_seed_top_level": [
+    "policy_id",
+    "mode",
+    "operator_review_budget",
+    "auto_allow_advisory",
+    "batch_review",
+    "mandatory_review",
+    "hard_denials"
+  ],
+  "advisory_eligibility_fields": [
+    "requires_source_linked",
+    "requires_metadata_only",
+    "requires_no_raw",
+    "requires_no_writeback"
+  ],
+  "allowed_source_families_for_advisory": [
+    "approved_obsidian_generated_outputs",
+    "generated_outputs",
+    "cross_source_relationships",
+    "project_issue_history_items",
+    "project_risk_digest_items",
+    "aging_exposure_report_items",
+    "calendar_event_index",
+    "email_thread_summaries"
+  ],
+  "high_impact_impact_categories": [
+    "financial",
+    "cost_impact",
+    "contractual",
+    "claim",
+    "entitlement",
+    "schedule_impact",
+    "safety",
+    "legal",
+    "payment"
+  ],
+  "batch_group_keys": [
+    "source_family",
+    "project_key",
+    "impact_category",
+    "confidence_class",
+    "review_reason"
+  ],
+  "max_examples_per_group": 5,
+  "operator_budget_defaults": {
+    "daily_max_items": 10,
+    "weekly_max_items": 50,
+    "high_impact_always_visible": true
+  },
+  "hard_denials": [
+    "raw_content_indexing",
+    "external_writeback",
+    "final_financial_determination",
+    "payment_decision",
+    "claim_or_entitlement_decision",
+    "legal_determination",
+    "safety_determination"
+  ],
+  "required_guard_columns": [
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_procore_payload_persisted",
+    "raw_financial_source_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
+    "graph_api_call_performed",
+    "procore_api_call_performed",
+    "email_send_performed",
+    "calendar_update_performed",
+    "source_system_writeback_performed",
+    "arbitrary_sql_performed",
+    "raw_store_access_performed",
+    "financial_determination_performed",
+    "payment_decision_performed",
+    "claim_or_entitlement_decision_performed",
+    "unsupported_claim_performed",
+    "raw_vector_content_persisted",
+    "semantic_retrieval_bypassed_policy"
+  ],
+  "financial_review": {
+    "separate_burden": true,
+    "never_auto_advisory": true,
+    "promotion_block": "always",
+    "advisory_only": true,
+    "note": "Financial review ledger volume must not block low-risk non-financial advisory retrieval or daily assistant usability. Always treated as advisory_only with promotion blocked."
+  },
+  "top_examples_allowed_fields": [
+    "source_family",
+    "project_key",
+    "item_hash",
+    "source_ref_hash",
+    "confidence_class",
+    "review_reason_code",
+    "impact_category",
+    "freshness_bucket",
+    "count"
+  ],
+  "top_examples_prohibited_fields": [
+    "subject",
+    "body",
+    "title",
+    "summary",
+    "organizer",
+    "attendee",
+    "email",
+    "location",
+    "url",
+    "download_url",
+    "signed_url",
+    "raw",
+    "payload",
+    "token",
+    "secret"
+  ],
+  "two_step_classification": {
+    "family_eligibility_necessary": true,
+    "item_impact_decisive": true,
+    "high_impact_beats_low_risk_family": true,
+    "example": "cross_source_relationships + financial/contractual/claim = Tier C (mandatory); same family + unclassified/low = Tier B (batch)"
+  },
+  "review_tiers": {
+    "A": "auto_allow_advisory (after two-step + guards + source-linked + metadata-only)",
+    "B": "batch_review (group, suppress weak, top hash-only examples, default keep advisory not promoted)",
+    "C": "mandatory_review_before_promotion (high-impact categories; may summarize as advisory warning but blocked from accepted fact/memory)",
+    "D": "hard_prohibited (never allow in retrieval, MCP, synthesis, writeback, determinations)"
+  }
+}

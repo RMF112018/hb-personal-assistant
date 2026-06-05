@@ -15,6 +15,7 @@ launchd) arrive in later 08A prompts.
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import typer
 
@@ -86,6 +87,13 @@ data_quality_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(data_quality_app, name="data-quality")
+
+review_app = typer.Typer(
+    name="review",
+    help="Phase 09 review burden reduction and advisory promotion policy (two-step classification, financial separate, high-impact clustered summaries, operator budget cap, hash-only examples; read-only).",
+    no_args_is_help=True,
+)
+app.add_typer(review_app, name="review")
 
 financial_app = typer.Typer(
     name="financial",
@@ -2992,13 +3000,17 @@ def data_quality_review_load(
         True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
     ),
 ) -> None:
-    """Phase 09 review-load triage mart + fail-closed review-required promotion gate (read-only).
+    """Phase 09 review-load + review burden policy (read-only).
 
-    Counts review load by DISTINCT review item (the financial review table is an append-only
-    per-run ledger), classifies high-impact blockers, surfaces the review_not_performed posture,
-    and reports the fail-closed promotion gate (unresolved / high-impact / review-required items
-    are blocked from promotion into an approved source manifest). Read-only over the DB;
-    advisory only; never a final determination. Exit 0 when the proof passes, 3 otherwise.
+    Legacy mart + promotion gate retained for compat. Primary output now includes the
+    Phase 09 review burden policy (two-step: family eligibility necessary + item impact/risk
+    decisive; high-impact item beats low-risk family; financial ledger tracked separately;
+    advisory retrieval allowed for low-risk metadata-only source-linked items after guards;
+    high-impact always summarized as categories+totals with only top clusters within operator
+    budget visible; top examples are hash-only; daily/weekly budget caps operator items;
+    no blanket for safe advisory). The legacy review_not_performed no longer blocks all
+    advisory retrieval. Read-only; advisory only; never a determination or writeback.
+    Exit 0 when proof passes, 3 otherwise.
     """
     from hb_assistant.construction.second_brain.review_load_mart import build_review_load_proof
 
@@ -3023,9 +3035,17 @@ def data_quality_review_load(
         "tables": mart.get("tables"),
         "gate": gate,
         "guardrails": mart.get("guardrails"),
+        # New Phase 09 burden policy fields (two-step, financial separate, advisory allowed for low-risk)
+        "review_burden_policy": proof.get("review_burden_policy"),
+        "advisory_retrieval_allowed": proof.get("advisory_retrieval_allowed"),
+        "blanket_review_block": proof.get("blanket_review_block"),
+        "financial_review_burden": proof.get("financial_review_burden"),
+        "high_impact_summary": proof.get("high_impact_summary"),
+        "operator_visible_count": proof.get("operator_visible_count"),
+        "suppressed_noise_count": proof.get("suppressed_noise_count"),
     }
     human = [
-        "Phase 09 review-load mart + promotion gate (advisory only, read-only)",
+        "Phase 09 review-load + review burden policy (two-step: family+impact; financial separate; advisory allowed for low-risk after two-step+guards)",
         f"  project: {project or 'all'}",
         f"  proof passed: {proof.get('proof_passed')}",
         f"  distinct review items: {mart.get('total_distinct_review_items')} "
@@ -3033,12 +3053,201 @@ def data_quality_review_load(
         f"  unresolved: {mart.get('total_unresolved')} | "
         f"high-impact: {mart.get('total_high_impact_distinct')}",
         f"  review_not_performed: {mart.get('review_not_performed')}",
-        f"  gate: blocked {gate.get('blocked_from_promotion')} / "
+        f"  legacy promotion gate: blocked {gate.get('blocked_from_promotion')} / "
         f"promotable {gate.get('promotable_review_ready')}",
+        f"  advisory_retrieval_allowed: {proof.get('advisory_retrieval_allowed')} (blanket_block={proof.get('blanket_review_block')})",
+        f"  financial separate: raw={ (proof.get('financial_review_burden') or {}).get('raw_unresolved') } distinct={(proof.get('financial_review_burden') or {}).get('distinct_items') } (always advisory_only, promotion blocked, does not block low-risk non-fin advisory)",
+        f"  operator visible (capped): {proof.get('operator_visible_count')} | suppressed/batched: {proof.get('suppressed_noise_count')}",
     ]
     _emit_08c(
         payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3
     )
+
+
+# --- Phase 09 review burden policy commands (under second-brain review) ---
+# These are intentionally under the root "review" group (second-brain review burden ...)
+# and also exposed for data-quality compatibility via the augmented review-load.
+
+def _review_common_guardrails() -> dict[str, Any]:
+    return {
+        "read_only": True,
+        "two_step_family_necessary_impact_decisive": True,
+        "high_impact_beats_low_risk_family": True,
+        "financial_ledger_separate_burden": True,
+        "high_impact_clustered_not_itemized": True,
+        "top_examples_hash_only": True,
+        "operator_budget_capped": True,
+        "advisory_only_no_determination": True,
+        "no_raw_no_writeback": True,
+    }
+
+
+@review_app.command("policy-status")
+def review_policy_status(
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Load and validate the Phase 09 review burden policy seed + contract (read-only).
+
+    Verifies two-step classification rules, allowed families (necessary not sufficient),
+    high-impact categories (decisive), budget, hard denials, guard columns, hash-only
+    example fields, and financial separate handling. Exit 0 on success, 3 on failure.
+    After `pip install -e .` this must succeed using the packaged seed/contract.
+    """
+    from hb_assistant.construction.second_brain.review_burden_mart import (
+        ReviewBurdenPolicyError,
+        load_review_burden_policy_contract,
+        load_review_burden_policy_seed,
+    )
+
+    try:
+        contract = load_review_burden_policy_contract()
+        seed = load_review_burden_policy_seed()
+        payload = {
+            "command": "second-brain review policy-status",
+            "phase": "09",
+            "policy_id": seed.get("policy_id"),
+            "mode": seed.get("mode"),
+            "contract_version": contract.get("version"),
+            "seed_keys": sorted(seed.keys()),
+            "two_step": contract.get("two_step_classification", {}),
+            "high_impact_categories": contract.get("high_impact_impact_categories"),
+            "allowed_families": contract.get("allowed_source_families_for_advisory"),
+            "financial_separate": contract.get("financial_review"),
+            "top_examples_allowed": contract.get("top_examples_allowed_fields"),
+            "top_examples_prohibited": contract.get("top_examples_prohibited_fields"),
+            "guardrails": _review_common_guardrails(),
+            "ok": True,
+        }
+        human = [
+            "Phase 09 review burden policy loaded (packaged seed + contract)",
+            f"  policy: {payload['policy_id']} mode={payload['mode']}",
+            "  two-step: family necessary + impact decisive; high beats family",
+            f"  high-impact cats: {payload['high_impact_categories']}",
+            "  financial: separate burden, always advisory_only, promotion blocked",
+            "  top examples: only hash-safe fields (no PII/text/URLs)",
+        ]
+        _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+    except ReviewBurdenPolicyError as e:
+        typer.echo(json.dumps({"ok": False, "error": str(e)}, indent=2, default=str) if json_out else str(e))
+        raise typer.Exit(3) from None
+
+
+@review_app.command("burden")
+def review_burden(
+    project: str | None = typer.Option(None, "--project"),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Compute review burden clusters + two-step gate + financial separate (read-only).
+
+    Applies policy: family eligibility (necessary) + item impact (decisive). High-impact
+    from any family is Tier C. High-impact categories always summarized (counts + by cat);
+    only top clusters within daily budget shown for operator. Financial ledger separate
+    (does not block low-risk advisory). top_examples are hash-only. Capped by budget.
+    """
+    from hb_assistant.construction.second_brain.review_burden_mart import (
+        build_review_burden_proof,
+    )
+
+    proof = build_review_burden_proof()
+    mart = proof.get("mart", {})
+    gate = proof.get("gate", {})
+    payload = {
+        "command": "second-brain review burden",
+        "phase": "09",
+        "project_key": project,
+        "advisory_only": True,
+        "proof_passed": proof.get("proof_passed"),
+        "mart": mart,
+        "gate": gate,
+        "guardrails": _review_common_guardrails(),
+    }
+    hi = mart.get("high_impact_summary", {})
+    fin = mart.get("financial_review_burden", {})
+    human = [
+        "Phase 09 review burden (two-step, clustered, capped; financial separate)",
+        f"  total distinct: {mart.get('total_distinct_review_items')}",
+        f"  A (auto-advisory): {mart.get('auto_advisory_allowed')} | B (batch): {mart.get('batch_review')} | C (mandatory): {mart.get('mandatory_review')} | D (hard): {mart.get('hard_stop')}",
+        f"  financial (separate): raw={fin.get('raw_unresolved')} distinct={fin.get('distinct_items')} (advisory_only, promotion_blocked, does not affect low-risk non-fin advisory)",
+        f"  high-impact: cats={hi.get('categories')} total={hi.get('total_high_impact_distinct')} visible_top_clusters={hi.get('visible_top_clusters')} (always summarized; capped clusters only)",
+        f"  operator visible (budget cap): {mart.get('operator_visible_count')} | suppressed: {mart.get('suppressed_noise_count')}",
+        f"  advisory retrieval allowed: {gate.get('advisory_retrieval_allowed')} (blanket={gate.get('blanket_review_block')})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3)
+
+
+@review_app.command("queue")
+def review_queue(
+    top: int = typer.Option(10, "--top", help="Max top clusters to show (capped by policy budget too)."),
+    project: str | None = typer.Option(None, "--project"),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Show top operator-visible review clusters (ranked, hash-only examples; read-only).
+
+    Respects daily budget and high_impact always-visible-as-summary. No auto decisions.
+    """
+    from hb_assistant.construction.second_brain.review_burden_mart import (
+        build_review_burden_proof,
+    )
+
+    proof = build_review_burden_proof()
+    mart = proof.get("mart", {})
+    clusters = mart.get("clusters", [])
+    # Rank: high-impact first (C), then by count desc
+    ranked = sorted(
+        clusters,
+        key=lambda c: (0 if c.get("tier") == "C" else 1, -int(c.get("item_count", 0))),
+    )[:top]
+    payload = {
+        "command": "second-brain review queue",
+        "phase": "09",
+        "top": top,
+        "project_key": project,
+        "clusters": ranked,
+        "total_clusters": len(clusters),
+        "operator_visible_count": mart.get("operator_visible_count"),
+        "suppressed": mart.get("suppressed_noise_count"),
+        "high_impact_summary": mart.get("high_impact_summary"),
+        "financial_review_burden": mart.get("financial_review_burden"),
+        "guardrails": _review_common_guardrails(),
+    }
+    human = [
+        f"Top {len(ranked)} review clusters (two-step policy; high-impact summarized always)",
+    ]
+    for c in ranked:
+        human.append(
+            f"  [{c.get('tier')}] {c.get('source_family')}/{c.get('impact_category')} x{c.get('item_count')} (examples: {len(c.get('top_examples', []))})"
+        )
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@review_app.command("clusters")
+def review_clusters(
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Full clustered view (all clusters, hash-only examples) for the burden policy (read-only)."""
+    from hb_assistant.construction.second_brain.review_burden_mart import (
+        build_review_burden_proof,
+    )
+
+    proof = build_review_burden_proof()
+    mart = proof.get("mart", {})
+    payload = {
+        "command": "second-brain review clusters",
+        "phase": "09",
+        "clusters": mart.get("clusters", []),
+        "high_impact_summary": mart.get("high_impact_summary"),
+        "financial_review_burden": mart.get("financial_review_burden"),
+        "counts": {
+            "total": mart.get("total_distinct_review_items"),
+            "A": mart.get("auto_advisory_allowed"),
+            "B": mart.get("batch_review"),
+            "C": mart.get("mandatory_review"),
+            "D": mart.get("hard_stop"),
+        },
+        "guardrails": _review_common_guardrails(),
+    }
+    human = ["Full review burden clusters (see --json for details; top_examples hash-only)"]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
 
 
 @data_quality_app.command("relationship-quality")

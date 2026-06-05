@@ -22,7 +22,7 @@ from hb_assistant.construction.second_brain.phase_09_schema import (
     build_phase_09_schema_status_report,
     load_phase_09_lifecycle_contract,
 )
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 runner = CliRunner()
 
@@ -45,13 +45,13 @@ def test_status_report_ready_normal_path() -> None:
         db = _migrated_db(td)
         report = build_phase_09_schema_status_report(db_path=db)
         assert report["overall_status"] == "ready"
-        assert report["schema_version"] == 38
+        assert report["schema_version"] == LATEST_SCHEMA_VERSION  # V39 additive; prior checks use >=38
         assert report["all_tables_present"] is True
         assert report["all_guards_present"] is True
         assert report["all_rows_zero"] is True
         assert report["read_only"] is True
         assert report["policy_loaded"] is True
-        assert len(report["tables"]) == 19
+        assert len(report["tables"]) == 22  # V39 added 3 review burden tables (additive)
 
 
 def test_status_report_stale_schema_not_ready() -> None:
@@ -89,7 +89,7 @@ def test_cli_exit_codes(monkeypatch: pytest.MonkeyPatch) -> None:
             "all_tables_present": True,
             "all_guards_present": True,
             "all_rows_zero": True,
-            "phase_09_table_count": 19,
+            "phase_09_table_count": 22,
             "guard_column_count": 23,
         },
     )
@@ -110,7 +110,7 @@ def test_cli_exit_codes(monkeypatch: pytest.MonkeyPatch) -> None:
             "all_tables_present": False,
             "all_guards_present": False,
             "all_rows_zero": True,
-            "phase_09_table_count": 19,
+            "phase_09_table_count": 22,
             "guard_column_count": 23,
         },
     )

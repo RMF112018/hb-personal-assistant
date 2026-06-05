@@ -32,7 +32,7 @@ from typing import Any
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION
 
-# Single source of truth for the nineteen V38 tables (tests import this).
+# Single source of truth for the Phase 09 V38+ tables (tests import this; V39 additive, list name retained for compat).
 PHASE_09_V38_TABLES: list[str] = [
     "second_brain_retrieval_llamaindex_config_snapshots",
     "second_brain_retrieval_approved_source_manifests",
@@ -53,6 +53,11 @@ PHASE_09_V38_TABLES: list[str] = [
     "second_brain_memory_consolidation_review_items",
     "second_brain_agent_performance_feedback_runs",
     "second_brain_phase_09_validation_runs",
+    # v39 Phase 09 review burden reduction (additive; two-step policy, financial separate,
+    # clustered high-impact visibility, hash-only examples). Tables carry the full 23 guards.
+    "second_brain_review_burden_runs",
+    "second_brain_review_burden_clusters",
+    "second_brain_review_burden_policy_evals",
 ]
 
 # The twenty-three guard columns every V38 table must carry (each CHECK(... = 0)).

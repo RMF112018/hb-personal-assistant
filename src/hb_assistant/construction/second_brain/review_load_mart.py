@@ -288,12 +288,15 @@ def build_review_load_mart(
 
 
 def evaluate_review_promotion_gate(mart: dict[str, Any]) -> dict[str, Any]:
-    """Fail-closed review-required promotion gate over a review-load mart.
+    """Legacy promotion gate (retained for compat).
 
-    Promotion into an approved source manifest is blocked for any unresolved, high-impact, or
-    (when no human review has occurred) review-required item. Only resolved, non-high-impact,
-    non-review-required items are review-ready. Fail-closed: under ``review_not_performed`` the
-    promotable count is zero (nothing promotes until a human reviews).
+    NOTE (Phase 09 review burden refinements): the authoritative gate is now the exception-based
+    two-step review burden policy (family eligibility necessary + item impact/risk decisive).
+    High-impact items from any family require mandatory review before promotion (high beats family).
+    This legacy gate still computes a "promotable_review_ready" number for source manifest etc.,
+    but the primary CLI and daily/retrieval now use the burden policy gate which separates
+    advisory_retrieval_allowed (safe low-risk metadata after two-step + guards) from promotion blocking.
+    review_not_performed no longer blankets advisory retrieval; it only affects promotion of high/C items.
     """
     total = int(mart.get("total_distinct_review_items", 0))
     unresolved = int(mart.get("total_unresolved", 0))
@@ -317,6 +320,7 @@ def evaluate_review_promotion_gate(mart: dict[str, Any]) -> dict[str, Any]:
             "review_not_performed_blocks_all": review_not_performed,
             "unresolved": unresolved,
             "high_impact": high_impact,
+            "note": "This is the legacy promotion gate. Primary behavior is now in phase_09_review_burden_policy (two-step, advisory allowed for low-risk after impact check).",
         },
         "review_ready_batches": []
         if promotable == 0
@@ -326,7 +330,12 @@ def evaluate_review_promotion_gate(mart: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_review_load_proof(db_path: str | None = None) -> dict[str, Any]:
-    """Wrap the mart + gate into a read-only proof artifact."""
+    """Wrap the mart + gate into a read-only proof artifact.
+
+    Also attaches the Phase 09 review burden policy proof (two-step, financial separate,
+    advisory allowed for low-risk metadata after impact classification) when loadable.
+    The primary operator and retrieval behavior now uses the burden policy gate.
+    """
     mart = build_review_load_mart(db_path)
     gate = evaluate_review_promotion_gate(mart)
 
@@ -350,7 +359,8 @@ def build_review_load_proof(db_path: str | None = None) -> dict[str, Any]:
         and not raw_findings
         and mart["schema_version"] == LATEST_SCHEMA_VERSION
     )
-    return {
+
+    payload = {
         "proof": "phase_09_review_load",
         "schema_version": mart["schema_version"],
         "schema_version_expected": LATEST_SCHEMA_VERSION,
@@ -360,3 +370,31 @@ def build_review_load_proof(db_path: str | None = None) -> dict[str, Any]:
         "mart": mart,
         "gate": gate,
     }
+
+    # Attach the new exception-based burden policy view (two-step, no blanket for advisory, financial separate).
+    # Always set the promoted keys (defaults if burden proof unavailable on this DB).
+    payload["advisory_retrieval_allowed"] = False
+    payload["blanket_review_block"] = False
+    payload["financial_review_burden"] = None
+    payload["high_impact_summary"] = None
+    payload["operator_visible_count"] = 0
+    payload["suppressed_noise_count"] = 0
+    try:
+        from .review_burden_mart import build_review_burden_proof
+        burden = build_review_burden_proof(db_path)
+        payload["review_burden_policy"] = burden
+        # Promote key new fields to top-level for easy consumption by CLI / daily / retrieval
+        bmart = burden.get("mart", {})
+        bgate = burden.get("gate", {})
+        payload["advisory_retrieval_allowed"] = bgate.get("advisory_retrieval_allowed", False)
+        payload["blanket_review_block"] = bgate.get("blanket_review_block", False)
+        payload["financial_review_burden"] = bmart.get("financial_review_burden")
+        payload["high_impact_summary"] = bmart.get("high_impact_summary")
+        payload["operator_visible_count"] = bmart.get("operator_visible_count", 0)
+        payload["suppressed_noise_count"] = bmart.get("suppressed_noise_count", 0)
+    except Exception:
+        # Non-fatal for legacy paths; full burden proof is available via dedicated surfaces.
+        # Keys have safe defaults above so callers (tests, CLI) can rely on presence.
+        pass
+
+    return payload
