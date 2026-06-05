@@ -1,0 +1,38 @@
+{
+  "command": "second-brain memory quality-review build",
+  "phase": "09",
+  "generated_utc": "2026-06-05T13:07:39.700447+00:00",
+  "repo_sha": "04112c5c1a362700aeb0d4951b9c6fe06574d34f",
+  "status": "clean",
+  "run_id": "mqr_36c234d36847c50d68334fa4bc711aff",
+  "schema_version": 38,
+  "project_key": null,
+  "reviewed_count": 1,
+  "flagged_count": 0,
+  "per_category": {
+    "duplicate": 0,
+    "stale": 0,
+    "conflicting": 0
+  },
+  "review_tier_summary": "none",
+  "advisory_only": true,
+  "makes_determination": false,
+  "merges_or_deletes_or_accepts": false,
+  "routes_flagged_to_review": true,
+  "policy_version": "phase_09_memory_quality_review_v1",
+  "contract_version": "1.4.0-phase-09",
+  "receipt_emitted": false,
+  "read_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "no_determination": true,
+    "no_merge_or_delete_or_accept": true,
+    "route_flagged_to_review": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "preserve_review_tier_confidence_source_refs": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

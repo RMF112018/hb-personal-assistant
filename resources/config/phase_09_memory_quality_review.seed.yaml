@@ -1,0 +1,13 @@
+# Phase 09 Prompt 30 — memory quality review (resolved values; advisory).
+# A read-only, advisory evaluation of proposed long-term memory candidates for duplicate / stale /
+# conflicting status against the accepted memory corpus. Flagged candidates are surfaced for human review
+# — the surface never merges, deletes, or accepts memory, and makes no determination. Persists metadata-
+# only run receipts to the reserved V38 second_brain_memory_quality_review_runs table (read-only by
+# default — the builder persists nothing unless emit_receipt is set). No raw memory statement text is
+# persisted or emitted (only SHA256 statement hashes, counts, and review vocabulary).
+version: phase_09_memory_quality_review_v1
+
+# Only proposed candidates are reviewed (accepted/rejected/superseded are out of scope).
+candidate_status_reviewed: proposed
+# The deterministic conflict reason code stamped by the memory curator (classify_memory_tier).
+conflict_reason_code: T3_CONFLICT_DETECTED

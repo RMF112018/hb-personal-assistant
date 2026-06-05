@@ -1,0 +1,51 @@
+{
+  "contract_name": "phase_09_memory_quality_review_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 30 — memory quality review. A read-only, advisory evaluation of proposed long-term memory candidates (memory_update_candidates, status='proposed') for duplicate / stale / conflicting status against the accepted memory corpus. Duplicate = the candidate's statement (hashed) matches an accepted memory item (or another candidate); stale = it matches a superseded item (restates outdated memory); conflicting = the candidate carries the deterministic conflict reason code (T3_CONFLICT_DETECTED). Flagged candidates are surfaced for human review — the surface NEVER merges, deletes, or accepts memory, and makes no determination. Persists metadata-only run receipts to the reserved V38 second_brain_memory_quality_review_runs table (read-only by default). No raw memory statement text is persisted or emitted — only SHA256 statement hashes, counts, and review vocabulary.",
+  "candidate_status_reviewed": "proposed",
+  "flag_categories": ["duplicate", "stale", "conflicting"],
+  "conflict_reason_code": "T3_CONFLICT_DETECTED",
+  "status_values": ["clean", "flagged", "empty"],
+  "run_column_allowlist": [
+    "run_id",
+    "created_at_utc",
+    "policy_version",
+    "schema_version",
+    "project_key",
+    "reviewed_count",
+    "flagged_count",
+    "review_tier",
+    "status"
+  ],
+  "forbidden_emitted_fields": [
+    "statement",
+    "statement_redacted",
+    "content",
+    "content_excerpt",
+    "text",
+    "text_redacted",
+    "decision_reason_redacted",
+    "raw_prompt",
+    "raw_response",
+    "source_ref",
+    "embedding",
+    "vector",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "advisory_only",
+    "no_determination",
+    "no_merge_or_delete_or_accept",
+    "route_flagged_to_review",
+    "preserve_review_tier",
+    "preserve_confidence_class",
+    "preserve_source_references"
+  ]
+}

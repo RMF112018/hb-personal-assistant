@@ -1,0 +1,80 @@
+{
+  "prompt": "Phase 09 Prompt 30 — Memory Quality Review",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "04112c5",
+  "schema_version": 38,
+  "objective": "Evaluate proposed long-term memory candidates for duplicate/stale/conflicting status against the accepted memory corpus, and flag problem candidates for human review. Advisory only — never merges, deletes, or accepts memory; makes no determination.",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/memory/quality_review.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_memory_quality_review_contract.json"],
+    "new_seeds": ["resources/config/phase_09_memory_quality_review.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_memory_quality_review.py"],
+    "migrator_change": "None — reuses the reserved V38 second_brain_memory_quality_review_runs table. Schema stays 38, contract table count stays 190.",
+    "reuse": "memory/store (read candidates, write_memory_item), memory/curator (propose_memory_candidate), memory/policy (classify_memory_tier -> T3_CONFLICT_DETECTED), the eval_set.py persister pattern."
+  },
+  "design": {
+    "detection": "Statements are SHA256-hashed (never raw). duplicate = statement-hash matches an accepted item (or another candidate); stale = matches a superseded item; conflicting = review_tier_reason_code == T3_CONFLICT_DETECTED (the deterministic curator conflict code).",
+    "read_only": "Reads candidates + accepted/superseded items via mode=ro SQL (zero writes); emit_receipt defaults False (no operator-DB write); the run row is persisted only on emit_receipt (exercised in the proof on a temp DB).",
+    "doctrine": "Advisory — makes_determination=false, merges_or_deletes_or_accepts=false, routes_flagged_to_review=true. Metadata-only: hashed per-candidate flag records, counts, review vocabulary — no raw statement text. Fail-closed on missing policy / stale schema."
+  },
+  "operator_db_outcome": {
+    "memory_quality_review_build_status": "clean",
+    "reviewed_count": 1,
+    "flagged_count": 0,
+    "per_category": {"duplicate": 0, "stale": 0, "conflicting": 0},
+    "read_only": true,
+    "rationale": "The operator DB has 1 proposed memory candidate; it is clean (not duplicate/stale/conflicting). emit_receipt defaulted False -> nothing persisted.",
+    "memory_quality_review_runs_rows": 0,
+    "schema_version": 38,
+    "operator_db_mutated": false
+  },
+  "memory_quality_review_proof": {
+    "command": "second-brain memory quality-review proof --json",
+    "proof_passed": true,
+    "status": "flagged",
+    "flagged_count": 3,
+    "duplicate_detected": true,
+    "stale_detected": true,
+    "conflicting_detected": true,
+    "makes_determination": false,
+    "run_row_guard_clean": true,
+    "read_only_default_no_persist": true,
+    "no_raw_statement_emitted": true
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "Success: no issues found in 298 source files",
+    "pytest_not_live_integration_manual": "3227 passed, 0 failed",
+    "construction_agent_validate": "exit 0 (4/4 checks; schema 38)",
+    "data_quality_table_inventory": "exit 0 (schema 38; contract_table_count=190; in_db_not_in_contract=[] -> 0 unmapped live tables)",
+    "data_quality_no_writeback_proof": "exit 0 (ok=true, proof_passed=true)",
+    "phase_08a_gates": "exit 0 (ok=true)",
+    "phase_08b_gates": "exit 1 — PRE-EXISTING ENVIRONMENTAL FAILURE, NOT caused by this change (see blocker_classifications)",
+    "phase_08c_gates": "SKIPPED (its append-only financial ledger mutates the operator DB ~1,299 rows/call)",
+    "phase_08d_gates": "exit 0 (proof_passed=true, ok=true)",
+    "mcp_no_raw_access": "exit 0 (proof_passed=true)",
+    "mcp_no_writeback": "exit 0 (proof_passed=true)",
+    "memory_quality_review_build": "exit 0 (operator DB: status=clean, 1 candidate reviewed, 0 flagged, read-only, no persist)",
+    "memory_quality_review_proof": "exit 0 (proof_passed=true; 3 flagged: duplicate+stale+conflicting; guard-clean run row; no determination; no raw statement)",
+    "repo_sensitive_scan_and_no_writeback_guard_tests": "pass (in the full suite)"
+  },
+  "guard_columns_result": {
+    "review_run_guard_sum_on_persisted_row": 0,
+    "note": "All 23 CHECK(=0) guard columns remain 0 on the proof-persisted run row; no raw memory statement/decision text/source-ref/token/url persisted or emitted (only SHA256 hashes, counts, and review vocabulary)."
+  },
+  "deferred": [
+    "Memory consolidation (clustering duplicates into merge proposals via the reserved second_brain_memory_consolidation_candidates / _review_items tables) — a later prompt.",
+    "Executing the operator review decision on flagged candidates (the existing memory review surface).",
+    "Wiring long_term_memory_quality_signals (freshness/conflict) into the evaluation."
+  ],
+  "blocker_classifications": {
+    "phase_08b_gates_pre_existing_failure": "phase-08b-gates fails (AssertionError 'assert failed_count >= 1' in automation_executor.build_automation_execution_proof, automation_executor.py:1485). NOT caused by this change (no automation code touched). Reproduces on a pristine checkout of clean HEAD 6c43844 in an isolated git worktree (verified in Prompt 26) -> operator Application-Support automation-state drift; the proof is not fully temp-isolated. The full pytest suite passes (fixtures redirect PathPolicy to a temp root). Documented as pre-existing.",
+    "concurrent_working_tree_status": "A parallel 'phase-07b-calendar-index-apply-robustness' agent has uncommitted work in the tree (calendar/event_indexer.py, store/repositories.py, calendar tests, arch 21/148). This commit stages only the isolated memory-quality-review files; the other agent's work was left untouched. Architecture record uses 150 (148 is collided between my committed phase-09-prompt-28 doc and the concurrent phase-07b doc; 149 is mine)."
+  }
+}

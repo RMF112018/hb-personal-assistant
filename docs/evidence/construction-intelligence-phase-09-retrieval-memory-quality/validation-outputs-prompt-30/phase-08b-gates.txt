@@ -1,0 +1,6 @@
+phase-08b-gates -> exit 1 (PRE-EXISTING ENVIRONMENTAL FAILURE — NOT caused by this change)
+
+AssertionError in automation_executor.build_automation_execution_proof (automation_executor.py:1485).
+Reproduces on a pristine checkout of clean HEAD 6c43844 in an isolated worktree (verified Prompt 26).
+Operator Application-Support automation-state drift; the full pytest suite passes (PathPolicy redirected).
+This prompt (memory quality review) touches no automation code.

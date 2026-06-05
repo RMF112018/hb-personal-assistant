@@ -1,0 +1,34 @@
+{
+  "proof": "phase_09_memory_quality_review",
+  "command": "second-brain memory quality-review proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T13:07:40.396966+00:00",
+  "repo_sha": "04112c5c1a362700aeb0d4951b9c6fe06574d34f",
+  "status": "flagged",
+  "reviewed_count": 4,
+  "flagged_count": 3,
+  "per_category": {
+    "duplicate": 1,
+    "stale": 1,
+    "conflicting": 1
+  },
+  "duplicate_detected": true,
+  "stale_detected": true,
+  "conflicting_detected": true,
+  "makes_determination": false,
+  "run_row_guard_clean": true,
+  "read_only_default_no_persist": true,
+  "no_raw_statement_emitted": true,
+  "metadata_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "no_determination": true,
+    "no_merge_or_delete_or_accept": true,
+    "route_flagged_to_review": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

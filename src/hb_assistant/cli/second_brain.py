@@ -59,6 +59,13 @@ memory_app = typer.Typer(
 )
 app.add_typer(memory_app, name="memory")
 
+memory_quality_review_app = typer.Typer(
+    name="quality-review",
+    help="Phase 09 memory quality review (duplicate/stale/conflicting candidates; advisory, read-only).",
+    no_args_is_help=True,
+)
+memory_app.add_typer(memory_quality_review_app, name="quality-review")
+
 preference_app = typer.Typer(
     name="preference",
     help="Reviewable operator preferences (presentation-only; never override safety).",
@@ -711,6 +718,100 @@ def memory_review(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0)
+
+
+_MEMORY_QUALITY_REVIEW_GUARDRAILS = {
+    "advisory_only": True,
+    "no_determination": True,
+    "no_merge_or_delete_or_accept": True,
+    "route_flagged_to_review": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "preserve_review_tier_confidence_source_refs": True,
+    "read_only_by_default": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
+
+@memory_quality_review_app.command("build")
+def memory_quality_review_build(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Evaluate proposed memory candidates for duplicate/stale/conflicting (read-only, advisory).
+
+    Flags problem candidates for human review — never merges, deletes, or accepts memory, and makes no
+    determination. Emits a metadata-only summary (counts + per-category counts + hashed flag records; no
+    raw statement text); persists nothing to the operator DB. Exit 0 on success; 3 on a fail-closed
+    failure.
+    """
+    from hb_assistant.construction.second_brain.memory.quality_review import (
+        MemoryQualityReviewError,
+        build_memory_quality_review,
+    )
+
+    try:
+        result = build_memory_quality_review(project_key=project)
+    except MemoryQualityReviewError as exc:
+        payload = {
+            "command": "second-brain memory quality-review build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_QUALITY_REVIEW_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _MEMORY_QUALITY_REVIEW_GUARDRAILS}
+    payload.pop("flag_records", None)  # per-candidate hashed records summarized by counts; not echoed
+    human = [
+        "Phase 09 memory quality review (read-only, advisory)",
+        f"  status: {result['status']} | reviewed: {result['reviewed_count']}"
+        f" | flagged: {result['flagged_count']}",
+        f"  by category: {result['per_category']} | review tiers: {result['review_tier_summary']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@memory_quality_review_app.command("proof")
+def memory_quality_review_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the quality-review proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove duplicate/stale/conflicting candidates are detected + flagged, with no determination."""
+    from hb_assistant.construction.second_brain.memory.quality_review import (
+        MemoryQualityReviewError,
+        build_memory_quality_review_proof,
+    )
+
+    try:
+        proof = build_memory_quality_review_proof(write_evidence=evidence)
+    except MemoryQualityReviewError as exc:
+        payload = {
+            "command": "second-brain memory quality-review proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _MEMORY_QUALITY_REVIEW_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _MEMORY_QUALITY_REVIEW_GUARDRAILS}
+    human = [
+        f"Memory quality review proof passed={proof['proof_passed']}"
+        f" (flagged={proof['flagged_count']}, dup={proof['duplicate_detected']},"
+        f" stale={proof['stale_detected']}, conflict={proof['conflicting_detected']},"
+        f" guard_clean={proof['run_row_guard_clean']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 
 
 @preference_app.command("capture")

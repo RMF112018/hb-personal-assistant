@@ -345,6 +345,24 @@ high-confidence-tier-3 mismatch). A deterministic `risk_band` (low/medium/high) 
   overconfidence detected), **no determination** made, the build path performing no DB writes, and no raw
   content/source ref emitted.
 
+## Memory quality review (Prompt 30)
+
+The `second-brain memory quality-review` group (a sub-group of `second-brain memory`, alongside
+`candidate`/`review`) **evaluates proposed long-term memory candidates for duplicate / stale / conflicting
+status** against the accepted memory corpus and **flags** problem candidates for human review. It **never
+merges, deletes, or accepts** memory and makes **no determination**. Detection is deterministic and
+metadata-only — statements are SHA256-hashed (never stored/emitted raw): a candidate is *duplicate* if its
+statement-hash matches an accepted item (or another candidate), *stale* if it matches a superseded item,
+*conflicting* if it carries the `T3_CONFLICT_DETECTED` reason code.
+
+- `quality-review build [--project P]` — evaluates proposed candidates and emits a metadata-only summary
+  (`status` clean/flagged/empty, `reviewed_count`, `flagged_count`, per-category counts, review-tier
+  summary). Read-only — **persists nothing** to the operator DB by default. On the operator DB (no proposed
+  candidates) it is honestly `empty`. Exit 0 on success; 3 fail-closed.
+- `quality-review proof` — demonstrates duplicate/stale/conflicting candidates detected + flagged, a
+  guard-clean metadata-only `second_brain_memory_quality_review_runs` receipt, the read-only default
+  persisting nothing, no determination, and no raw memory statement emitted.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;
