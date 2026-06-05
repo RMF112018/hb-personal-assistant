@@ -189,6 +189,7 @@ PHASE_09_CONTRACT_FILES: dict[str, str] = {
     "no_raw_vector_index_proof_contract": "phase_09_no_raw_vector_index_proof_contract.json",
     "data_quality_gates_contract": "phase_09_data_quality_gates_contract.json",
     "no_writeback_proof_contract": "phase_09_no_writeback_proof_contract.json",
+    "operator_status_contract": "phase_09_operator_status_contract.json",
 }
 
 def load_phase_09_contract(name: str) -> dict[str, Any]:

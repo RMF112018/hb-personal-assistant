@@ -1,0 +1,28 @@
+{
+  "contract_name": "phase_09_operator_status_contract",
+  "schema": "phase_09_operator_status",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 38 — CLI and operator status. A read-only, advisory operator-status aggregator that exposes a repo-consistent view of every Phase-09 CLI surface (retrieval / memory / agent-performance / daily-brief-reproducibility / data-quality), its status/eval/build/proof command shape, and the rolled-up readiness posture. It enumerates the surfaces from a registry (seed) that mirrors the repo's actual CLI command set, reports each surface's contract presence + owning-table population (from the read-only Phase-09 schema-status report), and rolls up the existing read-only schema-status + Phase-09 gates signals. Readiness is never overstated: a surface whose substrate ships empty is reported advisory_ready (not operational). Read-only: persists nothing, no migration. Makes no determination; fail-closed on missing policy or stale schema.",
+  "required_fields": [
+    "surface_count",
+    "surfaces",
+    "schema_ready",
+    "gates_ok",
+    "all_contracts_present",
+    "overall_status",
+    "readiness_overstated"
+  ],
+  "surface_kinds": ["status", "build", "proof", "eval", "gates", "apply", "search", "run"],
+  "overall_status_values": ["advisory_ready", "degraded", "not_ready"],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "read_only",
+    "no_raw",
+    "no_external_writeback",
+    "advisory_only",
+    "no_determination",
+    "no_readiness_overstatement",
+    "repo_consistent_command_inventory"
+  ]
+}

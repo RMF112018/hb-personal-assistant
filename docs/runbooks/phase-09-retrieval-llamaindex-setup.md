@@ -509,6 +509,32 @@ secrets), `mcp_wrappers_no_writeback` (the MCP wrappers expose workflows only), 
 7/7 (50 modules, 0 writeback, 0 dangerous imports, guard sums 0, 409 evidence files, MCP clean);
 writes `phase-09-no-writeback-proof.{json,md}`. Exit 0 on a clean proof; 3 on fail-closed or findings.
 
+## Phase 09 operator status (Prompt 38)
+
+`second-brain data-quality phase-09-operator-status` is the read-only, **advisory** Phase-09 operator
+dashboard — a single repo-consistent view of every Phase-09 CLI surface, its status/build/proof/eval
+command shape, and the rolled-up readiness posture. No migration (schema stays **V39**); read-only —
+persists nothing and re-runs no heavy forensic proofs.
+
+It is driven by a surface registry (`resources/config/phase_09_operator_status.seed.yaml`) that mirrors
+the repo's actual CLI command set. For each surface it reports `name`, `cli_path`, `kinds`
+(status/build/proof/eval/gates/apply/search/run), `contract_present`, and owning-table `row_count`. It
+rolls up the read-only schema-status (`schema_ready` = schema present + all 22 tables + 23 guards —
+**not** requiring all-rows-zero, so populated tables do not fail the status) and the Phase-09 gates
+(`gates_ok`) into an honest `overall_status` (`advisory_ready` when schema_ready ∧ gates_ok ∧
+all_contracts_present, else `degraded`/`not_ready`). **Readiness is never overstated** — an
+empty-substrate surface is `advisory_ready`, never `operational`. On the live operator DB:
+`overall_status=advisory_ready`, 24 surfaces (7 status / 14 build / 22 proof / 1 gates),
+`readiness_overstated=false`; writes `phase-09-operator-status.{json,md}`. Exit 0 when advisory_ready,
+else 3.
+
+### Repo-consistent Phase-09 CLI surface index
+
+Run any surface's command directly, e.g. `second-brain retrieval llamaindex status --json`,
+`second-brain retrieval hybrid proof --json`, `second-brain memory quality-review build --json`,
+`second-brain agent-performance proof --json`, `second-brain data-quality phase-09-gates --json`. The
+operator-status registry is the authoritative inventory of these surfaces and their command kinds.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

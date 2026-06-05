@@ -4040,6 +4040,71 @@ def data_quality_phase_09_no_writeback_proof(
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
 
 
+_PHASE_09_OPERATOR_STATUS_GUARDRAILS = {
+    "local_first": True,
+    "read_only": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "advisory_only": True,
+    "no_determination": True,
+    "no_readiness_overstatement": True,
+    "repo_consistent_command_inventory": True,
+    "fail_closed": True,
+}
+
+
+@data_quality_app.command("phase-09-operator-status")
+def data_quality_phase_09_operator_status(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the phase-09 operator-status to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Expose a repo-consistent Phase 09 operator status across all CLI status/eval/build/proof surfaces.
+
+    Read-only aggregator: enumerates every Phase-09 CLI surface (retrieval / memory / agent-performance
+    / daily-brief-reproducibility / data-quality) with its command shape + per-surface posture
+    (contract present, owning-table population), and rolls up the read-only schema-status + Phase-09
+    gates signals into an honest overall_status. Readiness is never overstated (an empty-substrate
+    surface is advisory_ready, not operational). Persists nothing; advisory only; makes no
+    determination. Exit 0 when advisory_ready; 3 on a fail-closed failure or degraded/not_ready posture.
+    """
+    from hb_assistant.construction.second_brain.phase_09_operator_status import (
+        Phase09OperatorStatusError,
+        build_phase_09_operator_status,
+    )
+
+    try:
+        report = build_phase_09_operator_status(write_evidence=evidence)
+    except Phase09OperatorStatusError as exc:
+        payload = {
+            "command": "second-brain data-quality phase-09-operator-status",
+            "operator_status_ok": False,
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _PHASE_09_OPERATOR_STATUS_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**report, "guardrails": _PHASE_09_OPERATOR_STATUS_GUARDRAILS}
+    human = [
+        "Phase 09 CLI and operator status (read-only, advisory)",
+        f"  overall: {report['overall_status']} | operator_status_ok: {report['operator_status_ok']}"
+        f" | surfaces: {report['surface_count']}",
+        f"  schema_ready: {report['schema_ready']} | gates_ok: {report['gates_ok']}"
+        f" | all_contracts_present: {report['all_contracts_present']}"
+        f" | readiness_overstated: {report['readiness_overstated']}",
+    ]
+    _emit_08c(
+        payload, json_out=json_out, human=human, exit_code=0 if report["operator_status_ok"] else 3
+    )
+
+
 _LLAMAINDEX_GUARDRAILS = {
     "read_only": True,
     "no_raw": True,
