@@ -54,3 +54,25 @@ tables unchanged). `phase-08c-gates` skipped (mutating ledger).
 Read-only; reviewed-only (accepted) gate; metadata-only report/evidence; each node passes the embedding
 guardrail (no raw / embeddable family); no embeddings or index built; no external writeback; review
 tier / confidence / source refs / freshness preserved. No stop condition triggered.
+
+## Accepted memory seed population proof (system/config facts only)
+
+A minimal deterministic proof path (`build_accepted_memory_seed_proof`) was added to exercise the
+population side of Prompt 17 in a controlled way: it seeds **exactly one** low-risk accepted
+`long_term_memory_items` row derived from system/configuration facts (memory_type="system_fact",
+explicit `review_status='accepted'`, source ref `{"source_family": "system_config_facts", "source_ref": "..."}`,
+statement is a redacted V39 schema/guard fact only). Three parallel fixtures for the unreviewed
+statuses (`pending_review`, `rejected`, `superseded`) are also created in separate temp DBs.
+
+The proof then invokes `load_reviewed_memory_nodes` (the reviewed-only gate) on each and asserts:
+- accepted DB yields count==1 with `review_status=accepted` and loader `source_family=accepted_long_term_memory`
+- each of the three unreviewed DBs yields count==0 (unreviewed never loaded)
+
+All writes are to temp proof DBs only (never the operator DB). No raw content, PII, secrets, URLs,
+or external payloads are used. The seed uses explicit `review_status='accepted'` (no reliance on
+defaults or auto-promotion paths). Evidence artifacts `accepted-memory-seed-proof.json` and
+`.md` are emitted under the Phase 09 evidence dir when `write_evidence=True` (called explicitly
+in verification; pre-existing loader proof is left unchanged).
+
+This closes the "create or use exactly one low-risk accepted memory" requirement for the phase while
+preserving the strict "do not auto-promote unreviewed memory" invariant.

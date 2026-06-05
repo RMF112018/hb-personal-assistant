@@ -1,0 +1,31 @@
+{
+  "proof": "phase_09_accepted_memory_seed",
+  "command": "phase-09-accepted-memory-seed-population-proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T14:25:03.566475+00:00",
+  "repo_sha": "9009e9ef602f0c1f0b3e5841441e5141b37ad83c",
+  "seeded_memory_id": "sys-mem-v39-001",
+  "source_family": "system_config_facts",
+  "review_status": "accepted",
+  "accepted_loaded_count": 1,
+  "pending_excluded_count": 0,
+  "rejected_excluded_count": 0,
+  "superseded_excluded_count": 0,
+  "unreviewed_exclusion": {
+    "pending": 0,
+    "rejected": 0,
+    "superseded": 0
+  },
+  "metadata_only": true,
+  "no_prod_db_write": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "reviewed_only_accepted": true,
+    "system_config_facts_only": true,
+    "explicit_review_status": true,
+    "local_first": true
+  }
+}

@@ -341,3 +341,157 @@ def build_reviewed_memory_loader_proof(
         proof["proof_md_path"] = str(out_dir / _PROOF_MD)
 
     return proof
+
+
+# --- Phase 09 accepted memory seed population proof (Prompt 17) ---
+# Deterministic, minimal, safe: seeds exactly one low-risk accepted long-term memory
+# derived from system/configuration facts only (explicit review_status='accepted',
+# safe source ref). Proves loader loads it and excludes all unreviewed statuses.
+# Temp DBs only; never touches operator DB; no raw/PII/secrets/URLs/external payloads.
+# No auto-promotion; status is passed explicitly.
+
+
+def _seed_accepted_system_config_memory(tmp: str) -> str:
+    """Build a temp DB with exactly one accepted system/config-fact memory item (low-risk, explicit 'accepted', safe source ref only). Return the db path. Never writes to prod DB."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    from ..memory.models import MemoryItem
+    from ..memory.store import write_memory_item
+
+    db = str(Path(tmp) / "accepted_system_config.db")
+    SQLiteMigrator(db_path=db).apply()
+    write_memory_item(
+        MemoryItem(
+            memory_id="sys-mem-v39-001",
+            memory_type="system_fact",
+            statement_redacted="[Phase 09 retrieval schema V39; 23 guard columns (no-raw/no-writeback/no-determination) enforced on additive tables; local-first metadata only]",
+            confidence_class="high",
+            review_status="accepted",
+            source_refs=[{"source_family": "system_config_facts", "source_ref": "phase_09_v39_schema_guards"}],
+        ),
+        db_path=db,
+    )
+    return db
+
+
+def _seed_unreviewed_memory(tmp: str, status: str) -> str:
+    """Build a temp DB with one memory item carrying an unreviewed status (pending_review|rejected|superseded). Return the db path. Used only to prove exclusion."""
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    from ..memory.models import MemoryItem
+    from ..memory.store import write_memory_item
+
+    db = str(Path(tmp) / f"unreviewed_{status}.db")
+    SQLiteMigrator(db_path=db).apply()
+    write_memory_item(
+        MemoryItem(
+            memory_id=f"sys-mem-unrev-{status[:3]}",
+            memory_type="system_fact",
+            statement_redacted="[Phase 09 retrieval schema V39; 23 guard columns (no-raw/no-writeback/no-determination) enforced on additive tables; local-first metadata only]",
+            confidence_class="high",
+            review_status=status,
+            source_refs=[{"source_family": "system_config_facts", "source_ref": "phase_09_v39_schema_guards"}],
+        ),
+        db_path=db,
+    )
+    return db
+
+
+def _render_accepted_seed_md(proof: dict[str, Any]) -> str:
+    lines = [
+        "# Phase 09 — Accepted Memory Seed Population Proof (Prompt 17)",
+        "",
+        f"- proof_passed: {proof['proof_passed']}",
+        f"- generated_utc: {proof['generated_utc']}",
+        f"- seeded_memory_id: {proof.get('seeded_memory_id')}",
+        f"- source_family: {proof.get('source_family')}",
+        f"- review_status: {proof.get('review_status')}",
+        "",
+        f"- accepted_loaded_count: {proof['accepted_loaded_count']} (must be 1)",
+        f"- pending_excluded_count: {proof['pending_excluded_count']} (must be 0)",
+        f"- rejected_excluded_count: {proof['rejected_excluded_count']} (must be 0)",
+        f"- superseded_excluded_count: {proof['superseded_excluded_count']} (must be 0)",
+        "",
+        "Unreviewed statuses (pending_review, rejected, superseded) are excluded by the strict `WHERE review_status='accepted'` gate in load_reviewed_memory_nodes.",
+        "Seeded item uses system/configuration facts only (no project data, no PII, no raw content, no external refs).",
+        "All writes are to temporary proof DBs only; the operator/production DB is never modified.",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def build_accepted_memory_seed_proof(
+    *, evidence_dir: str | None = None, write_evidence: bool = True
+) -> dict[str, Any]:
+    """Fail-closed proof for minimal safe accepted-memory population from system/config facts only.
+
+    Creates exactly one accepted memory item (explicit review_status='accepted', source_family='system_config_facts',
+    safe ref only, V39 schema fact) in a temp DB, plus three unreviewed fixtures. Asserts the reviewed-memory
+    loader returns the accepted item (count==1) and returns zero nodes for pending/rejected/superseded.
+    No auto-promotion, no prod DB mutation, no raw content. Writes evidence only when write_evidence=True.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        acc_db = _seed_accepted_system_config_memory(tmp)
+        pend_db = _seed_unreviewed_memory(tmp, "pending_review")
+        rej_db = _seed_unreviewed_memory(tmp, "rejected")
+        sup_db = _seed_unreviewed_memory(tmp, "superseded")
+        acc_nodes = load_reviewed_memory_nodes(acc_db)
+        pend_nodes = load_reviewed_memory_nodes(pend_db)
+        rej_nodes = load_reviewed_memory_nodes(rej_db)
+        sup_nodes = load_reviewed_memory_nodes(sup_db)
+
+    acc_count = len(acc_nodes)
+    pend_count = len(pend_nodes)
+    rej_count = len(rej_nodes)
+    sup_count = len(sup_nodes)
+    seeded_id = "sys-mem-v39-001" if acc_count == 1 else None
+    proof_passed = (
+        acc_count == 1
+        and pend_count == 0
+        and rej_count == 0
+        and sup_count == 0
+        and bool(acc_nodes and acc_nodes[0].get("review_status") == "accepted")
+        and bool(acc_nodes and acc_nodes[0].get("source_family") == "accepted_long_term_memory")
+    )
+
+    proof: dict[str, Any] = {
+        "proof": "phase_09_accepted_memory_seed",
+        "command": "phase-09-accepted-memory-seed-population-proof",
+        "phase": "09",
+        "proof_passed": proof_passed,
+        "generated_utc": _now(),
+        "repo_sha": _repo_sha(),
+        "seeded_memory_id": seeded_id,
+        "source_family": "system_config_facts",
+        "review_status": "accepted",
+        "accepted_loaded_count": acc_count,
+        "pending_excluded_count": pend_count,
+        "rejected_excluded_count": rej_count,
+        "superseded_excluded_count": sup_count,
+        "unreviewed_exclusion": {"pending": pend_count, "rejected": rej_count, "superseded": sup_count},
+        "metadata_only": True,
+        "no_prod_db_write": True,
+        "guardrails": {
+            "read_only": True,
+            "no_raw": True,
+            "no_writeback": True,
+            "reviewed_only_accepted": True,
+            "system_config_facts_only": True,
+            "explicit_review_status": True,
+            "local_first": True,
+        },
+    }
+
+    if write_evidence:
+        out_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        serialized = json.dumps(proof, indent=2, default=str)
+        _assert_no_raw(serialized, "accepted-memory-seed-proof json")
+        (out_dir / "accepted-memory-seed-proof.json").write_text(serialized + "\n", encoding="utf-8")
+        markdown = _render_accepted_seed_md(proof)
+        _assert_no_raw(markdown, "accepted-memory-seed-proof markdown")
+        (out_dir / "accepted-memory-seed-proof.md").write_text(markdown, encoding="utf-8")
+        proof["proof_path"] = str(out_dir / "accepted-memory-seed-proof.json")
+        proof["proof_md_path"] = str(out_dir / "accepted-memory-seed-proof.md")
+
+    return proof
