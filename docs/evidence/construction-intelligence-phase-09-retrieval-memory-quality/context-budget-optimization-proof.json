@@ -1,0 +1,35 @@
+{
+  "proof": "phase_09_context_budget_optimization",
+  "command": "second-brain retrieval context-budget proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T11:18:47.463938+00:00",
+  "repo_sha": "dc0b74e372669cd02939d6b99ce845e820798f8a",
+  "baseline_kept": 13,
+  "optimized_kept": 14,
+  "items_recovered": 1,
+  "within_budget": true,
+  "metadata_preserved": true,
+  "every_drop_has_warning": true,
+  "priority_preserved": true,
+  "authoritative_packer_unchanged": true,
+  "assembles_final_answer": false,
+  "build_path_no_db_writes": true,
+  "no_raw_emitted": true,
+  "dropped_families": [
+    "accepted_long_term_memory"
+  ],
+  "metadata_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "deterministic_packing": true,
+    "never_exceed_budget": true,
+    "no_silent_drops": true,
+    "authoritative_packer_unchanged": true,
+    "no_final_answer": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

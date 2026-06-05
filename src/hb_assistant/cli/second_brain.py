@@ -192,6 +192,13 @@ retrieval_project_benchmark_app = typer.Typer(
 )
 retrieval_app.add_typer(retrieval_project_benchmark_app, name="project-benchmark")
 
+retrieval_context_budget_app = typer.Typer(
+    name="context-budget",
+    help="Phase 09 context budget optimization (advisory best-effort packing vs baseline; read-only).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(retrieval_context_budget_app, name="context-budget")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3269,6 +3276,21 @@ _RETRIEVAL_PROJECT_BENCHMARK_GUARDRAILS = {
     "fail_closed": True,
 }
 
+_RETRIEVAL_CONTEXT_BUDGET_GUARDRAILS = {
+    "advisory_only": True,
+    "no_final_answer": True,
+    "deterministic_packing": True,
+    "never_exceed_budget": True,
+    "no_silent_drops": True,
+    "authoritative_packer_unchanged": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "preserve_review_tier_confidence_source_refs_freshness_coverage_warnings": True,
+    "read_only": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
 
 @llamaindex_app.command("build")
 def retrieval_llamaindex_build(
@@ -4227,6 +4249,87 @@ def retrieval_project_benchmark_proof(
         f"Project retrieval benchmark proof passed={proof['proof_passed']}"
         f" (projects={proof['projects_count']}, persisted={proof['per_project_benchmarks_persisted']},"
         f" coverage={proof['per_project_coverage_present']}, guard_clean={proof['rows_persisted_guard_clean']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+@retrieval_context_budget_app.command("build")
+def retrieval_context_budget_build(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Compare the baseline context packer vs the best-effort optimizer (read-only, advisory).
+
+    Gathers the deterministic pre-budget retrieval corpus and reports a metadata-only baseline-vs-optimized
+    comparison (kept counts, char utilization %, items recovered, preserved tier distribution, coverage +
+    budget-drop warnings). The authoritative apply_context_budget is unchanged; persists nothing.
+    Exit 0 on success; 3 on a fail-closed failure.
+    """
+    from hb_assistant.construction.second_brain.retrieval.context_budget import (
+        ContextBudgetOptimizationError,
+        build_context_budget_optimization,
+    )
+
+    try:
+        result = build_context_budget_optimization(project_key=project)
+    except ContextBudgetOptimizationError as exc:
+        payload = {
+            "command": "second-brain retrieval context-budget build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _RETRIEVAL_CONTEXT_BUDGET_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _RETRIEVAL_CONTEXT_BUDGET_GUARDRAILS}
+    human = [
+        "Phase 09 context budget optimization (read-only, advisory)",
+        f"  status: {result['status']} | candidate items: {result['candidate_item_count']}",
+        f"  baseline kept: {result['baseline']['kept_count']}"
+        f" ({result['baseline']['char_utilization_pct']}%) | optimized kept:"
+        f" {result['optimized']['kept_count']} ({result['optimized']['char_utilization_pct']}%)",
+        f"  items recovered: {result['items_recovered']} | within_budget: {result['within_budget']}"
+        f" | metadata_preserved: {result['metadata_preserved']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@retrieval_context_budget_app.command("proof")
+def retrieval_context_budget_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the optimization proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove the optimizer recovers budget, preserves metadata + warnings, and never exceeds the budget."""
+    from hb_assistant.construction.second_brain.retrieval.context_budget import (
+        ContextBudgetOptimizationError,
+        build_context_budget_optimization_proof,
+    )
+
+    try:
+        proof = build_context_budget_optimization_proof(write_evidence=evidence)
+    except ContextBudgetOptimizationError as exc:
+        payload = {
+            "command": "second-brain retrieval context-budget proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _RETRIEVAL_CONTEXT_BUDGET_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _RETRIEVAL_CONTEXT_BUDGET_GUARDRAILS}
+    human = [
+        f"Context budget optimization proof passed={proof['proof_passed']}"
+        f" (recovered={proof['items_recovered']}, within_budget={proof['within_budget']},"
+        f" metadata_preserved={proof['metadata_preserved']}, every_drop_warned={proof['every_drop_has_warning']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 

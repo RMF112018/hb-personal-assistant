@@ -289,6 +289,26 @@ an answer / Research Packet / Evaluation path.
   + advisory, the read-only default persisting nothing, unsafe/excluded families excluded from coverage,
   and no raw query/probe/content/source ref emitted; persists nothing to the operator DB.
 
+## Context budget optimization (Prompt 27)
+
+The `second-brain retrieval context-budget` group is an **advisory best-effort context packer** that
+recovers budget wasted by the baseline `apply_context_budget` (which **breaks at the first overflowing
+item** — so a single large item near the front can block smaller items behind it within the 24000-char
+budget). The optimizer uses the same deterministic priority order and budget bounds but **skips an
+oversized item and continues** packing the rest, preserving every kept item's review tier / confidence /
+source ref / freshness and **surfacing each budget drop as a coverage warning** (no silent loss). The
+authoritative `apply_context_budget` is **not modified** (broker adoption is deferred); this surface only
+measures and proves the recovery is metadata-safe.
+
+- `context-budget build [--project P]` — gathers the deterministic pre-budget retrieval corpus and emits
+  a metadata-only **baseline-vs-optimized** comparison (kept counts, char-utilization %, items recovered,
+  preserved tier distribution, coverage + budget-drop warnings, `within_budget`, `metadata_preserved`).
+  Read-only — **performs no DB writes**. Exit 0 on success; 3 fail-closed.
+- `context-budget proof` — demonstrates the optimizer recovers ≥1 item over the baseline on a crafted
+  set, never exceeds the budget, preserves all metadata, surfaces every budget drop as a coverage warning,
+  preserves priority, leaves the authoritative packer unchanged, assembles no answer, and emits no raw;
+  the build path performs no DB writes.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

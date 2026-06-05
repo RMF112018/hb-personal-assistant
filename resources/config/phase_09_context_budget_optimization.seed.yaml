@@ -1,0 +1,13 @@
+# Phase 09 Prompt 27 — context budget optimization (resolved values; advisory).
+# An additive best-effort context packer that recovers budget wasted by the baseline apply_context_budget
+# (which breaks at the first overflowing item). Same deterministic priority order and budget bounds, but
+# it skips an oversized item and continues packing the rest — preserving every kept item's review tier /
+# confidence / source ref / freshness, and surfacing each budget drop as a coverage warning (no silent
+# loss). Read-only and advisory: it never modifies the authoritative packer, never exceeds the budget,
+# assembles no final answer, and persists nothing.
+version: phase_09_context_budget_optimization_v1
+
+# Strategy is best-effort fill within the baseline priority order (skip-oversized-and-continue).
+strategy: best_effort_fill
+# Surface a sacrificed item per family and per tier so coverage/warning metadata is never lost.
+emit_budget_drop_warnings: true

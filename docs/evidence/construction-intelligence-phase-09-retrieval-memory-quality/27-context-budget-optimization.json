@@ -1,0 +1,79 @@
+{
+  "prompt": "Phase 09 Prompt 27 — Context Budget Optimization",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "4c2645d",
+  "schema_version": 38,
+  "objective": "Optimize context packing while preserving source and warning metadata — an additive, advisory best-effort packer that recovers budget wasted by the baseline apply_context_budget (which breaks at the first overflowing item).",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/retrieval/context_budget.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_context_budget_optimization_contract.json"],
+    "new_seeds": ["resources/config/phase_09_context_budget_optimization.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_context_budget_optimization.py"],
+    "migrator_change": "None — read-only advisory report with NO DB writes at all. Schema stays 38, contract table count stays 190.",
+    "authoritative_packer": "apply_context_budget (retrieval/policy.py) is NOT modified (consumed by broker.py 2x, hybrid_broker.py, asserted in test_retrieval_policy.py). The optimizer is additive; broker adoption is deferred."
+  },
+  "design": {
+    "problem": "apply_context_budget fills in priority order (tier -> recency -> confidence -> source_ref) but breaks at the first item that would overflow; with per-item excerpts capped at max_item_chars=1800 inside a max_context_chars=24000 budget, the cumulative sum can stop with hundreds of chars free while a small lower-priority item that would fit is silently dropped.",
+    "optimize_context_packing": "Same ordering + same max_item_chars truncation, but best-effort fill: skip an oversized item and continue. Never exceeds max_context_chars; every kept item retains full metadata; every drop surfaced as budget_dropped:<family> + budget_dropped_tier{N}:<family> coverage warnings (no silent loss).",
+    "build_path": "Mirrors the broker's pre-budget gather (allowlist; excluded/unknown/no-reader denied with coverage warnings), then reports a metadata-only baseline-vs-optimized comparison. read_only=True, assembles_final_answer=False, persists nothing (no DB writes).",
+    "doctrine": "Advisory leaf — assembles_final_answer=false; never exceeds the budget; never drops without a coverage warning; preserves review tier / confidence / source refs / freshness / coverage warnings; the authoritative packer is unchanged."
+  },
+  "operator_db_outcome": {
+    "context_budget_build_status": "built",
+    "candidate_item_count": 2045,
+    "baseline_kept_count": 408,
+    "optimized_kept_count": 412,
+    "items_recovered": 4,
+    "within_budget": true,
+    "metadata_preserved": true,
+    "read_only": true,
+    "rationale": "On the real operator corpus the optimizer recovered 4 source-linked items the baseline break-at-overflow dropped, without exceeding the budget and preserving all metadata. The build performs no DB writes.",
+    "operator_db_mutated": false,
+    "schema_version": 38
+  },
+  "optimization_proof": {
+    "command": "second-brain retrieval context-budget proof --json",
+    "proof_passed": true,
+    "items_recovered": 1,
+    "within_budget": true,
+    "metadata_preserved": true,
+    "every_drop_has_warning": true,
+    "priority_preserved": true,
+    "authoritative_packer_unchanged": true,
+    "build_path_no_db_writes": true,
+    "no_raw_emitted": true,
+    "assembles_final_answer": false
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "Success: no issues found in 295 source files",
+    "pytest_not_live_integration_manual": "3202 passed, 0 failed",
+    "construction_agent_validate": "exit 0 (4/4 checks; schema 38)",
+    "data_quality_table_inventory": "exit 0 (schema 38; contract_table_count=190; in_db_not_in_contract=[] -> 0 unmapped live tables)",
+    "data_quality_no_writeback_proof": "exit 0 (ok=true, proof_passed=true)",
+    "phase_08a_gates": "exit 0 (ok=true)",
+    "phase_08b_gates": "exit 1 — PRE-EXISTING ENVIRONMENTAL FAILURE, NOT caused by this change (see blocker_classifications)",
+    "phase_08c_gates": "SKIPPED (its append-only financial ledger mutates the operator DB ~1,299 rows/call)",
+    "phase_08d_gates": "exit 0 (proof_passed=true, ok=true)",
+    "mcp_no_raw_access": "exit 0 (proof_passed=true)",
+    "mcp_no_writeback": "exit 0 (proof_passed=true)",
+    "retrieval_context_budget_build": "exit 0 (operator DB: status=built, 2045 candidates, 408->412 kept (+4 recovered), within budget, read-only, no DB writes)",
+    "retrieval_context_budget_proof": "exit 0 (proof_passed=true)",
+    "repo_sensitive_scan_and_no_writeback_guard_tests": "pass (in the full suite)"
+  },
+  "deferred": [
+    "Adopting optimize_context_packing into the authoritative broker / hybrid context budget (would change apply_context_budget consumers + their tests) — deferred.",
+    "Executing/scoring the eval set against the index (eval_runs).",
+    "Wiring semantic context into the default synthesize_answer (A04)."
+  ],
+  "blocker_classifications": {
+    "phase_08b_gates_pre_existing_failure": "phase-08b-gates fails (AssertionError 'assert failed_count >= 1' in automation_executor.build_automation_execution_proof, automation_executor.py:1485). NOT caused by this change (no automation code touched). Reproduced on a pristine checkout of clean HEAD 6c43844 in an isolated git worktree (verified in Prompt 26) -> operator Application-Support automation-state drift; the proof is not fully temp-isolated. The full pytest suite passes (fixtures redirect PathPolicy to a temp root). Documented as pre-existing.",
+    "concurrent_working_tree_changes": "A parallel agent's uncommitted 'Daily Brief Approved Source Population' changes remain in the working tree (daily_brief/output.py, research/store.py, daily-brief tests, docs/architecture/68, 145-...-daily-brief-...). This commit stages ONLY the isolated context-budget files; the other agent's changes were left untouched (not staged, not restored). Architecture record uses 147 (145=daily-brief, 146=project-benchmark)."
+  }
+}

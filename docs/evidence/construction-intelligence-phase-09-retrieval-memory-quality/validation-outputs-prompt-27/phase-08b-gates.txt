@@ -1,0 +1,7 @@
+phase-08b-gates -> exit 1 (PRE-EXISTING ENVIRONMENTAL FAILURE — NOT caused by this change)
+
+AssertionError in automation_executor.build_automation_execution_proof() (automation_executor.py:1485:
+assert failed_count >= 1). Reproduced on a pristine checkout of clean HEAD 6c43844 in an isolated git
+worktree (verified in Prompt 26). Operator Application-Support automation-state drift; the proof is not
+fully temp-isolated. The full pytest suite passes (fixtures redirect PathPolicy to a temp root). This
+prompt (context budget optimization) touches no automation code.

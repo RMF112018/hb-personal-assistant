@@ -1,0 +1,47 @@
+{
+  "contract_name": "phase_09_context_budget_optimization_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 27 — context budget optimization. An additive, advisory best-effort context packer that recovers budget wasted by the baseline apply_context_budget (which breaks at the first overflowing item). It uses the same deterministic priority order (review tier -> recency -> confidence -> source_ref) and the same per-item / total budget bounds, but skips an oversized item and continues packing the rest. It preserves every kept item's review tier, confidence class, source reference, and freshness, and adds budget-drop coverage warnings so a sacrificed item is surfaced, never silently lost. Read-only and advisory: it never modifies the authoritative apply_context_budget, never exceeds the budget, assembles no final answer, and persists nothing (no DB writes).",
+  "honored_budget_fields": [
+    "max_context_chars",
+    "max_item_chars",
+    "tier_priority",
+    "deterministic_truncation"
+  ],
+  "degradation_modes": ["none", "narrow_claims", "blocked"],
+  "drop_warning_prefixes": ["budget_dropped", "budget_dropped_tier"],
+  "forbidden_emitted_fields": [
+    "content",
+    "content_excerpt",
+    "content_excerpt_redacted",
+    "excerpt",
+    "text",
+    "text_redacted",
+    "source_ref",
+    "raw_query",
+    "query",
+    "answer",
+    "embedding",
+    "vector",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "advisory_only",
+    "no_final_answer",
+    "deterministic_packing",
+    "never_exceed_budget",
+    "no_silent_drops",
+    "preserve_review_tier",
+    "preserve_confidence_class",
+    "preserve_source_references",
+    "preserve_freshness",
+    "preserve_source_coverage_warnings"
+  ]
+}
