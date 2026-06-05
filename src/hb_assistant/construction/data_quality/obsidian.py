@@ -75,7 +75,9 @@ def _now() -> str:
 def _get_git_sha() -> str:
     try:
         out = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parents[4], stderr=subprocess.DEVNULL
+            ["git", "rev-parse", "HEAD"],
+            cwd=Path(__file__).resolve().parents[4],
+            stderr=subprocess.DEVNULL,
         )
         return out.decode("utf-8").strip()
     except Exception:
@@ -109,7 +111,9 @@ def _replace_bounded(existing: str, inner: str, start: str, end: str) -> str:
 def _atomic_write_text(target: Path, content: str) -> int:
     """Atomic write (temp + os.replace) preserving permissions where possible."""
     target.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(dir=str(target.parent), prefix=f".{target.name}.", suffix=".tmp")
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(target.parent), prefix=f".{target.name}.", suffix=".tmp"
+    )
     tmp_path = Path(tmp_name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -280,21 +284,29 @@ class ObsidianDataQualityRenderer:
     def _render_project_summary(self, data: dict[str, Any]) -> str:
         fm = self._build_frontmatter()
         lines = [fm, "# Project Data Quality Summary (Phase 07A)\n"]
-        lines.append(f"Generated: {self.generated_utc} | Repo: {self.repo_sha[:8]} | Schema: V{self.schema_version}\n")
+        lines.append(
+            f"Generated: {self.generated_utc} | Repo: {self.repo_sha[:8]} | Schema: V{self.schema_version}\n"
+        )
         lines.append("\n## Source Coverage by Project\n")
         if not data.get("projects"):
-            lines.append("_No project coverage data present in local marts (V21). Run data-quality marts first._\n")
+            lines.append(
+                "_No project coverage data present in local marts (V21). Run data-quality marts first._\n"
+            )
         else:
             for pk, p in sorted(data["projects"].items()):
                 lines.append(f"### {pk}\n")
                 cov = p.get("coverage") or []
                 if cov:
-                    lines.append("| Source Domain | Records | Mapped | Unmapped | Relationships | Orphans |\n")
-                    lines.append("|---------------|---------|--------|----------|---------------|---------|\n")
+                    lines.append(
+                        "| Source Domain | Records | Mapped | Unmapped | Relationships | Orphans |\n"
+                    )
+                    lines.append(
+                        "|---------------|---------|--------|----------|---------------|---------|\n"
+                    )
                     for c in cov:
                         lines.append(
-                            f"| {c.get('source_domain','?')} | {c.get('record_count',0)} | {c.get('mapped_count',0)} | "
-                            f"{c.get('unmapped_count',0)} | {c.get('relationship_count',0)} | {c.get('orphan_count',0)} |\n"
+                            f"| {c.get('source_domain', '?')} | {c.get('record_count', 0)} | {c.get('mapped_count', 0)} | "
+                            f"{c.get('unmapped_count', 0)} | {c.get('relationship_count', 0)} | {c.get('orphan_count', 0)} |\n"
                         )
                 rd = p.get("readiness")
                 if rd:
@@ -307,20 +319,34 @@ class ObsidianDataQualityRenderer:
                         lines.append(f"Blockers: {rd['blocking_reasons_json']}\n")
                 src = p.get("source_records") or {}
                 if src:
-                    lines.append("Source record summary: " + ", ".join(f"{k}:{v.get('record_count',0)}" for k, v in src.items()) + "\n")
+                    lines.append(
+                        "Source record summary: "
+                        + ", ".join(f"{k}:{v.get('record_count', 0)}" for k, v in src.items())
+                        + "\n"
+                    )
                 lines.append("\n")
-        lines.append("\n> Guardrail: This summary contains only aggregate counts and redacted metadata. No raw content.\n")
+        lines.append(
+            "\n> Guardrail: This summary contains only aggregate counts and redacted metadata. No raw content.\n"
+        )
         return "".join(lines)
 
     def _render_source_record_register(self, rows: list[dict[str, Any]]) -> str:
         fm = self._build_frontmatter()
         lines = [fm, "# Source Record Map Register (Phase 07A)\n"]
-        lines.append(f"Generated: {self.generated_utc} | Total mapped rows shown (capped): {len(rows)}\n\n")
+        lines.append(
+            f"Generated: {self.generated_utc} | Total mapped rows shown (capped): {len(rows)}\n\n"
+        )
         if not rows:
-            lines.append("_No rows in source_system_record_map. Run data-quality source-record-map --apply to populate._\n")
+            lines.append(
+                "_No rows in source_system_record_map. Run data-quality source-record-map --apply to populate._\n"
+            )
         else:
-            lines.append("| Canonical ID (truncated) | Project | Source | Table | Title (redacted) | Confidence | Review Required |\n")
-            lines.append("|--------------------------|---------|--------|-------|------------------|------------|-----------------|\n")
+            lines.append(
+                "| Canonical ID (truncated) | Project | Source | Table | Title (redacted) | Confidence | Review Required |\n"
+            )
+            lines.append(
+                "|--------------------------|---------|--------|-------|------------------|------------|-----------------|\n"
+            )
             for r in rows:
                 cid = (r.get("canonical_record_id") or "")[:32] + "..."
                 title = (r.get("title_redacted") or "")[:60].replace("|", "-")
@@ -329,22 +355,30 @@ class ObsidianDataQualityRenderer:
                     f"{title} | {r.get('confidence_class')} | {bool(r.get('review_required'))} |\n"
                 )
         lines.append(f"\n{_SENSITIVE_REVIEW_NOTE}\n")
-        lines.append("\n> Guardrail: Only title_redacted and canonical IDs (no bodies, no URLs, no secrets).\n")
+        lines.append(
+            "\n> Guardrail: Only title_redacted and canonical IDs (no bodies, no URLs, no secrets).\n"
+        )
         return "".join(lines)
 
-    def _render_relationship_diagnostics(self, rows: list[dict[str, Any]], quality: dict[str, Any]) -> str:
+    def _render_relationship_diagnostics(
+        self, rows: list[dict[str, Any]], quality: dict[str, Any]
+    ) -> str:
         fm = self._build_frontmatter()
         lines = [fm, "# Relationship Diagnostics Register (Phase 07A)\n"]
         lines.append(f"Generated: {self.generated_utc}\n\n")
         lines.append("## Quality Summary (from relationship_quality_mart)\n")
         qrows = quality.get("rows") or []
         if qrows:
-            lines.append("| Type | Confidence | Status | Total | Review Req | Orphans | Quality |\n")
-            lines.append("|------|------------|--------|-------|------------|---------|---------|\n")
+            lines.append(
+                "| Type | Confidence | Status | Total | Review Req | Orphans | Quality |\n"
+            )
+            lines.append(
+                "|------|------------|--------|-------|------------|---------|---------|\n"
+            )
             for q in qrows:
                 lines.append(
                     f"| {q.get('relationship_type')} | {q.get('confidence_class')} | {q.get('relationship_status')} | "
-                    f"{q.get('total_count',0)} | {q.get('review_required_count',0)} | {q.get('orphan_count',0)} | {q.get('quality_status')} |\n"
+                    f"{q.get('total_count', 0)} | {q.get('review_required_count', 0)} | {q.get('orphan_count', 0)} | {q.get('quality_status')} |\n"
                 )
         else:
             lines.append("_No relationship quality mart rows (run data-quality marts)._\n")
@@ -352,8 +386,12 @@ class ObsidianDataQualityRenderer:
         if not rows:
             lines.append("_No queued candidates._\n")
         else:
-            lines.append("| Rel ID | Type | Status | Confidence | Review Req | Promotion | Evidence (redacted) |\n")
-            lines.append("|--------|------|--------|------------|------------|-----------|---------------------|\n")
+            lines.append(
+                "| Rel ID | Type | Status | Confidence | Review Req | Promotion | Evidence (redacted) |\n"
+            )
+            lines.append(
+                "|--------|------|--------|------------|------------|-----------|---------------------|\n"
+            )
             for r in rows[:100]:  # bound output size
                 evid = (r.get("evidence_redacted") or "")[:80].replace("|", "-")
                 lines.append(
@@ -361,21 +399,29 @@ class ObsidianDataQualityRenderer:
                     f"{r.get('confidence_class')} | {bool(r.get('review_required'))} | {r.get('promotion_status') or ''} | {evid} |\n"
                 )
         lines.append(f"\n{_SENSITIVE_REVIEW_NOTE}\n")
-        lines.append("\n> Guardrail: Zero raw content. Candidates with review_required=true are never auto-promoted.\n")
+        lines.append(
+            "\n> Guardrail: Zero raw content. Candidates with review_required=true are never auto-promoted.\n"
+        )
         return "".join(lines)
 
     def _render_phase_gate_summary(self) -> str:
         fm = self._build_frontmatter()
         lines = [fm, "# Phase 07A Gate Summary / Readiness Snapshot (Phase 07A)\n"]
         lines.append(f"Generated: {self.generated_utc} | Schema V{self.schema_version}\n\n")
-        lines.append("This is a **readiness snapshot** derived from local marts. Full gates with thresholds and go/no-go are in Prompt 07.\n\n")
+        lines.append(
+            "This is a **readiness snapshot** derived from local marts. Full gates with thresholds and go/no-go are in Prompt 07.\n\n"
+        )
         lines.append("## Cross-Domain Readiness (from cross_domain_context_readiness_mart)\n")
         conn = get_connection(self.db_path)
         try:
-            ready = _safe_select(conn, "SELECT * FROM cross_domain_context_readiness_mart ORDER BY project_key")
+            ready = _safe_select(
+                conn, "SELECT * FROM cross_domain_context_readiness_mart ORDER BY project_key"
+            )
             if ready:
                 for r in ready:
-                    lines.append(f"- {r.get('project_key')}: overall={r.get('overall_status')}, meeting={r.get('meeting_prep_ready')}, risk={r.get('risk_digest_ready')}, financial={r.get('financial_review_ready')}\n")
+                    lines.append(
+                        f"- {r.get('project_key')}: overall={r.get('overall_status')}, meeting={r.get('meeting_prep_ready')}, risk={r.get('risk_digest_ready')}, financial={r.get('financial_review_ready')}\n"
+                    )
             else:
                 lines.append("_No readiness rows._\n")
         except Exception:
@@ -384,7 +430,9 @@ class ObsidianDataQualityRenderer:
         for k, v in _OBSIDIAN_GUARDRAILS.items():
             lines.append(f"- {k}: {v}\n")
         lines.append(f"\n{_SENSITIVE_REVIEW_NOTE}\n")
-        lines.append("\n> This note is marker-bounded and safe to re-render. User content outside markers is preserved.\n")
+        lines.append(
+            "\n> This note is marker-bounded and safe to re-render. User content outside markers is preserved.\n"
+        )
         return "".join(lines)
 
     def run(self, *, dry_run: bool = True, apply: bool = False) -> dict[str, Any]:
@@ -401,7 +449,9 @@ class ObsidianDataQualityRenderer:
         rendered = {
             "project_data_quality_summary": self._render_project_summary(proj),
             "source_record_map_register": self._render_source_record_register(src_rows),
-            "relationship_diagnostics_register": self._render_relationship_diagnostics(rel_rows, rel_quality),
+            "relationship_diagnostics_register": self._render_relationship_diagnostics(
+                rel_rows, rel_quality
+            ),
             "phase_gate_summary": self._render_phase_gate_summary(),
         }
 
@@ -432,7 +482,9 @@ class ObsidianDataQualityRenderer:
                 "relationship_candidates": len(rel_rows),
                 "projects_in_coverage": proj.get("total_projects", 0),
             },
-            "rendered_excerpts": {k: v[:500] + "..." if len(v) > 500 else v for k, v in rendered.items()},
+            "rendered_excerpts": {
+                k: v[:500] + "..." if len(v) > 500 else v for k, v in rendered.items()
+            },
             "guardrails": _OBSIDIAN_GUARDRAILS,
             "stop_conditions_checked": [
                 "no_raw_body_selected_in_queries",
@@ -446,7 +498,12 @@ class ObsidianDataQualityRenderer:
         }
 
         # Always write evidence preview + proof JSON to repo evidence dir (for both dry and apply)
-        evidence_dir = Path(__file__).resolve().parents[4] / "docs" / "evidence" / "construction-intelligence-phase-07a-data-quality"
+        evidence_dir = (
+            Path(__file__).resolve().parents[4]
+            / "docs"
+            / "evidence"
+            / "construction-intelligence-phase-07a-data-quality"
+        )
         evidence_dir.mkdir(parents=True, exist_ok=True)
         preview_path = evidence_dir / "07-obsidian-output-preview.md"
         _atomic_write_text(preview_path, preview_content)
@@ -466,7 +523,10 @@ class ObsidianDataQualityRenderer:
             "no_source_file_copies": True,
             "applied_to_vault": False,
             "marker_bounded": True,
-            "files_emitted": ["07-obsidian-output-preview.md", "obsidian-data-quality-dry-run.json"],
+            "files_emitted": [
+                "07-obsidian-output-preview.md",
+                "obsidian-data-quality-dry-run.json",
+            ],
         }
         proof_path = evidence_dir / "obsidian-data-quality-dry-run.json"
         _atomic_write_text(proof_path, json.dumps(proof, indent=2, default=str) + "\n")
@@ -503,7 +563,9 @@ class ObsidianDataQualityRenderer:
                     proof["files_emitted"].extend([p.split("/")[-1] for p in written])
                     _atomic_write_text(proof_path, json.dumps(proof, indent=2, default=str) + "\n")
                 else:
-                    report["vault_note"] = "Vault not configured; applied_to_vault remains false. Evidence preview written."
+                    report["vault_note"] = (
+                        "Vault not configured; applied_to_vault remains false. Evidence preview written."
+                    )
             except Exception as e:
                 report["vault_error"] = f"Vault write skipped: {type(e).__name__} (redacted)"
 
@@ -511,7 +573,11 @@ class ObsidianDataQualityRenderer:
 
 
 def render_data_quality_obsidian_outputs(
-    *, dry_run: bool = True, apply: bool = False, json_out: bool = True, db_path: Optional[str | Path] = None
+    *,
+    dry_run: bool = True,
+    apply: bool = False,
+    json_out: bool = True,
+    db_path: Optional[str | Path] = None,
 ) -> dict[str, Any]:
     """Public entry point used by CLI and tests."""
     renderer = ObsidianDataQualityRenderer(db_path=db_path)

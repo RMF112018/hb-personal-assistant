@@ -73,7 +73,9 @@ class LaunchdManager:
     def _command_grammar_valid(self, program_args: list[str]) -> bool:
         return len(program_args) == 3 and program_args[1] == "run" and program_args[2] == "morning"
 
-    def _readiness(self, executable: Path, working_dir: Path, program_args: list[str]) -> Dict[str, Any]:
+    def _readiness(
+        self, executable: Path, working_dir: Path, program_args: list[str]
+    ) -> Dict[str, Any]:
         self.ensure_log_dirs()
         logs_dir = self.pp.get_logs_dir()
 
@@ -239,7 +241,12 @@ class LaunchdManager:
                 capture_output=True,
                 text=True,
             )
-            return {"action": "kickstart", "status": "ok", "stdout": out.stdout[:500], "stderr": out.stderr[:500]}
+            return {
+                "action": "kickstart",
+                "status": "ok",
+                "stdout": out.stdout[:500],
+                "stderr": out.stderr[:500],
+            }
         except Exception as e:
             return {"action": "kickstart", "status": f"error: {str(e)[:200]}"}
 
@@ -258,7 +265,11 @@ class LaunchdManager:
             pass
 
         plist = self.render_plist()
-        readiness = self._readiness(Path(plist["ProgramArguments"][0]), Path(plist["WorkingDirectory"]), plist["ProgramArguments"])
+        readiness = self._readiness(
+            Path(plist["ProgramArguments"][0]),
+            Path(plist["WorkingDirectory"]),
+            plist["ProgramArguments"],
+        )
 
         return {
             "label": self.label,

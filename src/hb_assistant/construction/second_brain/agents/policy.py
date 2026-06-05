@@ -45,9 +45,9 @@ def validate_agent_registry(
     required_agents: list[str] = list(registry_contract.get("required_phase_08a_agents", []))
     valid_groups = set(tool_contract.get("tool_groups", {}).keys())
     global_deny = set(tool_contract.get("denied_tool_groups", []))
-    profile_ids = {
-        p.get("profile_id") for p in model_profile_contract.get("profiles", [])
-    } | {"none"}
+    profile_ids = {p.get("profile_id") for p in model_profile_contract.get("profiles", [])} | {
+        "none"
+    }
 
     violations: list[dict[str, str]] = []
     present_ids = {a.agent_id for a in registry.agents}
@@ -65,9 +65,7 @@ def validate_agent_registry(
         dumped = agent.model_dump()
         for field in required_fields:
             value = dumped.get(field)
-            missing_value = value is None or (
-                isinstance(value, str) and not value.strip()
-            )
+            missing_value = value is None or (isinstance(value, str) and not value.strip())
             if field not in dumped or missing_value:
                 violations.append(
                     {
@@ -110,7 +108,11 @@ def validate_agent_registry(
             )
         if not agent.receipt_required:
             violations.append(
-                {"agent_id": agent.agent_id, "code": "receipt_not_required", "detail": "receipt_required must be true"}
+                {
+                    "agent_id": agent.agent_id,
+                    "code": "receipt_not_required",
+                    "detail": "receipt_required must be true",
+                }
             )
 
     valid = not violations and not missing_agents
@@ -241,9 +243,7 @@ _PROFILE_MODEL_INTENT: dict[str, str | None] = {
 _PROFILE_OUTPUT_INTENT: dict[str, str] = {"evaluator": "checklist_json"}
 
 
-def validate_model_profiles(
-    seed: dict[str, Any], contract: dict[str, Any]
-) -> dict[str, Any]:
+def validate_model_profiles(seed: dict[str, Any], contract: dict[str, Any]) -> dict[str, Any]:
     """Validate the model-profiles seed against the model-profile contract."""
     contract_profiles = {
         p.get("profile_id"): p for p in contract.get("profiles", []) if p.get("profile_id")
@@ -253,23 +253,37 @@ def validate_model_profiles(
     violations: list[dict[str, str]] = []
     missing_profiles = [pid for pid in contract_profiles if pid not in seed_profiles]
     for pid in missing_profiles:
-        violations.append({"profile_id": pid, "code": "missing_profile", "detail": "absent from seed"})
+        violations.append(
+            {"profile_id": pid, "code": "missing_profile", "detail": "absent from seed"}
+        )
 
     for pid, expected_model in _PROFILE_MODEL_INTENT.items():
         cp = contract_profiles.get(pid)
         sp = seed_profiles.get(pid)
         if cp is not None and cp.get("default_model") != expected_model:
             violations.append(
-                {"profile_id": pid, "code": "contract_model_mismatch", "detail": str(cp.get("default_model"))}
+                {
+                    "profile_id": pid,
+                    "code": "contract_model_mismatch",
+                    "detail": str(cp.get("default_model")),
+                }
             )
         if sp is not None:
             if expected_model is None and sp.get("model") is not None:
                 violations.append(
-                    {"profile_id": pid, "code": "router_should_have_no_model", "detail": str(sp.get("model"))}
+                    {
+                        "profile_id": pid,
+                        "code": "router_should_have_no_model",
+                        "detail": str(sp.get("model")),
+                    }
                 )
             if expected_model is not None and sp.get("model") != expected_model:
                 violations.append(
-                    {"profile_id": pid, "code": "seed_model_mismatch", "detail": str(sp.get("model"))}
+                    {
+                        "profile_id": pid,
+                        "code": "seed_model_mismatch",
+                        "detail": str(sp.get("model")),
+                    }
                 )
 
     for pid, expected_output in _PROFILE_OUTPUT_INTENT.items():
@@ -277,23 +291,43 @@ def validate_model_profiles(
         sp = seed_profiles.get(pid)
         if cp is not None and cp.get("output_mode") != expected_output:
             violations.append(
-                {"profile_id": pid, "code": "contract_output_mode_mismatch", "detail": str(cp.get("output_mode"))}
+                {
+                    "profile_id": pid,
+                    "code": "contract_output_mode_mismatch",
+                    "detail": str(cp.get("output_mode")),
+                }
             )
         if sp is not None and sp.get("output_mode") != expected_output:
             violations.append(
-                {"profile_id": pid, "code": "seed_output_mode_mismatch", "detail": str(sp.get("output_mode"))}
+                {
+                    "profile_id": pid,
+                    "code": "seed_output_mode_mismatch",
+                    "detail": str(sp.get("output_mode")),
+                }
             )
 
     persistence = contract.get("persistence_policy", {})
     if persistence.get("persist_raw_prompt") is not False:
-        violations.append({"profile_id": "*", "code": "persist_raw_prompt_not_false", "detail": "contract"})
+        violations.append(
+            {"profile_id": "*", "code": "persist_raw_prompt_not_false", "detail": "contract"}
+        )
     if persistence.get("persist_raw_response") is not False:
-        violations.append({"profile_id": "*", "code": "persist_raw_response_not_false", "detail": "contract"})
+        violations.append(
+            {"profile_id": "*", "code": "persist_raw_response_not_false", "detail": "contract"}
+        )
     for pid, sp in seed_profiles.items():
         if sp.get("raw_prompt_persisted") is not False:
-            violations.append({"profile_id": pid, "code": "seed_raw_prompt_persisted", "detail": "must be false"})
+            violations.append(
+                {"profile_id": pid, "code": "seed_raw_prompt_persisted", "detail": "must be false"}
+            )
         if sp.get("raw_response_persisted") is not False:
-            violations.append({"profile_id": pid, "code": "seed_raw_response_persisted", "detail": "must be false"})
+            violations.append(
+                {
+                    "profile_id": pid,
+                    "code": "seed_raw_response_persisted",
+                    "detail": "must be false",
+                }
+            )
 
     return {
         "valid": not violations and not missing_profiles,

@@ -48,7 +48,9 @@ def test_get_connection_maps_operational_error_to_store_readiness(tmp_path: Path
     pp.ensure_dirs(create_sensitive=False)
     db_path = pp.get_db_path()
 
-    with patch("sqlite3.connect", side_effect=sqlite3.OperationalError("unable to open database file")):
+    with patch(
+        "sqlite3.connect", side_effect=sqlite3.OperationalError("unable to open database file")
+    ):
         with pytest.raises(StoreReadinessError) as ex:
             get_connection(db_path)
 

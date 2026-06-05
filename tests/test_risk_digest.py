@@ -22,12 +22,18 @@ from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.store.migrator import SQLiteMigrator
 
 _LEAK = re.compile(
-    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}", re.IGNORECASE
+    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}",
+    re.IGNORECASE,
 )
 _GUARDS = (
-    "raw_email_body_persisted", "raw_document_text_persisted",
-    "raw_calendar_payload_persisted", "raw_prompt_persisted", "raw_response_persisted",
-    "signed_url_persisted", "download_url_persisted", "external_writeback_performed",
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
 )
 
 
@@ -47,8 +53,16 @@ def _signal(db: str, aid: str, signal_type: str, endpoint: str) -> None:
             " importance, title_redacted, first_detected_at_utc, last_seen_at_utc) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                aid, "tropical", f"tropical|{endpoint}||1", endpoint, signal_type, "open",
-                "medium", "[redacted]", "2026-05-29T00:00:00Z", "2026-05-29T00:00:00Z",
+                aid,
+                "tropical",
+                f"tropical|{endpoint}||1",
+                endpoint,
+                signal_type,
+                "open",
+                "medium",
+                "[redacted]",
+                "2026-05-29T00:00:00Z",
+                "2026-05-29T00:00:00Z",
             ),
         )
         raw.commit()
@@ -56,11 +70,18 @@ def _signal(db: str, aid: str, signal_type: str, endpoint: str) -> None:
         raw.close()
 
 
-def _issue(store: ConstructionStore, fid: str, *, status: str, age: int, kind: str = "rfis") -> None:
+def _issue(
+    store: ConstructionStore, fid: str, *, status: str, age: int, kind: str = "rfis"
+) -> None:
     store.upsert_project_issue_history_item(
-        issue_family_id=fid, project_key="tropical", status=status,
-        source_families_json=json.dumps(["procore"]), confidence_class="deterministic",
-        issue_kind=kind, age_days=age, evidence_trail_id="et_" + fid,
+        issue_family_id=fid,
+        project_key="tropical",
+        status=status,
+        source_families_json=json.dumps(["procore"]),
+        confidence_class="deterministic",
+        issue_kind=kind,
+        age_days=age,
+        evidence_trail_id="et_" + fid,
     )
 
 
@@ -146,10 +167,21 @@ def test_review_required_and_model_proposed_relationships() -> None:
     try:
         store = ConstructionStore(db_path=db)
         _cand(store, "c1")  # weak/review-required financial keyword
-        _cand(store, "c2", sensitive_high_impact=True, relationship_type="claim_notice",
-              confidence_class="strong_heuristic")
-        _cand(store, "c3", model_proposed=True, confidence_class="model_proposed",
-              relationship_type="email_topic_inference", review_required=True)
+        _cand(
+            store,
+            "c2",
+            sensitive_high_impact=True,
+            relationship_type="claim_notice",
+            confidence_class="strong_heuristic",
+        )
+        _cand(
+            store,
+            "c3",
+            model_proposed=True,
+            confidence_class="model_proposed",
+            relationship_type="email_topic_inference",
+            review_required=True,
+        )
         RiskDigestBuilder(store).build(dry_run=False)
         items = _items(store)
         assert items["financial_keyword_in_preview"]["risk_source_class"] == "review_required"
@@ -233,7 +265,9 @@ def test_status_reports_coverage() -> None:
         assert status["ok"] is True
         assert status["summary"]["items"] == 3
         assert set(status["summary"]["by_risk_source_class"]) == {
-            "source_stated", "inferred_candidate", "review_required"
+            "source_stated",
+            "inferred_candidate",
+            "review_required",
         }
         assert status["summary"]["review_required"] == 3
     finally:

@@ -62,15 +62,39 @@ PROCORE_GUARDRAILS: dict[str, str] = {
 # Marker helpers adapted from ConstructionVaultWriter patterns (for procore-* artifacts in 01_Projects hybrid layout)
 _SAFE_ITEM_ID = re.compile(r"[^A-Za-z0-9_.-]+")
 _PROCORE_MARKERS: dict[str, tuple[str, str]] = {
-    "project_card": ("<!-- HB-PROCORE-PROJECT-CARD:START -->", "<!-- HB-PROCORE-PROJECT-CARD:END -->"),
-    "rfi_register": ("<!-- HB-PROCORE-RFI-REGISTER:START -->", "<!-- HB-PROCORE-RFI-REGISTER:END -->"),
-    "submittal_register": ("<!-- HB-PROCORE-SUBMITTAL-REGISTER:START -->", "<!-- HB-PROCORE-SUBMITTAL-REGISTER:END -->"),
-    "observation_register": ("<!-- HB-PROCORE-OBSERVATION-REGISTER:START -->", "<!-- HB-PROCORE-OBSERVATION-REGISTER:END -->"),
-    "meeting_register": ("<!-- HB-PROCORE-MEETING-REGISTER:START -->", "<!-- HB-PROCORE-MEETING-REGISTER:END -->"),
+    "project_card": (
+        "<!-- HB-PROCORE-PROJECT-CARD:START -->",
+        "<!-- HB-PROCORE-PROJECT-CARD:END -->",
+    ),
+    "rfi_register": (
+        "<!-- HB-PROCORE-RFI-REGISTER:START -->",
+        "<!-- HB-PROCORE-RFI-REGISTER:END -->",
+    ),
+    "submittal_register": (
+        "<!-- HB-PROCORE-SUBMITTAL-REGISTER:START -->",
+        "<!-- HB-PROCORE-SUBMITTAL-REGISTER:END -->",
+    ),
+    "observation_register": (
+        "<!-- HB-PROCORE-OBSERVATION-REGISTER:START -->",
+        "<!-- HB-PROCORE-OBSERVATION-REGISTER:END -->",
+    ),
+    "meeting_register": (
+        "<!-- HB-PROCORE-MEETING-REGISTER:START -->",
+        "<!-- HB-PROCORE-MEETING-REGISTER:END -->",
+    ),
     "daily_log_index": ("<!-- HB-PROCORE-DAILY-LOG:START -->", "<!-- HB-PROCORE-DAILY-LOG:END -->"),
-    "financial_snapshot": ("<!-- HB-PROCORE-FINANCIAL-SNAPSHOT:START -->", "<!-- HB-PROCORE-FINANCIAL-SNAPSHOT:END -->"),
-    "sync_receipt": ("<!-- HB-PROCORE-SYNC-RECEIPT:START -->", "<!-- HB-PROCORE-SYNC-RECEIPT:END -->"),
-    "endpoint_audit": ("<!-- HB-PROCORE-ENDPOINT-AUDIT:START -->", "<!-- HB-PROCORE-ENDPOINT-AUDIT:END -->"),
+    "financial_snapshot": (
+        "<!-- HB-PROCORE-FINANCIAL-SNAPSHOT:START -->",
+        "<!-- HB-PROCORE-FINANCIAL-SNAPSHOT:END -->",
+    ),
+    "sync_receipt": (
+        "<!-- HB-PROCORE-SYNC-RECEIPT:START -->",
+        "<!-- HB-PROCORE-SYNC-RECEIPT:END -->",
+    ),
+    "endpoint_audit": (
+        "<!-- HB-PROCORE-ENDPOINT-AUDIT:START -->",
+        "<!-- HB-PROCORE-ENDPOINT-AUDIT:END -->",
+    ),
 }
 
 
@@ -164,11 +188,15 @@ class ProcoreObsidianRenderer:
     def _reset_routing_cache(self) -> None:
         self._routing_rules = None
 
-    def _is_procore_sensitive(self, *, category: str, fields: dict[str, Any], text_blob: str = "") -> tuple[bool, str | None]:
+    def _is_procore_sensitive(
+        self, *, category: str, fields: dict[str, Any], text_blob: str = ""
+    ) -> tuple[bool, str | None]:
         """Apply procore_sensitive_routing_rules.yaml (categories + keywords)."""
         rules = self._load_procore_routing_rules().get("rules", [])
         cat = (category or "").lower().replace("-", "_")
-        blob = text_blob or " ".join(str(v).lower() for v in fields.values() if isinstance(v, (str, int, float)))
+        blob = text_blob or " ".join(
+            str(v).lower() for v in fields.values() if isinstance(v, (str, int, float))
+        )
         for rule in rules:
             cats = rule.get("categories", [])
             for c in cats:
@@ -194,7 +222,12 @@ class ProcoreObsidianRenderer:
     def _make_review_item(
         self, row: sqlite3.Row, fields: dict[str, Any], rule_id: str | None, source_table: str
     ) -> ReviewRequiredItem:
-        name = str(fields.get("number") or fields.get("title") or fields.get("subject") or row["entity_stable_key"])
+        name = str(
+            fields.get("number")
+            or fields.get("title")
+            or fields.get("subject")
+            or row["entity_stable_key"]
+        )
         return ReviewRequiredItem(
             item_id=str(row["id"]),
             source_key="procore",
@@ -202,7 +235,9 @@ class ProcoreObsidianRenderer:
             name=name[:120],
             reason=f"procore {row['category']} routed by {rule_id or 'contract/review_required flag'}",
             suggested_action="Manual review of redacted record (SQLite authoritative)",
-            classification_label="financial" if any(x in (rule_id or "") for x in ("financial", "budget", "invoice")) else "contractual",
+            classification_label="financial"
+            if any(x in (rule_id or "") for x in ("financial", "budget", "invoice"))
+            else "contractual",
             sensitivity="high",
         )
 
@@ -301,7 +336,9 @@ class ProcoreObsidianRenderer:
         watermarks = self._query_sync_watermarks(project_key)
         watermark_count = len(watermarks)
 
-        review_count = sum(1 for r in self._query_synced_entities(project_key) if r["review_required"])
+        review_count = sum(
+            1 for r in self._query_synced_entities(project_key) if r["review_required"]
+        )
         review_summary = f"{review_count} items flagged (see procore review required note)"
 
         err_count = len(self._query_sync_errors(project_key))
@@ -330,10 +367,16 @@ class ProcoreObsidianRenderer:
     def build_rfi_register(self, project_key: str) -> dict[str, Any]:
         rows_md: list[str] = []
         for row in self._query_synced_entities(project_key, "rfis"):
-            fields = json.loads(row["canonical_fields_json"] or "{}") if row["canonical_fields_json"] else {}
+            fields = (
+                json.loads(row["canonical_fields_json"] or "{}")
+                if row["canonical_fields_json"]
+                else {}
+            )
             is_sens, rule = self._is_procore_sensitive(category=row["category"], fields=fields)
             if is_sens or bool(row["review_required"]):
-                self._collected_review_items.append(self._make_review_item(row, fields, rule, "procore_rfis"))
+                self._collected_review_items.append(
+                    self._make_review_item(row, fields, rule, "procore_rfis")
+                )
                 continue
             num = fields.get("number") or row["entity_stable_key"]
             subj = self._safe_excerpt(fields.get("subject") or fields.get("title") or "")
@@ -342,7 +385,9 @@ class ProcoreObsidianRenderer:
             src = fields.get("url") or fields.get("source_url") or fields.get("link") or "#"
             sid = row["id"]
             rows_md.append(f"| {num} | {subj} | {status} | {due} | [{sid}]({src}) |")
-        table = "\n".join(rows_md) if rows_md else "| (no non-sensitive RFIs after routing) | | | | |"
+        table = (
+            "\n".join(rows_md) if rows_md else "| (no non-sensitive RFIs after routing) | | | | |"
+        )
         return {
             "project_name": project_key,
             "rows": table,
@@ -352,10 +397,16 @@ class ProcoreObsidianRenderer:
     def build_submittal_register(self, project_key: str) -> dict[str, Any]:
         rows_md: list[str] = []
         for row in self._query_synced_entities(project_key, "submittals"):
-            fields = json.loads(row["canonical_fields_json"] or "{}") if row["canonical_fields_json"] else {}
+            fields = (
+                json.loads(row["canonical_fields_json"] or "{}")
+                if row["canonical_fields_json"]
+                else {}
+            )
             is_sens, rule = self._is_procore_sensitive(category=row["category"], fields=fields)
             if is_sens or bool(row["review_required"]):
-                self._collected_review_items.append(self._make_review_item(row, fields, rule, "procore_submittals"))
+                self._collected_review_items.append(
+                    self._make_review_item(row, fields, rule, "procore_submittals")
+                )
                 continue
             num = fields.get("number") or row["entity_stable_key"]
             title = self._safe_excerpt(fields.get("title") or fields.get("subject") or "")
@@ -365,7 +416,11 @@ class ProcoreObsidianRenderer:
             src = fields.get("url") or fields.get("source_url") or "#"
             sid = row["id"]
             rows_md.append(f"| {num} | {title} | {spec} | {status} | {due} | [{sid}]({src}) |")
-        table = "\n".join(rows_md) if rows_md else "| (no non-sensitive Submittals after routing) | | | | | |"
+        table = (
+            "\n".join(rows_md)
+            if rows_md
+            else "| (no non-sensitive Submittals after routing) | | | | | |"
+        )
         return {
             "project_name": project_key,
             "rows": table,
@@ -375,7 +430,11 @@ class ProcoreObsidianRenderer:
     def build_observation_register(self, project_key: str) -> dict[str, Any]:
         rows_md: list[str] = []
         for row in self._query_synced_entities(project_key, "observations"):
-            fields = json.loads(row["canonical_fields_json"] or "{}") if row["canonical_fields_json"] else {}
+            fields = (
+                json.loads(row["canonical_fields_json"] or "{}")
+                if row["canonical_fields_json"]
+                else {}
+            )
             is_sens, rule = self._is_procore_sensitive(category=row["category"], fields=fields)
             safety = bool(fields.get("safety_route"))
             if is_sens or bool(row["review_required"]) or safety:
@@ -408,7 +467,11 @@ class ProcoreObsidianRenderer:
         meeting_rows_md: list[str] = []
         topic_rows_md: list[str] = []
         for row in self._query_synced_entities(project_key, "meetings"):
-            fields = json.loads(row["canonical_fields_json"] or "{}") if row["canonical_fields_json"] else {}
+            fields = (
+                json.loads(row["canonical_fields_json"] or "{}")
+                if row["canonical_fields_json"]
+                else {}
+            )
             is_sens, rule = self._is_procore_sensitive(category=row["category"], fields=fields)
             if is_sens or bool(row["review_required"]):
                 self._collected_review_items.append(
@@ -426,7 +489,11 @@ class ProcoreObsidianRenderer:
                 f"| {num} | {title} | {status} | {start} | {location} | [{sid}]({src}) |"
             )
         for row in self._query_synced_entities(project_key, "meeting_topics"):
-            fields = json.loads(row["canonical_fields_json"] or "{}") if row["canonical_fields_json"] else {}
+            fields = (
+                json.loads(row["canonical_fields_json"] or "{}")
+                if row["canonical_fields_json"]
+                else {}
+            )
             is_sens, rule = self._is_procore_sensitive(category=row["category"], fields=fields)
             safety = bool(fields.get("safety_route"))
             if is_sens or bool(row["review_required"]) or safety:
@@ -466,7 +533,11 @@ class ProcoreObsidianRenderer:
         # Phase 04 Prompt 08 normalizer emits per-section categories prefixed with
         # `daily_log_`; Prompt 10 renders each row tagged with its section + bucket.
         for row in self._query_synced_entities(project_key, category_like="daily_log_%"):
-            fields = json.loads(row["canonical_fields_json"] or "{}") if row["canonical_fields_json"] else {}
+            fields = (
+                json.loads(row["canonical_fields_json"] or "{}")
+                if row["canonical_fields_json"]
+                else {}
+            )
             is_sens, rule = self._is_procore_sensitive(category=row["category"], fields=fields)
             if is_sens or bool(row["review_required"]):
                 self._collected_review_items.append(
@@ -479,9 +550,7 @@ class ProcoreObsidianRenderer:
             safety = "yes" if fields.get("safety_route") else "no"
             body_summary = fields.get("body_summary") or {}
             body_hash = (
-                body_summary.get("hash_prefix")
-                if isinstance(body_summary, dict)
-                else ""
+                body_summary.get("hash_prefix") if isinstance(body_summary, dict) else ""
             ) or ""
             src = fields.get("url") or fields.get("source_url") or "#"
             sid = row["id"]
@@ -501,8 +570,16 @@ class ProcoreObsidianRenderer:
 
     def build_financial_snapshot(self, project_key: str) -> dict[str, Any]:
         """Always review_sensitive:true. Safe summary ONLY — no raw amounts, no leakable figures."""
-        fin_cats = ("budget", "commitments", "invoices", "requisitions", "direct_costs",
-                    "prime_contracts", "change_events", "potential_change_orders")
+        fin_cats = (
+            "budget",
+            "commitments",
+            "invoices",
+            "requisitions",
+            "direct_costs",
+            "prime_contracts",
+            "change_events",
+            "potential_change_orders",
+        )
         total = 0
         cats_seen: set[str] = set()
         last = "n/a"
@@ -513,10 +590,16 @@ class ProcoreObsidianRenderer:
                 total += len(ents)
                 last = max((e["last_seen_at"] or "" for e in ents), default=last)
             for row in ents:
-                fields = json.loads(row["canonical_fields_json"] or "{}") if row["canonical_fields_json"] else {}
+                fields = (
+                    json.loads(row["canonical_fields_json"] or "{}")
+                    if row["canonical_fields_json"]
+                    else {}
+                )
                 is_sens, rule = self._is_procore_sensitive(category=row["category"], fields=fields)
                 if is_sens or bool(row["review_required"]):
-                    self._collected_review_items.append(self._make_review_item(row, fields, rule, f"procore_{cat}"))
+                    self._collected_review_items.append(
+                        self._make_review_item(row, fields, rule, f"procore_{cat}")
+                    )
         metric_rows = (
             f"| item_count | {total} |\n"
             f"| categories_covered | {', '.join(sorted(cats_seen)) or 'none (post-routing)'} |\n"
@@ -524,7 +607,9 @@ class ProcoreObsidianRenderer:
             "| note | SAFE SUMMARY ONLY — no amounts, no PII, financials routed to review |"
         )
         # Force at least one review item for the snapshot itself
-        if not any("financial" in (i.classification_label or "") for i in self._collected_review_items):
+        if not any(
+            "financial" in (i.classification_label or "") for i in self._collected_review_items
+        ):
             self._collected_review_items.append(
                 ReviewRequiredItem(
                     item_id=f"fin-snapshot-{project_key}",
@@ -625,7 +710,7 @@ classification: {item.classification_label} | sensitivity: {item.sensitivity}
             )
         content = f"""---
 type: procore_review_required
-review_id: procore-{project_key}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}
+review_id: procore-{project_key}-{datetime.now(timezone.utc).strftime("%Y%m%d%H%M")}
 project_key: {project_key}
 sensitivity: high
 status: open
@@ -636,7 +721,7 @@ status: open
 {len(items)} sensitive items (financial/contractual/incident/personnel/delay) routed exclusively here.
 **NEVER** appear in registers, cards, or snapshots.
 
-{''.join(blocks) if blocks else "\n(no additional review items after routing)\n"}
+{"".join(blocks) if blocks else "\n(no additional review items after routing)\n"}
 
 ## Guardrails
 {chr(10).join(f"- {k}: {v}" for k, v in PROCORE_GUARDRAILS.items())}
@@ -655,7 +740,9 @@ status: open
         safe_data = {k: (data.get(k, "n/a") if data.get(k) is not None else "n/a") for k in data}
         # Add common guardrails block for templates that expect it (defensive)
         if "guardrails_block" not in safe_data:
-            safe_data["guardrails_block"] = "\n".join(f"- {k}: {v}" for k, v in safe_data.get("guardrails", PROCORE_GUARDRAILS).items())
+            safe_data["guardrails_block"] = "\n".join(
+                f"- {k}: {v}" for k, v in safe_data.get("guardrails", PROCORE_GUARDRAILS).items()
+            )
         # Ensure guardrails_block injected for ALL 8 (even if template missing placeholder); append section if absent (follows non-procore pattern, deterministic).
         if "{guardrails_block}" not in tpl:
             tpl = tpl.rstrip() + "\n\n## Guardrails\n\n{guardrails_block}\n"
@@ -679,12 +766,13 @@ def reset_procore_obsidian_caches() -> None:
     ProcoreObsidianRenderer._load_procore_template.cache_clear()
 
 
-def _write_procore_artifact(
-    root: Path, filename: str, rendered: str, marker_kind: str
-) -> Path:
+def _write_procore_artifact(root: Path, filename: str, rendered: str, marker_kind: str) -> Path:
     """Marker-bounded write for procore- artifacts under 01_Projects (hybrid)."""
     target = root / "01_Projects" / filename
-    start, end = _PROCORE_MARKERS.get(marker_kind, (f"<!-- HB-PROCORE-{marker_kind}:START -->", f"<!-- HB-PROCORE-{marker_kind}:END -->"))
+    start, end = _PROCORE_MARKERS.get(
+        marker_kind,
+        (f"<!-- HB-PROCORE-{marker_kind}:START -->", f"<!-- HB-PROCORE-{marker_kind}:END -->"),
+    )
     target.parent.mkdir(parents=True, exist_ok=True)
     existing = target.read_text(encoding="utf-8") if target.exists() else ""
     framed = _procore_ensure_markers(existing, start, end)
@@ -743,15 +831,96 @@ def procore_obsidian_preview(
             if writer.configured:
                 root = writer.root
                 # Procore-specific files (hybrid) in 01_Projects/
-                written.append(str(_write_procore_artifact(root, f"{project_key}.procore-project-card.md", rendered["project_card"], "project_card")))
-                written.append(str(_write_procore_artifact(root, f"{project_key}.procore-rfi-register.md", rendered["rfi_register"], "rfi_register")))
-                written.append(str(_write_procore_artifact(root, f"{project_key}.procore-submittal-register.md", rendered["submittal_register"], "submittal_register")))
-                written.append(str(_write_procore_artifact(root, f"{project_key}.procore-observation-register.md", rendered["observation_register"], "observation_register")))
-                written.append(str(_write_procore_artifact(root, f"{project_key}.procore-meeting-register.md", rendered["meeting_register"], "meeting_register")))
-                written.append(str(_write_procore_artifact(root, f"{project_key}.procore-daily-log-index.md", rendered["daily_log_index"], "daily_log_index")))
-                written.append(str(_write_procore_artifact(root, f"{project_key}.procore-financial-snapshot.md", rendered["financial_snapshot"], "financial_snapshot")))
-                written.append(str(_write_procore_artifact(root, f"{project_key}.procore-sync-receipt.md", rendered["sync_receipt"], "sync_receipt")))
-                written.append(str(_write_procore_artifact(root, f"{project_key}.procore-endpoint-audit.md", rendered["endpoint_audit"], "endpoint_audit")))
+                written.append(
+                    str(
+                        _write_procore_artifact(
+                            root,
+                            f"{project_key}.procore-project-card.md",
+                            rendered["project_card"],
+                            "project_card",
+                        )
+                    )
+                )
+                written.append(
+                    str(
+                        _write_procore_artifact(
+                            root,
+                            f"{project_key}.procore-rfi-register.md",
+                            rendered["rfi_register"],
+                            "rfi_register",
+                        )
+                    )
+                )
+                written.append(
+                    str(
+                        _write_procore_artifact(
+                            root,
+                            f"{project_key}.procore-submittal-register.md",
+                            rendered["submittal_register"],
+                            "submittal_register",
+                        )
+                    )
+                )
+                written.append(
+                    str(
+                        _write_procore_artifact(
+                            root,
+                            f"{project_key}.procore-observation-register.md",
+                            rendered["observation_register"],
+                            "observation_register",
+                        )
+                    )
+                )
+                written.append(
+                    str(
+                        _write_procore_artifact(
+                            root,
+                            f"{project_key}.procore-meeting-register.md",
+                            rendered["meeting_register"],
+                            "meeting_register",
+                        )
+                    )
+                )
+                written.append(
+                    str(
+                        _write_procore_artifact(
+                            root,
+                            f"{project_key}.procore-daily-log-index.md",
+                            rendered["daily_log_index"],
+                            "daily_log_index",
+                        )
+                    )
+                )
+                written.append(
+                    str(
+                        _write_procore_artifact(
+                            root,
+                            f"{project_key}.procore-financial-snapshot.md",
+                            rendered["financial_snapshot"],
+                            "financial_snapshot",
+                        )
+                    )
+                )
+                written.append(
+                    str(
+                        _write_procore_artifact(
+                            root,
+                            f"{project_key}.procore-sync-receipt.md",
+                            rendered["sync_receipt"],
+                            "sync_receipt",
+                        )
+                    )
+                )
+                written.append(
+                    str(
+                        _write_procore_artifact(
+                            root,
+                            f"{project_key}.procore-endpoint-audit.md",
+                            rendered["endpoint_audit"],
+                            "endpoint_audit",
+                        )
+                    )
+                )
                 # Re-use writer for canonical review note (02_Review_Queue)
                 try:
                     res = writer.write_review_required_note(
@@ -916,7 +1085,9 @@ class LiveRecordsRegisterBuilder:
             status = row["status"] or fields.get("status") or "n/a"
             due = fields.get("due_date") or fields.get("due") or ""
             src = row["source_url_redacted"] or "#"
-            out.append(f"| {num} | {subj} | {status} | {due} | [{row['procore_record_id']}]({src}) |")
+            out.append(
+                f"| {num} | {subj} | {status} | {due} | [{row['procore_record_id']}]({src}) |"
+            )
         return "\n".join(out) if out else _EMPTY_TABLE_ROW["rfi_register"]
 
     def _submittal_table(self, rows: list[sqlite3.Row], endpoint_id: str) -> str:
@@ -991,8 +1162,12 @@ class LiveRecordsRegisterBuilder:
                 f"| {title} | {status} | {parent} | {assignee} | {due} | no | [{row['procore_record_id']}]({src}) |"
             )
         return {
-            "meeting_rows": "\n".join(m_out) if m_out else _EMPTY_TABLE_ROW["meeting_register_meetings"],
-            "topic_rows": "\n".join(t_out) if t_out else _EMPTY_TABLE_ROW["meeting_register_topics"],
+            "meeting_rows": "\n".join(m_out)
+            if m_out
+            else _EMPTY_TABLE_ROW["meeting_register_meetings"],
+            "topic_rows": "\n".join(t_out)
+            if t_out
+            else _EMPTY_TABLE_ROW["meeting_register_topics"],
         }
 
     def _daily_log_table(self, rows: list[sqlite3.Row], endpoint_id: str) -> str:

@@ -41,10 +41,14 @@ def _seed_rfi(db: Path) -> None:
         db_path=db,
     )
     upsert_procore_live_record(
-        project_key="tropical", procore_project_id="2525840",
-        endpoint_id="rfis", procore_record_id="100", parent_procore_id=None,
+        project_key="tropical",
+        procore_project_id="2525840",
+        endpoint_id="rfis",
+        procore_record_id="100",
+        parent_procore_id=None,
         normalized_fields={"number": "RFI-100", "subject": "subj", "status": "open"},
-        review_required=False, sensitive_reason=None,
+        review_required=False,
+        sensitive_reason=None,
         source_url_redacted="/rest/v1.0/projects/2525840/rfis",
         last_sync_run_id="run-cli",
         now_utc="2026-05-29T00:00:00+00:00",
@@ -65,22 +69,37 @@ def _invoke(args: list[str]) -> tuple[int, dict]:
 
 
 def test_cli_missing_from_sqlite_flag_exits_2() -> None:
-    code, payload = _invoke([
-        "obsidian", "register",
-        "--project", "tropical", "--endpoint", "rfis",
-        "--dry-run", "--json",
-    ])
+    code, payload = _invoke(
+        [
+            "obsidian",
+            "register",
+            "--project",
+            "tropical",
+            "--endpoint",
+            "rfis",
+            "--dry-run",
+            "--json",
+        ]
+    )
     assert code == 2
     assert payload["ok"] is False
     assert payload["status"] == "missing_required_flag"
 
 
 def test_cli_unknown_endpoint_alias_exits_2() -> None:
-    code, payload = _invoke([
-        "obsidian", "register",
-        "--project", "tropical", "--endpoint", "totally-unknown",
-        "--from-sqlite", "--dry-run", "--json",
-    ])
+    code, payload = _invoke(
+        [
+            "obsidian",
+            "register",
+            "--project",
+            "tropical",
+            "--endpoint",
+            "totally-unknown",
+            "--from-sqlite",
+            "--dry-run",
+            "--json",
+        ]
+    )
     assert code == 2
     assert payload["ok"] is False
     assert payload["status"] == "endpoint_alias_unknown"
@@ -90,12 +109,21 @@ def test_cli_unsupported_register_endpoint_exits_2() -> None:
     db = _new_db()
     with patch("hb_assistant.procore.obsidian.get_connection") as p:
         import sqlite3
+
         p.return_value = sqlite3.connect(str(db))
-        code, payload = _invoke([
-            "obsidian", "register",
-            "--project", "tropical", "--endpoint", "punch-items",
-            "--from-sqlite", "--dry-run", "--json",
-        ])
+        code, payload = _invoke(
+            [
+                "obsidian",
+                "register",
+                "--project",
+                "tropical",
+                "--endpoint",
+                "punch-items",
+                "--from-sqlite",
+                "--dry-run",
+                "--json",
+            ]
+        )
     assert code == 2
     assert payload["ok"] is False
     assert payload["status"] == "unsupported_endpoint"
@@ -107,12 +135,21 @@ def test_cli_dry_run_returns_ok_with_rendered_section() -> None:
     _seed_rfi(db)
     with patch("hb_assistant.procore.obsidian.get_connection") as p:
         import sqlite3
+
         p.return_value = sqlite3.connect(str(db))
-        code, payload = _invoke([
-            "obsidian", "register",
-            "--project", "tropical", "--endpoint", "rfis",
-            "--from-sqlite", "--dry-run", "--json",
-        ])
+        code, payload = _invoke(
+            [
+                "obsidian",
+                "register",
+                "--project",
+                "tropical",
+                "--endpoint",
+                "rfis",
+                "--from-sqlite",
+                "--dry-run",
+                "--json",
+            ]
+        )
     assert code == 0
     assert payload["ok"] is True
     assert payload["family_template"] == "rfi_register"
@@ -131,12 +168,22 @@ def test_cli_apply_with_confirm_writes_file(
     _seed_rfi(db)
     with patch("hb_assistant.procore.obsidian.get_connection") as p:
         import sqlite3
+
         p.return_value = sqlite3.connect(str(db))
-        code, payload = _invoke([
-            "obsidian", "register",
-            "--project", "tropical", "--endpoint", "rfis",
-            "--from-sqlite", "--apply", "--confirm", "--json",
-        ])
+        code, payload = _invoke(
+            [
+                "obsidian",
+                "register",
+                "--project",
+                "tropical",
+                "--endpoint",
+                "rfis",
+                "--from-sqlite",
+                "--apply",
+                "--confirm",
+                "--json",
+            ]
+        )
     assert code == 0, payload
     assert payload["ok"] is True
     assert payload["mode"] == "apply"
@@ -148,9 +195,17 @@ def test_cli_apply_with_confirm_writes_file(
 
 def test_cli_apply_without_confirm_in_non_tty_exits_1() -> None:
     # CliRunner is non-TTY by default; --apply without --confirm must reject.
-    code, payload = _invoke([
-        "obsidian", "register",
-        "--project", "tropical", "--endpoint", "rfis",
-        "--from-sqlite", "--apply", "--json",
-    ])
+    code, payload = _invoke(
+        [
+            "obsidian",
+            "register",
+            "--project",
+            "tropical",
+            "--endpoint",
+            "rfis",
+            "--from-sqlite",
+            "--apply",
+            "--json",
+        ]
+    )
     assert code == 1

@@ -45,7 +45,17 @@ def test_validate_default_json_envelope_keys() -> None:
     res = runner.invoke(app, ["procore", "validate", "--json"], catch_exceptions=False)
     assert res.exit_code in (0, 1)  # ok depends on local env; envelope shape is the contract
     payload = json.loads(res.output)
-    for key in ("command", "schema_version", "started_at", "completed_at", "strict", "ok", "summary", "checks", "guardrails"):
+    for key in (
+        "command",
+        "schema_version",
+        "started_at",
+        "completed_at",
+        "strict",
+        "ok",
+        "summary",
+        "checks",
+        "guardrails",
+    ):
         assert key in payload, f"missing top-level key: {key}"
     assert payload["command"] == "hb-assistant procore validate"
     assert isinstance(payload["checks"], list) and len(payload["checks"]) == 28
@@ -96,7 +106,9 @@ def test_validate_handles_fresh_db_without_procore_tables(tmp_path: Path) -> Non
     non_strict = run_procore_validate(strict=False, db_path=db_path)
     strict = run_procore_validate(strict=True, db_path=db_path)
 
-    tables_non_strict = next(c for c in non_strict["checks"] if c["name"] == "procore_tables_present")
+    tables_non_strict = next(
+        c for c in non_strict["checks"] if c["name"] == "procore_tables_present"
+    )
     tables_strict = next(c for c in strict["checks"] if c["name"] == "procore_tables_present")
 
     assert tables_non_strict["ok"] is True
@@ -107,8 +119,23 @@ def test_validate_handles_fresh_db_without_procore_tables(tmp_path: Path) -> Non
 
 def test_validate_exit_code_matches_ok() -> None:
     runner = CliRunner()
-    envelope_ok = {"command": "x", "ok": True, "checks": [{"name": "noop", "ok": True}], "summary": {"total": 1, "passed": 1, "failed": 0}, "guardrails": {}, "schema_version": 1, "started_at": "x", "completed_at": "x", "strict": False}
-    envelope_fail = {**envelope_ok, "ok": False, "checks": [{"name": "noop", "ok": False}], "summary": {"total": 1, "passed": 0, "failed": 1}}
+    envelope_ok = {
+        "command": "x",
+        "ok": True,
+        "checks": [{"name": "noop", "ok": True}],
+        "summary": {"total": 1, "passed": 1, "failed": 0},
+        "guardrails": {},
+        "schema_version": 1,
+        "started_at": "x",
+        "completed_at": "x",
+        "strict": False,
+    }
+    envelope_fail = {
+        **envelope_ok,
+        "ok": False,
+        "checks": [{"name": "noop", "ok": False}],
+        "summary": {"total": 1, "passed": 0, "failed": 1},
+    }
 
     with patch("hb_assistant.procore.validate.run_procore_validate", return_value=envelope_ok):
         res = runner.invoke(app, ["procore", "validate", "--json"], catch_exceptions=False)

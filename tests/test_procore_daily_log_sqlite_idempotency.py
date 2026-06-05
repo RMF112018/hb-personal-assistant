@@ -23,8 +23,10 @@ def _temp_db() -> Path:
 
 
 def _apply_once(coord: ProcoreSyncCoordinator) -> dict:
-    with patch.object(coord, "auditor") as mock_auditor, \
-         patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls:
+    with (
+        patch.object(coord, "auditor") as mock_auditor,
+        patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls,
+    ):
         mock_auditor.audit_endpoints_for_pilots.return_value = {"daily-log": "available"}
         mock_client = MagicMock()
         mock_client.paginate.return_value = list(DAILY_LOG_SAMPLE_PAYLOAD)
@@ -101,9 +103,7 @@ def test_daily_log_apply_never_persists_raw_section_body_text() -> None:
 
     conn = sqlite3.connect(str(db))
     try:
-        rows = conn.execute(
-            "SELECT canonical_fields_json FROM procore_synced_entities"
-        ).fetchall()
+        rows = conn.execute("SELECT canonical_fields_json FROM procore_synced_entities").fetchall()
     finally:
         conn.close()
 

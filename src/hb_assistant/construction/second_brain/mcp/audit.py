@@ -54,7 +54,12 @@ _RAW_ACTIONS = {
     "raw_prompt_access",
     "raw_response_access",
 }
-_WRITEBACK_ACTIONS = {"email_send", "calendar_update", "source_system_writeback", "external_delivery"}
+_WRITEBACK_ACTIONS = {
+    "email_send",
+    "calendar_update",
+    "source_system_writeback",
+    "external_delivery",
+}
 _API_ACTIONS = {"graph_api_call", "procore_api_call", "arbitrary_sql"}
 _DETERMINATION_ACTIONS = {
     "payment_decision",
@@ -191,13 +196,19 @@ def run_mcp_permission_audit(
             "raw/api/writeback/determination/url actions all denied",
         ),
         _check("resources_safe", len(resources_list) == 5, "five approved-workflow resources"),
-        _check("prompts_safe", bool(prompts.get("proof_passed")), "five prompts, allowed-tools only"),
+        _check(
+            "prompts_safe", bool(prompts.get("proof_passed")), "five prompts, allowed-tools only"
+        ),
         _check(
             "receipts_metadata_only",
             receipts_metadata_only,
             "tool-call + denial receipts: hashes only, no raw columns, guards 0",
         ),
-        _check("claude_config_safe", bool(runbook.get("proof_passed")), "stdio preview, never auto-written"),
+        _check(
+            "claude_config_safe",
+            bool(runbook.get("proof_passed")),
+            "stdio preview, never auto-written",
+        ),
         _check(
             "no_raw_access",
             bool(

@@ -71,14 +71,16 @@ class ClassificationService:
             inventory_item=inventory_item,
         )
         if forced_review_reason is not None:
-            decision = decision.model_copy(update={
-                "status": "review",
-                "routing_reason": (
-                    decision.routing_reason + ";" + forced_review_reason
-                    if decision.routing_reason != "model_accepted"
-                    else forced_review_reason
-                ),
-            })
+            decision = decision.model_copy(
+                update={
+                    "status": "review",
+                    "routing_reason": (
+                        decision.routing_reason + ";" + forced_review_reason
+                        if decision.routing_reason != "model_accepted"
+                        else forced_review_reason
+                    ),
+                }
+            )
         self._store.record_model_decision(decision)
         return decision
 
@@ -103,7 +105,8 @@ class ClassificationService:
             system=task_routing.system_prompt,
         )
         raw_output = self._client.generate_json(
-            system=task_routing.system_prompt, prompt=prompt,
+            system=task_routing.system_prompt,
+            prompt=prompt,
         )
         return self.classify_with_raw(
             raw_output=raw_output,
@@ -117,7 +120,10 @@ class ClassificationService:
 
     @staticmethod
     def _build_prompt(
-        *, item_id: str, inventory_item: dict[str, Any], system: str,
+        *,
+        item_id: str,
+        inventory_item: dict[str, Any],
+        system: str,
     ) -> str:
         # Metadata only. Document body / content / text never appears.
         name = inventory_item.get("name") or "(unknown)"

@@ -84,9 +84,9 @@ def build_document_relationship_candidates(
         endpoint_id, target_record_type = _ALIGNMENT[dt]
         key = (pk, endpoint_id)
         if key not in presence:
-            presence[key] = store.count_procore_live_records(
-                project_key=pk, endpoint_id=endpoint_id
-            ) > 0
+            presence[key] = (
+                store.count_procore_live_records(project_key=pk, endpoint_id=endpoint_id) > 0
+            )
         if not presence[key]:
             # The project has no records of the aligned type — do not link.
             unmatched_skipped += 1

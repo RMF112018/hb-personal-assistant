@@ -406,7 +406,9 @@ def _llamaindex_vector_writer(
     }
 
 
-def _apply_items(run_id: str, indexable: list[dict[str, Any]], receipt: dict[str, Any]) -> list[dict]:
+def _apply_items(
+    run_id: str, indexable: list[dict[str, Any]], receipt: dict[str, Any]
+) -> list[dict]:
     """Build metadata-only per-node item rows (hashed source ref; never raw text/vectors)."""
     chunk_counts = receipt.get("chunk_counts", {})
     items: list[dict[str, Any]] = []
@@ -462,7 +464,9 @@ def build_vector_index_apply(
         "embedding_model_label": config.get("embedding_model_label"),
         "vector_store_kind": config.get("vector_store_kind"),
         "persist_dir_label": config.get("persist_dir_label"),
-        "vector_store_location": str(apply_seed.get("vector_store_location", "external_filesystem")),
+        "vector_store_location": str(
+            apply_seed.get("vector_store_location", "external_filesystem")
+        ),
         "vectors_persisted_to_sqlite": False,
         "apply_policy_version": apply_seed.get("version"),
         "policy_version": policy_version,
@@ -750,7 +754,11 @@ def _empty_migrated_db(tmp: str) -> str:
 def _guard_columns(conn: sqlite3.Connection, table: str) -> list[str]:
     """Return the table's guard CHECK(=0) columns (the `*_persisted` / `*_performed` / bypass flags)."""
     cols = [str(r[1]) for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
-    return [c for c in cols if c.endswith(("_persisted", "_performed")) or c.endswith("_bypassed_policy")]
+    return [
+        c
+        for c in cols
+        if c.endswith(("_persisted", "_performed")) or c.endswith("_bypassed_policy")
+    ]
 
 
 def _render_apply_proof_md(proof: dict[str, Any]) -> str:

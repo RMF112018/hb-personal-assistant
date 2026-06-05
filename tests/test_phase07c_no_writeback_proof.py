@@ -45,33 +45,64 @@ def _fresh_db() -> str:
 def _seed_clean_chain(db: str) -> None:
     store = ConstructionStore(db)
     store.upsert_inventory_item(
-        source_key="sp", drive_id="d", item_id="c0", name="raw_c0", web_url="https://x/c0",
-        parent_path="/General", size_bytes=1024, is_folder=False, last_modified=None, etag="e",
+        source_key="sp",
+        drive_id="d",
+        item_id="c0",
+        name="raw_c0",
+        web_url="https://x/c0",
+        parent_path="/General",
+        size_bytes=1024,
+        is_folder=False,
+        last_modified=None,
+        etag="e",
     )
     store.upsert_document_card(
-        card_id="c0", document_card_id="c0", source_id="sp", drive_item_id="c0",
-        file_extension="pdf", project_key="alpha", document_type="unknown", size_class="small",
+        card_id="c0",
+        document_card_id="c0",
+        source_id="sp",
+        drive_item_id="c0",
+        file_extension="pdf",
+        project_key="alpha",
+        document_type="unknown",
+        size_class="small",
         extraction_eligibility="manual_approval_required",
     )
     store.upsert_document_classification_candidate(
-        candidate_id="clf_c0", document_card_id="c0", document_type="rfi",
-        classifier_name="deterministic_v1", signal_class="deterministic", confidence=0.9,
+        candidate_id="clf_c0",
+        document_card_id="c0",
+        document_type="rfi",
+        classifier_name="deterministic_v1",
+        signal_class="deterministic",
+        confidence=0.9,
         confidence_class="deterministic",
     )
     store.upsert_document_project_match_candidate(
-        candidate_id="pm_c0", document_card_id="c0", project_key="alpha",
-        candidate_type="deterministic", confidence=0.95, confidence_class="deterministic",
-        deterministic=True, review_required=False,
+        candidate_id="pm_c0",
+        document_card_id="c0",
+        project_key="alpha",
+        candidate_type="deterministic",
+        confidence=0.95,
+        confidence_class="deterministic",
+        deterministic=True,
+        review_required=False,
     )
     store.upsert_document_relationship_candidate(
-        candidate_id="rel_c0", document_card_id="c0", target_system="procore",
-        target_record_type="rfi", target_record_key_hash="hh", relationship_type="x",
-        candidate_type="heuristic", confidence=0.55, confidence_class="moderate_heuristic",
+        candidate_id="rel_c0",
+        document_card_id="c0",
+        target_system="procore",
+        target_record_type="rfi",
+        target_record_key_hash="hh",
+        relationship_type="x",
+        candidate_type="heuristic",
+        confidence=0.55,
+        confidence_class="moderate_heuristic",
         review_required=True,
     )
     store.upsert_document_intelligence_preview(
-        preview_id="pv_alpha", project_key="alpha",
-        preview_kind="project_document_intelligence", confidence_class="weak_heuristic",
+        preview_id="pv_alpha",
+        project_key="alpha",
+        preview_kind="project_document_intelligence",
+        confidence_class="weak_heuristic",
         warnings_json='{"warnings": [], "source_reference": {"project_key": "alpha"}}',
         review_required=True,
     )

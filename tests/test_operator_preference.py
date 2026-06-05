@@ -30,8 +30,12 @@ def db_path(tmp_path: Path) -> str:
 
 def test_low_risk_preference_is_tier_2_pending(db_path: str) -> None:
     p = capture_preference(
-        scope="global", preference_key="detail_level", preference_value_redacted="concise",
-        preference_type="detail_level", db_path=db_path, emit=True,
+        scope="global",
+        preference_key="detail_level",
+        preference_value_redacted="concise",
+        preference_type="detail_level",
+        db_path=db_path,
+        emit=True,
     )
     assert p.review_tier == 2
     assert p.review_status == "pending_review"
@@ -39,9 +43,13 @@ def test_low_risk_preference_is_tier_2_pending(db_path: str) -> None:
 
 def test_sensitive_preference_routes_tier_3(db_path: str) -> None:
     p = capture_preference(
-        scope="project", scope_key="P1", preference_key="personnel_emphasis",
-        preference_value_redacted="[redacted]", preference_type="personnel",
-        db_path=db_path, emit=True,
+        scope="project",
+        scope_key="P1",
+        preference_key="personnel_emphasis",
+        preference_value_redacted="[redacted]",
+        preference_type="personnel",
+        db_path=db_path,
+        emit=True,
     )
     assert p.review_tier == 3
     assert p.review_tier_reason_code == "T3_SENSITIVE_HIGH_IMPACT"
@@ -49,10 +57,22 @@ def test_sensitive_preference_routes_tier_3(db_path: str) -> None:
 
 
 def test_upsert_increments_signal_count_and_guards_zero(db_path: str) -> None:
-    capture_preference(scope="global", preference_key="terminology", preference_value_redacted="RFI",
-                       preference_type="terminology", db_path=db_path, emit=True)
-    capture_preference(scope="global", preference_key="terminology", preference_value_redacted="RFI",
-                       preference_type="terminology", db_path=db_path, emit=True)
+    capture_preference(
+        scope="global",
+        preference_key="terminology",
+        preference_value_redacted="RFI",
+        preference_type="terminology",
+        db_path=db_path,
+        emit=True,
+    )
+    capture_preference(
+        scope="global",
+        preference_key="terminology",
+        preference_value_redacted="RFI",
+        preference_type="terminology",
+        db_path=db_path,
+        emit=True,
+    )
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
@@ -69,8 +89,16 @@ def test_upsert_increments_signal_count_and_guards_zero(db_path: str) -> None:
 def test_accepted_preferences_cannot_override_safety() -> None:
     applied, dropped = apply_operator_preferences(
         [
-            {"preference_key": "executive_summary_style", "preference_value_redacted": "brief", "review_status": "accepted"},
-            {"preference_key": "bypass_review_tier", "preference_value_redacted": "1", "review_status": "accepted"},
+            {
+                "preference_key": "executive_summary_style",
+                "preference_value_redacted": "brief",
+                "review_status": "accepted",
+            },
+            {
+                "preference_key": "bypass_review_tier",
+                "preference_value_redacted": "1",
+                "review_status": "accepted",
+            },
         ]
     )
     assert applied == {"executive_summary_style": "brief"}

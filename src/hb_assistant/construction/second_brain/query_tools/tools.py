@@ -249,8 +249,15 @@ def build_sqlite_query_tool_proof() -> dict[str, Any]:
     no_raw_content = not any(
         token in blob
         for token in (
-            "raw_body", "raw_document_text", "raw_calendar_payload", "raw_prompt",
-            "raw_response", "signed_url", "download_url", "secret", "token",
+            "raw_body",
+            "raw_document_text",
+            "raw_calendar_payload",
+            "raw_prompt",
+            "raw_response",
+            "signed_url",
+            "download_url",
+            "secret",
+            "token",
         )
     )
     source_refs_present = all(

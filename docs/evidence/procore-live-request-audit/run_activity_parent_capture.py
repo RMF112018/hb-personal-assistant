@@ -15,24 +15,43 @@ STAMP = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 REQUESTS_PATH = OUT_DIR / f"{STAMP}-activity-parent-9517-requests.jsonl"
 RECEIPT_PATH = OUT_DIR / f"{STAMP}-activity-parent-9517-receipt.json"
 SUMMARY_PATH = OUT_DIR / f"{STAMP}-activity-parent-9517-summary.json"
-SAFE_HEADER_NAMES = {"Accept", "Content-Type", "Procore-Company-Id", "User-Agent", "X-Correlation-ID"}
+SAFE_HEADER_NAMES = {
+    "Accept",
+    "Content-Type",
+    "Procore-Company-Id",
+    "User-Agent",
+    "X-Correlation-ID",
+}
 SAFE_RESPONSE_HEADERS = {"Link", "Retry-After"}
 SAFE_RESPONSE_HEADER_PREFIXES = ("X-RateLimit", "X-Request", "X-Correlation")
 request_log: list[dict[str, Any]] = []
-live_client = ProcoreHTTPClient(environment="production", transport=None, access_token_provider=default_procore_token_provider(), live_enabled=True)
+live_client = ProcoreHTTPClient(
+    environment="production",
+    transport=None,
+    access_token_provider=default_procore_token_provider(),
+    live_enabled=True,
+)
 
 
 def safe_response_headers(headers: Dict[str, str]) -> Dict[str, str]:
-    return {k: v for k, v in headers.items() if k in SAFE_RESPONSE_HEADERS or any(k.startswith(p) for p in SAFE_RESPONSE_HEADER_PREFIXES)}
+    return {
+        k: v
+        for k, v in headers.items()
+        if k in SAFE_RESPONSE_HEADERS or any(k.startswith(p) for p in SAFE_RESPONSE_HEADER_PREFIXES)
+    }
 
 
-def capture_transport(method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]] = None) -> Any:
+def capture_transport(
+    method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]] = None
+) -> Any:
     entry = {
         "seq": len(request_log) + 1,
         "method": method,
         "url": url,
         "params": dict(params or {}),
-        "request_headers_redacted": {k: v for k, v in dict(headers or {}).items() if k in SAFE_HEADER_NAMES},
+        "request_headers_redacted": {
+            k: v for k, v in dict(headers or {}).items() if k in SAFE_HEADER_NAMES
+        },
         "auth_header_present": bool((headers or {}).get("Authorization")),
         "authorization_redacted": True,
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -40,7 +59,9 @@ def capture_transport(method: str, url: str, headers: Dict[str, str], params: Op
     try:
         resp = live_client._default_live_transport(method, url, headers, params)
         entry["status_code"] = getattr(resp, "status_code", None)
-        entry["response_headers_redacted"] = safe_response_headers(dict(getattr(resp, "headers", {}) or {}))
+        entry["response_headers_redacted"] = safe_response_headers(
+            dict(getattr(resp, "headers", {}) or {})
+        )
         request_log.append(entry)
         REQUESTS_PATH.open("a", encoding="utf-8").write(json.dumps(entry, sort_keys=True) + "\n")
         return resp

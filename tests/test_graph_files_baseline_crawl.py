@@ -47,8 +47,12 @@ def _page(items, next_link=None):
 
 
 def _file(i):
-    return {"id": f"file{i}", "name": f"f{i}.pdf", "file": {"mimeType": "application/pdf"},
-            "parentReference": {"driveId": "D1", "id": "P"}}
+    return {
+        "id": f"file{i}",
+        "name": f"f{i}.pdf",
+        "file": {"mimeType": "application/pdf"},
+        "parentReference": {"driveId": "D1", "id": "P"},
+    }
 
 
 # --- counts / scope ------------------------------------------------------------
@@ -56,12 +60,18 @@ def _file(i):
 
 def test_delta_initial_crawl_counts_in_and_out_of_scope() -> None:
     http = MagicMock()
-    http.get.return_value = _page([
-        _file(1),
-        {"id": "del1", "name": "old.pdf", "deleted": {"state": "deleted"},
-         "parentReference": {"driveId": "D1", "id": "P"}},
-        {"name": "no-id"},  # id-less → out of scope
-    ])
+    http.get.return_value = _page(
+        [
+            _file(1),
+            {
+                "id": "del1",
+                "name": "old.pdf",
+                "deleted": {"state": "deleted"},
+                "parentReference": {"driveId": "D1", "id": "P"},
+            },
+            {"name": "no-id"},  # id-less → out of scope
+        ]
+    )
     r = BaselineCrawler(http).crawl(_folder_source(), dry_run=True)
     assert r.status == "ok" and r.traversal == "delta"
     assert r.endpoint == "/drives/D1/items/F1/delta"
@@ -72,7 +82,10 @@ def test_delta_initial_crawl_counts_in_and_out_of_scope() -> None:
 def test_max_pages_truncation() -> None:
     http = MagicMock()
     http.get.side_effect = [
-        _page([_file(1)], next_link="https://graph.microsoft.com/v1.0/drives/D1/items/F1/delta?$skiptoken=x"),
+        _page(
+            [_file(1)],
+            next_link="https://graph.microsoft.com/v1.0/drives/D1/items/F1/delta?$skiptoken=x",
+        ),
         _page([_file(2)]),
     ]
     r = BaselineCrawler(http).crawl(_folder_source(), dry_run=True, max_pages=1)

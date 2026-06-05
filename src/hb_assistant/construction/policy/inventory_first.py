@@ -113,9 +113,7 @@ def build_policy(source: SourceLocation) -> Optional[InventoryFirstPolicy]:
     )
 
 
-def assert_no_bulk_document_cards(
-    *, source_key: str, scope: str, intended_card_count: int
-) -> None:
+def assert_no_bulk_document_cards(*, source_key: str, scope: str, intended_card_count: int) -> None:
     """Pre-flight guard: reject bulk DocumentCard creation for inventory-first sources.
 
     Single-card creation (count <= 1) is preserved because the existing opt-in

@@ -23,27 +23,55 @@ def _seed(store: ConstructionStore) -> None:
     for i, dt in enumerate(["rfi", "contract"]):
         key = f"c{i}"
         store.upsert_inventory_item(
-            source_key="sp", drive_id="d", item_id=key, name="raw_" + key, web_url="https://x/" + key,
-            parent_path="/General", size_bytes=1024, is_folder=False, last_modified=None, etag="e",
+            source_key="sp",
+            drive_id="d",
+            item_id=key,
+            name="raw_" + key,
+            web_url="https://x/" + key,
+            parent_path="/General",
+            size_bytes=1024,
+            is_folder=False,
+            last_modified=None,
+            etag="e",
         )
         store.upsert_document_card(
-            card_id=key, document_card_id=key, source_id="sp", drive_item_id=key,
-            file_extension="pdf", project_key="alpha", review_required=True, size_class="small",
+            card_id=key,
+            document_card_id=key,
+            source_id="sp",
+            drive_item_id=key,
+            file_extension="pdf",
+            project_key="alpha",
+            review_required=True,
+            size_class="small",
         )
         store.upsert_document_classification_candidate(
-            candidate_id="clf_" + key, document_card_id=key, document_type=dt,
-            classifier_name="deterministic_v1", signal_class="deterministic", confidence=0.9,
-            confidence_class="deterministic", review_required=False,
+            candidate_id="clf_" + key,
+            document_card_id=key,
+            document_type=dt,
+            classifier_name="deterministic_v1",
+            signal_class="deterministic",
+            confidence=0.9,
+            confidence_class="deterministic",
+            review_required=False,
         )
     warnings_json = json.dumps(
-        {"warnings": [], "source_reference": {"project_key": "alpha", "document_count": 2,
-         "distinct_sources": 1}, "review": {"documents_pending_review": 2,
-         "candidate_items_pending_review": 0}}
+        {
+            "warnings": [],
+            "source_reference": {
+                "project_key": "alpha",
+                "document_count": 2,
+                "distinct_sources": 1,
+            },
+            "review": {"documents_pending_review": 2, "candidate_items_pending_review": 0},
+        }
     )
     store.upsert_document_intelligence_preview(
-        preview_id="pv_alpha", project_key="alpha",
-        preview_kind="project_document_intelligence", confidence_class="moderate_heuristic",
-        warnings_json=warnings_json, review_required=True,
+        preview_id="pv_alpha",
+        project_key="alpha",
+        preview_kind="project_document_intelligence",
+        confidence_class="moderate_heuristic",
+        warnings_json=warnings_json,
+        review_required=True,
     )
 
 

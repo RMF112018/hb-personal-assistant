@@ -78,9 +78,7 @@ def test_discover_site_resolves_by_url() -> None:
 
 
 def test_discover_site_unsupported_for_onedrive() -> None:
-    src = SourceLocation(
-        source_key="od_x", kind="onedrive_business_root", display_name="OD"
-    )
+    src = SourceLocation(source_key="od_x", kind="onedrive_business_root", display_name="OD")
     result = SiteDriveDiscovery(MagicMock()).discover_site(src)
     assert result.status == "unsupported"
 
@@ -91,10 +89,18 @@ def test_discover_site_unsupported_for_onedrive() -> None:
 def _drives_payload() -> dict:
     return {
         "value": [
-            {"id": "D1", "name": "Documents", "webUrl": f"{_HOST}/Shared%20Documents",
-             "driveType": "documentLibrary"},
-            {"id": "D2", "name": "Project Files", "webUrl": f"{_HOST}/ProjectFiles",
-             "driveType": "documentLibrary"},
+            {
+                "id": "D1",
+                "name": "Documents",
+                "webUrl": f"{_HOST}/Shared%20Documents",
+                "driveType": "documentLibrary",
+            },
+            {
+                "id": "D2",
+                "name": "Project Files",
+                "webUrl": f"{_HOST}/ProjectFiles",
+                "driveType": "documentLibrary",
+            },
         ]
     }
 
@@ -124,10 +130,25 @@ def test_discover_drives_unmatched_when_no_signal() -> None:
 def test_discover_drives_site_page_returns_linked_candidates() -> None:
     http = MagicMock()
     http.get.side_effect = [
-        {"value": [{"id": "pg1", "name": "ProjectHome.aspx",
-                    "webUrl": "https://hedrickbrotherscom.sharepoint.com/sites/HG/SitePages/ProjectHome.aspx"}]},
-        {"value": [{"id": "lib1", "name": "Documents", "webUrl": "https://hg/docs",
-                    "driveType": "documentLibrary"}]},
+        {
+            "value": [
+                {
+                    "id": "pg1",
+                    "name": "ProjectHome.aspx",
+                    "webUrl": "https://hedrickbrotherscom.sharepoint.com/sites/HG/SitePages/ProjectHome.aspx",
+                }
+            ]
+        },
+        {
+            "value": [
+                {
+                    "id": "lib1",
+                    "name": "Documents",
+                    "webUrl": "https://hg/docs",
+                    "driveType": "documentLibrary",
+                }
+            ]
+        },
     ]
     src = SourceLocation(
         source_key="sp_page",

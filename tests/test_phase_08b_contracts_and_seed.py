@@ -275,8 +275,13 @@ def test_all_08b_contracts_load_with_versions_includes_executor() -> None:
     # Auto-covered by set equality, but explicit for P01.
     contracts = load_all_phase_08b_contracts()
     assert set(contracts) == set(PHASE_08B_CONTRACT_FILES)
-    for name in ("automation_executor_contract", "executor_stage_contract", "safe_replay_contract",
-                 "automation_execution_gate_contract", "executor_validation_matrix"):
+    for name in (
+        "automation_executor_contract",
+        "executor_stage_contract",
+        "safe_replay_contract",
+        "automation_execution_gate_contract",
+        "executor_validation_matrix",
+    ):
         assert name in contracts
         assert contracts[name].get("version", "").startswith("phase_08b_")
 

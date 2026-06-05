@@ -110,7 +110,11 @@ class SourceRecordMapBuilder:
         def _process(rec: dict[str, Any]) -> None:
             nonlocal mapped_count
             # Defense-in-depth (store also enforces)
-            for flag in ("raw_body_persisted", "full_text_persisted", "external_writeback_performed"):
+            for flag in (
+                "raw_body_persisted",
+                "full_text_persisted",
+                "external_writeback_performed",
+            ):
                 rec[flag] = 0
             if not dry_run:
                 store.upsert_source_system_record(rec)
@@ -150,7 +154,11 @@ class SourceRecordMapBuilder:
                 proj_key = pk if pk in pilot_keys else None
                 conf = "deterministic_exact_id" if proj_key else "weak_heuristic_single_signal"
                 review = bool(not proj_key)
-                reason = None if proj_key else ("pilot_source_unmapped" if pk else "no_project_identity_signal")
+                reason = (
+                    None
+                    if proj_key
+                    else ("pilot_source_unmapped" if pk else "no_project_identity_signal")
+                )
                 rec = {
                     "canonical_record_id": canon,
                     "project_key": proj_key,
@@ -223,7 +231,9 @@ class SourceRecordMapBuilder:
                     "source_updated_utc": None,
                     "confidence_class": conf,
                     "review_required": 1 if review else 0,
-                    "mapping_signals_json": '{"family":"' + (fam or "") + '"}' if proj_key else None,
+                    "mapping_signals_json": '{"family":"' + (fam or "") + '"}'
+                    if proj_key
+                    else None,
                 }
                 if proj_key:
                     _process(rec)
@@ -232,7 +242,9 @@ class SourceRecordMapBuilder:
                         {
                             "canonical_record_id": canon,
                             "source_table": "procore_financial_contracts",
-                            "reason_code": "pilot_source_unmapped" if pk else "no_project_identity_signal",
+                            "reason_code": "pilot_source_unmapped"
+                            if pk
+                            else "no_project_identity_signal",
                             "signals": {"family": fam},
                         }
                     )
@@ -348,7 +360,9 @@ class SourceRecordMapBuilder:
                     "source_updated_utc": None,
                     "confidence_class": conf_class,
                     "review_required": 1 if review else 0,
-                    "mapping_signals_json": '{"match":"' + (mstatus or "") + '"}' if proj_key else None,
+                    "mapping_signals_json": '{"match":"' + (mstatus or "") + '"}'
+                    if proj_key
+                    else None,
                 }
                 if proj_key:
                     _process(rec)
@@ -400,7 +414,9 @@ class SourceRecordMapBuilder:
                     "first_seen_utc": dec,
                     "last_seen_utc": dec,
                     "source_updated_utc": dec,
-                    "confidence_class": "deterministic_exact_id" if proj_key else "weak_heuristic_single_signal",
+                    "confidence_class": "deterministic_exact_id"
+                    if proj_key
+                    else "weak_heuristic_single_signal",
                     "review_required": 0 if proj_key else 1,
                     "mapping_signals_json": None,
                 }
@@ -453,7 +469,9 @@ class SourceRecordMapBuilder:
                     "first_seen_utc": cr,
                     "last_seen_utc": cr,
                     "source_updated_utc": None,
-                    "confidence_class": "deterministic_exact_id" if proj_key else "weak_heuristic_single_signal",
+                    "confidence_class": "deterministic_exact_id"
+                    if proj_key
+                    else "weak_heuristic_single_signal",
                     "review_required": 0 if proj_key else 1,
                     "mapping_signals_json": None,
                 }
@@ -514,7 +532,11 @@ class SourceRecordMapBuilder:
                     "source_updated_utc": None,
                     "confidence_class": conf_class,
                     "review_required": 1,
-                    "mapping_signals_json": '{"signal":"' + (sig or "") + '","conf":' + str(conf or 0) + "}",
+                    "mapping_signals_json": '{"signal":"'
+                    + (sig or "")
+                    + '","conf":'
+                    + str(conf or 0)
+                    + "}",
                 }
                 if proj_key:
                     _process(rec)

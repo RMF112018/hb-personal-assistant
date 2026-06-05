@@ -30,9 +30,7 @@ from hb_assistant.config.path_policy import PathPolicy
 DAILY_LOG_SELECTION_SEED_RELATIVE = (
     Path("resources") / "config" / "procore_daily_log_selection.seed.yaml"
 )
-DAILY_LOG_SELECTION_REPO_OVERRIDE_RELATIVE = (
-    Path("config") / "procore_daily_log_selection.yml"
-)
+DAILY_LOG_SELECTION_REPO_OVERRIDE_RELATIVE = Path("config") / "procore_daily_log_selection.yml"
 DAILY_LOG_SELECTION_ENV_VAR = "HB_PROCORE_DAILY_LOG_SELECTION"
 
 
@@ -95,9 +93,7 @@ class ProcoreDailyLogSelection(BaseModel):
                         f"duplicate payload_key across buckets: {section.payload_key!r}"
                     )
                 if section.category in seen_categories:
-                    raise ValueError(
-                        f"duplicate category across buckets: {section.category!r}"
-                    )
+                    raise ValueError(f"duplicate category across buckets: {section.category!r}")
                 seen_ids.add(section.id)
                 seen_payload_keys.add(section.payload_key)
                 seen_categories.add(section.category)

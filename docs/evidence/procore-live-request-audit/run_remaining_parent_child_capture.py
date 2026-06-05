@@ -41,7 +41,9 @@ DEFAULT_ENDPOINTS = [
 ]
 ENDPOINTS = [
     endpoint.strip()
-    for endpoint in os.environ.get("HB_PROCORE_CAPTURE_ENDPOINTS", ",".join(DEFAULT_ENDPOINTS)).split(",")
+    for endpoint in os.environ.get(
+        "HB_PROCORE_CAPTURE_ENDPOINTS", ",".join(DEFAULT_ENDPOINTS)
+    ).split(",")
     if endpoint.strip()
 ]
 MAX_CHILD_REQUESTS = int(os.environ.get("HB_PROCORE_CAPTURE_MAX_CHILD_REQUESTS", "100000"))
@@ -56,7 +58,13 @@ UNVERIFIED_PARENT_CHILD_ENDPOINTS = [
     "budget-details",
     "budget-change-line-items",
 ]
-SAFE_HEADER_NAMES = {"Accept", "Content-Type", "Procore-Company-Id", "User-Agent", "X-Correlation-ID"}
+SAFE_HEADER_NAMES = {
+    "Accept",
+    "Content-Type",
+    "Procore-Company-Id",
+    "User-Agent",
+    "X-Correlation-ID",
+}
 SAFE_RESPONSE_HEADERS = {"Link", "Retry-After"}
 SAFE_RESPONSE_HEADER_PREFIXES = ("X-RateLimit", "X-Request", "X-Correlation")
 
@@ -72,19 +80,24 @@ live_client = ProcoreHTTPClient(
 
 def _safe_response_headers(headers: Dict[str, str]) -> Dict[str, str]:
     return {
-        k: v for k, v in headers.items()
+        k: v
+        for k, v in headers.items()
         if k in SAFE_RESPONSE_HEADERS or any(k.startswith(p) for p in SAFE_RESPONSE_HEADER_PREFIXES)
     }
 
 
-def capture_transport(method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]] = None) -> Any:
+def capture_transport(
+    method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]] = None
+) -> Any:
     entry = {
         "seq": len(request_log) + 1,
         "endpoint": current_endpoint,
         "method": method,
         "url": url,
         "params": dict(params or {}),
-        "request_headers_redacted": {k: v for k, v in dict(headers or {}).items() if k in SAFE_HEADER_NAMES},
+        "request_headers_redacted": {
+            k: v for k, v in dict(headers or {}).items() if k in SAFE_HEADER_NAMES
+        },
         "auth_header_present": bool((headers or {}).get("Authorization")),
         "authorization_redacted": True,
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -92,7 +105,9 @@ def capture_transport(method: str, url: str, headers: Dict[str, str], params: Op
     try:
         resp = live_client._default_live_transport(method, url, headers, params)
         entry["status_code"] = getattr(resp, "status_code", None)
-        entry["response_headers_redacted"] = _safe_response_headers(dict(getattr(resp, "headers", {}) or {}))
+        entry["response_headers_redacted"] = _safe_response_headers(
+            dict(getattr(resp, "headers", {}) or {})
+        )
         request_log.append(entry)
         REQUESTS_PATH.open("a", encoding="utf-8").write(json.dumps(entry, sort_keys=True) + "\n")
         return resp
@@ -141,7 +156,9 @@ def main() -> None:
         endpoint = str(req.get("endpoint"))
         request_counts[endpoint] = request_counts.get(endpoint, 0) + 1
         status = str(req.get("status_code") or req.get("transport_exception") or "unknown")
-        statuses.setdefault(endpoint, {})[status] = statuses.setdefault(endpoint, {}).get(status, 0) + 1
+        statuses.setdefault(endpoint, {})[status] = (
+            statuses.setdefault(endpoint, {}).get(status, 0) + 1
+        )
 
     summary = {
         "stamp": STAMP,

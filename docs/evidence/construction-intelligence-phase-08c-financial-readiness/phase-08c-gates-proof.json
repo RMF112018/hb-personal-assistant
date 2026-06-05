@@ -1,43 +1,43 @@
 {
   "proof": "phase_08c_data_quality_gates",
   "command": "second-brain data-quality phase-08c-gates",
-  "proof_passed": true,
-  "ok": true,
+  "proof_passed": false,
+  "ok": false,
   "phase": "08C",
-  "generated_utc": "2026-06-03T20:52:51.514337Z",
-  "schema_version": 36,
+  "generated_utc": "2026-06-05T16:51:06.443439Z",
+  "schema_version": 39,
   "schema_version_expected": 35,
   "contract_version": "phase_08c_data_quality_gates-v1",
   "advisory_only": true,
   "status_counts": {
-    "pass": 21,
-    "warning": 1,
-    "fail_blocking": 0,
+    "pass": 6,
+    "warning": 5,
+    "fail_blocking": 11,
     "deferred_not_blocking": 0
   },
   "by_field_status": {
     "schema_contracts": "pass",
     "endpoint_inventory": "pass",
-    "second_brain_financial_fact_normalization_runs": "pass",
-    "second_brain_financial_amount_facts_normalized": "pass",
-    "second_brain_financial_currency_completeness_snapshots": "pass",
-    "second_brain_financial_wbs_cost_code_snapshots": "pass",
-    "second_brain_financial_source_coverage_snapshots": "pass",
-    "second_brain_financial_exposure_summary_items": "pass",
-    "second_brain_financial_forecast_readiness_runs": "pass",
-    "second_brain_financial_review_required_items": "pass",
-    "second_brain_financial_readiness_agent_runs": "pass",
-    "second_brain_phase_08c_validation_runs": "pass",
+    "second_brain_financial_fact_normalization_runs": "fail_blocking",
+    "second_brain_financial_amount_facts_normalized": "fail_blocking",
+    "second_brain_financial_currency_completeness_snapshots": "fail_blocking",
+    "second_brain_financial_wbs_cost_code_snapshots": "fail_blocking",
+    "second_brain_financial_source_coverage_snapshots": "fail_blocking",
+    "second_brain_financial_exposure_summary_items": "fail_blocking",
+    "second_brain_financial_forecast_readiness_runs": "fail_blocking",
+    "second_brain_financial_review_required_items": "fail_blocking",
+    "second_brain_financial_readiness_agent_runs": "fail_blocking",
+    "second_brain_phase_08c_validation_runs": "fail_blocking",
     "amount_normalization": "pass",
-    "currency_completeness": "pass",
-    "wbs_cost_code_completeness": "pass",
-    "source_coverage": "pass",
+    "currency_completeness": "warning",
+    "wbs_cost_code_completeness": "warning",
+    "source_coverage": "warning",
     "exposure_marts": "pass",
-    "readiness_agent": "pass",
+    "readiness_agent": "warning",
     "forecast_readiness": "warning",
     "review_required_policy": "pass",
     "cli_operator_status": "pass",
-    "no_writeback_no_raw_financial_output": "pass"
+    "no_writeback_no_raw_financial_output": "fail_blocking"
   },
   "gates": [
     {
@@ -56,63 +56,63 @@
     },
     {
       "gate_name": "second_brain_financial_fact_normalization_runs",
-      "gate_status": "pass",
-      "blocking": 0,
-      "reason": null
+      "gate_status": "fail_blocking",
+      "blocking": 1,
+      "reason": "TABLE_ABSENT_IN_V35"
     },
     {
       "gate_name": "second_brain_financial_amount_facts_normalized",
-      "gate_status": "pass",
-      "blocking": 0,
-      "reason": null
+      "gate_status": "fail_blocking",
+      "blocking": 1,
+      "reason": "TABLE_ABSENT_IN_V35"
     },
     {
       "gate_name": "second_brain_financial_currency_completeness_snapshots",
-      "gate_status": "pass",
-      "blocking": 0,
-      "reason": null
+      "gate_status": "fail_blocking",
+      "blocking": 1,
+      "reason": "TABLE_ABSENT_IN_V35"
     },
     {
       "gate_name": "second_brain_financial_wbs_cost_code_snapshots",
-      "gate_status": "pass",
-      "blocking": 0,
-      "reason": null
+      "gate_status": "fail_blocking",
+      "blocking": 1,
+      "reason": "TABLE_ABSENT_IN_V35"
     },
     {
       "gate_name": "second_brain_financial_source_coverage_snapshots",
-      "gate_status": "pass",
-      "blocking": 0,
-      "reason": null
+      "gate_status": "fail_blocking",
+      "blocking": 1,
+      "reason": "TABLE_ABSENT_IN_V35"
     },
     {
       "gate_name": "second_brain_financial_exposure_summary_items",
-      "gate_status": "pass",
-      "blocking": 0,
-      "reason": null
+      "gate_status": "fail_blocking",
+      "blocking": 1,
+      "reason": "TABLE_ABSENT_IN_V35"
     },
     {
       "gate_name": "second_brain_financial_forecast_readiness_runs",
-      "gate_status": "pass",
-      "blocking": 0,
-      "reason": null
+      "gate_status": "fail_blocking",
+      "blocking": 1,
+      "reason": "TABLE_ABSENT_IN_V35"
     },
     {
       "gate_name": "second_brain_financial_review_required_items",
-      "gate_status": "pass",
-      "blocking": 0,
-      "reason": null
+      "gate_status": "fail_blocking",
+      "blocking": 1,
+      "reason": "TABLE_ABSENT_IN_V35"
     },
     {
       "gate_name": "second_brain_financial_readiness_agent_runs",
-      "gate_status": "pass",
-      "blocking": 0,
-      "reason": null
+      "gate_status": "fail_blocking",
+      "blocking": 1,
+      "reason": "TABLE_ABSENT_IN_V35"
     },
     {
       "gate_name": "second_brain_phase_08c_validation_runs",
-      "gate_status": "pass",
-      "blocking": 0,
-      "reason": null
+      "gate_status": "fail_blocking",
+      "blocking": 1,
+      "reason": "TABLE_ABSENT_IN_V35"
     },
     {
       "gate_name": "amount_normalization",
@@ -126,7 +126,7 @@
         "sqlite_real_allowed": false
       },
       "normalization": {
-        "run_id": "08c-amount-norm-5e00bc98f7f1",
+        "run_id": "08c-amount-norm-08c1e67c9af8",
         "stats": {
           "parseable": 0,
           "rejected": 0,
@@ -142,54 +142,21 @@
     },
     {
       "gate_name": "currency_completeness",
-      "gate_status": "pass",
+      "gate_status": "warning",
       "blocking": 0,
-      "reason": null,
-      "explicit_source_currency": 0,
-      "evidence_backed_project_default": 0,
-      "missing_currency": 85521,
-      "inconsistent_currency": 0,
-      "review_required": 0,
-      "policy_enforced": true
+      "reason": "no such table: second_brain_financial_wbs_cost_code_snapshots"
     },
     {
       "gate_name": "wbs_cost_code_completeness",
-      "gate_status": "pass",
+      "gate_status": "warning",
       "blocking": 0,
-      "reason": null,
-      "wbs_present": 1849,
-      "cost_present": 1226,
-      "line_present": 0,
-      "missing_wbs": 0,
-      "review_count": 1290
+      "reason": "no such table: second_brain_financial_wbs_cost_code_snapshots"
     },
     {
       "gate_name": "source_coverage",
-      "gate_status": "pass",
+      "gate_status": "warning",
       "blocking": 0,
-      "reason": null,
-      "families": [
-        "owner_contracts",
-        "commitments",
-        "purchase_orders",
-        "subcontractor_invoices",
-        "payment_applications",
-        "budget",
-        "budget_changes",
-        "change_events",
-        "rfqs",
-        "direct_costs"
-      ],
-      "matrix_total_sources": 32,
-      "matrix_by_status": {
-        "covered_ready": 0,
-        "covered_review_required": 0,
-        "covered_missing_context": 29,
-        "fail_closed": 3,
-        "deferred_not_blocking": 5,
-        "blocked": 0
-      },
-      "matrix_no_raw": true
+      "reason": "no such table: second_brain_financial_wbs_cost_code_snapshots"
     },
     {
       "gate_name": "exposure_marts",
@@ -201,11 +168,9 @@
     },
     {
       "gate_name": "readiness_agent",
-      "gate_status": "pass",
+      "gate_status": "warning",
       "blocking": 0,
-      "reason": null,
-      "run_id": "08c-fact-d67b0a29",
-      "items": 80
+      "reason": "no such table: second_brain_financial_readiness_agent_runs"
     },
     {
       "gate_name": "forecast_readiness",
@@ -223,7 +188,7 @@
       "gate_status": "pass",
       "blocking": 0,
       "reason": null,
-      "routed_review_items": 1290
+      "routed_review_items": 0
     },
     {
       "gate_name": "cli_operator_status",
@@ -234,14 +199,29 @@
     },
     {
       "gate_name": "no_writeback_no_raw_financial_output",
-      "gate_status": "pass",
-      "blocking": 0,
-      "reason": null
+      "gate_status": "fail_blocking",
+      "blocking": 1,
+      "reason": "NO_WRITEBACK_CHECK_FAILED",
+      "failed_checks": [
+        "guard_columns",
+        "money_not_float"
+      ]
     }
   ],
   "required_fields_covered": true,
-  "readiness_overstated": false,
-  "missing_required_evidence": [],
+  "readiness_overstated": true,
+  "missing_required_evidence": [
+    "second_brain_financial_fact_normalization_runs",
+    "second_brain_financial_amount_facts_normalized",
+    "second_brain_financial_currency_completeness_snapshots",
+    "second_brain_financial_wbs_cost_code_snapshots",
+    "second_brain_financial_source_coverage_snapshots",
+    "second_brain_financial_exposure_summary_items",
+    "second_brain_financial_forecast_readiness_runs",
+    "second_brain_financial_review_required_items",
+    "second_brain_financial_readiness_agent_runs",
+    "second_brain_phase_08c_validation_runs"
+  ],
   "stop_checks": {
     "gates_passed_with_missing_evidence": false,
     "raw_persisted": false,

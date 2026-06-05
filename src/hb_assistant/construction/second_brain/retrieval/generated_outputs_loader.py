@@ -159,7 +159,9 @@ def _candidate_from_brief(conn: sqlite3.Connection, row: tuple[Any, ...]) -> dic
     review_status = "auto_advisory"
     freshness = "current" if generated else "unknown"
     ref_count = _source_ref_count_for_brief(conn, str(brief_run_id))
-    text = _latest_handoff_text_for_brief(conn, str(brief_run_id)) or "[redacted daily brief handoff]"
+    text = (
+        _latest_handoff_text_for_brief(conn, str(brief_run_id)) or "[redacted daily brief handoff]"
+    )
     return {
         "node_id": _hash(str(brief_run_id))[:32],
         "source_family": _FAMILY,
@@ -215,7 +217,9 @@ def load_approved_generated_output_nodes(
             rows = conn.execute(
                 "SELECT packet_id, topic_hash, confidence_class, review_tier, review_status, "
                 "summary_redacted, created_utc "
-                "FROM second_brain_research_packets WHERE review_status = ?" + clause + " LIMIT 200",
+                "FROM second_brain_research_packets WHERE review_status = ?"
+                + clause
+                + " LIMIT 200",
                 tuple(params),
             ).fetchall()
             for r in rows:
@@ -235,7 +239,9 @@ def load_approved_generated_output_nodes(
             ).fetchall()
             for r in rows:
                 cand = _candidate_from_brief(conn, r)
-                if cand.get("source_ref_count", 0) > 0 and not validate_embedding_candidate(cand, contract=contract, seed=seed):
+                if cand.get("source_ref_count", 0) > 0 and not validate_embedding_candidate(
+                    cand, contract=contract, seed=seed
+                ):
                     nodes.append(cand)
     finally:
         if conn is not None:
@@ -266,7 +272,9 @@ def build_generated_outputs_loader_report(
     warnings: list[str] = []
     if not nodes:
         warnings.append("no_approved_generated_outputs")
-    if any(n.get("source_ref_count", 0) == 0 for n in nodes if n.get("memory_type") == "daily_brief"):
+    if any(
+        n.get("source_ref_count", 0) == 0 for n in nodes if n.get("memory_type") == "daily_brief"
+    ):
         warnings.append("unsourced_brief")
     return {
         "command": "second-brain retrieval generated-outputs-loader status",
@@ -331,7 +339,10 @@ def _seed_proof_fixtures(tmp: str) -> str:
         )
 
         # Run-level source refs (required for manifest eligibility)
-        for sf, sr in [("cross_source_relationships", "rel-1"), ("project_issue_history_items", "hist-1")]:
+        for sf, sr in [
+            ("cross_source_relationships", "rel-1"),
+            ("project_issue_history_items", "hist-1"),
+        ]:
             conn.execute(
                 """
                 INSERT INTO daily_brief_source_refs
@@ -345,8 +356,16 @@ def _seed_proof_fixtures(tmp: str) -> str:
         # Handoff lines (redacted titles, source-linked) — provides the text_redacted for brief node
         for idx, (sec, title, refs) in enumerate(
             [
-                ("priority_actions", "Follow up on RFI 042", '[{"source_family":"procore","source_ref":"rfi-042"}]'),
-                ("waiting_on", "Materials delivery delayed", '[{"source_family":"email","source_ref":"em-77"}]'),
+                (
+                    "priority_actions",
+                    "Follow up on RFI 042",
+                    '[{"source_family":"procore","source_ref":"rfi-042"}]',
+                ),
+                (
+                    "waiting_on",
+                    "Materials delivery delayed",
+                    '[{"source_family":"email","source_ref":"em-77"}]',
+                ),
             ]
         ):
             conn.execute(
@@ -497,12 +516,12 @@ def build_generated_outputs_loader_proof(
                     "stale_unknown_count, conflict_count, context_quality_class, confidence_class, "
                     "review_tier, review_tier_reason_code, review_status, advisory_classification, "
                     "summary_redacted, status, created_utc, "
-                "raw_email_body_persisted, raw_document_text_persisted, raw_calendar_payload_persisted, "
-                "raw_prompt_persisted, raw_response_persisted, retrieved_context_persisted, "
-                "signed_url_persisted, download_url_persisted, external_writeback_performed) "
-                "VALUES (?, 'mock', ?, 'P1', 0, 0, 0, 0, 'low', 'low', 2, 'T2', 'pending_review', 'advisory', "
-                "'[pending]', 'synthesized', ?, 0,0,0,0,0,0,0,0,0)",
-                ("pkt-pend2", _hash("pkt-pend2")[:16], _now()),
+                    "raw_email_body_persisted, raw_document_text_persisted, raw_calendar_payload_persisted, "
+                    "raw_prompt_persisted, raw_response_persisted, retrieved_context_persisted, "
+                    "signed_url_persisted, download_url_persisted, external_writeback_performed) "
+                    "VALUES (?, 'mock', ?, 'P1', 0, 0, 0, 0, 'low', 'low', 2, 'T2', 'pending_review', 'advisory', "
+                    "'[pending]', 'synthesized', ?, 0,0,0,0,0,0,0,0,0)",
+                    ("pkt-pend2", _hash("pkt-pend2")[:16], _now()),
                 )
                 c2.execute(
                     "INSERT INTO daily_brief_runs "

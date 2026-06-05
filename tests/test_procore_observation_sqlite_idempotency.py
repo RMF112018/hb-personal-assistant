@@ -38,9 +38,11 @@ def _promoted_contract():
 
 def _apply_once(coord: ProcoreSyncCoordinator) -> dict:
     contract = _promoted_contract()
-    with patch.object(coord, "auditor") as mock_auditor, \
-         patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls, \
-         patch("hb_assistant.procore.sync.load_endpoint_contract", return_value=contract):
+    with (
+        patch.object(coord, "auditor") as mock_auditor,
+        patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls,
+        patch("hb_assistant.procore.sync.load_endpoint_contract", return_value=contract),
+    ):
         mock_auditor.audit_endpoints_for_pilots.return_value = {"observation": "available"}
         mock_client = MagicMock()
         mock_client.paginate.return_value = list(OBSERVATION_SAMPLE_PAYLOAD)
@@ -108,9 +110,7 @@ def test_observation_apply_does_not_persist_raw_body_text() -> None:
 
     conn = sqlite3.connect(str(db))
     try:
-        rows = conn.execute(
-            "SELECT canonical_fields_json FROM procore_synced_entities"
-        ).fetchall()
+        rows = conn.execute("SELECT canonical_fields_json FROM procore_synced_entities").fetchall()
     finally:
         conn.close()
 

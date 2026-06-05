@@ -35,7 +35,7 @@ def test_no_m365_write_apis_in_graph_clients():
 
     # Search for any call that looks like a write to Graph
     # We look for .post( .put( .patch( .delete( on the client or http
-    pattern = r'\.(post|put|patch|delete)\s*\('
+    pattern = r"\.(post|put|patch|delete)\s*\("
 
     result = subprocess.run(
         ["grep", "-rnE", pattern, str(graph_dir)],
@@ -65,7 +65,7 @@ def test_no_write_methods_in_automation_orchestrator():
     root = Path(__file__).resolve().parents[1]
     auto_dir = root / "src" / "hb_assistant" / "automation"
 
-    pattern = r'\.(post|put|patch|delete)\s*\('
+    pattern = r"\.(post|put|patch|delete)\s*\("
     result = subprocess.run(
         ["grep", "-rnE", pattern, str(auto_dir)],
         capture_output=True,
@@ -85,7 +85,9 @@ def test_mutation_lockout_redaction_in_test_artifacts():
         # Count occurrences; the definition line itself contributes 1 per item.
         # If >1, there is a real secret elsewhere in the file.
         count = test_file.count(bad)
-        assert count <= 1, f"Redaction violation: {bad} appears {count} times (should be only in the forbidden list)"
+        assert count <= 1, (
+            f"Redaction violation: {bad} appears {count} times (should be only in the forbidden list)"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +154,9 @@ def test_email_intelligence_deferred_policy_rejects_unknown_fields() -> None:
         EmailIntelligenceDeferredPolicy.model_validate(data)
 
 
-def test_email_intelligence_deferred_policy_allows_mail_readwrite_all_granted_true_without_loosening_lockout() -> None:
+def test_email_intelligence_deferred_policy_allows_mail_readwrite_all_granted_true_without_loosening_lockout() -> (
+    None
+):
     """The central grant-but-suppress assertion: tenant may grant
     Mail.ReadWrite.All, but the three locked guardrails stay locked."""
     from hb_assistant.construction.policy import EmailIntelligenceDeferredPolicy
@@ -274,7 +278,8 @@ def test_graph_clients_do_not_contain_mailbox_mutation_endpoints() -> None:
 
     for py_file in sorted(graph_dir.rglob("*.py")):
         for line_no, line in enumerate(
-            py_file.read_text(encoding="utf-8").splitlines(), start=1,
+            py_file.read_text(encoding="utf-8").splitlines(),
+            start=1,
         ):
             if _WRITE_VERB_CALL_RE.search(line) and _MAILBOX_PATH_RE.search(line):
                 violations.append(
@@ -289,8 +294,7 @@ def test_graph_clients_do_not_contain_mailbox_mutation_endpoints() -> None:
 
     assert not violations, (
         "Mailbox mutation endpoints / write verbs detected in Graph client "
-        "source — Phase 02 requires mailbox read-only behavior:\n"
-        + "\n".join(violations)
+        "source — Phase 02 requires mailbox read-only behavior:\n" + "\n".join(violations)
     )
 
 
@@ -327,8 +331,7 @@ def test_no_file_mutation_apis_in_graph_and_construction_clients():
             violations.append(result.stdout.strip())
     assert not violations, (
         "Graph write calls detected in file-service source (no-writeback "
-        "violation) — SharePoint/OneDrive access must stay read-only:\n"
-        + "\n".join(violations)
+        "violation) — SharePoint/OneDrive access must stay read-only:\n" + "\n".join(violations)
     )
 
 

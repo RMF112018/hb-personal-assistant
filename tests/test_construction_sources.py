@@ -233,9 +233,7 @@ def test_explicit_override_replaces_seed(tmp_path: Path) -> None:
     assert [s.source_key for s in reg.sources] == ["alpha-sharepoint"]
 
 
-def test_env_var_override_is_respected(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_env_var_override_is_respected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     override = _minimal_override(tmp_path)
     monkeypatch.setenv(ENV_VAR, str(override))
     reg = load_source_registry()
@@ -608,7 +606,12 @@ def test_default_policies_safe_defaults_when_empty() -> None:
 def test_source_kind_literal_contains_phase01_and_phase02_values() -> None:
     kinds = set(get_args(SourceKind))
     # Phase 01.
-    assert {"sharepoint_site", "sharepoint_library", "onedrive_personal", "onedrive_shared"}.issubset(kinds)
+    assert {
+        "sharepoint_site",
+        "sharepoint_library",
+        "onedrive_personal",
+        "onedrive_shared",
+    }.issubset(kinds)
     # Phase 02.
     assert {
         "sharepoint_project_drive_folder",
@@ -709,9 +712,7 @@ def test_v5_projection_uses_source_key_as_source_id(v5_store) -> None:
     reg = load_source_registry()
     project_registry_to_v5_source_locations(reg, v5_store)
 
-    tropical = v5_store.get_source_location(
-        "sp_2023projects_23_435_01_tropical_sl"
-    )
+    tropical = v5_store.get_source_location("sp_2023projects_23_435_01_tropical_sl")
     assert tropical is not None
     assert tropical["source_id"] == "sp_2023projects_23_435_01_tropical_sl"
     assert tropical["source_scope"] == "sharepoint_project_drive_folder"
@@ -728,9 +729,7 @@ def test_v5_projection_marks_legacy_compat_sources(v5_store) -> None:
     reg = load_source_registry()
     report = project_registry_to_v5_source_locations(reg, v5_store)
 
-    compat_ids = {
-        item.source_id for item in report.items if item.status == "compat_projected"
-    }
+    compat_ids = {item.source_id for item in report.items if item.status == "compat_projected"}
     assert compat_ids == {"tropical-sharepoint", "hilltop-sharepoint", "bobby-onedrive"}
 
     # And they still land in V5 (source_system inferred from kind).
@@ -791,9 +790,7 @@ def test_v5_projection_round_trips_baseline_and_folder_policies(v5_store) -> Non
     reg = load_source_registry()
     project_registry_to_v5_source_locations(reg, v5_store)
 
-    tropical = v5_store.get_source_location(
-        "sp_2023projects_23_435_01_tropical_sl"
-    )
+    tropical = v5_store.get_source_location("sp_2023projects_23_435_01_tropical_sl")
     # baseline_policy round-trips with the same mode and gates.
     bp = tropical["baseline_policy"]
     assert isinstance(bp, dict)
@@ -830,8 +827,7 @@ def test_v5_projection_maps_sharepoint_site_page_page_url_to_folder_web_url(
     assert hilltop is not None
     assert hilltop["source_scope"] == "sharepoint_site_page"
     assert hilltop["folder_web_url"] == (
-        "https://hedrickbrotherscom.sharepoint.com/sites/HilltopGardens/"
-        "SitePages/ProjectHome.aspx"
+        "https://hedrickbrotherscom.sharepoint.com/sites/HilltopGardens/SitePages/ProjectHome.aspx"
     )
 
 

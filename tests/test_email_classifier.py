@@ -29,7 +29,9 @@ _SECRET_BODY = "SECRET_BODY_TOKEN_zzz contract change order details that must st
 
 def _valid_output(**over: object) -> str:
     base = {
-        "project_match_suggestions": [{"project_key": "tropical", "signal": "subject", "confidence": 0.8}],
+        "project_match_suggestions": [
+            {"project_key": "tropical", "signal": "subject", "confidence": 0.8}
+        ],
         "topic_labels": ["schedule"],
         "relationship_candidates": [],
         "risk_flags": [],
@@ -55,12 +57,20 @@ def _store(db: str) -> ConstructionStore:
 
 def _add(store: ConstructionStore, mid: str, preview: str, *, confidence: float = 0.95) -> None:
     store.upsert_email_message(
-        message_id=mid, thread_key="t" + mid, source_id="sx", sender_domain="vendor.com",
-        received_datetime="2026-05-20T10:00:00Z", body_preview_excerpt_redacted=preview,
+        message_id=mid,
+        thread_key="t" + mid,
+        source_id="sx",
+        sender_domain="vendor.com",
+        received_datetime="2026-05-20T10:00:00Z",
+        body_preview_excerpt_redacted=preview,
     )
     store.upsert_email_project_match(
-        match_id="pm-" + mid, message_id=mid, match_signal="project_name_in_subject",
-        confidence=confidence, project_key="tropical", project_number="23-435-01",
+        match_id="pm-" + mid,
+        message_id=mid,
+        match_signal="project_name_in_subject",
+        confidence=confidence,
+        project_key="tropical",
+        project_number="23-435-01",
     )
 
 
@@ -73,12 +83,15 @@ def test_validator_accepts_valid_output() -> None:
     assert out.topic_labels == ["schedule"]
 
 
-@pytest.mark.parametrize("raw,code", [
-    ("", "empty_output"),
-    ("not json", "json_parse_failed"),
-    ("[1,2,3]", "not_a_json_object"),
-    ('{"confidence": 0.5}', "schema_validation_failed"),
-])
+@pytest.mark.parametrize(
+    "raw,code",
+    [
+        ("", "empty_output"),
+        ("not json", "json_parse_failed"),
+        ("[1,2,3]", "not_a_json_object"),
+        ('{"confidence": 0.5}', "schema_validation_failed"),
+    ],
+)
 def test_validator_rejects_invalid(raw: str, code: str) -> None:
     with pytest.raises(InvalidEmailModelOutputError) as e:
         parse_and_validate_email_output(raw)
@@ -145,7 +158,9 @@ def test_low_model_confidence_routes_to_review() -> None:
     store = _store(db)
     _add(store, "m1", "weekly recap", confidence=0.95)
     report = EmailIntelligenceClassifier(store).classify(
-        project_key="tropical", lookback_days=30, dry_run=False,
+        project_key="tropical",
+        lookback_days=30,
+        dry_run=False,
         mock_output=_valid_output(confidence=0.2),
     )
     assert report.review_required_count == 1
@@ -156,7 +171,9 @@ def test_sensitive_category_routes_to_review_despite_high_model_confidence() -> 
     store = _store(db)
     _add(store, "m1", "attached change order for pricing", confidence=0.95)
     report = EmailIntelligenceClassifier(store).classify(
-        project_key="tropical", lookback_days=30, dry_run=False,
+        project_key="tropical",
+        lookback_days=30,
+        dry_run=False,
         mock_output=_valid_output(confidence=0.99, review_required=False),
     )
     assert report.review_required_count == 1
@@ -171,7 +188,9 @@ def test_deterministic_low_confidence_overrides_model() -> None:
     # even though the model says review_required=false and confidence=0.99.
     _add(store, "m1", "weekly recap", confidence=0.60)
     report = EmailIntelligenceClassifier(store).classify(
-        project_key="tropical", lookback_days=30, dry_run=False,
+        project_key="tropical",
+        lookback_days=30,
+        dry_run=False,
         mock_output=_valid_output(confidence=0.99, review_required=False),
     )
     assert report.review_required_count == 1
@@ -221,12 +240,18 @@ def test_encrypted_body_context_used_but_never_persisted(tmp_path: Path, monkeyp
     ref = encrypt_text(_SECRET_BODY)
     assert ref is not None
     store.upsert_email_body_vault_ref(
-        message_id="m1", encrypted_full_body_ref=ref, body_hash="bh", body_length=len(_SECRET_BODY),
+        message_id="m1",
+        encrypted_full_body_ref=ref,
+        body_hash="bh",
+        body_length=len(_SECRET_BODY),
         extraction_policy="encrypted_text_vault",
     )
     report = EmailIntelligenceClassifier(store).classify(
-        project_key="tropical", lookback_days=30, dry_run=False,
-        use_encrypted_body_context=True, mock_output=_valid_output(),
+        project_key="tropical",
+        lookback_days=30,
+        dry_run=False,
+        use_encrypted_body_context=True,
+        mock_output=_valid_output(),
     )
     assert report.encrypted_body_context_used_count == 1
     assert report.plaintext_persisted is False

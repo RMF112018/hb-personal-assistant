@@ -70,69 +70,142 @@ def _project_leaky_records(db: Path) -> None:
     project_owner_contract_family(
         "prime-contracts",
         {
-            "id": 1, "number": "PC-1", "status": "Approved", "grand_total": "1000000.00",
-            "title": leaky_text, "description": leaky_text,
+            "id": 1,
+            "number": "PC-1",
+            "status": "Approved",
+            "grand_total": "1000000.00",
+            "title": leaky_text,
+            "description": leaky_text,
             "created_by": {"id": 5, "name": "Pat", "login": _LEAK_EMAIL},
             "attachments": [{"id": 1, "filename": "coi.pdf", "url": _LEAK_URL}],
         },
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     # Commitment contract + compliance (notes + attachment signed URL).
     project_commitment_family(
         "commitment-contracts",
-        {"id": 1, "number": "SC-1", "status": "Pending", "executed": False,
-         "grand_total": "500000.00", "title": leaky_text, "vendor": {"id": 12, "name": "Acme LLC"},
-         "created_by": {"id": 5, "login": _LEAK_EMAIL}},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 1,
+            "number": "SC-1",
+            "status": "Pending",
+            "executed": False,
+            "grand_total": "500000.00",
+            "title": leaky_text,
+            "vendor": {"id": 12, "name": "Acme LLC"},
+            "created_by": {"id": 5, "login": _LEAK_EMAIL},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_commitment_family(
         "commitment-compliance",
-        {"contract_id": 1, "compliance_status": "non_compliant",
-         "compliance_documents": [{"id": 11, "type": "W9", "status": "active",
-                                   "expires_at": "2030-01-01", "notes": leaky_text,
-                                   "attachments": [{"url": _LEAK_URL}]}]},
-        project_key="tropical", now_utc=_NOW, db_path=db, parent_procore_id="1",
+        {
+            "contract_id": 1,
+            "compliance_status": "non_compliant",
+            "compliance_documents": [
+                {
+                    "id": 11,
+                    "type": "W9",
+                    "status": "active",
+                    "expires_at": "2030-01-01",
+                    "notes": leaky_text,
+                    "attachments": [{"url": _LEAK_URL}],
+                }
+            ],
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
+        parent_procore_id="1",
     )
     # Subcontractor invoice (summary_text address must be excluded entirely) + item.
     project_invoice_family(
         "subcontractor-invoices",
-        {"id": 40, "status": "approved", "vendor_id": 12, "commitment_id": 1,
-         "summary": {"current_payment_due": "100000.00"},
-         "summary_text": {"subcontractor_street": "123 Jobsite Rd", "to_general_contractor": _LEAK_EMAIL},
-         "created_by": {"id": 5, "login": _LEAK_EMAIL}},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 40,
+            "status": "approved",
+            "vendor_id": 12,
+            "commitment_id": 1,
+            "summary": {"current_payment_due": "100000.00"},
+            "summary_text": {
+                "subcontractor_street": "123 Jobsite Rd",
+                "to_general_contractor": _LEAK_EMAIL,
+            },
+            "created_by": {"id": 5, "login": _LEAK_EMAIL},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_invoice_family(
         "subcontractor-invoice-contract-items",
-        {"id": 99, "scheduled_value": "100000.00", "description_of_work": leaky_text,
-         "wbs_code": {"id": 3, "flat_code": "01-100"}},
-        project_key="tropical", now_utc=_NOW, db_path=db, parent_procore_id="40",
+        {
+            "id": 99,
+            "scheduled_value": "100000.00",
+            "description_of_work": leaky_text,
+            "wbs_code": {"id": 3, "flat_code": "01-100"},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
+        parent_procore_id="40",
     )
     # RFQ + change event + comment (free text).
     project_rfq_change_event_family(
         "rfqs",
-        {"id": 10, "number": "RFQ-1", "status": "open", "estimated_amount": "50000.00",
-         "title": leaky_text, "description": leaky_text, "commitment_contract_id": 1,
-         "created_by": {"id": 5, "login": _LEAK_EMAIL}},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 10,
+            "number": "RFQ-1",
+            "status": "open",
+            "estimated_amount": "50000.00",
+            "title": leaky_text,
+            "description": leaky_text,
+            "commitment_contract_id": 1,
+            "created_by": {"id": 5, "login": _LEAK_EMAIL},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_rfq_change_event_family(
         "change-events",
-        {"id": 77, "number": 12, "status": "open", "estimated_cost": "250000.00",
-         "title": leaky_text, "created_by": {"id": 5, "login": _LEAK_EMAIL}},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 77,
+            "number": 12,
+            "status": "open",
+            "estimated_cost": "250000.00",
+            "title": leaky_text,
+            "created_by": {"id": 5, "login": _LEAK_EMAIL},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     # Budget view + detail row (forecast notes / unbudgeted reason free text).
     project_budget_family(
-        "budget-views", {"id": 1, "name": "Detailed Budget", "description": leaky_text},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        "budget-views",
+        {"id": 1, "name": "Detailed Budget", "description": leaky_text},
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_budget_family(
         "budget-detail-rows",
-        {"id": 9, "wbs_code_id": 3, "cost_code_id": 4, "original_budget_amount": "1000000.00",
-         "budget_forecast": {"amount": "1100000.00", "notes": leaky_text},
-         "unbudgeted_reason": leaky_text},
-        project_key="tropical", now_utc=_NOW, db_path=db, parent_procore_id="1",
+        {
+            "id": 9,
+            "wbs_code_id": 3,
+            "cost_code_id": 4,
+            "original_budget_amount": "1000000.00",
+            "budget_forecast": {"amount": "1100000.00", "notes": leaky_text},
+            "unbudgeted_reason": leaky_text,
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
+        parent_procore_id="1",
     )
 
 

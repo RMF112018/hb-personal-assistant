@@ -222,9 +222,10 @@ def build_retrieval_broker_agent_proof() -> dict[str, Any]:
     every_item_complete = all(
         it.source_ref and it.confidence_class and it.review_tier in (1, 2, 3) for it in kept
     )
-    tier3_visible_not_concluded = all(
-        it.review_required and it.review_status == "review_required" for it in tier3
-    ) and len(tier3) >= 1
+    tier3_visible_not_concluded = (
+        all(it.review_required and it.review_status == "review_required" for it in tier3)
+        and len(tier3) >= 1
+    )
 
     envelope = RetrievalEnvelope(
         items=kept,
@@ -235,8 +236,15 @@ def build_retrieval_broker_agent_proof() -> dict[str, Any]:
     blob = envelope.model_dump_json()
     no_raw_content = not any(
         token in blob
-        for token in ("raw_body", "raw_document_text", "raw_calendar_payload",
-                      "raw_prompt", "raw_response", "signed_url", "download_url")
+        for token in (
+            "raw_body",
+            "raw_document_text",
+            "raw_calendar_payload",
+            "raw_prompt",
+            "raw_response",
+            "signed_url",
+            "download_url",
+        )
     )
 
     return {

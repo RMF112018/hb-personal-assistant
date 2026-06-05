@@ -73,6 +73,7 @@ app.add_typer(second_brain_mod.app, name="second-brain")
 
 # Explicit thin stubs for remaining command groups
 
+
 def _make_stub(name: str):
     @app.command(name)
     def _stub(json_out: bool = typer.Option(False, "--json")) -> None:

@@ -248,9 +248,7 @@ class EmailIntelligenceClassifier:
         descriptors = load_pilot_project_descriptors(project_key)
         descriptor = descriptors[0] if descriptors else None
         project_number = descriptor.project_number if descriptor else None
-        received_after = (
-            (_utc_now() - timedelta(days=lookback)).replace(microsecond=0).isoformat()
-        )
+        received_after = (_utc_now() - timedelta(days=lookback)).replace(microsecond=0).isoformat()
         low_threshold = float(
             getattr(self._policy, "low_confidence_threshold", _LOW_CONFIDENCE_FALLBACK)
         )
@@ -336,9 +334,7 @@ class EmailIntelligenceClassifier:
                 if model_output.confidence < low_threshold:
                     review_required = True
                     review_reasons.append("low_model_confidence")
-                review_reasons.extend(
-                    f"model:{r}" for r in model_output.review_reasons if r
-                )
+                review_reasons.extend(f"model:{r}" for r in model_output.review_reasons if r)
 
             if review_required:
                 review_count += 1

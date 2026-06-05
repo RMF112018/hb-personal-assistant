@@ -47,20 +47,44 @@ def _seed(tmp_path: Path) -> ConstructionStore:
     store = ConstructionStore(str(tmp_path / "ce.sqlite"))
     project_registry_to_v5_source_locations(load_source_registry(), store)
     # Indexed drive items (for the file_extension join).
-    store.upsert_drive_item(source_id=_SID, drive_id="D1", drive_item_id="ok1",
-                            name="RFI-001.txt", is_file=True, file_extension="txt")
-    store.upsert_drive_item(source_id=_SID, drive_id="D1", drive_item_id="rev1",
-                            name="contract.pdf", is_file=True, file_extension="pdf")
+    store.upsert_drive_item(
+        source_id=_SID,
+        drive_id="D1",
+        drive_item_id="ok1",
+        name="RFI-001.txt",
+        is_file=True,
+        file_extension="txt",
+    )
+    store.upsert_drive_item(
+        source_id=_SID,
+        drive_id="D1",
+        drive_item_id="rev1",
+        name="contract.pdf",
+        is_file=True,
+        file_extension="pdf",
+    )
     # V18 ingestion decisions: one eligible, one review-required.
     store.insert_file_ingestion_decision(
-        decision_id="de1", source_id=_SID, drive_item_id="ok1", drive_id="D1",
-        project_key="tropical", ingestion_disposition="eligible",
-        review_required=False, extraction_allowed=True, download_allowed=True,
+        decision_id="de1",
+        source_id=_SID,
+        drive_item_id="ok1",
+        drive_id="D1",
+        project_key="tropical",
+        ingestion_disposition="eligible",
+        review_required=False,
+        extraction_allowed=True,
+        download_allowed=True,
     )
     store.insert_file_ingestion_decision(
-        decision_id="de2", source_id=_SID, drive_item_id="rev1", drive_id="D1",
-        project_key="tropical", ingestion_disposition="review_required",
-        review_required=True, extraction_allowed=False, download_allowed=False,
+        decision_id="de2",
+        source_id=_SID,
+        drive_item_id="rev1",
+        drive_id="D1",
+        project_key="tropical",
+        ingestion_disposition="review_required",
+        review_required=True,
+        extraction_allowed=False,
+        download_allowed=False,
     )
     return store
 
@@ -149,7 +173,9 @@ def test_apply_download_only_no_extraction_run(tmp_path: Path) -> None:
 def test_retain_cache_keeps_file(tmp_path: Path) -> None:
     store = _seed(tmp_path)
     http = _http_writing("keep me")
-    rep = _ext(store, tmp_path, http, dry_run=False, do_download=True, do_extract=True, retain_cache=True)
+    rep = _ext(
+        store, tmp_path, http, dry_run=False, do_download=True, do_extract=True, retain_cache=True
+    )
     assert _by_id(rep)["ok1"].cache_deleted is False
     assert (_FakePP(tmp_path).get_cache_dir("files") / "ok1.txt").exists()
 
@@ -157,7 +183,9 @@ def test_retain_cache_keeps_file(tmp_path: Path) -> None:
 def test_graph_error_is_redacted(tmp_path: Path) -> None:
     store = _seed(tmp_path)
     http = MagicMock()
-    http.download_to_file.side_effect = GraphHttpError("GET", "/drives/D1/items/ok1/content", 403, "denied")
+    http.download_to_file.side_effect = GraphHttpError(
+        "GET", "/drives/D1/items/ok1/content", 403, "denied"
+    )
     rep = _ext(store, tmp_path, http, dry_run=False, do_download=True, do_extract=True)
     r = _by_id(rep)["ok1"]
     assert r.status == "error" and r.error_redacted == "graph_403"
@@ -167,7 +195,9 @@ def test_graph_error_is_redacted(tmp_path: Path) -> None:
 # --- CHECK guards --------------------------------------------------------------
 
 
-@pytest.mark.parametrize("col", ["full_text_persisted", "raw_download_url_persisted", "source_file_copied_to_vault"])
+@pytest.mark.parametrize(
+    "col", ["full_text_persisted", "raw_download_url_persisted", "source_file_copied_to_vault"]
+)
 def test_check_guards_reject_unsafe_values(tmp_path: Path, col: str) -> None:
     _seed(tmp_path)
     import hb_assistant.store.connection as conn_mod
@@ -195,7 +225,9 @@ def test_check_guards_reject_unsafe_values(tmp_path: Path, col: str) -> None:
 def test_cli_extract_dry_run_offline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     db = str(tmp_path / "ce.sqlite")
     _seed(tmp_path)  # creates the db at that path
-    monkeypatch.setattr("hb_assistant.cli.graph.ConstructionStore", lambda *a, **k: ConstructionStore(db))
+    monkeypatch.setattr(
+        "hb_assistant.cli.graph.ConstructionStore", lambda *a, **k: ConstructionStore(db)
+    )
     result = runner.invoke(app, ["files", "extract", "--source", _SID, "--json"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)

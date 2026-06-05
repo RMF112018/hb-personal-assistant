@@ -74,7 +74,9 @@ def test_redact_response_extracts_rate_limit_separately() -> None:
         "X-RateLimit-Remaining": "0",
         "Retry-After": "5",
     }
-    out = redact_response(429, headers, {"errors": ["rate_limited"], "message": "Too Many Requests"})
+    out = redact_response(
+        429, headers, {"errors": ["rate_limited"], "message": "Too Many Requests"}
+    )
 
     assert out["status"] == 429
     assert out["rate_limit"]["Retry-After"] == "5"
@@ -100,7 +102,9 @@ def test_redact_body_for_error_allowlist() -> None:
 
     assert out["type"] == "dict"
     error_fields = out.get("error_fields") or {}
-    assert set(error_fields.keys()).issubset({"error", "errors", "message", "code", "status", "title"})
+    assert set(error_fields.keys()).issubset(
+        {"error", "errors", "message", "code", "status", "title"}
+    )
     _assert_no_synthetic_leak(json.dumps(out))
 
 

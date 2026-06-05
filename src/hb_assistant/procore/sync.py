@@ -95,6 +95,7 @@ Policy = Literal["auto", "incremental", "full"]
 @dataclass
 class SyncReceipt:
     """Structured receipt for both modes (redacted, safe for JSON/SQLite/evidence)."""
+
     sync_id: str
     mode: Mode
     pilot_project_key: str
@@ -127,7 +128,9 @@ class ProcoreSyncCoordinator:
         self,
         *,
         environment: str = "prod",
-        db_path: Optional[Path] = None,  # explicit for temp DB validation; None = default PathPolicy
+        db_path: Optional[
+            Path
+        ] = None,  # explicit for temp DB validation; None = default PathPolicy
     ) -> None:
         self.environment = environment
         self.db_path = db_path
@@ -178,9 +181,7 @@ class ProcoreSyncCoordinator:
         except ProcoreProjectsError as exc:
             raise ProcoreMappingUnavailable(message=str(exc)) from exc
 
-    def _assert_no_pending(
-        self, pilots: List[str], *, allow_pending: bool
-    ) -> None:
+    def _assert_no_pending(self, pilots: List[str], *, allow_pending: bool) -> None:
         """Raise ``ProcorePendingProjectRejected`` if any selected key is pending,
         unless the caller explicitly passed ``allow_pending=True``."""
         if allow_pending:
@@ -298,9 +299,7 @@ class ProcoreSyncCoordinator:
                     SUBMITTAL_ENDPOINT_ID,
                     OBSERVATION_ENDPOINT_ID,
                 )
-                entry["would_persist_sections_separately"] = (
-                    ep.endpoint_id == DAILY_LOG_ENDPOINT_ID
-                )
+                entry["would_persist_sections_separately"] = ep.endpoint_id == DAILY_LOG_ENDPOINT_ID
             if ep.endpoint_id == RFI_ENDPOINT_ID and rfi_preview_payload is not None:
                 rfi_records, reply_records = normalize_rfi_payload_block(
                     rfi_preview_payload,
@@ -313,10 +312,7 @@ class ProcoreSyncCoordinator:
                 entry["planned_rfi_record_count"] = len(rfi_records)
                 entry["planned_reply_record_count"] = len(reply_records)
                 entry["planned_review_required_count"] = review_required_count
-            if (
-                ep.endpoint_id == DAILY_LOG_ENDPOINT_ID
-                and daily_log_preview_payload is not None
-            ):
+            if ep.endpoint_id == DAILY_LOG_ENDPOINT_ID and daily_log_preview_payload is not None:
                 from hb_assistant.procore.daily_log_selection import (
                     load_daily_log_selection,
                 )
@@ -332,16 +328,10 @@ class ProcoreSyncCoordinator:
                 )
                 planned_total = sum(len(v) for v in records_by_category.values())
                 planned_review_count = sum(
-                    1
-                    for v in records_by_category.values()
-                    for r in v
-                    if r.get("review_required")
+                    1 for v in records_by_category.values() for r in v if r.get("review_required")
                 )
                 planned_safety_route_count = sum(
-                    1
-                    for v in records_by_category.values()
-                    for r in v
-                    if r.get("safety_route")
+                    1 for v in records_by_category.values() for r in v if r.get("safety_route")
                 )
                 entry["planned_records_by_category"] = {
                     cat: len(records) for cat, records in records_by_category.items()
@@ -349,10 +339,7 @@ class ProcoreSyncCoordinator:
                 entry["planned_total_record_count"] = planned_total
                 entry["planned_review_required_count"] = planned_review_count
                 entry["planned_safety_route_count"] = planned_safety_route_count
-            if (
-                ep.endpoint_id == MEETING_ENDPOINT_ID
-                and meeting_preview_payload is not None
-            ):
+            if ep.endpoint_id == MEETING_ENDPOINT_ID and meeting_preview_payload is not None:
                 (meeting_records,) = normalize_meeting_payload_block(
                     meeting_preview_payload,
                     project_key=project_key or "multi",
@@ -360,9 +347,7 @@ class ProcoreSyncCoordinator:
                     correlation_id=self.correlation_id,
                     fetched_at=datetime.now(timezone.utc).isoformat(),
                 )
-                meeting_review_count = sum(
-                    1 for r in meeting_records if r["review_required"]
-                )
+                meeting_review_count = sum(1 for r in meeting_records if r["review_required"])
                 entry["planned_meeting_record_count"] = len(meeting_records)
                 entry["planned_review_required_count"] = meeting_review_count
             if (
@@ -376,12 +361,8 @@ class ProcoreSyncCoordinator:
                     correlation_id=self.correlation_id,
                     fetched_at=datetime.now(timezone.utc).isoformat(),
                 )
-                topic_review_count = sum(
-                    1 for r in topic_records if r["review_required"]
-                )
-                topic_safety_count = sum(
-                    1 for r in topic_records if r.get("safety_route")
-                )
+                topic_review_count = sum(1 for r in topic_records if r["review_required"])
+                topic_safety_count = sum(1 for r in topic_records if r.get("safety_route"))
                 entry["planned_meeting_topic_record_count"] = len(topic_records)
                 entry["planned_review_required_count"] = topic_review_count
                 entry["planned_safety_route_count"] = topic_safety_count
@@ -396,24 +377,15 @@ class ProcoreSyncCoordinator:
                     correlation_id=self.correlation_id,
                     fetched_at=datetime.now(timezone.utc).isoformat(),
                 )
-                parent_review_count = sum(
-                    1 for r in observation_records if r["review_required"]
-                )
-                safety_route_count = sum(
-                    1 for r in observation_records if r.get("safety_route")
-                )
+                parent_review_count = sum(1 for r in observation_records if r["review_required"])
+                safety_route_count = sum(1 for r in observation_records if r.get("safety_route"))
                 entry["planned_observation_record_count"] = len(observation_records)
                 entry["planned_comment_record_count"] = len(comment_records)
                 # Every comment is always review-required; parents contribute
                 # per their heuristic.
-                entry["planned_review_required_count"] = (
-                    parent_review_count + len(comment_records)
-                )
+                entry["planned_review_required_count"] = parent_review_count + len(comment_records)
                 entry["planned_safety_route_count"] = safety_route_count
-            if (
-                ep.endpoint_id == SUBMITTAL_ENDPOINT_ID
-                and submittal_preview_payload is not None
-            ):
+            if ep.endpoint_id == SUBMITTAL_ENDPOINT_ID and submittal_preview_payload is not None:
                 (
                     submittal_records,
                     response_records,
@@ -425,9 +397,7 @@ class ProcoreSyncCoordinator:
                     correlation_id=self.correlation_id,
                     fetched_at=datetime.now(timezone.utc).isoformat(),
                 )
-                parent_review_count = sum(
-                    1 for r in submittal_records if r["review_required"]
-                )
+                parent_review_count = sum(1 for r in submittal_records if r["review_required"])
                 entry["planned_submittal_record_count"] = len(submittal_records)
                 entry["planned_response_record_count"] = len(response_records)
                 entry["planned_package_record_count"] = len(package_records)
@@ -501,7 +471,9 @@ class ProcoreSyncCoordinator:
 
         if not all_available:
             receipt.completed_at = datetime.now(timezone.utc).isoformat()
-            receipt.redacted_errors.append({"error": "audit_prerequisite_failed", "correlation": self.correlation_id})
+            receipt.redacted_errors.append(
+                {"error": "audit_prerequisite_failed", "correlation": self.correlation_id}
+            )
             return redact_for_evidence(receipt.__dict__)  # type: ignore[arg-type]
 
         client = self._get_client()  # Prompt_04, secret at this moment only
@@ -514,13 +486,15 @@ class ProcoreSyncCoordinator:
             if endpoints and ep.endpoint_id not in endpoints:
                 continue
             if not ep.is_live_eligible:
-                receipt.per_endpoint.append({
-                    "endpoint_id": ep.endpoint_id,
-                    "items_written": 0,
-                    "status": "skipped_not_live_eligible",
-                    "verification_status": ep.verification_status,
-                    "endpoint_status": ep.status,
-                })
+                receipt.per_endpoint.append(
+                    {
+                        "endpoint_id": ep.endpoint_id,
+                        "items_written": 0,
+                        "status": "skipped_not_live_eligible",
+                        "verification_status": ep.verification_status,
+                        "endpoint_status": ep.status,
+                    }
+                )
                 continue
             try:
                 # Watermark / incremental decision (simplified MVP; full in later iteration)
@@ -603,9 +577,7 @@ class ProcoreSyncCoordinator:
                                 record,
                                 correlation=self.correlation_id,
                             )
-                            counts_by_category[category] = counts_by_category.get(
-                                category, 0
-                            ) + 1
+                            counts_by_category[category] = counts_by_category.get(category, 0) + 1
                             total_items += 1
                             if record.get("safety_route"):
                                 safety_routed += 1
@@ -777,9 +749,7 @@ class ProcoreSyncCoordinator:
                             )
                             package_written += 1
                             total_items += 1
-                    items_written = (
-                        submittal_written + response_written + package_written
-                    )
+                    items_written = submittal_written + response_written + package_written
                     endpoint_entry = {
                         "endpoint_id": ep.endpoint_id,
                         "items_written": items_written,
@@ -805,17 +775,21 @@ class ProcoreSyncCoordinator:
 
                 # Update watermark (safe, redacted)
                 new_watermark = datetime.now(timezone.utc).isoformat()
-                set_procore_sync_watermark(self.db_path, ep.endpoint_id, project_key or "multi", new_watermark)
+                set_procore_sync_watermark(
+                    self.db_path, ep.endpoint_id, project_key or "multi", new_watermark
+                )
 
                 receipt.per_endpoint.append(endpoint_entry)
             except Exception as exc:  # noqa: BLE001
                 redacted = redact_for_evidence({"endpoint": ep.endpoint_id, "error": str(exc)})
                 errors.append(redacted)
-                receipt.per_endpoint.append({
-                    "endpoint_id": ep.endpoint_id,
-                    "items_written": 0,
-                    "status": "error",
-                })
+                receipt.per_endpoint.append(
+                    {
+                        "endpoint_id": ep.endpoint_id,
+                        "items_written": 0,
+                        "status": "error",
+                    }
+                )
 
         receipt.total_items_normalized = total_items
         receipt.redacted_errors = errors
@@ -832,11 +806,16 @@ class ProcoreSyncCoordinator:
             "entity_stable_key": str(raw.get("id") or raw.get("uid") or hash(str(redacted_raw))),
             "category": ep.category or "foundation",
             "review_required": ep.status == "sensitive_validated",
-            "canonical_fields": {k: v for k, v in redacted_raw.items() if k in ("number", "title", "status", "updated_at")},
+            "canonical_fields": {
+                k: v
+                for k, v in redacted_raw.items()
+                if k in ("number", "title", "status", "updated_at")
+            },
             "fetched_at": datetime.now(timezone.utc).isoformat(),
             "correlation_id": self.correlation_id,
             "redaction_applied": True,
         }
+
 
 # Convenience CLI-facing entry (thin wrapper)
 def run_sync(

@@ -36,17 +36,32 @@ _PUNCH: Dict[str, Any] = {
     "schedule_risk": "ml_high",
     "description": "Fire-rated sealant missing around conduit penetration.",
     "schedule_risk_reason": "Blocks inspection sign-off; delays close-out.",
-    "location": {"id": 15504, "name": "North Building>First Floor>Electrical Closet", "code": "L1", "parent_id": 788866},
+    "location": {
+        "id": 15504,
+        "name": "North Building>First Floor>Electrical Closet",
+        "code": "L1",
+        "parent_id": 788866,
+    },
     "trade": {"id": 999, "name": "09 - acoustical panels", "active": True},
     "ball_in_court": [{"id": 1738090, "name": "John Doe", "locale": "ko"}],
     "created_by": {"id": 1738090, "name": "John Doe", "company_name": "Brickworks"},
-    "assignees": [{"id": 160586, "login": "carl.contractor@example.com", "name": "Carl Contractor"}],
+    "assignees": [
+        {"id": 160586, "login": "carl.contractor@example.com", "name": "Carl Contractor"}
+    ],
     "assignments": [
         {
-            "id": 333675, "approved": False, "status": "unresolved",
-            "login_information": {"id": 160586, "login": "carl.contractor@example.com", "name": "Carl Contractor"},
+            "id": 333675,
+            "approved": False,
+            "status": "unresolved",
+            "login_information": {
+                "id": 160586,
+                "login": "carl.contractor@example.com",
+                "name": "Carl Contractor",
+            },
             "vendor": {"id": 161072, "name": "SID Architecture"},
-            "attachments": [{"id": 5324, "url": "https://example.test/f/abc?token=secret", "filename": "x.jpg"}],
+            "attachments": [
+                {"id": 5324, "url": "https://example.test/f/abc?token=secret", "filename": "x.jpg"}
+            ],
             "comment": "Need RFI 12 answered before repair; coordinate with electrician.",
             "notified_at": "2026-05-25T22:22:42Z",
             "responded_at": None,
@@ -91,9 +106,13 @@ def test_punch_assignment_graph_hashed() -> None:
     ).fetchone()
     assert vendor is not None
     # assignment metadata captured on the assignee edge
-    meta_rows = [json.loads(r["metadata_json"]) for r in c.execute(
-        "SELECT metadata_json FROM procore_record_edges WHERE edge_type='assignee'"
-    ) if r["metadata_json"]]
+    meta_rows = [
+        json.loads(r["metadata_json"])
+        for r in c.execute(
+            "SELECT metadata_json FROM procore_record_edges WHERE edge_type='assignee'"
+        )
+        if r["metadata_json"]
+    ]
     assert any(m.get("status") == "unresolved" and m.get("notified_at") for m in meta_rows)
 
 
@@ -113,7 +132,12 @@ def test_punch_unresolved_and_overdue_and_waiting_signals() -> None:
 
 def test_punch_due_tomorrow_signal() -> None:
     db = _db()
-    near = {**_PUNCH, "due_date": "2026-05-30", "has_unresolved_responses": False, "assignments": []}
+    near = {
+        **_PUNCH,
+        "due_date": "2026-05-30",
+        "has_unresolved_responses": False,
+        "assignments": [],
+    }
     project_punch_item(near, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db)
     sigs = _signals(db)
     assert "punch_due_tomorrow" in sigs
@@ -130,7 +154,10 @@ def test_punch_attachment_path_only_and_text_intelligence() -> None:
     risk = c.execute(
         "SELECT * FROM procore_text_intelligence WHERE source_field_path='schedule_risk_reason'"
     ).fetchone()
-    assert risk is not None and decrypt_text(risk["encrypted_full_text_ref"]) == _PUNCH["schedule_risk_reason"]
+    assert (
+        risk is not None
+        and decrypt_text(risk["encrypted_full_text_ref"]) == _PUNCH["schedule_risk_reason"]
+    )
     desc = c.execute(
         "SELECT COUNT(*) FROM procore_text_intelligence WHERE source_field_path='description'"
     ).fetchone()[0]
@@ -151,6 +178,9 @@ def test_punch_projection_idempotent() -> None:
     project_punch_item(_PUNCH, project_key="tropical", sync_run_id="r2", now_utc=_NOW, db_path=db)
     c = _conn(db)
     assert c.execute("SELECT COUNT(*) FROM procore_attachment_refs").fetchone()[0] == 1
-    assert c.execute(
-        "SELECT COUNT(*) FROM procore_text_intelligence WHERE source_field_path='schedule_risk_reason'"
-    ).fetchone()[0] == 1
+    assert (
+        c.execute(
+            "SELECT COUNT(*) FROM procore_text_intelligence WHERE source_field_path='schedule_risk_reason'"
+        ).fetchone()[0]
+        == 1
+    )

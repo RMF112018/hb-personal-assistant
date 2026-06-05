@@ -59,7 +59,8 @@ def build_evaluation_preview(
             not (assessment.families_missing or assessment.policy_warnings)
             or bool(adapter_result.coverage_warnings or envelope.coverage_warnings)
         ),
-        "advisory_vs_actionable_classified": adapter_result.disposition in (
+        "advisory_vs_actionable_classified": adapter_result.disposition
+        in (
             "advisory",
             "actionable",
         ),
@@ -86,7 +87,9 @@ def build_evaluation_preview(
     )
 
 
-def _evaluate_db(db_path: str, *, question: str) -> tuple[EvaluationPreview, AdapterResult, ResearchPacket]:
+def _evaluate_db(
+    db_path: str, *, question: str
+) -> tuple[EvaluationPreview, AdapterResult, ResearchPacket]:
     """Retrieve -> packet -> mock synthesize -> evaluate over one local DB (helper)."""
     from ..reasoning import MockClaudeAdapter
     from ..research import build_research_packet_from_envelope

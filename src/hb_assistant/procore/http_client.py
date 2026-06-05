@@ -45,8 +45,10 @@ try:
         get_environment_config,
     )
 except Exception:  # pragma: no cover - graceful for tests that mock the whole layer
+
     def get_environment_config(env: Optional[str] = None) -> Dict[str, Any]:  # type: ignore
         return {"api_base": "https://sandbox.procore.com", "procore_company_id_header": 5280}
+
     HB_COMPANY_ID = 5280
 
 
@@ -82,16 +84,20 @@ class ProcoreHTTPClient:
                 status=0,
                 code="method_not_allowed",
                 message=f"Only GET is permitted in this client (got {method}). "
-                        "This is a hard guardrail for the read-only MVP.",
+                "This is a hard guardrail for the read-only MVP.",
             )
 
     def _build_headers(self, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
-        access_token = self._access_token_provider.get_access_token()  # obtained at the last possible moment
+        access_token = (
+            self._access_token_provider.get_access_token()
+        )  # obtained at the last possible moment
         if not access_token:
             raise ProcoreAuthRequired()
         headers = {
             "Authorization": f"Bearer {access_token}",
-            "Procore-Company-Id": str(self._env_config.get("procore_company_id_header", HB_COMPANY_ID)),
+            "Procore-Company-Id": str(
+                self._env_config.get("procore_company_id_header", HB_COMPANY_ID)
+            ),
             "User-Agent": self.user_agent,
             "Accept": "application/json",
             "X-Correlation-ID": str(uuid.uuid4()),
@@ -133,7 +139,11 @@ class ProcoreHTTPClient:
             resp = self._default_live_transport("GET", url, req_headers, params)
 
         # Redact response before any consumer sees it
-        _ = redact_response(getattr(resp, "status_code", 0), dict(getattr(resp, "headers", {})), getattr(resp, "_json", None))
+        _ = redact_response(
+            getattr(resp, "status_code", 0),
+            dict(getattr(resp, "headers", {})),
+            getattr(resp, "_json", None),
+        )
 
         status_code = getattr(resp, "status_code", 0)
         if status_code == 429:
@@ -179,7 +189,11 @@ class ProcoreHTTPClient:
 
         def fetch(p: Dict[str, Any]) -> PageResult:
             resp = self.get(path, params=p)
-            body = resp.json() if callable(getattr(resp, "json", None)) else getattr(resp, "_json", None)
+            body = (
+                resp.json()
+                if callable(getattr(resp, "json", None))
+                else getattr(resp, "_json", None)
+            )
             items: list[dict] = []
             if isinstance(body, list):
                 items = [row for row in body if isinstance(row, dict)]
@@ -250,7 +264,7 @@ class ProcoreHTTPClient:
                 continue
             attrs = [attr.strip() for attr in segment.split(";")[1:]]
             if 'rel="next"' in attrs or "rel=next" in attrs:
-                return segment[segment.find("<") + 1: segment.find(">")]
+                return segment[segment.find("<") + 1 : segment.find(">")]
         return None
 
 

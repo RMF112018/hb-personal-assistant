@@ -156,9 +156,7 @@ def test_raw_content_injection_fails_closed(tmp_path: Path) -> None:
     # The offending value is never echoed back — only the table.column location.
     assert "sig=abcdef" not in json.dumps(proof)
     # The read-only proof never mutates the DB (no-writeback): entry count is unchanged.
-    after = sqlite3.connect(db).execute(
-        "SELECT COUNT(*) FROM obsidian_index_entries"
-    ).fetchone()[0]
+    after = sqlite3.connect(db).execute("SELECT COUNT(*) FROM obsidian_index_entries").fetchone()[0]
     assert after == before == 2
 
 

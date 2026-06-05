@@ -196,9 +196,7 @@ def relationships_build(
     apply: bool = typer.Option(
         False, "--apply", help="Persist candidates + evidence trails to SQLite (default: dry-run)."
     ),
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Normalize existing document/calendar/email relationship candidates into the unified
@@ -218,9 +216,7 @@ def relationships_build(
 
 @relationships_app.command("status")
 def relationships_status(
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Read-only coverage report over the Phase 07D cross-source relationship substrate (V25)."""
@@ -240,9 +236,7 @@ def relationships_promote(
     apply: bool = typer.Option(
         False, "--apply", help="Persist deterministic promotions to SQLite (default: dry-run)."
     ),
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Policy-gated promotion of deterministic cross-source relationships into
@@ -285,9 +279,7 @@ def meeting_prep_build(
     apply: bool = typer.Option(
         False, "--apply", help="Persist brief runs + sections to SQLite (default: dry-run)."
     ),
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     lookahead_days: Optional[int] = typer.Option(
         None, "--lookahead-days", help="Override the policy meeting lookahead window (days)."
     ),
@@ -311,9 +303,7 @@ def meeting_prep_build(
 
 @meeting_prep_app.command("status")
 def meeting_prep_status(
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Read-only coverage report over the Phase 07D meeting-prep brief tables (V25)."""
@@ -353,9 +343,7 @@ def issue_history_build(
     apply: bool = typer.Option(
         False, "--apply", help="Persist issue-history families to SQLite (default: dry-run)."
     ),
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Materialize project issue history into project_issue_history_items (V25), grouping the
@@ -376,9 +364,7 @@ def issue_history_build(
 
 @issue_history_app.command("status")
 def issue_history_status(
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Read-only coverage report over the Phase 07D project issue-history table (V25)."""
@@ -416,9 +402,7 @@ def risk_digest_build(
     apply: bool = typer.Option(
         False, "--apply", help="Persist risk-digest items to SQLite (default: dry-run)."
     ),
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Materialize review-controlled risk digests into project_risk_digest_items (V25),
@@ -440,9 +424,7 @@ def risk_digest_build(
 
 @risk_digest_app.command("status")
 def risk_digest_status(
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Read-only coverage report over the Phase 07D project risk-digest table (V25)."""
@@ -481,9 +463,7 @@ def aging_exposure_build(
     apply: bool = typer.Option(
         False, "--apply", help="Persist aging-exposure items to SQLite (default: dry-run)."
     ),
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Materialize aging & exposure reports into aging_exposure_report_items (V25): one classified
@@ -504,9 +484,7 @@ def aging_exposure_build(
 
 @aging_exposure_app.command("status")
 def aging_exposure_status(
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Read-only coverage report over the Phase 07D aging & exposure table (V25)."""
@@ -541,9 +519,7 @@ _CORRESPONDENCE_GUARDRAILS = {
 
 @correspondence_app.command("context")
 def correspondence_context_cmd(
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     lookback_days: Optional[int] = typer.Option(
         None, "--lookback-days", help="Only include threads active within the last N days."
     ),
@@ -567,9 +543,7 @@ def correspondence_context_cmd(
 
 @correspondence_app.command("status")
 def correspondence_status_cmd(
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Read-only correspondence-context coverage summary (thread/record-tie counts)."""
@@ -604,18 +578,18 @@ _CROSS_SOURCE_OBSIDIAN_GUARDRAILS = {
 @cross_source_app.command("obsidian")
 def cross_source_obsidian(
     dry_run: bool = typer.Option(
-        False, "--dry-run",
+        False,
+        "--dry-run",
         help="Preview only (no vault writes). Default when neither flag given. Always emits a repo "
         "evidence preview + proof JSON.",
     ),
     apply: bool = typer.Option(
-        False, "--apply",
+        False,
+        "--apply",
         help="EXPLICIT opt-in. Writes six marker-bounded 07D intelligence notes to the local vault "
         "(if configured).",
     ),
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Render marker-bounded Obsidian notes for the 07D cross-source intelligence (relationships,
@@ -648,9 +622,7 @@ def cross_source_obsidian(
 
 @cross_source_app.command("status")
 def cross_source_status(
-    project: Optional[str] = typer.Option(
-        None, "--project", help="Limit to a single project_key."
-    ),
+    project: Optional[str] = typer.Option(None, "--project", help="Limit to a single project_key."),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
 ) -> None:
     """Read-only coverage over the Phase 07D cross-source-intelligence Obsidian run records (V25)."""
@@ -827,7 +799,9 @@ def _build_graph_client_or_auth_payload(
         return None, {
             "status": "auth_required",
             "scopes": effective_scopes,
-            "detail": token.get("error_description") or token.get("error") or "no_access_token_in_cache",
+            "detail": token.get("error_description")
+            or token.get("error")
+            or "no_access_token_in_cache",
             "hint": "Run `hb-assistant auth login --json` interactively to obtain a delegated token.",
         }
 
@@ -932,7 +906,9 @@ def graph_sources_resolve(
 @graph_app.command("delta")
 def graph_delta(
     source: str = typer.Option(..., "--source", help="source_key from the registry."),
-    dry_run: bool = typer.Option(True, "--dry-run/--apply", help="Default dry-run; --apply persists."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="Default dry-run; --apply persists."
+    ),
     max_pages: int = typer.Option(50, "--max-pages", help="Hard cap on pages per call."),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
@@ -951,9 +927,7 @@ def graph_delta(
 
     provider = _build_auth_provider()
     source_scopes = scopes_for_source_kind(matching[0].kind)
-    client, auth_payload = _build_graph_client_or_auth_payload(
-        provider, scopes=source_scopes
-    )
+    client, auth_payload = _build_graph_client_or_auth_payload(provider, scopes=source_scopes)
     if client is None:
         payload = {
             "command": "construction-agent graph delta",
@@ -987,6 +961,7 @@ def graph_delta(
 
 def _utc_iso() -> str:
     from datetime import datetime, timezone
+
     return datetime.now(timezone.utc).isoformat()
 
 
@@ -994,15 +969,18 @@ def _utc_iso() -> str:
 def sync_cmd(
     source: Optional[str] = typer.Option(None, "--source", help="Run only this source_key."),
     changed_only: bool = typer.Option(
-        False, "--changed-only",
+        False,
+        "--changed-only",
         help="Skip sources with no inventory changes since their last receipt.",
     ),
     dry_run: bool = typer.Option(
-        True, "--dry-run/--apply",
+        True,
+        "--dry-run/--apply",
         help="Default dry-run. --apply writes Markdown to the construction vault root.",
     ),
     source_from_receipts_only: bool = typer.Option(
-        False, "--source-from-receipts-only",
+        False,
+        "--source-from-receipts-only",
         help="Skip live Graph crawl entirely and project from stored receipts.",
     ),
     max_pages: int = typer.Option(50, "--max-pages"),
@@ -1050,12 +1028,16 @@ def sync_cmd(
             since = latest[0]["finished_at"] if latest else "1970-01-01T00:00:00+00:00"
             changed_rows = store.list_inventory_changed_since(src.source_key, since, limit=1)
             if not changed_rows:
-                skipped.append({"source_key": src.source_key, "reason": "no_changes_since_last_receipt"})
+                skipped.append(
+                    {"source_key": src.source_key, "reason": "no_changes_since_last_receipt"}
+                )
                 continue
 
         if crawler is not None:
             crawl_receipt = crawler.crawl(
-                source_key=src.source_key, dry_run=dry_run, max_pages=max_pages,
+                source_key=src.source_key,
+                dry_run=dry_run,
+                max_pages=max_pages,
             )
             per_source.append(service.build_sync_receipt(crawl_receipt))
         else:
@@ -1081,9 +1063,7 @@ def sync_cmd(
     rendered_manifests = {
         k: ManifestRenderer.render_source_manifest(m) for k, m in manifests.items()
     }
-    rendered_sync = {
-        r.source_key: ManifestRenderer.render_sync_receipt(r) for r in per_source
-    }
+    rendered_sync = {r.source_key: ManifestRenderer.render_sync_receipt(r) for r in per_source}
     rendered_processing = ManifestRenderer.render_processing_receipt(processing)
 
     written: list[dict[str, Any]] = []
@@ -1096,12 +1076,15 @@ def sync_cmd(
                 written.append({"kind": wr.kind, "path": str(wr.path), "bytes": wr.bytes_written})
             for r in per_source:
                 wr = writer.write_sync_receipt(
-                    source_key=r.source_key, run_id=r.run_id,
-                    started_at=r.started_at, rendered=rendered_sync[r.source_key],
+                    source_key=r.source_key,
+                    run_id=r.run_id,
+                    started_at=r.started_at,
+                    rendered=rendered_sync[r.source_key],
                 )
                 written.append({"kind": wr.kind, "path": str(wr.path), "bytes": wr.bytes_written})
             wr = writer.write_processing_receipt(
-                run_id=processing.run_id, started_at=processing.started_at,
+                run_id=processing.run_id,
+                started_at=processing.started_at,
                 rendered=rendered_processing,
             )
             written.append({"kind": wr.kind, "path": str(wr.path), "bytes": wr.bytes_written})
@@ -1156,7 +1139,8 @@ def sync_cmd(
 @vault_app.command("bootstrap")
 def vault_bootstrap(
     dry_run: bool = typer.Option(
-        True, "--dry-run/--apply",
+        True,
+        "--dry-run/--apply",
         help="Default dry-run; --apply creates the construction-vault subdirectories.",
     ),
     json_out: bool = typer.Option(True, "--json"),
@@ -1215,20 +1199,28 @@ def vault_bootstrap(
 @vault_app.command("preview")
 def vault_preview(
     project: Optional[str] = typer.Option(None, "--project", help="Render only this project_key."),
-    source: Optional[str] = typer.Option(None, "--source", help="Filter cards/manifests to this source_key."),
+    source: Optional[str] = typer.Option(
+        None, "--source", help="Filter cards/manifests to this source_key."
+    ),
     include_review_required: bool = typer.Option(
-        True, "--include-review-required/--no-include-review-required",
+        True,
+        "--include-review-required/--no-include-review-required",
         help="Render the review-required note (empty placeholder until step 7).",
     ),
     include_document_cards: bool = typer.Option(
-        False, "--include-document-cards",
+        False,
+        "--include-document-cards",
         help="Opt-in to render document cards. Requires --document-item and --policy-reason.",
     ),
     document_item: Optional[str] = typer.Option(
-        None, "--document-item", help="Specific item_id to render a document card for.",
+        None,
+        "--document-item",
+        help="Specific item_id to render a document card for.",
     ),
     policy_reason: Optional[str] = typer.Option(
-        None, "--policy-reason", help="Non-empty justification for emitting the document card.",
+        None,
+        "--policy-reason",
+        help="Non-empty justification for emitting the document card.",
     ),
     apply: bool = typer.Option(False, "--apply", help="Write rendered Markdown to the vault."),
     json_out: bool = typer.Option(True, "--json"),
@@ -1244,7 +1236,8 @@ def vault_preview(
 
     target_projects = (
         [p for p in registry.projects if p.project_key == project]
-        if project else list(registry.projects)
+        if project
+        else list(registry.projects)
     )
     project_cards = [svc.build_project_card(registry, p.project_key) for p in target_projects]
     rendered_project_cards = {
@@ -1288,7 +1281,9 @@ def vault_preview(
             raise typer.Exit(1)
         try:
             document_card = svc.build_document_card(
-                source=src_match, item_id=document_item, policy_reason=policy_reason,
+                source=src_match,
+                item_id=document_item,
+                policy_reason=policy_reason,
             )
         except (DocumentCardPolicyError, ValueError) as e:
             payload = {
@@ -1312,7 +1307,8 @@ def vault_preview(
                 written.append({"kind": wr.kind, "path": str(wr.path), "bytes": wr.bytes_written})
             if review_note is not None and rendered_review is not None:
                 wr = writer.write_review_required_note(
-                    generated_at=review_note.generated_at, rendered=rendered_review,
+                    generated_at=review_note.generated_at,
+                    rendered=rendered_review,
                 )
                 written.append({"kind": wr.kind, "path": str(wr.path), "bytes": wr.bytes_written})
             if document_card is not None and rendered_document_card is not None:
@@ -1378,10 +1374,13 @@ _REVIEW_GUARDRAILS = {
 @review_app.command("evaluate")
 def review_evaluate(
     source: Optional[str] = typer.Option(
-        None, "--source", help="Run only this source_key (default: all registered sources).",
+        None,
+        "--source",
+        help="Run only this source_key (default: all registered sources).",
     ),
     dry_run: bool = typer.Option(
-        True, "--dry-run/--apply",
+        True,
+        "--dry-run/--apply",
         help="Default dry-run; --apply persists matches to construction_review_queue.",
     ),
     json_out: bool = typer.Option(True, "--json"),
@@ -1414,7 +1413,9 @@ def review_evaluate(
     evaluator = ReviewPolicyEvaluator(rules)
     router = ReviewQueueRouter(store, evaluator)
     results = router.evaluate_registry(
-        registry=registry, only_source_key=source, apply=not dry_run,
+        registry=registry,
+        only_source_key=source,
+        apply=not dry_run,
     )
 
     summary = {
@@ -1444,10 +1445,13 @@ def review_evaluate(
 @review_app.command("list")
 def review_list(
     source: Optional[str] = typer.Option(
-        None, "--source", help="Filter to one source_key (default: all sources).",
+        None,
+        "--source",
+        help="Filter to one source_key (default: all sources).",
     ),
     status: str = typer.Option(
-        "open", "--status",
+        "open",
+        "--status",
         help="Filter by status: open | resolved | deferred | all (default: open).",
     ),
     limit: int = typer.Option(1000, "--limit"),
@@ -1557,20 +1561,28 @@ _FIXTURES: dict[str, list[dict[str, Any]]] = {
 @classify_app.command("run")
 def classify_run(
     source: Optional[str] = typer.Option(
-        None, "--source", help="Source key (required unless --fixture is set).",
+        None,
+        "--source",
+        help="Source key (required unless --fixture is set).",
     ),
     item: Optional[str] = typer.Option(
-        None, "--item", help="Inventory item_id (required unless --fixture is set).",
+        None,
+        "--item",
+        help="Inventory item_id (required unless --fixture is set).",
     ),
     fixture: Optional[str] = typer.Option(
-        None, "--fixture", help="Run an offline built-in fixture set by name (e.g. 'sample').",
+        None,
+        "--fixture",
+        help="Run an offline built-in fixture set by name (e.g. 'sample').",
     ),
     task: str = typer.Option(
-        "classification", "--task",
+        "classification",
+        "--task",
         help="Model task: classification | review_reason.",
     ),
     mock_output: Optional[str] = typer.Option(
-        None, "--mock-output",
+        None,
+        "--mock-output",
         help="Raw model output to feed in offline (bypasses Ollama). For testing / proof.",
     ),
     json_out: bool = typer.Option(True, "--json"),
@@ -1634,9 +1646,13 @@ def classify_run(
                 )
                 decisions.append(decision.model_dump())
             except InvalidModelOutputError as e:
-                rejected.append({
-                    "item_id": entry["item_id"], "code": e.code, "detail": e.detail,
-                })
+                rejected.append(
+                    {
+                        "item_id": entry["item_id"],
+                        "code": e.code,
+                        "detail": e.detail,
+                    }
+                )
         payload = {
             "command": "construction-agent classify run",
             "mode": "fixture",
@@ -1728,7 +1744,9 @@ def classify_run(
 def classify_decisions(
     source: Optional[str] = typer.Option(None, "--source"),
     status: str = typer.Option(
-        "all", "--status", help="Filter by status: accepted | review | all (default: all).",
+        "all",
+        "--status",
+        help="Filter by status: accepted | review | all (default: all).",
     ),
     limit: int = typer.Option(1000, "--limit"),
     json_out: bool = typer.Option(True, "--json"),
@@ -1753,8 +1771,7 @@ def classify_decisions(
         limit=limit,
     )
     counts = {
-        s: store.count_model_decisions(source_key=source, status=s)
-        for s in ("accepted", "review")
+        s: store.count_model_decisions(source_key=source, status=s) for s in ("accepted", "review")
     }
     payload = {
         "command": "construction-agent classify decisions",
@@ -1793,7 +1810,8 @@ def _per_source_index(store: "ConstructionStore", src: Any) -> dict[str, Any]:
         "kind": src.kind,
         "display_name": src.display_name,
         "resolution_status": resolution.get(
-            "resolution_status", src.resolution_status,
+            "resolution_status",
+            src.resolution_status,
         ),
         "drive_id_present": bool(resolution.get("drive_id")),
         "inventory_counts": dict(counts),
@@ -1860,7 +1878,9 @@ def ollama_status(
 def index_status(
     op: str = typer.Argument("status", help="Index operation. Only 'status' is supported."),
     source: Optional[str] = typer.Option(
-        None, "--source", help="Filter dashboard to one registered source_key.",
+        None,
+        "--source",
+        help="Filter dashboard to one registered source_key.",
     ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
@@ -1901,9 +1921,7 @@ def index_status(
     store = ConstructionStore()
     schema_version = SQLiteMigrator().current_version()
 
-    targets = [
-        s for s in registry.sources if source is None or s.source_key == source
-    ]
+    targets = [s for s in registry.sources if source is None or s.source_key == source]
     per_source = [_per_source_index(store, s) for s in targets]
 
     review_queue = {
@@ -1911,8 +1929,7 @@ def index_status(
         for s in ("open", "resolved", "deferred")
     }
     model_decisions = {
-        s: store.count_model_decisions(source_key=source, status=s)
-        for s in ("accepted", "review")
+        s: store.count_model_decisions(source_key=source, status=s) for s in ("accepted", "review")
     }
 
     # Policy snapshots — best-effort; failures are non-fatal and surface as
@@ -1982,11 +1999,14 @@ def _validate_source_registry() -> dict[str, Any]:
         return {"name": "source_registry", "ok": False, "detail": None, "error": str(e)}
     except ValidationError as e:
         return {
-            "name": "source_registry", "ok": False, "detail": None,
+            "name": "source_registry",
+            "ok": False,
+            "detail": None,
             "error": f"{len(e.errors())} validation error(s)",
         }
     return {
-        "name": "source_registry", "ok": True,
+        "name": "source_registry",
+        "ok": True,
         "detail": f"{len(registry.projects)} projects, {len(registry.sources)} sources",
         "error": None,
     }
@@ -1999,11 +2019,14 @@ def _validate_review_rules() -> dict[str, Any]:
         return {"name": "review_rules", "ok": False, "detail": None, "error": str(e)}
     except ValidationError as e:
         return {
-            "name": "review_rules", "ok": False, "detail": None,
+            "name": "review_rules",
+            "ok": False,
+            "detail": None,
             "error": f"{len(e.errors())} validation error(s)",
         }
     return {
-        "name": "review_rules", "ok": True,
+        "name": "review_rules",
+        "ok": True,
         "detail": f"version={rr.version}; {len(rr.rules)} rules; threshold={rr.low_confidence_threshold}",
         "error": None,
     }
@@ -2016,11 +2039,14 @@ def _validate_model_routing() -> dict[str, Any]:
         return {"name": "model_routing", "ok": False, "detail": None, "error": str(e)}
     except ValidationError as e:
         return {
-            "name": "model_routing", "ok": False, "detail": None,
+            "name": "model_routing",
+            "ok": False,
+            "detail": None,
             "error": f"{len(e.errors())} validation error(s)",
         }
     return {
-        "name": "model_routing", "ok": True,
+        "name": "model_routing",
+        "ok": True,
         "detail": f"version={mr.version}; default_model={mr.default_model}; tasks={[t.task for t in mr.tasks]}",
         "error": None,
     }
@@ -2073,7 +2099,8 @@ _FIXTURES_GUARDRAILS = {
 @fixtures_app.command("validate")
 def fixtures_validate(
     kind: Optional[str] = typer.Option(
-        None, "--kind",
+        None,
+        "--kind",
         help=(
             "Filter to one fixture kind: "
             "graph_delta | source_registry | review_policy | model_output | procore."
@@ -2155,6 +2182,7 @@ def project_coverage(
 # ---------------------------------------------------------------------------
 # Phase 07A Prompt 03 — data-quality source-record-map (explicit --dry-run/--apply)
 # ---------------------------------------------------------------------------
+
 
 @data_quality_app.command("source-record-map")
 def source_record_map(
@@ -2573,4 +2601,3 @@ def phase_07d_gates(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if report.get("ok") else 1)
-

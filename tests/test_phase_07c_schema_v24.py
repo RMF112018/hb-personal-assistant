@@ -108,9 +108,7 @@ def test_v24_is_idempotent() -> None:
         assert _migrate(db) == LATEST_SCHEMA_VERSION
         assert _migrate(db) == LATEST_SCHEMA_VERSION  # second apply is a no-op
         conn = sqlite3.connect(str(db))
-        n = conn.execute(
-            "SELECT COUNT(*) FROM schema_migrations WHERE version = 24"
-        ).fetchone()[0]
+        n = conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 24").fetchone()[0]
         assert n == 1
 
 

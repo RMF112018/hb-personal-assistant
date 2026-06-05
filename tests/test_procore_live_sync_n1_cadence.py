@@ -100,8 +100,15 @@ class _ManyParentsTransport:
             if page != 1:
                 return _FakeResponse({"data": []})
             return _FakeResponse(
-                {"data": [{"id": int(pid) * 10 + 1, "amount": "100.00",
-                           "wbs_code": {"id": 3, "flat_code": "01-100"}}]}
+                {
+                    "data": [
+                        {
+                            "id": int(pid) * 10 + 1,
+                            "amount": "100.00",
+                            "wbs_code": {"id": 3, "flat_code": "01-100"},
+                        }
+                    ]
+                }
             )
         return _FakeResponse({"data": []})
 
@@ -126,9 +133,7 @@ class _RateLimitOnChildTransport(_ManyParentsTransport):
                     status_code=429,
                     headers={"Retry-After": "2"},
                 )
-            return _FakeResponse(
-                {"data": [{"id": int(pid) * 10 + 1, "amount": "100.00"}]}
-            )
+            return _FakeResponse({"data": [{"id": int(pid) * 10 + 1, "amount": "100.00"}]})
         return super().__call__(method, url, headers, params)
 
 
@@ -154,9 +159,7 @@ class _RateLimitThenSuccessChildTransport(_ManyParentsTransport):
                     status_code=429,
                     headers={"Retry-After": "2"},
                 )
-            return _FakeResponse(
-                {"data": [{"id": int(pid) * 10 + 1, "amount": "100.00"}]}
-            )
+            return _FakeResponse({"data": [{"id": int(pid) * 10 + 1, "amount": "100.00"}]})
         return super().__call__(method, url, headers, params)
 
 
@@ -167,10 +170,8 @@ class _EmptyChildTransport:
         adapter = ep_registry.get(endpoint_id)
         assert adapter is not None and adapter.parent_path_template is not None
         self.endpoint_id = endpoint_id
-        self.parent_path = (
-            adapter.parent_path_template
-            .replace("{project_id}", "2525840")
-            .replace("{company_id}", "5280")
+        self.parent_path = adapter.parent_path_template.replace("{project_id}", "2525840").replace(
+            "{company_id}", "5280"
         )
         self.parent_ids = parent_ids
         self.calls: List[str] = []
@@ -339,7 +340,9 @@ def test_capped_run_is_idempotent_and_preserves_linkage(monkeypatch: pytest.Monk
     assert first["n1_fanout"]["cap_reached"] is True
     assert second["n1_fanout"]["cap_reached"] is True
     assert len(rows_first) == len(rows_second) == 2
-    assert {r["procore_record_id"] for r in rows_first} == {r["procore_record_id"] for r in rows_second}
+    assert {r["procore_record_id"] for r in rows_first} == {
+        r["procore_record_id"] for r in rows_second
+    }
     assert all(r["parent_procore_id"] in {"501", "502"} for r in rows_second)
 
 
@@ -359,7 +362,9 @@ def test_no_cap_when_parents_below_limit(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_partial_success_continues_on_child_error(monkeypatch: pytest.MonkeyPatch) -> None:
     _setup(monkeypatch)
     db = _db()
-    receipt = _run(db, _ManyParentsTransport([501, 502, 503], error_ids=(503,)), max_child_requests=50)
+    receipt = _run(
+        db, _ManyParentsTransport([501, 502, 503], error_ids=(503,)), max_child_requests=50
+    )
     fan = receipt["n1_fanout"]
     assert fan["child_request_count"] == 3
     assert fan["child_error_count"] == 1
@@ -514,7 +519,9 @@ def test_unreached_n1_endpoints_share_bounded_fanout(
 def test_no_raw_child_error_leakage(monkeypatch: pytest.MonkeyPatch) -> None:
     _setup(monkeypatch)
     db = _db()
-    receipt = _run(db, _ManyParentsTransport([501, 502, 503], error_ids=(503,)), max_child_requests=50)
+    receipt = _run(
+        db, _ManyParentsTransport([501, 502, 503], error_ids=(503,)), max_child_requests=50
+    )
     # the raw exception text never appears anywhere in the receipt.
     assert _RAW_ERROR not in json.dumps(receipt, default=str)
     # each redacted error entry exposes only the classified keys (error code/status + the

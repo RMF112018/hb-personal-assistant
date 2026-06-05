@@ -87,18 +87,44 @@ def _clear_caches() -> Iterator[None]:
 
 # --- dry-run ----------------------------------------------------------------
 
+
 def test_dry_run_renders_table_and_excludes_review_required() -> None:
     db = _new_db()
     _seed_run(db, endpoint_id="rfis")
-    _insert(db, endpoint_id="rfis", record_id="100", fields={
-        "number": "RFI-100", "subject": "Door spec", "status": "open", "due_date": "2026-06-01",
-    })
-    _insert(db, endpoint_id="rfis", record_id="101", fields={
-        "number": "RFI-101", "subject": "Slab elev", "status": "closed", "due_date": "2026-05-15",
-    })
-    _insert(db, endpoint_id="rfis", record_id="200", fields={
-        "number": "RFI-200", "subject": "redacted", "status": "open",
-    }, review_required=True, sensitive_reason="assignee_missing")
+    _insert(
+        db,
+        endpoint_id="rfis",
+        record_id="100",
+        fields={
+            "number": "RFI-100",
+            "subject": "Door spec",
+            "status": "open",
+            "due_date": "2026-06-01",
+        },
+    )
+    _insert(
+        db,
+        endpoint_id="rfis",
+        record_id="101",
+        fields={
+            "number": "RFI-101",
+            "subject": "Slab elev",
+            "status": "closed",
+            "due_date": "2026-05-15",
+        },
+    )
+    _insert(
+        db,
+        endpoint_id="rfis",
+        record_id="200",
+        fields={
+            "number": "RFI-200",
+            "subject": "redacted",
+            "status": "open",
+        },
+        review_required=True,
+        sensitive_reason="assignee_missing",
+    )
 
     result = procore_obsidian_register(
         project_key="tropical",
@@ -125,12 +151,21 @@ def test_dry_run_renders_table_and_excludes_review_required() -> None:
 def test_dry_run_empty_table_when_all_rows_review_required() -> None:
     db = _new_db()
     _seed_run(db, endpoint_id="rfis")
-    _insert(db, endpoint_id="rfis", record_id="300", fields={"number": "RFI-300"},
-            review_required=True, sensitive_reason="assignee_missing")
+    _insert(
+        db,
+        endpoint_id="rfis",
+        record_id="300",
+        fields={"number": "RFI-300"},
+        review_required=True,
+        sensitive_reason="assignee_missing",
+    )
 
     result = procore_obsidian_register(
-        project_key="tropical", endpoint_id="rfis",
-        dry_run=True, apply=False, db_path=db,
+        project_key="tropical",
+        endpoint_id="rfis",
+        dry_run=True,
+        apply=False,
+        db_path=db,
     )
 
     assert result["ok"] is True
@@ -141,11 +176,15 @@ def test_dry_run_empty_table_when_all_rows_review_required() -> None:
 
 # --- unsupported endpoint ---------------------------------------------------
 
+
 def test_unsupported_endpoint_returns_structured_error() -> None:
     db = _new_db()
     result = procore_obsidian_register(
-        project_key="tropical", endpoint_id="punch-items",
-        dry_run=True, apply=False, db_path=db,
+        project_key="tropical",
+        endpoint_id="punch-items",
+        dry_run=True,
+        apply=False,
+        db_path=db,
     )
     assert result["ok"] is False
     assert result["status"] == "unsupported_endpoint"
@@ -168,6 +207,7 @@ def test_endpoint_to_register_map_covers_supported_families() -> None:
 
 # --- apply + idempotency ----------------------------------------------------
 
+
 def test_apply_writes_marker_bounded_file_and_is_idempotent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -177,16 +217,25 @@ def test_apply_writes_marker_bounded_file_and_is_idempotent(
 
     db = _new_db()
     _seed_run(db, endpoint_id="rfis")
-    _insert(db, endpoint_id="rfis", record_id="100", fields={
-        "number": "RFI-100", "subject": "First", "status": "open"
-    })
-    _insert(db, endpoint_id="rfis", record_id="101", fields={
-        "number": "RFI-101", "subject": "Second", "status": "open"
-    })
+    _insert(
+        db,
+        endpoint_id="rfis",
+        record_id="100",
+        fields={"number": "RFI-100", "subject": "First", "status": "open"},
+    )
+    _insert(
+        db,
+        endpoint_id="rfis",
+        record_id="101",
+        fields={"number": "RFI-101", "subject": "Second", "status": "open"},
+    )
 
     first = procore_obsidian_register(
-        project_key="tropical", endpoint_id="rfis",
-        dry_run=False, apply=True, db_path=db,
+        project_key="tropical",
+        endpoint_id="rfis",
+        dry_run=False,
+        apply=True,
+        db_path=db,
     )
     assert first["ok"] is True
     assert len(first["written_paths"]) == 1
@@ -203,8 +252,11 @@ def test_apply_writes_marker_bounded_file_and_is_idempotent(
     assert b"RFI-101" in first_bytes
 
     second = procore_obsidian_register(
-        project_key="tropical", endpoint_id="rfis",
-        dry_run=False, apply=True, db_path=db,
+        project_key="tropical",
+        endpoint_id="rfis",
+        dry_run=False,
+        apply=True,
+        db_path=db,
     )
     assert second["ok"] is True
     second_bytes = written.read_bytes()
@@ -235,8 +287,11 @@ def test_apply_preserves_content_outside_marker_region(
     _insert(db, endpoint_id="rfis", record_id="100", fields={"number": "RFI-100", "subject": "X"})
 
     procore_obsidian_register(
-        project_key="tropical", endpoint_id="rfis",
-        dry_run=False, apply=True, db_path=db,
+        project_key="tropical",
+        endpoint_id="rfis",
+        dry_run=False,
+        apply=True,
+        db_path=db,
     )
 
     contents = target_file.read_text(encoding="utf-8")
@@ -248,17 +303,28 @@ def test_apply_preserves_content_outside_marker_region(
 
 # --- endpoint families cross-check ------------------------------------------
 
+
 def test_meeting_topics_endpoint_renders_topic_table_only() -> None:
     db = _new_db()
     _seed_run(db, endpoint_id="meeting-topics")
-    _insert(db, endpoint_id="meeting-topics", record_id="500", fields={
-        "title": "Schedule check-in", "status": "open", "due_date": "2026-06-10",
-        "__parent": "5000",
-    })
+    _insert(
+        db,
+        endpoint_id="meeting-topics",
+        record_id="500",
+        fields={
+            "title": "Schedule check-in",
+            "status": "open",
+            "due_date": "2026-06-10",
+            "__parent": "5000",
+        },
+    )
 
     result = procore_obsidian_register(
-        project_key="tropical", endpoint_id="meeting-topics",
-        dry_run=True, apply=False, db_path=db,
+        project_key="tropical",
+        endpoint_id="meeting-topics",
+        dry_run=True,
+        apply=False,
+        db_path=db,
     )
     assert result["ok"] is True
     assert result["family_template"] == "meeting_register"
@@ -277,14 +343,25 @@ def test_submittal_endpoint_writes_submittal_register_file(
     monkeypatch.setenv("HB_CONSTRUCTION_VAULT_ROOT", str(vault))
     db = _new_db()
     _seed_run(db, endpoint_id="submittals")
-    _insert(db, endpoint_id="submittals", record_id="700", fields={
-        "number": "SUB-700", "title": "HVAC shop drawings", "spec_section": "23 00 00",
-        "status": "open", "due_date": "2026-07-01",
-    })
+    _insert(
+        db,
+        endpoint_id="submittals",
+        record_id="700",
+        fields={
+            "number": "SUB-700",
+            "title": "HVAC shop drawings",
+            "spec_section": "23 00 00",
+            "status": "open",
+            "due_date": "2026-07-01",
+        },
+    )
 
     result = procore_obsidian_register(
-        project_key="tropical", endpoint_id="submittals",
-        dry_run=False, apply=True, db_path=db,
+        project_key="tropical",
+        endpoint_id="submittals",
+        dry_run=False,
+        apply=True,
+        db_path=db,
     )
     assert result["ok"] is True
     assert result["family_template"] == "submittal_register"
@@ -297,6 +374,7 @@ def test_submittal_endpoint_writes_submittal_register_file(
 
 # --- canonical JSON parsing edge case ---------------------------------------
 
+
 def test_corrupted_canonical_json_is_silently_tolerated(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -305,11 +383,15 @@ def test_corrupted_canonical_json_is_silently_tolerated(
     raises on per-row data."""
     db = _new_db()
     _seed_run(db, endpoint_id="rfis")
-    _insert(db, endpoint_id="rfis", record_id="900", fields={
-        "number": "RFI-900", "subject": "fine", "status": "open"
-    })
+    _insert(
+        db,
+        endpoint_id="rfis",
+        record_id="900",
+        fields={"number": "RFI-900", "subject": "fine", "status": "open"},
+    )
     # Manually corrupt one row's canonical_json_redacted.
     import sqlite3
+
     conn = sqlite3.connect(str(db))
     try:
         conn.execute(
@@ -322,8 +404,11 @@ def test_corrupted_canonical_json_is_silently_tolerated(
         conn.close()
 
     result = procore_obsidian_register(
-        project_key="tropical", endpoint_id="rfis",
-        dry_run=True, apply=False, db_path=db,
+        project_key="tropical",
+        endpoint_id="rfis",
+        dry_run=True,
+        apply=False,
+        db_path=db,
     )
     assert result["ok"] is True
     assert result["count_from_sqlite"] == 1
@@ -332,13 +417,17 @@ def test_corrupted_canonical_json_is_silently_tolerated(
 
 # --- verify JSON serializability --------------------------------------------
 
+
 def test_result_is_json_serializable() -> None:
     db = _new_db()
     _seed_run(db, endpoint_id="rfis")
     _insert(db, endpoint_id="rfis", record_id="100", fields={"number": "RFI-100"})
     result = procore_obsidian_register(
-        project_key="tropical", endpoint_id="rfis",
-        dry_run=True, apply=False, db_path=db,
+        project_key="tropical",
+        endpoint_id="rfis",
+        dry_run=True,
+        apply=False,
+        db_path=db,
     )
     # Must not raise.
     json.dumps(result)

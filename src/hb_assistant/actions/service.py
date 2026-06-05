@@ -20,7 +20,9 @@ from hb_assistant.store.repositories import Store
 class ActionService:
     """Minimal service for actions CLI foundation."""
 
-    def __init__(self, store: Optional[Store] = None, registry: Optional[SourceLinkRegistry] = None) -> None:
+    def __init__(
+        self, store: Optional[Store] = None, registry: Optional[SourceLinkRegistry] = None
+    ) -> None:
         self.store = store or Store()
         self.registry = registry or SourceLinkRegistry(store=self.store)
         self._db_path = getattr(self.store, "_db_path", None)

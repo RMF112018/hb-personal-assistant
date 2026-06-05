@@ -61,6 +61,7 @@ def _new_db() -> Path:
 # 1. redact_body strips secret-shaped literals
 # ---------------------------------------------------------------------------
 
+
 def test_redact_body_strips_secret_shaped_payloads() -> None:
     payload = {
         "Authorization": _SYNTHETIC_BEARER_PAYLOAD,
@@ -105,6 +106,7 @@ def test_redact_body_strips_secrets_from_list_payload() -> None:
 # ---------------------------------------------------------------------------
 # 2. V6 CHECK constraints reject raw_body_persisted=1 and redaction_applied=0
 # ---------------------------------------------------------------------------
+
 
 def test_v6_check_constraint_rejects_raw_body_persisted_on_records() -> None:
     db = _new_db()
@@ -191,8 +193,7 @@ def test_no_secret_literals_in_live_records_corpus() -> None:
 
     conn = get_connection(None)
     cur = conn.execute(
-        "SELECT canonical_json_redacted, raw_body_persisted "
-        "FROM procore_live_records"
+        "SELECT canonical_json_redacted, raw_body_persisted FROM procore_live_records"
     )
     rows = list(cur.fetchall())
 
@@ -251,9 +252,7 @@ def test_seeded_live_records_have_no_secret_literals() -> None:
 
     conn = sqlite3.connect(str(db))
     try:
-        rows = conn.execute(
-            "SELECT canonical_json_redacted FROM procore_live_records"
-        ).fetchall()
+        rows = conn.execute("SELECT canonical_json_redacted FROM procore_live_records").fetchall()
     finally:
         conn.close()
 

@@ -29,16 +29,33 @@ def _seed_card(
     project_key: str | None = "alpha",
 ) -> None:
     store.upsert_inventory_item(
-        source_key="sp", drive_id="d", item_id=key, name="raw_" + key, web_url="https://x/" + key,
-        parent_path="/General", size_bytes=1024, is_folder=False, last_modified=None, etag="e",
+        source_key="sp",
+        drive_id="d",
+        item_id=key,
+        name="raw_" + key,
+        web_url="https://x/" + key,
+        parent_path="/General",
+        size_bytes=1024,
+        is_folder=False,
+        last_modified=None,
+        etag="e",
     )
     store.upsert_document_card(
-        card_id=key, document_card_id=key, source_id="sp", drive_item_id=key,
-        file_extension="pdf", project_key=project_key, document_type="unknown",
+        card_id=key,
+        document_card_id=key,
+        source_id="sp",
+        drive_item_id=key,
+        file_extension="pdf",
+        project_key=project_key,
+        document_type="unknown",
     )
     store.upsert_document_classification_candidate(
-        candidate_id="clf_" + key, document_card_id=key, document_type=document_type,
-        classifier_name="deterministic_v1", signal_class="deterministic", confidence=0.9,
+        candidate_id="clf_" + key,
+        document_card_id=key,
+        document_type=document_type,
+        classifier_name="deterministic_v1",
+        signal_class="deterministic",
+        confidence=0.9,
         confidence_class="deterministic",
     )
 
@@ -46,15 +63,29 @@ def _seed_card(
 def _seed_procore(db: str, *, project_key: str, endpoint_id: str, record_id: str) -> None:
     run_id = "run_" + endpoint_id
     record_sync_run_start(
-        sync_run_id=run_id, endpoint_id=endpoint_id, command_endpoint=endpoint_id,
-        legacy_endpoint_alias=None, project_key=project_key, procore_project_id="pp1",
-        company_id="co1", mode="history", started_at_utc="2026-01-01T00:00:00Z", db_path=Path(db),
+        sync_run_id=run_id,
+        endpoint_id=endpoint_id,
+        command_endpoint=endpoint_id,
+        legacy_endpoint_alias=None,
+        project_key=project_key,
+        procore_project_id="pp1",
+        company_id="co1",
+        mode="history",
+        started_at_utc="2026-01-01T00:00:00Z",
+        db_path=Path(db),
     )
     upsert_procore_live_record(
-        project_key=project_key, procore_project_id="pp1", endpoint_id=endpoint_id,
-        procore_record_id=record_id, parent_procore_id=None,
-        normalized_fields={"number": record_id}, review_required=False, sensitive_reason=None,
-        source_url_redacted=None, last_sync_run_id=run_id, now_utc="2026-01-01T00:00:00Z",
+        project_key=project_key,
+        procore_project_id="pp1",
+        endpoint_id=endpoint_id,
+        procore_record_id=record_id,
+        parent_procore_id=None,
+        normalized_fields={"number": record_id},
+        review_required=False,
+        sensitive_reason=None,
+        source_url_redacted=None,
+        last_sync_run_id=run_id,
+        now_utc="2026-01-01T00:00:00Z",
         db_path=Path(db),
     )
 
@@ -73,9 +104,7 @@ def _seed(store: ConstructionStore, db: str) -> None:
 def _by_card(db: str) -> dict[str, sqlite3.Row]:
     conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        "SELECT * FROM construction_document_relationship_candidates"
-    ).fetchall()
+    rows = conn.execute("SELECT * FROM construction_document_relationship_candidates").fetchall()
     return {r["document_card_id"]: r for r in rows}
 
 

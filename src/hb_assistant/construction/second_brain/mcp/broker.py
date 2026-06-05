@@ -125,7 +125,9 @@ class ToolBroker:
             # 5. wrapper present?
             wrapper = self._wrappers.get(name)
             if wrapper is None:
-                return self._deny(name, REASON_WRAPPER_UNAVAILABLE, args, correlation_id, client_name)
+                return self._deny(
+                    name, REASON_WRAPPER_UNAVAILABLE, args, correlation_id, client_name
+                )
 
             # 6. invoke wrapper (fail-closed on any exception; no raw error echoed).
             try:

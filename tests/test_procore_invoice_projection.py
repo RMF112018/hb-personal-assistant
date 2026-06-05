@@ -44,8 +44,14 @@ def test_billing_period_open_and_due_soon_signals() -> None:
     db = _db()
     out = project_invoice_family(
         "billing-periods",
-        {"id": 7, "status": "open", "start_date": "2026-05-01", "end_date": "2026-05-31",
-         "due_date": "2026-06-02", "position": 3},
+        {
+            "id": 7,
+            "status": "open",
+            "start_date": "2026-05-01",
+            "end_date": "2026-05-31",
+            "due_date": "2026-06-02",
+            "position": 3,
+        },
         project_key="tropical",
         now_utc=_NOW,
         db_path=db,
@@ -135,8 +141,14 @@ def test_subcontractor_invoice_pending_and_final_signals() -> None:
     db = _db()
     project_invoice_family(
         "subcontractor-invoices",
-        {"id": 41, "status": "under_review", "final": True, "vendor_id": 12, "commitment_id": 1,
-         "summary": {}},
+        {
+            "id": 41,
+            "status": "under_review",
+            "final": True,
+            "vendor_id": 12,
+            "commitment_id": 1,
+            "summary": {},
+        },
         project_key="tropical",
         now_utc=_NOW,
         db_path=db,
@@ -184,7 +196,11 @@ def test_invoice_contract_item_rows_facts_and_materials_signal() -> None:
     assert facts["scheduled_value"]["wbs_code_id"] == "3"
     assert facts["scheduled_value"]["cost_code_id"] == "4"
     # materials-stored signal anchored on the parent invoice
-    msig = [s for s in _rows(db, "procore_action_signals") if s["signal_type"] == "invoice_materials_stored"]
+    msig = [
+        s
+        for s in _rows(db, "procore_action_signals")
+        if s["signal_type"] == "invoice_materials_stored"
+    ]
     assert msig and msig[0]["record_key"] == "tropical|subcontractor-invoices||40"
 
 
@@ -220,6 +236,10 @@ def test_invoice_query_filters_by_status_period_vendor() -> None:
 def test_subcontractor_invoice_idempotent() -> None:
     db = _db()
     raw = {"id": 40, "status": "approved", "vendor_id": 12, "commitment_id": 1, "summary": {}}
-    project_invoice_family("subcontractor-invoices", raw, project_key="tropical", now_utc=_NOW, db_path=db)
-    project_invoice_family("subcontractor-invoices", raw, project_key="tropical", now_utc=_NOW, db_path=db)
+    project_invoice_family(
+        "subcontractor-invoices", raw, project_key="tropical", now_utc=_NOW, db_path=db
+    )
+    project_invoice_family(
+        "subcontractor-invoices", raw, project_key="tropical", now_utc=_NOW, db_path=db
+    )
     assert len(_rows(db, "procore_financial_subcontractor_invoices")) == 1

@@ -44,6 +44,7 @@ def _seed_record(db: Path) -> None:
 
 # --- the proof passes against repo truth ---
 
+
 def test_proof_passes_all_checks() -> None:
     db = _db()
     _seed_record(db)
@@ -60,6 +61,7 @@ def test_proof_passes_all_checks() -> None:
 
 
 # --- raw-body guardrail probe ---
+
 
 def test_raw_body_guardrail_reports_zero_only() -> None:
     db = _db()
@@ -88,20 +90,27 @@ def test_raw_body_check_constraint_bites() -> None:
 
 # --- the scanner is not vacuous ---
 
+
 def test_secret_scanner_flags_planted_secrets() -> None:
     assert _scan_text_for_secrets("Authorization: Bearer abcdef0123456789ABCDEF0123")
     assert _scan_text_for_secrets("-----BEGIN RSA PRIVATE KEY-----")
-    assert _scan_text_for_secrets("https://x.blob.core.windows.net/c/f?sv=2021-08-06&sig=AbCd12+/EfGh34iJ")
+    assert _scan_text_for_secrets(
+        "https://x.blob.core.windows.net/c/f?sv=2021-08-06&sig=AbCd12+/EfGh34iJ"
+    )
     assert _scan_text_for_secrets('"refresh_token": "0.AAAAverylongtokenvalue"')
 
 
 def test_secret_scanner_ignores_prose() -> None:
     # evidence narratives mention these words without carrying a real secret
-    assert _scan_text_for_secrets("No tokens, Authorization headers, or signed URLs are emitted.") == []
+    assert (
+        _scan_text_for_secrets("No tokens, Authorization headers, or signed URLs are emitted.")
+        == []
+    )
     assert _scan_text_for_secrets("client_secret is never logged or committed.") == []
 
 
 # --- CLI ---
+
 
 def _patch_conn(monkeypatch: pytest.MonkeyPatch, db: Path) -> None:
     import hb_assistant.store.connection as conn_mod
@@ -126,9 +135,20 @@ def test_cli_proof_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     )
     assert res.exit_code == 0, res.output
     payload = json.loads(res.output)
-    for key in ("command", "ok", "phase", "proof_passed", "checks", "checks_detail",
-                "scanned_modules", "raw_body_tables", "query_commands", "note",
-                "determinations_made", "guardrails"):
+    for key in (
+        "command",
+        "ok",
+        "phase",
+        "proof_passed",
+        "checks",
+        "checks_detail",
+        "scanned_modules",
+        "raw_body_tables",
+        "query_commands",
+        "note",
+        "determinations_made",
+        "guardrails",
+    ):
         assert key in payload, f"missing {key}"
     assert payload["proof_passed"] is True
     assert payload["ok"] is True

@@ -23,4 +23,4 @@ Deterministic, read-only scan over every MCP surface (registries, resources, pro
 - no_resource_dispatch: true
 - metadata_only: true
 
-Generated: 2026-06-04T10:33:08.037754+00:00
+Generated: 2026-06-05T16:47:01.113710+00:00

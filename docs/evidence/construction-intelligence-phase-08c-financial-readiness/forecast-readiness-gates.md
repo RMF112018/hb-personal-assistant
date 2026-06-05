@@ -35,4 +35,4 @@ Deterministic from artifacts + V35 (no model).
 - docs/evidence/construction-intelligence-phase-08c-financial-readiness/exposure-mart-preview.json
 - docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json
 
-Generated: 2026-06-03T20:52:51.328925+00:00 | run_id: 08c-forecast-b3b51a7a
+Generated: 2026-06-05T16:52:08.112042+00:00 | run_id: 08c-forecast-09ff7ffa

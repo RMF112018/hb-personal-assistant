@@ -23,14 +23,20 @@ from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.store.migrator import SQLiteMigrator
 
 _LEAK = re.compile(
-    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}", re.IGNORECASE
+    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}",
+    re.IGNORECASE,
 )
 _NOW = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
 _VAULT_SUBDIR = ("Construction Intelligence", "Phase 07D Cross-Source Intelligence")
 _GUARDS = (
-    "raw_email_body_persisted", "raw_document_text_persisted",
-    "raw_calendar_payload_persisted", "raw_prompt_persisted", "raw_response_persisted",
-    "signed_url_persisted", "download_url_persisted", "external_writeback_performed",
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
 )
 
 
@@ -43,16 +49,29 @@ def _fresh_db() -> str:
 
 def _seed(store: ConstructionStore) -> None:
     store.upsert_cross_source_relationship_candidate(
-        candidate_id="c0", source_family="email", source_record_type="m", source_record_ref="m0",
-        target_family="procore", target_record_type="rfi", target_record_ref="r0",
-        relationship_type="references", confidence_score=0.5, confidence_class="weak_heuristic",
-        source_reference_json="{}", review_required=True, project_key="tropical",
+        candidate_id="c0",
+        source_family="email",
+        source_record_type="m",
+        source_record_ref="m0",
+        target_family="procore",
+        target_record_type="rfi",
+        target_record_ref="r0",
+        relationship_type="references",
+        confidence_score=0.5,
+        confidence_class="weak_heuristic",
+        source_reference_json="{}",
+        review_required=True,
+        project_key="tropical",
         evidence_trail_id="et0",
     )
     store.upsert_project_risk_digest_item(
-        risk_digest_id="r0", project_key="tropical", risk_indicator_type="invoice_payment_due",
-        risk_source_class="source_stated", summary_redacted=json.dumps({"count": 2}),
-        confidence_class="deterministic", review_required=True,
+        risk_digest_id="r0",
+        project_key="tropical",
+        risk_indicator_type="invoice_payment_due",
+        risk_source_class="source_stated",
+        summary_redacted=json.dumps({"count": 2}),
+        confidence_class="deterministic",
+        review_required=True,
     )
 
 
@@ -86,8 +105,12 @@ def test_dry_run_renders_markers_and_preview() -> None:
         assert report["notes_written"] == 0
         assert report["applied_to_vault"] is False
         assert set(report["rendered_excerpts"].keys()) == {
-            "relationships", "meeting_prep", "issue_history", "risk_digest",
-            "aging_exposure", "correspondence",
+            "relationships",
+            "meeting_prep",
+            "issue_history",
+            "risk_digest",
+            "aging_exposure",
+            "correspondence",
         }
         assert Path(report["evidence_preview_path"]).exists()
         assert (ev / "obsidian-cross-source-dry-run.json").exists()
@@ -115,10 +138,12 @@ def test_apply_writes_marker_bounded_vault_notes_preserving_user_content() -> No
         assert note.exists()
         assert "HB-CROSS-SOURCE-RISK-DIGEST:START" in note.read_text(encoding="utf-8")
         # add user content outside markers; re-apply must preserve it and replace only inner
-        note.write_text(note.read_text(encoding="utf-8") + "\n## My notes\nuser content\n",
-                        encoding="utf-8")
-        renderer.render(dry_run=False, apply=True, project_filter="tropical", vault_root=vault,
-                        now_utc=_NOW)
+        note.write_text(
+            note.read_text(encoding="utf-8") + "\n## My notes\nuser content\n", encoding="utf-8"
+        )
+        renderer.render(
+            dry_run=False, apply=True, project_filter="tropical", vault_root=vault, now_utc=_NOW
+        )
         after = note.read_text(encoding="utf-8")
         assert "user content" in after
         assert after.count("HB-CROSS-SOURCE-RISK-DIGEST:START") == 1

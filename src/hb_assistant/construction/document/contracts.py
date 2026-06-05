@@ -38,16 +38,12 @@ def _load_json_resource(filename: str) -> dict[str, Any]:
     """Load a packaged json resource. importlib -> filesystem -> empty dict."""
     try:
         if hasattr(importlib_resources, "files"):
-            text = (importlib_resources.files(_CONTRACT_PKG) / filename).read_text(
-                encoding="utf-8"
-            )
+            text = (importlib_resources.files(_CONTRACT_PKG) / filename).read_text(encoding="utf-8")
         else:  # pragma: no cover - legacy importlib path
             text = importlib_resources.read_text(_CONTRACT_PKG, filename, encoding="utf-8")
         return json.loads(text)
     except Exception:
-        candidate = (
-            Path(__file__).resolve().parents[2] / "resources" / "json" / filename
-        )
+        candidate = Path(__file__).resolve().parents[2] / "resources" / "json" / filename
         if candidate.exists():
             return json.loads(candidate.read_text(encoding="utf-8"))
         return {}

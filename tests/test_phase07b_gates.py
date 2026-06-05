@@ -61,7 +61,11 @@ def test_empty_store_defers_07b_gates_and_blocks_meeting_prep() -> None:
         statuses = _status_map(report)
         for gate in _07B_GATES:
             assert statuses[gate] == "deferred_not_blocking", (gate, statuses.get(gate))
-        assert report["meeting_prep_readiness_claim"] in ("blocked", "needs_07b_07c_data", "needs_07d_data")
+        assert report["meeting_prep_readiness_claim"] in (
+            "blocked",
+            "needs_07b_07c_data",
+            "needs_07d_data",
+        )
         prep = _meeting_prep(report)
         assert prep["ready"] is False
         assert prep["auto_readiness_allowed"] is False
@@ -78,30 +82,46 @@ def test_populated_store_passes_07b_gates_but_07c_keeps_meeting_prep_blocked() -
         # Calendar (V23) — regression target: gate must read calendar_event_index.
         store.upsert_calendar_source_location(source_id="primary_calendar", mailbox_owner_hash="o")
         store.upsert_calendar_event_index(
-            event_index_id="E1", source_id="primary_calendar", graph_event_id_hash="g1",
-            start_datetime_utc=now, end_datetime_utc=now,
+            event_index_id="E1",
+            source_id="primary_calendar",
+            graph_event_id_hash="g1",
+            start_datetime_utc=now,
+            end_datetime_utc=now,
         )
         # Email message + classification (V14).
         store.upsert_email_source_location(
             source_id="sx", mailbox_owner_hash="h", folder_role="inbox", folder_id="F"
         )
-        store.upsert_email_message(message_id="m1", thread_key="T1", source_id="sx",
-                                   received_datetime=now)
+        store.upsert_email_message(
+            message_id="m1", thread_key="T1", source_id="sx", received_datetime=now
+        )
         store.upsert_email_model_classification(
-            classification_id="c1", message_id="m1", model_name="mistral",
-            schema_version="phase06-email-ollama-v1", classification_status="valid",
+            classification_id="c1",
+            message_id="m1",
+            model_name="mistral",
+            schema_version="phase06-email-ollama-v1",
+            classification_status="valid",
         )
         # Thread summary (V11).
         store.upsert_email_thread_summary(
-            thread_key="T1", project_key="tropical", message_count=1,
-            first_message_datetime=now, last_message_datetime=now,
-            summary_redacted="thread: 1 message(s)", summary_policy="metadata_only",
+            thread_key="T1",
+            project_key="tropical",
+            message_count=1,
+            first_message_datetime=now,
+            last_message_datetime=now,
+            summary_redacted="thread: 1 message(s)",
+            summary_policy="metadata_only",
         )
         # Meeting<->email candidate (V23).
         store.upsert_meeting_email_relationship_candidate(
-            candidate_id="cand1", event_index_id="E1", thread_key_hash="abc123",
-            candidate_type="time_and_domain", source_reference_json=json.dumps({"event_index_id": "E1"}),
-            confidence=0.8, confidence_class="strong", review_required=False,
+            candidate_id="cand1",
+            event_index_id="E1",
+            thread_key_hash="abc123",
+            candidate_type="time_and_domain",
+            source_reference_json=json.dumps({"event_index_id": "E1"}),
+            confidence=0.8,
+            confidence_class="strong",
+            review_required=False,
         )
 
         report = evaluate_data_quality_gates(db_path=db, persist=False)

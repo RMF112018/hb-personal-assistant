@@ -49,7 +49,11 @@ def read_relationships(
         # A row flagged review_required is always Tier 3 (mandatory review), overriding
         # the derived state's base tier; never auto-accepted as a conclusion.
         tier = 3 if rec.get("review_required") else relationship_state_tier(state)
-        status = "review_required" if tier == 3 else ("review_recommended" if tier == 2 else "auto_advisory")
+        status = (
+            "review_required"
+            if tier == 3
+            else ("review_recommended" if tier == 2 else "auto_advisory")
+        )
         items.append(
             RetrievalItem(
                 source_family="cross_source_relationships",
@@ -187,8 +191,14 @@ def read_risk_digest(
         family="project_risk_digest_items",
         table="project_risk_digest_items",
         columns=[
-            "risk_digest_id", "project_key", "risk_indicator_type", "summary_redacted",
-            "evidence_trail_id", "confidence_class", "review_required", "created_utc",
+            "risk_digest_id",
+            "project_key",
+            "risk_indicator_type",
+            "summary_redacted",
+            "evidence_trail_id",
+            "confidence_class",
+            "review_required",
+            "created_utc",
         ],
         id_col="risk_digest_id",
         type_col="risk_indicator_type",
@@ -206,8 +216,15 @@ def read_aging_exposure(
         family="aging_exposure_report_items",
         table="aging_exposure_report_items",
         columns=[
-            "aging_item_id", "project_key", "record_family", "status", "age_days",
-            "threshold_band", "evidence_trail_id", "confidence_class", "review_required",
+            "aging_item_id",
+            "project_key",
+            "record_family",
+            "status",
+            "age_days",
+            "threshold_band",
+            "evidence_trail_id",
+            "confidence_class",
+            "review_required",
             "created_utc",
         ],
         id_col="aging_item_id",
@@ -229,7 +246,11 @@ def read_approved_obsidian(
             continue
         meta = rec.get("meta") or {}
         tier = int(meta.get("review_tier", 1))
-        status = "review_required" if tier == 3 else ("review_recommended" if tier == 2 else "auto_advisory")
+        status = (
+            "review_required"
+            if tier == 3
+            else ("review_recommended" if tier == 2 else "auto_advisory")
+        )
         items.append(
             RetrievalItem(
                 source_family="approved_obsidian_generated_outputs",
@@ -241,7 +262,9 @@ def read_approved_obsidian(
                 review_tier=tier,
                 review_status=str(rec.get("review_status") or status),
                 review_required=tier == 3,
-                content_excerpt_redacted=str(rec.get("heading_redacted") or rec.get("section_marker") or ""),
+                content_excerpt_redacted=str(
+                    rec.get("heading_redacted") or rec.get("section_marker") or ""
+                ),
                 recency=str(rec.get("modified_utc") or ""),
             )
         )
@@ -256,8 +279,13 @@ def read_accepted_memory(
         family="accepted_long_term_memory",
         table="long_term_memory_items",
         columns=[
-            "memory_id", "project_key", "memory_type", "statement_redacted",
-            "confidence_class", "review_status", "created_utc",
+            "memory_id",
+            "project_key",
+            "memory_type",
+            "statement_redacted",
+            "confidence_class",
+            "review_status",
+            "created_utc",
         ],
         id_col="memory_id",
         type_col="memory_type",
@@ -270,7 +298,9 @@ def read_accepted_memory(
 
 # Families with a registered reader. Allowlisted families NOT here yield no items;
 # the broker records a coverage warning (graceful degradation, never fabricate).
-READER_REGISTRY: dict[str, Callable[[ConstructionStore, str | None, str | None], list[RetrievalItem]]] = {
+READER_REGISTRY: dict[
+    str, Callable[[ConstructionStore, str | None, str | None], list[RetrievalItem]]
+] = {
     "cross_source_relationships": read_relationships,
     "phase_07d_source_evidence_trails": read_evidence_trails,
     "project_issue_history_items": read_issue_history,

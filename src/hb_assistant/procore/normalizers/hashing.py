@@ -61,11 +61,7 @@ def person_hash_summary(person: Any) -> Optional[Dict[str, Any]]:
     """
     if not isinstance(person, dict):
         return None
-    hash_input = (
-        person.get("login")
-        if isinstance(person.get("login"), str)
-        else person.get("name")
-    )
+    hash_input = person.get("login") if isinstance(person.get("login"), str) else person.get("name")
     item: Dict[str, Any] = {"hash_prefix": hash_identifier(hash_input)}
     person_id = person.get("id")
     if isinstance(person_id, int):

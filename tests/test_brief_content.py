@@ -47,22 +47,49 @@ def test_daily_brief_seeded_db_outputs_real_sections(tmp_path):
         )
         c.execute(
             "INSERT INTO calendar_events (source_record_id, ical_uid, start_datetime, end_datetime, timezone, is_cancelled, is_private, web_link) VALUES (?,?,?,?,?,?,?,?)",
-            (sid_event, "ical1", "2026-05-26T09:00:00+00:00", "2026-05-26T10:00:00+00:00", "UTC", 0, 0, "https://example.test/event/1"),
+            (
+                sid_event,
+                "ical1",
+                "2026-05-26T09:00:00+00:00",
+                "2026-05-26T10:00:00+00:00",
+                "UTC",
+                0,
+                0,
+                "https://example.test/event/1",
+            ),
         )
         c.execute(
             "INSERT INTO files (source_record_id, drive_item_id, name, size_bytes, web_url, download_status, parse_status) VALUES (?,?,?,?,?,?,?)",
-            (sid_file, "d1", "Quarterly Report.pdf", 12345, "https://example.test/file/1", "not_downloaded", "not_parsed"),
+            (
+                sid_file,
+                "d1",
+                "Quarterly Report.pdf",
+                12345,
+                "https://example.test/file/1",
+                "not_downloaded",
+                "not_parsed",
+            ),
         )
         c.execute(
             "INSERT INTO parser_outputs (file_source_record_id, parser_name, parser_version, content_hash, extraction_status, text_excerpt, char_count) VALUES (?,?,?,?,?,?,?)",
-            (sid_file, "p", "1", "h", "success", "Action items and waiting on legal are noted in this quarterly report.", 88),
+            (
+                sid_file,
+                "p",
+                "1",
+                "h",
+                "success",
+                "Action items and waiting on legal are noted in this quarterly report.",
+                88,
+            ),
         )
         c.execute(
             "INSERT INTO source_links (from_source_record_id, to_source_record_id, link_type, confidence) VALUES (?,?,?,?)",
             (sid_file, sid_mail, "references", 0.7),
         )
 
-    ctx = WorkstreamContextBuilder(store=store).build_for_today(focus_queries=["action", "waiting", "report"], limit_per=3)
+    ctx = WorkstreamContextBuilder(store=store).build_for_today(
+        focus_queries=["action", "waiting", "report"], limit_per=3
+    )
     inner, fm = DailyBriefGenerator(store=store).generate_for_date(date(2026, 5, 25), context=ctx)
 
     assert "## Priority Actions" in inner

@@ -66,8 +66,13 @@ def test_sensitive_candidate_routes_tier_3(db_path: str) -> None:
 
 def test_propose_does_not_create_memory_item_no_silent_acceptance(db_path: str) -> None:
     propose_memory_candidate(
-        statement_redacted="x", proposed_memory_type="fact", origin_id="o", source_refs=_REFS,
-        confidence_class="high", db_path=db_path, emit=True,
+        statement_redacted="x",
+        proposed_memory_type="fact",
+        origin_id="o",
+        source_refs=_REFS,
+        confidence_class="high",
+        db_path=db_path,
+        emit=True,
     )
     conn = sqlite3.connect(db_path)
     n = conn.execute("SELECT COUNT(*) FROM long_term_memory_items").fetchone()[0]
@@ -77,8 +82,14 @@ def test_propose_does_not_create_memory_item_no_silent_acceptance(db_path: str) 
 
 def test_review_accept_promotes_to_memory_with_signals(db_path: str) -> None:
     c = propose_memory_candidate(
-        statement_redacted="P1 baseline accepted", proposed_memory_type="fact", origin_id="brief-1",
-        source_refs=_REFS, confidence_class="high", project_key="P1", db_path=db_path, emit=True,
+        statement_redacted="P1 baseline accepted",
+        proposed_memory_type="fact",
+        origin_id="brief-1",
+        source_refs=_REFS,
+        confidence_class="high",
+        project_key="P1",
+        db_path=db_path,
+        emit=True,
     )
     review, item, signals = review_memory_candidate(
         candidate=c, decision="accepted", db_path=db_path, emit=True
@@ -105,8 +116,13 @@ def test_review_accept_promotes_to_memory_with_signals(db_path: str) -> None:
 
 def test_review_reject_does_not_create_memory(db_path: str) -> None:
     c = propose_memory_candidate(
-        statement_redacted="x", proposed_memory_type="fact", origin_id="o", source_refs=_REFS,
-        confidence_class="medium", db_path=db_path, emit=True,
+        statement_redacted="x",
+        proposed_memory_type="fact",
+        origin_id="o",
+        source_refs=_REFS,
+        confidence_class="medium",
+        db_path=db_path,
+        emit=True,
     )
     _review, item, _signals = review_memory_candidate(
         candidate=c, decision="rejected", db_path=db_path, emit=True

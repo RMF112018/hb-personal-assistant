@@ -149,10 +149,7 @@ def load_procore_app_profile() -> ProcoreAppProfile:
     from hb_assistant.config.path_policy import PathPolicy
 
     seed_path: Path = (
-        PathPolicy().resolve_repo_root()
-        / "resources"
-        / "config"
-        / "procore_app_profile.seed.yaml"
+        PathPolicy().resolve_repo_root() / "resources" / "config" / "procore_app_profile.seed.yaml"
     )
     if seed_path.exists():
         with seed_path.open("r", encoding="utf-8") as f:
@@ -193,7 +190,9 @@ def macos_keychain_entry_exists(
         return False
 
 
-def get_macos_keychain_secret(service: str = "hb-assistant-procore", account: str = "client-secret") -> Optional[str]:
+def get_macos_keychain_secret(
+    service: str = "hb-assistant-procore", account: str = "client-secret"
+) -> Optional[str]:
     """Native macOS Keychain via `security` (no extra dependencies)."""
     try:
         result = subprocess.run(
@@ -239,7 +238,9 @@ def get_procore_client_secret() -> str:
                     f"Run: chmod 600 {secret_file}"
                 )
             if stat.st_uid != os.getuid():
-                raise SecretNotAvailableError(f"Secret file {secret_file} not owned by current user.")
+                raise SecretNotAvailableError(
+                    f"Secret file {secret_file} not owned by current user."
+                )
             content = secret_file.read_text(encoding="utf-8").strip()
             if content:
                 return content
@@ -318,7 +319,9 @@ def get_environment_config(env: Literal["sandbox", "production"] | None = None) 
         raise ValueError(f"Unknown environment: {env}")
     cfg = ENVIRONMENTS[env].copy()
     cfg["procore_company_id_header"] = HB_COMPANY_ID
-    cfg["mandatory_header_note"] = "Send Procore-Company-Id on all authenticated REST calls (except exceptions)"
+    cfg["mandatory_header_note"] = (
+        "Send Procore-Company-Id on all authenticated REST calls (except exceptions)"
+    )
     return cfg
 
 

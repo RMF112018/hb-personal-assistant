@@ -61,8 +61,10 @@ def _format_guardrails(guardrails: dict[str, str]) -> str:
 def _format_sample_entries(entries: list, cap: int) -> str:
     if not entries:
         return "_no entries_"
-    rows = ["| item_id | name | status | size_bytes | is_folder | last_modified |",
-            "| --- | --- | --- | --- | --- | --- |"]
+    rows = [
+        "| item_id | name | status | size_bytes | is_folder | last_modified |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
     for e in entries[:cap]:
         rows.append(
             f"| `{e.item_id}` | {_kv(e.name)} | `{e.status}` "
@@ -75,8 +77,10 @@ def _format_sample_entries(entries: list, cap: int) -> str:
 def _format_per_source(per_source: list[SyncReceipt]) -> str:
     if not per_source:
         return "_no sources processed_"
-    rows = ["| source_key | mode | status | pages | items_seen | new | upd | del |",
-            "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+    rows = [
+        "| source_key | mode | status | pages | items_seen | new | upd | del |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
     for r in per_source:
         rows.append(
             f"| `{r.source_key}` | `{r.mode}` | `{r.status}` "
@@ -101,8 +105,10 @@ def _format_error_summary(errors: list[str]) -> str:
 def _format_projects_block(projects: list[dict]) -> str:
     if not projects:
         return "_no projects registered_"
-    rows = ["| project_key | display_name | status | primary_company |",
-            "| --- | --- | --- | --- |"]
+    rows = [
+        "| project_key | display_name | status | primary_company |",
+        "| --- | --- | --- | --- |",
+    ]
     for p in projects:
         rows.append(
             f"| `{p.get('project_key', '')}` | {_kv(p.get('display_name'))} "
@@ -138,8 +144,10 @@ def _format_source_keys(keys: list[str]) -> str:
 def _format_review_items(items: list) -> str:
     if not items:
         return "_no items currently flagged for review_"
-    rows = ["| item_id | source_key | project_key | reason | suggested_action | classification |",
-            "| --- | --- | --- | --- | --- | --- |"]
+    rows = [
+        "| item_id | source_key | project_key | reason | suggested_action | classification |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
     for it in items:
         rows.append(
             f"| `{it.item_id}` | `{it.source_key}` | `{_kv(it.project_key)}` "

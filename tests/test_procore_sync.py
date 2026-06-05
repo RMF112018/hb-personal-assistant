@@ -24,7 +24,10 @@ def test_dry_run_plan_has_audit_gate_and_redacted_envelopes():
 
     # Mock Prompt_07 auditor (verdicts)
     with patch.object(coord, "auditor") as mock_auditor:
-        mock_auditor.audit_endpoints_for_pilots.return_value = {"rfi": "available", "submittals": "available"}
+        mock_auditor.audit_endpoints_for_pilots.return_value = {
+            "rfi": "available",
+            "submittals": "available",
+        }
         plan = coord.plan(project_key="tropical")
 
     assert plan["mode"] == "dry_run"
@@ -40,9 +43,10 @@ def test_apply_writes_only_to_caller_temp_db_and_never_external():
     temp_db = _temp_db()
     coord = ProcoreSyncCoordinator(db_path=temp_db)
 
-    with patch.object(coord, "auditor") as mock_auditor, \
-         patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls:
-
+    with (
+        patch.object(coord, "auditor") as mock_auditor,
+        patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls,
+    ):
         mock_auditor.audit_endpoints_for_pilots.return_value = {"rfi": "available"}
         mock_client = MagicMock()
         mock_client.paginate.return_value = [{"id": "r1", "number": "RFI-1", "status": "open"}]
@@ -105,9 +109,10 @@ def test_apply_skips_endpoints_that_are_not_live_eligible():
     temp_db = _temp_db()
     coord = ProcoreSyncCoordinator(db_path=temp_db)
 
-    with patch.object(coord, "auditor") as mock_auditor, \
-         patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls:
-
+    with (
+        patch.object(coord, "auditor") as mock_auditor,
+        patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls,
+    ):
         mock_auditor.audit_endpoints_for_pilots.return_value = {"rfi": "available"}
         mock_client = MagicMock()
         mock_client.paginate.return_value = [{"id": "x", "number": "X-1", "status": "open"}]
@@ -115,10 +120,7 @@ def test_apply_skips_endpoints_that_are_not_live_eligible():
 
         receipt = coord.apply(project_key="tropical")
 
-    skipped = [
-        e for e in receipt["per_endpoint"]
-        if e.get("status") == "skipped_not_live_eligible"
-    ]
+    skipped = [e for e in receipt["per_endpoint"] if e.get("status") == "skipped_not_live_eligible"]
     skipped_ids = sorted(e["endpoint_id"] for e in skipped)
     # Guarded endpoints: correspondence (excluded), schedule + tasks (deferred),
     # plus the Phase 04 Prompt 06 observation candidate and Phase 04 Prompt 07
@@ -134,7 +136,9 @@ def test_apply_skips_endpoints_that_are_not_live_eligible():
     for entry in skipped:
         assert entry["items_written"] == 0
         assert entry["verification_status"] in (
-            "excluded_by_guardrail", "deferred_by_guardrail", "candidate",
+            "excluded_by_guardrail",
+            "deferred_by_guardrail",
+            "candidate",
         )
 
 

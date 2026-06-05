@@ -70,7 +70,9 @@ def test_08d_seeds_parse_and_carry_fail_closed_posture() -> None:
         assert isinstance(data, dict) and data, f"seed {seed} did not parse to a dict"
         assert data.get("phase") == "08D"
 
-    permission = yaml.safe_load((_SEED_DIR / "phase_08d_mcp_permission_policy.seed.yaml").read_text())
+    permission = yaml.safe_load(
+        (_SEED_DIR / "phase_08d_mcp_permission_policy.seed.yaml").read_text()
+    )
     assert permission["local_only"] is True
     for flag in (
         "allow_external_writeback",

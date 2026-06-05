@@ -28,7 +28,11 @@ def _me_drive(drive_id: str = "D-BIZ", dtype: str = "business") -> dict:
 
 
 def _me_drives(drive_id: str = "D-BIZ", dtype: str = "business") -> dict:
-    return {"value": [{"id": drive_id, "name": "OneDrive", "driveType": dtype, "webUrl": "https://od/biz"}]}
+    return {
+        "value": [
+            {"id": drive_id, "name": "OneDrive", "driveType": dtype, "webUrl": "https://od/biz"}
+        ]
+    }
 
 
 def _business() -> SourceLocation:
@@ -103,9 +107,7 @@ def test_shared_library_requires_share_url_without_drive_id() -> None:
 
 
 def test_unsupported_for_sharepoint_kind() -> None:
-    src = SourceLocation(
-        source_key="sp", kind="sharepoint_project_drive_folder", display_name="SP"
-    )
+    src = SourceLocation(source_key="sp", kind="sharepoint_project_drive_folder", display_name="SP")
     result = SiteDriveDiscovery(MagicMock()).discover_onedrive(src)
     assert result.status == "unsupported"
 

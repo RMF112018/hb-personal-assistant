@@ -18,7 +18,9 @@ from pydantic import BaseModel, Field
 
 from hb_assistant.config.path_policy import PathPolicy
 
-_CLASSIFICATION_SEED = Path("resources") / "config" / "document_type_classification_policy.seed.yaml"
+_CLASSIFICATION_SEED = (
+    Path("resources") / "config" / "document_type_classification_policy.seed.yaml"
+)
 _CLASSIFICATION_OVERRIDE = Path("config") / "document_type_classification_policy.yml"
 _REVIEW_SEED = Path("resources") / "config" / "review_required_document_rules.seed.yaml"
 _REVIEW_OVERRIDE = Path("config") / "review_required_document_rules.yml"
@@ -99,6 +101,4 @@ def load_document_review_rules(
     override_path: Path | str | None = None,
 ) -> DocumentReviewRules:
     """Load + validate the 07C document review-required rules."""
-    return DocumentReviewRules.model_validate(
-        _load(_REVIEW_SEED, _REVIEW_OVERRIDE, override_path)
-    )
+    return DocumentReviewRules.model_validate(_load(_REVIEW_SEED, _REVIEW_OVERRIDE, override_path))

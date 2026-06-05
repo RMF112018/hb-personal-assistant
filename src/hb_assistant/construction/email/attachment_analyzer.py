@@ -23,8 +23,22 @@ from hb_assistant.normalize.redaction import hash_value
 # Filename extensions that indicate a stored document (a source-link candidate may
 # correspond to the same file in SharePoint/OneDrive). Inline images are excluded.
 DOCUMENT_EXTENSIONS = (
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".xlsm", ".ppt", ".pptx",
-    ".dwg", ".dxf", ".rvt", ".vsdx", ".csv", ".txt", ".rtf", ".msg",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".xlsm",
+    ".ppt",
+    ".pptx",
+    ".dwg",
+    ".dxf",
+    ".rvt",
+    ".vsdx",
+    ".csv",
+    ".txt",
+    ".rtf",
+    ".msg",
 )
 # Internet-shortcut style attachments that ARE a link to a drive item.
 LINK_EXTENSIONS = (".url", ".website", ".lnk")
@@ -35,14 +49,26 @@ _HIGH = "high"
 _MEDIUM = "medium"
 SENSITIVITY_KEYWORDS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ("legal_correspondence", ("legal", "attorney", "counsel", "litigation"), _HIGH),
-    ("privileged_or_confidential_markers", ("privileged", "confidential", "do not distribute", "nda"), _HIGH),
+    (
+        "privileged_or_confidential_markers",
+        ("privileged", "confidential", "do not distribute", "nda"),
+        _HIGH,
+    ),
     ("claims", ("claim",), _HIGH),
-    ("default_or_termination_language", ("termination", "default notice", "cure notice", "notice to cure"), _HIGH),
+    (
+        "default_or_termination_language",
+        ("termination", "default notice", "cure notice", "notice to cure"),
+        _HIGH,
+    ),
     ("disputes", ("dispute",), _HIGH),
     ("injuries", ("injury", "injuries", "accident", "osha"), _HIGH),
     ("incidents", ("incident",), _HIGH),
     ("medical_detail", ("medical", "health record"), _HIGH),
-    ("personnel_or_hr", ("payroll", "ssn", "w-2", "w2 ", "1099", "offer letter", "personnel"), _HIGH),
+    (
+        "personnel_or_hr",
+        ("payroll", "ssn", "w-2", "w2 ", "1099", "offer letter", "personnel"),
+        _HIGH,
+    ),
     ("liquidated_damages", ("liquidated damages",), _HIGH),
     ("contracts", ("contract", "agreement", "subcontract"), _MEDIUM),
     ("change_orders", ("change order", "changeorder"), _MEDIUM),

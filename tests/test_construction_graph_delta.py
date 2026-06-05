@@ -154,7 +154,9 @@ def test_incremental_uses_stored_deltalink(store: ConstructionStore) -> None:
     crawler = ConstructionDeltaCrawler(http, store)
     crawler.crawl(source_key="tropical-sharepoint", dry_run=False)
     # First call should hit the prior deltaLink URL
-    assert http.get.call_args_list[0].args[0] == "https://graph/drives/drive-1/root/delta?token=prior"
+    assert (
+        http.get.call_args_list[0].args[0] == "https://graph/drives/drive-1/root/delta?token=prior"
+    )
     tok = store.get_delta_token("tropical-sharepoint")
     assert tok is not None
     assert tok["delta_link"].endswith("token=new")
@@ -197,7 +199,9 @@ def test_unresolved_source_returns_unresolved_receipt(store: ConstructionStore) 
 
 def test_graph_error_yields_failed_receipt_with_sanitized_error(store: ConstructionStore) -> None:
     http = MagicMock()
-    http.get.side_effect = GraphHttpError("GET", "/drives/drive-1/root/delta", 503, "service unavailable")
+    http.get.side_effect = GraphHttpError(
+        "GET", "/drives/drive-1/root/delta", 503, "service unavailable"
+    )
     crawler = ConstructionDeltaCrawler(http, store)
     receipt = crawler.crawl(source_key="tropical-sharepoint", dry_run=False)
     assert receipt.status == "failed"
@@ -325,6 +329,7 @@ def test_site_page_scope_emits_skipped_receipt(tmp_path: Path) -> None:
     )
 
     import os
+
     prior = os.environ.get("HB_CONSTRUCTION_SOURCES")
     os.environ["HB_CONSTRUCTION_SOURCES"] = str(tmp_yaml)
     try:
@@ -332,9 +337,7 @@ def test_site_page_scope_emits_skipped_receipt(tmp_path: Path) -> None:
         s = ConstructionStore(db)
         http = MagicMock()
         crawler = ConstructionDeltaCrawler(http, s)
-        receipt = crawler.crawl(
-            source_key="sp_hilltop_gardens_projecthome", dry_run=True
-        )
+        receipt = crawler.crawl(source_key="sp_hilltop_gardens_projecthome", dry_run=True)
     finally:
         if prior is None:
             del os.environ["HB_CONSTRUCTION_SOURCES"]
@@ -350,9 +353,7 @@ def test_site_page_scope_emits_skipped_receipt(tmp_path: Path) -> None:
     http.get.assert_not_called()
 
 
-def test_receipt_carries_scope_and_endpoint_kind(
-    tmp_path: Path, store: ConstructionStore
-) -> None:
+def test_receipt_carries_scope_and_endpoint_kind(tmp_path: Path, store: ConstructionStore) -> None:
     """A successful crawl populates scope + endpoint_kind on the receipt."""
     import os
 
@@ -409,9 +410,7 @@ def _tropical_canonical_registry_yaml(tmp_path: Path):
     yaml_path.write_text(
         _yaml.safe_dump(
             {
-                "projects": [
-                    {"project_key": "tropical", "display_name": "Tropical"}
-                ],
+                "projects": [{"project_key": "tropical", "display_name": "Tropical"}],
                 "sources": [
                     {
                         "source_key": "sp_2023projects_23_435_01_tropical_sl",
@@ -469,9 +468,7 @@ def test_crawl_dry_run_populates_baseline_comparison_when_source_has_baseline(
     )
     with _with_canonical_registry(tmp_path):
         crawler = ConstructionDeltaCrawler(http, store)
-        receipt = crawler.crawl(
-            source_key="sp_2023projects_23_435_01_tropical_sl", dry_run=True
-        )
+        receipt = crawler.crawl(source_key="sp_2023projects_23_435_01_tropical_sl", dry_run=True)
 
     assert receipt.status == "ok"
     assert receipt.endpoint_kind == "folder_scoped"
@@ -482,9 +479,7 @@ def test_crawl_dry_run_populates_baseline_comparison_when_source_has_baseline(
     assert receipt.baseline_comparison.status == "never_crawled"
     assert receipt.baseline_comparison.historic["unique_item_count"] == 8921
     # Dry-run also does not persist the comparison receipt.
-    assert store.list_processing_receipts(
-        source_id="sp_2023projects_23_435_01_tropical_sl"
-    ) == []
+    assert store.list_processing_receipts(source_id="sp_2023projects_23_435_01_tropical_sl") == []
 
 
 def test_crawl_apply_persists_baseline_processing_receipt(tmp_path: Path) -> None:
@@ -497,16 +492,12 @@ def test_crawl_apply_persists_baseline_processing_receipt(tmp_path: Path) -> Non
     )
     with _with_canonical_registry(tmp_path):
         crawler = ConstructionDeltaCrawler(http, store)
-        receipt = crawler.crawl(
-            source_key="sp_2023projects_23_435_01_tropical_sl", dry_run=False
-        )
+        receipt = crawler.crawl(source_key="sp_2023projects_23_435_01_tropical_sl", dry_run=False)
 
     assert receipt.status == "ok"
     assert receipt.baseline_comparison is not None
 
-    rows = store.list_processing_receipts(
-        source_id="sp_2023projects_23_435_01_tropical_sl"
-    )
+    rows = store.list_processing_receipts(source_id="sp_2023projects_23_435_01_tropical_sl")
     assert len(rows) == 1
     row = rows[0]
     assert row["operation"] == "baseline_comparison"
@@ -539,15 +530,11 @@ def test_failed_crawl_does_not_populate_baseline_comparison(tmp_path: Path) -> N
     )
     with _with_canonical_registry(tmp_path):
         crawler = ConstructionDeltaCrawler(http, store)
-        receipt = crawler.crawl(
-            source_key="sp_2023projects_23_435_01_tropical_sl", dry_run=False
-        )
+        receipt = crawler.crawl(source_key="sp_2023projects_23_435_01_tropical_sl", dry_run=False)
 
     assert receipt.status == "failed"
     assert receipt.baseline_comparison is None
-    assert store.list_processing_receipts(
-        source_id="sp_2023projects_23_435_01_tropical_sl"
-    ) == []
+    assert store.list_processing_receipts(source_id="sp_2023projects_23_435_01_tropical_sl") == []
 
 
 # =====================================================================
@@ -669,9 +656,7 @@ def test_onedrive_crawl_does_not_produce_document_cards(tmp_path: Path) -> None:
             crawler.crawl(source_key=source_key, dry_run=False)
 
         conn = sqlite3.connect(db)
-        rows = conn.execute(
-            "SELECT card_id FROM construction_document_cards"
-        ).fetchall()
+        rows = conn.execute("SELECT card_id FROM construction_document_cards").fetchall()
         assert rows == [], (
             f"OneDrive crawl for {source_key} unexpectedly created document cards: {rows}"
         )

@@ -22,7 +22,13 @@ class FakeHttp:
         self.get_calls: list[tuple[str, Optional[dict[str, Any]]]] = []
         self.pages_calls: list[tuple[str, Optional[dict[str, Any]], Optional[int]]] = []
 
-    def get(self, path: str, *, params: Optional[dict[str, Any]] = None, scopes: Optional[list[str]] = None) -> dict[str, Any]:
+    def get(
+        self,
+        path: str,
+        *,
+        params: Optional[dict[str, Any]] = None,
+        scopes: Optional[list[str]] = None,
+    ) -> dict[str, Any]:
         self.get_calls.append((path, params))
         return {"id": "X", "userPrincipalName": "u@example.com"}
 
@@ -104,14 +110,22 @@ def test_top_is_clamped_to_valid_range() -> None:
 
 def test_client_exposes_no_mutation_method() -> None:
     forbidden_fragments = (
-        "send", "draft", "forward", "reply", "move", "copy", "delete",
-        "mark", "categorize", "flag", "create", "update", "download",
+        "send",
+        "draft",
+        "forward",
+        "reply",
+        "move",
+        "copy",
+        "delete",
+        "mark",
+        "categorize",
+        "flag",
+        "create",
+        "update",
+        "download",
     )
     public = [name for name in dir(ReadOnlyMailClient) if not name.startswith("_")]
-    leaks = [
-        name for name in public
-        if any(frag in name.lower() for frag in forbidden_fragments)
-    ]
+    leaks = [name for name in public if any(frag in name.lower() for frag in forbidden_fragments)]
     assert not leaks, f"read-only client exposes mutation-like methods: {leaks}"
 
 

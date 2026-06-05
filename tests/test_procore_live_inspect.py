@@ -28,7 +28,9 @@ class _FakeResponse:
         return self._payload
 
 
-def test_live_inspect_requires_confirm_raw_payload_dump(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_live_inspect_requires_confirm_raw_payload_dump(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
     monkeypatch.setattr("hb_assistant.cli.procore.check_auth_status", lambda: _AuthReady())
 
@@ -101,7 +103,9 @@ def test_live_inspect_writes_only_output_file_and_returns_metadata(
 
     calls = {"count": 0}
 
-    def _fake_default_live_transport(self, method: str, url: str, headers: dict[str, str], params: dict | None = None):  # type: ignore[no-untyped-def]
+    def _fake_default_live_transport(
+        self, method: str, url: str, headers: dict[str, str], params: dict | None = None
+    ):  # type: ignore[no-untyped-def]
         calls["count"] += 1
         assert method == "GET"
         return _FakeResponse(
@@ -167,7 +171,9 @@ def test_live_inspect_rate_limited_single_attempt(
 
     calls = {"count": 0}
 
-    def _fake_default_live_transport(self, method: str, url: str, headers: dict[str, str], params: dict | None = None):  # type: ignore[no-untyped-def]
+    def _fake_default_live_transport(
+        self, method: str, url: str, headers: dict[str, str], params: dict | None = None
+    ):  # type: ignore[no-untyped-def]
         calls["count"] += 1
         return _FakeResponse(429, {"error": "rate_limited"}, headers={})
 
@@ -216,7 +222,9 @@ def test_live_inspect_optional_redacted_derivative(
     monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-access-token")
     monkeypatch.setattr("hb_assistant.cli.procore.check_auth_status", lambda: _AuthReady())
 
-    def _fake_default_live_transport(self, method: str, url: str, headers: dict[str, str], params: dict | None = None):  # type: ignore[no-untyped-def]
+    def _fake_default_live_transport(
+        self, method: str, url: str, headers: dict[str, str], params: dict | None = None
+    ):  # type: ignore[no-untyped-def]
         return _FakeResponse(
             200,
             [{"id": "row-1", "access_token": "secret-token-value"}],
@@ -310,7 +318,9 @@ def test_live_inspect_rfi_responses_accepts_rfi_id(
 
     seen_url: dict[str, str] = {}
 
-    def _fake_default_live_transport(self, method: str, url: str, headers: dict[str, str], params: dict | None = None):  # type: ignore[no-untyped-def]
+    def _fake_default_live_transport(
+        self, method: str, url: str, headers: dict[str, str], params: dict | None = None
+    ):  # type: ignore[no-untyped-def]
         seen_url["value"] = url
         return _FakeResponse(200, [{"id": "reply-1"}], headers={})
 
@@ -362,7 +372,9 @@ def test_live_inspect_activities_accepts_schedule_id(
 
     seen_url: dict[str, str] = {}
 
-    def _fake_default_live_transport(self, method: str, url: str, headers: dict[str, str], params: dict | None = None):  # type: ignore[no-untyped-def]
+    def _fake_default_live_transport(
+        self, method: str, url: str, headers: dict[str, str], params: dict | None = None
+    ):  # type: ignore[no-untyped-def]
         seen_url["value"] = url
         return _FakeResponse(200, {"data": [{"id": "act-1"}]}, headers={})
 
@@ -431,7 +443,9 @@ def test_live_inspect_auto_resolves_child_parent_id_from_sqlite(
 
     seen_url: dict[str, str] = {}
 
-    def _fake_default_live_transport(self, method: str, url: str, headers: dict[str, str], params: dict | None = None):  # type: ignore[no-untyped-def]
+    def _fake_default_live_transport(
+        self, method: str, url: str, headers: dict[str, str], params: dict | None = None
+    ):  # type: ignore[no-untyped-def]
         seen_url["value"] = url
         payload: object = [{"id": "row-1"}]
         if endpoint == "activities":

@@ -96,7 +96,8 @@ def test_v35_all_08c_guard_columns_present_and_enforced() -> None:
             with pytest.raises(sqlite3.IntegrityError):
                 conn.execute(
                     f"INSERT INTO {t} (id, run_id, advisory_only) VALUES (1, 'r1', 0)"
-                    if "run_id" in ddl else f"INSERT INTO {t} (id, advisory_only) VALUES (1, 0)"
+                    if "run_id" in ddl
+                    else f"INSERT INTO {t} (id, advisory_only) VALUES (1, 0)"
                 )
 
 

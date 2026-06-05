@@ -266,7 +266,9 @@ def read_memory_candidates(
     )
 
 
-def read_memory_candidate(candidate_id: str, *, db_path: str | None = None) -> dict[str, Any] | None:
+def read_memory_candidate(
+    candidate_id: str, *, db_path: str | None = None
+) -> dict[str, Any] | None:
     """Return one candidate row (incl. source_refs_json) or None (schema ensured)."""
     conn = _conn(db_path)  # ensure V26 schema exists (idempotent) before reading
     row = conn.execute(
@@ -279,7 +281,9 @@ def read_memory_candidate(candidate_id: str, *, db_path: str | None = None) -> d
     return dict(row) if row is not None else None
 
 
-def read_operator_preferences(*, db_path: str | None = None, limit: int = 200) -> list[dict[str, Any]]:
+def read_operator_preferences(
+    *, db_path: str | None = None, limit: int = 200
+) -> list[dict[str, Any]]:
     return _rows(
         db_path,
         "SELECT preference_id, scope, scope_key, preference_key, preference_value_redacted, "

@@ -42,9 +42,16 @@ def _db() -> Path:
 
 def _start_run(db: Path | None) -> None:
     record_sync_run_start(
-        sync_run_id="run1", endpoint_id="rfis", command_endpoint="rfis",
-        legacy_endpoint_alias=None, project_key="tropical", procore_project_id="2525840",
-        company_id="5280", mode="live_apply", started_at_utc=_NOW, db_path=db,
+        sync_run_id="run1",
+        endpoint_id="rfis",
+        command_endpoint="rfis",
+        legacy_endpoint_alias=None,
+        project_key="tropical",
+        procore_project_id="2525840",
+        company_id="5280",
+        mode="live_apply",
+        started_at_utc=_NOW,
+        db_path=db,
     )
 
 
@@ -52,29 +59,52 @@ def _seed(db: Path) -> None:
     _start_run(db)
     # review-required, safety-classified observation record (no responsibility edge).
     upsert_procore_live_record(
-        project_key="tropical", procore_project_id="2525840", endpoint_id="observations",
-        procore_record_id="55", parent_procore_id=None,
+        project_key="tropical",
+        procore_project_id="2525840",
+        endpoint_id="observations",
+        procore_record_id="55",
+        parent_procore_id=None,
         normalized_fields={"subject": _SECRET_TITLE, "status": "open"},
-        review_required=True, sensitive_reason="observation_safety",
+        review_required=True,
+        sensitive_reason="observation_safety",
         source_url_redacted="/rest/v1.0/projects/2525840/observations/55",
-        last_sync_run_id="run1", now_utc=_NOW, db_path=db,
+        last_sync_run_id="run1",
+        now_utc=_NOW,
+        db_path=db,
     )
     # rfi record WITH a responsibility edge (so it is not "missing").
     upsert_procore_live_record(
-        project_key="tropical", procore_project_id="2525840", endpoint_id="rfis",
-        procore_record_id="1", parent_procore_id=None,
+        project_key="tropical",
+        procore_project_id="2525840",
+        endpoint_id="rfis",
+        procore_record_id="1",
+        parent_procore_id=None,
         normalized_fields={"number": "RFI-001", "status": "open"},
-        review_required=False, sensitive_reason=None,
+        review_required=False,
+        sensitive_reason=None,
         source_url_redacted="/rest/v1.0/projects/2525840/rfis/1",
-        last_sync_run_id="run1", now_utc=_NOW, db_path=db,
+        last_sync_run_id="run1",
+        now_utc=_NOW,
+        db_path=db,
     )
     conn = sqlite3.connect(str(db))
     conn.execute(
         """INSERT INTO procore_record_edges (edge_id, project_key, from_record_key, to_record_key,
            to_entity_key, edge_type, source_endpoint_id, confidence, first_seen_at_utc, last_seen_at_utc, metadata_json)
            VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-        ("e1", "tropical", "tropical|rfis||1", None, "company:acme", "responsible_contractor",
-         "rfis", 1.0, _NOW, _NOW, None),
+        (
+            "e1",
+            "tropical",
+            "tropical|rfis||1",
+            None,
+            "company:acme",
+            "responsible_contractor",
+            "rfis",
+            1.0,
+            _NOW,
+            _NOW,
+            None,
+        ),
     )
     conn.commit()
     conn.close()
@@ -86,15 +116,37 @@ def _seed(db: Path) -> None:
         ("rfi_schedule_impact_flagged", "medium", "open"),
         ("submittal_approved", "low", "resolved"),
     ]:
-        emit_action_signal(project_key="tropical", record_key=f"tropical|x||{st}", endpoint_id="rfis",
-                           signal_type=st, importance=imp, signal_status=status, now_utc=_NOW, db_path=db)
+        emit_action_signal(
+            project_key="tropical",
+            record_key=f"tropical|x||{st}",
+            endpoint_id="rfis",
+            signal_type=st,
+            importance=imp,
+            signal_status=status,
+            now_utc=_NOW,
+            db_path=db,
+        )
     # freshness: one stale watermark (2020), one fresh.
-    update_watermark(company_id="5280", project_key="tropical", procore_project_id="2525840",
-                     endpoint_id="rfis", cursor_redacted=None, receipt_id="r1",
-                     now_utc="2020-01-01T00:00:00+00:00", db_path=db)
-    update_watermark(company_id="5280", project_key="tropical", procore_project_id="2525840",
-                     endpoint_id="observations", cursor_redacted=None, receipt_id="r2",
-                     now_utc=_NOW, db_path=db)
+    update_watermark(
+        company_id="5280",
+        project_key="tropical",
+        procore_project_id="2525840",
+        endpoint_id="rfis",
+        cursor_redacted=None,
+        receipt_id="r1",
+        now_utc="2020-01-01T00:00:00+00:00",
+        db_path=db,
+    )
+    update_watermark(
+        company_id="5280",
+        project_key="tropical",
+        procore_project_id="2525840",
+        endpoint_id="observations",
+        cursor_redacted=None,
+        receipt_id="r2",
+        now_utc=_NOW,
+        db_path=db,
+    )
 
 
 def _health(db: Path):
@@ -119,8 +171,13 @@ def test_review_required_and_top_risks_not_hidden() -> None:
     r = _health(db)
     # the stop condition: review-required + high-risk facts are explicit, not collapsed.
     assert r["health_status"] == "review_recommended"
-    assert {"review_required_records", "high_importance_signals", "safety_quality_compliance_signals",
-            "overdue_signals", "stale_endpoints"} <= set(r["status_reason"])
+    assert {
+        "review_required_records",
+        "high_importance_signals",
+        "safety_quality_compliance_signals",
+        "overdue_signals",
+        "stale_endpoints",
+    } <= set(r["status_reason"])
     assert len(r["review_required_items"]) == 1
     assert r["review_required_items"][0]["endpoint_id"] == "observations"
     assert len(r["top_risks"]) == 4
@@ -168,23 +225,47 @@ def test_cli_json_shape() -> None:
     SQLiteMigrator().apply()
     _start_run(None)
     upsert_procore_live_record(
-        project_key="tropical", procore_project_id="2525840", endpoint_id="observations",
-        procore_record_id="55", parent_procore_id=None,
-        normalized_fields={"subject": _SECRET_TITLE, "status": "open"}, review_required=True,
-        sensitive_reason="observation_safety", source_url_redacted="/x/55",
-        last_sync_run_id="run1", now_utc=_NOW,
+        project_key="tropical",
+        procore_project_id="2525840",
+        endpoint_id="observations",
+        procore_record_id="55",
+        parent_procore_id=None,
+        normalized_fields={"subject": _SECRET_TITLE, "status": "open"},
+        review_required=True,
+        sensitive_reason="observation_safety",
+        source_url_redacted="/x/55",
+        last_sync_run_id="run1",
+        now_utc=_NOW,
     )
-    emit_action_signal(project_key="tropical", record_key="tropical|obs||55", endpoint_id="observations",
-                       signal_type="observation_open_safety", importance="high", signal_status="open", now_utc=_NOW)
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|obs||55",
+        endpoint_id="observations",
+        signal_type="observation_open_safety",
+        importance="high",
+        signal_status="open",
+        now_utc=_NOW,
+    )
     # ensure the default-path writes are visible to the command's connection.
     get_connection().commit()
-    res = CliRunner().invoke(app, ["live", "project-health", "--project", "tropical", "--json"],
-                            catch_exceptions=False)
+    res = CliRunner().invoke(
+        app, ["live", "project-health", "--project", "tropical", "--json"], catch_exceptions=False
+    )
     assert res.exit_code == 0
     payload = json.loads(res.output)
-    for key in ("command", "health_status", "score_components", "counts", "top_risks",
-                "stale_endpoints", "review_required_items", "evidence_references",
-                "no_live_call_performed", "determinations_made", "guardrails"):
+    for key in (
+        "command",
+        "health_status",
+        "score_components",
+        "counts",
+        "top_risks",
+        "stale_endpoints",
+        "review_required_items",
+        "evidence_references",
+        "no_live_call_performed",
+        "determinations_made",
+        "guardrails",
+    ):
         assert key in payload, f"missing {key}"
     assert payload["no_live_call_performed"] is True
     assert payload["determinations_made"] is False

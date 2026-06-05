@@ -15,12 +15,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-PROCORE_SRC = (
-    Path(__file__).resolve().parents[1]
-    / "src"
-    / "hb_assistant"
-    / "procore"
-)
+PROCORE_SRC = Path(__file__).resolve().parents[1] / "src" / "hb_assistant" / "procore"
 
 # Files that may legitimately mention the symbol:
 # - config.py: the canonical implementation site.
@@ -50,7 +45,9 @@ def test_client_secret_symbol_not_imported_outside_allowlist() -> None:
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
                 if any(alias.name == "get_procore_client_secret" for alias in node.names):
-                    violations.append(f"{path.relative_to(PROCORE_SRC.parents[3])}:{node.lineno}: from-import")
+                    violations.append(
+                        f"{path.relative_to(PROCORE_SRC.parents[3])}:{node.lineno}: from-import"
+                    )
             elif isinstance(node, ast.Import):
                 # `import hb_assistant.procore.config` is benign — only flag direct symbol import.
                 pass

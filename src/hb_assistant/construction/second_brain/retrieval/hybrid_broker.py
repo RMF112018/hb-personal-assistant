@@ -339,8 +339,11 @@ def build_hybrid_status(
     review_burden_advisory_retrieval_allowed = False
     try:
         from ..review_burden_mart import build_review_burden_proof
+
         bp = build_review_burden_proof(db_path)
-        review_burden_advisory_retrieval_allowed = bool(bp.get("gate", {}).get("advisory_retrieval_allowed"))
+        review_burden_advisory_retrieval_allowed = bool(
+            bp.get("gate", {}).get("advisory_retrieval_allowed")
+        )
     except Exception:
         review_burden_advisory_retrieval_allowed = False
     try:

@@ -110,9 +110,7 @@ class EmailThreadSummaryMaterializer:
     ) -> ThreadSummaryReport:
         defaults = self._policy.defaults
         lookback = max(1, min(int(lookback_days or 30), 366))
-        received_after = (
-            (_utc_now() - timedelta(days=lookback)).replace(microsecond=0).isoformat()
-        )
+        received_after = (_utc_now() - timedelta(days=lookback)).replace(microsecond=0).isoformat()
         # Body context is gated by BOTH the caller flag AND the policy opt-in.
         body_context_allowed = bool(
             use_encrypted_body_context and defaults.allow_encrypted_body_context
@@ -274,15 +272,11 @@ class EmailThreadSummaryMaterializer:
             samples=samples,
         )
 
-    def _discover_thread_keys(
-        self, project_key: Optional[str], max_threads: int
-    ) -> list[str]:
+    def _discover_thread_keys(self, project_key: Optional[str], max_threads: int) -> list[str]:
         """Distinct thread_keys for the project's matched messages (bounded, ordered)."""
         thread_keys: list[str] = []
         seen: set[str] = set()
-        for match in self._store.list_email_project_matches(
-            project_key=project_key, limit=2000
-        ):
+        for match in self._store.list_email_project_matches(project_key=project_key, limit=2000):
             msg = self._store.get_email_message(match["message_id"])
             if msg is None:
                 continue

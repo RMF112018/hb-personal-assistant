@@ -140,9 +140,9 @@ def test_no_raw_no_writeback_and_sdk_absent_gate(monkeypatch: pytest.MonkeyPatch
                 for c in run_cols
                 if c.endswith(("_persisted", "_performed")) or c.endswith("_bypassed_policy")
             ]
-            run_guard_sum = conn.execute(
-                f"SELECT {'+'.join(guard_cols)} FROM {_RUNS}"
-            ).fetchone()[0]
+            run_guard_sum = conn.execute(f"SELECT {'+'.join(guard_cols)} FROM {_RUNS}").fetchone()[
+                0
+            ]
             item_guard_sum = conn.execute(
                 f"SELECT COALESCE(SUM({'+'.join(guard_cols)}), 0) FROM {_ITEMS}"
             ).fetchone()[0]

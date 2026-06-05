@@ -24,9 +24,7 @@ def _policy() -> EmailIntelligenceActivePolicy:
 
 
 def test_builder_maps_included_and_excluded_folders() -> None:
-    registry = build_mailbox_source_registry(
-        _policy(), mailbox_owner="bobby@example.com"
-    )
+    registry = build_mailbox_source_registry(_policy(), mailbox_owner="bobby@example.com")
     by_name = {f.folder_display_name: f for f in registry.folders}
 
     assert by_name["Inbox"].folder_role == "inbox"
@@ -68,9 +66,7 @@ def test_unknown_included_folder_gets_generic_role() -> None:
 
 def test_empty_owner_hash_rejected() -> None:
     with pytest.raises(ValueError):
-        build_mailbox_source_registry(
-            _policy(), mailbox_owner="", hasher=lambda _v: None
-        )
+        build_mailbox_source_registry(_policy(), mailbox_owner="", hasher=lambda _v: None)
 
 
 @pytest.mark.parametrize(

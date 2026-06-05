@@ -16,7 +16,9 @@ def runner() -> CliRunner:
 
 
 def test_daily_brief_build_default_db_exit_zero(runner: CliRunner) -> None:
-    result = runner.invoke(app, ["second-brain", "daily-brief", "build", "--date", "2026-06-02", "--json"])
+    result = runner.invoke(
+        app, ["second-brain", "daily-brief", "build", "--date", "2026-06-02", "--json"]
+    )
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["brief_date"] == "2026-06-02"
@@ -30,7 +32,17 @@ def test_daily_brief_build_default_db_exit_zero(runner: CliRunner) -> None:
 
 def test_daily_brief_build_invalid_mode_rejected(runner: CliRunner) -> None:
     result = runner.invoke(
-        app, ["second-brain", "daily-brief", "build", "--date", "2026-06-02", "--mode", "bogus", "--json"]
+        app,
+        [
+            "second-brain",
+            "daily-brief",
+            "build",
+            "--date",
+            "2026-06-02",
+            "--mode",
+            "bogus",
+            "--json",
+        ],
     )
     assert result.exit_code == 2, result.output
     payload = json.loads(result.output)
@@ -50,5 +62,12 @@ def test_daily_brief_output_carries_no_raw_content(runner: CliRunner) -> None:
     out = runner.invoke(
         app, ["second-brain", "daily-brief", "build", "--date", "2026-06-02", "--json"]
     ).output
-    for forbidden in ("signed_url", "download_url", "raw_body", "raw_prompt", "raw_response", "secret"):
+    for forbidden in (
+        "signed_url",
+        "download_url",
+        "raw_body",
+        "raw_prompt",
+        "raw_response",
+        "secret",
+    ):
         assert forbidden not in out

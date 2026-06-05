@@ -18,12 +18,25 @@ _RAW_CONTRACT_NAME = "Master Services Agreement SECRET.pdf"
 
 def _seed_card(store: ConstructionStore, *, key: str, ext: str, name: str, path: str) -> None:
     store.upsert_inventory_item(
-        source_key="sp", drive_id="d", item_id=key, name=name, web_url="https://x/" + key,
-        parent_path=path, size_bytes=1024, is_folder=False, last_modified=None, etag="e",
+        source_key="sp",
+        drive_id="d",
+        item_id=key,
+        name=name,
+        web_url="https://x/" + key,
+        parent_path=path,
+        size_bytes=1024,
+        is_folder=False,
+        last_modified=None,
+        etag="e",
     )
     store.upsert_document_card(
-        card_id=key, document_card_id=key, source_id="sp", drive_item_id=key,
-        file_extension=ext, project_key=None, document_type="unknown",
+        card_id=key,
+        document_card_id=key,
+        source_id="sp",
+        drive_item_id=key,
+        file_extension=ext,
+        project_key=None,
+        document_type="unknown",
     )
 
 
@@ -31,16 +44,16 @@ def _seed(store: ConstructionStore) -> None:
     _seed_card(store, key="c_dwg", ext="dwg", name="site.dwg", path="/General")
     _seed_card(store, key="c_rfi_folder", ext="pdf", name="doc.pdf", path="/Project/RFIs")
     _seed_card(store, key="c_rfi_record", ext="pdf", name="RFI 042 Response.pdf", path="/General")
-    _seed_card(store, key="c_contract", ext="pdf", name=_RAW_CONTRACT_NAME, path="/Project/Contracts")
+    _seed_card(
+        store, key="c_contract", ext="pdf", name=_RAW_CONTRACT_NAME, path="/Project/Contracts"
+    )
     _seed_card(store, key="c_unknown", ext="pdf", name="summary.pdf", path="/General")
 
 
 def _by_card(db: str) -> dict[str, sqlite3.Row]:
     conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        "SELECT * FROM construction_document_classification_candidates"
-    ).fetchall()
+    rows = conn.execute("SELECT * FROM construction_document_classification_candidates").fetchall()
     return {r["document_card_id"]: r for r in rows}
 
 
@@ -77,8 +90,10 @@ def test_deterministic_classification_and_review_routing(tmp_path: Path) -> None
     for r in cards.values():
         assert r["promotion_status"] == "candidate"
         for guard in (
-            "raw_document_text_persisted", "raw_prompt_persisted",
-            "raw_response_persisted", "external_writeback_performed",
+            "raw_document_text_persisted",
+            "raw_prompt_persisted",
+            "raw_response_persisted",
+            "external_writeback_performed",
         ):
             assert r[guard] == 0
 

@@ -170,7 +170,10 @@ def classify_amount(
                     # simple policy hook (triggers from seed can set review)
                     if policy and "triggers" in policy:
                         trigs = policy.get("triggers", [])
-                        if "amount_parse_ambiguous_or_rejected" in str(trigs) and status in ("ambiguous", "rejected"):
+                        if "amount_parse_ambiguous_or_rejected" in str(trigs) and status in (
+                            "ambiguous",
+                            "rejected",
+                        ):
                             tier = "operator_review"
     except ValueError as ve:
         if "float" in str(ve).lower():

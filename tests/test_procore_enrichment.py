@@ -47,7 +47,9 @@ def _rows(db: Path, table: str) -> list[sqlite3.Row]:
 def test_people_extraction_hashes_pii_and_dedups() -> None:
     db = _db()
     k1 = extract_people_refs(_PERSON, now_utc=_NOW, db_path=db)
-    k2 = extract_people_refs(_PERSON, now_utc="2026-05-30T00:00:00Z", db_path=db)  # same person, later
+    k2 = extract_people_refs(
+        _PERSON, now_utc="2026-05-30T00:00:00Z", db_path=db
+    )  # same person, later
     assert k1 == k2
     rows = _rows(db, "procore_people_entities")
     assert len(rows) == 1
@@ -68,10 +70,16 @@ def test_people_extraction_hashes_pii_and_dedups() -> None:
 
 def test_company_extraction_keeps_org_name_and_dedups() -> None:
     db = _db()
-    extract_company_refs({"id": 161072, "name": "Synthetic Architecture"}, now_utc=_NOW, db_path=db)  # vendor
     extract_company_refs(
-        {"name": "Synthetic Architecture", "company": {"id": 161072, "name": "Synthetic Architecture"}},
-        now_utc=_NOW, db_path=db,
+        {"id": 161072, "name": "Synthetic Architecture"}, now_utc=_NOW, db_path=db
+    )  # vendor
+    extract_company_refs(
+        {
+            "name": "Synthetic Architecture",
+            "company": {"id": 161072, "name": "Synthetic Architecture"},
+        },
+        now_utc=_NOW,
+        db_path=db,
     )  # responsible_contractor wrapping the same company (no top-level id) -> same key
     rows = _rows(db, "procore_company_entities")
     assert len(rows) == 1
@@ -86,7 +94,12 @@ def test_company_extraction_keeps_org_name_and_dedups() -> None:
 
 def test_location_extraction_from_nested_payload() -> None:
     db = _db()
-    loc = {"id": 15504, "name": "North Building>First Floor", "node_name": "Closet", "parent_id": 788866}
+    loc = {
+        "id": 15504,
+        "name": "North Building>First Floor",
+        "node_name": "Closet",
+        "parent_id": 788866,
+    }
     extract_location_refs(loc, project_key="tropical", now_utc=_NOW, db_path=db)
     rows = _rows(db, "procore_location_entities")
     assert len(rows) == 1
@@ -102,15 +115,24 @@ def test_location_extraction_from_nested_payload() -> None:
 
 def test_attachment_extraction_strips_query_strings() -> None:
     db = _db()
-    atts = [{
-        "id": 42, "filename": "synthetic-photo.jpg", "content_type": "image/jpeg", "size": 1234,
-        "url": "https://example.test/rest/v1.0/local_files/abc?company_id=15&prostore_file_id=76094",
-        "share_url": "https://example.test/share/abc?token=secret",
-        "viewable_url": "https://example.test/15/project/show?prostore_file_id=76094",
-    }]
+    atts = [
+        {
+            "id": 42,
+            "filename": "synthetic-photo.jpg",
+            "content_type": "image/jpeg",
+            "size": 1234,
+            "url": "https://example.test/rest/v1.0/local_files/abc?company_id=15&prostore_file_id=76094",
+            "share_url": "https://example.test/share/abc?token=secret",
+            "viewable_url": "https://example.test/15/project/show?prostore_file_id=76094",
+        }
+    ]
     extract_attachment_refs(
-        atts, project_key="tropical", source_record_key="tropical|meetings||1",
-        source_endpoint_id="meetings", now_utc=_NOW, db_path=db,
+        atts,
+        project_key="tropical",
+        source_record_key="tropical|meetings||1",
+        source_endpoint_id="meetings",
+        now_utc=_NOW,
+        db_path=db,
     )
     rows = _rows(db, "procore_attachment_refs")
     assert len(rows) == 1
@@ -121,7 +143,12 @@ def test_attachment_extraction_strips_query_strings() -> None:
     assert row["content_type"] == "image/jpeg" and row["size_bytes"] == 1234
     assert row["download_eligibility"] == "metadata_only"
     blob = "|".join("" if v is None else str(v) for v in row)
-    assert "?" not in blob and "company_id" not in blob and "prostore_file_id" not in blob and "token=" not in blob
+    assert (
+        "?" not in blob
+        and "company_id" not in blob
+        and "prostore_file_id" not in blob
+        and "token=" not in blob
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -137,16 +164,30 @@ def test_custom_fields_by_data_type_policy() -> None:
         "custom_field_dec": {"data_type": "decimal", "value": 2.2},
         "custom_field_dt": {"data_type": "datetime", "value": "2026-05-19T12:00:00Z"},
         "custom_field_lov1": {"data_type": "lov_entry", "value": {"id": 1, "label": "Open"}},
-        "custom_field_lovn": {"data_type": "lov_entries", "value": [{"id": 2, "label": "Open"}, {"id": 3, "label": "Late"}]},
+        "custom_field_lovn": {
+            "data_type": "lov_entries",
+            "value": [{"id": 2, "label": "Open"}, {"id": 3, "label": "Late"}],
+        },
         "custom_field_str": {"data_type": "string", "value": "secret free text value"},
         "custom_field_rich": {"data_type": "rich_text", "value": "<b>secret</b>"},
-        "custom_field_login": {"data_type": "login_information", "value": {"login": "synthetic@example.test"}},
-        "custom_field_files": {"data_type": "prostore_files", "value": [{"url": "https://example.test/f?token=x"}]},
+        "custom_field_login": {
+            "data_type": "login_information",
+            "value": {"login": "synthetic@example.test"},
+        },
+        "custom_field_files": {
+            "data_type": "prostore_files",
+            "value": [{"url": "https://example.test/f?token=x"}],
+        },
         "custom_field_unk": {"data_type": "mystery", "value": "whatever"},
     }
     extract_custom_field_values(
-        cfs, project_key="tropical", record_key="tropical|manpower||1",
-        endpoint_id="daily-log-manpower", procore_record_id="1", now_utc=_NOW, db_path=db,
+        cfs,
+        project_key="tropical",
+        record_key="tropical|manpower||1",
+        endpoint_id="daily-log-manpower",
+        procore_record_id="1",
+        now_utc=_NOW,
+        db_path=db,
     )
     by_key = {r["custom_field_key"]: r for r in _rows(db, "procore_custom_field_values")}
     assert len(by_key) == 11
@@ -156,7 +197,13 @@ def test_custom_fields_by_data_type_policy() -> None:
     assert by_key["custom_field_lov1"]["value_label_redacted"] == "Open"
     assert by_key["custom_field_lovn"]["value_label_redacted"] == "Open, Late"
     # hashed types carry value_hash, no raw value
-    for k in ("custom_field_str", "custom_field_rich", "custom_field_login", "custom_field_files", "custom_field_unk"):
+    for k in (
+        "custom_field_str",
+        "custom_field_rich",
+        "custom_field_login",
+        "custom_field_files",
+        "custom_field_unk",
+    ):
         assert by_key[k]["value_hash"] is not None
         assert by_key[k]["value_json_redacted"] is None
     # no raw secret / signed url anywhere
@@ -173,12 +220,22 @@ def test_custom_fields_by_data_type_policy() -> None:
 def test_record_edge_idempotent() -> None:
     db = _db()
     e1 = emit_record_edge(
-        project_key="tropical", from_record_key="tropical|rfis||1", edge_type="assignee",
-        source_endpoint_id="rfis", to_entity_key="person:abc", now_utc=_NOW, db_path=db,
+        project_key="tropical",
+        from_record_key="tropical|rfis||1",
+        edge_type="assignee",
+        source_endpoint_id="rfis",
+        to_entity_key="person:abc",
+        now_utc=_NOW,
+        db_path=db,
     )
     e2 = emit_record_edge(
-        project_key="tropical", from_record_key="tropical|rfis||1", edge_type="assignee",
-        source_endpoint_id="rfis", to_entity_key="person:abc", now_utc="2026-05-30T00:00:00Z", db_path=db,
+        project_key="tropical",
+        from_record_key="tropical|rfis||1",
+        edge_type="assignee",
+        source_endpoint_id="rfis",
+        to_entity_key="person:abc",
+        now_utc="2026-05-30T00:00:00Z",
+        db_path=db,
     )
     assert e1 == e2
     assert len(_rows(db, "procore_record_edges")) == 1
@@ -187,12 +244,23 @@ def test_record_edge_idempotent() -> None:
 def test_action_signal_written_and_idempotent() -> None:
     db = _db()
     emit_action_signal(
-        project_key="tropical", record_key="tropical|observations||9", endpoint_id="observations",
-        signal_type="safety_open", importance="high", now_utc=_NOW, db_path=db,
+        project_key="tropical",
+        record_key="tropical|observations||9",
+        endpoint_id="observations",
+        signal_type="safety_open",
+        importance="high",
+        now_utc=_NOW,
+        db_path=db,
     )
     emit_action_signal(
-        project_key="tropical", record_key="tropical|observations||9", endpoint_id="observations",
-        signal_type="safety_open", importance="high", signal_status="resolved", now_utc=_NOW, db_path=db,
+        project_key="tropical",
+        record_key="tropical|observations||9",
+        endpoint_id="observations",
+        signal_type="safety_open",
+        importance="high",
+        signal_status="resolved",
+        now_utc=_NOW,
+        db_path=db,
     )
     rows = _rows(db, "procore_action_signals")
     assert len(rows) == 1
@@ -204,12 +272,24 @@ def test_text_intelligence_hash_only_and_idempotent() -> None:
     db = _db()
     secret = "the owner threatened a delay claim over the partition scope"
     emit_text_intelligence(
-        project_key="tropical", record_key="tropical|rfis||1", endpoint_id="rfis",
-        source_field_path="comment", text=secret, topics=["claim", "delay"], now_utc=_NOW, db_path=db,
+        project_key="tropical",
+        record_key="tropical|rfis||1",
+        endpoint_id="rfis",
+        source_field_path="comment",
+        text=secret,
+        topics=["claim", "delay"],
+        now_utc=_NOW,
+        db_path=db,
     )
     emit_text_intelligence(
-        project_key="tropical", record_key="tropical|rfis||1", endpoint_id="rfis",
-        source_field_path="comment", text=secret, topics=["claim", "delay"], now_utc=_NOW, db_path=db,
+        project_key="tropical",
+        record_key="tropical|rfis||1",
+        endpoint_id="rfis",
+        source_field_path="comment",
+        text=secret,
+        topics=["claim", "delay"],
+        now_utc=_NOW,
+        db_path=db,
     )
     rows = _rows(db, "procore_text_intelligence")
     assert len(rows) == 1
@@ -223,8 +303,16 @@ def test_text_intelligence_hash_only_and_idempotent() -> None:
 
 def test_empty_text_returns_none() -> None:
     db = _db()
-    assert emit_text_intelligence(
-        project_key="tropical", record_key="r", endpoint_id="rfis",
-        source_field_path="comment", text="   ", now_utc=_NOW, db_path=db,
-    ) is None
+    assert (
+        emit_text_intelligence(
+            project_key="tropical",
+            record_key="r",
+            endpoint_id="rfis",
+            source_field_path="comment",
+            text="   ",
+            now_utc=_NOW,
+            db_path=db,
+        )
+        is None
+    )
     assert _rows(db, "procore_text_intelligence") == []

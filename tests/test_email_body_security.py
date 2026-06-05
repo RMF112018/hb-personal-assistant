@@ -55,7 +55,9 @@ def test_no_forbidden_tokens_in_email_modules(path: Path) -> None:
 @pytest.mark.parametrize("path", _SCAN_FILES, ids=lambda p: p.name)
 def test_no_write_verb_calls_in_email_modules(path: Path) -> None:
     for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        assert not _WRITE_VERB_CALL.search(line), f"{path.name}:{i} write-verb call: {line.strip()!r}"
+        assert not _WRITE_VERB_CALL.search(line), (
+            f"{path.name}:{i} write-verb call: {line.strip()!r}"
+        )
 
 
 def _tmp_db() -> str:
@@ -70,19 +72,28 @@ def test_no_plaintext_body_column_in_any_email_table() -> None:
     conn = sqlite3.connect(db)
     try:
         tables = [
-            r[0] for r in conn.execute(
+            r[0]
+            for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'email_%'"
             )
         ]
-        forbidden = {"body_plaintext", "raw_body", "body_html", "body_content", "body_text", "body", "content"}
+        forbidden = {
+            "body_plaintext",
+            "raw_body",
+            "body_html",
+            "body_content",
+            "body_text",
+            "body",
+            "content",
+        }
         for tbl in tables:
             cols = {r[1] for r in conn.execute(f"PRAGMA table_info({tbl})")}
             leak = cols & forbidden
             assert not leak, f"{tbl} has plaintext-body column(s): {leak}"
         # email_messages still CHECK-locks full_body_persisted = 0.
-        ddl = conn.execute(
-            "SELECT sql FROM sqlite_master WHERE name='email_messages'"
-        ).fetchone()[0]
+        ddl = conn.execute("SELECT sql FROM sqlite_master WHERE name='email_messages'").fetchone()[
+            0
+        ]
         assert "CHECK(full_body_persisted = 0)" in ddl
         # The vault table stores only an encrypted ref + plaintext-persistence locks.
         vault_ddl = conn.execute(

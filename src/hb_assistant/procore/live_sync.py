@@ -740,7 +740,11 @@ def run_live_sync(
         if rate_limit_wait_count >= max_rate_limit_wait_cycles:
             return False
         last_retry_after = exc.retry_after
-        delay = float(exc.retry_after) if exc.retry_after is not None else float(rate_limit_fallback_sleep_seconds)
+        delay = (
+            float(exc.retry_after)
+            if exc.retry_after is not None
+            else float(rate_limit_fallback_sleep_seconds)
+        )
         if delay < 0:
             delay = 0.0
         reason_codes.append(reason)
@@ -788,7 +792,9 @@ def run_live_sync(
     direct_parent_id = str(parent_id).strip() if parent_id is not None else None
     if direct_parent_id == "":
         direct_parent_id = None
-    supports_direct_parent = adapter.endpoint_id == "activities" or adapter.endpoint_id in _N1_CHILD_ENDPOINTS
+    supports_direct_parent = (
+        adapter.endpoint_id == "activities" or adapter.endpoint_id in _N1_CHILD_ENDPOINTS
+    )
     if direct_parent_id and not supports_direct_parent:
         reason_codes.append("parent_id_not_supported_for_endpoint")
     if direct_parent_id and adapter.endpoint_id in _N1_CHILD_EXTRA_PARENT_PARAMS:
@@ -1399,7 +1405,9 @@ def run_live_sync(
                     break
                 except Exception:  # noqa: BLE001
                     child_error_count += 1
-                    redacted_errors.append({"detail_transport_error": "unexpected", token: parent_id})
+                    redacted_errors.append(
+                        {"detail_transport_error": "unexpected", token: parent_id}
+                    )
                     break
             if redacted_errors and redacted_errors[-1].get(token) == parent_id:
                 if redacted_errors[-1].get("status") == 429:

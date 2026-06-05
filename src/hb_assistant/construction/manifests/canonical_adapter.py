@@ -97,7 +97,9 @@ def v5_drive_item_to_inventory_row(item: V5DriveItem) -> dict[str, Any]:
 
 
 def resolve_canonical_source(
-    store: ConstructionStore, *, source_id: str,
+    store: ConstructionStore,
+    *,
+    source_id: str,
 ) -> CanonicalSourceRef:
     """Look up the V5 ``construction_source_locations`` row for
     ``source_id`` and return a :class:`CanonicalSourceRef`. Raises
@@ -131,7 +133,10 @@ def read_canonical_document_card_input(
     """
     ref = resolve_canonical_source(store, source_id=source_id)
     items = read_drive_items_unified(
-        store, source_id=source_id, v2_limit=v2_limit, v5_limit=v5_limit,
+        store,
+        source_id=source_id,
+        v2_limit=v2_limit,
+        v5_limit=v5_limit,
     )
     rows = [v5_drive_item_to_inventory_row(item) for item in items]
     return CanonicalDocumentCardInput(ref=ref, rows=rows)

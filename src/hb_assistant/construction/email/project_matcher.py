@@ -150,14 +150,34 @@ class ProjectMatcher:
 
         # 1.00 — exact HB project number in subject
         if _contains_number(subject, descriptor.project_number):
-            signals.append(_signal("hb_project_number_in_subject", "project number in subject", descriptor.project_number))
+            signals.append(
+                _signal(
+                    "hb_project_number_in_subject",
+                    "project number in subject",
+                    descriptor.project_number,
+                )
+            )
         # 0.95 — exact HB project number in bodyPreview
         elif _contains_number(body_preview, descriptor.project_number):
-            signals.append(_signal("hb_project_number_in_body_preview", "project number in body preview", descriptor.project_number))
+            signals.append(
+                _signal(
+                    "hb_project_number_in_body_preview",
+                    "project number in body preview",
+                    descriptor.project_number,
+                )
+            )
 
         # 0.90 — project-specific SharePoint/OneDrive link
-        if _looks_like_project_link(web_link, descriptor) or _looks_like_project_link(body_preview, descriptor):
-            signals.append(_signal("sharepoint_or_onedrive_project_link", "project sharepoint/onedrive link", descriptor.project_key))
+        if _looks_like_project_link(web_link, descriptor) or _looks_like_project_link(
+            body_preview, descriptor
+        ):
+            signals.append(
+                _signal(
+                    "sharepoint_or_onedrive_project_link",
+                    "project sharepoint/onedrive link",
+                    descriptor.project_key,
+                )
+            )
 
         # 0.85 — Procore notification with known project id/name
         if any(d == pd or d.endswith("." + pd) for d in domains for pd in _PROCORE_DOMAINS):
@@ -165,22 +185,42 @@ class ProjectMatcher:
             pid = descriptor.procore_project_id
             name_hit = _contains_name(haystack, descriptor.name_tokens())
             if (pid and pid in haystack) or name_hit:
-                signals.append(_signal("procore_notification_identifier", "procore notification + project id/name", pid or name_hit))
+                signals.append(
+                    _signal(
+                        "procore_notification_identifier",
+                        "procore notification + project id/name",
+                        pid or name_hit,
+                    )
+                )
 
         # 0.80 / 0.70 — project name in subject / bodyPreview
         name_in_subject = _contains_name(subject, descriptor.name_tokens())
         if name_in_subject:
-            signals.append(_signal("project_name_in_subject", "project name in subject", name_in_subject))
+            signals.append(
+                _signal("project_name_in_subject", "project name in subject", name_in_subject)
+            )
         else:
             name_in_preview = _contains_name(body_preview, descriptor.name_tokens())
             if name_in_preview:
-                signals.append(_signal("project_name_in_body_preview", "project name in body preview", name_in_preview))
+                signals.append(
+                    _signal(
+                        "project_name_in_body_preview",
+                        "project name in body preview",
+                        name_in_preview,
+                    )
+                )
 
         # 0.60 — known participant domain/contact (inert until known_domains configured)
         known = {d.lower() for d in descriptor.known_domains}
         domain_hit = next((d for d in domains if d in known), None)
         if domain_hit:
-            signals.append(_signal("known_participant_domain_contact", "known project participant domain", domain_hit))
+            signals.append(
+                _signal(
+                    "known_participant_domain_contact",
+                    "known project participant domain",
+                    domain_hit,
+                )
+            )
 
         return signals
 

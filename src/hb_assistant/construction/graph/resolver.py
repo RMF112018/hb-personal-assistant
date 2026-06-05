@@ -236,9 +236,7 @@ class ConstructionGraphResolver:
             web_url=web_url,
         )
 
-    def _resolve_sharepoint_project_drive_folder(
-        self, source: SourceLocation
-    ) -> ResolutionResult:
+    def _resolve_sharepoint_project_drive_folder(self, source: SourceLocation) -> ResolutionResult:
         # Canonical fast-path: pre-populated IDs short-circuit to pre_resolved
         # without any Graph HTTP call.
         if source.site_id and source.drive_id and source.folder_item_id:
@@ -300,11 +298,7 @@ class ConstructionGraphResolver:
             else:
                 note = "folder_item_id_resolution_requires_folder_path"
 
-        status = (
-            "resolved"
-            if (site_id and drive_id and folder_item_id)
-            else "pending"
-        )
+        status = "resolved" if (site_id and drive_id and folder_item_id) else "pending"
         return ResolutionResult(
             source_key=source.source_key,
             kind=source.kind,

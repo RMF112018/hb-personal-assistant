@@ -20,27 +20,51 @@ def _seed_compliant_inventory(store: ConstructionStore) -> None:
     from hb_assistant.construction.config import load_source_registry
 
     sp = next(
-        s for s in load_source_registry().sources
+        s
+        for s in load_source_registry().sources
         if str(s.kind) == "sharepoint_project_drive_folder"
     )
     store.upsert_inventory_item(
-        source_key=sp.source_key, drive_id="d1", item_id="f1", name="a.pdf",
-        web_url="https://x/a", parent_path="/p", size_bytes=2048, is_folder=False,
-        last_modified="2026-05-01T00:00:00Z", etag="e1",
+        source_key=sp.source_key,
+        drive_id="d1",
+        item_id="f1",
+        name="a.pdf",
+        web_url="https://x/a",
+        parent_path="/p",
+        size_bytes=2048,
+        is_folder=False,
+        last_modified="2026-05-01T00:00:00Z",
+        etag="e1",
     )
     store.upsert_inventory_item(
-        source_key=sp.source_key, drive_id="d1", item_id="f2", name="b.dwg",
-        web_url="https://x/b", parent_path="/p", size_bytes=4096, is_folder=False,
-        last_modified=None, etag="e2",
+        source_key=sp.source_key,
+        drive_id="d1",
+        item_id="f2",
+        name="b.dwg",
+        web_url="https://x/b",
+        parent_path="/p",
+        size_bytes=4096,
+        is_folder=False,
+        last_modified=None,
+        etag="e2",
     )
     store.upsert_inventory_item(
-        source_key=sp.source_key, drive_id="d1", item_id="dir", name="d",
-        web_url="https://x/d", parent_path="/p", size_bytes=None, is_folder=True,
-        last_modified=None, etag="e3",
+        source_key=sp.source_key,
+        drive_id="d1",
+        item_id="dir",
+        name="d",
+        web_url="https://x/d",
+        parent_path="/p",
+        size_bytes=None,
+        is_folder=True,
+        last_modified=None,
+        etag="e3",
     )
 
 
-def test_dry_run_then_apply_then_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_dry_run_then_apply_then_idempotent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     db = str(tmp_path / "cli.sqlite")
     _seed_compliant_inventory(ConstructionStore(db))
     monkeypatch.setattr(

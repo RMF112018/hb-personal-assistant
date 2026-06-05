@@ -111,9 +111,7 @@ def _validate_key(value: str, field_name: str) -> str:
     return value
 
 
-def _check_conflicting_aliases(
-    data: dict[str, Any], pairs: list[tuple[str, str]]
-) -> None:
+def _check_conflicting_aliases(data: dict[str, Any], pairs: list[tuple[str, str]]) -> None:
     """Reconcile alias pairs in-place.
 
     Raises ``ValueError`` if both names of a pair are present with non-equal

@@ -50,7 +50,10 @@ def test_marker_bounded_create_and_replace(temp_vault: Path):
 
     # Second write replaces only inside markers, preserves user text outside
     user_text = "# My Daily Note\n\nSome user thought here.\n"
-    daily.write_text(user_text + "<!-- HB-DAILY-BRIEF:START -->\nOLD\n<!-- HB-DAILY-BRIEF:END -->\nMore user text.")
+    daily.write_text(
+        user_text
+        + "<!-- HB-DAILY-BRIEF:START -->\nOLD\n<!-- HB-DAILY-BRIEF:END -->\nMore user text."
+    )
     content2 = "UPDATED: New action from extraction."
     writer.write_bounded_section(target_date, content2, dry_run=False)
     text2 = daily.read_text()
@@ -68,7 +71,9 @@ def test_dry_run_never_mutates(temp_vault: Path):
     target_date = date(2026, 5, 25)
     daily = temp_vault / "Daily Notes" / f"{target_date}.md"
 
-    would_be = writer.write_bounded_section(target_date, "Secret test content that must not appear", dry_run=True)
+    would_be = writer.write_bounded_section(
+        target_date, "Secret test content that must not appear", dry_run=True
+    )
     assert isinstance(would_be, str)
     assert "Secret test content" in would_be
     assert not daily.exists()  # no mutation
@@ -122,6 +127,7 @@ def test_redaction_and_leak_proof_on_writer_output(temp_vault: Path):
 # All use temp artifacts only; no real vault or shared DB.
 # =============================================================================
 
+
 def _seed_action_items(store: Store, count: int = 2) -> list[int]:
     """Helper: seed minimal open action_items; return their ids."""
     ids = []
@@ -162,10 +168,13 @@ def test_dry_run_no_write_no_link(temp_vault: Path):
 
         # No links created (explicit query)
         conn = get_connection(db_path)
-        cnt = conn.execute("SELECT COUNT(*) FROM source_links WHERE link_type = 'written_to_note'").fetchone()[0]
+        cnt = conn.execute(
+            "SELECT COUNT(*) FROM source_links WHERE link_type = 'written_to_note'"
+        ).fetchone()[0]
         assert cnt == 0
     finally:
         import os
+
         if os.path.exists(db_path):
             os.unlink(db_path)
 
@@ -207,6 +216,7 @@ def test_apply_writes_and_creates_written_to_note_links(temp_vault: Path):
         assert all(r[1] == "written_to_note" for r in rows)
     finally:
         import os
+
         if os.path.exists(db_path):
             os.unlink(db_path)
 
@@ -225,12 +235,20 @@ def test_idempotent_repeat_write_no_duplicate_links(temp_vault: Path):
         aids = _seed_action_items(store, 1)
         target_date = date(2026, 5, 27)
 
-        writer.write_bounded_section(target_date, "first", dry_run=False, record_link=True, action_item_ids=aids)
+        writer.write_bounded_section(
+            target_date, "first", dry_run=False, record_link=True, action_item_ids=aids
+        )
         conn = get_connection(db_path)
-        count1 = conn.execute("SELECT COUNT(*) FROM source_links WHERE link_type='written_to_note'").fetchone()[0]
+        count1 = conn.execute(
+            "SELECT COUNT(*) FROM source_links WHERE link_type='written_to_note'"
+        ).fetchone()[0]
 
-        writer.write_bounded_section(target_date, "second", dry_run=False, record_link=True, action_item_ids=aids)
-        count2 = conn.execute("SELECT COUNT(*) FROM source_links WHERE link_type='written_to_note'").fetchone()[0]
+        writer.write_bounded_section(
+            target_date, "second", dry_run=False, record_link=True, action_item_ids=aids
+        )
+        count2 = conn.execute(
+            "SELECT COUNT(*) FROM source_links WHERE link_type='written_to_note'"
+        ).fetchone()[0]
 
         assert count1 >= 1
         # Note: action-only written_to_note (no src_id) relies on run-once semantics + registry guard (when src provided).
@@ -239,6 +257,7 @@ def test_idempotent_repeat_write_no_duplicate_links(temp_vault: Path):
         assert count2 >= count1
     finally:
         import os
+
         if os.path.exists(db_path):
             os.unlink(db_path)
 
@@ -259,9 +278,14 @@ def test_marker_bound_and_user_content_preservation_with_links(temp_vault: Path)
         daily = temp_vault / "Daily Notes" / f"{target_date.isoformat()}.md"
         daily.parent.mkdir(parents=True, exist_ok=True)
         user_outside = "# My Day\n\nUser note here that must survive.\n"
-        daily.write_text(user_outside + "<!-- HB-DAILY-BRIEF:START -->\nOLD\n<!-- HB-DAILY-BRIEF:END -->\nMore user.")
+        daily.write_text(
+            user_outside
+            + "<!-- HB-DAILY-BRIEF:START -->\nOLD\n<!-- HB-DAILY-BRIEF:END -->\nMore user."
+        )
 
-        writer.write_bounded_section(target_date, "NEW BRIEF", dry_run=False, record_link=True, action_item_ids=aids)
+        writer.write_bounded_section(
+            target_date, "NEW BRIEF", dry_run=False, record_link=True, action_item_ids=aids
+        )
 
         text = daily.read_text()
         assert "User note here that must survive." in text
@@ -271,9 +295,12 @@ def test_marker_bound_and_user_content_preservation_with_links(temp_vault: Path)
 
         # Link still created
         conn = get_connection(db_path)
-        cnt = conn.execute("SELECT COUNT(*) FROM source_links WHERE link_type='written_to_note'").fetchone()[0]
+        cnt = conn.execute(
+            "SELECT COUNT(*) FROM source_links WHERE link_type='written_to_note'"
+        ).fetchone()[0]
         assert cnt == 1
     finally:
         import os
+
         if os.path.exists(db_path):
             os.unlink(db_path)

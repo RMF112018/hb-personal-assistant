@@ -38,32 +38,55 @@ def _seed(db: str) -> ConstructionStore:
             message_id=mid, thread_key=tk, source_id="sx", received_datetime=now
         )
     store.upsert_email_thread_summary(
-        thread_key="T1", project_key="tropical", message_count=2,
-        first_message_datetime=now, last_message_datetime=now,
+        thread_key="T1",
+        project_key="tropical",
+        message_count=2,
+        first_message_datetime=now,
+        last_message_datetime=now,
         summary_redacted="thread: 2 message(s), 2 participant(s)",
-        summary_policy="metadata_only", review_required=True,
+        summary_policy="metadata_only",
+        review_required=True,
     )
     store.upsert_email_thread_summary(
-        thread_key="T2", project_key="tropical", message_count=1,
-        first_message_datetime=now, last_message_datetime=now,
+        thread_key="T2",
+        project_key="tropical",
+        message_count=1,
+        first_message_datetime=now,
+        last_message_datetime=now,
         summary_redacted="thread: 1 message(s), 1 participant(s)",
-        summary_policy="metadata_only", review_required=False,
+        summary_policy="metadata_only",
+        review_required=False,
     )
     # Open review queue: two contracts (medium) + one claims (high).
     store.enqueue_email_review_item(
-        review_id="r1", message_id="m1", category="contracts", sensitivity="medium",
-        reason="sensitive_category:contracts", suggested_action="route_to_review",
-        confidence=0.9, project_key="tropical",
+        review_id="r1",
+        message_id="m1",
+        category="contracts",
+        sensitivity="medium",
+        reason="sensitive_category:contracts",
+        suggested_action="route_to_review",
+        confidence=0.9,
+        project_key="tropical",
     )
     store.enqueue_email_review_item(
-        review_id="r2", message_id="m2", category="contracts", sensitivity="medium",
-        reason="sensitive_category:contracts", suggested_action="route_to_review",
-        confidence=0.9, project_key="tropical",
+        review_id="r2",
+        message_id="m2",
+        category="contracts",
+        sensitivity="medium",
+        reason="sensitive_category:contracts",
+        suggested_action="route_to_review",
+        confidence=0.9,
+        project_key="tropical",
     )
     store.enqueue_email_review_item(
-        review_id="r3", message_id="m3", category="claims", sensitivity="high",
-        reason="sensitive_category:claims", suggested_action="route_to_review_no_determination",
-        confidence=0.9, project_key="tropical",
+        review_id="r3",
+        message_id="m3",
+        category="claims",
+        sensitivity="high",
+        reason="sensitive_category:claims",
+        suggested_action="route_to_review_no_determination",
+        confidence=0.9,
+        project_key="tropical",
     )
     return store
 
@@ -71,9 +94,7 @@ def _seed(db: str) -> ConstructionStore:
 def test_report_aggregates_threads_and_warnings() -> None:
     db = _tmp_db()
     store = _seed(db)
-    report = CorrespondenceReviewBuilder(store).review(
-        project_key="tropical", lookback_days=3650
-    )
+    report = CorrespondenceReviewBuilder(store).review(project_key="tropical", lookback_days=3650)
     assert report.threads_total == 2
     assert report.threads_review_required == 1
     assert report.review_queue_open == 3
@@ -132,10 +153,13 @@ def test_lookback_excludes_old_threads() -> None:
     db = _tmp_db()
     store = _seed(db)
     store.upsert_email_thread_summary(
-        thread_key="T_OLD", project_key="tropical", message_count=1,
+        thread_key="T_OLD",
+        project_key="tropical",
+        message_count=1,
         first_message_datetime="2020-01-01T00:00:00+00:00",
         last_message_datetime="2020-01-01T00:00:00+00:00",
-        summary_redacted="old thread", summary_policy="metadata_only",
+        summary_redacted="old thread",
+        summary_policy="metadata_only",
     )
     recent = CorrespondenceReviewBuilder(store).review(project_key="tropical", lookback_days=30)
     assert recent.threads_total == 2  # T_OLD excluded by lookback

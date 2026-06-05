@@ -54,12 +54,20 @@ def redact_body(body: Any, *, for_error: bool = False) -> Dict[str, Any]:
             for ek in ("error", "errors", "message", "code", "status", "title"):
                 if ek in body:
                     val = body[ek]
-                    safe[ek] = val if isinstance(val, (str, int, float, bool, type(None))) else str(type(val))
+                    safe[ek] = (
+                        val
+                        if isinstance(val, (str, int, float, bool, type(None)))
+                        else str(type(val))
+                    )
             summary["error_fields"] = safe or None
         return summary
 
     if isinstance(body, (list, tuple)):
-        return {"type": "list", "length": len(body), "sample_types": [type(x).__name__ for x in body[:3]]}
+        return {
+            "type": "list",
+            "length": len(body),
+            "sample_types": [type(x).__name__ for x in body[:3]],
+        }
 
     if isinstance(body, str):
         if len(body) > 256:
@@ -67,7 +75,10 @@ def redact_body(body: Any, *, for_error: bool = False) -> Dict[str, Any]:
             return {"type": "string", "length": len(body), "hash_prefix": h}
         return {"type": "string", "value": body[:128] + "..." if len(body) > 128 else body}
 
-    return {"type": type(body).__name__, "hash": hashlib.sha256(repr(body).encode()).hexdigest()[:12]}
+    return {
+        "type": type(body).__name__,
+        "hash": hashlib.sha256(repr(body).encode()).hexdigest()[:12],
+    }
 
 
 def redact_request(
@@ -116,7 +127,9 @@ def redact_response(status: int, headers: Dict[str, str], body: Any) -> Dict[str
     """Redacted response summary with safe rate-limit extraction."""
     h = headers or {}
     rate = {k: h[k] for k in h if "ratelimit" in k.lower() or k.lower() == "retry-after"}
-    safe_h = redact_headers({k: v for k, v in h.items() if k.lower() not in {kk.lower() for kk in rate}})
+    safe_h = redact_headers(
+        {k: v for k, v in h.items() if k.lower() not in {kk.lower() for kk in rate}}
+    )
     return {
         "status": status,
         "headers": safe_h,

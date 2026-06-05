@@ -115,9 +115,7 @@ def scan_approved_notes(
             proj_m = _PROJECT_FRONTMATTER_RE.search(content)
             project_key = proj_m.group(1).strip().strip("\"'") if proj_m else None
             try:
-                modified = datetime.fromtimestamp(
-                    note.stat().st_mtime, timezone.utc
-                ).isoformat()
+                modified = datetime.fromtimestamp(note.stat().st_mtime, timezone.utc).isoformat()
             except OSError:
                 modified = None
             source_type = _slug(root_label)
@@ -273,9 +271,16 @@ def build_approved_obsidian_index_proof() -> dict[str, Any]:
     """Deterministic, vault/DB-independent proof for `approved-obsidian-index-proof.json`."""
     policy = load_obsidian_index_policy()
     contract_fields = [
-        "manifest_id", "approved_root_label", "note_path_hash", "section_marker",
-        "project_key", "confidence_class", "review_tier", "review_status",
-        "content_hash", "source_ref_count",
+        "manifest_id",
+        "approved_root_label",
+        "note_path_hash",
+        "section_marker",
+        "project_key",
+        "confidence_class",
+        "review_tier",
+        "review_status",
+        "content_hash",
+        "source_ref_count",
     ]
     sample = ObsidianIndexEntry(
         note_path_redacted="Construction Intelligence/Phase 07A Data Quality/Project Data Quality Summary.md",
@@ -307,8 +312,16 @@ def build_approved_obsidian_index_proof() -> dict[str, Any]:
     blob = manifest.model_dump_json()
     no_raw_content = not any(
         token in blob
-        for token in ("raw_body", "raw_document_text", "raw_prompt", "raw_response",
-                      "signed_url", "download_url", "http://", "https://")
+        for token in (
+            "raw_body",
+            "raw_document_text",
+            "raw_prompt",
+            "raw_response",
+            "signed_url",
+            "download_url",
+            "http://",
+            "https://",
+        )
     )
     return {
         "proof": "phase_08a_approved_obsidian_index",

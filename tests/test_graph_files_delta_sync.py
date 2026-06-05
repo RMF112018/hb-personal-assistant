@@ -43,13 +43,21 @@ def _src() -> SourceLocation:
 
 
 def _file(i):
-    return {"id": f"f{i}", "name": f"f{i}.pdf", "file": {"mimeType": "application/pdf"},
-            "parentReference": {"driveId": "D1", "id": "F1"}}
+    return {
+        "id": f"f{i}",
+        "name": f"f{i}.pdf",
+        "file": {"mimeType": "application/pdf"},
+        "parentReference": {"driveId": "D1", "id": "F1"},
+    }
 
 
 def _deleted(i):
-    return {"id": f"d{i}", "name": f"old{i}.pdf", "deleted": {"state": "deleted"},
-            "parentReference": {"driveId": "D1", "id": "F1"}}
+    return {
+        "id": f"d{i}",
+        "name": f"old{i}.pdf",
+        "deleted": {"state": "deleted"},
+        "parentReference": {"driveId": "D1", "id": "F1"},
+    }
 
 
 def _seeded_store(tmp_path: Path) -> ConstructionStore:
@@ -75,7 +83,10 @@ def test_initial_delta_captures_deltalink_and_redacts() -> None:
 def test_nextlink_exhaustion_to_deltalink() -> None:
     http = MagicMock()
     http.get.side_effect = [
-        {"value": [_file(1)], "@odata.nextLink": "https://graph.microsoft.com/v1.0/drives/D1/items/F1/delta?$skiptoken=p2"},
+        {
+            "value": [_file(1)],
+            "@odata.nextLink": "https://graph.microsoft.com/v1.0/drives/D1/items/F1/delta?$skiptoken=p2",
+        },
         {"value": [_file(2)], "@odata.deltaLink": _RAW_DELTA},
     ]
     r = DeltaSync(http).sync(_src(), dry_run=True)

@@ -18,7 +18,15 @@ def runner() -> CliRunner:
 def test_research_packet_build_default_db_exit_zero(runner: CliRunner) -> None:
     # Against the (empty/local) DB the packet blocks gracefully; the command still exits 0.
     result = runner.invoke(
-        app, ["second-brain", "research-packet", "build", "--packet-type", "interactive_query", "--json"]
+        app,
+        [
+            "second-brain",
+            "research-packet",
+            "build",
+            "--packet-type",
+            "interactive_query",
+            "--json",
+        ],
     )
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
@@ -50,7 +58,22 @@ def test_research_packet_build_invalid_packet_type_rejected(runner: CliRunner) -
 
 def test_research_packet_output_carries_no_raw_content(runner: CliRunner) -> None:
     out = runner.invoke(
-        app, ["second-brain", "research-packet", "build", "--packet-type", "interactive_query", "--json"]
+        app,
+        [
+            "second-brain",
+            "research-packet",
+            "build",
+            "--packet-type",
+            "interactive_query",
+            "--json",
+        ],
     ).output
-    for forbidden in ("signed_url", "download_url", "raw_body", "raw_prompt", "raw_response", "secret"):
+    for forbidden in (
+        "signed_url",
+        "download_url",
+        "raw_body",
+        "raw_prompt",
+        "raw_response",
+        "secret",
+    ):
         assert forbidden not in out

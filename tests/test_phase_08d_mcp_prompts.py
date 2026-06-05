@@ -59,7 +59,9 @@ def test_each_prompt_carries_posture_and_no_forbidden_fields() -> None:
 
 
 def test_argument_substitution_does_not_leak_placeholders_for_provided_args() -> None:
-    rendered = render_prompt("ask_project_question", {"question": "what is overdue", "project_key": "X"})
+    rendered = render_prompt(
+        "ask_project_question", {"question": "what is overdue", "project_key": "X"}
+    )
     body = rendered["messages"][1]["content"]
     assert "what is overdue" in body
     assert "X" in body

@@ -104,7 +104,9 @@ def test_persist_calendar_and_attachment_link(temp_db_path: Path):
 
 def test_assistant_run_ledger_and_summary(temp_db_path: Path):
     store = Store(db_path=str(temp_db_path))
-    rid = store.record_assistant_run(run_type="morning", target_date="2026-05-25", trigger="test", dry_run=True)
+    rid = store.record_assistant_run(
+        run_type="morning", target_date="2026-05-25", trigger="test", dry_run=True
+    )
     store.finish_assistant_run(rid, "completed")
 
     summary = store.get_summary()

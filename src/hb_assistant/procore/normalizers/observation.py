@@ -168,9 +168,7 @@ def _safety_route_decision(raw: Dict[str, Any]) -> Tuple[bool, str, bool]:
 
     # Body (description) check — unique to observations.
     description = (
-        raw.get("description")
-        if isinstance(raw.get("description"), str)
-        else raw.get("body")
+        raw.get("description") if isinstance(raw.get("description"), str) else raw.get("body")
     )
     if isinstance(description, str):
         lowered = description.lower()
@@ -224,11 +222,7 @@ def normalize_observation(
 
     review_required, routing_reason, safety_route = _safety_route_decision(raw)
     excerpt = _title_excerpt(raw.get("title") or raw.get("subject"))
-    description = (
-        raw.get("description")
-        if "description" in raw
-        else raw.get("body")
-    )
+    description = raw.get("description") if "description" in raw else raw.get("body")
     description_summary = hash_summary(description) if description is not None else None
     comments_list = raw.get("comments") if isinstance(raw.get("comments"), list) else []
 

@@ -35,6 +35,7 @@ from .models import (
 class DocumentCardPolicyError(ValueError):
     """Raised when a document card is requested without an explicit policy_reason."""
 
+
 GUARDRAILS_DEFAULT: dict[str, str] = {
     "external_systems": "read_only",
     "writeback": "none",
@@ -85,9 +86,7 @@ class ManifestService:
                 f"source_key {source_key!r} not present in registry; "
                 "cannot build baseline comparison"
             )
-        return compute_baseline_comparison(
-            source, self._store, tolerance_pct=tolerance_pct
-        )
+        return compute_baseline_comparison(source, self._store, tolerance_pct=tolerance_pct)
 
     def build_source_manifest(
         self,
@@ -225,7 +224,9 @@ class ManifestService:
         )
 
     def build_project_card(
-        self, registry: SourceRegistry, project_key: str,
+        self,
+        registry: SourceRegistry,
+        project_key: str,
     ) -> ProjectCard:
         project = next((p for p in registry.projects if p.project_key == project_key), None)
         if project is None:
@@ -353,7 +354,9 @@ class ManifestService:
                 "(per-document cards are not auto-generated)."
             )
         rows = self._store.list_inventory_changed_since(
-            source.source_key, since_iso="1970-01-01T00:00:00+00:00", limit=1000,
+            source.source_key,
+            since_iso="1970-01-01T00:00:00+00:00",
+            limit=1000,
         )
         match = next((r for r in rows if r.get("item_id") == item_id), None)
         if match is None:
@@ -410,10 +413,12 @@ class ManifestService:
                 "(per-document cards are not auto-generated)."
             )
         bundle: CanonicalDocumentCardInput = read_canonical_document_card_input(
-            self._store, source_id=source_id,
+            self._store,
+            source_id=source_id,
         )
         match = next(
-            (r for r in bundle.rows if r.get("item_id") == item_id), None,
+            (r for r in bundle.rows if r.get("item_id") == item_id),
+            None,
         )
         if match is None:
             raise ValueError(
@@ -452,11 +457,7 @@ class ManifestService:
             "items_updated": sum(r.items_updated for r in per_source),
             "items_deleted": sum(r.items_deleted for r in per_source),
         }
-        errors = [
-            f"{r.source_key}: {r.error_redacted}"
-            for r in per_source
-            if r.error_redacted
-        ]
+        errors = [f"{r.source_key}: {r.error_redacted}" for r in per_source if r.error_redacted]
         return ProcessingReceipt(
             run_id=run_id,
             mode=mode,

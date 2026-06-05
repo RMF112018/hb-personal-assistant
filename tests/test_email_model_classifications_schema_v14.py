@@ -78,8 +78,17 @@ def test_no_plaintext_body_column() -> None:
         cols = {r[1] for r in conn.execute("PRAGMA table_info(email_model_classifications)")}
     finally:
         conn.close()
-    forbidden = {"body", "body_text", "body_html", "raw_email", "plain_text",
-                 "raw_prompt", "raw_response", "prompt", "response"}
+    forbidden = {
+        "body",
+        "body_text",
+        "body_html",
+        "raw_email",
+        "plain_text",
+        "raw_prompt",
+        "raw_response",
+        "prompt",
+        "response",
+    }
     assert not (cols & forbidden), f"forbidden columns present: {cols & forbidden}"
 
 
@@ -103,7 +112,9 @@ def test_upsert_get_list_round_trip_and_idempotent() -> None:
         project_key="tropical",
         project_match_confidence=0.8,
         topic_labels=["schedule"],
-        relationship_candidates=[{"candidate_type": "procore_rfi", "target_hint": "12", "confidence": 0.7}],
+        relationship_candidates=[
+            {"candidate_type": "procore_rfi", "target_hint": "12", "confidence": 0.7}
+        ],
         risk_flags=["delay"],
         sensitive_categories=["contracts"],
         review_required=True,

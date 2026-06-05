@@ -25,45 +25,94 @@ def _seed(db: Path) -> None:
     SQLiteMigrator(db_path=str(db)).apply()
     project_owner_contract_family(
         "prime-contracts",
-        {"id": 1, "number": "PC-1", "status": "Approved", "executed": False,
-         "grand_total": "1000000.00", "original_contract_amount": "950000.00",
-         "retainage_percent": "10.00", "currency_configuration": {"currency_iso_code": "USD"}},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 1,
+            "number": "PC-1",
+            "status": "Approved",
+            "executed": False,
+            "grand_total": "1000000.00",
+            "original_contract_amount": "950000.00",
+            "retainage_percent": "10.00",
+            "currency_configuration": {"currency_iso_code": "USD"},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_owner_contract_family(
         "prime-change-orders",
-        {"id": 7, "contract_id": 1, "number": "PCO-1", "status": "Pending", "executed": False,
-         "signature_required": True, "grand_total": "25000.00"},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 7,
+            "contract_id": 1,
+            "number": "PCO-1",
+            "status": "Pending",
+            "executed": False,
+            "signature_required": True,
+            "grand_total": "25000.00",
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_commitment_family(
         "commitment-contracts",
-        {"id": 2, "number": "SC-1", "status": "Pending", "executed": False,
-         "grand_total": "500000.00", "vendor": {"id": 12, "name": "Acme LLC"}},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 2,
+            "number": "SC-1",
+            "status": "Pending",
+            "executed": False,
+            "grand_total": "500000.00",
+            "vendor": {"id": 12, "name": "Acme LLC"},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_invoice_family(
         "subcontractor-invoices",
-        {"id": 40, "status": "approved", "vendor_id": 12, "commitment_id": 2,
-         "summary": {"current_payment_due": "100000.00", "total_retainage": "5000.00"}},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 40,
+            "status": "approved",
+            "vendor_id": 12,
+            "commitment_id": 2,
+            "summary": {"current_payment_due": "100000.00", "total_retainage": "5000.00"},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_rfq_change_event_family(
         "rfqs",
-        {"id": 10, "number": "RFQ-1", "status": "open", "estimated_amount": "50000.00",
-         "commitment_contract_id": 2},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 10,
+            "number": "RFQ-1",
+            "status": "open",
+            "estimated_amount": "50000.00",
+            "commitment_contract_id": 2,
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_rfq_change_event_family(
         "change-events",
         {"id": 77, "number": 12, "status": "open", "estimated_cost": "250000.00"},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_budget_family(
         "budget-change-history",
-        {"budget_code": "01-100", "column": "Revised Budget", "old_value": "100.00",
-         "new_value": "150.00", "created_at": "2026-05-20"},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "budget_code": "01-100",
+            "column": "Revised Budget",
+            "old_value": "100.00",
+            "new_value": "150.00",
+            "created_at": "2026-05-20",
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
 
 
@@ -107,7 +156,9 @@ def test_obsidian_financial_help() -> None:
 
 
 def test_summary_json_shape(seeded_db: Path) -> None:
-    res = runner.invoke(app, ["procore", "live", "financial", "summary", "--project", "tropical", "--json"])
+    res = runner.invoke(
+        app, ["procore", "live", "financial", "summary", "--project", "tropical", "--json"]
+    )
     assert res.exit_code == 0, res.output
     p = json.loads(res.output)
     assert p["ok"] is True and p["project_key"] == "tropical"
@@ -119,8 +170,18 @@ def test_summary_json_shape(seeded_db: Path) -> None:
 
 def test_contracts_type_filter(seeded_db: Path) -> None:
     res = runner.invoke(
-        app, ["procore", "live", "financial", "contracts", "--project", "tropical",
-              "--type", "commitment", "--json"]
+        app,
+        [
+            "procore",
+            "live",
+            "financial",
+            "contracts",
+            "--project",
+            "tropical",
+            "--type",
+            "commitment",
+            "--json",
+        ],
     )
     p = json.loads(res.output)
     assert p["contract_count"] == 1
@@ -129,40 +190,100 @@ def test_contracts_type_filter(seeded_db: Path) -> None:
 
 def test_invoices_status_filter(seeded_db: Path) -> None:
     res = runner.invoke(
-        app, ["procore", "live", "financial", "invoices", "--project", "tropical",
-              "--status", "approved", "--json"]
+        app,
+        [
+            "procore",
+            "live",
+            "financial",
+            "invoices",
+            "--project",
+            "tropical",
+            "--status",
+            "approved",
+            "--json",
+        ],
     )
     p = json.loads(res.output)
     assert p["invoice_count"] == 1 and p["invoices"][0]["status"] == "approved"
     res2 = runner.invoke(
-        app, ["procore", "live", "financial", "invoices", "--project", "tropical",
-              "--status", "paid", "--json"]
+        app,
+        [
+            "procore",
+            "live",
+            "financial",
+            "invoices",
+            "--project",
+            "tropical",
+            "--status",
+            "paid",
+            "--json",
+        ],
     )
     assert json.loads(res2.output)["invoice_count"] == 0
 
 
 def test_risk_and_budget_and_changes(seeded_db: Path) -> None:
-    risk = json.loads(runner.invoke(
-        app, ["procore", "live", "financial", "risk", "--project", "tropical", "--json"]).output)
+    risk = json.loads(
+        runner.invoke(
+            app, ["procore", "live", "financial", "risk", "--project", "tropical", "--json"]
+        ).output
+    )
     assert risk["ok"] is True and risk["risk_count"] >= 1  # unexecuted prime contract
-    budget = json.loads(runner.invoke(
-        app, ["procore", "live", "financial", "budget", "--project", "tropical", "--json"]).output)
+    budget = json.loads(
+        runner.invoke(
+            app, ["procore", "live", "financial", "budget", "--project", "tropical", "--json"]
+        ).output
+    )
     assert budget["ok"] is True and len(budget["changes"]) == 1
-    changes = json.loads(runner.invoke(
-        app, ["procore", "live", "financial", "changes", "--project", "tropical",
-              "--since", "30 days ago", "--json"]).output)
+    changes = json.loads(
+        runner.invoke(
+            app,
+            [
+                "procore",
+                "live",
+                "financial",
+                "changes",
+                "--project",
+                "tropical",
+                "--since",
+                "30 days ago",
+                "--json",
+            ],
+        ).output
+    )
     assert changes["ok"] is True and "change_count" in changes
 
 
 def test_coverage_detects_omitted_field(tmp_path: Path) -> None:
     payload = tmp_path / "rfq.json"
-    payload.write_text(json.dumps([
-        {"id": 1, "number": "RFQ-1", "status": "open", "estimated_amount": "100.00",
-         "mystery_amount": "999.99"}
-    ]))
+    payload.write_text(
+        json.dumps(
+            [
+                {
+                    "id": 1,
+                    "number": "RFQ-1",
+                    "status": "open",
+                    "estimated_amount": "100.00",
+                    "mystery_amount": "999.99",
+                }
+            ]
+        )
+    )
     res = runner.invoke(
-        app, ["procore", "live", "financial", "coverage", "--project", "tropical",
-              "--endpoint", "rfqs", "--raw-payload", str(payload), "--json"]
+        app,
+        [
+            "procore",
+            "live",
+            "financial",
+            "coverage",
+            "--project",
+            "tropical",
+            "--endpoint",
+            "rfqs",
+            "--raw-payload",
+            str(payload),
+            "--json",
+        ],
     )
     assert res.exit_code == 0, res.output
     p = json.loads(res.output)

@@ -166,7 +166,9 @@ def _topic_review_decision(raw: Dict[str, Any]) -> Tuple[bool, str, bool]:
                 return True, f"{field_name}_contains:{fragment}", safety
 
     # Title scan.
-    subject_fragments = tuple(set(_GENERIC_REVIEW_SUBJECT_FRAGMENTS + _TOPIC_SAFETY_SUBJECT_FRAGMENTS))
+    subject_fragments = tuple(
+        set(_GENERIC_REVIEW_SUBJECT_FRAGMENTS + _TOPIC_SAFETY_SUBJECT_FRAGMENTS)
+    )
     title = raw.get("title") if isinstance(raw.get("title"), str) else raw.get("subject")
     if isinstance(title, str):
         lowered = title.lower()
@@ -177,9 +179,7 @@ def _topic_review_decision(raw: Dict[str, Any]) -> Tuple[bool, str, bool]:
 
     # Body / description scan.
     description = (
-        raw.get("description")
-        if isinstance(raw.get("description"), str)
-        else raw.get("body")
+        raw.get("description") if isinstance(raw.get("description"), str) else raw.get("body")
     )
     if isinstance(description, str):
         lowered = description.lower()
@@ -283,20 +283,13 @@ def normalize_meeting_topic(
     # the apply row links back to the parent meeting. The data-key name
     # "parent_meeting_id" is preserved for backward compatibility with downstream
     # consumers (Obsidian renderer, etc.).
-    if (
-        parent_procore_id is not None
-        and canonical_fields.get("parent_meeting_id") is None
-    ):
+    if parent_procore_id is not None and canonical_fields.get("parent_meeting_id") is None:
         canonical_fields["parent_meeting_id"] = parent_procore_id
 
     review_required, routing_reason, safety_route = _topic_review_decision(raw)
     excerpt = _title_excerpt(raw.get("title") or raw.get("subject"))
 
-    description = (
-        raw.get("description")
-        if "description" in raw
-        else raw.get("body")
-    )
+    description = raw.get("description") if "description" in raw else raw.get("body")
     description_summary = hash_summary(description) if description is not None else None
     flattened_actions = _action_items_text(raw)
     action_items_summary = (
@@ -419,7 +412,11 @@ def _attendees_summary(raw: Dict[str, Any]) -> Dict[str, Any]:
     for entry in raw_attendees:
         if not isinstance(entry, dict):
             continue
-        login_info = entry.get("login_information") if isinstance(entry.get("login_information"), dict) else {}
+        login_info = (
+            entry.get("login_information")
+            if isinstance(entry.get("login_information"), dict)
+            else {}
+        )
         login_email = login_info.get("login")
         item: Dict[str, Any] = {"hash_prefix": _hash_identifier(login_email)}
         status = entry.get("status")

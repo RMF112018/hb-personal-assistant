@@ -52,8 +52,10 @@ _ALLOWED_PREFIXES_BY_RULE: dict[str, tuple[str, ...]] = {
         "scripts/",
         "docs/",
     ),
-    "pem_block": ("src/hb_assistant/security/sensitive_scan.py",
-                  "tests/test_procore_no_writeback_proof.py"),
+    "pem_block": (
+        "src/hb_assistant/security/sensitive_scan.py",
+        "tests/test_procore_no_writeback_proof.py",
+    ),
     "pem_private_key": ("tests/test_procore_no_writeback_proof.py",),
 }
 

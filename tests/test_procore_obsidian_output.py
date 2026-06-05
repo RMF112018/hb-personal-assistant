@@ -36,10 +36,7 @@ pytestmark = pytest.mark.usefixtures("isolated_hb_pa_config")
 
 
 # Safe test data only. No credential values, no words matching credential patterns.
-LONG_EXCERPT_FILLER = (
-    "A" * 80
-    + "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
-)
+LONG_EXCERPT_FILLER = "A" * 80 + "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
 # Contains "injury" "claim" "personnel" "budget" "financial" "contractual" "delay" "notice"
 # to exercise keyword/category rules from procore_sensitive_routing_rules.yaml
 SENSITIVE_DAILY_FIELDS = {
@@ -47,7 +44,8 @@ SENSITIVE_DAILY_FIELDS = {
     "status": "complete",
     "weather": "clear",
     "manpower": "5 crew",
-    "delays": "Site delay noted. injury claim for personnel during work. budget impact. " + LONG_EXCERPT_FILLER,
+    "delays": "Site delay noted. injury claim for personnel during work. budget impact. "
+    + LONG_EXCERPT_FILLER,
     "notes": "Routine. " + "B" * 40,
 }
 SENSITIVE_FIN_FIELDS = {
@@ -125,7 +123,16 @@ def _create_temp_procore_db(tmp_path: Path) -> Path:
     # Safe run + error
     conn.execute(
         "INSERT OR REPLACE INTO procore_sync_runs (id, mode, pilot_project_key, company_id, started_at, completed_at, total_items_normalized, persisted_to_sqlite) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        ("run-001", "dry_run", "tropical", "5280", "2026-05-28T10:00:00Z", "2026-05-28T10:05:00Z", 12, 1),
+        (
+            "run-001",
+            "dry_run",
+            "tropical",
+            "5280",
+            "2026-05-28T10:00:00Z",
+            "2026-05-28T10:05:00Z",
+            12,
+            1,
+        ),
     )
     conn.execute(
         "INSERT INTO procore_sync_errors (run_id, error_code, message_redacted, http_status) VALUES (?, ?, ?, ?)",
@@ -139,7 +146,15 @@ def _create_temp_procore_db(tmp_path: Path) -> Path:
         (source_project_key, endpoint_id, entity_stable_key, category, review_required, canonical_fields_json, fetched_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        ("tropical", "ep-rfi", "rfi-007", "rfis", 0, json.dumps(NORMAL_RFI_FIELDS), "2026-05-28T09:00:00Z"),
+        (
+            "tropical",
+            "ep-rfi",
+            "rfi-007",
+            "rfis",
+            0,
+            json.dumps(NORMAL_RFI_FIELDS),
+            "2026-05-28T09:00:00Z",
+        ),
     )
 
     # Sensitive financial (category triggers + always review_sensitive in snapshot)
@@ -149,7 +164,15 @@ def _create_temp_procore_db(tmp_path: Path) -> Path:
         (source_project_key, endpoint_id, entity_stable_key, category, review_required, canonical_fields_json, fetched_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        ("tropical", "ep-inv", "fin-42", "invoices", 0, json.dumps(SENSITIVE_FIN_FIELDS), "2026-05-28T09:01:00Z"),
+        (
+            "tropical",
+            "ep-inv",
+            "fin-42",
+            "invoices",
+            0,
+            json.dumps(SENSITIVE_FIN_FIELDS),
+            "2026-05-28T09:01:00Z",
+        ),
     )
 
     # Sensitive daily-log with delays + injury/claim/personnel keywords (routes via rules)
@@ -159,7 +182,15 @@ def _create_temp_procore_db(tmp_path: Path) -> Path:
         (source_project_key, endpoint_id, entity_stable_key, category, review_required, canonical_fields_json, fetched_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        ("tropical", "ep-dlog", "dlog-01", "daily-logs", 0, json.dumps(SENSITIVE_DAILY_FIELDS), "2026-05-28T09:02:00Z"),
+        (
+            "tropical",
+            "ep-dlog",
+            "dlog-01",
+            "daily-logs",
+            0,
+            json.dumps(SENSITIVE_DAILY_FIELDS),
+            "2026-05-28T09:02:00Z",
+        ),
     )
 
     # Contractual sensitive (category)
@@ -169,7 +200,15 @@ def _create_temp_procore_db(tmp_path: Path) -> Path:
         (source_project_key, endpoint_id, entity_stable_key, category, review_required, canonical_fields_json, fetched_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        ("tropical", "ep-co", "co-99", "commitments", 0, json.dumps(SENSITIVE_CONTRACT_FIELDS), "2026-05-28T09:03:00Z"),
+        (
+            "tropical",
+            "ep-co",
+            "co-99",
+            "commitments",
+            0,
+            json.dumps(SENSITIVE_CONTRACT_FIELDS),
+            "2026-05-28T09:03:00Z",
+        ),
     )
 
     # Explicit review_required flag
@@ -179,7 +218,15 @@ def _create_temp_procore_db(tmp_path: Path) -> Path:
         (source_project_key, endpoint_id, entity_stable_key, category, review_required, canonical_fields_json, fetched_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        ("tropical", "ep-sub", "sub-5", "submittals", 1, json.dumps(SENSITIVE_REVIEW_FLAG_FIELDS), "2026-05-28T09:04:00Z"),
+        (
+            "tropical",
+            "ep-sub",
+            "sub-5",
+            "submittals",
+            1,
+            json.dumps(SENSITIVE_REVIEW_FLAG_FIELDS),
+            "2026-05-28T09:04:00Z",
+        ),
     )
 
     conn.commit()
@@ -212,7 +259,12 @@ def _safe_render_data_for(template: str) -> dict:
             "review_sensitive": False,
             "source": "procore",
         }
-    if template in ("rfi_register", "submittal_register", "daily_log_index", "observation_register"):
+    if template in (
+        "rfi_register",
+        "submittal_register",
+        "daily_log_index",
+        "observation_register",
+    ):
         return {
             **base,
             "rows": "| 1 | Example | open | 2026-06-01 | [42](https://ex.com/1) |",
@@ -284,7 +336,9 @@ def test_reset_procore_obsidian_caches_clears_template_cache() -> None:
         assert "{" in tpl or "type:" in tpl  # basic content
 
 
-@pytest.mark.parametrize("tpl_name", [n for n in PROCORE_TEMPLATE_NAMES if n != "review_required_note"])
+@pytest.mark.parametrize(
+    "tpl_name", [n for n in PROCORE_TEMPLATE_NAMES if n != "review_required_note"]
+)
 def test_template_determinism_all_8(tpl_name: str) -> None:
     reset_procore_obsidian_caches()
     r = ProcoreObsidianRenderer()
@@ -293,7 +347,9 @@ def test_template_determinism_all_8(tpl_name: str) -> None:
     out2 = r.render(tpl_name, data)
     assert out1 == out2
     # Check injected guardrails *values* (render .format substitutes; no literal var names post-render)
-    assert "projection_only" in out1 or "sqlite_authoritative" in out1 or "redaction_applied" in out1
+    assert (
+        "projection_only" in out1 or "sqlite_authoritative" in out1 or "redaction_applied" in out1
+    )
     # Reset and re-render identical
     reset_procore_obsidian_caches()
     out3 = r.render(tpl_name, data)
@@ -360,7 +416,9 @@ def test_routing_matrix_sensitive_vs_normal(tmp_path: Path) -> None:
     assert "guardrails" in fin
     review_items = r.get_collected_review_items()
     assert any("financial" in (i.classification_label or "") for i in review_items)
-    assert any("invoices" in (i.reason or "") or "financial" in (i.reason or "") for i in review_items)
+    assert any(
+        "invoices" in (i.reason or "") or "financial" in (i.reason or "") for i in review_items
+    )
 
     # Daily with injury/claim/personnel + delay routes exclusively to review
     r2 = ProcoreObsidianRenderer(db_path=db_path)
@@ -369,7 +427,10 @@ def test_routing_matrix_sensitive_vs_normal(tmp_path: Path) -> None:
     assert "injury" not in daily["rows"]  # keyword routed out
     assert "no non-sensitive" in daily["rows"].lower() or len(daily["rows"]) < 50
     rev_items = r2.get_collected_review_items()
-    assert any("injury" in (i.reason or "").lower() or "daily" in (i.reason or "").lower() for i in rev_items)
+    assert any(
+        "injury" in (i.reason or "").lower() or "daily" in (i.reason or "").lower()
+        for i in rev_items
+    )
 
     # review_required flag routes
     r3 = ProcoreObsidianRenderer(db_path=db_path)
@@ -377,14 +438,18 @@ def test_routing_matrix_sensitive_vs_normal(tmp_path: Path) -> None:
     sub = r3.build_submittal_register("tropical")
     assert "SUB-5" not in sub["rows"] and "sub-5" not in sub["rows"]
     assert any(
-        i.item_id.lower() == "sub-5" or "sub-5" in str(i).lower() for i in r3.get_collected_review_items()
+        i.item_id.lower() == "sub-5" or "sub-5" in str(i).lower()
+        for i in r3.get_collected_review_items()
     )
 
     # Contractual category routes (via fin snapshot which covers commitments cat)
     r4 = ProcoreObsidianRenderer(db_path=db_path)
     r4.clear_review_items()
     r4.build_financial_snapshot("tropical")
-    assert any("commitments" in (i.reason or "") or "contract" in (i.reason or "").lower() for i in r4.get_collected_review_items())
+    assert any(
+        "commitments" in (i.reason or "") or "contract" in (i.reason or "").lower()
+        for i in r4.get_collected_review_items()
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -419,7 +484,11 @@ def test_builders_return_structure_with_guardrails_and_ids(tmp_path: Path) -> No
 
     # Spot checks for links/IDs in registers
     rfi = r.build_rfi_register("tropical")
-    assert "[42]" in rfi["rows"] or "https://procore.example.com" in rfi["rows"] or "Source" in rfi["rows"]
+    assert (
+        "[42]" in rfi["rows"]
+        or "https://procore.example.com" in rfi["rows"]
+        or "Source" in rfi["rows"]
+    )
 
 
 def test_procore_obsidian_preview_dry_run_structure(tmp_path: Path) -> None:
@@ -448,7 +517,9 @@ def test_procore_obsidian_preview_dry_run_structure(tmp_path: Path) -> None:
     # Guardrails block in rendered samples
     for _k, v in rendered.items():
         if isinstance(v, str):
-            assert "sqlite_authoritative" in v or "redaction_applied" in v or "guardrails" in v.lower()
+            assert (
+                "sqlite_authoritative" in v or "redaction_applied" in v or "guardrails" in v.lower()
+            )
 
 
 def test_sync_receipt_includes_watermark_summary_fields(tmp_path: Path) -> None:
@@ -517,7 +588,9 @@ def test_procore_obsidian_preview_apply_path_mocked_writer(tmp_path: Path) -> No
         result = procore_obsidian_preview("tropical", dry_run=False, apply=True, db_path=db_path)
         assert result["mode"] == "apply"
         assert len(result["written_paths"]) > 0
-        assert any("procore" in str(p) or "review" in str(p).lower() for p in result["written_paths"])
+        assert any(
+            "procore" in str(p) or "review" in str(p).lower() for p in result["written_paths"]
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -566,7 +639,10 @@ def test_guardrails_present_everywhere_and_yaml_routing_only(tmp_path: Path) -> 
     ]:
         d = meth("tropical")
         g = d.get("guardrails", {})
-        assert g.get("review_routing") == "procore_sensitive_routing_rules.yaml + endpoint contract flags"
+        assert (
+            g.get("review_routing")
+            == "procore_sensitive_routing_rules.yaml + endpoint contract flags"
+        )
         sk = "s" + "ecrets_never"
         assert g.get(sk) == "true"
 
@@ -575,7 +651,9 @@ def test_guardrails_present_everywhere_and_yaml_routing_only(tmp_path: Path) -> 
     # Routing evidence: items have reasons citing yaml/contract (no LLM)
     for item in preview["review_items"]:
         reason = str(item.get("reason", ""))
-        assert "routed by" in reason or "contract" in reason.lower() or "procore-financial" in reason
+        assert (
+            "routed by" in reason or "contract" in reason.lower() or "procore-financial" in reason
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -591,98 +669,146 @@ def _seed_phase_04_register_rows(db_path: Path) -> None:
     rows = [
         # Benign observation
         (
-            "tropical", "ep-obs", "obs-1", "observations", 0,
-            json.dumps({
-                "number": "OBS-001",
-                "title": "Minor housekeeping",
-                "status": "open",
-                "type": "general",
-                "severity": "low",
-                "source_url": "https://procore.example.com/obs/1",
-            }),
+            "tropical",
+            "ep-obs",
+            "obs-1",
+            "observations",
+            0,
+            json.dumps(
+                {
+                    "number": "OBS-001",
+                    "title": "Minor housekeeping",
+                    "status": "open",
+                    "type": "general",
+                    "severity": "low",
+                    "source_url": "https://procore.example.com/obs/1",
+                }
+            ),
             "2026-05-28T09:10:00Z",
         ),
         # Safety-routed observation (safety_route flag from normalizer)
         (
-            "tropical", "ep-obs", "obs-2", "observations", 1,
-            json.dumps({
-                "number": "OBS-002",
-                "title": "Near miss inspection",
-                "status": "open",
-                "type": "near miss",
-                "safety_route": True,
-                "source_url": "https://procore.example.com/obs/2",
-            }),
+            "tropical",
+            "ep-obs",
+            "obs-2",
+            "observations",
+            1,
+            json.dumps(
+                {
+                    "number": "OBS-002",
+                    "title": "Near miss inspection",
+                    "status": "open",
+                    "type": "near miss",
+                    "safety_route": True,
+                    "source_url": "https://procore.example.com/obs/2",
+                }
+            ),
             "2026-05-28T09:11:00Z",
         ),
         # Benign meeting
         (
-            "tropical", "ep-meet", "meet-1", "meetings", 0,
-            json.dumps({
-                "number": "MTG-001",
-                "title": "Weekly OAC",
-                "status": "scheduled",
-                "start_time": "2026-06-01T10:00:00Z",
-                "location": "Trailer 1",
-                "source_url": "https://procore.example.com/meet/1",
-            }),
+            "tropical",
+            "ep-meet",
+            "meet-1",
+            "meetings",
+            0,
+            json.dumps(
+                {
+                    "number": "MTG-001",
+                    "title": "Weekly OAC",
+                    "status": "scheduled",
+                    "start_time": "2026-06-01T10:00:00Z",
+                    "location": "Trailer 1",
+                    "source_url": "https://procore.example.com/meet/1",
+                }
+            ),
             "2026-05-28T09:12:00Z",
         ),
         # Benign meeting topic
         (
-            "tropical", "ep-meet", "topic-1", "meeting_topics", 0,
-            json.dumps({
-                "title": "RFI status review",
-                "status": "open",
-                "parent_meeting_id": "meet-1",
-                "assignee_id": "user-1",
-                "due_date": "2026-06-15",
-                "source_url": "https://procore.example.com/topic/1",
-            }),
+            "tropical",
+            "ep-meet",
+            "topic-1",
+            "meeting_topics",
+            0,
+            json.dumps(
+                {
+                    "title": "RFI status review",
+                    "status": "open",
+                    "parent_meeting_id": "meet-1",
+                    "assignee_id": "user-1",
+                    "due_date": "2026-06-15",
+                    "source_url": "https://procore.example.com/topic/1",
+                }
+            ),
             "2026-05-28T09:13:00Z",
         ),
         # Safety-routed meeting topic (settlement keyword from new YAML rule)
         (
-            "tropical", "ep-meet", "topic-2", "meeting_topics", 1,
-            json.dumps({
-                "title": "settlement discussion",
-                "status": "open",
-                "parent_meeting_id": "meet-1",
-                "source_url": "https://procore.example.com/topic/2",
-            }),
+            "tropical",
+            "ep-meet",
+            "topic-2",
+            "meeting_topics",
+            1,
+            json.dumps(
+                {
+                    "title": "settlement discussion",
+                    "status": "open",
+                    "parent_meeting_id": "meet-1",
+                    "source_url": "https://procore.example.com/topic/2",
+                }
+            ),
             "2026-05-28T09:14:00Z",
         ),
         # Daily log selected section (counts) — benign, should render
         (
-            "tropical", "ep-dlog-counts", "counts-1", "daily_log_counts", 0,
-            json.dumps({
-                "log_date": "2026-05-27",
-                "bucket": "selected",
-                "trade": "general",
-                "count": 12,
-                "source_url": "https://procore.example.com/dlog/counts/1",
-            }),
+            "tropical",
+            "ep-dlog-counts",
+            "counts-1",
+            "daily_log_counts",
+            0,
+            json.dumps(
+                {
+                    "log_date": "2026-05-27",
+                    "bucket": "selected",
+                    "trade": "general",
+                    "count": 12,
+                    "source_url": "https://procore.example.com/dlog/counts/1",
+                }
+            ),
             "2026-05-28T09:15:00Z",
         ),
         # Daily log review-only section (notes) — review_required=1, body_summary present
         (
-            "tropical", "ep-dlog-notes", "notes-1", "daily_log_notes", 1,
-            json.dumps({
-                "log_date": "2026-05-27",
-                "bucket": "review_only",
-                "body_summary": {"type": "string", "length": 42, "hash_prefix": "deadbeefcafe"},
-            }),
+            "tropical",
+            "ep-dlog-notes",
+            "notes-1",
+            "daily_log_notes",
+            1,
+            json.dumps(
+                {
+                    "log_date": "2026-05-27",
+                    "bucket": "review_only",
+                    "body_summary": {"type": "string", "length": 42, "hash_prefix": "deadbeefcafe"},
+                }
+            ),
             "2026-05-28T09:16:00Z",
         ),
         # Daily log routed-to-review section (accident_review) — must route to review
         (
-            "tropical", "ep-dlog-accident", "accident-1", "daily_log_accident_review", 1,
-            json.dumps({
-                "log_date": "2026-05-27",
-                "bucket": "routed_to_review",
-                "safety_route": True,
-                "body_summary": {"type": "string", "length": 88, "hash_prefix": "0123456789ab"},
-            }),
+            "tropical",
+            "ep-dlog-accident",
+            "accident-1",
+            "daily_log_accident_review",
+            1,
+            json.dumps(
+                {
+                    "log_date": "2026-05-27",
+                    "bucket": "routed_to_review",
+                    "safety_route": True,
+                    "body_summary": {"type": "string", "length": 88, "hash_prefix": "0123456789ab"},
+                }
+            ),
             "2026-05-28T09:17:00Z",
         ),
     ]
@@ -728,7 +854,9 @@ def test_meeting_register_builder_renders_topics_table(tmp_path: Path) -> None:
     # Settlement-keyword topic routed out
     assert "settlement" not in out["topic_rows"]
     review = r.get_collected_review_items()
-    assert any("settlement" in (i.name or "").lower() or "topic-2" in (i.item_id or "") for i in review)
+    assert any(
+        "settlement" in (i.name or "").lower() or "topic-2" in (i.item_id or "") for i in review
+    )
 
 
 def test_daily_log_index_section_aware(tmp_path: Path) -> None:
@@ -782,14 +910,20 @@ def test_no_raw_text_in_new_registers(tmp_path: Path) -> None:
         "review_required, canonical_fields_json, fetched_at) "
         "VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
-            "tropical", "ep-obs", "obs-leak", "observations", 0,
-            json.dumps({
-                "number": "OBS-LEAK",
-                "title": blob,
-                "status": "open",
-                "type": "general",
-                "source_url": "https://procore.example.com/obs/leak",
-            }),
+            "tropical",
+            "ep-obs",
+            "obs-leak",
+            "observations",
+            0,
+            json.dumps(
+                {
+                    "number": "OBS-LEAK",
+                    "title": blob,
+                    "status": "open",
+                    "type": "general",
+                    "source_url": "https://procore.example.com/obs/leak",
+                }
+            ),
             "2026-05-28T09:18:00Z",
         ),
     )
@@ -806,6 +940,7 @@ def test_no_raw_text_in_new_registers(tmp_path: Path) -> None:
 
 def test_observation_register_marker_bounded_idempotent(tmp_path: Path) -> None:
     from hb_assistant.procore.obsidian import _write_procore_artifact
+
     target_dir = tmp_path / "vault"
     target = target_dir / "01_Projects" / "tropical.procore-observation-register.md"
     rendered_v1 = "# Observation Register — tropical\n\n| OBS-001 | a | b |\n"
@@ -824,10 +959,13 @@ def test_observation_register_marker_bounded_idempotent(tmp_path: Path) -> None:
 
 def test_meeting_register_marker_bounded_idempotent(tmp_path: Path) -> None:
     from hb_assistant.procore.obsidian import _write_procore_artifact
+
     target_dir = tmp_path / "vault"
     target = target_dir / "01_Projects" / "tropical.procore-meeting-register.md"
     rendered_v1 = "# Meeting Register — tropical\n\n## Meetings\n\n| MTG-001 | a |\n"
-    rendered_v2 = "# Meeting Register — tropical\n\n## Meetings\n\n| MTG-001 | a |\n| MTG-002 | b |\n"
+    rendered_v2 = (
+        "# Meeting Register — tropical\n\n## Meetings\n\n| MTG-001 | a |\n| MTG-002 | b |\n"
+    )
     _write_procore_artifact(target_dir, target.name, rendered_v1, "meeting_register")
     _write_procore_artifact(target_dir, target.name, rendered_v1, "meeting_register")
     _write_procore_artifact(target_dir, target.name, rendered_v2, "meeting_register")

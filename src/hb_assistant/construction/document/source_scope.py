@@ -193,9 +193,7 @@ def evaluate_source_scope_compliance(
     }
 
 
-def non_compliant_source_keys(
-    registry: SourceRegistry, policy: DocumentSourcePolicy
-) -> set[str]:
+def non_compliant_source_keys(registry: SourceRegistry, policy: DocumentSourcePolicy) -> set[str]:
     """Return the set of enabled source keys blocked from document-card promotion.
 
     The blocking signal consumed by the Phase 07C Prompt 04 document-card

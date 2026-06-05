@@ -23,9 +23,23 @@ runner = CliRunner()
 
 # field names / tokens that must NEVER appear in a retrieval-safe manifest.
 _FORBIDDEN = (
-    "canonical_json", "old_value_redacted", "new_value_redacted", "old_value_hash",
-    "new_value_hash", "body", "description", "notes", "remarks", "raw_body",
-    "bearer ", "authorization", "refresh_token", "client_secret", "-----begin", "?sv=", "sig=",
+    "canonical_json",
+    "old_value_redacted",
+    "new_value_redacted",
+    "old_value_hash",
+    "new_value_hash",
+    "body",
+    "description",
+    "notes",
+    "remarks",
+    "raw_body",
+    "bearer ",
+    "authorization",
+    "refresh_token",
+    "client_secret",
+    "-----begin",
+    "?sv=",
+    "sig=",
 )
 
 
@@ -36,8 +50,9 @@ def _db() -> Path:
     return path
 
 
-def _record(db: Path, *, endpoint_id: str, record_id: str, title: str = "",
-            review: bool = False) -> str:
+def _record(
+    db: Path, *, endpoint_id: str, record_id: str, title: str = "", review: bool = False
+) -> str:
     conn = get_connection(str(db))
     conn.execute("PRAGMA foreign_keys=OFF")  # test seed: skip the sync-run FK (throwaway DB)
     conn.execute(
@@ -46,8 +61,22 @@ def _record(db: Path, *, endpoint_id: str, record_id: str, title: str = "",
            updated_at_utc, canonical_json_redacted, review_required, first_seen_at_utc,
            last_seen_at_utc, last_sync_run_id, raw_body_persisted)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)""",
-        ("tropical", "P1", endpoint_id, "", record_id, f"N-{record_id}", title, "open", _NOW,
-         '{"description": "RAWFREETEXTLEAK"}', 1 if review else 0, _NOW, _NOW, "run-1"),
+        (
+            "tropical",
+            "P1",
+            endpoint_id,
+            "",
+            record_id,
+            f"N-{record_id}",
+            title,
+            "open",
+            _NOW,
+            '{"description": "RAWFREETEXTLEAK"}',
+            1 if review else 0,
+            _NOW,
+            _NOW,
+            "run-1",
+        ),
     )
     conn.commit()
     return "|".join(["tropical", endpoint_id, "", record_id])
@@ -60,20 +89,37 @@ def _amount(db: Path, *, record_key: str, endpoint_id: str, name: str, value: st
            endpoint_id, amount_name, amount_value, currency_iso_code, source_field_path,
            created_at_utc)
            VALUES (?,?,?,?,?,?,?,?,?)""",
-        (f"af-{record_key}-{name}", "tropical", record_key, endpoint_id, name, value, "USD", name,
-         _NOW),
+        (
+            f"af-{record_key}-{name}",
+            "tropical",
+            record_key,
+            endpoint_id,
+            name,
+            value,
+            "USD",
+            name,
+            _NOW,
+        ),
     )
     conn.commit()
 
 
 def _seed(db: Path) -> None:
     r1 = _record(db, endpoint_id="rfis", record_id="1", title="rfi-one")
-    emit_action_signal(project_key="tropical", record_key=r1, endpoint_id="rfis",
-                       signal_type="rfi_overdue", importance="high", due_at_utc=_PAST,
-                       now_utc=_NOW, db_path=db)
+    emit_action_signal(
+        project_key="tropical",
+        record_key=r1,
+        endpoint_id="rfis",
+        signal_type="rfi_overdue",
+        importance="high",
+        due_at_utc=_PAST,
+        now_utc=_NOW,
+        db_path=db,
+    )
     c1 = _record(db, endpoint_id="commitment-contracts", record_id="55", title="sc-1")
-    _amount(db, record_key=c1, endpoint_id="commitment-contracts", name="grand_total",
-            value="250000.00")
+    _amount(
+        db, record_key=c1, endpoint_id="commitment-contracts", name="grand_total", value="250000.00"
+    )
     # a review-flagged record must be blocked (never emitted as a fact)
     _record(db, endpoint_id="rfis", record_id="9", title=_SECRET_TITLE, review=True)
 
@@ -88,7 +134,7 @@ def test_manifest_families_and_counts() -> None:
     out = _m(db)
     man = out["manifest"]
     bt = man["by_fact_type"]
-    assert bt["record"] == 2          # rfi-1 + commitment (review-flagged excluded)
+    assert bt["record"] == 2  # rfi-1 + commitment (review-flagged excluded)
     assert bt["action_signal"] == 1
     assert bt["amount"] == 1
     assert man["total_facts"] == sum(bt.values())
@@ -166,8 +212,20 @@ def _patch_conn(monkeypatch: pytest.MonkeyPatch, db: Path) -> None:
     def _get(_: object = None) -> sqlite3.Connection:
         return real(str(db))
 
-    for mod in (conn_mod, mig_mod, enr_mod, fin_mod, hist_mod, aq_mod, ce_mod, se_mod, ph_mod,
-                rq_mod, com_mod, op_mod):
+    for mod in (
+        conn_mod,
+        mig_mod,
+        enr_mod,
+        fin_mod,
+        hist_mod,
+        aq_mod,
+        ce_mod,
+        se_mod,
+        ph_mod,
+        rq_mod,
+        com_mod,
+        op_mod,
+    ):
         monkeypatch.setattr(mod, "get_connection", _get, raising=False)
 
 
@@ -177,13 +235,24 @@ def test_cli_json_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     _seed(db)
     _patch_conn(monkeypatch, db)
     res = runner.invoke(
-        app, ["procore", "live", "retrieval-ready", "--project", "tropical", "--json"],
+        app,
+        ["procore", "live", "retrieval-ready", "--project", "tropical", "--json"],
         catch_exceptions=False,
     )
     assert res.exit_code == 0, res.output
     payload = json.loads(res.output)
-    for key in ("command", "ok", "phase", "retrieval_ready", "reasons", "corpus", "manifest",
-                "note", "determinations_made", "guardrails"):
+    for key in (
+        "command",
+        "ok",
+        "phase",
+        "retrieval_ready",
+        "reasons",
+        "corpus",
+        "manifest",
+        "note",
+        "determinations_made",
+        "guardrails",
+    ):
         assert key in payload, f"missing {key}"
     assert payload["manifest"]["total_facts"] >= 1
     assert payload["determinations_made"] is False

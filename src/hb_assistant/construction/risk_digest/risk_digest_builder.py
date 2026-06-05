@@ -52,18 +52,37 @@ _AGING_THRESHOLD_DAYS = 31
 
 # Keyword → review_required_category map (substring match on the indicator type).
 _CATEGORY_KEYWORDS: tuple[tuple[str, str], ...] = (
-    ("safety", "safety"), ("inspection", "safety"), ("incident", "safety"),
-    ("injury", "safety"), ("deficien", "safety"),
-    ("claim", "claim"), ("dispute", "claim"), ("lien", "claim"), ("backcharge", "claim"),
+    ("safety", "safety"),
+    ("inspection", "safety"),
+    ("incident", "safety"),
+    ("injury", "safety"),
+    ("deficien", "safety"),
+    ("claim", "claim"),
+    ("dispute", "claim"),
+    ("lien", "claim"),
+    ("backcharge", "claim"),
     ("legal", "legal"),
-    ("invoice", "financial"), ("payment", "financial"), ("budget", "financial"),
-    ("billing", "financial"), ("retainage", "financial"), ("financial", "financial"),
-    ("unpaid", "financial"), ("cost", "cost_impact"),
-    ("schedule", "schedule_impact"), ("overdue", "schedule_impact"), ("delay", "schedule_impact"),
-    ("aging", "schedule_impact"), ("due", "schedule_impact"),
-    ("commitment", "contractual"), ("contract", "contractual"), ("change_order", "contractual"),
-    ("change_event", "contractual"), ("unexecuted", "contractual"), ("notice", "contractual"),
-    ("personnel", "personnel"), ("assignee", "personnel"),
+    ("invoice", "financial"),
+    ("payment", "financial"),
+    ("budget", "financial"),
+    ("billing", "financial"),
+    ("retainage", "financial"),
+    ("financial", "financial"),
+    ("unpaid", "financial"),
+    ("cost", "cost_impact"),
+    ("schedule", "schedule_impact"),
+    ("overdue", "schedule_impact"),
+    ("delay", "schedule_impact"),
+    ("aging", "schedule_impact"),
+    ("due", "schedule_impact"),
+    ("commitment", "contractual"),
+    ("contract", "contractual"),
+    ("change_order", "contractual"),
+    ("change_event", "contractual"),
+    ("unexecuted", "contractual"),
+    ("notice", "contractual"),
+    ("personnel", "personnel"),
+    ("assignee", "personnel"),
 )
 
 
@@ -141,7 +160,8 @@ class RiskDigestBuilder:
                     review_required_total += 1
                 if not dry_run:
                     self._store.upsert_project_risk_digest_item(
-                        risk_digest_id=item["risk_digest_id"], project_key=project_key,
+                        risk_digest_id=item["risk_digest_id"],
+                        project_key=project_key,
                         risk_indicator_type=item["risk_indicator_type"],
                         risk_source_class=item["risk_source_class"],
                         summary_redacted=item["summary_redacted"],
@@ -228,8 +248,13 @@ class RiskDigestBuilder:
                 groups[stype].append(str(endpoint))
         return [
             self._make_item(
-                project_key, "source_stated", stype, count=len(refs) if refs else 1,
-                confidence_class="deterministic", evidence_trail_id=None, sample_refs=refs,
+                project_key,
+                "source_stated",
+                stype,
+                count=len(refs) if refs else 1,
+                confidence_class="deterministic",
+                evidence_trail_id=None,
+                sample_refs=refs,
             )
             for stype, refs in sorted(groups.items())
         ]
@@ -237,7 +262,9 @@ class RiskDigestBuilder:
     def _inferred_items(self, project_key: str) -> list[dict[str, Any]]:
         """Risk-bearing issue families grouped into inferred risk indicators."""
         buckets: dict[str, dict[str, Any]] = {}
-        for it in self._store.list_project_issue_history_items(project_key=project_key, limit=100000):
+        for it in self._store.list_project_issue_history_items(
+            project_key=project_key, limit=100000
+        ):
             status = str(it.get("status") or "")
             aged = int(it.get("age_days") or 0) >= _AGING_THRESHOLD_DAYS
             if status in _RISK_ISSUE_STATUSES:
@@ -256,9 +283,14 @@ class RiskDigestBuilder:
             b["review"] = b["review"] or bool(it.get("review_required"))
         return [
             self._make_item(
-                project_key, "inferred_candidate", indicator, count=b["count"],
-                confidence_class="strong_heuristic", evidence_trail_id=b["trail"],
-                sample_refs=b["refs"], always_review=b["review"],
+                project_key,
+                "inferred_candidate",
+                indicator,
+                count=b["count"],
+                confidence_class="strong_heuristic",
+                evidence_trail_id=b["trail"],
+                sample_refs=b["refs"],
+                always_review=b["review"],
             )
             for indicator, b in sorted(buckets.items())
         ]
@@ -288,17 +320,27 @@ class RiskDigestBuilder:
                 b["trail"] = b["trail"] or trail
         items = [
             self._make_item(
-                project_key, "review_required", indicator, count=b["count"],
-                confidence_class="weak_heuristic", evidence_trail_id=b["trail"],
-                sample_refs=[], always_review=True,
+                project_key,
+                "review_required",
+                indicator,
+                count=b["count"],
+                confidence_class="weak_heuristic",
+                evidence_trail_id=b["trail"],
+                sample_refs=[],
+                always_review=True,
             )
             for indicator, b in sorted(review.items())
         ]
         items += [
             self._make_item(
-                project_key, "model_proposed", indicator, count=b["count"],
-                confidence_class="model_proposed", evidence_trail_id=b["trail"],
-                sample_refs=[], always_review=True,
+                project_key,
+                "model_proposed",
+                indicator,
+                count=b["count"],
+                confidence_class="model_proposed",
+                evidence_trail_id=b["trail"],
+                sample_refs=[],
+                always_review=True,
             )
             for indicator, b in sorted(model.items())
         ]

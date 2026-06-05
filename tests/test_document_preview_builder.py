@@ -27,30 +27,59 @@ def _seed_card(
     relationship: bool = False,
 ) -> None:
     store.upsert_inventory_item(
-        source_key="sp", drive_id="d", item_id=key, name="raw_" + key, web_url="https://x/" + key,
-        parent_path="/General", size_bytes=1024, is_folder=False, last_modified=None, etag="e",
+        source_key="sp",
+        drive_id="d",
+        item_id=key,
+        name="raw_" + key,
+        web_url="https://x/" + key,
+        parent_path="/General",
+        size_bytes=1024,
+        is_folder=False,
+        last_modified=None,
+        etag="e",
     )
     store.upsert_document_card(
-        card_id=key, document_card_id=key, source_id="sp", drive_item_id=key,
-        file_extension="pdf", project_key=project_key, document_type="unknown",
-        review_required=review_required, size_class="small",
+        card_id=key,
+        document_card_id=key,
+        source_id="sp",
+        drive_item_id=key,
+        file_extension="pdf",
+        project_key=project_key,
+        document_type="unknown",
+        review_required=review_required,
+        size_class="small",
     )
     store.upsert_document_classification_candidate(
-        candidate_id="clf_" + key, document_card_id=key, document_type=document_type,
-        classifier_name="deterministic_v1", signal_class="deterministic", confidence=0.9,
+        candidate_id="clf_" + key,
+        document_card_id=key,
+        document_type=document_type,
+        classifier_name="deterministic_v1",
+        signal_class="deterministic",
+        confidence=0.9,
         confidence_class="deterministic" if document_type != "unknown_needs_review" else "unknown",
         review_required=review_required,
     )
     store.upsert_document_project_match_candidate(
-        candidate_id="pm_" + key, document_card_id=key, project_key=project_key,
-        candidate_type="deterministic", confidence=0.95, confidence_class="deterministic",
-        deterministic=True, review_required=False,
+        candidate_id="pm_" + key,
+        document_card_id=key,
+        project_key=project_key,
+        candidate_type="deterministic",
+        confidence=0.95,
+        confidence_class="deterministic",
+        deterministic=True,
+        review_required=False,
     )
     if relationship:
         store.upsert_document_relationship_candidate(
-            candidate_id="rel_" + key, document_card_id=key, target_system="procore",
-            target_record_type="rfi", target_record_key_hash="hh", relationship_type="x",
-            candidate_type="heuristic", confidence=0.55, confidence_class="moderate_heuristic",
+            candidate_id="rel_" + key,
+            document_card_id=key,
+            target_system="procore",
+            target_record_type="rfi",
+            target_record_key_hash="hh",
+            relationship_type="x",
+            candidate_type="heuristic",
+            confidence=0.55,
+            confidence_class="moderate_heuristic",
             review_required=True,
         )
 
@@ -58,8 +87,9 @@ def _seed_card(
 def _seed(store: ConstructionStore) -> None:
     # alpha: 4/5 classified -> 0.8 -> high_heuristic
     for i in range(4):
-        _seed_card(store, key=f"a{i}", project_key="alpha", document_type="rfi",
-                   relationship=(i == 0))
+        _seed_card(
+            store, key=f"a{i}", project_key="alpha", document_type="rfi", relationship=(i == 0)
+        )
     _seed_card(store, key="a4", project_key="alpha", document_type="unknown_needs_review")
     # beta: 1/5 classified -> 0.2 -> weak_heuristic
     _seed_card(store, key="b0", project_key="beta", document_type="contract")
@@ -70,9 +100,7 @@ def _seed(store: ConstructionStore) -> None:
 def _previews(db: str) -> dict[str, sqlite3.Row]:
     conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        "SELECT * FROM construction_document_intelligence_previews"
-    ).fetchall()
+    rows = conn.execute("SELECT * FROM construction_document_intelligence_previews").fetchall()
     return {r["project_key"]: r for r in rows}
 
 

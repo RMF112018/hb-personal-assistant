@@ -30,7 +30,9 @@ def _redirect_db(monkeypatch: pytest.MonkeyPatch, db_path: str) -> None:
     monkeypatch.setattr(mig_mod, "get_connection", _get)
 
 
-def test_index_obsidian_dry_run(runner: CliRunner, tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_index_obsidian_dry_run(
+    runner: CliRunner, tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _redirect_db(monkeypatch, str(tmp_path / "cli.sqlite"))
     result = runner.invoke(app, ["second-brain", "index", "obsidian", "--dry-run", "--json"])
     assert result.exit_code == 0, result.output
@@ -56,7 +58,9 @@ def test_index_obsidian_mutual_exclusion(runner: CliRunner) -> None:
     assert json.loads(result.output)["error"] == "mutually_exclusive"
 
 
-def test_index_obsidian_no_raw_content(runner: CliRunner, tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_index_obsidian_no_raw_content(
+    runner: CliRunner, tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _redirect_db(monkeypatch, str(tmp_path / "cli.sqlite"))
     out = runner.invoke(app, ["second-brain", "index", "obsidian", "--dry-run", "--json"]).output
     for forbidden in ("raw_body", "signed_url", "download_url", "http://"):

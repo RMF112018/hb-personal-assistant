@@ -60,7 +60,9 @@ def test_activity_hierarchy_schedule_and_resource_edges() -> None:
     project_activity(_ACTIVITY, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db)
     c = _conn(db)
     edges = {r["edge_type"]: r for r in c.execute("SELECT * FROM procore_record_edges")}
-    assert {"in_schedule", "child_of_activity", "assigned_company", "resource", "category"} <= set(edges)
+    assert {"in_schedule", "child_of_activity", "assigned_company", "resource", "category"} <= set(
+        edges
+    )
     assert edges["in_schedule"]["to_record_key"] == "tropical|schedules||15"
     assert edges["child_of_activity"]["to_record_key"] == "tropical|activities||418600"
     company = c.execute(
@@ -75,12 +77,20 @@ def test_activity_risk_signals_and_classification() -> None:
     db = _db()
     project_activity(_ACTIVITY, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db)
     sigs = _signals(db)
-    assert {"activity_critical", "activity_zero_float", "activity_deadline_variance",
-            "activity_constrained"} <= sigs
+    assert {
+        "activity_critical",
+        "activity_zero_float",
+        "activity_deadline_variance",
+        "activity_constrained",
+    } <= sigs
     # primary signal carries float band + variance class metadata
-    row = _conn(db).execute(
-        "SELECT metadata_json FROM procore_action_signals WHERE metadata_json IS NOT NULL LIMIT 1"
-    ).fetchone()
+    row = (
+        _conn(db)
+        .execute(
+            "SELECT metadata_json FROM procore_action_signals WHERE metadata_json IS NOT NULL LIMIT 1"
+        )
+        .fetchone()
+    )
     meta = json.loads(row["metadata_json"])
     assert meta["float_band"] == "zero_or_negative"
     assert meta["deadline_variance_class"] == "late"
@@ -88,8 +98,14 @@ def test_activity_risk_signals_and_classification() -> None:
 
 def test_activity_non_risky_emits_no_signal() -> None:
     db = _db()
-    calm = {"activity_id": "9", "schedule_id": "15", "is_critical": False, "total_float": 12,
-            "deadline_variance": 2, "constraint_type": "ASAP"}
+    calm = {
+        "activity_id": "9",
+        "schedule_id": "15",
+        "is_critical": False,
+        "total_float": 12,
+        "deadline_variance": 2,
+        "constraint_type": "ASAP",
+    }
     out = project_activity(calm, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db)
     assert out["projected"] is True
     assert _signals(db) == set()
@@ -103,8 +119,18 @@ def test_activity_projection_idempotent() -> None:
     project_activity(_ACTIVITY, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db)
     project_activity(_ACTIVITY, project_key="tropical", sync_run_id="r2", now_utc=_NOW, db_path=db)
     c = _conn(db)
-    assert c.execute("SELECT COUNT(*) FROM procore_record_edges WHERE edge_type='resource'").fetchone()[0] == 1
-    assert c.execute("SELECT COUNT(*) FROM procore_action_signals WHERE signal_type='activity_critical'").fetchone()[0] == 1
+    assert (
+        c.execute(
+            "SELECT COUNT(*) FROM procore_record_edges WHERE edge_type='resource'"
+        ).fetchone()[0]
+        == 1
+    )
+    assert (
+        c.execute(
+            "SELECT COUNT(*) FROM procore_action_signals WHERE signal_type='activity_critical'"
+        ).fetchone()[0]
+        == 1
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -128,17 +154,27 @@ class _FakeTransport:
         self.payload = payload
         self.calls: List[str] = []
 
-    def __call__(self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]) -> _FakeResponse:
+    def __call__(
+        self, method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]]
+    ) -> _FakeResponse:
         self.calls.append(method)
         return _FakeResponse(self.payload if len(self.calls) == 1 else {"data": []})
 
 
 def _schedule_payload(data_date: str) -> dict:
-    return {"data": [{
-        "schedule_id": "15", "project_id": "12345", "company_id": "5280",
-        "schedule_name": "Main Project Schedule", "is_active": True,
-        "data_date": data_date, "updated_at": data_date,
-    }]}
+    return {
+        "data": [
+            {
+                "schedule_id": "15",
+                "project_id": "12345",
+                "company_id": "5280",
+                "schedule_name": "Main Project Schedule",
+                "is_active": True,
+                "data_date": data_date,
+                "updated_at": data_date,
+            }
+        ]
+    }
 
 
 def test_schedule_snapshot_history_across_data_dates(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -148,8 +184,14 @@ def test_schedule_snapshot_history_across_data_dates(monkeypatch: pytest.MonkeyP
 
     def _sync(data_date: str) -> None:
         run_live_sync(
-            project_key="tropical", endpoint="schedules", apply=True, sqlite_only=True,
-            confirm_live_get=True, max_pages=1, max_items=5, db_path=db,
+            project_key="tropical",
+            endpoint="schedules",
+            apply=True,
+            sqlite_only=True,
+            confirm_live_get=True,
+            max_pages=1,
+            max_items=5,
+            db_path=db,
             transport=_FakeTransport(_schedule_payload(data_date)),
         )
 

@@ -35,7 +35,9 @@ def test_eligibility_matrix():
 def test_relevance_scoring_matrix():
     scorer = FileRelevanceScorer()
     # high value: bobby mention + name + reasonable size
-    item = DriveItem(id="r1", name="Q3 Report.pdf", size=2_000_000, is_file=True, source_record_id=42)
+    item = DriveItem(
+        id="r1", name="Q3 Report.pdf", size=2_000_000, is_file=True, source_record_id=42
+    )
     rel = scorer.score(item, parent_classifications=["bobby_mention", "possible_action_or_waiting"])
     assert isinstance(rel, RelevanceScore)
     assert rel.score > 0.5
@@ -64,7 +66,12 @@ def test_approval_gate():
     assert ok is True
     assert reason == "auto_approved"
 
-    elig_big = ER(eligible=False, reason="manual_approval_required", requires_manual_approval=True, size_mb=350)
+    elig_big = ER(
+        eligible=False,
+        reason="manual_approval_required",
+        requires_manual_approval=True,
+        size_mb=350,
+    )
     nok, nreason = gate.is_approved(elig_big, source_record_id=999)
     assert nok is False
     assert "manual" in nreason
@@ -128,8 +135,12 @@ def test_service_ingest_items_full_pipeline_dry_and_links(tmp_path: Path):
     svc = FileIngestionService(drive_client=mock_drive, store=store)
 
     # create real source_records (FK requirement for files/parser_outputs)
-    sid1 = store.upsert_source_record(source_type="email", source_key="test:2001", source_system="m365")
-    sid2 = store.upsert_source_record(source_type="email", source_key="test:2002", source_system="m365")
+    sid1 = store.upsert_source_record(
+        source_type="email", source_key="test:2001", source_system="m365"
+    )
+    sid2 = store.upsert_source_record(
+        source_type="email", source_key="test:2002", source_system="m365"
+    )
 
     items = [
         DriveItem(id="i1", name="Report.pdf", size=123456, is_file=True, source_record_id=sid1),
@@ -151,8 +162,16 @@ def test_service_ingest_items_full_pipeline_dry_and_links(tmp_path: Path):
         fake = tmp_path / "fake.bin"
         fake.write_text("bounded excerpt here for test " * 10)
         mock_dl.download.return_value = fake
-        mock_pr.parse.return_value = {"text_excerpt": "bounded excerpt here for test", "char_count": 30}
-        res2 = svc.ingest_items([items[0]], dry_run=False, approved_source_ids={sid1}, classifications_by_source=classifs)
+        mock_pr.parse.return_value = {
+            "text_excerpt": "bounded excerpt here for test",
+            "char_count": 30,
+        }
+        res2 = svc.ingest_items(
+            [items[0]],
+            dry_run=False,
+            approved_source_ids={sid1},
+            classifications_by_source=classifs,
+        )
         assert res2[0]["decision"] == "ingested"
         assert "excerpt_preview" in res2[0]
         assert "sha256" in res2[0]
@@ -167,7 +186,9 @@ def test_service_ingest_items_full_pipeline_dry_and_links(tmp_path: Path):
 def test_service_blocks_missing_provenance_and_never_persists(tmp_path: Path):
     store = Store(db_path=str(tmp_path / "prov.sqlite"))
     svc = FileIngestionService(drive_client=MagicMock(), store=store)
-    item = DriveItem(id="f-no-sid", name="NoSid.pdf", size=1024, is_file=True, source_record_id=None)
+    item = DriveItem(
+        id="f-no-sid", name="NoSid.pdf", size=1024, is_file=True, source_record_id=None
+    )
 
     res = svc.ingest_items([item], dry_run=False)
     assert res[0]["decision"] == "blocked_missing_provenance"
@@ -177,7 +198,11 @@ def test_service_blocks_missing_provenance_and_never_persists(tmp_path: Path):
 def test_service_blocks_incomplete_graph_metadata(tmp_path: Path):
     store = Store(db_path=str(tmp_path / "meta.sqlite"))
     svc = FileIngestionService(drive_client=MagicMock(), store=store)
-    sid = store.upsert_source_record(source_type="graph:drive-item", source_key="graph:drive-item:test", source_system="microsoft-graph")
+    sid = store.upsert_source_record(
+        source_type="graph:drive-item",
+        source_key="graph:drive-item:test",
+        source_system="microsoft-graph",
+    )
     item = DriveItem(id="", name=None, size=None, is_file=True, source_record_id=sid)
 
     res = svc.ingest_items([item], dry_run=False)
@@ -188,10 +213,14 @@ def test_service_blocks_incomplete_graph_metadata(tmp_path: Path):
 def test_dry_run_no_download_or_parse(tmp_path: Path):
     store = Store(db_path=str(tmp_path / "dry.sqlite"))
     svc = FileIngestionService(drive_client=MagicMock(), store=store)
-    sid = store.upsert_source_record(source_type="email", source_key="test:dry", source_system="m365")
+    sid = store.upsert_source_record(
+        source_type="email", source_key="test:dry", source_system="m365"
+    )
     item = DriveItem(id="dry-1", name="DryRun.pdf", size=1234, is_file=True, source_record_id=sid)
     with patch.object(svc, "downloader") as mock_dl, patch.object(svc, "parser") as mock_pr:
-        res = svc.ingest_items([item], dry_run=True, classifications_by_source={sid: ["bobby_mention"]})
+        res = svc.ingest_items(
+            [item], dry_run=True, classifications_by_source={sid: ["bobby_mention"]}
+        )
         assert res[0]["decision"] == "would_ingest"
         mock_dl.download.assert_not_called()
         mock_pr.parse.assert_not_called()
@@ -201,14 +230,22 @@ def test_dry_run_no_download_or_parse(tmp_path: Path):
 def test_source_link_failure_fails_closed(tmp_path: Path):
     store = Store(db_path=str(tmp_path / "link.sqlite"))
     svc = FileIngestionService(drive_client=MagicMock(), store=store)
-    sid = store.upsert_source_record(source_type="email", source_key="test:link", source_system="m365")
+    sid = store.upsert_source_record(
+        source_type="email", source_key="test:link", source_system="m365"
+    )
     item = DriveItem(id="i-link", name="Link.pdf", size=2048, is_file=True, source_record_id=sid)
-    with patch.object(svc, "downloader") as mock_dl, patch.object(svc, "parser") as mock_pr, patch.object(svc.registry, "link_sources", side_effect=RuntimeError("link fail")):
+    with (
+        patch.object(svc, "downloader") as mock_dl,
+        patch.object(svc, "parser") as mock_pr,
+        patch.object(svc.registry, "link_sources", side_effect=RuntimeError("link fail")),
+    ):
         fake = tmp_path / "link.bin"
         fake.write_text("x")
         mock_dl.download.return_value = fake
         mock_pr.parse.return_value = {"text_excerpt": "ok", "char_count": 2}
-        res = svc.ingest_items([item], dry_run=False, classifications_by_source={sid: ["bobby_mention"]})
+        res = svc.ingest_items(
+            [item], dry_run=False, classifications_by_source={sid: ["bobby_mention"]}
+        )
     assert res[0]["decision"] == "error"
 
 
@@ -224,7 +261,11 @@ def test_no_full_file_content_in_any_artifact_or_excerpt(tmp_path: Path):
     fpath = tmp_path / "secret.txt"
     fpath.write_text(secret * 5)
 
-    items = [DriveItem(id="leak1", name="secret.txt", size=len(secret*5), is_file=True, source_record_id=3001)]
+    items = [
+        DriveItem(
+            id="leak1", name="secret.txt", size=len(secret * 5), is_file=True, source_record_id=3001
+        )
+    ]
 
     with patch.object(svc, "downloader") as md, patch.object(svc, "parser") as mp:
         md.download.return_value = fpath

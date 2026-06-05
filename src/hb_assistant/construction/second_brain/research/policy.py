@@ -103,7 +103,9 @@ def score_context_quality(
         warnings.append("no_context_retrieved")
     elif source_ref_completeness < min_ref:
         recommendation = "blocked"
-        warnings.append(f"source_ref_completeness_below_min:{source_ref_completeness:.2f}<{min_ref}")
+        warnings.append(
+            f"source_ref_completeness_below_min:{source_ref_completeness:.2f}<{min_ref}"
+        )
     elif conflict_count > 0:
         recommendation = "ask_for_targeted_research"
         warnings.append(f"conflicting_sources:{conflict_count}")
@@ -113,7 +115,9 @@ def score_context_quality(
     elif stale_density > max_stale or source_coverage < min_cov:
         recommendation = "narrow_claims"
         if stale_density > max_stale:
-            warnings.append(f"stale_unknown_density_exceeds_threshold:{stale_density:.2f}>{max_stale}")
+            warnings.append(
+                f"stale_unknown_density_exceeds_threshold:{stale_density:.2f}>{max_stale}"
+            )
         if source_coverage < min_cov:
             warnings.append(f"source_coverage_below_min:{source_coverage:.2f}<{min_cov}")
     else:

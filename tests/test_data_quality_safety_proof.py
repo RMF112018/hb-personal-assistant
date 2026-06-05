@@ -72,7 +72,9 @@ def test_safety_proof_runs_and_covers_07a_surfaces():
 
         # Guardrails and stop conditions are embedded
         assert report["guardrails"]["no_live_calls"] is True
-        assert "no_mutation_capable_external_calls_in_07a_modules" in report["stop_conditions_checked"]
+        assert (
+            "no_mutation_capable_external_calls_in_07a_modules" in report["stop_conditions_checked"]
+        )
 
         # Even on a minimal DB the proof must be defensive and complete its scans
         assert "scanned_modules" in report
@@ -176,8 +178,6 @@ def test_safety_proof_stop_conditions_and_no_leakage():
         if not report["proof_passed"]:
             # This is acceptable in a fresh test DB (some tables may be missing the CHECK yet);
             # the important thing is that any violation is visible in findings.
-            assert any(
-                not c["passed"] for c in report["checks_detail"].values()
-            )
+            assert any(not c["passed"] for c in report["checks_detail"].values())
     finally:
         Path(db_path).unlink(missing_ok=True)

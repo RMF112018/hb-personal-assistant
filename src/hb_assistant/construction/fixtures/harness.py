@@ -51,24 +51,23 @@ def _check_graph_delta(payload: dict[str, Any]) -> None:
     has_delta = "@odata.deltaLink" in payload
     if has_next == has_delta:
         raise ValueError(
-            "graph_delta payload must carry exactly one of "
-            "'@odata.nextLink' or '@odata.deltaLink'"
+            "graph_delta payload must carry exactly one of '@odata.nextLink' or '@odata.deltaLink'"
         )
     for entry in payload["value"]:
         if not isinstance(entry, dict):
             raise ValueError("graph_delta entries must be dicts")
         for leak in _BODY_LEAK_FIELDS:
             if leak in entry:
-                raise ValueError(
-                    f"graph_delta entry illegally carries body field {leak!r}"
-                )
+                raise ValueError(f"graph_delta entry illegally carries body field {leak!r}")
 
 
 def _check_review_policy(payload: dict[str, Any], evaluator: ReviewPolicyEvaluator) -> None:
     inventory = payload["inventory"]
     expected: set[str] = set(payload.get("expected_rule_ids") or set())
     matches = evaluator.evaluate(
-        source_key="fixture", project_key=None, item=inventory,
+        source_key="fixture",
+        project_key=None,
+        item=inventory,
     )
     actual_ids = {m.rule_id for m in matches}
     if expected and not expected.issubset(actual_ids):
@@ -165,10 +164,7 @@ class FixtureHarness:
         # by fixtures/__init__.py.
         from hb_assistant.construction.fixtures import iter_fixtures
 
-        results = [
-            self.validate_fixture(name, entry)
-            for name, entry in iter_fixtures(kind)
-        ]
+        results = [self.validate_fixture(name, entry) for name, entry in iter_fixtures(kind)]
         by_kind: dict[str, dict[str, int]] = {}
         for r in results:
             slot = by_kind.setdefault(r["kind"], {"passed": 0, "failed": 0})

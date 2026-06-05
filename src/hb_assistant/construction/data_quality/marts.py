@@ -111,20 +111,22 @@ class MartBuilder:
                 )
                 for pk, sys, rc, mc, uc in cur.fetchall():
                     cov_id = f"{pk}:{sys}:coverage"
-                    store.upsert_project_source_coverage({
-                        "coverage_id": cov_id,
-                        "run_id": f"prompt05-{now[:10]}",
-                        "project_key": pk,
-                        "project_number": None,
-                        "source_domain": sys,
-                        "record_count": rc or 0,
-                        "mapped_count": mc or 0,
-                        "unmapped_count": uc or 0,
-                        "relationship_count": 0,
-                        "orphan_count": 0,
-                        "quality_status": "partial" if (mc or 0) > 0 else "unknown",
-                        "blocking_reasons_json": None,
-                    })
+                    store.upsert_project_source_coverage(
+                        {
+                            "coverage_id": cov_id,
+                            "run_id": f"prompt05-{now[:10]}",
+                            "project_key": pk,
+                            "project_number": None,
+                            "source_domain": sys,
+                            "record_count": rc or 0,
+                            "mapped_count": mc or 0,
+                            "unmapped_count": uc or 0,
+                            "relationship_count": 0,
+                            "orphan_count": 0,
+                            "quality_status": "partial" if (mc or 0) > 0 else "unknown",
+                            "blocking_reasons_json": None,
+                        }
+                    )
                     rows.append({"project_key": pk, "source_domain": sys, "record_count": rc})
             except Exception:
                 pass
@@ -166,19 +168,21 @@ class MartBuilder:
                 for pk, sys, tbl, tot, clean, rev in cur.fetchall():
                     sid = f"{pk}:{sys}:{tbl}:summary"
                     with contextlib.suppress(Exception):
-                        store.upsert_source_record_summary({
-                            "summary_id": sid,
-                            "run_id": f"prompt05-{now[:10]}",
-                            "project_key": pk,
-                            "source_system": sys,
-                            "source_table": tbl,
-                            "record_count": tot or 0,
-                            "mapped_count": clean or 0,
-                            "unmapped_count": rev or 0,
-                            "review_required_count": rev or 0,
-                            "stale_count": 0,
-                            "quality_status": "partial" if (clean or 0) > 0 else "needs_review",
-                        })
+                        store.upsert_source_record_summary(
+                            {
+                                "summary_id": sid,
+                                "run_id": f"prompt05-{now[:10]}",
+                                "project_key": pk,
+                                "source_system": sys,
+                                "source_table": tbl,
+                                "record_count": tot or 0,
+                                "mapped_count": clean or 0,
+                                "unmapped_count": rev or 0,
+                                "review_required_count": rev or 0,
+                                "stale_count": 0,
+                                "quality_status": "partial" if (clean or 0) > 0 else "needs_review",
+                            }
+                        )
             except Exception:
                 pass
 
@@ -199,18 +203,20 @@ class MartBuilder:
                 for pk, rtype, conf, status, cnt, rev in cur.fetchall():
                     rid = f"{pk}:{rtype}:{conf}:{status}:relq"
                     with contextlib.suppress(Exception):
-                        store.upsert_relationship_quality({
-                            "quality_id": rid,
-                            "run_id": f"prompt05-{now[:10]}",
-                            "project_key": pk,
-                            "relationship_type": rtype,
-                            "confidence_class": conf,
-                            "relationship_status": status,
-                            "total_count": cnt or 0,
-                            "review_required_count": rev or 0,
-                            "orphan_count": 1 if status == "orphaned" else 0,
-                            "quality_status": "needs_review" if (rev or 0) > 0 else "ok",
-                        })
+                        store.upsert_relationship_quality(
+                            {
+                                "quality_id": rid,
+                                "run_id": f"prompt05-{now[:10]}",
+                                "project_key": pk,
+                                "relationship_type": rtype,
+                                "confidence_class": conf,
+                                "relationship_status": status,
+                                "total_count": cnt or 0,
+                                "review_required_count": rev or 0,
+                                "orphan_count": 1 if status == "orphaned" else 0,
+                                "quality_status": "needs_review" if (rev or 0) > 0 else "ok",
+                            }
+                        )
             except Exception:
                 pass
 
@@ -247,16 +253,20 @@ class MartBuilder:
                     ready = bool(has_mapped and orphans == 0)
                     rid = f"{pk}:readiness"
                     with contextlib.suppress(Exception):
-                        store.upsert_cross_domain_readiness({
-                            "readiness_id": rid,
-                            "run_id": f"prompt05-{now[:10]}",
-                            "project_key": pk,
-                            "meeting_prep_ready": ready,
-                            "risk_digest_ready": ready,
-                            "financial_review_ready": False,  # Phase 08B territory
-                            "blocking_reasons_json": None if ready else '["relationship_orphans_or_missing_coverage"]',
-                            "overall_status": "ready" if ready else "blocked",
-                        })
+                        store.upsert_cross_domain_readiness(
+                            {
+                                "readiness_id": rid,
+                                "run_id": f"prompt05-{now[:10]}",
+                                "project_key": pk,
+                                "meeting_prep_ready": ready,
+                                "risk_digest_ready": ready,
+                                "financial_review_ready": False,  # Phase 08B territory
+                                "blocking_reasons_json": None
+                                if ready
+                                else '["relationship_orphans_or_missing_coverage"]',
+                                "overall_status": "ready" if ready else "blocked",
+                            }
+                        )
             except Exception:
                 pass
 
@@ -277,14 +287,20 @@ class MartBuilder:
         # Direct timing for a couple of realistic agent queries
         def _time_unmapped():
             with contextlib.suppress(Exception):
-                conn.execute("SELECT project_key, COUNT(*) FROM source_system_record_map WHERE review_required=1 GROUP BY project_key").fetchall()
+                conn.execute(
+                    "SELECT project_key, COUNT(*) FROM source_system_record_map WHERE review_required=1 GROUP BY project_key"
+                ).fetchall()
+
         res_un, unm = self._measure("unmapped_direct", _time_unmapped)
         latency["unmapped_records_by_project"] = round(unm, 3)
 
         # Simple gate status timing
         def _time_gates():
             with contextlib.suppress(Exception):
-                conn.execute("SELECT gate_name, gate_status FROM data_quality_gate_results ORDER BY created_utc DESC LIMIT 20").fetchall()
+                conn.execute(
+                    "SELECT gate_name, gate_status FROM data_quality_gate_results ORDER BY created_utc DESC LIMIT 20"
+                ).fetchall()
+
         _, g = self._measure("gate_status_direct", _time_gates)
         latency["gate_status_by_phase_run"] = round(g, 3)
 

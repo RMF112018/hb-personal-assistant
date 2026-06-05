@@ -367,7 +367,9 @@ def _seed_accepted_system_config_memory(tmp: str) -> str:
             statement_redacted="[Phase 09 retrieval schema V39; 23 guard columns (no-raw/no-writeback/no-determination) enforced on additive tables; local-first metadata only]",
             confidence_class="high",
             review_status="accepted",
-            source_refs=[{"source_family": "system_config_facts", "source_ref": "phase_09_v39_schema_guards"}],
+            source_refs=[
+                {"source_family": "system_config_facts", "source_ref": "phase_09_v39_schema_guards"}
+            ],
         ),
         db_path=db,
     )
@@ -390,7 +392,9 @@ def _seed_unreviewed_memory(tmp: str, status: str) -> str:
             statement_redacted="[Phase 09 retrieval schema V39; 23 guard columns (no-raw/no-writeback/no-determination) enforced on additive tables; local-first metadata only]",
             confidence_class="high",
             review_status=status,
-            source_refs=[{"source_family": "system_config_facts", "source_ref": "phase_09_v39_schema_guards"}],
+            source_refs=[
+                {"source_family": "system_config_facts", "source_ref": "phase_09_v39_schema_guards"}
+            ],
         ),
         db_path=db,
     )
@@ -468,7 +472,11 @@ def build_accepted_memory_seed_proof(
         "pending_excluded_count": pend_count,
         "rejected_excluded_count": rej_count,
         "superseded_excluded_count": sup_count,
-        "unreviewed_exclusion": {"pending": pend_count, "rejected": rej_count, "superseded": sup_count},
+        "unreviewed_exclusion": {
+            "pending": pend_count,
+            "rejected": rej_count,
+            "superseded": sup_count,
+        },
         "metadata_only": True,
         "no_prod_db_write": True,
         "guardrails": {
@@ -487,7 +495,9 @@ def build_accepted_memory_seed_proof(
         out_dir.mkdir(parents=True, exist_ok=True)
         serialized = json.dumps(proof, indent=2, default=str)
         _assert_no_raw(serialized, "accepted-memory-seed-proof json")
-        (out_dir / "accepted-memory-seed-proof.json").write_text(serialized + "\n", encoding="utf-8")
+        (out_dir / "accepted-memory-seed-proof.json").write_text(
+            serialized + "\n", encoding="utf-8"
+        )
         markdown = _render_accepted_seed_md(proof)
         _assert_no_raw(markdown, "accepted-memory-seed-proof markdown")
         (out_dir / "accepted-memory-seed-proof.md").write_text(markdown, encoding="utf-8")

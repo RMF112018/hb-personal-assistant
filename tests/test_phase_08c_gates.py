@@ -55,7 +55,10 @@ def test_readiness_overstated_false_when_no_fail() -> None:
 def test_readiness_overstated_true_when_readiness_passes_with_fail() -> None:
     gates = [
         {"gate_name": "readiness_agent", "gate_status": "pass"},
-        {"gate_name": "second_brain_financial_amount_facts_normalized", "gate_status": "fail_blocking"},
+        {
+            "gate_name": "second_brain_financial_amount_facts_normalized",
+            "gate_status": "fail_blocking",
+        },
     ]
     assert dq._compute_readiness_overstated(gates) is True
 
@@ -73,7 +76,11 @@ def test_missing_required_evidence_selects_schema_reasons() -> None:
     gates = [
         {"gate_name": "t1", "gate_status": "fail_blocking", "reason": "TABLE_ABSENT_IN_V35"},
         {"gate_name": "t2", "gate_status": "fail_blocking", "reason": "GUARD_COLUMN_MISSING"},
-        {"gate_name": "schema_contracts", "gate_status": "fail_blocking", "reason": "CONTRACT_LOAD_FAILED: x"},
+        {
+            "gate_name": "schema_contracts",
+            "gate_status": "fail_blocking",
+            "reason": "CONTRACT_LOAD_FAILED: x",
+        },
         {"gate_name": "other", "gate_status": "fail_blocking", "reason": "SOMETHING_ELSE"},
         {"gate_name": "ok", "gate_status": "pass"},
     ]
@@ -104,7 +111,9 @@ _CLEAN_REPORT = {
 def test_proof_written_and_passes_on_clean_report(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(dq, "evaluate_phase_08c_data_quality_gates", lambda **k: dict(_CLEAN_REPORT))
+    monkeypatch.setattr(
+        dq, "evaluate_phase_08c_data_quality_gates", lambda **k: dict(_CLEAN_REPORT)
+    )
     proof = dq.build_phase_08c_gates_proof(out_dir=str(tmp_path))
 
     assert proof["proof_passed"] is True
@@ -133,7 +142,12 @@ def test_proof_fails_when_required_evidence_missing(
         },
     ]
     report["by_field_status"] = {"second_brain_financial_amount_facts_normalized": "fail_blocking"}
-    report["status_counts"] = {"pass": 0, "warning": 0, "fail_blocking": 1, "deferred_not_blocking": 0}
+    report["status_counts"] = {
+        "pass": 0,
+        "warning": 0,
+        "fail_blocking": 1,
+        "deferred_not_blocking": 0,
+    }
     monkeypatch.setattr(dq, "evaluate_phase_08c_data_quality_gates", lambda **k: report)
 
     proof = dq.build_phase_08c_gates_proof(out_dir=str(tmp_path))
@@ -162,15 +176,15 @@ def _stub_heavy_builders(monkeypatch: pytest.MonkeyPatch) -> None:
             "source": {"families": []},
         },
     )
-    monkeypatch.setattr(f"{_FC}.build_financial_source_coverage_matrix", lambda *a, **k: {"summary": {}})
+    monkeypatch.setattr(
+        f"{_FC}.build_financial_source_coverage_matrix", lambda *a, **k: {"summary": {}}
+    )
     monkeypatch.setattr(
         f"{_FC}.build_financial_exposure_mart_preview",
         lambda *a, **k: {
             "summary": {},
             "items": [
-                {
-                    "advisory_status": "advisory review aid only — not a final exposure determination"
-                }
+                {"advisory_status": "advisory review aid only — not a final exposure determination"}
             ],
         },
     )

@@ -55,19 +55,34 @@ def _fresh_db() -> str:
 def _seed_clean(db: str) -> None:
     store = ConstructionStore(db)
     store.upsert_cross_source_relationship_candidate(
-        candidate_id="c0", source_family="email", source_record_type="m", source_record_ref="m0",
-        target_family="procore", target_record_type="rfi", target_record_ref="r0",
-        relationship_type="references", confidence_score=1.0, confidence_class="deterministic",
-        source_reference_json=json.dumps({"r": "m0"}), review_required=False, project_key="tropical",
+        candidate_id="c0",
+        source_family="email",
+        source_record_type="m",
+        source_record_ref="m0",
+        target_family="procore",
+        target_record_type="rfi",
+        target_record_ref="r0",
+        relationship_type="references",
+        confidence_score=1.0,
+        confidence_class="deterministic",
+        source_reference_json=json.dumps({"r": "m0"}),
+        review_required=False,
+        project_key="tropical",
         evidence_trail_id="et0",
     )
     store.upsert_source_evidence_trail(
-        evidence_trail_id="et0", evidence_kind="x", source_refs_json=json.dumps({"refs": ["m0"]}),
-        confidence_class="deterministic", project_key="tropical",
+        evidence_trail_id="et0",
+        evidence_kind="x",
+        source_refs_json=json.dumps({"refs": ["m0"]}),
+        confidence_class="deterministic",
+        project_key="tropical",
     )
     store.upsert_project_risk_digest_item(
-        risk_digest_id="r0", project_key="tropical", risk_indicator_type="x",
-        risk_source_class="source_stated", summary_redacted=json.dumps({"count": 2}),
+        risk_digest_id="r0",
+        project_key="tropical",
+        risk_indicator_type="x",
+        risk_source_class="source_stated",
+        summary_redacted=json.dumps({"count": 2}),
         confidence_class="deterministic",
     )
 
@@ -85,7 +100,9 @@ def test_clean_07d_surfaces_pass_proof(tmp_path: Path, monkeypatch: pytest.Monke
             assert checks[key]["passed"] is True, (key, checks[key]["findings"])
         assert report["proof_passed"] is True
         assert len(report["scanned_modules_07d"]) == 9
-        guarded = {t["table"] for t in checks["sqlite_guard_checks_07d_cross_source_tables"]["tables"]}
+        guarded = {
+            t["table"] for t in checks["sqlite_guard_checks_07d_cross_source_tables"]["tables"]
+        }
         assert guarded >= _V25_TABLES
         assert "phase_07d_cross_source_meeting_prep" in report["no_raw_values_persisted_scope"]
         assert report["no_raw_values_persisted"] is True

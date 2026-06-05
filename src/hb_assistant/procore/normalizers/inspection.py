@@ -308,9 +308,7 @@ def normalize_inspection(
     # PII people refs -> hashed summaries.
     canonical_fields["created_by_summary"] = _people_summary(raw.get("created_by"))
     canonical_fields["closed_by_summary"] = _people_summary(raw.get("closed_by"))
-    canonical_fields["point_of_contact_summary"] = _people_summary(
-        raw.get("point_of_contact")
-    )
+    canonical_fields["point_of_contact_summary"] = _people_summary(raw.get("point_of_contact"))
     canonical_fields["responsible_contractor_summary"] = _people_summary(
         raw.get("responsible_contractor")
     )
@@ -323,14 +321,10 @@ def normalize_inspection(
     canonical_fields["signature_requests_summary"] = _signature_requests_summary(
         raw.get("signature_requests")
     )
-    canonical_fields["attachments_summary"] = _attachments_summary(
-        raw.get("attachments")
-    )
+    canonical_fields["attachments_summary"] = _attachments_summary(raw.get("attachments"))
 
     # Custom fields -> structured/hashed per data_type.
-    canonical_fields["custom_fields_summary"] = _custom_fields_summary(
-        raw.get("custom_fields")
-    )
+    canonical_fields["custom_fields_summary"] = _custom_fields_summary(raw.get("custom_fields"))
 
     review_required, routing_reason, safety_route = _inspection_review_decision(raw)
 
@@ -593,17 +587,13 @@ def normalize_inspection_item(
         canonical_fields["response_set"] = response_set
 
     # Nested arrays with PII/free-text -> hashed summaries.
-    canonical_fields["observations_summary"] = _observations_summary(
-        raw.get("observations")
-    )
+    canonical_fields["observations_summary"] = _observations_summary(raw.get("observations"))
     canonical_fields["comments_summary"] = _comments_summary(raw.get("comments"))
     canonical_fields["histories_summary"] = _histories_summary(raw.get("histories"))
     canonical_fields["attachment_histories_summary"] = _attachment_histories_summary(
         raw.get("attachment_histories")
     )
-    canonical_fields["attachments_summary"] = _attachments_summary(
-        raw.get("attachments")
-    )
+    canonical_fields["attachments_summary"] = _attachments_summary(raw.get("attachments"))
 
     item_response_summary = _item_response_summary(raw.get("item_response"))
     if item_response_summary is not None:

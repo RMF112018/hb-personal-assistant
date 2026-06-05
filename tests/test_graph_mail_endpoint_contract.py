@@ -81,6 +81,16 @@ def test_blocklist_forbids_send_and_raw_attachment_content() -> None:
 def test_blocklist_covers_mutation_keywords() -> None:
     data = _load(_BLOCKLIST_PATH)
     keywords = set(data["forbidden_operation_keywords"])
-    for kw in ("send", "forward", "reply", "delete", "move", "copy", "markRead", "categorize", "flag"):
+    for kw in (
+        "send",
+        "forward",
+        "reply",
+        "delete",
+        "move",
+        "copy",
+        "markRead",
+        "categorize",
+        "flag",
+    ):
         assert kw in keywords
     assert "before HTTP request" in data["on_match"]

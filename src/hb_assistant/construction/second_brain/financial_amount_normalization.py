@@ -55,7 +55,16 @@ def run_amount_normalization(
     """Best-effort norm run (classify + store if conn). Returns stats."""
     inv_fields = discover_amount_fields_from_inventory(inventory_path)
     run_id = f"08c-amount-norm-{uuid.uuid4().hex[:12]}"
-    stats = {"parseable": 0, "rejected": 0, "missing": 0, "ambiguous": 0, "stale": 0, "conflicting": 0, "review_required": 0, "total_values": 0}
+    stats = {
+        "parseable": 0,
+        "rejected": 0,
+        "missing": 0,
+        "ambiguous": 0,
+        "stale": 0,
+        "conflicting": 0,
+        "review_required": 0,
+        "total_values": 0,
+    }
     # In real: read from procore_financials, classify, INSERT to V35 tables.
     # For this prompt the classify + JSONs are primary; store attempted in full version.
     return {
@@ -77,6 +86,7 @@ def build_amount_normalization_proof(
     head = "06241a7fcbb3ceea44d8ec7f5351dd358a240e6a"
     try:
         import subprocess
+
         head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     except Exception:
         pass
@@ -90,7 +100,16 @@ def build_amount_normalization_proof(
         ("procore_financial_change_order_line_items.amount", "0.10"),
         ("procore_financial_subcontractor_invoices.total_claimed_amount", "45678.9"),
     ]
-    stats = {"parseable":0,"rejected":0,"missing":0,"ambiguous":0,"stale":0,"conflicting":0,"review_required":0,"total_values":0}
+    stats = {
+        "parseable": 0,
+        "rejected": 0,
+        "missing": 0,
+        "ambiguous": 0,
+        "stale": 0,
+        "conflicting": 0,
+        "review_required": 0,
+        "total_values": 0,
+    }
     rejected = []
     for fp, val in seed_samples:
         cl = classify_amount(val, field_path=fp)
@@ -99,13 +118,16 @@ def build_amount_normalization_proof(
         if st in stats:
             stats[st] += 1
         if st != "parseable":
-            rejected.append({
-                "source_field_path": fp,
-                "source_value_hash": cl.get("source_value_hash") or source_value_hash(str(val or "")),
-                "parse_status": st,
-                "rejection_reason": cl.get("rejection_reason"),
-                "advisory": "advisory review aid only",
-            })
+            rejected.append(
+                {
+                    "source_field_path": fp,
+                    "source_value_hash": cl.get("source_value_hash")
+                    or source_value_hash(str(val or "")),
+                    "parse_status": st,
+                    "rejection_reason": cl.get("rejection_reason"),
+                    "advisory": "advisory review aid only",
+                }
+            )
     utc = datetime.datetime.utcnow().isoformat() + "Z"
     run_id = "proof-" + uuid.uuid4().hex[:8]
     proof = {
@@ -116,13 +138,38 @@ def build_amount_normalization_proof(
         "run_id": run_id,
         "stats": stats,
         "fields_discovered": len(discover_amount_fields_from_inventory(inventory_path)),
-        "contract": {"money_storage": {"canonical_decimal": "TEXT", "minor_units": "INTEGER when scale known", "float_allowed": False, "sqlite_real_allowed": False}},
-        "money_storage": {"canonical_decimal": "TEXT", "minor_units": "INTEGER when scale known", "float_allowed": False, "sqlite_real_allowed": False},
-        "sample_parseable": [{"source_field_path": "procore_financial_contracts.grand_total", "canonical_decimal_text": "10200000.50", "parse_status": "parseable"}],
+        "contract": {
+            "money_storage": {
+                "canonical_decimal": "TEXT",
+                "minor_units": "INTEGER when scale known",
+                "float_allowed": False,
+                "sqlite_real_allowed": False,
+            }
+        },
+        "money_storage": {
+            "canonical_decimal": "TEXT",
+            "minor_units": "INTEGER when scale known",
+            "float_allowed": False,
+            "sqlite_real_allowed": False,
+        },
+        "sample_parseable": [
+            {
+                "source_field_path": "procore_financial_contracts.grand_total",
+                "canonical_decimal_text": "10200000.50",
+                "parse_status": "parseable",
+            }
+        ],
         "no_float_in_path": True,
         "source_preserved_note": "source amount strings remain verbatim TEXT in procore_financial_* tables; 08C normalized stores only canonical + hash + ref + status + reason",
         "advisory_only": True,
-        "guardrails": {"local_first": True, "read_only": True, "no_external_writeback": True, "no_raw_financial_payload": True, "financial_determination_forbidden": True, "advisory_only": True},
+        "guardrails": {
+            "local_first": True,
+            "read_only": True,
+            "no_external_writeback": True,
+            "no_raw_financial_payload": True,
+            "financial_determination_forbidden": True,
+            "advisory_only": True,
+        },
         "notes": "Decimal-only via helpers (parse_amount raises on float; classify uses Decimal(str(v)) only). 7 statuses from contract. Proof from samples matching inventory fields. Store attempted via run_amount_normalization.",
     }
     rej_doc = {
@@ -141,6 +188,7 @@ def build_amount_normalization_proof(
 
 if __name__ == "__main__":
     import sys
+
     inv = sys.argv[1] if len(sys.argv) > 1 else INVENTORY_DEFAULT
     p = build_amount_normalization_proof(inventory_path=inv)
     print(json.dumps({"ok": True, "proof_run": p.get("run_id"), "stats": p.get("stats")}, indent=2))

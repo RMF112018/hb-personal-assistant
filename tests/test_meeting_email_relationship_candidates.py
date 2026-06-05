@@ -71,20 +71,45 @@ def _thread(
 
 def _seed_threads(store: ConstructionStore) -> None:
     # T1: vendor.com + overlaps the event → strong.
-    _thread(store, "T1", first="2026-05-20T10:30:00Z", last="2026-05-20T10:45:00Z",
-            sender_domain="vendor.com")
+    _thread(
+        store,
+        "T1",
+        first="2026-05-20T10:30:00Z",
+        last="2026-05-20T10:45:00Z",
+        sender_domain="vendor.com",
+    )
     # T2: vendor.com, next day (~23h, within 72h window, no overlap) → moderate.
-    _thread(store, "T2", first="2026-05-21T10:00:00Z", last="2026-05-21T10:30:00Z",
-            sender_domain="vendor.com")
+    _thread(
+        store,
+        "T2",
+        first="2026-05-21T10:00:00Z",
+        last="2026-05-21T10:30:00Z",
+        sender_domain="vendor.com",
+    )
     # T3: other.com but overlaps the event → time only → weak.
-    _thread(store, "T3", first="2026-05-20T10:15:00Z", last="2026-05-20T10:50:00Z",
-            sender_domain="other.com")
+    _thread(
+        store,
+        "T3",
+        first="2026-05-20T10:15:00Z",
+        last="2026-05-20T10:50:00Z",
+        sender_domain="other.com",
+    )
     # T4: vendor.com but far in time (outside window, no overlap) → dropped.
-    _thread(store, "T4", first="2026-09-01T09:00:00Z", last="2026-09-01T09:30:00Z",
-            sender_domain="vendor.com")
+    _thread(
+        store,
+        "T4",
+        first="2026-09-01T09:00:00Z",
+        last="2026-09-01T09:30:00Z",
+        sender_domain="vendor.com",
+    )
     # T5: other.com and far in time → no signal → dropped.
-    _thread(store, "T5", first="2026-09-01T09:00:00Z", last="2026-09-01T09:30:00Z",
-            sender_domain="other.com")
+    _thread(
+        store,
+        "T5",
+        first="2026-09-01T09:00:00Z",
+        last="2026-09-01T09:30:00Z",
+        sender_domain="other.com",
+    )
 
 
 def test_signals_produce_strong_moderate_weak_and_route_review() -> None:
@@ -92,9 +117,7 @@ def test_signals_produce_strong_moderate_weak_and_route_review() -> None:
     store = _store(db)
     _seed_threads(store)
 
-    report = MeetingEmailCandidateBuilder(store).build(
-        target_project="tropical", dry_run=False
-    )
+    report = MeetingEmailCandidateBuilder(store).build(target_project="tropical", dry_run=False)
     s = report.summary
     assert s["candidates_created"] == 3
     assert s["strong"] == 1
@@ -151,9 +174,7 @@ def test_dry_run_persists_nothing() -> None:
     assert report.summary["candidates_created"] == 3  # computed but not persisted
     conn = sqlite3.connect(db)
     try:
-        n = conn.execute(
-            "SELECT COUNT(*) FROM meeting_email_relationship_candidates"
-        ).fetchone()[0]
+        n = conn.execute("SELECT COUNT(*) FROM meeting_email_relationship_candidates").fetchone()[0]
     finally:
         conn.close()
     assert n == 0

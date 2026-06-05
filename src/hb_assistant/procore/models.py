@@ -30,9 +30,11 @@ from pydantic import BaseModel, Field, computed_field, field_validator, model_va
 
 class Category(str, _Enum):
     """Prompt_05 categories per Decision Register."""
+
     FOUNDATION = "foundation"
     PROJECT_CONTROLS = "project_controls"
     FINANCIALS = "financials"
+
 
 HttpMethod = Literal["GET"]  # read-only by construction
 EndpointStatus = Literal["validated", "sensitive_validated", "excluded", "deferred"]
@@ -124,9 +126,7 @@ class ProcoreEndpoint(BaseModel):
         if v is None:
             return v
         if not v.startswith("https://"):
-            raise ValueError(
-                f"official_reference_url must start with 'https://'; got {v!r}"
-            )
+            raise ValueError(f"official_reference_url must start with 'https://'; got {v!r}")
         return v
 
     @field_validator("verified_at_utc")
@@ -138,9 +138,7 @@ class ProcoreEndpoint(BaseModel):
         try:
             datetime.fromisoformat(normalized)
         except ValueError as exc:
-            raise ValueError(
-                f"verified_at_utc must be ISO 8601; got {v!r}"
-            ) from exc
+            raise ValueError(f"verified_at_utc must be ISO 8601; got {v!r}") from exc
         return v
 
     @model_validator(mode="after")
@@ -165,10 +163,7 @@ class ProcoreEndpoint(BaseModel):
                 f"verification_status='deferred_by_guardrail' requires status='deferred' "
                 f"(got status={self.status!r} on {self.endpoint_id!r})"
             )
-        if (
-            self.status in ("validated", "sensitive_validated")
-            and self.included_in_phase_01
-        ):
+        if self.status in ("validated", "sensitive_validated") and self.included_in_phase_01:
             if self.verification_status not in ("official_docs_verified", "candidate"):
                 raise ValueError(
                     f"included Phase-01 endpoints must declare verification_status "
@@ -221,8 +216,7 @@ class ProcoreEndpointContract(BaseModel):
         missing = [c for c in REQUIRED_CATEGORIES if c not in categories]
         if missing:
             raise ValueError(
-                "endpoint contract must cover every required category "
-                f"(missing: {missing})"
+                f"endpoint contract must cover every required category (missing: {missing})"
             )
 
         # Defense-in-depth: ensure correspondence is excluded, and
@@ -360,17 +354,19 @@ class MappingValidationReport(BaseModel):
 # Prompt_07: Endpoint audit dry-run + optional manual live (GET-only, redacted by default)
 # Verdicts for per-endpoint audit outcomes (dry-run construction or explicit live).
 AuditVerdict = Literal[
-    "available",          # 2xx + valid shape, ready
-    "unauthorized",       # 401
-    "forbidden",          # 403 (incl. sensitive_review_required cases)
-    "not_found",          # 404
-    "deferred",           # per Prompt_05 contract (schedule/tasks etc.)
-    "excluded",           # per Prompt_05 contract (correspondence)
-    "error",              # network/parse/redaction/other
+    "available",  # 2xx + valid shape, ready
+    "unauthorized",  # 401
+    "forbidden",  # 403 (incl. sensitive_review_required cases)
+    "not_found",  # 404
+    "deferred",  # per Prompt_05 contract (schedule/tasks etc.)
+    "excluded",  # per Prompt_05 contract (correspondence)
+    "error",  # network/parse/redaction/other
 ]
+
 
 class DryRunRequestEnvelope(BaseModel):
     """Dry-run (no network) constructed GET request. Auth redacted by default."""
+
     method: Literal["GET"] = "GET"
     url: str
     headers_redacted: dict[str, str] = Field(default_factory=dict)  # e.g. Authorization: [REDACTED]
@@ -383,10 +379,13 @@ class DryRunRequestEnvelope(BaseModel):
 
 class EndpointAuditReceipt(BaseModel):
     """Structured receipt for one endpoint audit (dry-run or manual live). Bodies redacted by default."""
+
     endpoint_id: str
     verdict: AuditVerdict
     request: DryRunRequestEnvelope
-    redacted_response_summary: dict[str, Any] | None = None  # structural only (keys/counts/hash); never full body
+    redacted_response_summary: dict[str, Any] | None = (
+        None  # structural only (keys/counts/hash); never full body
+    )
     http_status: int | None = None
     category: str | None = None
     sensitivity: str | None = None
@@ -399,6 +398,7 @@ class EndpointAuditReceipt(BaseModel):
 
 class EndpointAuditRunReceipt(BaseModel):
     """Top-level receipt for a full audit run (the 06- evidence JSON shape)."""
+
     receipt_type: str = "procore_endpoint_audit"
     audit_id: str
     mode: Literal["dry_run", "live_manual"]
@@ -408,7 +408,9 @@ class EndpointAuditRunReceipt(BaseModel):
     completed_at: str
     status: Literal["completed", "partial", "blocked_schema_not_ready"] = "completed"
     endpoints_audited: int
-    breakdown: dict[str, Any] = Field(default_factory=dict)  # by_status, by_sensitivity, review_required etc.
+    breakdown: dict[str, Any] = Field(
+        default_factory=dict
+    )  # by_status, by_sensitivity, review_required etc.
     receipts: list[EndpointAuditReceipt] = Field(default_factory=list)
     persisted_to_sqlite: bool = False
     schema_version_at_audit: int | None = None

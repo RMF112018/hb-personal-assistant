@@ -1316,7 +1316,12 @@ def evaluate_phase_08d_validation_matrix(*, evidence_dir: str | None = None) -> 
     parity = (
         present
         and len(loaded) == len(_VALIDATION_MATRIX_CONTRACT_PATHS)
-        and len({(d.get("contract_name"), d.get("version"), len(d.get("commands") or [])) for d in loaded})
+        and len(
+            {
+                (d.get("contract_name"), d.get("version"), len(d.get("commands") or []))
+                for d in loaded
+            }
+        )
         == 1
     )
     surfaces.append(
@@ -1329,7 +1334,9 @@ def evaluate_phase_08d_validation_matrix(*, evidence_dir: str | None = None) -> 
 
     # 3. closeout-critical evidence artifacts present on disk.
     ev_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
-    missing = [name for name in _VALIDATION_MATRIX_REQUIRED_EVIDENCE if not (ev_dir / name).exists()]
+    missing = [
+        name for name in _VALIDATION_MATRIX_REQUIRED_EVIDENCE if not (ev_dir / name).exists()
+    ]
     surfaces.append(
         {
             "surface": "evidence_bundle",

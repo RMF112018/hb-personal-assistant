@@ -71,15 +71,18 @@ class ProcorePaginator:
         if rate_info.retry_after:
             delay = float(rate_info.retry_after)
         else:
-            delay = min(self.retry_policy.base_delay * (2 ** attempt), self.retry_policy.max_delay)
+            delay = min(self.retry_policy.base_delay * (2**attempt), self.retry_policy.max_delay)
             if self.retry_policy.jitter:
                 delay = delay * (0.5 + self._random_fn())
         self._sleep_fn(delay)
 
-    def _extract_next(self, result: PageResult, current_params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _extract_next(
+        self, result: PageResult, current_params: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         if result.next_link:
             # Simple extraction of query params from the full next URL (Procore returns usable links)
             from urllib.parse import parse_qs, urlparse
+
             parsed = urlparse(result.next_link)
             next_params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
             return next_params or None

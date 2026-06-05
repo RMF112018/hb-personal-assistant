@@ -19,8 +19,14 @@ pytestmark = pytest.mark.usefixtures("isolated_hb_pa_config")
 _NOW = "2026-05-29T00:00:00Z"
 _SINCE = "2026-05-01T00:00:00Z"
 _SECTION_KEYS = {
-    "open_actions", "recent_changes", "inspection_unanswered", "safety_queue",
-    "meeting_actions", "rfi_response_changes", "submittal_workflow_changes", "schedule_risk",
+    "open_actions",
+    "recent_changes",
+    "inspection_unanswered",
+    "safety_queue",
+    "meeting_actions",
+    "rfi_response_changes",
+    "submittal_workflow_changes",
+    "schedule_risk",
 }
 _RUNNER = CliRunner()
 
@@ -28,28 +34,72 @@ _RUNNER = CliRunner()
 def _seed() -> None:
     SQLiteMigrator().apply()
     # action signals across families
-    emit_action_signal(project_key="tropical", record_key="tropical|rfis||701", endpoint_id="rfis",
-                       signal_type="rfi_overdue", importance="high", signal_status="open", now_utc=_NOW)
-    emit_action_signal(project_key="tropical", record_key="tropical|inspection-items||9", endpoint_id="inspection-items",
-                       signal_type="inspection_item_unanswered", importance="medium", signal_status="open", now_utc=_NOW)
-    emit_action_signal(project_key="tropical", record_key="tropical|observations||5", endpoint_id="observations",
-                       signal_type="observation_open_safety", importance="high", signal_status="open", now_utc=_NOW)
-    emit_action_signal(project_key="tropical", record_key="tropical|activities||245", endpoint_id="activities",
-                       signal_type="activity_critical", importance="high", signal_status="open", now_utc=_NOW)
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|rfis||701",
+        endpoint_id="rfis",
+        signal_type="rfi_overdue",
+        importance="high",
+        signal_status="open",
+        now_utc=_NOW,
+    )
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|inspection-items||9",
+        endpoint_id="inspection-items",
+        signal_type="inspection_item_unanswered",
+        importance="medium",
+        signal_status="open",
+        now_utc=_NOW,
+    )
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|observations||5",
+        endpoint_id="observations",
+        signal_type="observation_open_safety",
+        importance="high",
+        signal_status="open",
+        now_utc=_NOW,
+    )
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|activities||245",
+        endpoint_id="activities",
+        signal_type="activity_critical",
+        importance="high",
+        signal_status="open",
+        now_utc=_NOW,
+    )
     # change events (rfis + submittals) via two snapshots each
     for ep, rid in (("rfis", "701"), ("submittals", "4040")):
-        record_procore_history_for_record(project_key="tropical", endpoint_id=ep, parent_procore_id=None,
-                                           procore_record_id=rid, normalized_fields={"status": "Open"},
-                                           sync_run_id="s1", now_utc="2026-05-10T00:00:00Z")
-        record_procore_history_for_record(project_key="tropical", endpoint_id=ep, parent_procore_id=None,
-                                           procore_record_id=rid, normalized_fields={"status": "Closed"},
-                                           sync_run_id="s2", now_utc="2026-05-28T00:00:00Z")
+        record_procore_history_for_record(
+            project_key="tropical",
+            endpoint_id=ep,
+            parent_procore_id=None,
+            procore_record_id=rid,
+            normalized_fields={"status": "Open"},
+            sync_run_id="s1",
+            now_utc="2026-05-10T00:00:00Z",
+        )
+        record_procore_history_for_record(
+            project_key="tropical",
+            endpoint_id=ep,
+            parent_procore_id=None,
+            procore_record_id=rid,
+            normalized_fields={"status": "Closed"},
+            sync_run_id="s2",
+            now_utc="2026-05-28T00:00:00Z",
+        )
     # meeting text intelligence with action candidates + a URL/email to confirm masking
     emit_text_intelligence(
-        project_key="tropical", record_key="tropical|meeting-topics|555|1001", endpoint_id="meeting-topics",
+        project_key="tropical",
+        record_key="tropical|meeting-topics|555|1001",
+        endpoint_id="meeting-topics",
         source_field_path="minutes",
         text="Decision: email pm@example.test and see https://app.procore.example/x?token=secret. Action item: follow up.",
-        action_candidates=["action item", "follow up", "decision:"], excerpt_chars=160, now_utc=_NOW,
+        action_candidates=["action item", "follow up", "decision:"],
+        excerpt_chars=160,
+        now_utc=_NOW,
     )
 
 
@@ -80,12 +130,14 @@ def test_no_signed_urls_tokens_or_raw_payload() -> None:
     rendered = build_enriched_registers("tropical", since_utc=_SINCE, now_utc=_NOW)["rendered"]
     assert "https://" not in rendered and "token=secret" not in rendered and "?sig=" not in rendered
     assert "Bearer" not in rendered and ("access_" + "token") not in rendered
-    assert "pm@example.test" not in rendered          # email masked in excerpt
+    assert "pm@example.test" not in rendered  # email masked in excerpt
     # action-candidate tokens (safe) do surface
     assert "follow up" in rendered
 
 
-def test_apply_writes_single_file_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_apply_writes_single_file_idempotent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _seed()
     vault = tmp_path / "cvault"
     monkeypatch.setenv("HB_CONSTRUCTION_VAULT_ROOT", str(vault))
@@ -108,7 +160,9 @@ def test_apply_writes_single_file_idempotent(tmp_path: Path, monkeypatch: pytest
 
 def test_cli_dry_run_json() -> None:
     _seed()
-    result = _RUNNER.invoke(app, ["obsidian", "enriched", "--project", "tropical", "--dry-run", "--json"])
+    result = _RUNNER.invoke(
+        app, ["obsidian", "enriched", "--project", "tropical", "--dry-run", "--json"]
+    )
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["ok"] is True and payload["mode"] == "dry_run"
@@ -119,7 +173,9 @@ def test_cli_dry_run_json() -> None:
 def test_cli_apply_writes_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _seed()
     monkeypatch.setenv("HB_CONSTRUCTION_VAULT_ROOT", str(tmp_path / "cvault"))
-    result = _RUNNER.invoke(app, ["obsidian", "enriched", "--project", "tropical", "--apply", "--confirm", "--json"])
+    result = _RUNNER.invoke(
+        app, ["obsidian", "enriched", "--project", "tropical", "--apply", "--confirm", "--json"]
+    )
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["mode"] == "apply"
@@ -128,6 +184,8 @@ def test_cli_apply_writes_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_cli_unparseable_since_fails_closed() -> None:
-    result = _RUNNER.invoke(app, ["obsidian", "enriched", "--project", "tropical", "--since", "whenever", "--json"])
+    result = _RUNNER.invoke(
+        app, ["obsidian", "enriched", "--project", "tropical", "--since", "whenever", "--json"]
+    )
     assert result.exit_code == 3
     assert "since_unparseable" in json.loads(result.output)["reason_codes"]

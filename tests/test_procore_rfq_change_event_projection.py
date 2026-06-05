@@ -120,17 +120,23 @@ def test_change_event_rows_facts_signals_and_query() -> None:
     row = _rows(db, "procore_financial_change_events")[0]
     assert row["change_event_id"] == "77" and row["estimated_cost"] == "250000.00"
     facts = {f["amount_name"]: f for f in _rows(db, "procore_financial_amount_facts")}
-    assert {"estimated_cost", "estimated_revenue", "owner_cost_amount",
-            "commitment_cost_amount", "schedule_impact_amount"} <= set(facts)
+    assert {
+        "estimated_cost",
+        "estimated_revenue",
+        "owner_cost_amount",
+        "commitment_cost_amount",
+        "schedule_impact_amount",
+    } <= set(facts)
     assert facts["estimated_cost"]["cost_code_id"] == "4"  # WBS/cost on facts
     assert {
         "change_event_pending",
         "change_event_rom_cost_exposure",
         "change_event_schedule_impact",
     } <= _signals(db)
-    assert {r["change_event_id"] for r in read_financial_change_events(
-        project_key="tropical", status="open", db_path=db
-    )} == {"77"}
+    assert {
+        r["change_event_id"]
+        for r in read_financial_change_events(project_key="tropical", status="open", db_path=db)
+    } == {"77"}
 
 
 def test_change_event_object_status_projects_name() -> None:
@@ -178,7 +184,9 @@ def test_rfq_quote_amount_facts_and_edge() -> None:
         db_path=db,
         parent_procore_id="10",
     )
-    facts = {f["amount_name"]: f["amount_value"] for f in _rows(db, "procore_financial_amount_facts")}
+    facts = {
+        f["amount_name"]: f["amount_value"] for f in _rows(db, "procore_financial_amount_facts")
+    }
     assert facts["cost"] == "0.000000000001"  # precision preserved
     assert ("quote_of", "tropical|rfqs||10") in _edges(db)
 

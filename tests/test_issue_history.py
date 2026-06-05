@@ -23,13 +23,19 @@ from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.store.migrator import SQLiteMigrator
 
 _LEAK = re.compile(
-    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}", re.IGNORECASE
+    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}",
+    re.IGNORECASE,
 )
 _NOW = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
 _GUARDS = (
-    "raw_email_body_persisted", "raw_document_text_persisted",
-    "raw_calendar_payload_persisted", "raw_prompt_persisted", "raw_response_persisted",
-    "signed_url_persisted", "download_url_persisted", "external_writeback_performed",
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
 )
 
 
@@ -74,8 +80,19 @@ def _live(db: str, endpoint: str, rid: str, status: str, ts: str | None) -> None
             " last_sync_run_id, raw_body_persisted, status, updated_at_utc) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                "tropical", "PP1", endpoint, "", rid, "{}", 0, "2026-01-01T00:00:00Z",
-                "2026-05-30T00:00:00Z", "run1", 0, status, ts,
+                "tropical",
+                "PP1",
+                endpoint,
+                "",
+                rid,
+                "{}",
+                0,
+                "2026-01-01T00:00:00Z",
+                "2026-05-30T00:00:00Z",
+                "run1",
+                0,
+                status,
+                ts,
             ),
         )
         raw.commit()
@@ -106,8 +123,13 @@ def test_success_groups_per_anchor_record() -> None:
         store = ConstructionStore(db_path=db)
         # two deterministic edges on the same anchor -> one family
         _cand(store, "c0", "tropical|rfis||100")
-        _cand(store, "c1", "tropical|rfis||100", target_family="procore",
-              target_record_type="procore_record")
+        _cand(
+            store,
+            "c1",
+            "tropical|rfis||100",
+            target_family="procore",
+            target_record_type="procore_record",
+        )
         report = IssueHistoryBuilder(store).build(dry_run=False, now_utc=_NOW)
         assert report["ok"] is True
         assert report["summary"]["families_written"] == 1
@@ -141,8 +163,9 @@ def test_weak_model_sensitive_excluded_from_grouping() -> None:
     try:
         store = ConstructionStore(db_path=db)
         _cand(store, "c0", "tropical|a||1", confidence_class="weak_heuristic")
-        _cand(store, "c1", "tropical|b||2", model_proposed=True,
-              confidence_class="strong_heuristic")
+        _cand(
+            store, "c1", "tropical|b||2", model_proposed=True, confidence_class="strong_heuristic"
+        )
         _cand(store, "c2", "tropical|c||3", sensitive_high_impact=True)
         report = IssueHistoryBuilder(store).build(dry_run=False, now_utc=_NOW)
         assert report["summary"]["families_written"] == 0
@@ -157,8 +180,13 @@ def test_activity_resolution_and_status_normalization() -> None:
         store = ConstructionStore(db_path=db)
         _cand(store, "c0", "tropical|rfis||100")
         # messy dict-string status from Procore must normalize to a bounded token.
-        _live(db, "rfis", "100", "{'id': 20577, 'name': 'Open', 'mapped_to_status': 'open'}",
-              "2026-05-20T00:00:00Z")
+        _live(
+            db,
+            "rfis",
+            "100",
+            "{'id': 20577, 'name': 'Open', 'mapped_to_status': 'open'}",
+            "2026-05-20T00:00:00Z",
+        )
         IssueHistoryBuilder(store).build(dry_run=False, now_utc=_NOW)
         it = store.list_project_issue_history_items()[0]
         assert it["status"] == "open"
@@ -189,8 +217,13 @@ def test_no_raw_content_or_status_payload() -> None:
     try:
         store = ConstructionStore(db_path=db)
         _cand(store, "c0", "tropical|rfis||100")
-        _live(db, "rfis", "100", "{'id': 20577, 'name': 'Open', 'mapped_to_status': 'open'}",
-              "2026-05-20T00:00:00Z")
+        _live(
+            db,
+            "rfis",
+            "100",
+            "{'id': 20577, 'name': 'Open', 'mapped_to_status': 'open'}",
+            "2026-05-20T00:00:00Z",
+        )
         IssueHistoryBuilder(store).build(dry_run=False, now_utc=_NOW)
         blob = json.dumps(store.list_project_issue_history_items(), default=str)
         assert _LEAK.search(blob) is None
@@ -241,7 +274,8 @@ def test_status_reports_coverage() -> None:
         assert status["summary"]["items"] == 2
         assert status["summary"]["review_required"] == 1
         assert status["summary"]["by_confidence_class"] == {
-            "deterministic": 1, "strong_heuristic": 1
+            "deterministic": 1,
+            "strong_heuristic": 1,
         }
     finally:
         Path(db).unlink(missing_ok=True)

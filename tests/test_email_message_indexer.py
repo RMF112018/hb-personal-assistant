@@ -57,7 +57,11 @@ def _msg(
 class FakeReader:
     """Read-only mail client stand-in for the indexer."""
 
-    def __init__(self, by_folder: dict[str, list[dict[str, Any]]], attachments: Optional[dict[str, list]] = None) -> None:
+    def __init__(
+        self,
+        by_folder: dict[str, list[dict[str, Any]]],
+        attachments: Optional[dict[str, list]] = None,
+    ) -> None:
         self._by_folder = by_folder
         self._attachments = attachments or {}
         self.attachment_calls: list[str] = []
@@ -74,7 +78,7 @@ class FakeReader:
         max_items: Optional[int] = None,
     ) -> list[dict[str, Any]]:
         msgs = self._by_folder.get(folder_id or "", [])
-        return msgs[: max_items] if max_items else list(msgs)
+        return msgs[:max_items] if max_items else list(msgs)
 
     def list_attachment_metadata(self, message_id: str) -> list[dict[str, Any]]:
         self.attachment_calls.append(message_id)
@@ -103,7 +107,12 @@ def _counts(db: str) -> dict[str, int]:
     try:
         return {
             t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-            for t in ("email_messages", "email_message_recipients", "email_message_attachments", "email_crawl_runs")
+            for t in (
+                "email_messages",
+                "email_message_recipients",
+                "email_message_attachments",
+                "email_crawl_runs",
+            )
         }
     finally:
         conn.close()
@@ -113,8 +122,12 @@ def test_index_persists_messages_recipients_attachments() -> None:
     db = _tmp_db()
     store = _store_with_inbox(db)
     reader = FakeReader(
-        by_folder={"AAMkInbox": [_msg("m1", has_attachments=True), _msg("m2", cc=["foo@hbcc.com"])]},
-        attachments={"m1": [{"id": "a1", "name": "rfi.pdf", "contentType": "application/pdf", "size": 2048}]},
+        by_folder={
+            "AAMkInbox": [_msg("m1", has_attachments=True), _msg("m2", cc=["foo@hbcc.com"])]
+        },
+        attachments={
+            "m1": [{"id": "a1", "name": "rfi.pdf", "contentType": "application/pdf", "size": 2048}]
+        },
     )
     result = EmailMessageIndexer(reader, store).index(project_key="tropical", lookback_days=30)
 
@@ -165,7 +178,9 @@ def test_index_is_idempotent() -> None:
     store = _store_with_inbox(db)
     reader = FakeReader(
         by_folder={"AAMkInbox": [_msg("m1", has_attachments=True), _msg("m2")]},
-        attachments={"m1": [{"id": "a1", "name": "x.pdf", "contentType": "application/pdf", "size": 10}]},
+        attachments={
+            "m1": [{"id": "a1", "name": "x.pdf", "contentType": "application/pdf", "size": 10}]
+        },
     )
     indexer = EmailMessageIndexer(reader, store)
     indexer.index(lookback_days=30)
@@ -210,7 +225,11 @@ def _enrich_counts(db: str) -> dict[str, int]:
     try:
         return {
             t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-            for t in ("email_message_attachments", "email_relationship_candidates", "email_review_queue")
+            for t in (
+                "email_message_attachments",
+                "email_relationship_candidates",
+                "email_review_queue",
+            )
         }
     finally:
         conn.close()
@@ -223,8 +242,19 @@ def test_attachment_enrichment_link_sensitivity_and_candidates() -> None:
         by_folder={"AAMkInbox": [_msg("m1", has_attachments=True)]},
         attachments={
             "m1": [
-                {"id": "a1", "name": "Subcontract Agreement.pdf", "contentType": "application/pdf", "size": 2048},
-                {"id": "a2", "name": "logo.png", "contentType": "image/png", "size": 10, "isInline": True},
+                {
+                    "id": "a1",
+                    "name": "Subcontract Agreement.pdf",
+                    "contentType": "application/pdf",
+                    "size": 2048,
+                },
+                {
+                    "id": "a2",
+                    "name": "logo.png",
+                    "contentType": "image/png",
+                    "size": 10,
+                    "isInline": True,
+                },
             ]
         },
     )
@@ -266,7 +296,9 @@ def test_body_preview_drive_link_creates_candidate() -> None:
     db = _tmp_db()
     store = _store_with_inbox(db)
     msg = _msg("m1")
-    msg["bodyPreview"] = "latest set at https://hbcc.sharepoint.com/sites/tropical/Shared%20Documents/x.pdf"
+    msg["bodyPreview"] = (
+        "latest set at https://hbcc.sharepoint.com/sites/tropical/Shared%20Documents/x.pdf"
+    )
     reader = FakeReader(by_folder={"AAMkInbox": [msg]})
     result = EmailMessageIndexer(reader, store).index(project_key="tropical", lookback_days=30)
     assert result.source_link_candidates >= 1
@@ -286,7 +318,16 @@ def test_attachment_enrichment_is_idempotent() -> None:
     store = _store_with_inbox(db)
     reader = FakeReader(
         by_folder={"AAMkInbox": [_msg("m1", has_attachments=True)]},
-        attachments={"m1": [{"id": "a1", "name": "Change Order 3.pdf", "contentType": "application/pdf", "size": 5}]},
+        attachments={
+            "m1": [
+                {
+                    "id": "a1",
+                    "name": "Change Order 3.pdf",
+                    "contentType": "application/pdf",
+                    "size": 5,
+                }
+            ]
+        },
     )
     indexer = EmailMessageIndexer(reader, store)
     indexer.index(project_key="tropical", lookback_days=30)

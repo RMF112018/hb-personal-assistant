@@ -150,7 +150,9 @@ def test_obsidian_dry_run_apply_mutual_exclusion():
             text=True,
             timeout=30,
         )
-        assert proc.returncode == 2, f"Expected exit 2 for conflicting flags, got {proc.returncode}: {proc.stdout[:300]}"
+        assert proc.returncode == 2, (
+            f"Expected exit 2 for conflicting flags, got {proc.returncode}: {proc.stdout[:300]}"
+        )
         data = json.loads(proc.stdout)
         assert "mutually exclusive" in data.get("error", "")
     finally:

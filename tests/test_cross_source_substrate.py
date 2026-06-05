@@ -29,7 +29,8 @@ from hb_assistant.construction.store.repositories import ConstructionStore
 from hb_assistant.store.migrator import SQLiteMigrator
 
 _LEAK = re.compile(
-    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}", re.IGNORECASE
+    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}",
+    re.IGNORECASE,
 )
 
 # Eight guard columns that must stay 0 on every substrate row.
@@ -244,12 +245,20 @@ def test_cli_build_and_status_subprocess_exit_zero() -> None:
     """The CLI commands run (dry-run, non-mutating) and emit valid JSON with exit 0."""
     for sub in ("build", "status", "promote"):
         cmd = [
-            sys.executable, "-m", "hb_assistant.cli.main",
-            "construction-agent", "relationships", sub, "--json",
+            sys.executable,
+            "-m",
+            "hb_assistant.cli.main",
+            "construction-agent",
+            "relationships",
+            sub,
+            "--json",
         ]
         proc = subprocess.run(
-            cmd, cwd=Path(__file__).resolve().parents[1],
-            capture_output=True, text=True, timeout=90,
+            cmd,
+            cwd=Path(__file__).resolve().parents[1],
+            capture_output=True,
+            text=True,
+            timeout=90,
         )
         assert proc.returncode == 0, f"{sub} failed: {proc.stderr[:500]}"
         payload = json.loads(proc.stdout)
@@ -304,9 +313,13 @@ def test_procore_edges_normalize_as_deterministic() -> None:
         _seed_procore_and_resolution(db)
         store = ConstructionStore(db_path=db)
         CrossSourceRelationshipSubstrateBuilder(store).build(dry_run=False)
-        by_target = {c["target_family"]: c for c in store.list_cross_source_relationship_candidates()}
+        by_target = {
+            c["target_family"]: c for c in store.list_cross_source_relationship_candidates()
+        }
         # record→record and record→entity both present, both deterministic
-        assert "procore" in by_target and by_target["procore"]["confidence_class"] == "deterministic"
+        assert (
+            "procore" in by_target and by_target["procore"]["confidence_class"] == "deterministic"
+        )
         assert "procore_entity" in by_target
         assert by_target["procore"]["deterministic"] is True
         assert by_target["procore"]["review_required"] is False
@@ -321,7 +334,8 @@ def test_resolution_queue_confidence_class_override_preserved() -> None:
         store = ConstructionStore(db_path=db)
         CrossSourceRelationshipSubstrateBuilder(store).build(dry_run=False)
         rq = [
-            c for c in store.list_cross_source_relationship_candidates()
+            c
+            for c in store.list_cross_source_relationship_candidates()
             if c["target_family"] in ("email", "calendar")
         ]
         classes = {c["target_family"]: c for c in rq}

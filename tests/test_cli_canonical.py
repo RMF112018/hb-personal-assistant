@@ -102,7 +102,9 @@ def test_diagnostics_automation_parses() -> None:
 
 
 def test_diagnostics_scan_sensitive_parses() -> None:
-    result = _invoke_in_isolated_app_support(["diagnostics", "scan-sensitive", "--repo", ".", "--json"])
+    result = _invoke_in_isolated_app_support(
+        ["diagnostics", "scan-sensitive", "--repo", ".", "--json"]
+    )
     assert result.exit_code == 0
 
 

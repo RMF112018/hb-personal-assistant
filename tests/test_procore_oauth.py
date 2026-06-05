@@ -48,7 +48,9 @@ class _FakeResponse:
 def _record_transport(response: _FakeResponse) -> tuple[Any, list[dict[str, Any]]]:
     calls: list[dict[str, Any]] = []
 
-    def transport(method: str, url: str, *, headers: dict, data: dict, timeout: float) -> _FakeResponse:
+    def transport(
+        method: str, url: str, *, headers: dict, data: dict, timeout: float
+    ) -> _FakeResponse:
         calls.append(
             {
                 "method": method,
@@ -209,7 +211,5 @@ def test_token_set_repr_and_str_never_include_token_value() -> None:
 def test_token_set_expires_in_seconds_handles_past() -> None:
     past = datetime(2000, 1, 1, tzinfo=timezone.utc)
     now = datetime.now(timezone.utc)
-    token = TokenSet(
-        access_token="x", refresh_token=None, expires_at=past, obtained_at=now
-    )
+    token = TokenSet(access_token="x", refresh_token=None, expires_at=past, obtained_at=now)
     assert token.expires_in_seconds() < 0

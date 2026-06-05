@@ -22,7 +22,8 @@ from hb_assistant.normalize.redaction import hash_value
 from hb_assistant.store.migrator import SQLiteMigrator
 
 _LEAK = re.compile(
-    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}", re.IGNORECASE
+    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}",
+    re.IGNORECASE,
 )
 
 
@@ -35,9 +36,13 @@ def _fresh_db() -> str:
 
 def _thread(store: ConstructionStore, key: str, *, last: str) -> None:
     store.upsert_email_thread_summary(
-        thread_key=key, project_key="tropical", message_count=2,
-        first_message_datetime="2026-05-01T00:00:00Z", last_message_datetime=last,
-        summary_redacted=f"thread: {key} (2 messages)", summary_policy="metadata_only",
+        thread_key=key,
+        project_key="tropical",
+        message_count=2,
+        first_message_datetime="2026-05-01T00:00:00Z",
+        last_message_datetime=last,
+        summary_redacted=f"thread: {key} (2 messages)",
+        summary_policy="metadata_only",
     )
 
 
@@ -55,19 +60,38 @@ def _message(db: str, mid: str, thread_key: str) -> None:
         raw.close()
 
 
-def _edge(store: ConstructionStore, cid: str, mid: str, rel: str, tf: str, tt: str, tref: str,
-          *, cc: str = "deterministic") -> None:
+def _edge(
+    store: ConstructionStore,
+    cid: str,
+    mid: str,
+    rel: str,
+    tf: str,
+    tt: str,
+    tref: str,
+    *,
+    cc: str = "deterministic",
+) -> None:
     store.upsert_cross_source_relationship_candidate(
-        candidate_id=cid, source_family="email", source_record_type="email_message",
-        source_record_ref=mid, target_family=tf, target_record_type=tt, target_record_ref=tref,
-        relationship_type=rel, confidence_score=1.0, confidence_class=cc,
-        source_reference_json=json.dumps({"x": cid}), review_required=(cc != "deterministic"),
-        project_key="tropical", evidence_trail_id="et_" + cid,
+        candidate_id=cid,
+        source_family="email",
+        source_record_type="email_message",
+        source_record_ref=mid,
+        target_family=tf,
+        target_record_type=tt,
+        target_record_ref=tref,
+        relationship_type=rel,
+        confidence_score=1.0,
+        confidence_class=cc,
+        source_reference_json=json.dumps({"x": cid}),
+        review_required=(cc != "deterministic"),
+        project_key="tropical",
+        evidence_trail_id="et_" + cid,
     )
 
 
-def _meeting_tie(db: str, cid: str, event: str, thread_key: str, *, cc: str = "strong_heuristic",
-                 review: int = 0) -> None:
+def _meeting_tie(
+    db: str, cid: str, event: str, thread_key: str, *, cc: str = "strong_heuristic", review: int = 0
+) -> None:
     raw = sqlite3.connect(db)
     try:
         raw.execute(
@@ -75,8 +99,18 @@ def _meeting_tie(db: str, cid: str, event: str, thread_key: str, *, cc: str = "s
             "(candidate_id, event_index_id, thread_key_hash, project_key, candidate_type, "
             " source_reference_json, confidence, confidence_class, review_required, "
             " promotion_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (cid, event, hash_value(thread_key), "tropical", "time_and_domain", "{}", 0.8, cc,
-             review, "candidate"),
+            (
+                cid,
+                event,
+                hash_value(thread_key),
+                "tropical",
+                "time_and_domain",
+                "{}",
+                0.8,
+                cc,
+                review,
+                "candidate",
+            ),
         )
         raw.commit()
     finally:
@@ -130,8 +164,16 @@ def test_review_required_from_weak_edge() -> None:
         store = ConstructionStore(db_path=db)
         _thread(store, "T1", last="2026-05-28T00:00:00Z")
         _message(db, "m1", "T1")
-        _edge(store, "e1", "m1", "financial_keyword_in_preview", "procore", "procore_contract",
-              "c9", cc="weak_heuristic")
+        _edge(
+            store,
+            "e1",
+            "m1",
+            "financial_keyword_in_preview",
+            "procore",
+            "procore_contract",
+            "c9",
+            cc="weak_heuristic",
+        )
         report = CorrespondenceContextBuilder(store).context(project_filter="tropical")
         t = report["threads"][0]
         assert t["review_required"] is True

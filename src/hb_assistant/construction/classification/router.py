@@ -74,12 +74,11 @@ class ClassificationRouter:
             status = "review"
             reasons.append(f"low_confidence:{classification.confidence:.3f}")
 
-        if (
-            self._policy_evaluator is not None
-            and inventory_item is not None
-        ):
+        if self._policy_evaluator is not None and inventory_item is not None:
             policy_matches = self._policy_evaluator.evaluate(
-                source_key=source_key, project_key=project_key, item=inventory_item,
+                source_key=source_key,
+                project_key=project_key,
+                item=inventory_item,
             )
             if policy_matches:
                 status = "review"
@@ -98,7 +97,8 @@ class ClassificationRouter:
             proposed_label=classification.proposed_label,
             confidence=classification.confidence,
             rationale_truncated=_truncate(
-                classification.rationale, self._config.max_output_chars,
+                classification.rationale,
+                self._config.max_output_chars,
             ),
             raw_output_truncated=_truncate(raw_output, self._config.max_output_chars),
             status=status,  # type: ignore[arg-type]

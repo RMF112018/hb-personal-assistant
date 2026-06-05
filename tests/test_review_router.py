@@ -39,12 +39,20 @@ def _add(
     source_id: str = "sx",
 ) -> None:
     store.upsert_email_message(
-        message_id=mid, thread_key="t" + mid, source_id=source_id, sender_domain="vendor.com",
-        received_datetime="2026-05-20T10:00:00Z", body_preview_excerpt_redacted=preview,
+        message_id=mid,
+        thread_key="t" + mid,
+        source_id=source_id,
+        sender_domain="vendor.com",
+        received_datetime="2026-05-20T10:00:00Z",
+        body_preview_excerpt_redacted=preview,
     )
     store.upsert_email_project_match(
-        match_id="pm-" + mid, message_id=mid, match_signal="project_name_in_subject",
-        confidence=confidence, project_key="tropical", project_number="23-435-01",
+        match_id="pm-" + mid,
+        message_id=mid,
+        match_signal="project_name_in_subject",
+        confidence=confidence,
+        project_key="tropical",
+        project_number="23-435-01",
     )
 
 
@@ -107,8 +115,11 @@ def test_excluded_folder_not_eligible() -> None:
     db = _tmp_db()
     store = ConstructionStore(db)
     store.upsert_email_source_location(
-        source_id="sxdel", mailbox_owner_hash="h", folder_role="deleted",
-        folder_id="D", include_in_sync=False,
+        source_id="sxdel",
+        mailbox_owner_hash="h",
+        folder_role="deleted",
+        folder_id="D",
+        include_in_sync=False,
     )
     _add(store, "m1", "weekly recap and progress photos", confidence=0.95, source_id="sxdel")
     report = ReviewRouter(store).route(project_key="tropical", lookback_days=30, dry_run=True)
@@ -135,11 +146,18 @@ def test_lookback_excludes_old_messages() -> None:
     db = _tmp_db()
     store = _store(db)
     store.upsert_email_message(
-        message_id="old", thread_key="t", source_id="sx", sender_domain="vendor.com",
-        received_datetime="2020-01-01T00:00:00Z", body_preview_excerpt_redacted="old change order",
+        message_id="old",
+        thread_key="t",
+        source_id="sx",
+        sender_domain="vendor.com",
+        received_datetime="2020-01-01T00:00:00Z",
+        body_preview_excerpt_redacted="old change order",
     )
     store.upsert_email_project_match(
-        match_id="pm-old", message_id="old", match_signal="x", confidence=0.95,
+        match_id="pm-old",
+        message_id="old",
+        match_signal="x",
+        confidence=0.95,
         project_key="tropical",
     )
     report = ReviewRouter(store).route(project_key="tropical", lookback_days=30, dry_run=True)

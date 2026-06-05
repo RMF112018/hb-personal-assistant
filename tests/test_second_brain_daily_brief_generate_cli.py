@@ -35,7 +35,16 @@ def test_generate_dry_run_exit_zero(runner: CliRunner) -> None:
 def test_generate_invalid_mode_rejected(runner: CliRunner) -> None:
     result = runner.invoke(
         app,
-        ["second-brain", "daily-brief", "generate", "--date", "2026-06-02", "--mode", "bogus", "--json"],
+        [
+            "second-brain",
+            "daily-brief",
+            "generate",
+            "--date",
+            "2026-06-02",
+            "--mode",
+            "bogus",
+            "--json",
+        ],
     )
     assert result.exit_code == 2, result.output
     payload = json.loads(result.output)
@@ -46,5 +55,12 @@ def test_generate_output_carries_no_raw_content(runner: CliRunner) -> None:
     out = runner.invoke(
         app, ["second-brain", "daily-brief", "generate", "--date", "2026-06-02", "--json"]
     ).output
-    for forbidden in ("signed_url", "download_url", "raw_body", "raw_prompt", "raw_response", "secret"):
+    for forbidden in (
+        "signed_url",
+        "download_url",
+        "raw_body",
+        "raw_prompt",
+        "raw_response",
+        "secret",
+    ):
         assert forbidden not in out

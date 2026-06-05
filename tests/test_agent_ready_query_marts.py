@@ -33,15 +33,17 @@ def _seed_minimal(store: ConstructionStore) -> None:
         match_confidence="high",
     )
     with contextlib.suppress(Exception):
-        store.upsert_source_system_record({
-            "canonical_record_id": "procore:procore_live_records:REC-001",
-            "project_key": "tropical",
-            "source_system": "procore",
-            "source_table": "procore_live_records",
-            "source_primary_key": "REC-001",
-            "confidence_class": "deterministic_exact_id",
-            "review_required": False,
-        })
+        store.upsert_source_system_record(
+            {
+                "canonical_record_id": "procore:procore_live_records:REC-001",
+                "project_key": "tropical",
+                "source_system": "procore",
+                "source_table": "procore_live_records",
+                "source_primary_key": "REC-001",
+                "confidence_class": "deterministic_exact_id",
+                "review_required": False,
+            }
+        )
 
 
 def test_marts_populate_and_latency_keys(tmp_path: Path) -> None:
@@ -81,7 +83,15 @@ def test_marts_populate_and_latency_keys(tmp_path: Path) -> None:
 
 def test_cli_marts_json() -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "hb_assistant.cli.main", "construction-agent", "data-quality", "marts", "--json"],
+        [
+            sys.executable,
+            "-m",
+            "hb_assistant.cli.main",
+            "construction-agent",
+            "data-quality",
+            "marts",
+            "--json",
+        ],
         capture_output=True,
         text=True,
         timeout=30,

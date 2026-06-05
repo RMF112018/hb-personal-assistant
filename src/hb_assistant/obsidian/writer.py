@@ -31,7 +31,11 @@ MARKER_END = "<!-- HB-DAILY-BRIEF:END -->"
 class MarkerBoundedWriter:
     """Safe, marker-bounded writer for the Daily Brief."""
 
-    def __init__(self, path_policy: Optional[PathPolicy] = None, registry: Optional[SourceLinkRegistry] = None):
+    def __init__(
+        self,
+        path_policy: Optional[PathPolicy] = None,
+        registry: Optional[SourceLinkRegistry] = None,
+    ):
         self.pp = path_policy or PathPolicy()
         self.registry = registry or SourceLinkRegistry()
         self.pp.ensure_dirs(create_sensitive=False)
@@ -40,7 +44,9 @@ class MarkerBoundedWriter:
         return self.pp.get_daily_notes_dir() / f"{target_date.isoformat()}.md"
 
     def _companion_path(self, target_date: date) -> Path:
-        return self.pp.get_ai_outputs_dir() / f"Daily Knowledge Brief - {target_date.isoformat()}.md"
+        return (
+            self.pp.get_ai_outputs_dir() / f"Daily Knowledge Brief - {target_date.isoformat()}.md"
+        )
 
     def _ensure_markers(self, content: str) -> str:
         if MARKER_START in content and MARKER_END in content:
@@ -89,12 +95,14 @@ class MarkerBoundedWriter:
             m = re.match(r"^(\s*-\s*\[([ xX])\]\s*)(.+)$", line)
             if m:
                 old_tasks[m.group(3).strip().lower()] = m.group(2)
+
         def replacer(match):
             prefix, _state, title = match.groups()
             key = title.strip().lower()
             if key in old_tasks:
                 return f"{prefix}[{old_tasks[key]}] {title}"
             return match.group(0)
+
         return re.sub(r"^(\s*-\s*\[([ xX])\]\s*)(.+)$", replacer, new_content, flags=re.MULTILINE)
 
     def write_bounded_section(
@@ -112,7 +120,9 @@ class MarkerBoundedWriter:
         Write (or dry-run) the bounded brief section.
         Returns the target Path (real write) or the computed full content (dry_run).
         """
-        target_path = self._companion_path(target_date) if companion else self._daily_note_path(target_date)
+        target_path = (
+            self._companion_path(target_date) if companion else self._daily_note_path(target_date)
+        )
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Default frontmatter for brief (Dataview friendly, per spec)

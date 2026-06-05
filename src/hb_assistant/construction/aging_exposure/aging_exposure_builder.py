@@ -51,16 +51,41 @@ _STALE_BANDS = frozenset({"stale", "critical_review"})
 
 # Record-family keywords that denote a financial family (financial-exposure boundary).
 _FINANCIAL_KEYWORDS = (
-    "budget", "commitment", "invoice", "change-order", "change_order", "change-event",
-    "change_event", "billing", "prime", "purchase-order", "purchase_order", "payment",
-    "contract", "compliance",
+    "budget",
+    "commitment",
+    "invoice",
+    "change-order",
+    "change_order",
+    "change-event",
+    "change_event",
+    "billing",
+    "prime",
+    "purchase-order",
+    "purchase_order",
+    "payment",
+    "contract",
+    "compliance",
 )
 
 _KNOWN_STATUS = frozenset(
     {
-        "open", "closed", "approved", "draft", "void", "pending", "none", "rejected",
-        "in_review", "submitted", "answered", "overdue", "initiated", "out_for_pricing",
-        "active", "complete", "incomplete",
+        "open",
+        "closed",
+        "approved",
+        "draft",
+        "void",
+        "pending",
+        "none",
+        "rejected",
+        "in_review",
+        "submitted",
+        "answered",
+        "overdue",
+        "initiated",
+        "out_for_pricing",
+        "active",
+        "complete",
+        "incomplete",
     }
 )
 
@@ -216,10 +241,14 @@ class AgingExposureBuilder:
                         fin_critical += 1
                 if not dry_run:
                     self._store.upsert_aging_exposure_report_item(
-                        aging_item_id=item["aging_item_id"], project_key=project_key,
-                        record_family=item["record_family"], record_ref=item["record_ref"],
-                        status=item["status"], threshold_band=item["threshold_band"],
-                        age_days=item["age_days"], stale_flag=item["stale_flag"],
+                        aging_item_id=item["aging_item_id"],
+                        project_key=project_key,
+                        record_family=item["record_family"],
+                        record_ref=item["record_ref"],
+                        status=item["status"],
+                        threshold_band=item["threshold_band"],
+                        age_days=item["age_days"],
+                        stale_flag=item["stale_flag"],
                         missing_status_flag=item["missing_status_flag"],
                         evidence_trail_id=item["evidence_trail_id"],
                         confidence_class=item["confidence_class"],
@@ -265,8 +294,14 @@ class AgingExposureBuilder:
         record_ref = _procore_record_key(rec)
         raw_status = rec.get("status")
         status = _normalize_status(raw_status)
-        missing_status = raw_status is None or str(raw_status).strip() == "" or status in (
-            "unknown", "none",
+        missing_status = (
+            raw_status is None
+            or str(raw_status).strip() == ""
+            or status
+            in (
+                "unknown",
+                "none",
+            )
         )
         dt = _parse_dt(rec.get("updated_at_utc"))
         if dt is None:

@@ -71,9 +71,15 @@ def _decode_list(value: Any) -> str:
 
 def _signal_rows(signals: List[Dict[str, Any]]) -> List[List[str]]:
     return [
-        [s.get("signal_type"), s.get("importance"), s.get("signal_status"),
-         s.get("endpoint_id"), s.get("record_key"), s.get("due_at_utc") or "",
-         s.get("title_redacted") or ""]
+        [
+            s.get("signal_type"),
+            s.get("importance"),
+            s.get("signal_status"),
+            s.get("endpoint_id"),
+            s.get("record_key"),
+            s.get("due_at_utc") or "",
+            s.get("title_redacted") or "",
+        ]
         for s in signals
     ]
 
@@ -84,22 +90,36 @@ _CHANGE_HEADERS = ["Detected", "Endpoint", "Record ID", "Field", "Category", "Ty
 
 def _change_rows(changes: List[Dict[str, Any]]) -> List[List[str]]:
     return [
-        [c.get("detected_at_utc"), c.get("endpoint_id"), c.get("procore_record_id"),
-         c.get("field_path"), c.get("change_category"), c.get("change_type"), c.get("record_key")]
+        [
+            c.get("detected_at_utc"),
+            c.get("endpoint_id"),
+            c.get("procore_record_id"),
+            c.get("field_path"),
+            c.get("change_category"),
+            c.get("change_type"),
+            c.get("record_key"),
+        ]
         for c in changes
     ]
 
 
 def build_enriched_registers(
-    project_key: str, *, since_utc: str, now_utc: str, db_path: Optional[Path] = None,
+    project_key: str,
+    *,
+    since_utc: str,
+    now_utc: str,
+    db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Build the eight enriched register sections for a project (pure read)."""
     signals = get_procore_action_signals(project_key=project_key, db_path=db_path)
     changes = get_procore_changes(project_key=project_key, db_path=db_path)
     recent = [c for c in changes if (c.get("detected_at_utc") or "") >= since_utc]
     meeting_ti = [
-        t for t in get_procore_text_intelligence(
-            project_key=project_key, with_action_candidates=True, db_path=db_path,
+        t
+        for t in get_procore_text_intelligence(
+            project_key=project_key,
+            with_action_candidates=True,
+            db_path=db_path,
         )
         if t.get("endpoint_id") in _MEETING_ENDPOINTS
     ]
@@ -125,33 +145,49 @@ def build_enriched_registers(
         "inspection_unanswered": _section(
             "Inspection Unanswered Items",
             f"hb-assistant procore live actions --project {project_key} --endpoint inspections --json",
-            _table(_SIGNAL_HEADERS, _signal_rows(insp_unanswered), empty="No unanswered inspection items."),
+            _table(
+                _SIGNAL_HEADERS,
+                _signal_rows(insp_unanswered),
+                empty="No unanswered inspection items.",
+            ),
         ),
         "safety_queue": _section(
             "Safety / Compliance Queue",
             f"hb-assistant procore live actions --project {project_key} --json",
-            _table(_SIGNAL_HEADERS, _signal_rows(safety), empty="No open safety/compliance signals."),
+            _table(
+                _SIGNAL_HEADERS, _signal_rows(safety), empty="No open safety/compliance signals."
+            ),
         ),
         "meeting_actions": _section(
             "Meeting Decisions / Actions",
-            f"hb-assistant procore live timeline --project {project_key} --since \"7 days ago\" --json",
+            f'hb-assistant procore live timeline --project {project_key} --since "7 days ago" --json',
             _table(
                 ["Record Key", "Field", "Action Candidates", "Excerpt"],
-                [[t.get("record_key"), t.get("source_field_path"),
-                  _decode_list(t.get("action_candidates_json")), t.get("excerpt_redacted") or ""]
-                 for t in meeting_ti],
+                [
+                    [
+                        t.get("record_key"),
+                        t.get("source_field_path"),
+                        _decode_list(t.get("action_candidates_json")),
+                        t.get("excerpt_redacted") or "",
+                    ]
+                    for t in meeting_ti
+                ],
                 empty="No meeting decisions/actions detected.",
             ),
         ),
         "rfi_response_changes": _section(
             "RFI Response Changes",
-            f"hb-assistant procore live changes --project {project_key} --endpoint rfis --since \"7 days ago\" --json",
+            f'hb-assistant procore live changes --project {project_key} --endpoint rfis --since "7 days ago" --json',
             _table(_CHANGE_HEADERS, _change_rows(rfi_changes), empty="No RFI response changes."),
         ),
         "submittal_workflow_changes": _section(
             "Submittal Workflow Changes",
-            f"hb-assistant procore live changes --project {project_key} --endpoint submittals --since \"7 days ago\" --json",
-            _table(_CHANGE_HEADERS, _change_rows(submittal_changes), empty="No submittal workflow changes."),
+            f'hb-assistant procore live changes --project {project_key} --endpoint submittals --since "7 days ago" --json',
+            _table(
+                _CHANGE_HEADERS,
+                _change_rows(submittal_changes),
+                empty="No submittal workflow changes.",
+            ),
         ),
         "schedule_risk": _section(
             "Schedule Risk Signals",
@@ -161,32 +197,51 @@ def build_enriched_registers(
     }
 
     counts = {
-        "open_actions": len(open_signals), "recent_changes": len(recent),
-        "inspection_unanswered": len(insp_unanswered), "safety_queue": len(safety),
-        "meeting_actions": len(meeting_ti), "rfi_response_changes": len(rfi_changes),
-        "submittal_workflow_changes": len(submittal_changes), "schedule_risk": len(schedule_risk),
+        "open_actions": len(open_signals),
+        "recent_changes": len(recent),
+        "inspection_unanswered": len(insp_unanswered),
+        "safety_queue": len(safety),
+        "meeting_actions": len(meeting_ti),
+        "rfi_response_changes": len(rfi_changes),
+        "submittal_workflow_changes": len(submittal_changes),
+        "schedule_risk": len(schedule_risk),
     }
     rendered = _render_note(project_key, now_utc=now_utc, since_utc=since_utc, sections=sections)
     return {
-        "project_key": project_key, "generated_utc": now_utc, "since_utc": since_utc,
-        "sections": sections, "rendered": rendered, "counts": counts,
-        "review_sensitive": False, "guardrails": dict(PROCORE_GUARDRAILS),
+        "project_key": project_key,
+        "generated_utc": now_utc,
+        "since_utc": since_utc,
+        "sections": sections,
+        "rendered": rendered,
+        "counts": counts,
+        "review_sensitive": False,
+        "guardrails": dict(PROCORE_GUARDRAILS),
     }
 
 
-def _render_note(project_key: str, *, now_utc: str, since_utc: str, sections: Dict[str, str]) -> str:
-    frontmatter = "\n".join([
-        "---",
-        "type: procore_enriched_register",
-        f"project_key: {project_key}",
-        "source: procore_second_brain_sqlite",
-        "review_sensitive: false",
-        f"generated_utc: {now_utc}",
-        "---",
-    ])
+def _render_note(
+    project_key: str, *, now_utc: str, since_utc: str, sections: Dict[str, str]
+) -> str:
+    frontmatter = "\n".join(
+        [
+            "---",
+            "type: procore_enriched_register",
+            f"project_key: {project_key}",
+            "source: procore_second_brain_sqlite",
+            "review_sensitive: false",
+            f"generated_utc: {now_utc}",
+            "---",
+        ]
+    )
     order = [
-        "open_actions", "recent_changes", "inspection_unanswered", "safety_queue",
-        "meeting_actions", "rfi_response_changes", "submittal_workflow_changes", "schedule_risk",
+        "open_actions",
+        "recent_changes",
+        "inspection_unanswered",
+        "safety_queue",
+        "meeting_actions",
+        "rfi_response_changes",
+        "submittal_workflow_changes",
+        "schedule_risk",
     ]
     body = "\n\n".join(sections[k] for k in order)
     guardrails = "\n".join(f"- {k}: {v}" for k, v in PROCORE_GUARDRAILS.items())
@@ -198,21 +253,30 @@ def _render_note(project_key: str, *, now_utc: str, since_utc: str, sections: Di
 
 
 def apply_enriched_register(
-    project_key: str, *, since_utc: str, now_utc: str, db_path: Optional[Path] = None,
+    project_key: str,
+    *,
+    since_utc: str,
+    now_utc: str,
+    db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Build + write the single enriched-register note (marker-bounded). Returns
     the build result with ``written_paths`` populated (or a vault-not-configured
     marker when no vault root is set)."""
     from ..construction.manifests.vault_writer import ConstructionVaultWriter
 
-    result = build_enriched_registers(project_key, since_utc=since_utc, now_utc=now_utc, db_path=db_path)
+    result = build_enriched_registers(
+        project_key, since_utc=since_utc, now_utc=now_utc, db_path=db_path
+    )
     writer = ConstructionVaultWriter()
     if not writer.configured:
         result["written_paths"] = []
         result["vault_configured"] = False
         return result
     path = _write_procore_artifact(
-        writer.root, f"{project_key}.{_FILENAME_SUFFIX}", result["rendered"], _MARKER_KIND,
+        writer.root,
+        f"{project_key}.{_FILENAME_SUFFIX}",
+        result["rendered"],
+        _MARKER_KIND,
     )
     result["written_paths"] = [str(path)]
     result["vault_configured"] = True

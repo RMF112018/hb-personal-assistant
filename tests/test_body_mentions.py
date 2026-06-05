@@ -65,7 +65,9 @@ def test_body_inspector_html_strip_and_hit():
     assert res["body_mention_detected"] is True
     assert res["detection_method"] == "body"
     assert res["match_excerpt_redacted"] is not None
-    assert "Bobby" not in res["match_excerpt_redacted"] or "[redacted" in res["match_excerpt_redacted"]
+    assert (
+        "Bobby" not in res["match_excerpt_redacted"] or "[redacted" in res["match_excerpt_redacted"]
+    )
 
 
 def test_body_inspector_plain_miss():

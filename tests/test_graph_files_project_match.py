@@ -37,8 +37,13 @@ def _store(tmp_path: Path) -> ConstructionStore:
 
 def _add(store: ConstructionStore, source_id: str, item_id: str, name: str, path: str) -> None:
     store.upsert_drive_item(
-        source_id=source_id, drive_id="D", drive_item_id=item_id,
-        name=name, path=path, parent_reference_path=path, is_file=True,
+        source_id=source_id,
+        drive_id="D",
+        drive_item_id=item_id,
+        name=name,
+        path=path,
+        parent_reference_path=path,
+        is_file=True,
     )
 
 
@@ -134,9 +139,17 @@ def test_cli_project_match_offline(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     db = str(tmp_path / "pm.sqlite")
     seed = ConstructionStore(db)
     project_registry_to_v5_source_locations(load_source_registry(), seed)
-    seed.upsert_drive_item(source_id=_BOUND, drive_id="D", drive_item_id="f1",
-                           name="a.pdf", path="/Shared Documents/07-RFI", is_file=True)
-    monkeypatch.setattr("hb_assistant.cli.graph.ConstructionStore", lambda *a, **k: ConstructionStore(db))
+    seed.upsert_drive_item(
+        source_id=_BOUND,
+        drive_id="D",
+        drive_item_id="f1",
+        name="a.pdf",
+        path="/Shared Documents/07-RFI",
+        is_file=True,
+    )
+    monkeypatch.setattr(
+        "hb_assistant.cli.graph.ConstructionStore", lambda *a, **k: ConstructionStore(db)
+    )
     result = runner.invoke(app, ["files", "project-match", "--project", "tropical", "--json"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)

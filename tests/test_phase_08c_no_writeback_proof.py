@@ -90,9 +90,7 @@ def test_proof_passes_on_clean_state(tmp_path: Path, evidence_subdir: str) -> No
 def test_proof_fails_on_secret_in_evidence(tmp_path: Path, evidence_subdir: str) -> None:
     db = tmp_path / "nw2.db"
     SQLiteMigrator(db_path=str(db)).apply()
-    (_evidence_path(evidence_subdir) / "leaky.json").write_text(
-        json.dumps({"k": _PEM_MARKER})
-    )
+    (_evidence_path(evidence_subdir) / "leaky.json").write_text(json.dumps({"k": _PEM_MARKER}))
 
     proof = build_proof(db_path=str(db), out_dir=str(tmp_path), evidence_dir=evidence_subdir)
 
@@ -100,9 +98,12 @@ def test_proof_fails_on_secret_in_evidence(tmp_path: Path, evidence_subdir: str)
     assert proof["proof_passed"] is False
     findings = proof["checks_detail"]["evidence_raw_secret_scan_08c"]["findings"]
     assert findings  # location + label only (never the raw key bytes)
-    assert json.loads(
-        (tmp_path / "no-writeback-no-raw-financial-output-proof.json").read_text()
-    )["proof_passed"] is False
+    assert (
+        json.loads((tmp_path / "no-writeback-no-raw-financial-output-proof.json").read_text())[
+            "proof_passed"
+        ]
+        is False
+    )
 
 
 def test_proof_fails_on_raw_value_in_table(tmp_path: Path) -> None:

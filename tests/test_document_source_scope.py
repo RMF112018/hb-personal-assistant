@@ -169,9 +169,7 @@ def test_legacy_compat_onedrive_root_kind_allows_explicit_all_folders() -> None:
 
 
 def test_all_folders_blocked_when_policy_disables_capability() -> None:
-    reg = SourceRegistry(
-        sources=[_src("od_all", "onedrive_business_root", allow_all_folders=True)]
-    )
+    reg = SourceRegistry(sources=[_src("od_all", "onedrive_business_root", allow_all_folders=True)])
     policy = DocumentSourcePolicy(onedrive=OneDriveScopePolicy(allow_explicit_all_folders=False))
     rec = evaluate_source_scope_compliance(reg, policy)["sources"][0]
     assert rec["compliance_status"] == "non_compliant"

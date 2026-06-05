@@ -48,7 +48,9 @@ class MailConfig(BaseModel):
 
 
 class CalendarConfig(BaseModel):
-    window: dict = Field(default_factory=lambda: {"start": "yesterday", "end": "next_2_business_days"})
+    window: dict = Field(
+        default_factory=lambda: {"start": "yesterday", "end": "next_2_business_days"}
+    )
     max_items_per_run: int = 25
 
 

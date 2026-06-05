@@ -28,7 +28,9 @@ def test_parse_since_valid(value: str, expected: str) -> None:
     assert parse_since(value, now=_NOW) == expected
 
 
-@pytest.mark.parametrize("value", ["", "   ", "yesterday", "soon", "5 fortnights ago", "ago 3 days"])
+@pytest.mark.parametrize(
+    "value", ["", "   ", "yesterday", "soon", "5 fortnights ago", "ago 3 days"]
+)
 def test_parse_since_invalid(value: str) -> None:
     with pytest.raises(ValueError):
         parse_since(value, now=_NOW)

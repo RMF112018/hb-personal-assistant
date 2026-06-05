@@ -28,8 +28,17 @@ _SECRET_TITLE = "ZZSENSITIVEMEETINGZZ"
 runner = CliRunner()
 
 _BANNED = ("liable", "liability", "entitled", "breach", "negligent", "at fault")
-_SECRETS = ("bearer ", "authorization", "refresh_token", "client_secret", "-----begin",
-            "access_token", "?sv=", "sig=", "x-amz")
+_SECRETS = (
+    "bearer ",
+    "authorization",
+    "refresh_token",
+    "client_secret",
+    "-----begin",
+    "access_token",
+    "?sv=",
+    "sig=",
+    "x-amz",
+)
 
 
 def _db() -> Path:
@@ -39,8 +48,15 @@ def _db() -> Path:
     return path
 
 
-def _record(db: Path, *, endpoint_id: str, record_id: str, title: str = "", review: bool = False,
-            updated: str = _NOW) -> str:
+def _record(
+    db: Path,
+    *,
+    endpoint_id: str,
+    record_id: str,
+    title: str = "",
+    review: bool = False,
+    updated: str = _NOW,
+) -> str:
     conn = get_connection(str(db))
     conn.execute("PRAGMA foreign_keys=OFF")  # test seed: skip the sync-run FK (throwaway DB)
     conn.execute(
@@ -49,8 +65,22 @@ def _record(db: Path, *, endpoint_id: str, record_id: str, title: str = "", revi
            updated_at_utc, canonical_json_redacted, review_required, first_seen_at_utc,
            last_seen_at_utc, last_sync_run_id, raw_body_persisted)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)""",
-        ("tropical", "P1", endpoint_id, "", record_id, f"M-{record_id}", title, "open",
-         updated, "{}", 1 if review else 0, _NOW, _NOW, "run-1"),
+        (
+            "tropical",
+            "P1",
+            endpoint_id,
+            "",
+            record_id,
+            f"M-{record_id}",
+            title,
+            "open",
+            updated,
+            "{}",
+            1 if review else 0,
+            _NOW,
+            _NOW,
+            "run-1",
+        ),
     )
     conn.commit()
     return "|".join(["tropical", endpoint_id, "", record_id])
@@ -58,18 +88,32 @@ def _record(db: Path, *, endpoint_id: str, record_id: str, title: str = "", revi
 
 def _seed(db: Path) -> None:
     r1 = _record(db, endpoint_id="rfis", record_id="1", title="rfi-one")
-    emit_action_signal(project_key="tropical", record_key=r1, endpoint_id="rfis",
-                       signal_type="rfi_overdue", importance="high", due_at_utc=_PAST,
-                       now_utc=_NOW, db_path=db)
+    emit_action_signal(
+        project_key="tropical",
+        record_key=r1,
+        endpoint_id="rfis",
+        signal_type="rfi_overdue",
+        importance="high",
+        due_at_utc=_PAST,
+        now_utc=_NOW,
+        db_path=db,
+    )
     m1 = _record(db, endpoint_id="meetings", record_id="10", title="weekly-coord")
-    emit_action_signal(project_key="tropical", record_key=m1, endpoint_id="meetings",
-                       signal_type="meeting_topic_open_high_priority", importance="high",
-                       now_utc=_NOW, db_path=db)
+    emit_action_signal(
+        project_key="tropical",
+        record_key=m1,
+        endpoint_id="meetings",
+        signal_type="meeting_topic_open_high_priority",
+        importance="high",
+        now_utc=_NOW,
+        db_path=db,
+    )
     # a review-flagged meeting whose title must never appear in rendered output
     _record(db, endpoint_id="meetings", record_id="11", title=_SECRET_TITLE, review=True)
 
 
 # --- renderer tests ---
+
 
 def test_project_health_note_sections_and_counts() -> None:
     db = _db()
@@ -103,6 +147,7 @@ def test_daily_digest_headline_and_overdue() -> None:
 
 # --- no raw body / secret tests ---
 
+
 @pytest.mark.parametrize("builder", ("project_health", "meeting_prep", "daily_digest"))
 def test_no_secret_or_banned_content(builder: str) -> None:
     db = _db()
@@ -110,11 +155,13 @@ def test_no_secret_or_banned_content(builder: str) -> None:
     if builder == "project_health":
         rendered = build_project_health_note("tropical", now_utc=_NOW, db_path=db)["rendered"]
     elif builder == "meeting_prep":
-        rendered = build_meeting_prep("tropical", since_utc=_SINCE, now_utc=_NOW,
-                                      db_path=db)["rendered"]
+        rendered = build_meeting_prep("tropical", since_utc=_SINCE, now_utc=_NOW, db_path=db)[
+            "rendered"
+        ]
     else:
-        rendered = build_daily_digest("tropical", since_utc=_SINCE, now_utc=_NOW,
-                                      db_path=db)["rendered"]
+        rendered = build_daily_digest("tropical", since_utc=_SINCE, now_utc=_NOW, db_path=db)[
+            "rendered"
+        ]
     low = rendered.lower()
     assert not [w for w in _SECRETS if w in low], builder
     assert not [w for w in _BANNED if w in low], builder
@@ -122,6 +169,7 @@ def test_no_secret_or_banned_content(builder: str) -> None:
 
 
 # --- marker-bounded update tests ---
+
 
 def test_apply_writes_marker_bounded_and_idempotent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -149,6 +197,7 @@ def test_apply_writes_marker_bounded_and_idempotent(
 
 # --- CLI dry-run / apply guardrail tests ---
 
+
 def _patch_conn(monkeypatch: pytest.MonkeyPatch, db: Path) -> None:
     import hb_assistant.procore.obsidian_operational as oo_mod
     import hb_assistant.store.connection as conn_mod
@@ -169,8 +218,21 @@ def _patch_conn(monkeypatch: pytest.MonkeyPatch, db: Path) -> None:
     def _get(_: object = None) -> sqlite3.Connection:
         return real(str(db))
 
-    for mod in (conn_mod, mig_mod, enr_mod, fin_mod, hist_mod, aq_mod, ce_mod, se_mod, ph_mod,
-                rq_mod, com_mod, op_mod, oo_mod):
+    for mod in (
+        conn_mod,
+        mig_mod,
+        enr_mod,
+        fin_mod,
+        hist_mod,
+        aq_mod,
+        ce_mod,
+        se_mod,
+        ph_mod,
+        rq_mod,
+        com_mod,
+        op_mod,
+        oo_mod,
+    ):
         monkeypatch.setattr(mod, "get_connection", _get, raising=False)
 
 
@@ -180,8 +242,18 @@ def test_cli_dry_run_writes_nothing(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     _seed(db)
     _patch_conn(monkeypatch, db)
     res = runner.invoke(
-        app, ["procore", "obsidian", "daily-digest", "--project", "tropical",
-              "--since", "24 hours ago", "--dry-run", "--json"],
+        app,
+        [
+            "procore",
+            "obsidian",
+            "daily-digest",
+            "--project",
+            "tropical",
+            "--since",
+            "24 hours ago",
+            "--dry-run",
+            "--json",
+        ],
         catch_exceptions=False,
     )
     assert res.exit_code == 0, res.output
@@ -199,7 +271,8 @@ def test_cli_apply_without_confirm_non_tty_fails(
     _seed(db)
     _patch_conn(monkeypatch, db)
     res = runner.invoke(
-        app, ["procore", "obsidian", "project-health", "--project", "tropical", "--apply", "--json"],
+        app,
+        ["procore", "obsidian", "project-health", "--project", "tropical", "--apply", "--json"],
     )
     assert res.exit_code != 0  # non-TTY --apply requires --confirm
 
@@ -211,8 +284,17 @@ def test_cli_apply_no_vault_fails_closed(tmp_path: Path, monkeypatch: pytest.Mon
     _patch_conn(monkeypatch, db)
     monkeypatch.delenv("HB_CONSTRUCTION_VAULT_ROOT", raising=False)
     res = runner.invoke(
-        app, ["procore", "obsidian", "project-health", "--project", "tropical",
-              "--apply", "--confirm", "--json"],
+        app,
+        [
+            "procore",
+            "obsidian",
+            "project-health",
+            "--project",
+            "tropical",
+            "--apply",
+            "--confirm",
+            "--json",
+        ],
         catch_exceptions=False,
     )
     assert res.exit_code == 3, res.output
@@ -228,8 +310,17 @@ def test_cli_unparseable_since_fails_closed(
     SQLiteMigrator(db_path=str(db)).apply()
     _patch_conn(monkeypatch, db)
     res = runner.invoke(
-        app, ["procore", "obsidian", "meeting-prep", "--project", "tropical",
-              "--since", "not-a-date", "--json"],
+        app,
+        [
+            "procore",
+            "obsidian",
+            "meeting-prep",
+            "--project",
+            "tropical",
+            "--since",
+            "not-a-date",
+            "--json",
+        ],
         catch_exceptions=False,
     )
     assert res.exit_code == 3, res.output

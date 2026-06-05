@@ -140,10 +140,9 @@ def test_normalize_meeting_topic_body_safety_injury() -> None:
     assert record["safety_route"] is True
     # Description carries "injury" but also "safety" in title — title is scanned
     # before body, so subject_contains:safety wins.
-    assert (
-        record["routing_reason"].startswith("body_contains:")
-        or record["routing_reason"].startswith("subject_contains:")
-    )
+    assert record["routing_reason"].startswith("body_contains:") or record[
+        "routing_reason"
+    ].startswith("subject_contains:")
 
 
 def test_normalize_meeting_topic_claim_is_review_but_not_safety() -> None:
@@ -157,8 +156,9 @@ def test_normalize_meeting_topic_claim_is_review_but_not_safety() -> None:
     )
     assert record["review_required"] is True
     assert record["safety_route"] is False
-    assert record["routing_reason"].startswith("subject_contains:claim") or \
-           record["routing_reason"].startswith("status_contains:claim")
+    assert record["routing_reason"].startswith("subject_contains:claim") or record[
+        "routing_reason"
+    ].startswith("status_contains:claim")
 
 
 def test_normalize_meeting_topic_action_items_list_hashed() -> None:

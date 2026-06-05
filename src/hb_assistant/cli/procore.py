@@ -49,14 +49,20 @@ mapping_app = typer.Typer(help="Procore project mapping validation.")
 projects_app = typer.Typer(help="Procore projects registry (read-only).")
 companies_app = typer.Typer(help="Procore company context (read-only).")
 audit_app = typer.Typer(help="Procore endpoint audit (dry-run default; live opt-in manual only).")
-obsidian_app = typer.Typer(help="Procore Obsidian deterministic output (Prompt 10). Dry-run default. --apply explicit gate only. Hybrid procore-*.md in 01_Projects/. No secrets/LLM.")
+obsidian_app = typer.Typer(
+    help="Procore Obsidian deterministic output (Prompt 10). Dry-run default. --apply explicit gate only. Hybrid procore-*.md in 01_Projects/. No secrets/LLM."
+)
 app.add_typer(auth_app, name="auth")
 app.add_typer(tools_app, name="tools")
 app.add_typer(mapping_app, name="mapping")
 app.add_typer(projects_app, name="projects")
 app.add_typer(companies_app, name="companies")
 app.add_typer(audit_app, name="audit")
-app.add_typer(obsidian_app, name="obsidian", help="Procore Obsidian preview (Prompt 10) — deterministic; see procore obsidian preview --help")
+app.add_typer(
+    obsidian_app,
+    name="obsidian",
+    help="Procore Obsidian preview (Prompt 10) — deterministic; see procore obsidian preview --help",
+)
 
 
 _GUARDRAILS = {
@@ -95,17 +101,19 @@ def auth_status(
     cache_payload = read_token_cache_payload()
     cache_present = cache_payload is not None
     access_present = bool(
-        cache_payload and isinstance(cache_payload.get("access_token"), str) and cache_payload["access_token"]
+        cache_payload
+        and isinstance(cache_payload.get("access_token"), str)
+        and cache_payload["access_token"]
     )
     refresh_present = bool(
-        cache_payload and isinstance(cache_payload.get("refresh_token"), str) and cache_payload["refresh_token"]
+        cache_payload
+        and isinstance(cache_payload.get("refresh_token"), str)
+        and cache_payload["refresh_token"]
     )
     expires_in_seconds: int | None = None
     if cache_payload and isinstance(cache_payload.get("expires_at"), str):
         try:
-            deadline = datetime.fromisoformat(
-                cache_payload["expires_at"].replace("Z", "+00:00")
-            )
+            deadline = datetime.fromisoformat(cache_payload["expires_at"].replace("Z", "+00:00"))
             if deadline.tzinfo is None:
                 deadline = deadline.replace(tzinfo=timezone.utc)
             expires_in_seconds = int((deadline - datetime.now(timezone.utc)).total_seconds())
@@ -245,7 +253,11 @@ def auth_refresh(
     )
 
     payload = read_token_cache_payload()
-    if not payload or not isinstance(payload.get("refresh_token"), str) or not payload["refresh_token"]:
+    if (
+        not payload
+        or not isinstance(payload.get("refresh_token"), str)
+        or not payload["refresh_token"]
+    ):
         _emit(
             {
                 "command": "hb-assistant procore auth refresh",
@@ -451,7 +463,9 @@ def tools_catalog(
 
 @tools_app.command("audit")
 def tools_audit(
-    project: str = typer.Option(..., "--project", help="hb_project_key from procore_projects.seed.yaml."),
+    project: str = typer.Option(
+        ..., "--project", help="hb_project_key from procore_projects.seed.yaml."
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Dry-run endpoint access audit for one HB project (no live call)."""
@@ -598,12 +612,19 @@ def audit_dry_run(
 def audit_execute(
     project: str = typer.Option(..., "--project"),
     json_out: bool = typer.Option(True, "--json"),
-    confirm: bool = typer.Option(False, "--confirm", help="Explicit opt-in for manual live GET (Bobby-only, never in tests/CI)"),
+    confirm: bool = typer.Option(
+        False,
+        "--confirm",
+        help="Explicit opt-in for manual live GET (Bobby-only, never in tests/CI)",
+    ),
 ) -> None:
     """EXPLICIT MANUAL LIVE audit only. Opt-in required. Still GET-only + fully redacted. Never default."""
 
     if not confirm:
-        typer.echo("ERROR: --confirm required for manual live audit (opt-in only). Dry-run is the safe default.", err=True)
+        typer.echo(
+            "ERROR: --confirm required for manual live audit (opt-in only). Dry-run is the safe default.",
+            err=True,
+        )
         raise typer.Exit(1)
 
     try:
@@ -638,20 +659,46 @@ def audit_execute(
 # Prompt_09: procore sync (dry-run default + explicit --apply to local SQLite only)
 # =============================================================================
 
-sync_app = typer.Typer(help="Pilot project dry-run sync pipeline (Prompt_09). Dry-run default. --apply is explicit opt-in, local SQLite only, audit-gated.")
-live_app = typer.Typer(help="Phase 04A Prompt 03A live command contract (fail-closed; no live calls).")
+sync_app = typer.Typer(
+    help="Pilot project dry-run sync pipeline (Prompt_09). Dry-run default. --apply is explicit opt-in, local SQLite only, audit-gated."
+)
+live_app = typer.Typer(
+    help="Phase 04A Prompt 03A live command contract (fail-closed; no live calls)."
+)
 live_endpoints_app = typer.Typer(help="List live endpoint command-contract states.")
+
 
 @sync_app.command("run")
 def sync_run(
-    project: Optional[str] = typer.Option(None, "--project", help="HB pilot key or mapped project (default: all mapped pilots; pending requires --allow-pending)"),
-    dry_run: bool = typer.Option(True, "--dry-run", help="Default: plan only, redacted, zero side effects"),
-    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in only. Writes local SQLite normalized rows after audit gate. Never external."),
+    project: Optional[str] = typer.Option(
+        None,
+        "--project",
+        help="HB pilot key or mapped project (default: all mapped pilots; pending requires --allow-pending)",
+    ),
+    dry_run: bool = typer.Option(
+        True, "--dry-run", help="Default: plan only, redacted, zero side effects"
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="EXPLICIT opt-in only. Writes local SQLite normalized rows after audit gate. Never external.",
+    ),
     full_refresh: bool = typer.Option(False, "--full-refresh"),
     json_out: bool = typer.Option(True, "--json"),
-    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts"),
-    allow_pending: bool = typer.Option(False, "--allow-pending", help="Explicit opt-in to target a project whose mapping status is 'pending'. Default fails closed."),
-    endpoints: Optional[list[str]] = typer.Option(None, "--endpoints", "-e", help="Filter to one or more endpoint IDs (repeatable). Defaults to every endpoint in the contract."),  # noqa: B008
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Required with --apply in non-TTY contexts"
+    ),
+    allow_pending: bool = typer.Option(
+        False,
+        "--allow-pending",
+        help="Explicit opt-in to target a project whose mapping status is 'pending'. Default fails closed.",
+    ),
+    endpoints: Optional[list[str]] = typer.Option(
+        None,
+        "--endpoints",
+        "-e",
+        help="Filter to one or more endpoint IDs (repeatable). Defaults to every endpoint in the contract.",
+    ),  # noqa: B008
 ) -> None:
     """Dry-run (default) or apply (opt-in) for pilot projects.
 
@@ -668,7 +715,14 @@ def sync_run(
         typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
         raise typer.Exit(1)
 
-    if apply and not confirm and not typer.confirm("CONFIRM: --apply will write to local SQLite only (no Procore mutation). Continue?", default=False):
+    if (
+        apply
+        and not confirm
+        and not typer.confirm(
+            "CONFIRM: --apply will write to local SQLite only (no Procore mutation). Continue?",
+            default=False,
+        )
+    ):
         typer.echo("Aborted.")
         raise typer.Exit(1)
 
@@ -680,9 +734,11 @@ def sync_run(
             raise typer.Exit(2) from None
         try:
             registry = load_procore_projects()
-            target_keys = [project] if project else [
-                p.hb_project_key for p in registry.projects if p.status == "pilot"
-            ]
+            target_keys = (
+                [project]
+                if project
+                else [p.hb_project_key for p in registry.projects if p.status == "pilot"]
+            )
             assert_live_mapping_strict(registry, target_keys)
         except ProcoreAPIError as exc:
             typer.echo(f"ERROR: {exc.message}", err=True)
@@ -703,7 +759,11 @@ def sync_run(
 
 
 # Register the new sub-app (additive; existing surfaces untouched)
-app.add_typer(sync_app, name="sync", help="Pilot project dry-run sync (Prompt_09) — audit-gated, local SQLite only")
+app.add_typer(
+    sync_app,
+    name="sync",
+    help="Pilot project dry-run sync (Prompt_09) — audit-gated, local SQLite only",
+)
 app.add_typer(live_app, name="live", help="Live Procore command scaffolding (fail-closed)")
 live_app.add_typer(live_endpoints_app, name="endpoints")
 
@@ -887,13 +947,21 @@ def live_endpoints_ledger(
 @live_app.command("sync")
 def live_sync(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
-    endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id (e.g. rfis, submittals, projects, daily-log-weather)."),
+    endpoint: str = typer.Option(
+        ...,
+        "--endpoint",
+        help="Canonical endpoint id (e.g. rfis, submittals, projects, daily-log-weather).",
+    ),
     apply: bool = typer.Option(False, "--apply", help="Required for live intent."),
-    sqlite_only: bool = typer.Option(True, "--sqlite-only", help="Required guardrail; no source-system mutation."),
+    sqlite_only: bool = typer.Option(
+        True, "--sqlite-only", help="Required guardrail; no source-system mutation."
+    ),
     max_pages: int = typer.Option(1000, "--max-pages", min=1),
     max_items: int = typer.Option(100000, "--max-items", min=1),
     max_child_requests: int = typer.Option(
-        100000, "--max-child-requests", min=1,
+        100000,
+        "--max-child-requests",
+        min=1,
         help="Bounded N+1 fan-out: max child GETs per run (one per parent). When reached, "
         "remaining parents are skipped and a later run backfills idempotently.",
     ),
@@ -926,8 +994,16 @@ def live_sync(
         help="Optional known parent Procore id for child endpoints; skips the parent-list GET.",
     ),
     confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
-    start_date: Optional[str] = typer.Option(None, "--start-date", help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections)."),
-    end_date: Optional[str] = typer.Option(None, "--end-date", help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections)."),
+    start_date: Optional[str] = typer.Option(
+        None,
+        "--start-date",
+        help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections).",
+    ),
+    end_date: Optional[str] = typer.Option(
+        None,
+        "--end-date",
+        help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections).",
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Per-endpoint live sync (Phase 04A Prompt 03B).
@@ -982,14 +1058,22 @@ def live_inspect(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
     endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id."),
     rfi_id: Optional[str] = typer.Option(None, "--rfi-id", help="Parent RFI id for rfi-responses."),
-    submittal_id: Optional[str] = typer.Option(None, "--submittal-id", help="Parent submittal id for submittal-responses."),
-    meeting_id: Optional[str] = typer.Option(None, "--meeting-id", help="Meeting id for meeting-detail."),
-    schedule_id: Optional[str] = typer.Option(None, "--schedule-id", help="Schedule id for activities."),
+    submittal_id: Optional[str] = typer.Option(
+        None, "--submittal-id", help="Parent submittal id for submittal-responses."
+    ),
+    meeting_id: Optional[str] = typer.Option(
+        None, "--meeting-id", help="Meeting id for meeting-detail."
+    ),
+    schedule_id: Optional[str] = typer.Option(
+        None, "--schedule-id", help="Schedule id for activities."
+    ),
     max_pages: int = typer.Option(1, "--max-pages", min=1),
     max_items: int = typer.Option(5, "--max-items", min=1),
     confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
     confirm_raw_payload_dump: bool = typer.Option(False, "--confirm-raw-payload-dump"),
-    output_dir: Path = typer.Option(..., "--output-dir", help="Explicit absolute non-repo directory for raw payload dumps."),  # noqa: B008
+    output_dir: Path = typer.Option(
+        ..., "--output-dir", help="Explicit absolute non-repo directory for raw payload dumps."
+    ),  # noqa: B008
     redact_known_sensitive_fields: bool = typer.Option(False, "--redact-known-sensitive-fields"),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
@@ -1069,9 +1153,7 @@ def live_inspect(
                     parent_resolution_source = "sqlite_first_occurrence"
                     resolved_parent_id = looked_up_parent_id
                 else:
-                    reason_codes.append(
-                        f"parent_record_not_found_in_sqlite:{parent_endpoint_id}"
-                    )
+                    reason_codes.append(f"parent_record_not_found_in_sqlite:{parent_endpoint_id}")
 
     if adapter is not None:
         for param in adapter.required_path_params:
@@ -1134,7 +1216,9 @@ def live_inspect(
         live_enabled=True,
     )
 
-    def _recording_transport(method: str, url: str, headers: dict[str, str], params: Optional[dict[str, Any]] = None) -> Any:
+    def _recording_transport(
+        method: str, url: str, headers: dict[str, str], params: Optional[dict[str, Any]] = None
+    ) -> Any:
         transport_calls["count"] += 1
         return real_client._default_live_transport(method, url, headers, params)  # type: ignore[attr-defined]
 
@@ -1159,7 +1243,11 @@ def live_inspect(
         attempt_count = transport_calls["count"]
         retry_count = max(0, attempt_count - 1)
         last_retry_after = exc.retry_after if isinstance(exc, ProcoreRateLimitError) else None
-        reason = "transport_error:429_rate_limited" if exc.status == 429 else f"transport_error:{exc.status or exc.code or 'unknown'}"
+        reason = (
+            "transport_error:429_rate_limited"
+            if exc.status == 429
+            else f"transport_error:{exc.status or exc.code or 'unknown'}"
+        )
         payload = {
             "command": "hb-assistant procore live inspect",
             "ok": False,
@@ -1215,7 +1303,9 @@ def live_inspect(
         redacted_payload = _redact_known_sensitive_fields(raw_payload)
         redacted_serialized = json.dumps(redacted_payload, indent=2, sort_keys=True, default=str)
         redacted_sha256 = hashlib.sha256(redacted_serialized.encode("utf-8")).hexdigest()
-        redacted_file = output_dir / f"procore_raw_{project}_{endpoint}_{stamp}_{short_hash}.redacted.json"
+        redacted_file = (
+            output_dir / f"procore_raw_{project}_{endpoint}_{stamp}_{short_hash}.redacted.json"
+        )
         redacted_file.write_text(redacted_serialized, encoding="utf-8")
         with suppress(OSError):
             redacted_file.chmod(0o600)
@@ -1265,8 +1355,16 @@ def live_smoke(
     max_pages: int = typer.Option(1, "--max-pages", min=1),
     max_items: int = typer.Option(10, "--max-items", min=1),
     confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
-    start_date: Optional[str] = typer.Option(None, "--start-date", help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections)."),
-    end_date: Optional[str] = typer.Option(None, "--end-date", help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections)."),
+    start_date: Optional[str] = typer.Option(
+        None,
+        "--start-date",
+        help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections).",
+    ),
+    end_date: Optional[str] = typer.Option(
+        None,
+        "--end-date",
+        help="Optional ISO date (YYYY-MM-DD) date-window filter (daily-log sections).",
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Smoke a verified endpoint without writing to SQLite. Live GET only."""
@@ -1330,7 +1428,9 @@ def live_history(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
     endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id (e.g. rfis)."),
     record_id: str = typer.Option(..., "--record-id", help="Procore record id."),
-    parent_id: Optional[str] = typer.Option(None, "--parent-id", help="Parent procore id for child endpoints."),
+    parent_id: Optional[str] = typer.Option(
+        None, "--parent-id", help="Parent procore id for child endpoints."
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Reconstruct one record's history (snapshots + field-level change events). Local SQLite only."""
@@ -1339,20 +1439,45 @@ def live_history(
 
     endpoint_id, reasons = _resolve_endpoint_id(endpoint)
     if endpoint_id is None:
-        _emit({"command": "hb-assistant procore live history", "ok": False, "phase": _QUERY_PHASE,
-               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": reasons}, json_out=json_out, exit_code=3)
+        _emit(
+            {
+                "command": "hb-assistant procore live history",
+                "ok": False,
+                "phase": _QUERY_PHASE,
+                "project_key": project,
+                "state": "fail_closed_unsupported",
+                "reason_codes": reasons,
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
         return
     SQLiteMigrator().apply()
     record_key = "|".join([project, endpoint_id, parent_id or "", str(record_id)])
     snapshots = get_procore_record_history(record_key=record_key)
     changes = get_procore_changes(project_key=project, record_key=record_key)
     payload = {
-        "command": "hb-assistant procore live history", "ok": True, "phase": _QUERY_PHASE,
-        "project_key": project, "endpoint_id": endpoint_id, "procore_record_id": str(record_id),
-        "record_key": record_key, "snapshot_count": len(snapshots), "change_count": len(changes),
+        "command": "hb-assistant procore live history",
+        "ok": True,
+        "phase": _QUERY_PHASE,
+        "project_key": project,
+        "endpoint_id": endpoint_id,
+        "procore_record_id": str(record_id),
+        "record_key": record_key,
+        "snapshot_count": len(snapshots),
+        "change_count": len(changes),
         "snapshots": [
-            {k: s[k] for k in ("observed_at_utc", "source_updated_at_utc", "canonical_hash",
-                               "changed_from_previous", "change_summary_json", "normalizer_version")}
+            {
+                k: s[k]
+                for k in (
+                    "observed_at_utc",
+                    "source_updated_at_utc",
+                    "canonical_hash",
+                    "changed_from_previous",
+                    "change_summary_json",
+                    "normalizer_version",
+                )
+            }
             for s in snapshots
         ],
         "changes": changes,
@@ -1364,10 +1489,16 @@ def live_history(
 @live_app.command("changes")
 def live_changes(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
-    since: str = typer.Option(..., "--since", help='Relative ("48 hours ago", "7 days ago") or ISO timestamp.'),
-    until: Optional[str] = typer.Option(None, "--until", help="Optional upper bound (relative or ISO)."),
+    since: str = typer.Option(
+        ..., "--since", help='Relative ("48 hours ago", "7 days ago") or ISO timestamp.'
+    ),
+    until: Optional[str] = typer.Option(
+        None, "--until", help="Optional upper bound (relative or ISO)."
+    ),
     endpoint: Optional[str] = typer.Option(None, "--endpoint", help="Optional endpoint filter."),
-    record_id: Optional[str] = typer.Option(None, "--record-id", help="Optional single-record filter."),
+    record_id: Optional[str] = typer.Option(
+        None, "--record-id", help="Optional single-record filter."
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """List field-level change events for a project since a time. Local SQLite only."""
@@ -1383,18 +1514,41 @@ def live_changes(
     except ValueError:
         reasons.append("since_unparseable")
     if reasons:
-        _emit({"command": "hb-assistant procore live changes", "ok": False, "phase": _QUERY_PHASE,
-               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": reasons}, json_out=json_out, exit_code=3)
+        _emit(
+            {
+                "command": "hb-assistant procore live changes",
+                "ok": False,
+                "phase": _QUERY_PHASE,
+                "project_key": project,
+                "state": "fail_closed_unsupported",
+                "reason_codes": reasons,
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
         return
     SQLiteMigrator().apply()
-    record_key = "|".join([project, endpoint_id, "", str(record_id)]) if (endpoint_id and record_id) else None
-    rows = get_procore_changes(project_key=project, since_utc=since_utc, until_utc=until_utc, record_key=record_key)
+    record_key = (
+        "|".join([project, endpoint_id, "", str(record_id)])
+        if (endpoint_id and record_id)
+        else None
+    )
+    rows = get_procore_changes(
+        project_key=project, since_utc=since_utc, until_utc=until_utc, record_key=record_key
+    )
     if endpoint_id and record_key is None:
         rows = [r for r in rows if r.get("endpoint_id") == endpoint_id]
     payload = {
-        "command": "hb-assistant procore live changes", "ok": True, "phase": _QUERY_PHASE,
-        "project_key": project, "since_utc": since_utc, "until_utc": until_utc,
-        "endpoint_id": endpoint_id, "change_count": len(rows), "changes": rows, "guardrails": _GUARDRAILS,
+        "command": "hb-assistant procore live changes",
+        "ok": True,
+        "phase": _QUERY_PHASE,
+        "project_key": project,
+        "since_utc": since_utc,
+        "until_utc": until_utc,
+        "endpoint_id": endpoint_id,
+        "change_count": len(rows),
+        "changes": rows,
+        "guardrails": _GUARDRAILS,
     }
     _emit(payload, json_out=json_out)
 
@@ -1403,7 +1557,9 @@ def live_changes(
 def live_timeline(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
     since: str = typer.Option(..., "--since", help='Relative ("7 days ago") or ISO timestamp.'),
-    until: Optional[str] = typer.Option(None, "--until", help="Optional upper bound (relative or ISO)."),
+    until: Optional[str] = typer.Option(
+        None, "--until", help="Optional upper bound (relative or ISO)."
+    ),
     endpoint: Optional[str] = typer.Option(None, "--endpoint", help="Optional endpoint filter."),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
@@ -1420,15 +1576,34 @@ def live_timeline(
     except ValueError:
         reasons.append("since_unparseable")
     if reasons:
-        _emit({"command": "hb-assistant procore live timeline", "ok": False, "phase": _QUERY_PHASE,
-               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": reasons}, json_out=json_out, exit_code=3)
+        _emit(
+            {
+                "command": "hb-assistant procore live timeline",
+                "ok": False,
+                "phase": _QUERY_PHASE,
+                "project_key": project,
+                "state": "fail_closed_unsupported",
+                "reason_codes": reasons,
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
         return
     SQLiteMigrator().apply()
-    rows = get_procore_timeline(project_key=project, since_utc=since_utc, until_utc=until_utc, endpoint_id=endpoint_id)
+    rows = get_procore_timeline(
+        project_key=project, since_utc=since_utc, until_utc=until_utc, endpoint_id=endpoint_id
+    )
     payload = {
-        "command": "hb-assistant procore live timeline", "ok": True, "phase": _QUERY_PHASE,
-        "project_key": project, "since_utc": since_utc, "until_utc": until_utc,
-        "endpoint_id": endpoint_id, "event_count": len(rows), "timeline": rows, "guardrails": _GUARDRAILS,
+        "command": "hb-assistant procore live timeline",
+        "ok": True,
+        "phase": _QUERY_PHASE,
+        "project_key": project,
+        "since_utc": since_utc,
+        "until_utc": until_utc,
+        "endpoint_id": endpoint_id,
+        "event_count": len(rows),
+        "timeline": rows,
+        "guardrails": _GUARDRAILS,
     }
     _emit(payload, json_out=json_out)
 
@@ -1436,10 +1611,16 @@ def live_timeline(
 @live_app.command("actions")
 def live_actions(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
-    status: Optional[str] = typer.Option(None, "--status", help="Signal status filter (e.g. open, resolved)."),
+    status: Optional[str] = typer.Option(
+        None, "--status", help="Signal status filter (e.g. open, resolved)."
+    ),
     endpoint: Optional[str] = typer.Option(None, "--endpoint", help="Optional endpoint filter."),
-    importance: Optional[str] = typer.Option(None, "--importance", help="Optional importance filter (high/medium/low)."),
-    signal_type: Optional[str] = typer.Option(None, "--signal-type", help="Optional signal-type filter."),
+    importance: Optional[str] = typer.Option(
+        None, "--importance", help="Optional importance filter (high/medium/low)."
+    ),
+    signal_type: Optional[str] = typer.Option(
+        None, "--signal-type", help="Optional signal-type filter."
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """List open/relevant action signals for a project. Local SQLite only."""
@@ -1448,19 +1629,41 @@ def live_actions(
 
     endpoint_id, reasons = _resolve_endpoint_id(endpoint)
     if reasons:
-        _emit({"command": "hb-assistant procore live actions", "ok": False, "phase": _QUERY_PHASE,
-               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": reasons}, json_out=json_out, exit_code=3)
+        _emit(
+            {
+                "command": "hb-assistant procore live actions",
+                "ok": False,
+                "phase": _QUERY_PHASE,
+                "project_key": project,
+                "state": "fail_closed_unsupported",
+                "reason_codes": reasons,
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
         return
     SQLiteMigrator().apply()
     rows = get_procore_action_signals(
-        project_key=project, signal_status=status, endpoint_id=endpoint_id,
-        importance=importance, signal_type=signal_type,
+        project_key=project,
+        signal_status=status,
+        endpoint_id=endpoint_id,
+        importance=importance,
+        signal_type=signal_type,
     )
     payload = {
-        "command": "hb-assistant procore live actions", "ok": True, "phase": _QUERY_PHASE,
-        "project_key": project, "filters": {"status": status, "endpoint_id": endpoint_id,
-                                            "importance": importance, "signal_type": signal_type},
-        "action_count": len(rows), "actions": rows, "guardrails": _GUARDRAILS,
+        "command": "hb-assistant procore live actions",
+        "ok": True,
+        "phase": _QUERY_PHASE,
+        "project_key": project,
+        "filters": {
+            "status": status,
+            "endpoint_id": endpoint_id,
+            "importance": importance,
+            "signal_type": signal_type,
+        },
+        "action_count": len(rows),
+        "actions": rows,
+        "guardrails": _GUARDRAILS,
     }
     _emit(payload, json_out=json_out)
 
@@ -1499,7 +1702,9 @@ def live_stale(
     from hb_assistant.store.procore_freshness import build_freshness_report
 
     SQLiteMigrator().apply()
-    report = build_freshness_report(project, now_utc=_query_now().isoformat(), stale_days=stale_days)
+    report = build_freshness_report(
+        project, now_utc=_query_now().isoformat(), stale_days=stale_days
+    )
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
 
@@ -1507,7 +1712,9 @@ def live_stale(
 def live_coverage(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key (contextual)."),
     endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id."),
-    raw_payload: Path = typer.Option(..., "--raw-payload", help="Local JSON payload file (read-only; not persisted)."),  # noqa: B008
+    raw_payload: Path = typer.Option(
+        ..., "--raw-payload", help="Local JSON payload file (read-only; not persisted)."
+    ),  # noqa: B008
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Report normalizer field coverage for a local raw payload (names/types only). No network, no DB."""
@@ -1515,26 +1722,60 @@ def live_coverage(
 
     endpoint_id, reasons = _resolve_endpoint_id(endpoint)
     if endpoint_id is None:
-        _emit({"command": "hb-assistant procore live coverage", "ok": False, "phase": _QUERY_PHASE,
-               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": reasons}, json_out=json_out, exit_code=3)
+        _emit(
+            {
+                "command": "hb-assistant procore live coverage",
+                "ok": False,
+                "phase": _QUERY_PHASE,
+                "project_key": project,
+                "state": "fail_closed_unsupported",
+                "reason_codes": reasons,
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
         return
     try:
         data = json.loads(Path(raw_payload).read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        _emit({"command": "hb-assistant procore live coverage", "ok": False, "phase": _QUERY_PHASE,
-               "project_key": project, "endpoint_id": endpoint_id, "state": "fail_closed_unsupported",
-               "reason_codes": ["raw_payload_unreadable"]}, json_out=json_out, exit_code=3)
+        _emit(
+            {
+                "command": "hb-assistant procore live coverage",
+                "ok": False,
+                "phase": _QUERY_PHASE,
+                "project_key": project,
+                "endpoint_id": endpoint_id,
+                "state": "fail_closed_unsupported",
+                "reason_codes": ["raw_payload_unreadable"],
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
         return
     try:
         report = compute_payload_coverage(endpoint_id, data, now_utc=_query_now().isoformat())
     except ValueError:
-        _emit({"command": "hb-assistant procore live coverage", "ok": False, "phase": _QUERY_PHASE,
-               "project_key": project, "endpoint_id": endpoint_id, "state": "fail_closed_unsupported",
-               "reason_codes": ["coverage_compute_failed"]}, json_out=json_out, exit_code=3)
+        _emit(
+            {
+                "command": "hb-assistant procore live coverage",
+                "ok": False,
+                "phase": _QUERY_PHASE,
+                "project_key": project,
+                "endpoint_id": endpoint_id,
+                "state": "fail_closed_unsupported",
+                "reason_codes": ["coverage_compute_failed"],
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
         return
     payload = {
-        "command": "hb-assistant procore live coverage", "ok": True, "phase": _QUERY_PHASE,
-        "project_key": project, **report, "guardrails": _GUARDRAILS,
+        "command": "hb-assistant procore live coverage",
+        "ok": True,
+        "phase": _QUERY_PHASE,
+        "project_key": project,
+        **report,
+        "guardrails": _GUARDRAILS,
     }
     _emit(payload, json_out=json_out)
 
@@ -1542,7 +1783,8 @@ def live_coverage(
 @live_app.command("coverage-matrix")
 def live_coverage_matrix(
     payloads_dir: Optional[Path] = typer.Option(  # noqa: B008
-        None, "--payloads-dir",
+        None,
+        "--payloads-dir",
         help="Optional dir of local <endpoint_id>.json samples (e.g. `procore live inspect` "
         "output). Read-only; never persisted. Endpoints with a sample get captured/hash-only/"
         "omitted field NAMES; the rest are contract-only.",
@@ -1555,9 +1797,17 @@ def live_coverage_matrix(
     from hb_assistant.procore.coverage import build_coverage_matrix
 
     if payloads_dir is not None and not payloads_dir.is_dir():
-        _emit({"command": "hb-assistant procore live coverage-matrix", "ok": False,
-               "phase": _QUERY_PHASE, "state": "fail_closed_unsupported",
-               "reason_codes": ["payloads_dir_not_found"]}, json_out=json_out, exit_code=3)
+        _emit(
+            {
+                "command": "hb-assistant procore live coverage-matrix",
+                "ok": False,
+                "phase": _QUERY_PHASE,
+                "state": "fail_closed_unsupported",
+                "reason_codes": ["payloads_dir_not_found"],
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
         return
     matrix = build_coverage_matrix(payloads_dir=payloads_dir, now_utc=_query_now().isoformat())
     _emit({**matrix, "guardrails": _GUARDRAILS}, json_out=json_out)
@@ -1571,7 +1821,8 @@ def live_overdue(
     ),
     endpoint: Optional[str] = typer.Option(None, "--endpoint", help="Optional endpoint filter."),
     dimension: Optional[str] = typer.Option(
-        None, "--dimension",
+        None,
+        "--dimension",
         help="Optional dimension filter "
         "(cost_exposure/schedule_exposure/safety_quality_compliance/overdue).",
     ),
@@ -1588,14 +1839,27 @@ def live_overdue(
 
     endpoint_id, reasons = _resolve_endpoint_id(endpoint)
     if reasons:
-        _emit({"command": "hb-assistant procore live overdue", "ok": False, "phase": _QUERY_PHASE,
-               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": reasons},
-              json_out=json_out, exit_code=3)
+        _emit(
+            {
+                "command": "hb-assistant procore live overdue",
+                "ok": False,
+                "phase": _QUERY_PHASE,
+                "project_key": project,
+                "state": "fail_closed_unsupported",
+                "reason_codes": reasons,
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
         return
     SQLiteMigrator().apply()
     report = build_overdue_queue(
-        project, now_utc=_query_now().isoformat(),
-        importance=importance, endpoint_id=endpoint_id, dimension=dimension, max_items=max_items,
+        project,
+        now_utc=_query_now().isoformat(),
+        importance=importance,
+        endpoint_id=endpoint_id,
+        dimension=dimension,
+        max_items=max_items,
     )
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
@@ -1618,7 +1882,9 @@ def live_responsible_party_gaps(
 
     SQLiteMigrator().apply()
     report = build_responsible_party_gaps(
-        project, now_utc=_query_now().isoformat(), endpoint_id=endpoint,
+        project,
+        now_utc=_query_now().isoformat(),
+        endpoint_id=endpoint,
     )
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
@@ -1638,7 +1904,9 @@ def live_relationship_quality(
 
     SQLiteMigrator().apply()
     report = build_relationship_quality(
-        project, now_utc=_query_now().isoformat(), max_items=max_items,
+        project,
+        now_utc=_query_now().isoformat(),
+        max_items=max_items,
     )
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
@@ -1665,12 +1933,23 @@ def live_digest(
         try:
             since_utc = parse_since(since, now=datetime.now(timezone.utc))
         except ValueError:
-            _emit({"command": cmd, "ok": False, "phase": _QUERY_PHASE, "project_key": project,
-                   "state": "fail_closed_unsupported", "reason_codes": ["since_unparseable"]},
-                  json_out=json_out, exit_code=3)
+            _emit(
+                {
+                    "command": cmd,
+                    "ok": False,
+                    "phase": _QUERY_PHASE,
+                    "project_key": project,
+                    "state": "fail_closed_unsupported",
+                    "reason_codes": ["since_unparseable"],
+                },
+                json_out=json_out,
+                exit_code=3,
+            )
             return
     SQLiteMigrator().apply()
-    report = build_operational_digest(project, now_utc=_query_now().isoformat(), since_utc=since_utc)
+    report = build_operational_digest(
+        project, now_utc=_query_now().isoformat(), since_utc=since_utc
+    )
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
 
@@ -1729,8 +2008,11 @@ def live_no_writeback_proof(
 
     SQLiteMigrator().apply()
     report = build_no_writeback_proof(project, now_utc=_query_now().isoformat())
-    _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out,
-          exit_code=0 if report["proof_passed"] else 3)
+    _emit(
+        {**report, "guardrails": _GUARDRAILS},
+        json_out=json_out,
+        exit_code=0 if report["proof_passed"] else 3,
+    )
 
 
 live_records_app = typer.Typer(help="Procore live SQLite record read-only commands.")
@@ -1961,7 +2243,8 @@ def live_financial_risk(
 def live_financial_exposure(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
     exposure_type: Optional[str] = typer.Option(
-        None, "--type",
+        None,
+        "--type",
         help="Optional exposure-type filter (pending_change/unapproved_change/budget_movement/"
         "invoice_retainage_risk/rfq_quote_pending/compliance_risk/amount_changed).",
     ),
@@ -1982,8 +2265,11 @@ def live_financial_exposure(
 
     SQLiteMigrator().apply()
     report = build_cost_exposure(
-        project, now_utc=_query_now().isoformat(),
-        exposure_type=exposure_type, importance=importance, max_items=max_items,
+        project,
+        now_utc=_query_now().isoformat(),
+        exposure_type=exposure_type,
+        importance=importance,
+        max_items=max_items,
     )
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
@@ -2038,17 +2324,21 @@ def live_financial_coverage(
         )
         return
     record = loaded[0] if isinstance(loaded, list) and loaded else loaded
-    raw_keys = [k for k, v in record.items() if not isinstance(v, (dict, list))] if isinstance(
-        record, dict
-    ) else []
+    raw_keys = (
+        [k for k, v in record.items() if not isinstance(v, (dict, list))]
+        if isinstance(record, dict)
+        else []
+    )
     canonical = normalizer(
-        record, project_key=project, endpoint_id=endpoint, correlation_id="coverage",
+        record,
+        project_key=project,
+        endpoint_id=endpoint,
+        correlation_id="coverage",
         fetched_at="1970-01-01T00:00:00Z",
     )["canonical_fields"]
     canonical_keys = set(canonical)
     omitted = [
-        k for k in raw_keys
-        if not any(ck == k or ck.startswith(f"{k}_") for ck in canonical_keys)
+        k for k in raw_keys if not any(ck == k or ck.startswith(f"{k}_") for ck in canonical_keys)
     ]
     payload = {
         "command": "hb-assistant procore live financial coverage",
@@ -2076,7 +2366,8 @@ live_app.add_typer(live_schedule_app, name="schedule")
 def live_schedule_exposure(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
     exposure_category: Optional[str] = typer.Option(
-        None, "--type",
+        None,
+        "--type",
         help="Optional category filter (overdue_rfi/overdue_submittal/"
         "critical_or_low_float_activity/meeting_action_topic/inspection_punch_blocking/"
         "schedule_impact_flag).",
@@ -2099,8 +2390,11 @@ def live_schedule_exposure(
 
     SQLiteMigrator().apply()
     report = build_schedule_exposure(
-        project, now_utc=_query_now().isoformat(),
-        exposure_category=exposure_category, importance=importance, max_items=max_items,
+        project,
+        now_utc=_query_now().isoformat(),
+        exposure_category=exposure_category,
+        importance=importance,
+        max_items=max_items,
     )
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
@@ -2147,17 +2441,35 @@ def live_records_count(
     }
     _emit(payload, json_out=json_out)
 
+
 # =============================================================================
 # Prompt_10: procore obsidian output preview (dry-run default; explicit --apply)
 # =============================================================================
 
+
 @obsidian_app.command("preview")
 def obsidian_preview(
-    project: str = typer.Argument(..., help="HB project key (pilot/mapped from procore_projects.seed.yaml)"),
-    dry_run: bool = typer.Option(True, "--dry-run", help="Default: paths + rendered Markdown (redacted samples), zero side effects"),
-    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in only. Writes hybrid procore-*.md to 01_Projects/ + review note (local vault)."),
-    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default). Use --no-json for compact human-readable form."),
-    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts"),
+    project: str = typer.Argument(
+        ..., help="HB project key (pilot/mapped from procore_projects.seed.yaml)"
+    ),
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run",
+        help="Default: paths + rendered Markdown (redacted samples), zero side effects",
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="EXPLICIT opt-in only. Writes hybrid procore-*.md to 01_Projects/ + review note (local vault).",
+    ),
+    json_out: bool = typer.Option(
+        True,
+        "--json/--no-json",
+        help="Structured JSON envelope (default). Use --no-json for compact human-readable form.",
+    ),
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Required with --apply in non-TTY contexts"
+    ),
 ) -> None:
     """Procore Obsidian preview/apply (Prompt 10).
 
@@ -2168,9 +2480,13 @@ def obsidian_preview(
     if apply and not confirm and not sys.stdin.isatty():
         typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
         raise typer.Exit(1)
-    if apply and not confirm and not typer.confirm(
-        "CONFIRM: --apply will write procore-*.md (hybrid in 01_Projects/) + review note to local vault only (no Procore mutation). Continue?",
-        default=False,
+    if (
+        apply
+        and not confirm
+        and not typer.confirm(
+            "CONFIRM: --apply will write procore-*.md (hybrid in 01_Projects/) + review note to local vault only (no Procore mutation). Continue?",
+            default=False,
+        )
     ):
         typer.echo("Aborted.")
         raise typer.Exit(1)
@@ -2201,11 +2517,23 @@ def obsidian_preview(
 @obsidian_app.command("enriched")
 def obsidian_enriched(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
-    since: str = typer.Option("48 hours ago", "--since", help='Window for the changes section (relative or ISO).'),
-    dry_run: bool = typer.Option(True, "--dry-run", help="Default: rendered note preview, zero side effects."),
-    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in. Writes one marker-bounded procore-memory-register.md to 01_Projects/ (local vault)."),
-    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default)."),
-    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts."),
+    since: str = typer.Option(
+        "48 hours ago", "--since", help="Window for the changes section (relative or ISO)."
+    ),
+    dry_run: bool = typer.Option(
+        True, "--dry-run", help="Default: rendered note preview, zero side effects."
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="EXPLICIT opt-in. Writes one marker-bounded procore-memory-register.md to 01_Projects/ (local vault).",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="Structured JSON envelope (default)."
+    ),
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Required with --apply in non-TTY contexts."
+    ),
 ) -> None:
     """Phase 04B enriched second-brain register (open actions / changes / safety /
     schedule risk / meeting actions / RFI + submittal workflow). Read-only SQLite;
@@ -2213,9 +2541,13 @@ def obsidian_enriched(
     if apply and not confirm and not sys.stdin.isatty():
         typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
         raise typer.Exit(1)
-    if apply and not confirm and not typer.confirm(
-        "CONFIRM: --apply will write procore-memory-register.md to the local vault only (no Procore mutation). Continue?",
-        default=False,
+    if (
+        apply
+        and not confirm
+        and not typer.confirm(
+            "CONFIRM: --apply will write procore-memory-register.md to the local vault only (no Procore mutation). Continue?",
+            default=False,
+        )
     ):
         typer.echo("Aborted.")
         raise typer.Exit(1)
@@ -2230,29 +2562,55 @@ def obsidian_enriched(
     try:
         since_utc = parse_since(since, now=now)
     except ValueError:
-        _emit({"command": "hb-assistant procore obsidian enriched", "ok": False, "phase": "Phase 04B Prompt 11",
-               "project_key": project, "state": "fail_closed_unsupported", "reason_codes": ["since_unparseable"]},
-              json_out=json_out, exit_code=3)
+        _emit(
+            {
+                "command": "hb-assistant procore obsidian enriched",
+                "ok": False,
+                "phase": "Phase 04B Prompt 11",
+                "project_key": project,
+                "state": "fail_closed_unsupported",
+                "reason_codes": ["since_unparseable"],
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
         return
     now_utc = now.isoformat().replace("+00:00", "Z")
 
     if apply:
         result = apply_enriched_register(project, since_utc=since_utc, now_utc=now_utc)
         if not result.get("vault_configured", False):
-            _emit({"command": "hb-assistant procore obsidian enriched", "ok": False, "phase": "Phase 04B Prompt 11",
-                   "project_key": project, "state": "fail_closed_unsupported",
-                   "reason_codes": ["vault_root_unconfigured"]}, json_out=json_out, exit_code=3)
+            _emit(
+                {
+                    "command": "hb-assistant procore obsidian enriched",
+                    "ok": False,
+                    "phase": "Phase 04B Prompt 11",
+                    "project_key": project,
+                    "state": "fail_closed_unsupported",
+                    "reason_codes": ["vault_root_unconfigured"],
+                },
+                json_out=json_out,
+                exit_code=3,
+            )
             return
     else:
         result = build_enriched_registers(project, since_utc=since_utc, now_utc=now_utc)
         result["written_paths"] = []
 
     payload = {
-        "command": "hb-assistant procore obsidian enriched", "ok": True, "phase": "Phase 04B Prompt 11",
-        "project_key": project, "mode": "apply" if apply else "dry_run", "dry_run": not apply,
-        "since_utc": since_utc, "generated_utc": now_utc, "counts": result["counts"],
-        "section_keys": list(result["sections"]), "rendered": result["rendered"],
-        "written_paths": result["written_paths"], "guardrails": result["guardrails"],
+        "command": "hb-assistant procore obsidian enriched",
+        "ok": True,
+        "phase": "Phase 04B Prompt 11",
+        "project_key": project,
+        "mode": "apply" if apply else "dry_run",
+        "dry_run": not apply,
+        "since_utc": since_utc,
+        "generated_utc": now_utc,
+        "counts": result["counts"],
+        "section_keys": list(result["sections"]),
+        "rendered": result["rendered"],
+        "written_paths": result["written_paths"],
+        "guardrails": result["guardrails"],
     }
     _emit(payload, json_out=json_out)
 
@@ -2263,13 +2621,20 @@ def obsidian_financial(
     since: str = typer.Option(
         "30 days ago", "--since", help="Window for the recent-changes section (relative or ISO)."
     ),
-    dry_run: bool = typer.Option(True, "--dry-run", help="Default: rendered note preview, zero side effects."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run", help="Default: rendered note preview, zero side effects."
+    ),
     apply: bool = typer.Option(
-        False, "--apply",
+        False,
+        "--apply",
         help="EXPLICIT opt-in. Writes one marker-bounded procore-financial-register.md to 01_Projects/.",
     ),
-    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default)."),
-    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="Structured JSON envelope (default)."
+    ),
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Required with --apply in non-TTY contexts."
+    ),
 ) -> None:
     """Phase 05 financial register (contracts / change orders / commitments + compliance
     / invoices / payment applications / RFQs + change events / budget / retainage risk /
@@ -2278,10 +2643,14 @@ def obsidian_financial(
     if apply and not confirm and not sys.stdin.isatty():
         typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
         raise typer.Exit(1)
-    if apply and not confirm and not typer.confirm(
-        "CONFIRM: --apply will write procore-financial-register.md to the local vault only "
-        "(no Procore mutation). Continue?",
-        default=False,
+    if (
+        apply
+        and not confirm
+        and not typer.confirm(
+            "CONFIRM: --apply will write procore-financial-register.md to the local vault only "
+            "(no Procore mutation). Continue?",
+            default=False,
+        )
     ):
         typer.echo("Aborted.")
         raise typer.Exit(1)
@@ -2299,11 +2668,15 @@ def obsidian_financial(
     except ValueError:
         _emit(
             {
-                "command": "hb-assistant procore obsidian financial", "ok": False,
-                "phase": _FINANCIAL_PHASE, "project_key": project,
-                "state": "fail_closed_unsupported", "reason_codes": ["since_unparseable"],
+                "command": "hb-assistant procore obsidian financial",
+                "ok": False,
+                "phase": _FINANCIAL_PHASE,
+                "project_key": project,
+                "state": "fail_closed_unsupported",
+                "reason_codes": ["since_unparseable"],
             },
-            json_out=json_out, exit_code=3,
+            json_out=json_out,
+            exit_code=3,
         )
         return
     now_utc = now.isoformat().replace("+00:00", "Z")
@@ -2314,11 +2687,15 @@ def obsidian_financial(
         if not result.get("vault_configured", False):
             _emit(
                 {
-                    "command": "hb-assistant procore obsidian financial", "ok": False,
-                    "phase": _FINANCIAL_PHASE, "project_key": project,
-                    "state": "fail_closed_unsupported", "reason_codes": ["vault_root_unconfigured"],
+                    "command": "hb-assistant procore obsidian financial",
+                    "ok": False,
+                    "phase": _FINANCIAL_PHASE,
+                    "project_key": project,
+                    "state": "fail_closed_unsupported",
+                    "reason_codes": ["vault_root_unconfigured"],
                 },
-                json_out=json_out, exit_code=3,
+                json_out=json_out,
+                exit_code=3,
             )
             return
     else:
@@ -2326,12 +2703,19 @@ def obsidian_financial(
         result["written_paths"] = []
 
     payload = {
-        "command": "hb-assistant procore obsidian financial", "ok": True,
-        "phase": _FINANCIAL_PHASE, "project_key": project,
-        "mode": "apply" if apply else "dry_run", "dry_run": not apply,
-        "since_utc": since_utc, "generated_utc": now_utc, "counts": result["counts"],
-        "section_keys": list(result["sections"]), "rendered": result["rendered"],
-        "written_paths": result["written_paths"], "guardrails": result["guardrails"],
+        "command": "hb-assistant procore obsidian financial",
+        "ok": True,
+        "phase": _FINANCIAL_PHASE,
+        "project_key": project,
+        "mode": "apply" if apply else "dry_run",
+        "dry_run": not apply,
+        "since_utc": since_utc,
+        "generated_utc": now_utc,
+        "counts": result["counts"],
+        "section_keys": list(result["sections"]),
+        "rendered": result["rendered"],
+        "written_paths": result["written_paths"],
+        "guardrails": result["guardrails"],
     }
     _emit(payload, json_out=json_out)
 
@@ -2361,14 +2745,28 @@ def _obsidian_ops_confirm(apply: bool, confirm: bool, filename: str) -> None:
         raise typer.Exit(1)
 
 
-def _emit_obsidian_ops(command: str, project: str, *, apply: bool, since_utc: Optional[str],
-                       result: dict, json_out: bool) -> None:
+def _emit_obsidian_ops(
+    command: str,
+    project: str,
+    *,
+    apply: bool,
+    since_utc: Optional[str],
+    result: dict,
+    json_out: bool,
+) -> None:
     payload = {
-        "command": command, "ok": True, "phase": _OBSIDIAN_OPS_PHASE, "project_key": project,
-        "mode": "apply" if apply else "dry_run", "dry_run": not apply,
-        "generated_utc": result["generated_utc"], "counts": result["counts"],
-        "warnings": result["warnings"], "section_keys": result["section_keys"],
-        "rendered": result["rendered"], "written_paths": result.get("written_paths", []),
+        "command": command,
+        "ok": True,
+        "phase": _OBSIDIAN_OPS_PHASE,
+        "project_key": project,
+        "mode": "apply" if apply else "dry_run",
+        "dry_run": not apply,
+        "generated_utc": result["generated_utc"],
+        "counts": result["counts"],
+        "warnings": result["warnings"],
+        "section_keys": result["section_keys"],
+        "rendered": result["rendered"],
+        "written_paths": result.get("written_paths", []),
         "guardrails": result["guardrails"],
     }
     if since_utc is not None:
@@ -2377,18 +2775,37 @@ def _emit_obsidian_ops(command: str, project: str, *, apply: bool, since_utc: Op
 
 
 def _vault_unconfigured(command: str, project: str, json_out: bool) -> None:
-    _emit({"command": command, "ok": False, "phase": _OBSIDIAN_OPS_PHASE, "project_key": project,
-           "state": "fail_closed_unsupported", "reason_codes": ["vault_root_unconfigured"]},
-          json_out=json_out, exit_code=3)
+    _emit(
+        {
+            "command": command,
+            "ok": False,
+            "phase": _OBSIDIAN_OPS_PHASE,
+            "project_key": project,
+            "state": "fail_closed_unsupported",
+            "reason_codes": ["vault_root_unconfigured"],
+        },
+        json_out=json_out,
+        exit_code=3,
+    )
 
 
 @obsidian_app.command("project-health")
 def obsidian_project_health(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
-    dry_run: bool = typer.Option(True, "--dry-run", help="Default: rendered note preview, zero side effects."),
-    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in. Writes one marker-bounded procore-project-health.md to 01_Projects/ (local vault)."),
-    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default)."),
-    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run", help="Default: rendered note preview, zero side effects."
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="EXPLICIT opt-in. Writes one marker-bounded procore-project-health.md to 01_Projects/ (local vault).",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="Structured JSON envelope (default)."
+    ),
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Required with --apply in non-TTY contexts."
+    ),
 ) -> None:
     """Project-health Obsidian note (Phase 06B Prompt 13) rendered from build_project_health.
     Local SQLite only; read-only; dry-run default; never calls Procore. --apply writes one
@@ -2417,11 +2834,23 @@ def obsidian_project_health(
 @obsidian_app.command("meeting-prep")
 def obsidian_meeting_prep(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
-    since: str = typer.Option("7 days ago", "--since", help="Window for recent meetings (relative or ISO)."),
-    dry_run: bool = typer.Option(True, "--dry-run", help="Default: rendered note preview, zero side effects."),
-    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in. Writes one marker-bounded procore-meeting-prep.md to 01_Projects/ (local vault)."),
-    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default)."),
-    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts."),
+    since: str = typer.Option(
+        "7 days ago", "--since", help="Window for recent meetings (relative or ISO)."
+    ),
+    dry_run: bool = typer.Option(
+        True, "--dry-run", help="Default: rendered note preview, zero side effects."
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="EXPLICIT opt-in. Writes one marker-bounded procore-meeting-prep.md to 01_Projects/ (local vault).",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="Structured JSON envelope (default)."
+    ),
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Required with --apply in non-TTY contexts."
+    ),
 ) -> None:
     """Meeting-prep Obsidian note (Phase 06B Prompt 13) — open meeting actions, recent meetings, and
     carryover risks from local SQLite read models. Read-only; dry-run default; never calls Procore.
@@ -2436,9 +2865,18 @@ def obsidian_meeting_prep(
     try:
         since_utc = parse_since(since, now=now)
     except ValueError:
-        _emit({"command": cmd, "ok": False, "phase": _OBSIDIAN_OPS_PHASE, "project_key": project,
-               "state": "fail_closed_unsupported", "reason_codes": ["since_unparseable"]},
-              json_out=json_out, exit_code=3)
+        _emit(
+            {
+                "command": cmd,
+                "ok": False,
+                "phase": _OBSIDIAN_OPS_PHASE,
+                "project_key": project,
+                "state": "fail_closed_unsupported",
+                "reason_codes": ["since_unparseable"],
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
         return
     SQLiteMigrator().apply()
     now_utc = now.isoformat()
@@ -2450,18 +2888,31 @@ def obsidian_meeting_prep(
     else:
         result = build_meeting_prep(project, since_utc=since_utc, now_utc=now_utc)
         result["written_paths"] = []
-    _emit_obsidian_ops(cmd, project, apply=apply, since_utc=since_utc, result=result,
-                       json_out=json_out)
+    _emit_obsidian_ops(
+        cmd, project, apply=apply, since_utc=since_utc, result=result, json_out=json_out
+    )
 
 
 @obsidian_app.command("daily-digest")
 def obsidian_daily_digest(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
-    since: str = typer.Option("24 hours ago", "--since", help="Window for the changes section (relative or ISO)."),
-    dry_run: bool = typer.Option(True, "--dry-run", help="Default: rendered note preview, zero side effects."),
-    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in. Writes one marker-bounded procore-daily-digest.md to 01_Projects/ (local vault)."),
-    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default)."),
-    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts."),
+    since: str = typer.Option(
+        "24 hours ago", "--since", help="Window for the changes section (relative or ISO)."
+    ),
+    dry_run: bool = typer.Option(
+        True, "--dry-run", help="Default: rendered note preview, zero side effects."
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="EXPLICIT opt-in. Writes one marker-bounded procore-daily-digest.md to 01_Projects/ (local vault).",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="Structured JSON envelope (default)."
+    ),
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Required with --apply in non-TTY contexts."
+    ),
 ) -> None:
     """Daily-digest Obsidian note (Phase 06B Prompt 13) — operator digest headline, overdue, top
     risks, and changes-in-window from local SQLite read models. Read-only; dry-run default; never
@@ -2476,9 +2927,18 @@ def obsidian_daily_digest(
     try:
         since_utc = parse_since(since, now=now)
     except ValueError:
-        _emit({"command": cmd, "ok": False, "phase": _OBSIDIAN_OPS_PHASE, "project_key": project,
-               "state": "fail_closed_unsupported", "reason_codes": ["since_unparseable"]},
-              json_out=json_out, exit_code=3)
+        _emit(
+            {
+                "command": cmd,
+                "ok": False,
+                "phase": _OBSIDIAN_OPS_PHASE,
+                "project_key": project,
+                "state": "fail_closed_unsupported",
+                "reason_codes": ["since_unparseable"],
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
         return
     SQLiteMigrator().apply()
     now_utc = now.isoformat()
@@ -2490,8 +2950,9 @@ def obsidian_daily_digest(
     else:
         result = build_daily_digest(project, since_utc=since_utc, now_utc=now_utc)
         result["written_paths"] = []
-    _emit_obsidian_ops(cmd, project, apply=apply, since_utc=since_utc, result=result,
-                       json_out=json_out)
+    _emit_obsidian_ops(
+        cmd, project, apply=apply, since_utc=since_utc, result=result, json_out=json_out
+    )
 
 
 # =============================================================================
@@ -2499,15 +2960,38 @@ def obsidian_daily_digest(
 # Phase 04A procore_live_records; read-only SQLite, never calls Procore)
 # =============================================================================
 
+
 @obsidian_app.command("register")
 def obsidian_register(
-    project: str = typer.Option(..., "--project", help="Mapped pilot project key (per procore_projects.seed.yaml)."),
-    endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id (e.g. rfis, submittals, observations, meetings, daily-log-weather)."),
-    from_sqlite: bool = typer.Option(False, "--from-sqlite", help="REQUIRED. Asserts the read source is the local SQLite procore_live_records table (no live Procore call)."),
-    dry_run: bool = typer.Option(True, "--dry-run", help="Default: rendered Markdown preview + counts, zero side effects."),
-    apply: bool = typer.Option(False, "--apply", help="EXPLICIT opt-in. Writes the marker-bounded register section into 01_Projects/<project>.procore-<family>-register.md."),
-    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default). Use --no-json for compact human-readable form."),
-    confirm: bool = typer.Option(False, "--confirm", help="Required with --apply in non-TTY contexts."),
+    project: str = typer.Option(
+        ..., "--project", help="Mapped pilot project key (per procore_projects.seed.yaml)."
+    ),
+    endpoint: str = typer.Option(
+        ...,
+        "--endpoint",
+        help="Canonical endpoint id (e.g. rfis, submittals, observations, meetings, daily-log-weather).",
+    ),
+    from_sqlite: bool = typer.Option(
+        False,
+        "--from-sqlite",
+        help="REQUIRED. Asserts the read source is the local SQLite procore_live_records table (no live Procore call).",
+    ),
+    dry_run: bool = typer.Option(
+        True, "--dry-run", help="Default: rendered Markdown preview + counts, zero side effects."
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="EXPLICIT opt-in. Writes the marker-bounded register section into 01_Projects/<project>.procore-<family>-register.md.",
+    ),
+    json_out: bool = typer.Option(
+        True,
+        "--json/--no-json",
+        help="Structured JSON envelope (default). Use --no-json for compact human-readable form.",
+    ),
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Required with --apply in non-TTY contexts."
+    ),
 ) -> None:
     """Project Phase 04A procore_live_records into a per-family Obsidian register section.
 
@@ -2534,9 +3018,13 @@ def obsidian_register(
     if apply and not confirm and not sys.stdin.isatty():
         typer.echo("ERROR: --confirm required for non-TTY --apply (guardrail).", err=True)
         raise typer.Exit(1)
-    if apply and not confirm and not typer.confirm(
-        "CONFIRM: --apply will write a marker-bounded register section to the local vault only (no Procore mutation). Continue?",
-        default=False,
+    if (
+        apply
+        and not confirm
+        and not typer.confirm(
+            "CONFIRM: --apply will write a marker-bounded register section to the local vault only (no Procore mutation). Continue?",
+            default=False,
+        )
     ):
         typer.echo("Aborted.")
         raise typer.Exit(1)
@@ -2591,7 +3079,9 @@ def obsidian_register(
 
 @app.command("validate")
 def validate_cmd(
-    json_out: bool = typer.Option(True, "--json/--no-json", help="Structured JSON envelope (default)."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="Structured JSON envelope (default)."
+    ),
     strict: bool = typer.Option(
         False,
         "--strict",

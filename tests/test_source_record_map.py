@@ -66,8 +66,15 @@ def test_source_record_map_dry_run_no_writes_and_unmapped(tmp_path: Path) -> Non
     assert report["unmapped_count"] >= 0
     # If any unmapped rows present, they must have proper reason codes
     for u in report.get("unmapped", []):
-        assert u.get("reason_code") in ("no_project_identity_signal", "pilot_source_unmapped", "weak_heuristic_requires_review")
-    assert report["guardrails"]["pilot_unmapped_emitted"] in (True, False)  # depends on whether source tables/rows existed
+        assert u.get("reason_code") in (
+            "no_project_identity_signal",
+            "pilot_source_unmapped",
+            "weak_heuristic_requires_review",
+        )
+    assert report["guardrails"]["pilot_unmapped_emitted"] in (
+        True,
+        False,
+    )  # depends on whether source tables/rows existed
     # verify no map rows written on dry (guarded for partial temp schema)
     try:
         cur = conn.execute("SELECT COUNT(*) FROM source_system_record_map")
@@ -87,7 +94,16 @@ def test_source_record_map_apply_populates_and_idempotent(tmp_path: Path) -> Non
     with contextlib.suppress(Exception):
         conn.execute(
             "INSERT INTO procore_financial_contracts (record_key, project_key, endpoint_id, contract_id, contract_family, title_redacted, first_seen_at_utc, last_seen_at_utc) VALUES (?,?,?,?,?,?,?,?)",
-            ("fin-001", "tropical", "live", "C-1", "prime", "Contract 1", "2026-01-01", "2026-01-01"),
+            (
+                "fin-001",
+                "tropical",
+                "live",
+                "C-1",
+                "prime",
+                "Contract 1",
+                "2026-01-01",
+                "2026-01-01",
+            ),
         )
     conn.commit()
 
@@ -111,7 +127,16 @@ def test_source_record_map_apply_populates_and_idempotent(tmp_path: Path) -> Non
 def test_cli_source_record_map_dry_run_apply_error(tmp_path: Path) -> None:
     # CLI --dry-run explicit
     result = subprocess.run(
-        [sys.executable, "-m", "hb_assistant.cli.main", "construction-agent", "data-quality", "source-record-map", "--dry-run", "--json"],
+        [
+            sys.executable,
+            "-m",
+            "hb_assistant.cli.main",
+            "construction-agent",
+            "data-quality",
+            "source-record-map",
+            "--dry-run",
+            "--json",
+        ],
         capture_output=True,
         text=True,
         timeout=30,
@@ -125,7 +150,17 @@ def test_cli_source_record_map_dry_run_apply_error(tmp_path: Path) -> None:
 
     # Both flags -> error
     result2 = subprocess.run(
-        [sys.executable, "-m", "hb_assistant.cli.main", "construction-agent", "data-quality", "source-record-map", "--dry-run", "--apply", "--json"],
+        [
+            sys.executable,
+            "-m",
+            "hb_assistant.cli.main",
+            "construction-agent",
+            "data-quality",
+            "source-record-map",
+            "--dry-run",
+            "--apply",
+            "--json",
+        ],
         capture_output=True,
         text=True,
         timeout=30,

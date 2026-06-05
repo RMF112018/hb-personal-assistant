@@ -50,9 +50,7 @@ _BRIEF_GUARDRAILS: dict[str, Any] = {
 
 # Confidence classes that mark a candidate as weak / model-proposed / stale for the
 # confidence-and-stale warnings section (mirrors the substrate vocabulary).
-_WEAK_CONFIDENCE_CLASSES = frozenset(
-    {"weak_heuristic", "model_proposed", "stale_or_unresolved"}
-)
+_WEAK_CONFIDENCE_CLASSES = frozenset({"weak_heuristic", "model_proposed", "stale_or_unresolved"})
 
 _SECTION_KINDS: tuple[str, ...] = (
     "meeting_context",
@@ -153,8 +151,12 @@ class MeetingPrepBriefBuilder:
             if gate_blocked:
                 if not dry_run:
                     self._store.upsert_meeting_prep_brief_run(
-                        brief_run_id=brief_run_id, project_key=project_key, mode=mode,
-                        lookahead_days=lookahead, status="blocked", sections_written=0,
+                        brief_run_id=brief_run_id,
+                        project_key=project_key,
+                        mode=mode,
+                        lookahead_days=lookahead,
+                        status="blocked",
+                        sections_written=0,
                         review_required_count=0,
                     )
                     runs_written += 1
@@ -164,9 +166,7 @@ class MeetingPrepBriefBuilder:
             sections_planned += len(sections)
             run_review_count = sum(1 for s in sections if s["review_required"])
             for s in sections:
-                by_section_kind[s["section_kind"]] = (
-                    by_section_kind.get(s["section_kind"], 0) + 1
-                )
+                by_section_kind[s["section_kind"]] = by_section_kind.get(s["section_kind"], 0) + 1
             review_required_total += run_review_count
             if not dry_run:
                 first_event = next(
@@ -174,17 +174,25 @@ class MeetingPrepBriefBuilder:
                     None,
                 )
                 self._store.upsert_meeting_prep_brief_run(
-                    brief_run_id=brief_run_id, project_key=project_key, mode=mode,
-                    lookahead_days=lookahead, status="materialized",
-                    event_index_id=first_event, sections_written=len(sections),
+                    brief_run_id=brief_run_id,
+                    project_key=project_key,
+                    mode=mode,
+                    lookahead_days=lookahead,
+                    status="materialized",
+                    event_index_id=first_event,
+                    sections_written=len(sections),
                     review_required_count=run_review_count,
                 )
                 runs_written += 1
                 for s in sections:
-                    section_id = hash_value(f"{brief_run_id}|{s['section_kind']}") or s["section_kind"]
+                    section_id = (
+                        hash_value(f"{brief_run_id}|{s['section_kind']}") or s["section_kind"]
+                    )
                     self._store.upsert_meeting_prep_brief_section(
-                        section_id=section_id, brief_run_id=brief_run_id,
-                        section_kind=s["section_kind"], section_redacted=s["section_redacted"],
+                        section_id=section_id,
+                        brief_run_id=brief_run_id,
+                        section_kind=s["section_kind"],
+                        section_redacted=s["section_redacted"],
                         confidence_class=s["confidence_class"],
                         evidence_trail_id=s["evidence_trail_id"],
                         review_required=s["review_required"],
@@ -299,10 +307,15 @@ class MeetingPrepBriefBuilder:
         }
         if matched_ids:
             return self._section(
-                "meeting_context", payload, "strong_heuristic", event_index_id=first_event,
+                "meeting_context",
+                payload,
+                "strong_heuristic",
+                event_index_id=first_event,
             )
         return self._section(
-            "meeting_context", payload, "stale_or_unresolved",
+            "meeting_context",
+            payload,
+            "stale_or_unresolved",
             review_required=unmatched > 0,
             stale_unknown={
                 "no_project_matched_meetings": True,
@@ -363,9 +376,7 @@ class MeetingPrepBriefBuilder:
             cls = "weak_heuristic"
         return self._section("open_items", payload, cls, evidence_trail_id=evidence_trail_id)
 
-    def _section_recent_activity(
-        self, relationships: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def _section_recent_activity(self, relationships: list[dict[str, Any]]) -> dict[str, Any]:
         by_family: dict[str, int] = {}
         by_type: dict[str, int] = {}
         evidence_trail_id: Optional[str] = None
@@ -383,13 +394,9 @@ class MeetingPrepBriefBuilder:
             "by_relationship_type": dict(sorted(by_type.items())),
         }
         cls = "deterministic" if relationships else "stale_or_unresolved"
-        return self._section(
-            "recent_activity", payload, cls, evidence_trail_id=evidence_trail_id
-        )
+        return self._section("recent_activity", payload, cls, evidence_trail_id=evidence_trail_id)
 
-    def _section_review_required_warnings(
-        self, candidates: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def _section_review_required_warnings(self, candidates: list[dict[str, Any]]) -> dict[str, Any]:
         flagged = [c for c in candidates if c.get("review_required")]
         by_type: dict[str, int] = {}
         for c in flagged:
@@ -401,7 +408,9 @@ class MeetingPrepBriefBuilder:
             "by_relationship_type": dict(sorted(by_type.items())),
         }
         return self._section(
-            "review_required_warnings", payload, "deterministic",
+            "review_required_warnings",
+            payload,
+            "deterministic",
             review_required=len(flagged) > 0,
             stale_unknown={"items_pending_human_review": len(flagged)} if flagged else None,
         )
@@ -409,13 +418,9 @@ class MeetingPrepBriefBuilder:
     def _section_confidence_stale_warnings(
         self, candidates: list[dict[str, Any]], evidence_trails: list[dict[str, Any]]
     ) -> dict[str, Any]:
-        weak = sum(
-            1 for c in candidates if c.get("confidence_class") in _WEAK_CONFIDENCE_CLASSES
-        )
+        weak = sum(1 for c in candidates if c.get("confidence_class") in _WEAK_CONFIDENCE_CLASSES)
         model = sum(1 for c in candidates if c.get("model_proposed"))
-        stale_trails = sum(
-            1 for t in evidence_trails if t.get("stale_unknown_flags_json")
-        )
+        stale_trails = sum(1 for t in evidence_trails if t.get("stale_unknown_flags_json"))
         payload = {
             "weak_or_stale_candidates": weak,
             "model_proposed_candidates": model,
@@ -423,14 +428,14 @@ class MeetingPrepBriefBuilder:
         }
         has_warnings = weak > 0 or model > 0 or stale_trails > 0
         return self._section(
-            "confidence_and_stale_unknown_warnings", payload, "deterministic",
+            "confidence_and_stale_unknown_warnings",
+            payload,
+            "deterministic",
             review_required=False,
             stale_unknown=payload if has_warnings else None,
         )
 
-    def _section_deferred(
-        self, kind: str, source_table: str, pending: str
-    ) -> dict[str, Any]:
+    def _section_deferred(self, kind: str, source_table: str, pending: str) -> dict[str, Any]:
         return self._section(
             kind,
             {"available": False, "deferred_source": source_table, "pending_prompt": pending},

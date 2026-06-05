@@ -125,7 +125,9 @@ def test_empty_substrate_is_fail_soft(tmp_path: Path) -> None:
     assert mart["candidates"]["total"] == 0
     assert mart["relationships"]["total"] == 0
     assert proof["guard_violation"] is False  # vacuously clean
-    assert proof["proof_passed"] is True  # tables present + guard-clean + no raw on an empty substrate
+    assert (
+        proof["proof_passed"] is True
+    )  # tables present + guard-clean + no raw on an empty substrate
 
 
 def test_stale_schema_is_handled_gracefully(tmp_path: Path) -> None:
@@ -161,9 +163,11 @@ def test_raw_content_injection_fails_closed(tmp_path: Path) -> None:
     # The offending value is never echoed back — only the table.column location.
     assert "sig=abcdef" not in json.dumps(proof)
     # The read-only proof never mutates the DB (no-writeback): candidate count unchanged.
-    after = sqlite3.connect(db).execute(
-        "SELECT COUNT(*) FROM cross_source_relationship_candidates"
-    ).fetchone()[0]
+    after = (
+        sqlite3.connect(db)
+        .execute("SELECT COUNT(*) FROM cross_source_relationship_candidates")
+        .fetchone()[0]
+    )
     assert after == before == 2
 
 

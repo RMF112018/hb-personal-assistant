@@ -83,13 +83,17 @@ def _assignment_summary(raw: Dict[str, Any]) -> Dict[str, Any]:
         if value is not None:
             summary[key] = value
     # Hash the login_information ref + the legacy login_information_name field.
-    login_info = raw.get("login_information") if isinstance(raw.get("login_information"), dict) else None
+    login_info = (
+        raw.get("login_information") if isinstance(raw.get("login_information"), dict) else None
+    )
     if login_info is not None:
         summary["hashed_login"] = person_hash_summary(login_info)
     elif raw.get("login_information_name") or raw.get("login_information_id"):
         summary["hashed_login"] = {
             "hash_prefix": hash_identifier(raw.get("login_information_name")),
-            "id": raw.get("login_information_id") if isinstance(raw.get("login_information_id"), int) else None,
+            "id": raw.get("login_information_id")
+            if isinstance(raw.get("login_information_id"), int)
+            else None,
         }
     # Comment is free-text -> hash-only.
     comment_summary = hash_summary(raw.get("comment"))

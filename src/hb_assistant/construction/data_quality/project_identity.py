@@ -53,7 +53,8 @@ def load_pilot_project_descriptors(project_key: Optional[str] = None) -> list[di
         descriptors.append(
             {
                 "project_key": p.project_key,
-                "hb_project_number": getattr(p, "hb_project_number", None) or (m.procore_project_name if m else None),
+                "hb_project_number": getattr(p, "hb_project_number", None)
+                or (m.procore_project_name if m else None),
                 "name_raw": p.display_name,
                 "name_normalized": p.display_name.lower().replace(" ", "-"),
                 "procore_project_id": m.procore_project_id if m else None,
@@ -82,6 +83,7 @@ class ProjectIdentityBackfill:
     def _get_git_sha(self) -> str:
         try:
             import subprocess
+
             return subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
             ).strip()
@@ -126,7 +128,11 @@ class ProjectIdentityBackfill:
 
             # 1. Source registry / locations (deterministic by project_key in seed)
             try:
-                locs = store.list_source_locations(project_key=key) if hasattr(store, "list_source_locations") else []
+                locs = (
+                    store.list_source_locations(project_key=key)
+                    if hasattr(store, "list_source_locations")
+                    else []
+                )
                 if locs:
                     signals.append("source_registry_config")
             except Exception:
@@ -138,7 +144,10 @@ class ProjectIdentityBackfill:
                 if drive_matches:
                     signals.append("graph_drive_item_project_match")
                     # Use the best confidence from existing
-                    best = max((d.get("match_confidence", "medium") for d in drive_matches), default="medium")
+                    best = max(
+                        (d.get("match_confidence", "medium") for d in drive_matches),
+                        default="medium",
+                    )
                     if best in ("high", "medium"):
                         match_conf = best
             except Exception:
@@ -159,7 +168,9 @@ class ProjectIdentityBackfill:
             procore_count = 0
             try:
                 # Use direct query for procore_live_records (lightweight, no new methods)
-                conn = __import__("hb_assistant.store.connection", fromlist=["get_connection"]).get_connection()
+                conn = __import__(
+                    "hb_assistant.store.connection", fromlist=["get_connection"]
+                ).get_connection()
                 if procore_id:
                     cur = conn.execute(
                         "SELECT COUNT(*) FROM procore_live_records WHERE procore_project_id = ?",
@@ -174,7 +185,9 @@ class ProjectIdentityBackfill:
             # 5. Other (financials via procore_financial_* counts, obsidian via existence of notes - approximate)
             financial_count = 0
             try:
-                conn = __import__("hb_assistant.store.connection", fromlist=["get_connection"]).get_connection()
+                conn = __import__(
+                    "hb_assistant.store.connection", fromlist=["get_connection"]
+                ).get_connection()
                 cur = conn.execute(
                     "SELECT COUNT(*) FROM procore_financial_contracts WHERE project_key = ?",
                     (key,),
@@ -267,12 +280,16 @@ class ProjectIdentityBackfill:
                 },
                 "email": {
                     "record_count": len(email_matches) if email_matches else 0,
-                    "mapped_count": len([e for e in (email_matches or []) if e.get("project_key") == key]),
+                    "mapped_count": len(
+                        [e for e in (email_matches or []) if e.get("project_key") == key]
+                    ),
                     "quality": "partial" if email_matches else "unknown",
                 },
                 "graph_files": {
                     "record_count": len(drive_matches) if drive_matches else 0,
-                    "mapped_count": len([d for d in (drive_matches or []) if d.get("project_key") == key]),
+                    "mapped_count": len(
+                        [d for d in (drive_matches or []) if d.get("project_key") == key]
+                    ),
                     "quality": "partial" if drive_matches else "unknown",
                 },
                 "calendar": {"record_count": 0, "mapped_count": 0, "quality": "not_ready"},
@@ -290,7 +307,11 @@ class ProjectIdentityBackfill:
                     "project_number": hb_num or key,
                     "source_domains": source_domains,
                     "phase_07d_meeting_prep_ready": False,
-                    "blocking_reasons": ["calendar", "email_thread_summaries", "content_embeddings"],
+                    "blocking_reasons": [
+                        "calendar",
+                        "email_thread_summaries",
+                        "content_embeddings",
+                    ],
                 }
             )
 
@@ -308,7 +329,11 @@ class ProjectIdentityBackfill:
                 "summary": {
                     "total_projects": len(projects_matrix),
                     "phase_07d_meeting_prep_ready": False,
-                    "blocking_reasons": ["calendar", "email_thread_summaries", "content_embeddings"],
+                    "blocking_reasons": [
+                        "calendar",
+                        "email_thread_summaries",
+                        "content_embeddings",
+                    ],
                 },
             },
             "guardrails": {
@@ -327,6 +352,4 @@ def backfill_project_identity(
     project_filter: Optional[str] = None,
 ) -> dict[str, Any]:
     """Convenience wrapper (matches plan expectation for CLI/tests)."""
-    return ProjectIdentityBackfill(store=store).run(
-        dry_run=dry_run, project_filter=project_filter
-    )
+    return ProjectIdentityBackfill(store=store).run(dry_run=dry_run, project_filter=project_filter)

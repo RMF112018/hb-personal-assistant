@@ -114,8 +114,13 @@ def test_budget_change_history_synthetic_record_id() -> None:
     from hb_assistant.procore.live_sync import _record_id_of
 
     adapter = ep_registry.get("budget-change-history")
-    rec = {"budget_code": "01-100", "column": "Revised", "created_at": "2026-05-20",
-           "old_value": "100.00", "new_value": "150.00"}
+    rec = {
+        "budget_code": "01-100",
+        "column": "Revised",
+        "created_at": "2026-05-20",
+        "old_value": "100.00",
+        "new_value": "150.00",
+    }
     rid1 = _record_id_of(adapter, rec)
     rid2 = _record_id_of(adapter, dict(rec))
     assert rid1 and rid1.startswith("h:") and rid1 == rid2  # deterministic
@@ -173,9 +178,7 @@ def test_projection_failure_captured_without_breaking_latest_state(
     def _boom(*args: object, **kwargs: object) -> Dict[str, Any]:
         raise RuntimeError("synthetic projection failure")
 
-    monkeypatch.setattr(
-        "hb_assistant.procore.live_sync.project_owner_contract_family", _boom
-    )
+    monkeypatch.setattr("hb_assistant.procore.live_sync.project_owner_contract_family", _boom)
 
     receipt = _sync(db, _FakeTransport(_PRIME_PAYLOAD))
 
@@ -188,7 +191,5 @@ def test_projection_failure_captured_without_breaking_latest_state(
     assert _rows(db, "procore_live_record_snapshots")  # history still recorded
     # projection failure captured (count + redacted detail), financial table empty
     assert receipt["projection_error_count"] >= 1
-    assert any(
-        "owner_projection_error" in err for err in receipt["redacted_errors"]
-    )
+    assert any("owner_projection_error" in err for err in receipt["redacted_errors"])
     assert _rows(db, "procore_financial_contracts") == []

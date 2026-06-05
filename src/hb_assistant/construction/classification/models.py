@@ -113,13 +113,9 @@ class ModelRoutingConfig(BaseModel):
     @classmethod
     def _endpoint_url_shape(cls, v: str) -> str:
         if not (v.startswith("http://") or v.startswith("https://")):
-            raise ValueError(
-                f"endpoint_url must start with 'http://' or 'https://'; got {v!r}"
-            )
+            raise ValueError(f"endpoint_url must start with 'http://' or 'https://'; got {v!r}")
         if v.endswith("/"):
-            raise ValueError(
-                f"endpoint_url must not end with a trailing slash; got {v!r}"
-            )
+            raise ValueError(f"endpoint_url must not end with a trailing slash; got {v!r}")
         return v
 
     @field_validator("low_confidence_threshold")
@@ -149,8 +145,7 @@ class ModelRoutingConfig(BaseModel):
         for cat in PROTECTED_CATEGORIES:
             if cat not in self.protected_categories:
                 raise ValueError(
-                    f"protected_categories must include every canonical category; "
-                    f"missing: {cat!r}"
+                    f"protected_categories must include every canonical category; missing: {cat!r}"
                 )
         # Task entries must be unique by `task`.
         task_keys = [t.task for t in self.tasks]

@@ -63,7 +63,9 @@ def test_card_contract_forbids_raw_and_url_fields() -> None:
     # the card contract must explicitly forbid raw text / URL / payload field families
     assert {"raw_document_text", "signed_url", "download_url", "raw_payload"} <= forbidden
     # auto-promotion of project matches must be disabled
-    assert load_document_contract("document_project_match_contract")["auto_promotion_allowed"] is False
+    assert (
+        load_document_contract("document_project_match_contract")["auto_promotion_allowed"] is False
+    )
     # controlled extraction must not persist full text by default
     ce = load_document_contract("controlled_extraction_contract")
     assert ce["persist_full_text"] is False

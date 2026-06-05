@@ -35,38 +35,65 @@ def _seed(tmp_path: Path) -> ConstructionStore:
     )
     now = _now_iso()
     store.upsert_calendar_event_index(
-        event_index_id="E1", source_id="primary_calendar", graph_event_id_hash="g1",
-        start_datetime_utc=now, end_datetime_utc=now, organizer_domain="vendor.com",
+        event_index_id="E1",
+        source_id="primary_calendar",
+        graph_event_id_hash="g1",
+        start_datetime_utc=now,
+        end_datetime_utc=now,
+        organizer_domain="vendor.com",
         review_required=True,
     )
     for mid, tk in (("m1", "T1"), ("m2", "T2")):
-        store.upsert_email_message(message_id=mid, thread_key=tk, source_id="sx",
-                                   received_datetime=now)
+        store.upsert_email_message(
+            message_id=mid, thread_key=tk, source_id="sx", received_datetime=now
+        )
     store.upsert_email_thread_summary(
-        thread_key="T1", project_key="tropical", message_count=2,
-        first_message_datetime=now, last_message_datetime=now,
+        thread_key="T1",
+        project_key="tropical",
+        message_count=2,
+        first_message_datetime=now,
+        last_message_datetime=now,
         summary_redacted="thread: 2 message(s), 2 participant(s)",
-        summary_policy="metadata_only", review_required=True,
+        summary_policy="metadata_only",
+        review_required=True,
     )
     store.upsert_email_thread_summary(
-        thread_key="T2", project_key="tropical", message_count=1,
-        first_message_datetime=now, last_message_datetime=now,
+        thread_key="T2",
+        project_key="tropical",
+        message_count=1,
+        first_message_datetime=now,
+        last_message_datetime=now,
         summary_redacted="thread: 1 message(s), 1 participant(s)",
-        summary_policy="metadata_only", review_required=False,
+        summary_policy="metadata_only",
+        review_required=False,
     )
     store.enqueue_email_review_item(
-        review_id="r1", message_id="m1", category="contracts", sensitivity="medium",
-        reason="sensitive_category:contracts", suggested_action="route_to_review",
-        confidence=0.9, project_key="tropical",
+        review_id="r1",
+        message_id="m1",
+        category="contracts",
+        sensitivity="medium",
+        reason="sensitive_category:contracts",
+        suggested_action="route_to_review",
+        confidence=0.9,
+        project_key="tropical",
     )
     store.upsert_meeting_email_relationship_candidate(
-        candidate_id="c1", event_index_id="E1", thread_key_hash="abc123def456",
-        project_key="tropical", candidate_type="time_and_domain",
+        candidate_id="c1",
+        event_index_id="E1",
+        thread_key_hash="abc123def456",
+        project_key="tropical",
+        candidate_type="time_and_domain",
         source_reference_json=json.dumps(
-            {"event_index_id": "E1", "thread_key_hash": "abc123def456",
-             "event_start_utc": now, "event_end_utc": now}
+            {
+                "event_index_id": "E1",
+                "thread_key_hash": "abc123def456",
+                "event_start_utc": now,
+                "event_end_utc": now,
+            }
         ),
-        confidence=0.8, confidence_class="strong", review_required=False,
+        confidence=0.8,
+        confidence_class="strong",
+        review_required=False,
     )
     return store
 
@@ -111,7 +138,7 @@ def test_reapply_preserves_user_text_outside_markers(tmp_path: Path) -> None:
     user_top = "# My own notes\n\nKeep this paragraph.\n"
     user_bottom = "\nFooter the user wrote.\n"
     body = path.read_text(encoding="utf-8")
-    inner = body[body.index(_MARKER_START):body.index(_MARKER_END) + len(_MARKER_END)]
+    inner = body[body.index(_MARKER_START) : body.index(_MARKER_END) + len(_MARKER_END)]
     path.write_text(user_top + inner + user_bottom, encoding="utf-8")
 
     projector.project(project_key="tropical", dry_run=False)

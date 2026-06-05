@@ -26,56 +26,66 @@ def _load_bounded_signals(store: Optional[Store]) -> list[dict[str, Any]]:
     try:
         # 1. High-conf body mentions (bobby_mention from emails)
         for m in store.list_recent_body_mentions(limit=20):
-            signals.append({
-                "classifications": ["bobby_mention"],
-                "message_source_record_id": m.get("source_record_id") or m.get("id"),
-                "title": m.get("title_redacted") or m.get("web_link") or "Mentioned item",
-                "excerpt": None,
-            })
+            signals.append(
+                {
+                    "classifications": ["bobby_mention"],
+                    "message_source_record_id": m.get("source_record_id") or m.get("id"),
+                    "title": m.get("title_redacted") or m.get("web_link") or "Mentioned item",
+                    "excerpt": None,
+                }
+            )
     except Exception:
         pass
     try:
         # 2. Parser outputs (excerpts as signals; proxy for retrieval/parser content)
         for p in store.list_recent_parser_outputs(limit=30):
-            signals.append({
-                "classifications": ["parser_content"],
-                "message_source_record_id": p.get("file_source_record_id") or p.get("id"),
-                "title": p.get("parser_name") or "Parsed content",
-                "excerpt": p.get("text_excerpt"),
-                "source_record_id": p.get("file_source_record_id"),
-            })
+            signals.append(
+                {
+                    "classifications": ["parser_content"],
+                    "message_source_record_id": p.get("file_source_record_id") or p.get("id"),
+                    "title": p.get("parser_name") or "Parsed content",
+                    "excerpt": p.get("text_excerpt"),
+                    "source_record_id": p.get("file_source_record_id"),
+                }
+            )
     except Exception:
         pass
     try:
         # 3. Upcoming calendar events (meeting_prep signals)
         for c in store.list_upcoming_calendar_events(limit=10):
-            signals.append({
-                "classifications": ["calendar_event"],
-                "message_source_record_id": c.get("source_record_id") or c.get("id"),
-                "title": "Meeting prep / calendar item",
-                "excerpt": c.get("web_link"),
-            })
+            signals.append(
+                {
+                    "classifications": ["calendar_event"],
+                    "message_source_record_id": c.get("source_record_id") or c.get("id"),
+                    "title": "Meeting prep / calendar item",
+                    "excerpt": c.get("web_link"),
+                }
+            )
     except Exception:
         pass
     try:
         # 4. File review / pending queue (file_review signals)
-        for f in (store.list_file_review_queue(limit=10) or []):
-            signals.append({
-                "classifications": ["file_review"],
-                "message_source_record_id": f.get("source_record_id") or f.get("id"),
-                "title": f.get("name") or "File review",
-                "excerpt": None,
-            })
+        for f in store.list_file_review_queue(limit=10) or []:
+            signals.append(
+                {
+                    "classifications": ["file_review"],
+                    "message_source_record_id": f.get("source_record_id") or f.get("id"),
+                    "title": f.get("name") or "File review",
+                    "excerpt": None,
+                }
+            )
     except Exception:
         pass
     try:
         for p in store.list_pending_ingest_candidates(limit=10):
-            signals.append({
-                "classifications": ["pending_file"],
-                "message_source_record_id": p.get("source_record_id") or p.get("id"),
-                "title": p.get("name") or "Pending file",
-                "excerpt": None,
-            })
+            signals.append(
+                {
+                    "classifications": ["pending_file"],
+                    "message_source_record_id": p.get("source_record_id") or p.get("id"),
+                    "title": p.get("name") or "Pending file",
+                    "excerpt": None,
+                }
+            )
     except Exception:
         pass
     return signals
@@ -91,7 +101,11 @@ def _map_signal_to_action_type(
     Deterministic, redacted input only.
     """
     text = (excerpt or "").lower()
-    class_str = " ".join(classifications).lower() if isinstance(classifications, (list, tuple)) else str(classifications).lower()
+    class_str = (
+        " ".join(classifications).lower()
+        if isinstance(classifications, (list, tuple))
+        else str(classifications).lower()
+    )
 
     # Bobby boost (reuse AliasResolver exactly as in detector)
     if has_bobby_mention or AliasResolver(DEFAULT_BOBBY_ALIASES).matches(text):
@@ -149,12 +163,24 @@ def extract_candidates(
         sigs = _load_bounded_signals(store)
 
     for sig in sigs:
-        src_id = sig.get("message_source_record_id") or sig.get("source_id") or sig.get("source_record_id") or 0
-        raw_title = sig.get("title") or sig.get("excerpt") or sig.get("match_excerpt_redacted") or "Follow up on item"
+        src_id = (
+            sig.get("message_source_record_id")
+            or sig.get("source_id")
+            or sig.get("source_record_id")
+            or 0
+        )
+        raw_title = (
+            sig.get("title")
+            or sig.get("excerpt")
+            or sig.get("match_excerpt_redacted")
+            or "Follow up on item"
+        )
         title = str(raw_title)[:200].strip()
         classifications = sig.get("classifications", [])
         excerpt = sig.get("excerpt") or sig.get("match_excerpt_redacted") or ""
-        has_bobby = "bobby_mention" in str(classifications).lower() or "bobby_mention" in str(sig).lower()
+        has_bobby = (
+            "bobby_mention" in str(classifications).lower() or "bobby_mention" in str(sig).lower()
+        )
 
         a_type, conf = _map_signal_to_action_type(excerpt, classifications, has_bobby)
 

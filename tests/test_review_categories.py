@@ -21,13 +21,29 @@ _ROOT = Path(__file__).resolve().parents[1]
 
 # The full set the Phase 06 package requires (19 legacy + 4 Prompt 10 additions).
 _REQUIRED_IDS = {
-    "contracts", "change_orders", "claims", "notices", "legal_correspondence",
-    "insurance_or_bonding", "pay_applications", "invoices", "lien_releases",
-    "personnel_or_hr", "incidents", "injuries", "medical_detail", "disputes",
-    "default_or_termination_language", "liquidated_damages",
-    "delay_or_time_extension_language", "additional_compensation_language",
-    "privileged_or_confidential_markers", "confidential_bid_or_estimate",
-    "owner_directive", "subcontractor_default", "schedule_recovery_or_acceleration",
+    "contracts",
+    "change_orders",
+    "claims",
+    "notices",
+    "legal_correspondence",
+    "insurance_or_bonding",
+    "pay_applications",
+    "invoices",
+    "lien_releases",
+    "personnel_or_hr",
+    "incidents",
+    "injuries",
+    "medical_detail",
+    "disputes",
+    "default_or_termination_language",
+    "liquidated_damages",
+    "delay_or_time_extension_language",
+    "additional_compensation_language",
+    "privileged_or_confidential_markers",
+    "confidential_bid_or_estimate",
+    "owner_directive",
+    "subcontractor_default",
+    "schedule_recovery_or_acceleration",
 }
 
 

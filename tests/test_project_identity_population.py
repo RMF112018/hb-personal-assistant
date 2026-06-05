@@ -64,7 +64,13 @@ def test_backfill_apply_populates_identities_and_matches(tmp_path: Path) -> None
     assert report["conflicts"] == []
 
     # Verify rows exist
-    for key in ["tropical", "pga-modern-garage", "alton-hilltop-pbg", "the-wellington", "hilltop-gardens"]:
+    for key in [
+        "tropical",
+        "pga-modern-garage",
+        "alton-hilltop-pbg",
+        "the-wellington",
+        "hilltop-gardens",
+    ]:
         ident = store.get_project_identity(key)  # type: ignore[attr-defined]
         assert ident is not None
         assert ident["project_key"] == key
@@ -103,7 +109,15 @@ def test_cli_project_coverage_dry_run_json(tmp_path: Path) -> None:
     # Use the installed entrypoint (under the active venv when pytest runs)
     # We invoke via python -m to be robust in the test env.
     result = subprocess.run(
-        [sys.executable, "-m", "hb_assistant.cli.main", "construction-agent", "data-quality", "project-coverage", "--json"],
+        [
+            sys.executable,
+            "-m",
+            "hb_assistant.cli.main",
+            "construction-agent",
+            "data-quality",
+            "project-coverage",
+            "--json",
+        ],
         capture_output=True,
         text=True,
         timeout=30,

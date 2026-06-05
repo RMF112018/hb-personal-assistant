@@ -38,10 +38,16 @@ def _item(item_id: str, name: str, parent_path: str, *, deleted: bool = False) -
 
 SINGLE_PAGE: dict[str, Any] = {
     "value": [
-        _item("fake-item-0001", "Daily Log 2026-04-01.pdf",
-              "/drives/fake-drive-0001/root:/Tropical/Daily Logs"),
-        _item("fake-item-0002", "RFI 0042 - Roof Detail.pdf",
-              "/drives/fake-drive-0001/root:/Tropical/RFIs"),
+        _item(
+            "fake-item-0001",
+            "Daily Log 2026-04-01.pdf",
+            "/drives/fake-drive-0001/root:/Tropical/Daily Logs",
+        ),
+        _item(
+            "fake-item-0002",
+            "RFI 0042 - Roof Detail.pdf",
+            "/drives/fake-drive-0001/root:/Tropical/RFIs",
+        ),
     ],
     "@odata.deltaLink": (
         "https://graph.microsoft.com/v1.0/drives/fake-drive-0001/root/delta"
@@ -52,10 +58,14 @@ SINGLE_PAGE: dict[str, Any] = {
 
 PAGINATED_PAGE_1: dict[str, Any] = {
     "value": [
-        _item("fake-item-0010", "Submittal 0011.pdf",
-              "/drives/fake-drive-0001/root:/Tropical/Submittals"),
-        _item("fake-item-0011", "Drawing A-100.pdf",
-              "/drives/fake-drive-0001/root:/Tropical/Drawings"),
+        _item(
+            "fake-item-0010",
+            "Submittal 0011.pdf",
+            "/drives/fake-drive-0001/root:/Tropical/Submittals",
+        ),
+        _item(
+            "fake-item-0011", "Drawing A-100.pdf", "/drives/fake-drive-0001/root:/Tropical/Drawings"
+        ),
     ],
     "@odata.nextLink": (
         "https://graph.microsoft.com/v1.0/drives/fake-drive-0001/root/delta"
@@ -65,8 +75,9 @@ PAGINATED_PAGE_1: dict[str, Any] = {
 
 PAGINATED_PAGE_2: dict[str, Any] = {
     "value": [
-        _item("fake-item-0012", "Punch List 04-15.pdf",
-              "/drives/fake-drive-0001/root:/Tropical/Punch"),
+        _item(
+            "fake-item-0012", "Punch List 04-15.pdf", "/drives/fake-drive-0001/root:/Tropical/Punch"
+        ),
     ],
     "@odata.deltaLink": (
         "https://graph.microsoft.com/v1.0/drives/fake-drive-0001/root/delta"
@@ -77,13 +88,20 @@ PAGINATED_PAGE_2: dict[str, Any] = {
 
 WITH_DELETIONS: dict[str, Any] = {
     "value": [
-        _item("fake-item-0020", "Site Photos 2026-04-12.zip",
-              "/drives/fake-drive-0001/root:/Tropical/General"),
-        _item("fake-item-0021", "Removed File.pdf",
-              "/drives/fake-drive-0001/root:/Tropical/General",
-              deleted=True),
-        _item("fake-item-0022", "Active File.pdf",
-              "/drives/fake-drive-0001/root:/Tropical/General"),
+        _item(
+            "fake-item-0020",
+            "Site Photos 2026-04-12.zip",
+            "/drives/fake-drive-0001/root:/Tropical/General",
+        ),
+        _item(
+            "fake-item-0021",
+            "Removed File.pdf",
+            "/drives/fake-drive-0001/root:/Tropical/General",
+            deleted=True,
+        ),
+        _item(
+            "fake-item-0022", "Active File.pdf", "/drives/fake-drive-0001/root:/Tropical/General"
+        ),
     ],
     "@odata.deltaLink": (
         "https://graph.microsoft.com/v1.0/drives/fake-drive-0001/root/delta"

@@ -27,7 +27,8 @@ from hb_assistant.store.migrator import SQLiteMigrator
 
 _WHITELIST = {"pass", "warning", "fail_blocking", "deferred_not_blocking", "not_applicable"}
 _LEAK = re.compile(
-    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}", re.IGNORECASE
+    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}",
+    re.IGNORECASE,
 )
 _NEW_GATES = list(_MEETING_PREP_07D_PREREQUISITES)
 
@@ -151,7 +152,9 @@ def test_malformed_deterministic_edge_is_fail_blocking() -> None:
     try:
         store = ConstructionStore(db_path=db)
         # deterministic flag but flagged sensitive_high_impact -> malformed
-        _cand(store, "c0", sensitive_high_impact=True, review_required=True, evidence_trail_id="et_c0")
+        _cand(
+            store, "c0", sensitive_high_impact=True, review_required=True, evidence_trail_id="et_c0"
+        )
         _trail(store, "c0")
         report = evaluate_data_quality_gates(db_path=db, persist=False)
         g = _gate(report, "deterministic_relationship_quality")
@@ -171,8 +174,13 @@ def test_review_routing_pass_when_sensitive_is_routed() -> None:
     try:
         store = ConstructionStore(db_path=db)
         _cand(
-            store, "c0", deterministic=False, model_proposed=True,
-            confidence_class="model_proposed", review_required=True, evidence_trail_id="et_c0",
+            store,
+            "c0",
+            deterministic=False,
+            model_proposed=True,
+            confidence_class="model_proposed",
+            review_required=True,
+            evidence_trail_id="et_c0",
         )
         _trail(store, "c0")
         report = evaluate_data_quality_gates(db_path=db, persist=False)
@@ -188,8 +196,13 @@ def test_review_routing_fail_when_sensitive_not_routed() -> None:
     try:
         store = ConstructionStore(db_path=db)
         _cand(
-            store, "c0", deterministic=False, sensitive_high_impact=True,
-            confidence_class="weak_heuristic", review_required=False, evidence_trail_id="et_c0",
+            store,
+            "c0",
+            deterministic=False,
+            sensitive_high_impact=True,
+            confidence_class="weak_heuristic",
+            review_required=False,
+            evidence_trail_id="et_c0",
         )
         _trail(store, "c0")
         report = evaluate_data_quality_gates(db_path=db, persist=False)
@@ -211,9 +224,7 @@ def _src(source_key: str, kind: str, **kw: object) -> SourceLocation:
 
 
 def _patch_scope(monkeypatch, registry: SourceRegistry, policy: DocumentSourcePolicy) -> None:
-    monkeypatch.setattr(
-        "hb_assistant.construction.config.load_source_registry", lambda: registry
-    )
+    monkeypatch.setattr("hb_assistant.construction.config.load_source_registry", lambda: registry)
     monkeypatch.setattr(
         "hb_assistant.construction.policy.document_source_policy.load_document_source_policy",
         lambda: policy,
@@ -369,7 +380,13 @@ def test_meeting_prep_readiness_backward_compatible_keys() -> None:
         assert prep["auto_readiness_allowed"] is False
         cats = prep["prerequisite_categories"]
         assert set(cats.keys()) == {
-            "calendar", "email", "document", "relationship", "review", "safety", "source_scope"
+            "calendar",
+            "email",
+            "document",
+            "relationship",
+            "review",
+            "safety",
+            "source_scope",
         }
     finally:
         Path(db).unlink(missing_ok=True)

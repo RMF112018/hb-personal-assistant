@@ -290,12 +290,16 @@ _WRITEBACK_PATTERNS = (
 )
 
 _BAD_IMPORTS = (
-    re.compile(r"from\s+(requests|httpx|aiohttp|procore|msgraph|graph|msal)\s+import", re.IGNORECASE),
+    re.compile(
+        r"from\s+(requests|httpx|aiohttp|procore|msgraph|graph|msal)\s+import", re.IGNORECASE
+    ),
     re.compile(r"import\s+(requests|httpx|aiohttp)\b", re.IGNORECASE),
 )
 
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
 
 def _get_git_sha() -> str:
     try:
@@ -307,6 +311,7 @@ def _get_git_sha() -> str:
     except Exception:
         return "unknown"
 
+
 def _get_schema_version(db_path: Optional[str | Path] = None) -> int:
     try:
         conn = get_connection(db_path)
@@ -314,6 +319,7 @@ def _get_schema_version(db_path: Optional[str | Path] = None) -> int:
         return int(row[0]) if row and row[0] is not None else 0
     except Exception:
         return 0
+
 
 def _scan_module_for_mutation_and_imports(src: str, rel_path: str) -> Dict[str, List[str]]:
     """AST + regex scan for mutation verbs and dangerous imports (07A scope)."""
@@ -337,12 +343,23 @@ def _scan_module_for_mutation_and_imports(src: str, rel_path: str) -> Dict[str, 
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
                 method = node.func.attr.lower()
-                if method in {"post", "put", "patch", "delete", "send", "create", "update", "share", "invite"}:
+                if method in {
+                    "post",
+                    "put",
+                    "patch",
+                    "delete",
+                    "send",
+                    "create",
+                    "update",
+                    "share",
+                    "invite",
+                }:
                     writeback.append(f"{rel_path}: .{method}() call")
     except Exception:
         pass  # syntax error in scanned file would be a separate failure; we stay defensive
 
     return {"writeback": writeback, "bad_imports": bad_imports}
+
 
 def _probe_raw_body_guardrails_07a(conn: Any) -> Dict[str, Any]:
     """Confirm every Phase 07A table enforces CHECK(raw_body_persisted = 0) and stores only 0."""
@@ -379,7 +396,12 @@ def _probe_raw_body_guardrails_07a(conn: Any) -> Dict[str, Any]:
             if any(v != 0 for v in distinct):
                 violations.append(f"{name}: distinct raw_body_persisted = {distinct}")
             tables.append(
-                {"table": name, "present": True, "has_check": has_check, "distinct_values": distinct}
+                {
+                    "table": name,
+                    "present": True,
+                    "has_check": has_check,
+                    "distinct_values": distinct,
+                }
             )
         except Exception as e:
             violations.append(f"{name}: probe error ({type(e).__name__})")
@@ -387,12 +409,17 @@ def _probe_raw_body_guardrails_07a(conn: Any) -> Dict[str, Any]:
 
     return {"tables": tables, "violations": violations}
 
+
 def _scan_evidence_outputs(repo_root: Path, subdir: str) -> Dict[str, Any]:
     """Recursively scan an evidence directory for secrets / tokens (read-only)."""
     findings: List[str] = []
     evidence_dir = repo_root / "docs" / "evidence" / subdir
     if not evidence_dir.exists():
-        return {"scanned_dir": str(evidence_dir), "findings": findings, "note": "evidence dir not present"}
+        return {
+            "scanned_dir": str(evidence_dir),
+            "findings": findings,
+            "note": "evidence dir not present",
+        }
 
     for root, _dirs, files in os.walk(evidence_dir):
         for fn in files:
@@ -424,7 +451,11 @@ def _scan_obsidian_outputs(base_relative: str) -> Dict[str, Any]:
     except Exception:
         return {"scanned_dir": base_relative, "findings": findings, "note": "vault root unresolved"}
     if not root.exists():
-        return {"scanned_dir": str(root), "findings": findings, "note": "obsidian output dir not present"}
+        return {
+            "scanned_dir": str(root),
+            "findings": findings,
+            "note": "obsidian output dir not present",
+        }
     for r, _dirs, files in os.walk(root):
         for fn in files:
             if fn.endswith((".md", ".txt")):
@@ -460,9 +491,7 @@ def _scan_module_set(repo_root: Path, src_relative_paths: List[str]) -> Dict[str
     return results
 
 
-def _probe_table_guards(
-    conn: Any, table_guard_map: Dict[str, Dict[str, int]]
-) -> Dict[str, Any]:
+def _probe_table_guards(conn: Any, table_guard_map: Dict[str, Dict[str, int]]) -> Dict[str, Any]:
     """Confirm each table declares its guard CHECK columns and stores only the
     required constant. Tables with no guard columns are recorded present (not a
     violation); they are covered by the content + module scans."""
@@ -539,6 +568,7 @@ def _scan_table_contents(conn: Any, tables: List[str]) -> Dict[str, Any]:
             findings.append(f"{name}: content-scan error ({type(e).__name__})")
     return {"findings": findings, "scanned": scanned}
 
+
 _SAFETY_GUARDRAILS = {
     "external_systems": "read_only",
     "writeback": "none_permitted_in_07a_data_quality",
@@ -555,6 +585,7 @@ _STOP_CONDITIONS_CHECKED = [
     "no_tokens_secrets_signed_urls_in_07a_code_or_evidence",
     "safety_proof_scopes_all_07a_data_quality_surfaces",
 ]
+
 
 def build_data_quality_no_writeback_proof(
     *, db_path: Optional[str | Path] = None
@@ -587,8 +618,12 @@ def build_data_quality_no_writeback_proof(
             module_results[fname] = {"present": False}
 
     any_writeback = any(r.get("writeback") for r in module_results.values() if isinstance(r, dict))
-    any_bad_imports = any(r.get("bad_imports") for r in module_results.values() if isinstance(r, dict))
-    any_module_secrets = any(r.get("secrets") for r in module_results.values() if isinstance(r, dict))
+    any_bad_imports = any(
+        r.get("bad_imports") for r in module_results.values() if isinstance(r, dict)
+    )
+    any_module_secrets = any(
+        r.get("secrets") for r in module_results.values() if isinstance(r, dict)
+    )
 
     # 2. SQLite raw_body guardrail probe for the exact 07A tables
     conn = get_connection(db_path)
@@ -690,15 +725,30 @@ def build_data_quality_no_writeback_proof(
     checks_detail = {
         "static_writeback_scan_07a_modules": {
             "passed": not any_writeback,
-            "findings": [f for r in module_results.values() if isinstance(r, dict) for f in (r.get("writeback") or [])],
+            "findings": [
+                f
+                for r in module_results.values()
+                if isinstance(r, dict)
+                for f in (r.get("writeback") or [])
+            ],
         },
         "no_http_client_or_mutation_imports_07a": {
             "passed": not any_bad_imports,
-            "findings": [f for r in module_results.values() if isinstance(r, dict) for f in (r.get("bad_imports") or [])],
+            "findings": [
+                f
+                for r in module_results.values()
+                if isinstance(r, dict)
+                for f in (r.get("bad_imports") or [])
+            ],
         },
         "module_secret_scan_07a": {
             "passed": not any_module_secrets,
-            "findings": [f for r in module_results.values() if isinstance(r, dict) for f in (r.get("secrets") or [])],
+            "findings": [
+                f
+                for r in module_results.values()
+                if isinstance(r, dict)
+                for f in (r.get("secrets") or [])
+            ],
         },
         "sqlite_raw_body_guardrail_v20_v21_07a_tables": {
             "passed": raw_body_ok,
@@ -822,8 +872,13 @@ def build_data_quality_no_writeback_proof(
         "stop_conditions_checked": _STOP_CONDITIONS_CHECKED,
         "no_live_call_performed": True,
         "no_raw_values_persisted": (
-            raw_body_ok and guards_07b_ok and content_07b_ok and guards_07c_ok and content_07c_ok
-            and guards_07d_ok and content_07d_ok
+            raw_body_ok
+            and guards_07b_ok
+            and content_07b_ok
+            and guards_07c_ok
+            and content_07c_ok
+            and guards_07d_ok
+            and content_07d_ok
         ),
         "no_raw_values_persisted_scope": (
             "phase_07a_data_quality_and_phase_07b_calendar_email_thread_candidate_"

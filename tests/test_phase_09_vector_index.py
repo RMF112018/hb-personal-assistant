@@ -93,7 +93,7 @@ def _add_generated_output_fixture(db: str) -> None:
                     '[redacted generated packet summary for vector test]', 'synthesized', ?,
                     0,0,0,0,0,0,0,0,0)
             """,
-            ("pkt-gen-vec-1", "t" + "0"*15, now),
+            ("pkt-gen-vec-1", "t" + "0" * 15, now),
         )
 
         # Apply daily brief run (eligible)
@@ -110,7 +110,7 @@ def _add_generated_output_fixture(db: str) -> None:
                     '12_Daily_Brief/2026-06-05_daily_brief.md', ?, ?,
                     0,0,0,0,0,0,0,0,0)
             """,
-            ("brf-gen-vec-1", "h" + "0"*15, now),
+            ("brf-gen-vec-1", "h" + "0" * 15, now),
         )
 
         # Source ref for the brief (makes source_ref_count >0 and manifest eligible)
@@ -154,7 +154,9 @@ def test_normal_path_dry_run_and_persist() -> None:
         _add_generated_output_fixture(db)
         plan = build_vector_index_dry_run(db)
         assert plan["status"] == "dry_run"
-        assert plan["total_nodes"] > count0, "generated outputs loader must contribute additional approved nodes"
+        assert plan["total_nodes"] > count0, (
+            "generated outputs loader must contribute additional approved nodes"
+        )
         assert plan["planned_chunk_count"] >= plan["total_nodes"]
         assert plan["vectors_persisted_to_sqlite"] is False
         assert plan["read_only"] is True

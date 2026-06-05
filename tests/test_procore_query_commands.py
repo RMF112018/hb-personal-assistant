@@ -36,14 +36,22 @@ def _invoke(*args: str) -> dict:
 def _seed_record_change(record_id: str, t1: str, t2: str) -> None:
     SQLiteMigrator().apply()
     record_procore_history_for_record(
-        project_key="tropical", endpoint_id="rfis", parent_procore_id=None,
-        procore_record_id=record_id, normalized_fields={"status": "Open", "subject": "Footing"},
-        sync_run_id="s1", now_utc=t1,
+        project_key="tropical",
+        endpoint_id="rfis",
+        parent_procore_id=None,
+        procore_record_id=record_id,
+        normalized_fields={"status": "Open", "subject": "Footing"},
+        sync_run_id="s1",
+        now_utc=t1,
     )
     record_procore_history_for_record(
-        project_key="tropical", endpoint_id="rfis", parent_procore_id=None,
-        procore_record_id=record_id, normalized_fields={"status": "Closed", "subject": "Footing"},
-        sync_run_id="s2", now_utc=t2,
+        project_key="tropical",
+        endpoint_id="rfis",
+        parent_procore_id=None,
+        procore_record_id=record_id,
+        normalized_fields={"status": "Closed", "subject": "Footing"},
+        sync_run_id="s2",
+        now_utc=t2,
     )
 
 
@@ -66,8 +74,17 @@ def test_command_help(cmd: str) -> None:
 
 def test_history_record_reconstruction() -> None:
     _seed_record_change("26550708", "2026-05-01T00:00:00Z", "2026-05-28T00:00:00Z")
-    payload = _invoke("live", "history", "--project", "tropical", "--endpoint", "rfis",
-                      "--record-id", "26550708", "--json")
+    payload = _invoke(
+        "live",
+        "history",
+        "--project",
+        "tropical",
+        "--endpoint",
+        "rfis",
+        "--record-id",
+        "26550708",
+        "--json",
+    )
     assert payload["ok"] is True
     assert payload["record_key"] == "tropical|rfis||26550708"
     assert payload["snapshot_count"] >= 2
@@ -94,14 +111,25 @@ def test_changes_relative_lookback_filters_old() -> None:
 
 def test_changes_endpoint_filter_and_iso_since() -> None:
     _seed_record_change("26550708", "2026-05-01T00:00:00Z", "2026-05-28T00:00:00Z")
-    payload = _invoke("live", "changes", "--project", "tropical",
-                      "--since", "2026-05-10T00:00:00Z", "--endpoint", "rfis", "--json")
+    payload = _invoke(
+        "live",
+        "changes",
+        "--project",
+        "tropical",
+        "--since",
+        "2026-05-10T00:00:00Z",
+        "--endpoint",
+        "rfis",
+        "--json",
+    )
     assert payload["ok"] is True
     assert all(c["endpoint_id"] == "rfis" for c in payload["changes"])
 
 
 def test_changes_unparseable_since_fails_closed() -> None:
-    result = _RUNNER.invoke(app, ["live", "changes", "--project", "tropical", "--since", "whenever", "--json"])
+    result = _RUNNER.invoke(
+        app, ["live", "changes", "--project", "tropical", "--since", "whenever", "--json"]
+    )
     assert result.exit_code == 3
     assert "since_unparseable" in json.loads(result.output)["reason_codes"]
 
@@ -113,7 +141,9 @@ def test_changes_unparseable_since_fails_closed() -> None:
 
 def test_timeline_shape() -> None:
     _seed_record_change("26550708", "2026-05-01T00:00:00Z", "2026-05-28T00:00:00Z")
-    payload = _invoke("live", "timeline", "--project", "tropical", "--since", "2026-01-01T00:00:00Z", "--json")
+    payload = _invoke(
+        "live", "timeline", "--project", "tropical", "--since", "2026-01-01T00:00:00Z", "--json"
+    )
     assert payload["ok"] is True
     assert isinstance(payload["timeline"], list)
     assert payload["event_count"] == len(payload["timeline"])
@@ -126,10 +156,24 @@ def test_timeline_shape() -> None:
 
 def _seed_signals() -> None:
     SQLiteMigrator().apply()
-    emit_action_signal(project_key="tropical", record_key="tropical|rfis||1", endpoint_id="rfis",
-                       signal_type="rfi_overdue", importance="high", signal_status="open", now_utc="2026-05-28T00:00:00Z")
-    emit_action_signal(project_key="tropical", record_key="tropical|punch-items||2", endpoint_id="punch-items",
-                       signal_type="punch_overdue", importance="medium", signal_status="resolved", now_utc="2026-05-28T00:00:00Z")
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|rfis||1",
+        endpoint_id="rfis",
+        signal_type="rfi_overdue",
+        importance="high",
+        signal_status="open",
+        now_utc="2026-05-28T00:00:00Z",
+    )
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|punch-items||2",
+        endpoint_id="punch-items",
+        signal_type="punch_overdue",
+        importance="medium",
+        signal_status="resolved",
+        now_utc="2026-05-28T00:00:00Z",
+    )
 
 
 def test_actions_lists_all_and_filters_by_status() -> None:
@@ -143,7 +187,9 @@ def test_actions_lists_all_and_filters_by_status() -> None:
 
 def test_actions_filters_by_endpoint() -> None:
     _seed_signals()
-    payload = _invoke("live", "actions", "--project", "tropical", "--endpoint", "punch-items", "--json")
+    payload = _invoke(
+        "live", "actions", "--project", "tropical", "--endpoint", "punch-items", "--json"
+    )
     assert payload["action_count"] == 1
     assert payload["actions"][0]["endpoint_id"] == "punch-items"
 
@@ -156,8 +202,17 @@ def test_actions_filters_by_endpoint() -> None:
 def test_coverage_report_from_fixture(tmp_path) -> None:
     payload_file = tmp_path / "submittal.json"
     payload_file.write_text(json.dumps(SUBMITTAL_SAMPLE_PAYLOAD[0]), encoding="utf-8")
-    payload = _invoke("live", "coverage", "--project", "tropical", "--endpoint", "submittals",
-                      "--raw-payload", str(payload_file), "--json")
+    payload = _invoke(
+        "live",
+        "coverage",
+        "--project",
+        "tropical",
+        "--endpoint",
+        "submittals",
+        "--raw-payload",
+        str(payload_file),
+        "--json",
+    )
     assert payload["ok"] is True
     assert payload["raw_field_count"] > 0
     assert "number" in payload["captured"]
@@ -170,14 +225,38 @@ def test_coverage_report_from_fixture(tmp_path) -> None:
 
 def test_coverage_unreadable_payload_fails_closed(tmp_path) -> None:
     missing = tmp_path / "nope.json"
-    result = _RUNNER.invoke(app, ["live", "coverage", "--project", "tropical", "--endpoint", "submittals",
-                                  "--raw-payload", str(missing), "--json"])
+    result = _RUNNER.invoke(
+        app,
+        [
+            "live",
+            "coverage",
+            "--project",
+            "tropical",
+            "--endpoint",
+            "submittals",
+            "--raw-payload",
+            str(missing),
+            "--json",
+        ],
+    )
     assert result.exit_code == 3
     assert "raw_payload_unreadable" in json.loads(result.output)["reason_codes"]
 
 
 def test_unknown_endpoint_fails_closed() -> None:
-    result = _RUNNER.invoke(app, ["live", "history", "--project", "tropical", "--endpoint", "not-an-endpoint",
-                                  "--record-id", "1", "--json"])
+    result = _RUNNER.invoke(
+        app,
+        [
+            "live",
+            "history",
+            "--project",
+            "tropical",
+            "--endpoint",
+            "not-an-endpoint",
+            "--record-id",
+            "1",
+            "--json",
+        ],
+    )
     assert result.exit_code == 3
     assert "endpoint_alias_unknown" in json.loads(result.output)["reason_codes"]

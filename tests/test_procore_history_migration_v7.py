@@ -65,7 +65,9 @@ def _migrate(db: Path) -> int:
 def _names(db: Path, kind: str) -> set[str]:
     conn = sqlite3.connect(str(db))
     try:
-        return {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type=?", (kind,))}
+        return {
+            row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type=?", (kind,))
+        }
     finally:
         conn.close()
 
@@ -99,9 +101,9 @@ def test_v7_is_idempotent() -> None:
     assert _migrate(db) == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(str(db))
     try:
-        count = conn.execute(
-            "SELECT COUNT(*) FROM schema_migrations WHERE version = 7"
-        ).fetchone()[0]
+        count = conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 7").fetchone()[
+            0
+        ]
     finally:
         conn.close()
     assert count == 1

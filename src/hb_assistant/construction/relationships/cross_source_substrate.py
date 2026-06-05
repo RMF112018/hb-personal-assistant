@@ -245,9 +245,7 @@ def _is_sensitive(edge: NormalizedEdge, categories: set[str]) -> bool:
     the edge's relationship/record types."""
     if edge.sensitive_high_impact:
         return True
-    blob = (
-        f"{edge.relationship_type} {edge.target_record_type} {edge.source_record_type}"
-    ).lower()
+    blob = (f"{edge.relationship_type} {edge.target_record_type} {edge.source_record_type}").lower()
     for cat in categories:
         if cat == "sensitive_high_impact":
             continue
@@ -343,9 +341,13 @@ class CrossSourceRelationshipSubstrateBuilder:
                 )
                 evidence_trail_id = hash_value(f"evt|{candidate_id}")
 
-                by_source_family[edge.source_family] = by_source_family.get(edge.source_family, 0) + 1
+                by_source_family[edge.source_family] = (
+                    by_source_family.get(edge.source_family, 0) + 1
+                )
                 by_confidence_class[conf_class] = by_confidence_class.get(conf_class, 0) + 1
-                by_target_family[edge.target_family] = by_target_family.get(edge.target_family, 0) + 1
+                by_target_family[edge.target_family] = (
+                    by_target_family.get(edge.target_family, 0) + 1
+                )
                 if review_required:
                     review_required_count += 1
 

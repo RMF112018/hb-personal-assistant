@@ -231,14 +231,21 @@ def build_research_packet_agent_proof() -> dict[str, Any]:
     no_raw_content = not any(
         t in blob
         for t in (
-            "raw_body", "raw_document_text", "raw_calendar_payload", "raw_prompt",
-            "raw_response", "signed_url", "download_url", "secret",
+            "raw_body",
+            "raw_document_text",
+            "raw_calendar_payload",
+            "raw_prompt",
+            "raw_response",
+            "signed_url",
+            "download_url",
+            "secret",
         )
     )
     guards_zero = all(
         row[c] == 0
         for c in row
-        if c.endswith("_persisted") or c in ("arbitrary_sql_allowed", "external_writeback_performed")
+        if c.endswith("_persisted")
+        or c in ("arbitrary_sql_allowed", "external_writeback_performed")
     )
     accepted_memory_present = any(
         r["source_family"] == "accepted_long_term_memory" for r in assessment.accepted_memory_refs
@@ -248,7 +255,8 @@ def build_research_packet_agent_proof() -> dict[str, Any]:
         retrieval_receipt_id
         and packet_receipt_id
         and packet.source_ref_count >= 1
-        and {"packet_id", "topic_hash", "context_quality_class", "degradation_mode"} <= contract_fields
+        and {"packet_id", "topic_hash", "context_quality_class", "degradation_mode"}
+        <= contract_fields
         and assessment.open_questions
         and accepted_memory_present
         and no_raw_content

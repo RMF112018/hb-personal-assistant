@@ -627,7 +627,8 @@ def build_phase_08c_no_writeback_no_raw_financial_output_proof(
 
     # 1. Static mutation scan over the 08C financial modules (subset of the second-brain walk).
     financial_rels = [
-        p for p in _enumerate_second_brain_modules(repo_root)
+        p
+        for p in _enumerate_second_brain_modules(repo_root)
         if Path(p).name in _PHASE_08C_MODULE_BASENAMES
     ]
     module_results = _scan_module_set(repo_root, financial_rels)

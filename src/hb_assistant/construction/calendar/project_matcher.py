@@ -141,8 +141,7 @@ class CalendarProjectMatcher:
                 "project_number_hash_match": number_match,
                 "name_token_overlap": len(name_overlap),
                 "matched_token_hashes": (
-                    ([desc.full_number_hash] if number_match else [])
-                    + name_overlap
+                    ([desc.full_number_hash] if number_match else []) + name_overlap
                 )[:_SAMPLE_MATCHED_TOKENS],
                 "event_token_count": len(token_hashes),
                 "is_cancelled": bool(event.get("is_cancelled")),
@@ -150,9 +149,7 @@ class CalendarProjectMatcher:
             }
             raw.append(
                 CalendarMatchCandidate(
-                    candidate_id=hash_value(
-                        f"{event['event_index_id']}|{desc.project_key}|{ctype}"
-                    )
+                    candidate_id=hash_value(f"{event['event_index_id']}|{desc.project_key}|{ctype}")
                     or f"{event['event_index_id']}:{desc.project_key}",
                     event_index_id=event["event_index_id"],
                     project_key=desc.project_key,
@@ -214,7 +211,9 @@ class CalendarProjectMatcher:
             "events_matched": events_matched,
             "events_unmatched": events_unmatched,
             "candidates_created": len(all_candidates),
-            "deterministic": sum(1 for c in all_candidates if c.confidence_class == "deterministic"),
+            "deterministic": sum(
+                1 for c in all_candidates if c.confidence_class == "deterministic"
+            ),
             "moderate": sum(1 for c in all_candidates if c.confidence_class == "moderate"),
             "weak": sum(1 for c in all_candidates if c.confidence_class == "weak"),
             "review_routed": sum(1 for c in all_candidates if c.review_required),

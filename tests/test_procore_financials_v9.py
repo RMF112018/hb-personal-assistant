@@ -70,9 +70,9 @@ def test_v9_is_idempotent() -> None:
     assert _migrate(db) == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(str(db))
     try:
-        count = conn.execute(
-            "SELECT COUNT(*) FROM schema_migrations WHERE version = 9"
-        ).fetchone()[0]
+        count = conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 9").fetchone()[
+            0
+        ]
     finally:
         conn.close()
     assert count == 1

@@ -39,19 +39,21 @@ _CONTEXT_GUARDRAILS: dict[str, Any] = {
 }
 
 _RECORD_CATEGORIES = (
-    "meetings", "rfis", "submittals", "changes", "commitments", "daily_log_issues",
-    "inspections", "documents",
+    "meetings",
+    "rfis",
+    "submittals",
+    "changes",
+    "commitments",
+    "daily_log_issues",
+    "inspections",
+    "documents",
 )
 
 # Confidence classes that keep a tie review-required (in addition to any review_required flag).
-_REVIEW_CONFIDENCE_CLASSES = frozenset(
-    {"weak_heuristic", "model_proposed", "stale_or_unresolved"}
-)
+_REVIEW_CONFIDENCE_CLASSES = frozenset({"weak_heuristic", "model_proposed", "stale_or_unresolved"})
 
 
-def _categorize(
-    target_family: Any, target_record_type: Any, relationship_type: Any
-) -> str:
+def _categorize(target_family: Any, target_record_type: Any, relationship_type: Any) -> str:
     """Classify a record tie into one of the 8 categories (or 'project'/'other')."""
     tt = str(target_record_type or "").lower()
     rt = str(relationship_type or "").lower()
@@ -111,9 +113,7 @@ class CorrespondenceContextBuilder:
         if lookback_days is not None:
             now = now_utc or datetime.now(timezone.utc)
             cutoff = now - timedelta(days=int(lookback_days))
-        threads = self._store.list_email_thread_summaries(
-            project_key=project_filter, limit=100000
-        )
+        threads = self._store.list_email_thread_summaries(project_key=project_filter, limit=100000)
         msg_to_thread = self._message_to_thread()
 
         # thread_key (via hash) -> list of meeting ties
@@ -134,7 +134,8 @@ class CorrespondenceContextBuilder:
             if thread_key is None:
                 continue
             category = _categorize(
-                edge.get("target_family"), edge.get("target_record_type"),
+                edge.get("target_family"),
+                edge.get("target_record_type"),
                 edge.get("relationship_type"),
             )
             tie = {
@@ -167,17 +168,19 @@ class CorrespondenceContextBuilder:
 
             # meetings (thread <-> calendar event)
             for cand in meetings_by_hash.get(hash_value(thread_key) or thread_key, []):
-                related.setdefault("meetings", []).append({
-                    "ref": str(cand.get("event_index_id")),
-                    "relationship_type": "meeting_email_correlation",
-                    "confidence_class": str(cand.get("confidence_class")),
-                    "review_required": bool(
-                        cand.get("review_required")
-                        or cand.get("model_proposed")
-                        or cand.get("confidence_class") in _REVIEW_CONFIDENCE_CLASSES
-                    ),
-                    "evidence_trail_id": None,
-                })
+                related.setdefault("meetings", []).append(
+                    {
+                        "ref": str(cand.get("event_index_id")),
+                        "relationship_type": "meeting_email_correlation",
+                        "confidence_class": str(cand.get("confidence_class")),
+                        "review_required": bool(
+                            cand.get("review_required")
+                            or cand.get("model_proposed")
+                            or cand.get("confidence_class") in _REVIEW_CONFIDENCE_CLASSES
+                        ),
+                        "evidence_trail_id": None,
+                    }
+                )
 
             # record ties (rfis / documents / changes / ...)
             project_confirmed = False
@@ -203,25 +206,25 @@ class CorrespondenceContextBuilder:
             if review_required:
                 review_required_threads += 1
 
-            capped = {
-                c: ties[:max_per_category] for c, ties in sorted(record_categories.items())
-            }
+            capped = {c: ties[:max_per_category] for c, ties in sorted(record_categories.items())}
             by_cat_counts: dict[str, int] = {}
             for c, ties in record_categories.items():
                 by_cat_counts[c] = len(ties)
                 by_category_total[c] = by_category_total.get(c, 0) + len(ties)
 
-            thread_reports.append({
-                "thread_key": thread_key,
-                "project_key": t.get("project_key"),
-                "message_count": t.get("message_count"),
-                "last_activity": t.get("last_message_datetime"),
-                "summary_redacted": t.get("summary_redacted"),
-                "review_required": review_required,
-                "project_confirmed": project_confirmed,
-                "by_category": dict(sorted(by_cat_counts.items())),
-                "related": capped,
-            })
+            thread_reports.append(
+                {
+                    "thread_key": thread_key,
+                    "project_key": t.get("project_key"),
+                    "message_count": t.get("message_count"),
+                    "last_activity": t.get("last_message_datetime"),
+                    "summary_redacted": t.get("summary_redacted"),
+                    "review_required": review_required,
+                    "project_confirmed": project_confirmed,
+                    "by_category": dict(sorted(by_cat_counts.items())),
+                    "related": capped,
+                }
+            )
 
         return {
             "command": "construction-agent correspondence context",

@@ -64,7 +64,9 @@ _ZERO_GUARD_COLUMNS: list[str] = [
 def _columns(conn: Any, table: str) -> dict[str, str]:
     """Return {column_name: declared_type_upper} for a table (empty if absent)."""
     try:
-        return {row[1]: (row[2] or "").upper() for row in conn.execute(f"PRAGMA table_info({table})")}
+        return {
+            row[1]: (row[2] or "").upper() for row in conn.execute(f"PRAGMA table_info({table})")
+        }
     except Exception:
         return {}
 

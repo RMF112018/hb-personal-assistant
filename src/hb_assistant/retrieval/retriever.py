@@ -70,14 +70,20 @@ class Retriever:
         try:
             # use existing helper if present, else raw via store conn? For now use get_files_by_status + list_parser
             # simplified: query recent parser_outputs via new helper or direct (we'll ensure store has)
-            pos = self.store.list_recent_parser_outputs(limit=self.max_candidates) if hasattr(self.store, "list_recent_parser_outputs") else []
+            pos = (
+                self.store.list_recent_parser_outputs(limit=self.max_candidates)
+                if hasattr(self.store, "list_recent_parser_outputs")
+                else []
+            )
             for p in pos:
-                candidates.append({
-                    "source_record_id": p.get("file_source_record_id"),
-                    "content_type": "parser_excerpt",
-                    "text": p.get("text_excerpt", "") or "",
-                    "meta": {"parser": p.get("parser_name")},
-                })
+                candidates.append(
+                    {
+                        "source_record_id": p.get("file_source_record_id"),
+                        "content_type": "parser_excerpt",
+                        "text": p.get("text_excerpt", "") or "",
+                        "meta": {"parser": p.get("parser_name")},
+                    }
+                )
         except Exception:
             pass
 

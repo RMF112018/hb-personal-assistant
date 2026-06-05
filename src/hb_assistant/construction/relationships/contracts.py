@@ -56,9 +56,7 @@ def _load_json_resource(filename: str) -> dict[str, Any]:
     """Load a packaged json resource. importlib -> filesystem -> empty dict."""
     try:
         if hasattr(importlib_resources, "files"):
-            text = (importlib_resources.files(_CONTRACT_PKG) / filename).read_text(
-                encoding="utf-8"
-            )
+            text = (importlib_resources.files(_CONTRACT_PKG) / filename).read_text(encoding="utf-8")
         else:  # pragma: no cover - legacy importlib path
             text = importlib_resources.read_text(_CONTRACT_PKG, filename, encoding="utf-8")
         parsed = json.loads(text)
@@ -92,10 +90,7 @@ def load_phase_07d_seed(name: str) -> dict[str, Any]:
     if name not in PHASE_07D_SEED_FILES:
         raise KeyError(f"unknown phase 07D seed: {name!r}")
     seed_path = (
-        PathPolicy().resolve_repo_root()
-        / "resources"
-        / "config"
-        / PHASE_07D_SEED_FILES[name]
+        PathPolicy().resolve_repo_root() / "resources" / "config" / PHASE_07D_SEED_FILES[name]
     )
     if not seed_path.exists():
         return {}

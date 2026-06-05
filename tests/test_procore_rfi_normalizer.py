@@ -56,7 +56,9 @@ def test_normalize_rfi_review_flag_low_risk_default() -> None:
 
 
 def test_normalize_rfi_review_flag_legal_status() -> None:
-    raw = RFI_SAMPLE_PAYLOAD[2]  # status: legal_review_required + change order subject + no assignee
+    raw = RFI_SAMPLE_PAYLOAD[
+        2
+    ]  # status: legal_review_required + change order subject + no assignee
     record = normalize_rfi(
         raw,
         project_key="tropical",

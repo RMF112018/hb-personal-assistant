@@ -37,9 +37,7 @@ def test_parse_sharepoint_url_basic() -> None:
 
 
 def test_parse_sharepoint_url_url_encoded() -> None:
-    host, path = _parse_sharepoint_url(
-        "https://contoso.sharepoint.com/sites/Tropical%20Pointe/"
-    )
+    host, path = _parse_sharepoint_url("https://contoso.sharepoint.com/sites/Tropical%20Pointe/")
     assert host == "contoso.sharepoint.com"
     assert path == "/sites/Tropical Pointe"
 
@@ -52,7 +50,10 @@ def test_parse_sharepoint_url_missing_path_raises() -> None:
 def test_resolve_sharepoint_site_happy_path() -> None:
     http = MagicMock()
     http.get.side_effect = [
-        {"id": "contoso.sharepoint.com,site-guid", "webUrl": "https://contoso.sharepoint.com/sites/Tropical"},
+        {
+            "id": "contoso.sharepoint.com,site-guid",
+            "webUrl": "https://contoso.sharepoint.com/sites/Tropical",
+        },
         {"id": "b!drive-guid", "webUrl": "https://contoso.sharepoint.com/sites/Tropical/Documents"},
     ]
     resolver = ConstructionGraphResolver(http)
@@ -221,7 +222,15 @@ def test_resolve_site_page_when_pages_endpoint_returns_no_match() -> None:
     http = MagicMock()
     http.get.side_effect = [
         {"id": "site-hilltop", "webUrl": "https://example/site"},
-        {"value": [{"id": "other-page", "name": "Home.aspx", "webUrl": "https://example/site/SitePages/Home.aspx"}]},
+        {
+            "value": [
+                {
+                    "id": "other-page",
+                    "name": "Home.aspx",
+                    "webUrl": "https://example/site/SitePages/Home.aspx",
+                }
+            ]
+        },
         {"value": []},  # /sites/.../drives → no candidates
     ]
     resolver = ConstructionGraphResolver(http)

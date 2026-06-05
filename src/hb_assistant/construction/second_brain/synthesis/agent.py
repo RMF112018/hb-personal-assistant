@@ -58,9 +58,7 @@ def synthesize_answer(
         )
     )
     research_packet_ok = packet.degradation_mode != "blocked"
-    context = envelope.to_context_envelope(
-        question=question, research_packet_ok=research_packet_ok
-    )
+    context = envelope.to_context_envelope(question=question, research_packet_ok=research_packet_ok)
 
     # Mock-first: never auto-select live (only an explicitly-live config yields it).
     resolved_adapter = (
@@ -205,13 +203,24 @@ def build_answer_synthesis_agent_proof() -> dict[str, Any]:
     no_raw_content = not any(
         t in blob
         for t in (
-            "raw_body", "raw_document_text", "raw_calendar_payload", "raw_prompt",
-            "raw_response", "signed_url", "download_url", "secret",
+            "raw_body",
+            "raw_document_text",
+            "raw_calendar_payload",
+            "raw_prompt",
+            "raw_response",
+            "signed_url",
+            "download_url",
+            "secret",
         )
     )
     required_output = {
-        "answer_redacted", "source_refs", "confidence_labels", "review_tiers",
-        "research_packet_summary", "evaluation_summary", "warnings",
+        "answer_redacted",
+        "source_refs",
+        "confidence_labels",
+        "review_tiers",
+        "research_packet_summary",
+        "evaluation_summary",
+        "warnings",
         "advisory_vs_actionable_marking",
     }
     has_required = required_output <= set(synthesized.model_dump())

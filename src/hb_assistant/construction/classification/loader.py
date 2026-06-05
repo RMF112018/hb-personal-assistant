@@ -39,9 +39,7 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     if not isinstance(data, dict):
-        raise ModelRoutingError(
-            f"Ollama routing config {path} must contain a mapping at top level"
-        )
+        raise ModelRoutingError(f"Ollama routing config {path} must contain a mapping at top level")
     return data
 
 

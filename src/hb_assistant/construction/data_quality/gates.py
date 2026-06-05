@@ -114,9 +114,7 @@ _MEETING_PREP_07D_PREREQUISITES = [
 # model_proposed / sensitive_high_impact flags) must always be review-routed and never
 # auto-promoted.
 _DETERMINISTIC_CONFIDENCE_CLASS = "deterministic"
-_WEAK_CONFIDENCE_CLASSES = frozenset(
-    {"weak_heuristic", "model_proposed", "stale_or_unresolved"}
-)
+_WEAK_CONFIDENCE_CLASSES = frozenset({"weak_heuristic", "model_proposed", "stale_or_unresolved"})
 
 # Per-category grouping for the meeting-prep readiness breakdown. Names absent from the
 # evaluated result set (e.g. a later-prompt gate) are filtered out at build time.
@@ -154,6 +152,7 @@ _MEETING_PREP_CATEGORY_MAP: dict[str, list[str]] = {
 # ---------------------------------------------------------------------------
 # Helpers (duplicated minimal style from siblings; no cross-module re-import of internals)
 # ---------------------------------------------------------------------------
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -193,7 +192,14 @@ def _load_thresholds() -> dict[str, float]:
         return json.loads(text)
     except Exception:
         # Filesystem fallback (dev / test environments)
-        candidate = Path(__file__).resolve().parents[4] / "src" / "hb_assistant" / "resources" / "json" / filename
+        candidate = (
+            Path(__file__).resolve().parents[4]
+            / "src"
+            / "hb_assistant"
+            / "resources"
+            / "json"
+            / filename
+        )
         if candidate.exists():
             return json.loads(candidate.read_text(encoding="utf-8"))
         # Last resort defaults (still enforce the spirit of the thresholds)
@@ -225,29 +231,53 @@ def _load_phase_07b_gate_manifest() -> dict[str, Any]:
     except Exception:
         candidate = (
             Path(__file__).resolve().parents[4]
-            / "src" / "hb_assistant" / "resources" / "json" / filename
+            / "src"
+            / "hb_assistant"
+            / "resources"
+            / "json"
+            / filename
         )
         if candidate.exists():
             return json.loads(candidate.read_text(encoding="utf-8"))
         return {
             "version": "phase07b-data-quality-gates-v1",
             "gates": [
-                {"name": "calendar_population_status", "phase": "07B", "kind": "presence",
-                 "table": "calendar_event_index"},
-                {"name": "email_classifier_persistence_status", "phase": "07B",
-                 "kind": "presence", "table": "email_model_classifications"},
-                {"name": "email_thread_summary_population_status", "phase": "07B",
-                 "kind": "presence", "table": "email_thread_summaries"},
-                {"name": "meeting_email_candidate_population_status", "phase": "07B",
-                 "kind": "presence", "table": "meeting_email_relationship_candidates"},
+                {
+                    "name": "calendar_population_status",
+                    "phase": "07B",
+                    "kind": "presence",
+                    "table": "calendar_event_index",
+                },
+                {
+                    "name": "email_classifier_persistence_status",
+                    "phase": "07B",
+                    "kind": "presence",
+                    "table": "email_model_classifications",
+                },
+                {
+                    "name": "email_thread_summary_population_status",
+                    "phase": "07B",
+                    "kind": "presence",
+                    "table": "email_thread_summaries",
+                },
+                {
+                    "name": "meeting_email_candidate_population_status",
+                    "phase": "07B",
+                    "kind": "presence",
+                    "table": "meeting_email_relationship_candidates",
+                },
             ],
             "meeting_prep_prerequisites": [
-                "calendar_population_status", "email_classifier_persistence_status",
+                "calendar_population_status",
+                "email_classifier_persistence_status",
                 "email_thread_summary_population_status",
                 "meeting_email_candidate_population_status",
-                "document_card_population_status", "deterministic_orphan_rate",
-                "candidate_orphan_rate", "review_required_routing_presence",
-                "raw_content_leakage_scan", "external_writeback_scan",
+                "document_card_population_status",
+                "deterministic_orphan_rate",
+                "candidate_orphan_rate",
+                "review_required_routing_presence",
+                "raw_content_leakage_scan",
+                "external_writeback_scan",
             ],
             "auto_readiness_allowed": False,
         }
@@ -297,6 +327,7 @@ def source_scope_safe_counts(sources: list[dict[str, Any]]) -> dict[str, int]:
 # GateEvaluator
 # ---------------------------------------------------------------------------
 
+
 class GateEvaluator:
     """Computes, classifies, persists, and reports all Phase 07A data quality gates."""
 
@@ -305,11 +336,13 @@ class GateEvaluator:
         self.repo_sha = _get_git_sha()
         self.schema_version = _get_schema_version(db_path)
         self.generated_utc = _now()
-        self.run_id = f"phase07a-gates-{self.generated_utc[:19].replace(':','-')}"
+        self.run_id = f"phase07a-gates-{self.generated_utc[:19].replace(':', '-')}"
         self.thresholds = _load_thresholds()
         self.phase_07b_manifest = _load_phase_07b_gate_manifest()
         self.results: list[dict[str, Any]] = []
-        self.review_items: list[str] = []  # populated only for high-impact items needing human attention
+        self.review_items: list[
+            str
+        ] = []  # populated only for high-impact items needing human attention
 
     def _classify(
         self,
@@ -398,7 +431,10 @@ class GateEvaluator:
 
     def _gate_project_identity_coverage(self) -> dict[str, Any]:
         conn = get_connection(self.db_path)
-        total_pilot = _safe_scalar(conn, "SELECT COUNT(*) FROM construction_project_identity WHERE lifecycle IN ('Active','Pilot')")
+        total_pilot = _safe_scalar(
+            conn,
+            "SELECT COUNT(*) FROM construction_project_identity WHERE lifecycle IN ('Active','Pilot')",
+        )
         covered = _safe_scalar(
             conn,
             """
@@ -408,32 +444,54 @@ class GateEvaluator:
             """,
         )
         if not total_pilot or total_pilot == 0:
-            return self._classify("project_identity_coverage", None, self.thresholds.get("project_identity_coverage_min"), future_phase=None)
+            return self._classify(
+                "project_identity_coverage",
+                None,
+                self.thresholds.get("project_identity_coverage_min"),
+                future_phase=None,
+            )
         ratio = (covered or 0) / total_pilot
-        return self._classify("project_identity_coverage", ratio, self.thresholds.get("project_identity_coverage_min"), future_phase=None)
+        return self._classify(
+            "project_identity_coverage",
+            ratio,
+            self.thresholds.get("project_identity_coverage_min"),
+            future_phase=None,
+        )
 
     def _gate_source_record_map_coverage(self) -> dict[str, Any]:
         conn = get_connection(self.db_path)
         total = _safe_scalar(conn, "SELECT COUNT(*) FROM source_system_record_map")
         if total is None or total == 0:
-            return self._classify("source_record_map_coverage", 0.0, 0.8, future_phase=None)  # soft; will be warning if empty after apply
-        mapped = _safe_scalar(conn, "SELECT COUNT(*) FROM source_system_record_map WHERE project_key IS NOT NULL")
+            return self._classify(
+                "source_record_map_coverage", 0.0, 0.8, future_phase=None
+            )  # soft; will be warning if empty after apply
+        mapped = _safe_scalar(
+            conn, "SELECT COUNT(*) FROM source_system_record_map WHERE project_key IS NOT NULL"
+        )
         ratio = (mapped or 0) / total
         return self._classify("source_record_map_coverage", ratio, 0.8, future_phase=None)
 
     def _gate_deterministic_orphan_rate(self) -> dict[str, Any]:
         conn = get_connection(self.db_path)
         # Prefer the mart if populated; fall back to direct queue calculation
-        rate = _safe_scalar(conn, "SELECT deterministic_orphan_rate FROM relationship_quality_mart LIMIT 1")
+        rate = _safe_scalar(
+            conn, "SELECT deterministic_orphan_rate FROM relationship_quality_mart LIMIT 1"
+        )
         if rate is None:
-            det = _safe_scalar(
-                conn,
-                "SELECT COUNT(*) FROM relationship_resolution_queue WHERE confidence_class='deterministic_exact_id' AND relationship_status='orphaned'",
-            ) or 0
-            total_det = _safe_scalar(
-                conn,
-                "SELECT COUNT(*) FROM relationship_resolution_queue WHERE confidence_class='deterministic_exact_id'",
-            ) or 0
+            det = (
+                _safe_scalar(
+                    conn,
+                    "SELECT COUNT(*) FROM relationship_resolution_queue WHERE confidence_class='deterministic_exact_id' AND relationship_status='orphaned'",
+                )
+                or 0
+            )
+            total_det = (
+                _safe_scalar(
+                    conn,
+                    "SELECT COUNT(*) FROM relationship_resolution_queue WHERE confidence_class='deterministic_exact_id'",
+                )
+                or 0
+            )
             rate = (det / total_det) if total_det > 0 else 0.0
         return self._classify(
             "deterministic_orphan_rate",
@@ -445,16 +503,24 @@ class GateEvaluator:
 
     def _gate_candidate_orphan_rate(self) -> dict[str, Any]:
         conn = get_connection(self.db_path)
-        rate = _safe_scalar(conn, "SELECT candidate_orphan_rate FROM relationship_quality_mart LIMIT 1")
+        rate = _safe_scalar(
+            conn, "SELECT candidate_orphan_rate FROM relationship_quality_mart LIMIT 1"
+        )
         if rate is None:
-            cand = _safe_scalar(
-                conn,
-                "SELECT COUNT(*) FROM relationship_resolution_queue WHERE confidence_class IN ('weak_heuristic_single_signal','model_proposed_candidate') AND relationship_status='orphaned'",
-            ) or 0
-            total_cand = _safe_scalar(
-                conn,
-                "SELECT COUNT(*) FROM relationship_resolution_queue WHERE confidence_class IN ('weak_heuristic_single_signal','model_proposed_candidate')",
-            ) or 0
+            cand = (
+                _safe_scalar(
+                    conn,
+                    "SELECT COUNT(*) FROM relationship_resolution_queue WHERE confidence_class IN ('weak_heuristic_single_signal','model_proposed_candidate') AND relationship_status='orphaned'",
+                )
+                or 0
+            )
+            total_cand = (
+                _safe_scalar(
+                    conn,
+                    "SELECT COUNT(*) FROM relationship_resolution_queue WHERE confidence_class IN ('weak_heuristic_single_signal','model_proposed_candidate')",
+                )
+                or 0
+            )
             rate = (cand / total_cand) if total_cand > 0 else 0.0
         return self._classify(
             "candidate_orphan_rate",
@@ -487,8 +553,14 @@ class GateEvaluator:
 
     def _gate_document_card_population(self) -> dict[str, Any]:
         conn = get_connection(self.db_path)
-        count = _safe_scalar(conn, "SELECT COUNT(*) FROM construction_document_cards") if self._table_exists(conn, "construction_document_cards") else 0
-        return self._classify("document_card_population_status", count > 0, None, is_boolean=True, future_phase="07C")
+        count = (
+            _safe_scalar(conn, "SELECT COUNT(*) FROM construction_document_cards")
+            if self._table_exists(conn, "construction_document_cards")
+            else 0
+        )
+        return self._classify(
+            "document_card_population_status", count > 0, None, is_boolean=True, future_phase="07C"
+        )
 
     # --- Phase 07C document-intelligence gates (V24) -----------------------
 
@@ -501,7 +573,9 @@ class GateEvaluator:
         """Every materialized document card has a classification candidate (07C)."""
         conn = get_connection(self.db_path)
         cards = self._card_count(conn)
-        if cards == 0 or not self._table_exists(conn, "construction_document_classification_candidates"):
+        if cards == 0 or not self._table_exists(
+            conn, "construction_document_classification_candidates"
+        ):
             observed = False
         else:
             classified = int(
@@ -521,7 +595,9 @@ class GateEvaluator:
         """Every document card has a project-match candidate (07C)."""
         conn = get_connection(self.db_path)
         cards = self._card_count(conn)
-        if cards == 0 or not self._table_exists(conn, "construction_document_project_match_candidates"):
+        if cards == 0 or not self._table_exists(
+            conn, "construction_document_project_match_candidates"
+        ):
             observed = False
         else:
             matched = int(
@@ -554,7 +630,10 @@ class GateEvaluator:
             )
             observed = cards > 0 and pending == 0
         return self._classify(
-            "document_extraction_eligibility_status", observed, None, is_boolean=True,
+            "document_extraction_eligibility_status",
+            observed,
+            None,
+            is_boolean=True,
             future_phase="07C",
         )
 
@@ -572,7 +651,10 @@ class GateEvaluator:
             else 0
         )
         return self._classify(
-            "document_relationship_population_status", count > 0, None, is_boolean=True,
+            "document_relationship_population_status",
+            count > 0,
+            None,
+            is_boolean=True,
             future_phase="07C",
         )
 
@@ -620,14 +702,24 @@ class GateEvaluator:
         specs: list[tuple[str, list[str], list[str]]] = [
             (
                 "construction_document_cards",
-                ["raw_document_text_persisted", "raw_payload_persisted", "signed_url_persisted",
-                 "download_url_persisted", "source_file_copied_to_vault", "external_writeback_performed"],
+                [
+                    "raw_document_text_persisted",
+                    "raw_payload_persisted",
+                    "signed_url_persisted",
+                    "download_url_persisted",
+                    "source_file_copied_to_vault",
+                    "external_writeback_performed",
+                ],
                 ["source_reference_json", "guardrail_flags_json"],
             ),
             (
                 "construction_document_classification_candidates",
-                ["raw_document_text_persisted", "raw_prompt_persisted", "raw_response_persisted",
-                 "external_writeback_performed"],
+                [
+                    "raw_document_text_persisted",
+                    "raw_prompt_persisted",
+                    "raw_response_persisted",
+                    "external_writeback_performed",
+                ],
                 ["signals_json"],
             ),
             (
@@ -637,18 +729,33 @@ class GateEvaluator:
             ),
             (
                 "construction_document_relationship_candidates",
-                ["raw_document_text_persisted", "raw_prompt_persisted", "raw_response_persisted",
-                 "external_writeback_performed"],
+                [
+                    "raw_document_text_persisted",
+                    "raw_prompt_persisted",
+                    "raw_response_persisted",
+                    "external_writeback_performed",
+                ],
                 ["signals_json", "source_reference_json"],
             ),
             (
                 "construction_document_intelligence_previews",
-                ["raw_document_text_persisted", "raw_prompt_persisted", "raw_response_persisted",
-                 "external_writeback_performed"],
+                [
+                    "raw_document_text_persisted",
+                    "raw_prompt_persisted",
+                    "raw_response_persisted",
+                    "external_writeback_performed",
+                ],
                 ["preview_redacted", "warnings_json"],
             ),
         ]
-        patterns = ["%http://%", "%https://%", "%token=%", "%access_token%", "%bearer %", "%-----begin%"]
+        patterns = [
+            "%http://%",
+            "%https://%",
+            "%token=%",
+            "%access_token%",
+            "%bearer %",
+            "%-----begin%",
+        ]
         guard_sum = 0
         pattern_hits = 0
         for table, guards, texts in specs:
@@ -677,10 +784,15 @@ class GateEvaluator:
         """
         count = 0
         with contextlib.suppress(Exception):
-            count = ConstructionStore(db_path=self.db_path).count_cross_source_relationship_candidates()
+            count = ConstructionStore(
+                db_path=self.db_path
+            ).count_cross_source_relationship_candidates()
         res = self._classify(
-            "cross_source_relationship_candidate_coverage", count > 0, None,
-            is_boolean=True, future_phase="07D",
+            "cross_source_relationship_candidate_coverage",
+            count > 0,
+            None,
+            is_boolean=True,
+            future_phase="07D",
         )
         res["candidate_count"] = count
         return res
@@ -700,14 +812,16 @@ class GateEvaluator:
                 if not c.get("deterministic"):
                     continue
                 deterministic_count += 1
-                if (
-                    c.get("confidence_class") != _DETERMINISTIC_CONFIDENCE_CLASS
-                    or c.get("sensitive_high_impact")
+                if c.get("confidence_class") != _DETERMINISTIC_CONFIDENCE_CLASS or c.get(
+                    "sensitive_high_impact"
                 ):
                     malformed += 1
         res = self._classify(
-            "deterministic_relationship_quality", deterministic_count > 0, None,
-            is_boolean=True, future_phase="07D",
+            "deterministic_relationship_quality",
+            deterministic_count > 0,
+            None,
+            is_boolean=True,
+            future_phase="07D",
         )
         if malformed > 0:
             res["gate_status"] = "fail_blocking"
@@ -730,8 +844,11 @@ class GateEvaluator:
             candidates = store.count_cross_source_relationship_candidates()
             trails = store.count_source_evidence_trails()
         res = self._classify(
-            "evidence_trail_completeness", candidates > 0 and trails >= candidates, None,
-            is_boolean=True, future_phase="07D",
+            "evidence_trail_completeness",
+            candidates > 0 and trails >= candidates,
+            None,
+            is_boolean=True,
+            future_phase="07D",
         )
         if candidates > 0 and trails < candidates:
             res["gate_status"] = "fail_blocking"
@@ -765,8 +882,11 @@ class GateEvaluator:
                 if not c.get("review_required"):
                     misrouted += 1
         res = self._classify(
-            "weak_model_sensitive_review_routing_accuracy", weak_model_sensitive > 0, None,
-            is_boolean=True, future_phase="07D",
+            "weak_model_sensitive_review_routing_accuracy",
+            weak_model_sensitive > 0,
+            None,
+            is_boolean=True,
+            future_phase="07D",
         )
         if misrouted > 0:
             res["gate_status"] = "fail_blocking"
@@ -819,7 +939,10 @@ class GateEvaluator:
         card_count = self._card_count(conn)
 
         res = self._classify(
-            "meeting_prep_prerequisite_status", observed, None, is_boolean=True,
+            "meeting_prep_prerequisite_status",
+            observed,
+            None,
+            is_boolean=True,
             future_phase="07D",
         )
         if observed is not None:
@@ -852,25 +975,67 @@ class GateEvaluator:
         conn = get_connection(self.db_path)
         # Look for any financial fact table with amount columns; compute parseability ratio if data present
         if not self._table_exists(conn, "procore_financial_contracts"):
-            return self._classify("financial_amount_parseability", None, self.thresholds.get("financial_amount_parseability_min"), future_phase="08B")
+            return self._classify(
+                "financial_amount_parseability",
+                None,
+                self.thresholds.get("financial_amount_parseability_min"),
+                future_phase="08B",
+            )
         total = _safe_scalar(conn, "SELECT COUNT(*) FROM procore_financial_contracts") or 0
         if total == 0:
-            return self._classify("financial_amount_parseability", 0.0, self.thresholds.get("financial_amount_parseability_min"), future_phase="08B")
+            return self._classify(
+                "financial_amount_parseability",
+                0.0,
+                self.thresholds.get("financial_amount_parseability_min"),
+                future_phase="08B",
+            )
         # Heuristic: rows that have a non-null contract_amount or similar numeric
-        parsed = _safe_scalar(conn, "SELECT COUNT(*) FROM procore_financial_contracts WHERE contract_amount IS NOT NULL") or 0
+        parsed = (
+            _safe_scalar(
+                conn,
+                "SELECT COUNT(*) FROM procore_financial_contracts WHERE contract_amount IS NOT NULL",
+            )
+            or 0
+        )
         ratio = parsed / total
-        return self._classify("financial_amount_parseability", ratio, self.thresholds.get("financial_amount_parseability_min"), future_phase="08B")
+        return self._classify(
+            "financial_amount_parseability",
+            ratio,
+            self.thresholds.get("financial_amount_parseability_min"),
+            future_phase="08B",
+        )
 
     def _gate_financial_currency_completeness(self) -> dict[str, Any]:
         conn = get_connection(self.db_path)
         if not self._table_exists(conn, "procore_financial_contracts"):
-            return self._classify("financial_currency_completeness", None, self.thresholds.get("financial_currency_completeness_min"), future_phase="08B")
+            return self._classify(
+                "financial_currency_completeness",
+                None,
+                self.thresholds.get("financial_currency_completeness_min"),
+                future_phase="08B",
+            )
         total = _safe_scalar(conn, "SELECT COUNT(*) FROM procore_financial_contracts") or 0
         if total == 0:
-            return self._classify("financial_currency_completeness", 0.0, self.thresholds.get("financial_currency_completeness_min"), future_phase="08B")
-        complete = _safe_scalar(conn, "SELECT COUNT(*) FROM procore_financial_contracts WHERE currency IS NOT NULL AND currency != ''") or 0
+            return self._classify(
+                "financial_currency_completeness",
+                0.0,
+                self.thresholds.get("financial_currency_completeness_min"),
+                future_phase="08B",
+            )
+        complete = (
+            _safe_scalar(
+                conn,
+                "SELECT COUNT(*) FROM procore_financial_contracts WHERE currency IS NOT NULL AND currency != ''",
+            )
+            or 0
+        )
         ratio = complete / total
-        return self._classify("financial_currency_completeness", ratio, self.thresholds.get("financial_currency_completeness_min"), future_phase="08B")
+        return self._classify(
+            "financial_currency_completeness",
+            ratio,
+            self.thresholds.get("financial_currency_completeness_min"),
+            future_phase="08B",
+        )
 
     def _gate_review_required_routing_presence(self) -> dict[str, Any]:
         """Review-required routing exists and is populated across the available review queues.
@@ -885,7 +1050,11 @@ class GateEvaluator:
         conn = get_connection(self.db_path)
         # (label, table, where-clause) — defensive; missing tables contribute 0.
         queues: list[tuple[str, str, str]] = [
-            ("relationship_resolution_queue", "relationship_resolution_queue", "review_required = 1"),
+            (
+                "relationship_resolution_queue",
+                "relationship_resolution_queue",
+                "review_required = 1",
+            ),
             ("construction_document_cards", "construction_document_cards", "review_required = 1"),
             ("construction_review_queue", "construction_review_queue", "review_required = 1"),
             ("email_review_queue", "email_review_queue", "review_required = 1"),
@@ -913,21 +1082,37 @@ class GateEvaluator:
         # Attestation from prior prompts + explicit guard in this module (we never SELECT raw bodies)
         # We also scan the gate_results table for any previous "raw_content_leakage_scan" that was not zero.
         conn = get_connection(self.db_path)
-        bad = _safe_scalar(
-            conn,
-            "SELECT COUNT(*) FROM data_quality_gate_results WHERE gate_name='raw_content_leakage_scan' AND observed > 0 ORDER BY created_utc DESC LIMIT 1",
-        ) or 0
+        bad = (
+            _safe_scalar(
+                conn,
+                "SELECT COUNT(*) FROM data_quality_gate_results WHERE gate_name='raw_content_leakage_scan' AND observed > 0 ORDER BY created_utc DESC LIMIT 1",
+            )
+            or 0
+        )
         observed = 0 if bad == 0 else bad
-        return self._classify("raw_content_leakage_scan", observed, self.thresholds.get("raw_content_leakage_allowed"), future_phase=None)
+        return self._classify(
+            "raw_content_leakage_scan",
+            observed,
+            self.thresholds.get("raw_content_leakage_allowed"),
+            future_phase=None,
+        )
 
     def _gate_external_writeback(self) -> dict[str, Any]:
         conn = get_connection(self.db_path)
-        bad = _safe_scalar(
-            conn,
-            "SELECT COUNT(*) FROM data_quality_gate_results WHERE gate_name='external_writeback_scan' AND observed > 0 ORDER BY created_utc DESC LIMIT 1",
-        ) or 0
+        bad = (
+            _safe_scalar(
+                conn,
+                "SELECT COUNT(*) FROM data_quality_gate_results WHERE gate_name='external_writeback_scan' AND observed > 0 ORDER BY created_utc DESC LIMIT 1",
+            )
+            or 0
+        )
         observed = 0 if bad == 0 else bad
-        return self._classify("external_writeback_scan", observed, self.thresholds.get("external_writeback_allowed"), future_phase=None)
+        return self._classify(
+            "external_writeback_scan",
+            observed,
+            self.thresholds.get("external_writeback_allowed"),
+            future_phase=None,
+        )
 
     def _gate_query_latency(self) -> dict[str, Any]:
         # Re-measure a representative fast query (gate results themselves + one coverage query)
@@ -935,16 +1120,22 @@ class GateEvaluator:
         start = time.perf_counter()
         try:
             conn.execute("SELECT COUNT(*) FROM data_quality_gate_results").fetchone()
-            conn.execute("SELECT project_key, source_domain FROM project_source_coverage_mart LIMIT 5").fetchall()
+            conn.execute(
+                "SELECT project_key, source_domain FROM project_source_coverage_mart LIMIT 5"
+            ).fetchall()
         except Exception:
             pass
         elapsed_ms = (time.perf_counter() - start) * 1000.0
         target = self.thresholds.get("query_latency_ms_target", 500)
-        return self._classify("query_latency_p95", elapsed_ms, target, is_latency=True, future_phase=None)
+        return self._classify(
+            "query_latency_p95", elapsed_ms, target, is_latency=True, future_phase=None
+        )
 
     def _table_exists(self, conn, name: str) -> bool:
         try:
-            row = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone()
+            row = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)
+            ).fetchone()
             return row is not None
         except Exception:
             return False
@@ -1002,10 +1193,32 @@ class GateEvaluator:
                     store.insert_data_quality_gate_result(gate_row)
 
         # Build phase go/no-go summaries (explicit, never hides blockers)
-        phase_07b_blockers = [r for r in self.results if r.get("future_phase") == "07B" and r["gate_status"] not in ("pass",)]
-        phase_07c_blockers = [r for r in self.results if r.get("future_phase") == "07C" and r["gate_status"] not in ("pass",)]
-        phase_07d_readiness = [r for r in self.results if r["gate_name"] in ("deterministic_orphan_rate", "candidate_orphan_rate", "review_required_routing_presence") and r["gate_status"] == "pass"]
-        phase_07a_core_pass = all(r["gate_status"] in ("pass", "warning", "deferred_not_blocking") for r in self.results if r.get("future_phase") is None)
+        phase_07b_blockers = [
+            r
+            for r in self.results
+            if r.get("future_phase") == "07B" and r["gate_status"] not in ("pass",)
+        ]
+        phase_07c_blockers = [
+            r
+            for r in self.results
+            if r.get("future_phase") == "07C" and r["gate_status"] not in ("pass",)
+        ]
+        phase_07d_readiness = [
+            r
+            for r in self.results
+            if r["gate_name"]
+            in (
+                "deterministic_orphan_rate",
+                "candidate_orphan_rate",
+                "review_required_routing_presence",
+            )
+            and r["gate_status"] == "pass"
+        ]
+        phase_07a_core_pass = all(
+            r["gate_status"] in ("pass", "warning", "deferred_not_blocking")
+            for r in self.results
+            if r.get("future_phase") is None
+        )
 
         by_name = {r["gate_name"]: r for r in self.results}
 
@@ -1058,7 +1271,15 @@ class GateEvaluator:
             meeting_prep_claim = "needs_07d_data"
         else:
             meeting_prep_claim = "ready"
-        financial_claim = "blocked" if any(b["future_phase"] == "08B" for b in self.results if b["gate_status"] not in ("pass",)) else "needs_financial_data"
+        financial_claim = (
+            "blocked"
+            if any(
+                b["future_phase"] == "08B"
+                for b in self.results
+                if b["gate_status"] not in ("pass",)
+            )
+            else "needs_financial_data"
+        )
 
         report = {
             "command": "construction-agent data-quality gates",
@@ -1071,11 +1292,17 @@ class GateEvaluator:
             "phase_go_nogo": {
                 "07A_exit": {
                     "ready": phase_07a_core_pass,
-                    "blocking_gates": [r["gate_name"] for r in self.results if r["gate_status"] == "fail_blocking"],
+                    "blocking_gates": [
+                        r["gate_name"] for r in self.results if r["gate_status"] == "fail_blocking"
+                    ],
                 },
                 "07B": {
                     "blocked_by": [r["gate_name"] for r in phase_07b_blockers],
-                    "ready_for": ["calendar_ingestion", "email_thread_summaries", "meeting_project_matching"],
+                    "ready_for": [
+                        "calendar_ingestion",
+                        "email_thread_summaries",
+                        "meeting_project_matching",
+                    ],
                 },
                 "07C": {
                     "blocked_by": [r["gate_name"] for r in phase_07c_blockers],

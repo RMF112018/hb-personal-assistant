@@ -146,8 +146,15 @@ def test_path_scoped_endpoint_omits_redundant_project_id_query(
     monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
     monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-bearer-token")
     transport = _RecordingTransport(
-        [{"id": 101, "number": "RFI-001", "subject": "x", "status": "open",
-          "updated_at": "2026-01-01T00:00:00Z"}]
+        [
+            {
+                "id": 101,
+                "number": "RFI-001",
+                "subject": "x",
+                "status": "open",
+                "updated_at": "2026-01-01T00:00:00Z",
+            }
+        ]
     )
     receipt = run_live_sync(
         project_key="tropical",

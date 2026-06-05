@@ -156,9 +156,7 @@ def test_v37_is_idempotent_and_preserves_prior_versions() -> None:
         assert _migrate(db) == LATEST_SCHEMA_VERSION
         assert _migrate(db) == LATEST_SCHEMA_VERSION
         conn = sqlite3.connect(str(db))
-        n = conn.execute(
-            "SELECT COUNT(*) FROM schema_migrations WHERE version = 37"
-        ).fetchone()[0]
+        n = conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 37").fetchone()[0]
         assert n == 1
         tables = _names(conn)
         # prior 08C + 08B tables still present (V1-V36 untouched)

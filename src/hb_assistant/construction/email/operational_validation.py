@@ -324,13 +324,19 @@ def run_operational_validation(
 
     methods = ["GET"]
     path_families = ["/me", "/me/mailFolders", "/me/messages", "/me/messages/*/attachments"]
-    guard_self = status_payload.get("guard_self_test", {}) if isinstance(status_payload, dict) else {}
+    guard_self = (
+        status_payload.get("guard_self_test", {}) if isinstance(status_payload, dict) else {}
+    )
     runtime_proof = {
         "mailbox_mutation_endpoints_blocked": bool(guard_self.get("passed", False)),
         "mutation_attempts_blocked_count": int(guard_self.get("mutation_attempts_blocked", 0) or 0),
-        "forbidden_mail_scopes_requested": status_payload.get("forbidden_mail_scopes_requested", []),
+        "forbidden_mail_scopes_requested": status_payload.get(
+            "forbidden_mail_scopes_requested", []
+        ),
         "no_mail_write_scopes_requested": bool(
-            (status_payload.get("guardrails", {}) or {}).get("no_mail_write_scopes_requested", False)
+            (status_payload.get("guardrails", {}) or {}).get(
+                "no_mail_write_scopes_requested", False
+            )
         ),
     }
 

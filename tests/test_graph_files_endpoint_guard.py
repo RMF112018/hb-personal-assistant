@@ -66,7 +66,9 @@ def test_upload_and_share_and_permission_ops_blocked():
 def test_get_on_content_path_permitted_but_put_blocked():
     contract = load_files_endpoint_contract()
     # Controlled download is a GET on /content; the *verb* decides.
-    assert assert_files_request_allowed("GET", "/me/drive/items/I1/content", contract=contract) is None
+    assert (
+        assert_files_request_allowed("GET", "/me/drive/items/I1/content", contract=contract) is None
+    )
     with pytest.raises(FileMutationBlockedError):
         assert_files_request_allowed("PUT", "/me/drive/items/I1/content", contract=contract)
 

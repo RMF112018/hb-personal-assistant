@@ -26,12 +26,8 @@ from pydantic import BaseModel
 
 from hb_assistant.config.path_policy import PathPolicy
 
-SEED_RELATIVE_PATH = (
-    Path("resources") / "config" / "email_intelligence_deferred_policy.yaml"
-)
-REPO_OVERRIDE_RELATIVE_PATH = (
-    Path("config") / "email_intelligence_deferred_policy.yml"
-)
+SEED_RELATIVE_PATH = Path("resources") / "config" / "email_intelligence_deferred_policy.yaml"
+REPO_OVERRIDE_RELATIVE_PATH = Path("config") / "email_intelligence_deferred_policy.yml"
 
 
 class EmailIntelligenceDeferredPolicyError(RuntimeError):

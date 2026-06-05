@@ -317,7 +317,8 @@ def _check_endpoint_verification_metadata_complete() -> dict[str, Any]:
         "ok": not incomplete,
         "detail": {
             "total_phase_01_included": sum(
-                1 for e in contract.endpoints
+                1
+                for e in contract.endpoints
                 if e.included_in_phase_01 and e.status not in ("excluded", "deferred")
             ),
             "incomplete": incomplete,
@@ -676,21 +677,45 @@ def run_procore_validate(
         _safe_check("obsidian_templates_resolvable", _check_obsidian_templates_resolvable),
         _safe_check("obsidian_routing_rules_loadable", _check_obsidian_routing_rules_loadable),
         _safe_check("vault_root_configurable", _check_vault_root_configurable),
-        _safe_check("sqlite_schema_at_expected_version", lambda: _check_sqlite_schema_at_expected_version(db_path)),
-        _safe_check("procore_tables_present", lambda: _check_procore_tables_present(db_path, strict=strict)),
+        _safe_check(
+            "sqlite_schema_at_expected_version",
+            lambda: _check_sqlite_schema_at_expected_version(db_path),
+        ),
+        _safe_check(
+            "procore_tables_present", lambda: _check_procore_tables_present(db_path, strict=strict)
+        ),
         _safe_check("http_client_demands_access_token", _check_http_client_demands_access_token),
         _safe_check("sync_pagination_method_aligned", _check_sync_pagination_method_aligned),
-        _safe_check("pending_projects_not_default_target", _check_pending_projects_not_default_target),
-        _safe_check("token_provider_default_chain_shape", _check_token_provider_default_chain_shape),
+        _safe_check(
+            "pending_projects_not_default_target", _check_pending_projects_not_default_target
+        ),
+        _safe_check(
+            "token_provider_default_chain_shape", _check_token_provider_default_chain_shape
+        ),
         _safe_check("oauth_acquisition_path_present", _check_oauth_acquisition_path_present),
-        _safe_check("endpoint_verification_metadata_complete", _check_endpoint_verification_metadata_complete),
-        _safe_check("live_eligibility_blocks_ineligible", _check_live_eligibility_blocks_ineligible),
+        _safe_check(
+            "endpoint_verification_metadata_complete",
+            _check_endpoint_verification_metadata_complete,
+        ),
+        _safe_check(
+            "live_eligibility_blocks_ineligible", _check_live_eligibility_blocks_ineligible
+        ),
         _safe_check("procore_init_exports_complete", _check_procore_init_exports_complete),
         _safe_check("rfi_normalizer_dispatch_present", _check_rfi_normalizer_dispatch_present),
-        _safe_check("submittal_normalizer_dispatch_present", _check_submittal_normalizer_dispatch_present),
-        _safe_check("observation_normalizer_dispatch_present", _check_observation_normalizer_dispatch_present),
-        _safe_check("meeting_normalizer_dispatch_present", _check_meeting_normalizer_dispatch_present),
-        _safe_check("daily_log_selection_and_dispatch_present", _check_daily_log_selection_and_dispatch_present),
+        _safe_check(
+            "submittal_normalizer_dispatch_present", _check_submittal_normalizer_dispatch_present
+        ),
+        _safe_check(
+            "observation_normalizer_dispatch_present",
+            _check_observation_normalizer_dispatch_present,
+        ),
+        _safe_check(
+            "meeting_normalizer_dispatch_present", _check_meeting_normalizer_dispatch_present
+        ),
+        _safe_check(
+            "daily_log_selection_and_dispatch_present",
+            _check_daily_log_selection_and_dispatch_present,
+        ),
         _safe_check(
             "sensitive_routing_rules_cover_phase_04_families",
             _check_sensitive_routing_rules_cover_phase_04_families,

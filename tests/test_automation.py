@@ -105,7 +105,9 @@ def test_morning_orchestrator_gates_and_stages(tmp_path):
     orch = MorningRunOrchestrator(store=store)
 
     # Force a non-weekend config for test
-    orch.cfg = MorningRunConfig(time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True)
+    orch.cfg = MorningRunConfig(
+        time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True
+    )
 
     result = orch.run(dry_run=True)
     assert "run_id" in result
@@ -137,14 +139,20 @@ def test_orchestrator_isolates_stage_failure(tmp_path):
     store = Store(db_path=str(dbp))
     orch = MorningRunOrchestrator(store=store)
     # Deterministic: bypass the weekend gate so this stage-isolation test runs any day
-    orch.cfg = MorningRunConfig(time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True)
+    orch.cfg = MorningRunConfig(
+        time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True
+    )
 
-    with patch("hb_assistant.retrieval.context.WorkstreamContextBuilder", side_effect=RuntimeError("boom")):
+    with patch(
+        "hb_assistant.retrieval.context.WorkstreamContextBuilder", side_effect=RuntimeError("boom")
+    ):
         res = orch.run(dry_run=True)
         # Isolation demonstrated if the run completed without top-level crash and evidence recorded the attempt
         assert "evidence_path" in res
         # At least one stage should reflect a problem or the overall decision should not be hard error
-        assert res.get("decision") in ("completed", "error") or any(s.get("status") in ("skipped", "error") for s in res.get("stages", []))
+        assert res.get("decision") in ("completed", "error") or any(
+            s.get("status") in ("skipped", "error") for s in res.get("stages", [])
+        )
 
 
 def test_cli_automation_dry_run(tmp_path, monkeypatch):
@@ -178,7 +186,11 @@ def test_run_morning_dry_run_returns_blocked_db_unavailable_json() -> None:
             status="blocked_db_unavailable",
             message="Database unavailable for dry-run",
             db_path="/tmp/test.sqlite",
-            report={"ok": False, "status": "blocked_db_unavailable", "error": "db_parent_not_writable"},
+            report={
+                "ok": False,
+                "status": "blocked_db_unavailable",
+                "error": "db_parent_not_writable",
+            },
         ),
     ):
         result = runner.invoke(main_app, ["run", "morning", "--dry-run", "--json"])
@@ -194,7 +206,9 @@ def test_orchestrator_05_stages_and_blocker_classification_dry_run(tmp_path):
     store = Store(db_path=str(dbp))
     orch = MorningRunOrchestrator(store=store)
     # Deterministic: bypass the weekend gate so the 05-stage flow runs any day
-    orch.cfg = MorningRunConfig(time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True)
+    orch.cfg = MorningRunConfig(
+        time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True
+    )
     res = orch.run(dry_run=True)
     assert "blocker_classification" in res
     stages = res.get("stages", [])
@@ -216,12 +230,19 @@ def test_graph_consent_blocked_local_stages_continue(tmp_path):
     store = Store(db_path=str(dbp))
     orch = MorningRunOrchestrator(store=store)
     # Deterministic: bypass the weekend gate so local stages run any day
-    orch.cfg = MorningRunConfig(time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True)
+    orch.cfg = MorningRunConfig(
+        time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True
+    )
     # Force a no-token simulation by patching the auth probe inside the run (if present) or rely on natural behavior
     res = orch.run(dry_run=True)
     stages = res.get("stages", [])
     # Even if graph_auth is skipped, local stages (action, context, brief, obsidian) must have run
-    local_ok = any(s.get("stage") in ("action_extraction", "workstream_context", "brief_generation", "obsidian_write") and s.get("status") in ("ok", "completed_dry_run") for s in stages)
+    local_ok = any(
+        s.get("stage")
+        in ("action_extraction", "workstream_context", "brief_generation", "obsidian_write")
+        and s.get("status") in ("ok", "completed_dry_run")
+        for s in stages
+    )
     assert local_ok or len(stages) > 3  # at minimum the loop executed beyond graph
 
     # Prompt 01: explicit action_extraction stage success + counts even under Graph consent block (local-only path)
@@ -236,13 +257,17 @@ def test_dry_run_05_outputs_no_mutation(tmp_path):
     store = Store(db_path=str(dbp))
     orch = MorningRunOrchestrator(store=store)
     # Deterministic: bypass the weekend gate so the dry-run flow runs any day
-    orch.cfg = MorningRunConfig(time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True)
+    orch.cfg = MorningRunConfig(
+        time="05:00", weekend_behavior="run", catch_up_if_machine_wakes_after=True
+    )
     before = store.get_summary().get("action_items", 0) if hasattr(store, "get_summary") else 0
-    before_links = store.get_summary().get("source_links", 0) if hasattr(store, "get_summary") else 0
+    before_links = (
+        store.get_summary().get("source_links", 0) if hasattr(store, "get_summary") else 0
+    )
     res = orch.run(dry_run=True)
     after = store.get_summary().get("action_items", 0) if hasattr(store, "get_summary") else 0
     after_links = store.get_summary().get("source_links", 0) if hasattr(store, "get_summary") else 0
-    assert before == after          # Phase 15 Prompt 02: no action_items mutation in dry-run
+    assert before == after  # Phase 15 Prompt 02: no action_items mutation in dry-run
     assert before_links == after_links  # no source_links mutation in dry-run
     assert "outputs" in res
     assert res.get("outputs", {}).get("obsidian_write_mode") in ("dry_run", "apply")

@@ -194,9 +194,7 @@ CANONICAL_V5_TABLES = [
 
 def _existing_tables(db_path: str) -> set[str]:
     conn = sqlite3.connect(db_path)
-    rows = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table'"
-    ).fetchall()
+    rows = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
     return {row[0] for row in rows}
 
 
@@ -706,7 +704,9 @@ def test_v5_drive_item_bridge_v2_row_to_v5_shape() -> None:
     for key in forbidden_keys:
         with pytest.raises(ValidationError):
             V5DriveItem(
-                source_id="x", drive_id="y", drive_item_id="z",
+                source_id="x",
+                drive_id="y",
+                drive_item_id="z",
                 **{key: "leak"},
             )
 
@@ -755,13 +755,22 @@ def test_v5_drive_item_bridge_lossy_fields_recorded_in_report(db_path: str) -> N
 
     store = ConstructionStore(db_path)
     store.upsert_source_location(
-        source_id="sp_bridge_lossy", source_system="sharepoint",
-        source_scope="sharepoint_project_drive_folder", source_name="Bridge lossy",
+        source_id="sp_bridge_lossy",
+        source_system="sharepoint",
+        source_scope="sharepoint_project_drive_folder",
+        source_name="Bridge lossy",
     )
     store.upsert_inventory_item(
-        source_key="sp_bridge_lossy", drive_id="d1", item_id="i1",
-        name="x", web_url=None, parent_path="/", size_bytes=1, is_folder=False,
-        last_modified="2026-01-01T00:00:00Z", etag="e1",
+        source_key="sp_bridge_lossy",
+        drive_id="d1",
+        item_id="i1",
+        name="x",
+        web_url=None,
+        parent_path="/",
+        size_bytes=1,
+        is_folder=False,
+        last_modified="2026-01-01T00:00:00Z",
+        etag="e1",
     )
     reports = summarize_bridge(store, ["sp_bridge_lossy"])
 
@@ -779,19 +788,33 @@ def test_v5_drive_item_bridge_unified_read_v5_wins_on_collision(db_path: str) ->
     store = ConstructionStore(db_path)
     # FK requires source_location for V5 writes.
     store.upsert_source_location(
-        source_id="sp_collision", source_system="sharepoint",
-        source_scope="sharepoint_project_drive_folder", source_name="Collision",
+        source_id="sp_collision",
+        source_system="sharepoint",
+        source_scope="sharepoint_project_drive_folder",
+        source_name="Collision",
     )
     # V2 inventory: name "v2-name"
     store.upsert_inventory_item(
-        source_key="sp_collision", drive_id="d1", item_id="i1",
-        name="v2-name", web_url=None, parent_path="/", size_bytes=10,
-        is_folder=False, last_modified="2026-01-01T00:00:00Z", etag="v2",
+        source_key="sp_collision",
+        drive_id="d1",
+        item_id="i1",
+        name="v2-name",
+        web_url=None,
+        parent_path="/",
+        size_bytes=10,
+        is_folder=False,
+        last_modified="2026-01-01T00:00:00Z",
+        etag="v2",
     )
     # V5 drive_items: name "v5-name", richer classification_status set.
     store.upsert_drive_item(
-        source_id="sp_collision", drive_id="d1", drive_item_id="i1",
-        name="v5-name", size_bytes=20, is_folder=False, is_file=True,
+        source_id="sp_collision",
+        drive_id="d1",
+        drive_item_id="i1",
+        name="v5-name",
+        size_bytes=20,
+        is_folder=False,
+        is_file=True,
         classification_status="reviewed",
     )
 
@@ -810,17 +833,31 @@ def test_v5_drive_item_bridge_unified_read_unions_disjoint_sets(db_path: str) ->
 
     store = ConstructionStore(db_path)
     store.upsert_source_location(
-        source_id="sp_disjoint", source_system="sharepoint",
-        source_scope="sharepoint_project_drive_folder", source_name="Disjoint",
+        source_id="sp_disjoint",
+        source_system="sharepoint",
+        source_scope="sharepoint_project_drive_folder",
+        source_name="Disjoint",
     )
     store.upsert_inventory_item(
-        source_key="sp_disjoint", drive_id="d1", item_id="v2_only_item",
-        name="v2only", web_url=None, parent_path="/", size_bytes=1,
-        is_folder=False, last_modified="2026-01-01T00:00:00Z", etag="v2",
+        source_key="sp_disjoint",
+        drive_id="d1",
+        item_id="v2_only_item",
+        name="v2only",
+        web_url=None,
+        parent_path="/",
+        size_bytes=1,
+        is_folder=False,
+        last_modified="2026-01-01T00:00:00Z",
+        etag="v2",
     )
     store.upsert_drive_item(
-        source_id="sp_disjoint", drive_id="d1", drive_item_id="v5_only_item",
-        name="v5only", size_bytes=2, is_folder=False, is_file=True,
+        source_id="sp_disjoint",
+        drive_id="d1",
+        drive_item_id="v5_only_item",
+        name="v5only",
+        size_bytes=2,
+        is_folder=False,
+        is_file=True,
     )
 
     items = read_drive_items_unified(store, source_id="sp_disjoint")
@@ -838,10 +875,24 @@ def test_v5_drive_item_bridge_module_has_no_writeback_paths() -> None:
 
     src = inspect.getsource(drive_item_bridge)
     forbidden = (
-        "requests.post", "requests.put", "requests.patch", "requests.delete",
-        "client.post", "client.put", "client.patch", "client.delete",
-        "subprocess", "os.remove", "os.unlink", "os.rmdir", "shutil.rmtree",
-        "Path.unlink", "Path.write", "Path.rmdir", ".write_text", ".write_bytes",
+        "requests.post",
+        "requests.put",
+        "requests.patch",
+        "requests.delete",
+        "client.post",
+        "client.put",
+        "client.patch",
+        "client.delete",
+        "subprocess",
+        "os.remove",
+        "os.unlink",
+        "os.rmdir",
+        "shutil.rmtree",
+        "Path.unlink",
+        "Path.write",
+        "Path.rmdir",
+        ".write_text",
+        ".write_bytes",
     )
     leaks = [tok for tok in forbidden if tok in src]
     assert not leaks, f"drive_item_bridge.py imports writeback surfaces: {leaks}"

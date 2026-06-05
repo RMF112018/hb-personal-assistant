@@ -17,7 +17,7 @@ from hb_assistant.store.procore_enrichment import emit_action_signal
 from hb_assistant.store.procore_schedule_exposure import build_schedule_exposure
 
 _NOW = "2026-05-29T00:00:00Z"
-_PAST = "2026-05-01T00:00:00Z"   # before _NOW -> overdue
+_PAST = "2026-05-01T00:00:00Z"  # before _NOW -> overdue
 _FUTURE = "2026-06-30T00:00:00Z"  # after _NOW -> upcoming
 runner = CliRunner()
 
@@ -25,8 +25,18 @@ runner = CliRunner()
 # "determination" is intentionally excluded — its only occurrence is the structural attestation
 # key ``determinations_made: false``; _content_blob() drops that key before scanning.
 _BANNED_WORDS = (
-    "liable", "liability", "entitled", "entitlement", "breach", "owes", "must pay",
-    "at fault", "negligent", "delay caused by", "responsible for the delay", "days owed",
+    "liable",
+    "liability",
+    "entitled",
+    "entitlement",
+    "breach",
+    "owes",
+    "must pay",
+    "at fault",
+    "negligent",
+    "delay caused by",
+    "responsible for the delay",
+    "days owed",
 )
 
 
@@ -48,16 +58,36 @@ def _db() -> Path:
     return path
 
 
-def _signal(db: Path, *, record_key: str, endpoint_id: str, signal_type: str,
-            importance: str = "medium", due: str | None = None) -> None:
+def _signal(
+    db: Path,
+    *,
+    record_key: str,
+    endpoint_id: str,
+    signal_type: str,
+    importance: str = "medium",
+    due: str | None = None,
+) -> None:
     emit_action_signal(
-        project_key="tropical", record_key=record_key, endpoint_id=endpoint_id,
-        signal_type=signal_type, importance=importance, due_at_utc=due, now_utc=_NOW, db_path=db,
+        project_key="tropical",
+        record_key=record_key,
+        endpoint_id=endpoint_id,
+        signal_type=signal_type,
+        importance=importance,
+        due_at_utc=due,
+        now_utc=_NOW,
+        db_path=db,
     )
 
 
-def _live_record(db: Path, *, endpoint_id: str, record_id: str, review: bool = False,
-                 source_url: str | None = None, canonical: dict | None = None) -> str:
+def _live_record(
+    db: Path,
+    *,
+    endpoint_id: str,
+    record_id: str,
+    review: bool = False,
+    source_url: str | None = None,
+    canonical: dict | None = None,
+) -> str:
     """Insert a minimal procore_live_records row; returns its record_key."""
     conn = get_connection(str(db))
     conn.execute("PRAGMA foreign_keys=OFF")  # test seed: skip the sync-run FK (throwaway DB)
@@ -69,8 +99,18 @@ def _live_record(db: Path, *, endpoint_id: str, record_id: str, review: bool = F
           first_seen_at_utc, last_seen_at_utc, last_sync_run_id, raw_body_persisted
         ) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, 0)
         """,
-        ("tropical", "P1", endpoint_id, record_id, json.dumps(canonical or {}),
-         source_url, 1 if review else 0, _NOW, _NOW, "run-1"),
+        (
+            "tropical",
+            "P1",
+            endpoint_id,
+            record_id,
+            json.dumps(canonical or {}),
+            source_url,
+            1 if review else 0,
+            _NOW,
+            _NOW,
+            "run-1",
+        ),
     )
     conn.commit()
     return "|".join(["tropical", endpoint_id, "", record_id])
@@ -78,23 +118,61 @@ def _live_record(db: Path, *, endpoint_id: str, record_id: str, review: bool = F
 
 def _seed(db: Path) -> None:
     """One signal per exposure category, plus an unmapped signal that must be skipped."""
-    _signal(db, record_key="tropical|rfis||1", endpoint_id="rfis",
-            signal_type="rfi_overdue", importance="high", due=_PAST)
-    _signal(db, record_key="tropical|submittals||2", endpoint_id="submittals",
-            signal_type="submittal_overdue", due=_PAST)
-    _signal(db, record_key="tropical|schedule-activities||3", endpoint_id="schedule-activities",
-            signal_type="activity_zero_float")
-    _signal(db, record_key="tropical|meetings||4", endpoint_id="meetings",
-            signal_type="meeting_topic_open_high_priority", importance="high")
-    _signal(db, record_key="tropical|inspections||5", endpoint_id="inspections",
-            signal_type="inspection_overdue", due=_PAST)
-    _signal(db, record_key="tropical|punch-items||6", endpoint_id="punch-items",
-            signal_type="punch_due_tomorrow", due=_FUTURE)
-    _signal(db, record_key="tropical|rfis||7", endpoint_id="rfis",
-            signal_type="rfi_schedule_impact_flagged")
+    _signal(
+        db,
+        record_key="tropical|rfis||1",
+        endpoint_id="rfis",
+        signal_type="rfi_overdue",
+        importance="high",
+        due=_PAST,
+    )
+    _signal(
+        db,
+        record_key="tropical|submittals||2",
+        endpoint_id="submittals",
+        signal_type="submittal_overdue",
+        due=_PAST,
+    )
+    _signal(
+        db,
+        record_key="tropical|schedule-activities||3",
+        endpoint_id="schedule-activities",
+        signal_type="activity_zero_float",
+    )
+    _signal(
+        db,
+        record_key="tropical|meetings||4",
+        endpoint_id="meetings",
+        signal_type="meeting_topic_open_high_priority",
+        importance="high",
+    )
+    _signal(
+        db,
+        record_key="tropical|inspections||5",
+        endpoint_id="inspections",
+        signal_type="inspection_overdue",
+        due=_PAST,
+    )
+    _signal(
+        db,
+        record_key="tropical|punch-items||6",
+        endpoint_id="punch-items",
+        signal_type="punch_due_tomorrow",
+        due=_FUTURE,
+    )
+    _signal(
+        db,
+        record_key="tropical|rfis||7",
+        endpoint_id="rfis",
+        signal_type="rfi_schedule_impact_flagged",
+    )
     # unmapped (cost) signal — must not become a schedule-exposure item
-    _signal(db, record_key="tropical|budget||8", endpoint_id="budget",
-            signal_type="budget_change_posted")
+    _signal(
+        db,
+        record_key="tropical|budget||8",
+        endpoint_id="budget",
+        signal_type="budget_change_posted",
+    )
 
 
 def _exp(db: Path | None, **kw):
@@ -105,9 +183,15 @@ def test_classifies_all_expected_categories() -> None:
     db = _db()
     _seed(db)
     by_cat = _exp(db)["summary"]["by_category"]
-    for c in ("overdue_rfi", "overdue_submittal", "critical_or_low_float_activity",
-              "meeting_action_topic", "inspection_punch_blocking", "schedule_impact_flag",
-              "daily_log_delay"):
+    for c in (
+        "overdue_rfi",
+        "overdue_submittal",
+        "critical_or_low_float_activity",
+        "meeting_action_topic",
+        "inspection_punch_blocking",
+        "schedule_impact_flag",
+        "daily_log_delay",
+    ):
         assert c in by_cat
     assert by_cat["overdue_rfi"] == 1
     assert by_cat["overdue_submittal"] == 1
@@ -159,10 +243,17 @@ def test_review_required_high_sensitivity() -> None:
     db = _db()
     _seed(db)
     out = _exp(db)
-    sensitive = [it for it in out["exposure"]
-                 if it["exposure_category"] in ("overdue_rfi", "overdue_submittal",
-                                                "critical_or_low_float_activity",
-                                                "inspection_punch_blocking")]
+    sensitive = [
+        it
+        for it in out["exposure"]
+        if it["exposure_category"]
+        in (
+            "overdue_rfi",
+            "overdue_submittal",
+            "critical_or_low_float_activity",
+            "inspection_punch_blocking",
+        )
+    ]
     assert sensitive
     for it in sensitive:
         assert it["review_required"] is True
@@ -172,10 +263,16 @@ def test_review_required_high_sensitivity() -> None:
 
 def test_review_required_record_flag_and_source() -> None:
     db = _db()
-    rk = _live_record(db, endpoint_id="meetings", record_id="4", review=True,
-                      source_url="https://app.procore.com/REDACTED")
-    _signal(db, record_key=rk, endpoint_id="meetings",
-            signal_type="meeting_topic_open_high_priority")
+    rk = _live_record(
+        db,
+        endpoint_id="meetings",
+        record_id="4",
+        review=True,
+        source_url="https://app.procore.com/REDACTED",
+    )
+    _signal(
+        db, record_key=rk, endpoint_id="meetings", signal_type="meeting_topic_open_high_priority"
+    )
     out = _exp(db)
     item = next(it for it in out["exposure"] if it["record_key"] == rk)
     assert item["review_required"] is True
@@ -185,8 +282,7 @@ def test_review_required_record_flag_and_source() -> None:
 
 def test_canonical_due_fallback() -> None:
     db = _db()
-    rk = _live_record(db, endpoint_id="submittals", record_id="9",
-                      canonical={"due_date": _PAST})
+    rk = _live_record(db, endpoint_id="submittals", record_id="9", canonical={"due_date": _PAST})
     # signal carries no due date -> falls back to the canonical record's normalized due date
     _signal(db, record_key=rk, endpoint_id="submittals", signal_type="submittal_overdue")
     out = _exp(db)
@@ -261,15 +357,28 @@ def test_cli_json_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     _seed(db)
     _patch_conn(monkeypatch, db)
     res = runner.invoke(
-        app, ["procore", "live", "schedule", "exposure", "--project", "tropical", "--json"],
+        app,
+        ["procore", "live", "schedule", "exposure", "--project", "tropical", "--json"],
         catch_exceptions=False,
     )
     assert res.exit_code == 0, res.output
     payload = json.loads(res.output)
-    for key in ("command", "ok", "phase", "project_key", "generated_at", "filters", "summary",
-                "exposure", "exposure_truncated", "unsupported_categories",
-                "no_live_call_performed", "no_raw_values_persisted", "determinations_made",
-                "guardrails"):
+    for key in (
+        "command",
+        "ok",
+        "phase",
+        "project_key",
+        "generated_at",
+        "filters",
+        "summary",
+        "exposure",
+        "exposure_truncated",
+        "unsupported_categories",
+        "no_live_call_performed",
+        "no_raw_values_persisted",
+        "determinations_made",
+        "guardrails",
+    ):
         assert key in payload, f"missing {key}"
     assert payload["ok"] is True
     assert payload["determinations_made"] is False

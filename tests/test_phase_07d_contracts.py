@@ -32,7 +32,12 @@ _LEAK = re.compile(
 _VERSIONED_CONTRACTS = set(PHASE_07D_CONTRACT_FILES) - {"phase_07d_validation_matrix"}
 
 _REQUIRED_KEYS = {
-    "cross_source_relationship_contract": ["version", "required_fields", "confidence_classes", "no_auto_promotion_for"],
+    "cross_source_relationship_contract": [
+        "version",
+        "required_fields",
+        "confidence_classes",
+        "no_auto_promotion_for",
+    ],
     "source_evidence_trail_contract": ["version", "required_fields", "guardrails"],
     "meeting_prep_brief_contract": ["version", "required_fields", "guardrails"],
     "project_issue_history_contract": ["version", "required_fields", "guardrails"],

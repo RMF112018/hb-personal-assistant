@@ -5,7 +5,7 @@ Scans local relationship sources:
   and change events (record-to-record).
 - Email: email_relationship_candidates (or project-match candidates).
 - Graph: construction_drive_items with project matches (V17+ fields).
-- Cross-domain: links derivable from source_system_record_map (Prompt 03) + 
+- Cross-domain: links derivable from source_system_record_map (Prompt 03) +
   construction_project_identity (Prompt 02).
 
 Resolves from/to sides to canonical_record_ids (preferring the V20 map) and project
@@ -113,7 +113,9 @@ class RelationshipDiagnostics:
         except Exception:
             return set()
 
-    def _resolve_canonical_and_project(self, source_table: str, source_pk: str) -> tuple[Optional[str], Optional[str]]:
+    def _resolve_canonical_and_project(
+        self, source_table: str, source_pk: str
+    ) -> tuple[Optional[str], Optional[str]]:
         """Best-effort resolution to (canonical_record_id, project_key) using Prompt 03 map + identity."""
         # In real impl we would query source_system_record_map and project_identity.
         # For Prompt 04 we use direct queries (bounded) + fallbacks.
@@ -165,7 +167,9 @@ class RelationshipDiagnostics:
         samples: list[dict[str, Any]] = []
         queued_count = 0
 
-        def _bump(family: str, conf: str, status: str, is_deterministic: bool, unresolved: bool) -> None:
+        def _bump(
+            family: str, conf: str, status: str, is_deterministic: bool, unresolved: bool
+        ) -> None:
             by_family.setdefault(family, {}).setdefault(status, 0)
             by_family[family][status] += 1
             by_conf.setdefault(conf, {}).setdefault(status, 0)
@@ -183,19 +187,29 @@ class RelationshipDiagnostics:
                 if unresolved:
                     unresolved_candidate += 1
 
-        def _add_sample(rel_id: str, from_id: Optional[str], to_id: Optional[str], rtype: str,
-                        conf: str, review: bool, promo: str, reason: str) -> None:
+        def _add_sample(
+            rel_id: str,
+            from_id: Optional[str],
+            to_id: Optional[str],
+            rtype: str,
+            conf: str,
+            review: bool,
+            promo: str,
+            reason: str,
+        ) -> None:
             if len(samples) < 20:  # cap for evidence size
-                samples.append({
-                    "relationship_id": rel_id,
-                    "from_canonical_record_id": from_id,
-                    "to_canonical_record_id": to_id,
-                    "relationship_type": rtype,
-                    "confidence_class": conf,
-                    "review_required": review,
-                    "promotion_status": promo,
-                    "reason": reason,
-                })
+                samples.append(
+                    {
+                        "relationship_id": rel_id,
+                        "from_canonical_record_id": from_id,
+                        "to_canonical_record_id": to_id,
+                        "relationship_type": rtype,
+                        "confidence_class": conf,
+                        "review_required": review,
+                        "promotion_status": promo,
+                        "reason": reason,
+                    }
+                )
 
         # =====================================================================
         # 1. Procore edges: action_signals (record-to-entity) + timeline/change (record-to-record)
@@ -215,7 +229,9 @@ class RelationshipDiagnostics:
             )
             for row in cur.fetchall():
                 sig_id, pk, rkey, ep, stype, sstatus, imp, owner, title = row
-                canon_from, _ = self._resolve_canonical_and_project("procore_live_records", rkey or "")
+                canon_from, _ = self._resolve_canonical_and_project(
+                    "procore_live_records", rkey or ""
+                )
                 canon_to = f"procore:entity:{owner}" if owner else None
                 proj = pk if pk in pilot_keys else None
 
@@ -223,34 +239,52 @@ class RelationshipDiagnostics:
                 is_det = bool(proj and canon_from and canon_to)
                 conf = "deterministic_exact_id" if is_det else "weak_heuristic_single_signal"
                 if stype and stype.lower() in SENSITIVE_TYPES:
-                    conf = "model_proposed_candidate"  # force review path even if signals look strong
-                review = (conf != "deterministic_exact_id") or bool(stype and stype.lower() in SENSITIVE_TYPES)
+                    conf = (
+                        "model_proposed_candidate"  # force review path even if signals look strong
+                    )
+                review = (conf != "deterministic_exact_id") or bool(
+                    stype and stype.lower() in SENSITIVE_TYPES
+                )
                 status = "orphaned" if not proj else ("resolved" if is_det else "review_required")
                 promo = "not_promoted"
-                reason = "sensitive" if (stype and stype.lower() in SENSITIVE_TYPES) else ("weak_signal" if not is_det else "deterministic")
+                reason = (
+                    "sensitive"
+                    if (stype and stype.lower() in SENSITIVE_TYPES)
+                    else ("weak_signal" if not is_det else "deterministic")
+                )
 
                 rel_id = f"procore_action:{sig_id}"
-                _bump("procore_action_signals", conf, status, is_det, status in ("orphaned", "review_required"))
-                _add_sample(rel_id, canon_from, canon_to, "procore_action", conf, review, promo, reason)
+                _bump(
+                    "procore_action_signals",
+                    conf,
+                    status,
+                    is_det,
+                    status in ("orphaned", "review_required"),
+                )
+                _add_sample(
+                    rel_id, canon_from, canon_to, "procore_action", conf, review, promo, reason
+                )
 
                 if not dry_run and review:
                     # Queue only review candidates; never promote forbidden classes
                     try:
-                        self._store.insert_relationship_resolution_candidate({
-                            "relationship_id": rel_id,
-                            "from_canonical_record_id": canon_from,
-                            "to_canonical_record_id": canon_to,
-                            "from_source_system": "procore",
-                            "to_source_system": "procore",
-                            "relationship_type": "procore_action",
-                            "relationship_status": status,
-                            "confidence_class": conf,
-                            "confidence": 0.9 if is_det else 0.4,
-                            "evidence_redacted": f'{{"signal_type":"{stype}","importance":"{imp}"}}',
-                            "review_required": 1,
-                            "promotion_status": "not_promoted",
-                            "rejection_reason": None,
-                        })
+                        self._store.insert_relationship_resolution_candidate(
+                            {
+                                "relationship_id": rel_id,
+                                "from_canonical_record_id": canon_from,
+                                "to_canonical_record_id": canon_to,
+                                "from_source_system": "procore",
+                                "to_source_system": "procore",
+                                "relationship_type": "procore_action",
+                                "relationship_status": status,
+                                "confidence_class": conf,
+                                "confidence": 0.9 if is_det else 0.4,
+                                "evidence_redacted": f'{{"signal_type":"{stype}","importance":"{imp}"}}',
+                                "review_required": 1,
+                                "promotion_status": "not_promoted",
+                                "rejection_reason": None,
+                            }
+                        )
                         queued_count += 1
                     except Exception:
                         pass
@@ -272,7 +306,9 @@ class RelationshipDiagnostics:
             )
             for row in cur.fetchall():
                 te_id, pk, rkey, ep, etype, etime = row
-                canon_from, _ = self._resolve_canonical_and_project("procore_live_records", rkey or "")
+                canon_from, _ = self._resolve_canonical_and_project(
+                    "procore_live_records", rkey or ""
+                )
                 canon_to = f"procore:record:{rkey}"  # simplified for demo
                 proj = pk if pk in pilot_keys else None
 
@@ -284,26 +320,36 @@ class RelationshipDiagnostics:
                 reason = "timeline_event"
 
                 rel_id = f"procore_timeline:{te_id}"
-                _bump("procore_timeline_events", conf, status, is_det, status in ("orphaned", "review_required"))
-                _add_sample(rel_id, canon_from, canon_to, "procore_timeline", conf, review, promo, reason)
+                _bump(
+                    "procore_timeline_events",
+                    conf,
+                    status,
+                    is_det,
+                    status in ("orphaned", "review_required"),
+                )
+                _add_sample(
+                    rel_id, canon_from, canon_to, "procore_timeline", conf, review, promo, reason
+                )
 
                 if not dry_run and review:
                     try:
-                        self._store.insert_relationship_resolution_candidate({
-                            "relationship_id": rel_id,
-                            "from_canonical_record_id": canon_from,
-                            "to_canonical_record_id": canon_to,
-                            "from_source_system": "procore",
-                            "to_source_system": "procore",
-                            "relationship_type": "procore_timeline",
-                            "relationship_status": status,
-                            "confidence_class": conf,
-                            "confidence": 0.85 if is_det else 0.55,
-                            "evidence_redacted": f'{{"event_type":"{etype}"}}',
-                            "review_required": 1,
-                            "promotion_status": "not_promoted",
-                            "rejection_reason": None,
-                        })
+                        self._store.insert_relationship_resolution_candidate(
+                            {
+                                "relationship_id": rel_id,
+                                "from_canonical_record_id": canon_from,
+                                "to_canonical_record_id": canon_to,
+                                "from_source_system": "procore",
+                                "to_source_system": "procore",
+                                "relationship_type": "procore_timeline",
+                                "relationship_status": status,
+                                "confidence_class": conf,
+                                "confidence": 0.85 if is_det else 0.55,
+                                "evidence_redacted": f'{{"event_type":"{etype}"}}',
+                                "review_required": 1,
+                                "promotion_status": "not_promoted",
+                                "rejection_reason": None,
+                            }
+                        )
                         queued_count += 1
                     except Exception:
                         pass
@@ -334,31 +380,43 @@ class RelationshipDiagnostics:
                 is_det = bool(proj and canon_from and cconf and float(cconf or 0) >= 0.9)
                 conf = "deterministic_project_number" if is_det else "weak_heuristic_single_signal"
                 review = True  # email candidates are inherently candidates per policy
-                status = "orphaned" if not proj else ("review_required" if not is_det else "resolved")
+                status = (
+                    "orphaned" if not proj else ("review_required" if not is_det else "resolved")
+                )
                 promo = "not_promoted"
                 reason = "email_candidate"
 
                 rel_id = f"email_candidate:{cid}"
-                _bump("email_relationship_candidates", conf, status, is_det, status in ("orphaned", "review_required"))
-                _add_sample(rel_id, canon_from, canon_to, "email_candidate", conf, review, promo, reason)
+                _bump(
+                    "email_relationship_candidates",
+                    conf,
+                    status,
+                    is_det,
+                    status in ("orphaned", "review_required"),
+                )
+                _add_sample(
+                    rel_id, canon_from, canon_to, "email_candidate", conf, review, promo, reason
+                )
 
                 if not dry_run and review:
                     try:
-                        self._store.insert_relationship_resolution_candidate({
-                            "relationship_id": rel_id,
-                            "from_canonical_record_id": canon_from,
-                            "to_canonical_record_id": canon_to,
-                            "from_source_system": "email",
-                            "to_source_system": None,
-                            "relationship_type": "email_relationship_candidate",
-                            "relationship_status": status,
-                            "confidence_class": conf,
-                            "confidence": float(cconf or 0.5),
-                            "evidence_redacted": f'{{"candidate_type":"{ctype}"}}',
-                            "review_required": 1,
-                            "promotion_status": "not_promoted",
-                            "rejection_reason": None,
-                        })
+                        self._store.insert_relationship_resolution_candidate(
+                            {
+                                "relationship_id": rel_id,
+                                "from_canonical_record_id": canon_from,
+                                "to_canonical_record_id": canon_to,
+                                "from_source_system": "email",
+                                "to_source_system": None,
+                                "relationship_type": "email_relationship_candidate",
+                                "relationship_status": status,
+                                "confidence_class": conf,
+                                "confidence": float(cconf or 0.5),
+                                "evidence_redacted": f'{{"candidate_type":"{ctype}"}}',
+                                "review_required": 1,
+                                "promotion_status": "not_promoted",
+                                "rejection_reason": None,
+                            }
+                        )
                         queued_count += 1
                     except Exception:
                         pass
@@ -385,7 +443,9 @@ class RelationshipDiagnostics:
                 sid, did, name, pk, pnum, mconf, mstatus, rev = row
                 stable = f"{sid}:{did}"
                 canon_from = f"graph_files:drive_item:{stable}"
-                canon_to, _ = self._resolve_canonical_and_project("construction_drive_items", stable)
+                canon_to, _ = self._resolve_canonical_and_project(
+                    "construction_drive_items", stable
+                )
                 proj = pk if pk in pilot_keys else None
 
                 is_det = bool(proj and (mconf in ("high", "medium") or pnum))
@@ -396,26 +456,36 @@ class RelationshipDiagnostics:
                 reason = "graph_file_match"
 
                 rel_id = f"graph_file_project:{stable}"
-                _bump("graph_file_project_matches", conf, status, is_det, status in ("orphaned", "review_required"))
-                _add_sample(rel_id, canon_from, canon_to, "graph_file_project", conf, review, promo, reason)
+                _bump(
+                    "graph_file_project_matches",
+                    conf,
+                    status,
+                    is_det,
+                    status in ("orphaned", "review_required"),
+                )
+                _add_sample(
+                    rel_id, canon_from, canon_to, "graph_file_project", conf, review, promo, reason
+                )
 
                 if not dry_run and review:
                     try:
-                        self._store.insert_relationship_resolution_candidate({
-                            "relationship_id": rel_id,
-                            "from_canonical_record_id": canon_from,
-                            "to_canonical_record_id": canon_to,
-                            "from_source_system": "graph_files",
-                            "to_source_system": None,
-                            "relationship_type": "graph_file_project_match",
-                            "relationship_status": status,
-                            "confidence_class": conf,
-                            "confidence": 0.8 if mconf in ("high", "medium") else 0.5,
-                            "evidence_redacted": f'{{"match_status":"{mstatus}"}}',
-                            "review_required": 1,
-                            "promotion_status": "not_promoted",
-                            "rejection_reason": None,
-                        })
+                        self._store.insert_relationship_resolution_candidate(
+                            {
+                                "relationship_id": rel_id,
+                                "from_canonical_record_id": canon_from,
+                                "to_canonical_record_id": canon_to,
+                                "from_source_system": "graph_files",
+                                "to_source_system": None,
+                                "relationship_type": "graph_file_project_match",
+                                "relationship_status": status,
+                                "confidence_class": conf,
+                                "confidence": 0.8 if mconf in ("high", "medium") else 0.5,
+                                "evidence_redacted": f'{{"match_status":"{mstatus}"}}',
+                                "review_required": 1,
+                                "promotion_status": "not_promoted",
+                                "rejection_reason": None,
+                            }
+                        )
                         queued_count += 1
                     except Exception:
                         pass
@@ -443,33 +513,52 @@ class RelationshipDiagnostics:
                 proj = pk if pk in pilot_keys else None
                 # Treat map rows as "resolved" links to their project identity
                 is_det = bool(proj)
-                conf = cconf or ("deterministic_exact_id" if is_det else "weak_heuristic_single_signal")
+                conf = cconf or (
+                    "deterministic_exact_id" if is_det else "weak_heuristic_single_signal"
+                )
                 review = bool(rev) or (not is_det)
                 status = "resolved" if is_det else "review_required"
                 promo = "not_promoted"
                 reason = "source_record_map"
 
                 rel_id = f"cross_domain_map:{canon}"
-                _bump("source_record_map_cross_links", conf, status, is_det, status == "review_required")
-                _add_sample(rel_id, canon, f"project:{proj}", "cross_domain_map", conf, review, promo, reason)
+                _bump(
+                    "source_record_map_cross_links",
+                    conf,
+                    status,
+                    is_det,
+                    status == "review_required",
+                )
+                _add_sample(
+                    rel_id,
+                    canon,
+                    f"project:{proj}",
+                    "cross_domain_map",
+                    conf,
+                    review,
+                    promo,
+                    reason,
+                )
 
                 if not dry_run and review:
                     try:
-                        self._store.insert_relationship_resolution_candidate({
-                            "relationship_id": rel_id,
-                            "from_canonical_record_id": canon,
-                            "to_canonical_record_id": f"project:{proj}",
-                            "from_source_system": sys,
-                            "to_source_system": "project_identity",
-                            "relationship_type": "source_record_to_project",
-                            "relationship_status": status,
-                            "confidence_class": conf,
-                            "confidence": 0.95 if is_det else 0.5,
-                            "evidence_redacted": f'{{"source_table":"{tbl}"}}',
-                            "review_required": 1,
-                            "promotion_status": "not_promoted",
-                            "rejection_reason": None,
-                        })
+                        self._store.insert_relationship_resolution_candidate(
+                            {
+                                "relationship_id": rel_id,
+                                "from_canonical_record_id": canon,
+                                "to_canonical_record_id": f"project:{proj}",
+                                "from_source_system": sys,
+                                "to_source_system": "project_identity",
+                                "relationship_type": "source_record_to_project",
+                                "relationship_status": status,
+                                "confidence_class": conf,
+                                "confidence": 0.95 if is_det else 0.5,
+                                "evidence_redacted": f'{{"source_table":"{tbl}"}}',
+                                "review_required": 1,
+                                "promotion_status": "not_promoted",
+                                "rejection_reason": None,
+                            }
+                        )
                         queued_count += 1
                     except Exception:
                         pass
@@ -477,7 +566,9 @@ class RelationshipDiagnostics:
             pass
 
         # Final rates (always separate)
-        det_rate = (unresolved_deterministic / total_deterministic) if total_deterministic > 0 else 0.0
+        det_rate = (
+            (unresolved_deterministic / total_deterministic) if total_deterministic > 0 else 0.0
+        )
         cand_rate = (unresolved_candidate / total_candidate) if total_candidate > 0 else 0.0
 
         return {

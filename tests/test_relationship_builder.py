@@ -21,28 +21,45 @@ def _tmp_db() -> str:
 
 def _seed(db: str, *, with_financials: bool = False) -> ConstructionStore:
     store = ConstructionStore(db)
-    store.upsert_email_source_location(source_id="sx", mailbox_owner_hash="h", folder_role="inbox", folder_id="F")
+    store.upsert_email_source_location(
+        source_id="sx", mailbox_owner_hash="h", folder_role="inbox", folder_id="F"
+    )
     rows = [
-        ("m1", "vendor.com", "Tropical schedule update for the team"),                         # plain project
-        ("m2", "procore.com", "New RFI 12 response submitted for review"),                      # procore notification
+        ("m1", "vendor.com", "Tropical schedule update for the team"),  # plain project
+        ("m2", "procore.com", "New RFI 12 response submitted for review"),  # procore notification
         ("m3", "vendor.com", "Accepted: Tropical OAC meeting when: 2pm where: Teams"),  # meeting
         ("m4", "vendor.com", "Please find the attached pay application g702 invoice"),  # financial
     ]
     for mid, dom, preview in rows:
         store.upsert_email_message(
-            message_id=mid, thread_key="t" + mid, source_id="sx", sender_domain=dom,
-            received_datetime="2026-05-20T10:00:00Z", body_preview_excerpt_redacted=preview,
+            message_id=mid,
+            thread_key="t" + mid,
+            source_id="sx",
+            sender_domain=dom,
+            received_datetime="2026-05-20T10:00:00Z",
+            body_preview_excerpt_redacted=preview,
         )
         store.upsert_email_project_match(
-            match_id="pm-" + mid, message_id=mid, match_signal="project_name_in_subject",
-            confidence=0.8, project_key="tropical", project_number="23-435-01",
+            match_id="pm-" + mid,
+            message_id=mid,
+            match_signal="project_name_in_subject",
+            confidence=0.8,
+            project_key="tropical",
+            project_number="23-435-01",
         )
     # an existing Prompt-08 file candidate on m4
-    store.upsert_email_message_attachment(attachment_key="m4:a1", message_id="m4", name_hash="nh", content_type="application/pdf")
+    store.upsert_email_message_attachment(
+        attachment_key="m4:a1", message_id="m4", name_hash="nh", content_type="application/pdf"
+    )
     store.upsert_email_relationship_candidate(
-        candidate_id="m4:fn", message_id="m4", candidate_type="sharepoint_drive_item",
-        match_signal="attachment_filename", confidence=0.5, project_key="tropical",
-        target_table="construction_drive_items", target_key="nh",
+        candidate_id="m4:fn",
+        message_id="m4",
+        candidate_type="sharepoint_drive_item",
+        match_signal="attachment_filename",
+        confidence=0.5,
+        project_key="tropical",
+        target_table="construction_drive_items",
+        target_key="nh",
     )
     if with_financials:
         conn = sqlite3.connect(db)
@@ -60,7 +77,9 @@ def _seed(db: str, *, with_financials: bool = False) -> ConstructionStore:
 def test_generates_project_procore_and_calendar_candidates() -> None:
     db = _tmp_db()
     store = _seed(db)
-    report = RelationshipCandidateBuilder(store).build(project_key="tropical", lookback_days=30, dry_run=False)
+    report = RelationshipCandidateBuilder(store).build(
+        project_key="tropical", lookback_days=30, dry_run=False
+    )
 
     assert report.messages_considered == 4
     bt = report.candidates_by_type
@@ -78,9 +97,15 @@ def test_generates_project_procore_and_calendar_candidates() -> None:
 def test_financial_candidate_only_when_available_and_routes_review() -> None:
     db = _tmp_db()
     store = _seed(db, with_financials=True)
-    report = RelationshipCandidateBuilder(store).build(project_key="tropical", lookback_days=30, dry_run=False)
-    fin = [c for c in store.list_email_relationship_candidates(project_key="tropical")
-           if c["candidate_type"] in ("procore_payment_application", "procore_invoice", "procore_contract")]
+    report = RelationshipCandidateBuilder(store).build(
+        project_key="tropical", lookback_days=30, dry_run=False
+    )
+    fin = [
+        c
+        for c in store.list_email_relationship_candidates(project_key="tropical")
+        if c["candidate_type"]
+        in ("procore_payment_application", "procore_invoice", "procore_contract")
+    ]
     assert fin, "expected a financial candidate when financials are available"
     assert all(c["review_required"] for c in fin)  # financial routes to review
     assert report.procore_available.get("financial_contracts") == 1
@@ -89,16 +114,23 @@ def test_financial_candidate_only_when_available_and_routes_review() -> None:
 def test_no_financial_candidate_when_unavailable() -> None:
     db = _tmp_db()
     store = _seed(db, with_financials=False)
-    RelationshipCandidateBuilder(store).build(project_key="tropical", lookback_days=30, dry_run=False)
-    fin = [c for c in store.list_email_relationship_candidates(project_key="tropical")
-           if c["candidate_type"].startswith("procore_") and c["candidate_type"] != "procore_rfi"]
+    RelationshipCandidateBuilder(store).build(
+        project_key="tropical", lookback_days=30, dry_run=False
+    )
+    fin = [
+        c
+        for c in store.list_email_relationship_candidates(project_key="tropical")
+        if c["candidate_type"].startswith("procore_") and c["candidate_type"] != "procore_rfi"
+    ]
     assert not fin
 
 
 def test_dry_run_persists_nothing() -> None:
     db = _tmp_db()
     store = _seed(db)
-    report = RelationshipCandidateBuilder(store).build(project_key="tropical", lookback_days=30, dry_run=True)
+    report = RelationshipCandidateBuilder(store).build(
+        project_key="tropical", lookback_days=30, dry_run=True
+    )
     assert report.persisted is False
     assert report.candidates_generated > 0
     conn = sqlite3.connect(db)
@@ -128,9 +160,25 @@ def test_idempotent_recommit() -> None:
 def test_lookback_excludes_old_messages() -> None:
     db = _tmp_db()
     store = ConstructionStore(db)
-    store.upsert_email_source_location(source_id="sx", mailbox_owner_hash="h", folder_role="inbox", folder_id="F")
-    store.upsert_email_message(message_id="old", thread_key="t", source_id="sx", sender_domain="vendor.com",
-                              received_datetime="2020-01-01T00:00:00Z", body_preview_excerpt_redacted="old tropical mail")
-    store.upsert_email_project_match(match_id="pm-old", message_id="old", match_signal="x", confidence=0.8, project_key="tropical")
-    report = RelationshipCandidateBuilder(store).build(project_key="tropical", lookback_days=30, dry_run=True)
+    store.upsert_email_source_location(
+        source_id="sx", mailbox_owner_hash="h", folder_role="inbox", folder_id="F"
+    )
+    store.upsert_email_message(
+        message_id="old",
+        thread_key="t",
+        source_id="sx",
+        sender_domain="vendor.com",
+        received_datetime="2020-01-01T00:00:00Z",
+        body_preview_excerpt_redacted="old tropical mail",
+    )
+    store.upsert_email_project_match(
+        match_id="pm-old",
+        message_id="old",
+        match_signal="x",
+        confidence=0.8,
+        project_key="tropical",
+    )
+    report = RelationshipCandidateBuilder(store).build(
+        project_key="tropical", lookback_days=30, dry_run=True
+    )
     assert report.messages_considered == 0

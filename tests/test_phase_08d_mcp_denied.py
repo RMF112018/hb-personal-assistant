@@ -97,12 +97,12 @@ def test_raw_requested_content_is_never_persisted() -> None:
         conn = sqlite3.connect(db)
         cols = [r[1] for r in conn.execute("PRAGMA table_info(second_brain_mcp_denial_receipts)")]
         # no raw/content columns exist
-        assert not (
-            {"raw_requested_content", "raw_args", "raw_sql", "raw_prompt"} & set(cols)
-        )
+        assert not ({"raw_requested_content", "raw_args", "raw_sql", "raw_prompt"} & set(cols))
         blob = " ".join(
             str(v)
-            for row in conn.execute(f"SELECT {', '.join(cols)} FROM second_brain_mcp_denial_receipts")
+            for row in conn.execute(
+                f"SELECT {', '.join(cols)} FROM second_brain_mcp_denial_receipts"
+            )
             for v in row
             if v is not None
         )

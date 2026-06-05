@@ -30,8 +30,7 @@ _NEXT_STEP_HELD_UNRESOLVED = (
     "resolve the authoritative API path (do not guess); remains fail-closed until verified"
 )
 _NEXT_STEP_HELD_PENDING = (
-    "operator-run bounded live smoke to verify before promotion; "
-    "remains fail-closed until verified"
+    "operator-run bounded live smoke to verify before promotion; remains fail-closed until verified"
 )
 
 # Phase 06B Prompt 04 — explicit per-endpoint disposition for held (live_verified=False)
@@ -124,7 +123,9 @@ def _ledger_rows() -> List[Dict[str, Any]]:
                 "verification_reason": reason,
                 "evidence_path": _evidence_path(reason),
                 "last_verified_date": _last_verified_date(reason),
-                "next_step": _next_step(live_verified=adapter.live_verified, verification_reason=reason),
+                "next_step": _next_step(
+                    live_verified=adapter.live_verified, verification_reason=reason
+                ),
                 "disposition": disposition,
                 "held_detail": (
                     {

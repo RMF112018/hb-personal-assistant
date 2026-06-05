@@ -98,9 +98,7 @@ def test_status_writes_guarded_receipt(
     conn.close()
 
 
-def test_status_mock_mode(
-    runner: CliRunner, monkeypatch: pytest.MonkeyPatch, db_path: str
-) -> None:
+def test_status_mock_mode(runner: CliRunner, monkeypatch: pytest.MonkeyPatch, db_path: str) -> None:
     _redirect_store_to_tmp(monkeypatch, db_path)
     monkeypatch.setenv("HB_SECOND_BRAIN_ENABLED", "1")
     monkeypatch.setenv("HB_SECOND_BRAIN_MODE", "mock")
@@ -140,9 +138,9 @@ def test_status_never_emits_api_key(
 def _receipt_count(db_path: str) -> int:
     conn = sqlite3.connect(db_path)
     try:
-        return conn.execute(
-            "SELECT COUNT(*) FROM second_brain_runtime_config_receipts"
-        ).fetchone()[0]
+        return conn.execute("SELECT COUNT(*) FROM second_brain_runtime_config_receipts").fetchone()[
+            0
+        ]
     except sqlite3.OperationalError:
         return 0
     finally:

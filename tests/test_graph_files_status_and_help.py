@@ -39,9 +39,10 @@ def test_status_reports_posture_and_guardrails(tmp_path: Path, monkeypatch) -> N
     assert payload["ok"] is True
     # Delegated-auth posture: scope names only, no tokens.
     assert payload["delegated_auth"]["configured_delegated_scopes"]
-    assert "token" not in json.dumps(payload).lower() or "token_acquisition" in payload[
-        "delegated_auth"
-    ]
+    assert (
+        "token" not in json.dumps(payload).lower()
+        or "token_acquisition" in payload["delegated_auth"]
+    )
     # Source counts from the real registry.
     assert payload["sources"]["registry_total"] >= 1
     assert payload["sources"]["by_system"]

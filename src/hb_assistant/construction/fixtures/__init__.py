@@ -36,10 +36,16 @@ for _name, _payload in REVIEW_POLICY_FIXTURES.items():
     ALL_FIXTURES[f"review_policy:{_name}"] = {"kind": "review_policy", "payload": _payload}
 
 for _name, _payload in VALID_FIXTURES.items():
-    ALL_FIXTURES[f"model_output_valid:{_name}"] = {"kind": "model_output_valid", "payload": _payload}
+    ALL_FIXTURES[f"model_output_valid:{_name}"] = {
+        "kind": "model_output_valid",
+        "payload": _payload,
+    }
 
 for _name, _payload in INVALID_FIXTURES.items():
-    ALL_FIXTURES[f"model_output_invalid:{_name}"] = {"kind": "model_output_invalid", "payload": _payload}
+    ALL_FIXTURES[f"model_output_invalid:{_name}"] = {
+        "kind": "model_output_invalid",
+        "payload": _payload,
+    }
 
 for _name, _payload in PROCORE_CONTRACT_FIXTURES.items():
     ALL_FIXTURES[f"procore_contract:{_name}"] = {"kind": "procore_contract", "payload": _payload}
@@ -64,9 +70,7 @@ def iter_fixtures(kind: str | None = None) -> Iterator[tuple[str, dict[str, Any]
         yield from ALL_FIXTURES.items()
         return
     if kind not in KIND_ALIASES:
-        raise KeyError(
-            f"unknown fixture kind {kind!r}; allowed: {sorted(KIND_ALIASES)}"
-        )
+        raise KeyError(f"unknown fixture kind {kind!r}; allowed: {sorted(KIND_ALIASES)}")
     allowed = set(KIND_ALIASES[kind])
     for name, entry in ALL_FIXTURES.items():
         if entry["kind"] in allowed:

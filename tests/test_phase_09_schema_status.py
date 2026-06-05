@@ -45,7 +45,9 @@ def test_status_report_ready_normal_path() -> None:
         db = _migrated_db(td)
         report = build_phase_09_schema_status_report(db_path=db)
         assert report["overall_status"] == "ready"
-        assert report["schema_version"] == LATEST_SCHEMA_VERSION  # V39 additive; prior checks use >=38
+        assert (
+            report["schema_version"] == LATEST_SCHEMA_VERSION
+        )  # V39 additive; prior checks use >=38
         assert report["all_tables_present"] is True
         assert report["all_guards_present"] is True
         assert report["all_rows_zero"] is True

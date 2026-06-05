@@ -13,7 +13,12 @@ from typing import Iterator
 
 import pytest
 
-from hb_assistant.classification import AliasResolver, BodyMentionDetector, EmailClassifier, ClassificationResult
+from hb_assistant.classification import (
+    AliasResolver,
+    BodyMentionDetector,
+    EmailClassifier,
+    ClassificationResult,
+)
 from hb_assistant.normalize.email import Email
 from hb_assistant.store.repositories import Store
 
@@ -96,7 +101,9 @@ def test_classifier_full_roundtrip_redacted_only(temp_db_path: Path):
     # Leak check: nothing secret in result or links
     result_str = str(result.model_dump())
     assert "Bobby" not in result_str  # redacted in subject/preview already; no raw name in output
-    assert "Q3" not in result_str or True  # content is ok as long as no PII patterns, but preview was redacted anyway
+    assert (
+        "Q3" not in result_str or True
+    )  # content is ok as long as no PII patterns, but preview was redacted anyway
 
 
 def test_classification_idempotent(temp_db_path: Path):
@@ -130,7 +137,12 @@ def test_classification_result_schema_compliance():
     )
     data = res.model_dump()
     # Required keys per schema (P05 added detection_method; keep backward-compatible check)
-    required = {"message_source_record_id", "classifications", "body_mention_detected", "confidence"}
+    required = {
+        "message_source_record_id",
+        "classifications",
+        "body_mention_detected",
+        "confidence",
+    }
     assert required.issubset(set(data.keys()))
     assert "detection_method" in data
     assert isinstance(data["classifications"], list)
@@ -155,7 +167,9 @@ def test_no_full_body_or_secrets_anywhere(temp_db_path: Path):
     result = clf.classify_email(email)
 
     # Serialize everything and scan
-    everything = str(result.model_dump()) + str(email.model_dump()) + str(store.get_links_for_source(sid))
+    everything = (
+        str(result.model_dump()) + str(email.model_dump()) + str(store.get_links_for_source(sid))
+    )
     bad = ["Secret", "password", "-----BEGIN", "sk-", "full body"]
     for b in bad:
         assert b not in everything

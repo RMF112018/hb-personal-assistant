@@ -40,12 +40,8 @@ async def _roundtrip(db: str) -> dict[str, Any]:
         out["resources"] = len((await session.list_resources()).resources)
         out["prompts"] = len((await session.list_prompts()).prompts)
         out["allowed_text"] = (await session.call_tool("hb_status", {})).content[0].text
-        out["denied_text"] = (
-            await session.call_tool("hb_delete_everything", {})
-        ).content[0].text
-        out["resource_text"] = (
-            await session.read_resource("hb://status/system")
-        ).contents[0].text
+        out["denied_text"] = (await session.call_tool("hb_delete_everything", {})).content[0].text
+        out["resource_text"] = (await session.read_resource("hb://status/system")).contents[0].text
         gp = await session.get_prompt("ask_project_question", {"question": "Q"})
         out["prompt_roles"] = [m.role for m in gp.messages]
         out["prompt_text"] = " ".join(getattr(m.content, "text", "") for m in gp.messages)

@@ -64,7 +64,8 @@ def populated_store(tmp_path: Path) -> ConstructionStore:
 
 
 def test_ctor_arg_takes_precedence(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv(ENV_VAR, str(tmp_path / "env-root"))
     explicit = tmp_path / "explicit"
@@ -73,7 +74,8 @@ def test_ctor_arg_takes_precedence(
 
 
 def test_env_var_used_when_no_ctor_arg(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     env_root = tmp_path / "env-root"
     monkeypatch.setenv(ENV_VAR, str(env_root))
@@ -82,7 +84,8 @@ def test_env_var_used_when_no_ctor_arg(
 
 
 def test_config_used_when_env_unset(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv(ENV_VAR, raising=False)
     cfg_root = tmp_path / "cfg-root"
@@ -121,8 +124,13 @@ def test_bootstrap_dry_run_lists_seven_subdirs(vault_root: Path) -> None:
     results = w.bootstrap_folders(dry_run=True)
     subdirs = {r.subdir for r in results}
     expected = {
-        "00_Registry", "01_Projects", "02_Review_Queue", "03_Document_Cards",
-        "10_Source_Manifests", "11_Sync_Receipts", "12_Processing_Receipts",
+        "00_Registry",
+        "01_Projects",
+        "02_Review_Queue",
+        "03_Document_Cards",
+        "10_Source_Manifests",
+        "11_Sync_Receipts",
+        "12_Processing_Receipts",
     }
     assert subdirs == expected
     for r in results:
@@ -150,10 +158,13 @@ def test_atomic_write_failure_preserves_existing_file(tmp_path: Path) -> None:
     target = tmp_path / "x.md"
     target.write_text("ORIGINAL CONTENTS\n", encoding="utf-8")
 
-    with patch(
-        "hb_assistant.construction.manifests.vault_writer.os.replace",
-        side_effect=OSError("simulated failure"),
-    ), pytest.raises(OSError):
+    with (
+        patch(
+            "hb_assistant.construction.manifests.vault_writer.os.replace",
+            side_effect=OSError("simulated failure"),
+        ),
+        pytest.raises(OSError),
+    ):
         _atomic_write_text(target, "NEW CONTENTS\n")
 
     assert target.read_text(encoding="utf-8") == "ORIGINAL CONTENTS\n"
@@ -182,6 +193,7 @@ def _split_frontmatter(text: str) -> dict:
 
 def test_registry_overview_frontmatter_is_valid(populated_store: ConstructionStore) -> None:
     from hb_assistant.construction.config import load_source_registry
+
     reg = load_source_registry()
     svc = ManifestService(populated_store)
     overview = svc.build_registry_overview(reg)
@@ -200,11 +212,14 @@ def test_document_card_frontmatter_exposes_source_id_alongside_source_key(
     """Phase 02 canonical alias: document card frontmatter must carry both
     source_key (legacy) and source_id (canonical) with identical values."""
     from hb_assistant.construction.config import load_source_registry
+
     reg = load_source_registry()
     src = next(s for s in reg.sources if s.source_key == "tropical-sharepoint")
     svc = ManifestService(populated_store)
     card = svc.build_document_card(
-        source=src, item_id="item-1", policy_reason="manual review",
+        source=src,
+        item_id="item-1",
+        policy_reason="manual review",
     )
     rendered = ManifestRenderer.render_document_card(card)
     fm = _split_frontmatter(rendered)
@@ -215,6 +230,7 @@ def test_document_card_frontmatter_exposes_source_id_alongside_source_key(
 
 def test_project_card_frontmatter_is_valid(populated_store: ConstructionStore) -> None:
     from hb_assistant.construction.config import load_source_registry
+
     reg = load_source_registry()
     svc = ManifestService(populated_store)
     card = svc.build_project_card(reg, "tropical")
@@ -230,9 +246,11 @@ def test_project_card_frontmatter_is_valid(populated_store: ConstructionStore) -
 
 @pytest.mark.parametrize("kind", ["registry", "project", "review", "document"])
 def test_render_never_carries_body_or_text_fields(
-    populated_store: ConstructionStore, kind: str,
+    populated_store: ConstructionStore,
+    kind: str,
 ) -> None:
     from hb_assistant.construction.config import load_source_registry
+
     reg = load_source_registry()
     svc = ManifestService(populated_store)
     if kind == "registry":
@@ -259,6 +277,7 @@ def test_document_card_requires_non_empty_policy_reason(
     populated_store: ConstructionStore,
 ) -> None:
     from hb_assistant.construction.config import load_source_registry
+
     reg = load_source_registry()
     src = next(s for s in reg.sources if s.source_key == "tropical-sharepoint")
     svc = ManifestService(populated_store)
@@ -270,6 +289,7 @@ def test_document_card_requires_non_empty_policy_reason(
 
 def test_document_card_requires_known_item(populated_store: ConstructionStore) -> None:
     from hb_assistant.construction.config import load_source_registry
+
     reg = load_source_registry()
     src = next(s for s in reg.sources if s.source_key == "tropical-sharepoint")
     svc = ManifestService(populated_store)
@@ -308,6 +328,7 @@ def test_project_card_marker_bounded(vault_root: Path) -> None:
 
 def test_project_card_aggregates_totals(populated_store: ConstructionStore) -> None:
     from hb_assistant.construction.config import load_source_registry
+
     reg = load_source_registry()
     svc = ManifestService(populated_store)
     card = svc.build_project_card(reg, "tropical")
@@ -322,6 +343,7 @@ def test_project_card_aggregates_totals(populated_store: ConstructionStore) -> N
 
 def test_registry_overview_lists_unresolved(populated_store: ConstructionStore) -> None:
     from hb_assistant.construction.config import load_source_registry
+
     reg = load_source_registry()
     svc = ManifestService(populated_store)
     overview = svc.build_registry_overview(reg)
@@ -341,7 +363,8 @@ def test_review_required_empty_state(populated_store: ConstructionStore) -> None
 
 
 def test_cli_vault_bootstrap_dry_run_lists_seven(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     monkeypatch.setenv(ENV_VAR, str(tmp_path / "v"))
     runner = CliRunner()
@@ -353,7 +376,8 @@ def test_cli_vault_bootstrap_dry_run_lists_seven(
 
 
 def test_cli_vault_bootstrap_apply_creates(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     root = tmp_path / "v"
     monkeypatch.setenv(ENV_VAR, str(root))
@@ -384,7 +408,8 @@ def test_cli_vault_preview_dry_run_renders_all_default_kinds(
 
 
 def test_cli_vault_preview_apply_writes_expected_files(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     root = tmp_path / "v"
     monkeypatch.setenv(ENV_VAR, str(root))
@@ -405,7 +430,11 @@ def test_cli_vault_preview_apply_writes_expected_files(
     assert (root / "01_Projects" / "tropical.project.md").exists()
     assert (root / "01_Projects" / "hilltop.project.md").exists()
     # No document cards directory was populated (opt-in only)
-    doc_cards = list((root / "03_Document_Cards").glob("*.md")) if (root / "03_Document_Cards").exists() else []
+    doc_cards = (
+        list((root / "03_Document_Cards").glob("*.md"))
+        if (root / "03_Document_Cards").exists()
+        else []
+    )
     assert doc_cards == []
 
 
@@ -414,7 +443,8 @@ def test_cli_vault_preview_document_card_requires_flags(
 ) -> None:
     runner = CliRunner()
     result = runner.invoke(
-        construction_cli.app, ["vault", "preview", "--include-document-cards", "--json"],
+        construction_cli.app,
+        ["vault", "preview", "--include-document-cards", "--json"],
     )
     assert result.exit_code == 1
     payload = json.loads(result.output)
@@ -466,7 +496,8 @@ def _seed_canonical_v5(store: ConstructionStore) -> None:
 
 
 def test_canonical_vault_write_preserves_user_text(
-    tmp_path: Path, vault_root: Path,
+    tmp_path: Path,
+    vault_root: Path,
 ) -> None:
     """End-to-end: render a document card via the canonical V5 read path,
     write it through ``ConstructionVaultWriter`` with user prose already
@@ -478,7 +509,8 @@ def test_canonical_vault_write_preserves_user_text(
 
     writer = ConstructionVaultWriter(vault_root=vault_root)
     target = writer.document_card_path(
-        source_key=_CANONICAL_SOURCE_ID, item_id="canon-item-1",
+        source_key=_CANONICAL_SOURCE_ID,
+        item_id="canon-item-1",
     )
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(

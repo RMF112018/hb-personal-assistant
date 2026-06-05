@@ -22,14 +22,20 @@ from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.store.migrator import SQLiteMigrator
 
 _LEAK = re.compile(
-    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}", re.IGNORECASE
+    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}",
+    re.IGNORECASE,
 )
 _READY = {"ready": True, "blocked_by": [], "auto_readiness_allowed": False}
 _NOW = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
 _GUARDS = (
-    "raw_email_body_persisted", "raw_document_text_persisted",
-    "raw_calendar_payload_persisted", "raw_prompt_persisted", "raw_response_persisted",
-    "signed_url_persisted", "download_url_persisted", "external_writeback_performed",
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
 )
 
 
@@ -61,19 +67,28 @@ def _seed_candidate(store: ConstructionStore, cid: str, **over: object) -> None:
     kw.update(over)
     store.upsert_cross_source_relationship_candidate(**kw)  # type: ignore[arg-type]
     store.upsert_source_evidence_trail(
-        evidence_trail_id="et_" + cid, evidence_kind="cross_source_relationship",
-        source_refs_json=json.dumps({"refs": [cid]}), confidence_class="deterministic",
+        evidence_trail_id="et_" + cid,
+        evidence_kind="cross_source_relationship",
+        source_refs_json=json.dumps({"refs": [cid]}),
+        confidence_class="deterministic",
         project_key="tropical",
     )
 
 
 def _seed_promoted(store: ConstructionStore, rid: str) -> None:
     store.upsert_cross_source_relationship(
-        relationship_id=rid, source_family="procore", source_record_type="rfi",
-        source_record_ref="rfi:" + rid, target_family="procore", target_record_type="submittal",
-        target_record_ref="sub:" + rid, relationship_type="references",
-        confidence_class="deterministic", source_reference_json=json.dumps({"r": rid}),
-        project_key="tropical", evidence_trail_id="et_" + rid,
+        relationship_id=rid,
+        source_family="procore",
+        source_record_type="rfi",
+        source_record_ref="rfi:" + rid,
+        target_family="procore",
+        target_record_type="submittal",
+        target_record_ref="sub:" + rid,
+        relationship_type="references",
+        confidence_class="deterministic",
+        source_reference_json=json.dumps({"r": rid}),
+        project_key="tropical",
+        evidence_trail_id="et_" + rid,
     )
 
 
@@ -89,7 +104,13 @@ def _seed_event(db: str, eid: str, *, days: int, project_key: str | None) -> Non
             " end_datetime_utc, organizer_domain, project_key, project_match_method) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                eid, "cal", "h_" + eid, start, end, "hedrickbrothers.com", project_key,
+                eid,
+                "cal",
+                "h_" + eid,
+                start,
+                end,
+                "hedrickbrothers.com",
+                project_key,
                 "deterministic" if project_key else None,
             ),
         )
@@ -125,17 +146,20 @@ def test_success_materializes_all_eight_sections() -> None:
         _seed_promoted(store, "r0")
         _seed_event(db, "ev_match", days=3, project_key="tropical")
         _seed_event(db, "ev_other", days=4, project_key=None)
-        report = MeetingPrepBriefBuilder(store).build(
-            dry_run=False, readiness=_READY, now_utc=_NOW
-        )
+        report = MeetingPrepBriefBuilder(store).build(dry_run=False, readiness=_READY, now_utc=_NOW)
         assert report["ok"] is True
         assert report["summary"]["blocked"] is False
         assert report["summary"]["runs_written"] == 1
         assert report["summary"]["sections_written"] == 8
         secs = _sections(store)
         assert set(secs.keys()) == {
-            "meeting_context", "project_context", "open_items", "aging_items",
-            "recent_activity", "risk_exposure_watchlist", "review_required_warnings",
+            "meeting_context",
+            "project_context",
+            "open_items",
+            "aging_items",
+            "recent_activity",
+            "risk_exposure_watchlist",
+            "review_required_warnings",
             "confidence_and_stale_unknown_warnings",
         }
         mc = json.loads(secs["meeting_context"]["section_redacted"])
@@ -172,9 +196,7 @@ def test_review_required_surfaced() -> None:
     try:
         store = ConstructionStore(db_path=db)
         _seed_candidate(store, "c0", review_required=True)
-        report = MeetingPrepBriefBuilder(store).build(
-            dry_run=False, readiness=_READY, now_utc=_NOW
-        )
+        report = MeetingPrepBriefBuilder(store).build(dry_run=False, readiness=_READY, now_utc=_NOW)
         secs = _sections(store)
         rr = secs["review_required_warnings"]
         assert rr["review_required"] is True
@@ -244,9 +266,7 @@ def test_dry_run_writes_nothing_but_plans() -> None:
     try:
         store = ConstructionStore(db_path=db)
         _seed_candidate(store, "c0")
-        report = MeetingPrepBriefBuilder(store).build(
-            dry_run=True, readiness=_READY, now_utc=_NOW
-        )
+        report = MeetingPrepBriefBuilder(store).build(dry_run=True, readiness=_READY, now_utc=_NOW)
         assert report["mode"] == "dry_run"
         assert report["summary"]["sections_planned"] == 8
         assert report["summary"]["sections_written"] == 0

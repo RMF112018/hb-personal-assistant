@@ -125,8 +125,14 @@ def write_mcp_resource_registry_snapshot(
                  schema_version)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (snapshot_id, _now(), int(resource_count), registry_hash, policy_version,
-             LATEST_SCHEMA_VERSION),
+            (
+                snapshot_id,
+                _now(),
+                int(resource_count),
+                registry_hash,
+                policy_version,
+                LATEST_SCHEMA_VERSION,
+            ),
         )
     return snapshot_id
 
@@ -155,8 +161,15 @@ def write_mcp_tool_registry_snapshot(
                  registry_hash, policy_version, schema_version)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (snapshot_id, _now(), int(allowed_tool_count), int(denied_action_count),
-             registry_hash, policy_version, LATEST_SCHEMA_VERSION),
+            (
+                snapshot_id,
+                _now(),
+                int(allowed_tool_count),
+                int(denied_action_count),
+                registry_hash,
+                policy_version,
+                LATEST_SCHEMA_VERSION,
+            ),
         )
     return snapshot_id
 
@@ -187,8 +200,16 @@ def write_mcp_permission_audit_run(
                  schema_version, evidence_path)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (audit_run_id, _now(), status, checks_json, int(finding_count), policy_version,
-             LATEST_SCHEMA_VERSION, evidence_path),
+            (
+                audit_run_id,
+                _now(),
+                status,
+                checks_json,
+                int(finding_count),
+                policy_version,
+                LATEST_SCHEMA_VERSION,
+                evidence_path,
+            ),
         )
     return audit_run_id
 
@@ -216,8 +237,14 @@ def write_mcp_prompt_registry_snapshot(
                  schema_version)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (snapshot_id, _now(), int(prompt_count), registry_hash, policy_version,
-             LATEST_SCHEMA_VERSION),
+            (
+                snapshot_id,
+                _now(),
+                int(prompt_count),
+                registry_hash,
+                policy_version,
+                LATEST_SCHEMA_VERSION,
+            ),
         )
     return snapshot_id
 

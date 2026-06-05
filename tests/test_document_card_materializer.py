@@ -38,38 +38,73 @@ def _registry() -> SourceRegistry:
                 kind="onedrive_business_root",
                 display_name="OD",
             ),
-        ]
+        ],
     )
 
 
 def _seed(store: ConstructionStore) -> None:
     # Compliant SharePoint source: 2 active files, 1 folder, 1 deleted file.
     store.upsert_inventory_item(
-        source_key="sp_test", drive_id="d1", item_id="f1", name=_RAW_NAME,
-        web_url=_RAW_URL, parent_path=_RAW_PATH, size_bytes=2048, is_folder=False,
-        last_modified="2026-05-01T00:00:00Z", etag="e1",
+        source_key="sp_test",
+        drive_id="d1",
+        item_id="f1",
+        name=_RAW_NAME,
+        web_url=_RAW_URL,
+        parent_path=_RAW_PATH,
+        size_bytes=2048,
+        is_folder=False,
+        last_modified="2026-05-01T00:00:00Z",
+        etag="e1",
     )
     store.upsert_inventory_item(
-        source_key="sp_test", drive_id="d1", item_id="f2", name="plan.dwg",
-        web_url="https://x/y", parent_path="/Projects/HB-1234", size_bytes=200_000_000,
-        is_folder=False, last_modified="2026-05-02T00:00:00Z", etag="e2",
+        source_key="sp_test",
+        drive_id="d1",
+        item_id="f2",
+        name="plan.dwg",
+        web_url="https://x/y",
+        parent_path="/Projects/HB-1234",
+        size_bytes=200_000_000,
+        is_folder=False,
+        last_modified="2026-05-02T00:00:00Z",
+        etag="e2",
     )
     store.upsert_inventory_item(
-        source_key="sp_test", drive_id="d1", item_id="dir1", name="RFIs",
-        web_url="https://x/dir", parent_path="/Projects/HB-1234", size_bytes=None,
-        is_folder=True, last_modified=None, etag="e3",
+        source_key="sp_test",
+        drive_id="d1",
+        item_id="dir1",
+        name="RFIs",
+        web_url="https://x/dir",
+        parent_path="/Projects/HB-1234",
+        size_bytes=None,
+        is_folder=True,
+        last_modified=None,
+        etag="e3",
     )
     store.upsert_inventory_item(
-        source_key="sp_test", drive_id="d1", item_id="f3", name="old.pdf",
-        web_url="https://x/old", parent_path="/Projects/HB-1234", size_bytes=10,
-        is_folder=False, last_modified=None, etag="e4",
+        source_key="sp_test",
+        drive_id="d1",
+        item_id="f3",
+        name="old.pdf",
+        web_url="https://x/old",
+        parent_path="/Projects/HB-1234",
+        size_bytes=10,
+        is_folder=False,
+        last_modified=None,
+        etag="e4",
     )
     store.mark_inventory_deleted(source_key="sp_test", item_id="f3")
     # Blocked OneDrive root source: 1 active file (must be skipped).
     store.upsert_inventory_item(
-        source_key="od_test", drive_id="d2", item_id="g1", name="onedrive.docx",
-        web_url="https://od/x", parent_path="/Personal", size_bytes=1024,
-        is_folder=False, last_modified=None, etag="e5",
+        source_key="od_test",
+        drive_id="d2",
+        item_id="g1",
+        name="onedrive.docx",
+        web_url="https://od/x",
+        parent_path="/Personal",
+        size_bytes=1024,
+        is_folder=False,
+        last_modified=None,
+        etag="e5",
     )
 
 
@@ -139,8 +174,12 @@ def test_cards_are_review_required_candidates_with_guards_zero(tmp_path: Path) -
         assert row["document_card_id"] and row["document_card_id"] == row["card_id"]
         assert row["title_hash"] and row["drive_item_id_hash"] and row["project_number_hash"]
         for guard in (
-            "raw_document_text_persisted", "raw_payload_persisted", "signed_url_persisted",
-            "download_url_persisted", "source_file_copied_to_vault", "external_writeback_performed",
+            "raw_document_text_persisted",
+            "raw_payload_persisted",
+            "signed_url_persisted",
+            "download_url_persisted",
+            "source_file_copied_to_vault",
+            "external_writeback_performed",
         ):
             assert row[guard] == 0
 

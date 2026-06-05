@@ -56,7 +56,9 @@ def test_normalize_submittal_review_flag_low_risk_default() -> None:
 
 
 def test_normalize_submittal_review_flag_revise_and_resubmit_status() -> None:
-    raw = SUBMITTAL_SAMPLE_PAYLOAD[2]  # status: revise_and_resubmit, contract amendment subject, no assignee
+    raw = SUBMITTAL_SAMPLE_PAYLOAD[
+        2
+    ]  # status: revise_and_resubmit, contract amendment subject, no assignee
     record = normalize_submittal(
         raw,
         project_key="tropical",

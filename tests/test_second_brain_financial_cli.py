@@ -85,7 +85,12 @@ def _stub_builders(monkeypatch: pytest.MonkeyPatch, *, proof_passed: bool = True
             "proof_passed": True,
             "schema_version": 36,
             "schema_version_expected": 35,
-            "status_counts": {"pass": 1, "warning": 0, "fail_blocking": 0, "deferred_not_blocking": 0},
+            "status_counts": {
+                "pass": 1,
+                "warning": 0,
+                "fail_blocking": 0,
+                "deferred_not_blocking": 0,
+            },
             "by_field_status": {"forecast_readiness": "pass"},
             "required_fields_covered": True,
             "readiness_overstated": False,

@@ -81,14 +81,17 @@ def router(config: ModelRoutingConfig) -> ClassificationRouter:
 
 @pytest.fixture
 def router_with_policy(
-    config: ModelRoutingConfig, policy_evaluator: ReviewPolicyEvaluator,
+    config: ModelRoutingConfig,
+    policy_evaluator: ReviewPolicyEvaluator,
 ) -> ClassificationRouter:
     return ClassificationRouter(config, policy_evaluator=policy_evaluator)
 
 
 @pytest.fixture
 def service(
-    config: ModelRoutingConfig, router: ClassificationRouter, store: ConstructionStore,
+    config: ModelRoutingConfig,
+    router: ClassificationRouter,
+    store: ConstructionStore,
 ) -> ClassificationService:
     return ClassificationService(config=config, router=router, store=store)
 
@@ -98,17 +101,21 @@ def _valid_raw(
     label: str = "operational",
     confidence: float = 0.9,
 ) -> str:
-    return json.dumps({
-        "item_id": item_id,
-        "proposed_label": label,
-        "confidence": confidence,
-        "rationale": "test rationale",
-        "risk_terms": [],
-    })
+    return json.dumps(
+        {
+            "item_id": item_id,
+            "proposed_label": label,
+            "confidence": confidence,
+            "rationale": "test rationale",
+            "risk_terms": [],
+        }
+    )
 
 
 def _inventory_item(
-    item_id: str = "i1", name: str = "x.pdf", parent_path: str = "/General",
+    item_id: str = "i1",
+    name: str = "x.pdf",
+    parent_path: str = "/General",
 ) -> dict[str, Any]:
     return {"item_id": item_id, "name": name, "parent_path": parent_path}
 
@@ -132,45 +139,53 @@ def test_routing_config_protected_categories_complete(config: ModelRoutingConfig
 
 def test_routing_config_rejects_missing_protected_category() -> None:
     with pytest.raises(ValidationError):
-        ModelRoutingConfig.model_validate({
-            "default_model": "m",
-            "protected_categories": ["contract"],  # missing 5 others
-            "tasks": [{"task": "classification", "model": "m", "system_prompt": "p"}],
-        })
+        ModelRoutingConfig.model_validate(
+            {
+                "default_model": "m",
+                "protected_categories": ["contract"],  # missing 5 others
+                "tasks": [{"task": "classification", "model": "m", "system_prompt": "p"}],
+            }
+        )
 
 
 def test_routing_config_rejects_duplicate_task() -> None:
     with pytest.raises(ValidationError):
-        ModelRoutingConfig.model_validate({
-            "default_model": "m",
-            "tasks": [
-                {"task": "classification", "model": "m1", "system_prompt": "p"},
-                {"task": "classification", "model": "m2", "system_prompt": "p"},
-            ],
-        })
+        ModelRoutingConfig.model_validate(
+            {
+                "default_model": "m",
+                "tasks": [
+                    {"task": "classification", "model": "m1", "system_prompt": "p"},
+                    {"task": "classification", "model": "m2", "system_prompt": "p"},
+                ],
+            }
+        )
 
 
 def test_routing_config_rejects_invalid_threshold() -> None:
     with pytest.raises(ValidationError):
-        ModelRoutingConfig.model_validate({
-            "default_model": "m",
-            "low_confidence_threshold": 1.5,
-            "tasks": [{"task": "classification", "model": "m", "system_prompt": "p"}],
-        })
+        ModelRoutingConfig.model_validate(
+            {
+                "default_model": "m",
+                "low_confidence_threshold": 1.5,
+                "tasks": [{"task": "classification", "model": "m", "system_prompt": "p"}],
+            }
+        )
 
 
 def test_env_var_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     override = tmp_path / "routing.yml"
     override.write_text(
-        yaml.safe_dump({
-            "version": 99,
-            "default_model": "override-model",
-            "low_confidence_threshold": 0.5,
-            "tasks": [
-                {"task": "classification", "model": "override-model", "system_prompt": "p"},
-                {"task": "review_reason", "model": "override-model", "system_prompt": "p"},
-            ],
-        }),
+        yaml.safe_dump(
+            {
+                "version": 99,
+                "default_model": "override-model",
+                "low_confidence_threshold": 0.5,
+                "tasks": [
+                    {"task": "classification", "model": "override-model", "system_prompt": "p"},
+                    {"task": "review_reason", "model": "override-model", "system_prompt": "p"},
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     monkeypatch.setenv(ENV_VAR, str(override))
@@ -182,6 +197,7 @@ def test_env_var_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_missing_seed_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from hb_assistant.construction.classification import loader as loader_mod
+
     monkeypatch.setattr(loader_mod, "_resolve_seed_path", lambda: tmp_path / "missing.yaml")
     monkeypatch.setattr(loader_mod, "_resolve_repo_override_path", lambda: tmp_path / "absent.yml")
     monkeypatch.delenv(ENV_VAR, raising=False)
@@ -214,7 +230,7 @@ def test_validator_rejects_malformed_json() -> None:
 
 def test_validator_rejects_json_array() -> None:
     with pytest.raises(InvalidModelOutputError) as exc:
-        parse_and_validate('[1,2,3]')
+        parse_and_validate("[1,2,3]")
     assert exc.value.code == "not_a_json_object"
 
 
@@ -225,38 +241,59 @@ def test_validator_rejects_missing_required_field() -> None:
 
 
 def test_validator_rejects_extra_fields() -> None:
-    raw = json.dumps({
-        "item_id": "x", "proposed_label": "operational", "confidence": 0.9,
-        "rationale": "r", "risk_terms": [], "stowaway": "should-fail",
-    })
+    raw = json.dumps(
+        {
+            "item_id": "x",
+            "proposed_label": "operational",
+            "confidence": 0.9,
+            "rationale": "r",
+            "risk_terms": [],
+            "stowaway": "should-fail",
+        }
+    )
     with pytest.raises(InvalidModelOutputError) as exc:
         parse_and_validate(raw)
     assert exc.value.code == "schema_validation_failed"
 
 
 def test_validator_rejects_unknown_proposed_label() -> None:
-    raw = json.dumps({
-        "item_id": "x", "proposed_label": "chaos", "confidence": 0.9,
-        "rationale": "r", "risk_terms": [],
-    })
+    raw = json.dumps(
+        {
+            "item_id": "x",
+            "proposed_label": "chaos",
+            "confidence": 0.9,
+            "rationale": "r",
+            "risk_terms": [],
+        }
+    )
     with pytest.raises(InvalidModelOutputError):
         parse_and_validate(raw)
 
 
 def test_validator_rejects_out_of_range_confidence() -> None:
-    raw = json.dumps({
-        "item_id": "x", "proposed_label": "other", "confidence": 1.5,
-        "rationale": "r", "risk_terms": [],
-    })
+    raw = json.dumps(
+        {
+            "item_id": "x",
+            "proposed_label": "other",
+            "confidence": 1.5,
+            "rationale": "r",
+            "risk_terms": [],
+        }
+    )
     with pytest.raises(InvalidModelOutputError):
         parse_and_validate(raw)
 
 
 def test_validator_rejects_empty_rationale() -> None:
-    raw = json.dumps({
-        "item_id": "x", "proposed_label": "other", "confidence": 0.5,
-        "rationale": "   ", "risk_terms": [],
-    })
+    raw = json.dumps(
+        {
+            "item_id": "x",
+            "proposed_label": "other",
+            "confidence": 0.5,
+            "rationale": "   ",
+            "risk_terms": [],
+        }
+    )
     with pytest.raises(InvalidModelOutputError):
         parse_and_validate(raw)
 
@@ -281,8 +318,13 @@ def test_router_accepts_high_confidence_non_protected(
 ) -> None:
     c = parse_and_validate(_valid_raw(label="operational", confidence=0.95))
     d = router.decide(
-        classification=c, source_key="s", item_id="i1", project_key=None,
-        model_name="m", model_task="classification", raw_output=_valid_raw(),
+        classification=c,
+        source_key="s",
+        item_id="i1",
+        project_key=None,
+        model_name="m",
+        model_task="classification",
+        raw_output=_valid_raw(),
     )
     assert d.status == "accepted"
     assert d.routing_reason == "model_accepted"
@@ -291,8 +333,13 @@ def test_router_accepts_high_confidence_non_protected(
 def test_router_routes_protected_category_to_review(router: ClassificationRouter) -> None:
     c = parse_and_validate(_valid_raw(label="contract", confidence=1.0))
     d = router.decide(
-        classification=c, source_key="s", item_id="i1", project_key=None,
-        model_name="m", model_task="classification", raw_output=_valid_raw(),
+        classification=c,
+        source_key="s",
+        item_id="i1",
+        project_key=None,
+        model_name="m",
+        model_task="classification",
+        raw_output=_valid_raw(),
     )
     assert d.status == "review"
     assert "protected_category:contract" in d.routing_reason
@@ -301,8 +348,13 @@ def test_router_routes_protected_category_to_review(router: ClassificationRouter
 def test_router_routes_low_confidence_to_review(router: ClassificationRouter) -> None:
     c = parse_and_validate(_valid_raw(label="operational", confidence=0.1))
     d = router.decide(
-        classification=c, source_key="s", item_id="i1", project_key=None,
-        model_name="m", model_task="classification", raw_output=_valid_raw(),
+        classification=c,
+        source_key="s",
+        item_id="i1",
+        project_key=None,
+        model_name="m",
+        model_task="classification",
+        raw_output=_valid_raw(),
     )
     assert d.status == "review"
     assert "low_confidence:0.100" in d.routing_reason
@@ -316,8 +368,13 @@ def test_router_controller_policy_overrides_model_high_confidence(
     # Inventory item lives under /Contracts/ — controller policy will flag it
     item = _inventory_item(name="Misc.pdf", parent_path="/Tropical/Contracts/Vendors")
     d = router_with_policy.decide(
-        classification=c, source_key="s", item_id="i1", project_key=None,
-        model_name="m", model_task="classification", raw_output=_valid_raw(),
+        classification=c,
+        source_key="s",
+        item_id="i1",
+        project_key=None,
+        model_name="m",
+        model_task="classification",
+        raw_output=_valid_raw(),
         inventory_item=item,
     )
     assert d.status == "review"
@@ -328,8 +385,13 @@ def test_router_truncates_raw_output(router: ClassificationRouter) -> None:
     c = parse_and_validate(_valid_raw())
     huge = "X" * 10000
     d = router.decide(
-        classification=c, source_key="s", item_id="i1", project_key=None,
-        model_name="m", model_task="classification", raw_output=huge,
+        classification=c,
+        source_key="s",
+        item_id="i1",
+        project_key=None,
+        model_name="m",
+        model_task="classification",
+        raw_output=huge,
     )
     assert len(d.raw_output_truncated) <= router.config.max_output_chars
 
@@ -342,8 +404,12 @@ def test_router_truncates_raw_output(router: ClassificationRouter) -> None:
 def test_service_classify_with_raw_persists_accepted(service: ClassificationService) -> None:
     d = service.classify_with_raw(
         raw_output=_valid_raw(item_id="i1", label="operational", confidence=0.95),
-        source_key="s", item_id="i1", project_key="p", model_task="classification",
-        model_name="m", inventory_item=_inventory_item(),
+        source_key="s",
+        item_id="i1",
+        project_key="p",
+        model_task="classification",
+        model_name="m",
+        inventory_item=_inventory_item(),
     )
     assert d.status == "accepted"
     rows = service._store.list_model_decisions()
@@ -356,8 +422,12 @@ def test_service_classify_with_raw_persists_review_for_protected(
 ) -> None:
     d = service.classify_with_raw(
         raw_output=_valid_raw(item_id="i1", label="contract", confidence=0.95),
-        source_key="s", item_id="i1", project_key="p", model_task="classification",
-        model_name="m", inventory_item=_inventory_item(),
+        source_key="s",
+        item_id="i1",
+        project_key="p",
+        model_task="classification",
+        model_name="m",
+        inventory_item=_inventory_item(),
     )
     assert d.status == "review"
     rows = service._store.list_model_decisions(status="review")
@@ -370,8 +440,11 @@ def test_service_raises_invalid_for_bad_json_and_persists_nothing(
     with pytest.raises(InvalidModelOutputError):
         service.classify_with_raw(
             raw_output="not json",
-            source_key="s", item_id="i1", project_key=None,
-            model_task="classification", model_name="m",
+            source_key="s",
+            item_id="i1",
+            project_key=None,
+            model_task="classification",
+            model_name="m",
             inventory_item=_inventory_item(),
         )
     assert service._store.count_model_decisions() == 0
@@ -381,8 +454,12 @@ def test_service_forces_review_on_item_id_mismatch(service: ClassificationServic
     """If the model echoes back the wrong item_id, we don't trust it."""
     d = service.classify_with_raw(
         raw_output=_valid_raw(item_id="WRONG", label="operational", confidence=0.95),
-        source_key="s", item_id="i1", project_key=None, model_task="classification",
-        model_name="m", inventory_item=_inventory_item("i1"),
+        source_key="s",
+        item_id="i1",
+        project_key=None,
+        model_task="classification",
+        model_name="m",
+        inventory_item=_inventory_item("i1"),
     )
     assert d.status == "review"
     assert "item_id_mismatch:" in d.routing_reason
@@ -396,13 +473,21 @@ def test_service_forces_review_on_item_id_mismatch(service: ClassificationServic
 def test_store_list_filters_by_status_and_source(service: ClassificationService) -> None:
     service.classify_with_raw(
         raw_output=_valid_raw("a", "operational", 0.95),
-        source_key="src-a", item_id="a", project_key=None,
-        model_task="classification", model_name="m", inventory_item=_inventory_item("a"),
+        source_key="src-a",
+        item_id="a",
+        project_key=None,
+        model_task="classification",
+        model_name="m",
+        inventory_item=_inventory_item("a"),
     )
     service.classify_with_raw(
         raw_output=_valid_raw("b", "contract", 0.95),
-        source_key="src-b", item_id="b", project_key=None,
-        model_task="classification", model_name="m", inventory_item=_inventory_item("b"),
+        source_key="src-b",
+        item_id="b",
+        project_key=None,
+        model_task="classification",
+        model_name="m",
+        inventory_item=_inventory_item("b"),
     )
     store = service._store
     assert store.count_model_decisions() == 2
@@ -419,10 +504,16 @@ def test_store_list_filters_by_status_and_source(service: ClassificationService)
 
 def test_client_raises_unavailable_on_network_failure() -> None:
     import requests
+
     client = OllamaChatClient(model="m")
-    with patch.object(
-        requests, "post", side_effect=requests.ConnectionError("connect refused"),
-    ), pytest.raises(OllamaUnavailable) as exc:
+    with (
+        patch.object(
+            requests,
+            "post",
+            side_effect=requests.ConnectionError("connect refused"),
+        ),
+        pytest.raises(OllamaUnavailable) as exc,
+    ):
         client.generate_json(system="s", prompt="p")
     # Sanitized — no host/URL/refused text
     assert "localhost" not in str(exc.value)
@@ -432,6 +523,7 @@ def test_client_raises_unavailable_on_network_failure() -> None:
 
 def test_client_raises_unavailable_on_non_200() -> None:
     import requests
+
     client = OllamaChatClient(model="m")
     mock_response = MagicMock()
     mock_response.status_code = 503
@@ -445,6 +537,7 @@ def test_client_raises_unavailable_on_non_200() -> None:
 
 def test_client_raises_unavailable_when_envelope_missing_response_field() -> None:
     import requests
+
     client = OllamaChatClient(model="m")
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -464,6 +557,7 @@ def test_client_raises_unavailable_when_envelope_missing_response_field() -> Non
 def _patch_store_to_tmp(monkeypatch: pytest.MonkeyPatch, db_path: str) -> None:
     """Force CLI to use a temp SQLite DB (mirrors pattern from review-queue tests)."""
     from hb_assistant.store import connection as conn_mod
+
     real = conn_mod.get_connection
 
     def _get(_: str | None = None):
@@ -472,17 +566,20 @@ def _patch_store_to_tmp(monkeypatch: pytest.MonkeyPatch, db_path: str) -> None:
     monkeypatch.setattr(conn_mod, "get_connection", _get)
     from hb_assistant.construction.store import repositories as repo_mod
     from hb_assistant.store import migrator as mig_mod
+
     monkeypatch.setattr(repo_mod, "get_connection", _get)
     monkeypatch.setattr(mig_mod, "get_connection", _get)
 
 
 def test_cli_classify_run_fixture_sample(
-    monkeypatch: pytest.MonkeyPatch, db_path: str,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     runner = CliRunner()
     r = runner.invoke(
-        construction_cli.app, ["classify", "run", "--fixture", "sample", "--json"],
+        construction_cli.app,
+        ["classify", "run", "--fixture", "sample", "--json"],
     )
     assert r.exit_code == 0, r.output
     p = json.loads(r.output)
@@ -496,34 +593,51 @@ def test_cli_classify_run_fixture_sample(
 
 
 def test_cli_classify_run_unknown_fixture(
-    monkeypatch: pytest.MonkeyPatch, db_path: str,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     runner = CliRunner()
     r = runner.invoke(
-        construction_cli.app, ["classify", "run", "--fixture", "nope", "--json"],
+        construction_cli.app,
+        ["classify", "run", "--fixture", "nope", "--json"],
     )
     assert r.exit_code == 1
     assert json.loads(r.output)["status"] == "unknown_fixture"
 
 
 def test_cli_classify_run_mock_output_valid(
-    monkeypatch: pytest.MonkeyPatch, db_path: str,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     store = ConstructionStore()
     store.upsert_inventory_item(
-        source_key="tropical-sharepoint", drive_id="d", item_id="it1",
-        name="Photos.zip", web_url="https://e/i", parent_path="/Tropical/General",
-        size_bytes=1, is_folder=False, last_modified=None, etag=None,
+        source_key="tropical-sharepoint",
+        drive_id="d",
+        item_id="it1",
+        name="Photos.zip",
+        web_url="https://e/i",
+        parent_path="/Tropical/General",
+        size_bytes=1,
+        is_folder=False,
+        last_modified=None,
+        etag=None,
     )
     runner = CliRunner()
     r = runner.invoke(
         construction_cli.app,
-        ["classify", "run",
-         "--source", "tropical-sharepoint", "--item", "it1",
-         "--mock-output", _valid_raw("it1", "operational", 0.9),
-         "--json"],
+        [
+            "classify",
+            "run",
+            "--source",
+            "tropical-sharepoint",
+            "--item",
+            "it1",
+            "--mock-output",
+            _valid_raw("it1", "operational", 0.9),
+            "--json",
+        ],
     )
     assert r.exit_code == 0, r.output
     p = json.loads(r.output)
@@ -532,22 +646,37 @@ def test_cli_classify_run_mock_output_valid(
 
 
 def test_cli_classify_run_mock_output_invalid(
-    monkeypatch: pytest.MonkeyPatch, db_path: str,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     store = ConstructionStore()
     store.upsert_inventory_item(
-        source_key="tropical-sharepoint", drive_id="d", item_id="it1",
-        name="Photos.zip", web_url="https://e/i", parent_path="/Tropical/General",
-        size_bytes=1, is_folder=False, last_modified=None, etag=None,
+        source_key="tropical-sharepoint",
+        drive_id="d",
+        item_id="it1",
+        name="Photos.zip",
+        web_url="https://e/i",
+        parent_path="/Tropical/General",
+        size_bytes=1,
+        is_folder=False,
+        last_modified=None,
+        etag=None,
     )
     runner = CliRunner()
     r = runner.invoke(
         construction_cli.app,
-        ["classify", "run",
-         "--source", "tropical-sharepoint", "--item", "it1",
-         "--mock-output", "not-json",
-         "--json"],
+        [
+            "classify",
+            "run",
+            "--source",
+            "tropical-sharepoint",
+            "--item",
+            "it1",
+            "--mock-output",
+            "not-json",
+            "--json",
+        ],
     )
     assert r.exit_code == 1, r.output
     p = json.loads(r.output)
@@ -558,23 +687,32 @@ def test_cli_classify_run_mock_output_invalid(
 
 
 def test_cli_classify_run_item_not_found(
-    monkeypatch: pytest.MonkeyPatch, db_path: str,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     runner = CliRunner()
     r = runner.invoke(
         construction_cli.app,
-        ["classify", "run",
-         "--source", "tropical-sharepoint", "--item", "missing-it",
-         "--mock-output", _valid_raw(),
-         "--json"],
+        [
+            "classify",
+            "run",
+            "--source",
+            "tropical-sharepoint",
+            "--item",
+            "missing-it",
+            "--mock-output",
+            _valid_raw(),
+            "--json",
+        ],
     )
     assert r.exit_code == 1
     assert json.loads(r.output)["status"] == "item_not_found"
 
 
 def test_cli_classify_decisions_lists_persisted_rows(
-    monkeypatch: pytest.MonkeyPatch, db_path: str,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     runner = CliRunner()
@@ -590,7 +728,8 @@ def test_cli_classify_decisions_lists_persisted_rows(
 
 
 def test_cli_classify_decisions_invalid_status(
-    monkeypatch: pytest.MonkeyPatch, db_path: str,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     runner = CliRunner()
@@ -617,8 +756,13 @@ def test_decision_record_never_carries_body_text(service: ClassificationService)
     item_with_body["body"] = BODY  # hypothetical contamination — must not propagate
 
     decision = service.classify_with_raw(
-        raw_output=raw, source_key="s", item_id="i1", project_key=None,
-        model_task="classification", model_name="m", inventory_item=item_with_body,
+        raw_output=raw,
+        source_key="s",
+        item_id="i1",
+        project_key=None,
+        model_task="classification",
+        model_name="m",
+        inventory_item=item_with_body,
     )
     blob = json.dumps(decision.model_dump())
     assert BODY not in blob
@@ -628,6 +772,7 @@ def test_protected_categories_match_review_queue_seed() -> None:
     """Protected list must match the controller-policy seed, otherwise routing
     can disagree across layers."""
     from hb_assistant.construction.policy.models import PROTECTED_CATEGORIES as POLICY_CATS
+
     cfg = load_model_routing_config()
     for cat in POLICY_CATS:
         assert cat in cfg.protected_categories
@@ -646,7 +791,12 @@ def _routing_cfg_dict(**overrides: Any) -> dict[str, Any]:
         "timeout_seconds": 15.0,
         "max_output_chars": 4000,
         "protected_categories": [
-            "contract", "financial", "legal", "incident", "injury", "personnel",
+            "contract",
+            "financial",
+            "legal",
+            "incident",
+            "injury",
+            "personnel",
         ],
         "tasks": [
             {"task": "classification", "model": "llama3.2:1b", "system_prompt": "x"},
@@ -789,9 +939,7 @@ def test_readiness_models_missing_when_some_absent(
     assert report.status == "models_missing"
     assert report.daemon_reachable is True
     assert set(report.missing_models) == set(cfg.resolved_expected_models())
-    assert all(
-        cmd.startswith("ollama pull ") for cmd in report.suggested_pull_commands
-    )
+    assert all(cmd.startswith("ollama pull ") for cmd in report.suggested_pull_commands)
 
 
 def test_readiness_daemon_unreachable_on_connection_error(
@@ -847,9 +995,7 @@ def test_readiness_module_does_not_reference_generate_endpoint() -> None:
     import inspect
 
     src = inspect.getsource(readiness_mod)
-    assert "/api/generate" not in src, (
-        "readiness.py unexpectedly references /api/generate"
-    )
+    assert "/api/generate" not in src, "readiness.py unexpectedly references /api/generate"
 
 
 # ---- CLI --------------------------------------------------------------------

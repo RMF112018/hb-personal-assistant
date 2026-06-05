@@ -24,16 +24,33 @@ runner = CliRunner()
 
 # data-quality diagnostics must not drift into legal/claims determination language (stop condition).
 _BANNED_WORDS = (
-    "liable", "liability", "entitled", "entitlement", "breach", "owes", "must pay",
-    "at fault", "negligent", "guilty", "responsible for the delay",
+    "liable",
+    "liability",
+    "entitled",
+    "entitlement",
+    "breach",
+    "owes",
+    "must pay",
+    "at fault",
+    "negligent",
+    "guilty",
+    "responsible for the delay",
 )
 
 
 def _content_blob(report: dict) -> str:
     """Serialize human-facing content only, excluding structural attestation keys, lower-cased."""
-    content = {k: report.get(k) for k in
-               ("coverage", "summary", "orphans", "linkage", "duplicate_warnings",
-                "relationship_edge_map")}
+    content = {
+        k: report.get(k)
+        for k in (
+            "coverage",
+            "summary",
+            "orphans",
+            "linkage",
+            "duplicate_warnings",
+            "relationship_edge_map",
+        )
+    }
     return json.dumps(content).lower()
 
 
@@ -59,9 +76,15 @@ def _record(db: Path, *, endpoint_id: str, record_id: str, parent: str = "") -> 
 
 
 def _edge(db: Path, *, rk: str, edge_type: str, endpoint_id: str) -> None:
-    emit_record_edge(project_key="tropical", from_record_key=rk, edge_type=edge_type,
-                     source_endpoint_id=endpoint_id, to_entity_key="entity-x", now_utc=_NOW,
-                     db_path=db)
+    emit_record_edge(
+        project_key="tropical",
+        from_record_key=rk,
+        edge_type=edge_type,
+        source_endpoint_id=endpoint_id,
+        to_entity_key="entity-x",
+        now_utc=_NOW,
+        db_path=db,
+    )
 
 
 def _contract(db: Path, *, endpoint_id: str, contract_id: str, family: str) -> None:
@@ -69,8 +92,13 @@ def _contract(db: Path, *, endpoint_id: str, contract_id: str, family: str) -> N
     conn.execute(
         """INSERT INTO procore_financial_contracts (record_key, project_key, endpoint_id,
            contract_id, contract_family) VALUES (?,?,?,?,?)""",
-        ("|".join(["tropical", endpoint_id, "", contract_id]), "tropical", endpoint_id,
-         contract_id, family),
+        (
+            "|".join(["tropical", endpoint_id, "", contract_id]),
+            "tropical",
+            endpoint_id,
+            contract_id,
+            family,
+        ),
     )
     conn.commit()
 
@@ -84,6 +112,7 @@ def _quality(db: Path, **kw):
 
 
 # --- responsible-party-gaps ---
+
 
 def test_partial_gap_when_some_records_carry_edge() -> None:
     db = _db()
@@ -131,15 +160,22 @@ def test_all_six_relationships_keyed() -> None:
     db = _db()
     _record(db, endpoint_id="rfis", record_id="1")
     rels = {c["relationship"] for c in _gaps(db)["coverage"]}
-    assert rels == {"owner", "assignee", "ball_in_court", "responsible_contractor",
-                    "vendor", "location"}
+    assert rels == {
+        "owner",
+        "assignee",
+        "ball_in_court",
+        "responsible_contractor",
+        "vendor",
+        "location",
+    }
 
 
 # --- relationship-quality ---
 
+
 def test_orphan_child_detected() -> None:
     db = _db()
-    _record(db, endpoint_id="meetings", record_id="100")           # parent exists
+    _record(db, endpoint_id="meetings", record_id="100")  # parent exists
     _record(db, endpoint_id="meeting-topics", record_id="200", parent="100")  # resolves
     _record(db, endpoint_id="meeting-topics", record_id="201", parent="999")  # orphan
     out = _quality(db)
@@ -186,6 +222,7 @@ def test_duplicate_po_commitment_warning() -> None:
 
 # --- guardrails / CLI ---
 
+
 def test_no_determination_language() -> None:
     db = _db()
     rk = _record(db, endpoint_id="rfis", record_id="1")
@@ -231,14 +268,26 @@ def test_cli_responsible_party_gaps_json(tmp_path: Path, monkeypatch: pytest.Mon
     _record(db, endpoint_id="rfis", record_id="2")
     _patch_conn(monkeypatch, db)
     res = runner.invoke(
-        app, ["procore", "live", "responsible-party-gaps", "--project", "tropical", "--json"],
+        app,
+        ["procore", "live", "responsible-party-gaps", "--project", "tropical", "--json"],
         catch_exceptions=False,
     )
     assert res.exit_code == 0, res.output
     payload = json.loads(res.output)
-    for key in ("command", "ok", "phase", "project_key", "generated_at", "summary", "coverage",
-                "relationship_edge_map", "no_live_call_performed", "no_raw_values_persisted",
-                "determinations_made", "guardrails"):
+    for key in (
+        "command",
+        "ok",
+        "phase",
+        "project_key",
+        "generated_at",
+        "summary",
+        "coverage",
+        "relationship_edge_map",
+        "no_live_call_performed",
+        "no_raw_values_persisted",
+        "determinations_made",
+        "guardrails",
+    ):
         assert key in payload, f"missing {key}"
     assert payload["ok"] is True
     assert payload["determinations_made"] is False
@@ -251,14 +300,25 @@ def test_cli_relationship_quality_json(tmp_path: Path, monkeypatch: pytest.Monke
     _record(db, endpoint_id="meeting-topics", record_id="201", parent="999")
     _patch_conn(monkeypatch, db)
     res = runner.invoke(
-        app, ["procore", "live", "relationship-quality", "--project", "tropical", "--json"],
+        app,
+        ["procore", "live", "relationship-quality", "--project", "tropical", "--json"],
         catch_exceptions=False,
     )
     assert res.exit_code == 0, res.output
     payload = json.loads(res.output)
-    for key in ("command", "ok", "phase", "summary", "orphans", "linkage", "duplicate_warnings",
-                "no_live_call_performed", "no_raw_values_persisted", "determinations_made",
-                "guardrails"):
+    for key in (
+        "command",
+        "ok",
+        "phase",
+        "summary",
+        "orphans",
+        "linkage",
+        "duplicate_warnings",
+        "no_live_call_performed",
+        "no_raw_values_persisted",
+        "determinations_made",
+        "guardrails",
+    ):
         assert key in payload, f"missing {key}"
     assert payload["orphans"]["orphan_count"] == 1
     assert payload["determinations_made"] is False

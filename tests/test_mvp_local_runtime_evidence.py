@@ -148,7 +148,10 @@ def _seed_all_fixtures(conn: sqlite3.Connection, base_date: date) -> dict[str, A
             "https://example.com/mail/1",
         ),
     )
-    seeds["body_mention"] = {"source_record_id": sr_body, "excerpt": "[redacted-body-mention-window]..."}
+    seeds["body_mention"] = {
+        "source_record_id": sr_body,
+        "excerpt": "[redacted-body-mention-window]...",
+    }
 
     # 2 + 3 + 4. Parser excerpt + action candidate + file review candidate
     sr_parser_action = "sr-parser-010"
@@ -158,7 +161,14 @@ def _seed_all_fixtures(conn: sqlite3.Connection, base_date: date) -> dict[str, A
         (source_type, source_record_id, classification, title, excerpt, confidence)
         VALUES (?,?,?,?,?,?)
         """,
-        ("email", sr_parser_action, "action_item", "Prepare Q3 financials", "Action: finalize deck by Friday", 0.91),
+        (
+            "email",
+            sr_parser_action,
+            "action_item",
+            "Prepare Q3 financials",
+            "Action: finalize deck by Friday",
+            0.91,
+        ),
     )
     sr_parser_file = "sr-parser-011"
     conn.execute(
@@ -167,7 +177,14 @@ def _seed_all_fixtures(conn: sqlite3.Connection, base_date: date) -> dict[str, A
         (source_type, source_record_id, classification, title, excerpt, confidence)
         VALUES (?,?,?,?,?,?)
         """,
-        ("email", sr_parser_file, "file_review", "Review attached deck v2", "File: Q3-deck-v2.pptx needs legal sign-off", 0.87),
+        (
+            "email",
+            sr_parser_file,
+            "file_review",
+            "Review attached deck v2",
+            "File: Q3-deck-v2.pptx needs legal sign-off",
+            0.87,
+        ),
     )
     seeds["parser_excerpts"] = [sr_parser_action, sr_parser_file]
 
@@ -179,7 +196,15 @@ def _seed_all_fixtures(conn: sqlite3.Connection, base_date: date) -> dict[str, A
         (action_item_id, type, status, title, confidence, due_date, source_record_id)
         VALUES (?,?,?,?,?,?,?)
         """,
-        (aid_wait, "waiting_on", "open", "Waiting on legal review of deck", 0.82, (base_date + timedelta(days=3)).isoformat(), sr_parser_action),
+        (
+            aid_wait,
+            "waiting_on",
+            "open",
+            "Waiting on legal review of deck",
+            0.82,
+            (base_date + timedelta(days=3)).isoformat(),
+            sr_parser_action,
+        ),
     )
     seeds["waiting_on"] = aid_wait
 
@@ -192,7 +217,17 @@ def _seed_all_fixtures(conn: sqlite3.Connection, base_date: date) -> dict[str, A
         (source_record_id, ical_uid, start_datetime, end_datetime, timezone, subject, is_cancelled, is_private, web_link)
         VALUES (?,?,?,?,?,?,?,?,?)
         """,
-        (sr_cal, "ical-xyz", future, (base_date + timedelta(days=2)).isoformat() + "T11:00:00", "America/Los_Angeles", "Q3 Sync + prep", 0, 0, "https://example.com/cal/42"),
+        (
+            sr_cal,
+            "ical-xyz",
+            future,
+            (base_date + timedelta(days=2)).isoformat() + "T11:00:00",
+            "America/Los_Angeles",
+            "Q3 Sync + prep",
+            0,
+            0,
+            "https://example.com/cal/42",
+        ),
     )
     seeds["upcoming_calendar"] = sr_cal
 
@@ -226,7 +261,9 @@ def _create_preseeded_daily_note(vault: Path, target_date: date) -> Path:
 def _count_written_links(db_path: str | Path) -> int:
     conn = sqlite3.connect(str(db_path))
     try:
-        row = conn.execute("SELECT COUNT(*) FROM source_links WHERE link_type = 'written_to_note'").fetchone()
+        row = conn.execute(
+            "SELECT COUNT(*) FROM source_links WHERE link_type = 'written_to_note'"
+        ).fetchone()
         return int(row[0]) if row else 0
     finally:
         conn.close()
@@ -236,7 +273,9 @@ def _read_note_content(path: Path) -> str:
     return path.read_text(encoding="utf-8") if path.exists() else ""
 
 
-def test_mvp_local_runtime_evidence_harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_mvp_local_runtime_evidence_harness(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Main harness entrypoint. Executes all 6 proofs and writes exact required artifacts."""
     _ensure_outputs_dir()
     base_date = date(2026, 5, 27)
@@ -286,18 +325,34 @@ def test_mvp_local_runtime_evidence_harness(tmp_path: Path, monkeypatch: pytest.
     )
 
     # actions list (recent action_items + links)
-    recent_actions = store.list_recent_action_items(limit=10) if hasattr(store, "list_recent_action_items") else []
+    recent_actions = (
+        store.list_recent_action_items(limit=10)
+        if hasattr(store, "list_recent_action_items")
+        else []
+    )
     list_payload = {
         "command": "actions list --json",
         "count": len(recent_actions) if recent_actions else 1,
-        "items": [{"id": seeds["waiting_on"], "type": "waiting_on", "title": "Waiting on legal review of deck"}],
+        "items": [
+            {
+                "id": seeds["waiting_on"],
+                "type": "waiting_on",
+                "title": "Waiting on legal review of deck",
+            }
+        ],
         "note": "Equivalent to `hb-assistant actions list --json`",
     }
-    (OUTPUTS_DIR / "actions-list.json").write_text(json.dumps(list_payload, indent=2, default=str), encoding="utf-8")
+    (OUTPUTS_DIR / "actions-list.json").write_text(
+        json.dumps(list_payload, indent=2, default=str), encoding="utf-8"
+    )
 
     # --- Proof 3: run morning --dry-run (local signals only) ---
     # Compose representative local-only morning payload (body mentions + calendar + actions + context)
-    mentions = store.list_recent_body_mentions(limit=5) if hasattr(store, "list_recent_body_mentions") else []
+    mentions = (
+        store.list_recent_body_mentions(limit=5)
+        if hasattr(store, "list_recent_body_mentions")
+        else []
+    )
     morning_payload = {
         "command": "run morning --dry-run --json",
         "dry_run": True,
@@ -354,8 +409,11 @@ def test_mvp_local_runtime_evidence_harness(tmp_path: Path, monkeypatch: pytest.
         "marker_bound_proof": {
             "dry_run_no_write": "Review Q3 deck" not in dry_note,
             "dry_run_no_link": after_dry_links == before_links,
-            "apply_wrote_inside_markers": MARKER_START in applied_note and "Review Q3 deck" in applied_note,
-            "outside_content_preserved": "Personal Log" in applied_note and "Private thoughts" in applied_note and "water plants" in applied_note,
+            "apply_wrote_inside_markers": MARKER_START in applied_note
+            and "Review Q3 deck" in applied_note,
+            "outside_content_preserved": "Personal Log" in applied_note
+            and "Private thoughts" in applied_note
+            and "water plants" in applied_note,
             "idempotent_repeat_no_dupe_section": applied2_note.count(MARKER_START) == 1,
             "note": "Full written_to_note link recording exercised in orchestrator path (P03); marker + preservation + idempotency proven here on current writer signature",
         },
@@ -376,7 +434,8 @@ def test_mvp_local_runtime_evidence_harness(tmp_path: Path, monkeypatch: pytest.
         "run2": {"links": after_apply2_links},
         "identical_outputs": after_apply_links == after_apply2_links,
         "outside_markers_unchanged": "This text must survive every bounded write." in applied2_note,
-        "no_duplicate_links_or_sections": after_apply2_links == after_apply_links and applied2_note.count("Review Q3 deck") == 1,
+        "no_duplicate_links_or_sections": after_apply2_links == after_apply_links
+        and applied2_note.count("Review Q3 deck") == 1,
         "guarantee": "write_bounded_section (marker-bounded, preserves outside content) + record_link (only on !dry_run) is idempotent across repeated applies",
     }
     (OUTPUTS_DIR / "idempotency-proof.json").write_text(
@@ -396,11 +455,20 @@ def test_mvp_local_runtime_evidence_harness(tmp_path: Path, monkeypatch: pytest.
     try:
         scan_res = subprocess.run(scan_cmd, capture_output=True, text=True, timeout=60)
         scan_json = scan_res.stdout.strip() or json.dumps(
-            {"ok": True, "findings": 0, "note": "clean (redacted fixtures only)", "command": " ".join(scan_cmd)}
+            {
+                "ok": True,
+                "findings": 0,
+                "note": "clean (redacted fixtures only)",
+                "command": " ".join(scan_cmd),
+            }
         )
     except Exception as ex:  # noqa: BLE001
         scan_json = json.dumps(
-            {"ok": False, "error": str(ex), "fallback": "no secrets in any generated JSON (manual verification)"}
+            {
+                "ok": False,
+                "error": str(ex),
+                "fallback": "no secrets in any generated JSON (manual verification)",
+            }
         )
     (OUTPUTS_DIR / "scan-sensitive.json").write_text(scan_json, encoding="utf-8")
 
@@ -435,7 +503,13 @@ def test_mvp_local_runtime_evidence_harness(tmp_path: Path, monkeypatch: pytest.
 
     # Success marker for evidence
     (OUTPUTS_DIR / "06-harness-success.marker").write_text(
-        json.dumps({"status": "PASS", "head": "840bc1b", "timestamp": datetime.now(timezone.utc).isoformat()}),
+        json.dumps(
+            {
+                "status": "PASS",
+                "head": "840bc1b",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        ),
         encoding="utf-8",
     )
 

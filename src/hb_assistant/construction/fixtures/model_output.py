@@ -14,13 +14,15 @@ from typing import Any
 
 
 def _raw(item_id: str, label: str, confidence: float, rationale: str = "synthetic") -> str:
-    return json.dumps({
-        "item_id": item_id,
-        "proposed_label": label,
-        "confidence": confidence,
-        "rationale": rationale,
-        "risk_terms": [],
-    })
+    return json.dumps(
+        {
+            "item_id": item_id,
+            "proposed_label": label,
+            "confidence": confidence,
+            "rationale": rationale,
+            "risk_terms": [],
+        }
+    )
 
 
 VALID_FIXTURES: dict[str, dict[str, Any]] = {
@@ -71,31 +73,52 @@ INVALID_FIXTURES: dict[str, dict[str, Any]] = {
         "expected_code": "schema_validation_failed",
     },
     "extra_field": {
-        "raw": json.dumps({
-            "item_id": "x", "proposed_label": "operational", "confidence": 0.9,
-            "rationale": "r", "risk_terms": [], "stowaway": "leak",
-        }),
+        "raw": json.dumps(
+            {
+                "item_id": "x",
+                "proposed_label": "operational",
+                "confidence": 0.9,
+                "rationale": "r",
+                "risk_terms": [],
+                "stowaway": "leak",
+            }
+        ),
         "expected_code": "schema_validation_failed",
     },
     "unknown_label": {
-        "raw": json.dumps({
-            "item_id": "x", "proposed_label": "chaos", "confidence": 0.9,
-            "rationale": "r", "risk_terms": [],
-        }),
+        "raw": json.dumps(
+            {
+                "item_id": "x",
+                "proposed_label": "chaos",
+                "confidence": 0.9,
+                "rationale": "r",
+                "risk_terms": [],
+            }
+        ),
         "expected_code": "schema_validation_failed",
     },
     "out_of_range_confidence": {
-        "raw": json.dumps({
-            "item_id": "x", "proposed_label": "other", "confidence": 1.5,
-            "rationale": "r", "risk_terms": [],
-        }),
+        "raw": json.dumps(
+            {
+                "item_id": "x",
+                "proposed_label": "other",
+                "confidence": 1.5,
+                "rationale": "r",
+                "risk_terms": [],
+            }
+        ),
         "expected_code": "schema_validation_failed",
     },
     "empty_rationale": {
-        "raw": json.dumps({
-            "item_id": "x", "proposed_label": "other", "confidence": 0.5,
-            "rationale": "   ", "risk_terms": [],
-        }),
+        "raw": json.dumps(
+            {
+                "item_id": "x",
+                "proposed_label": "other",
+                "confidence": 0.5,
+                "rationale": "   ",
+                "risk_terms": [],
+            }
+        ),
         "expected_code": "schema_validation_failed",
     },
 }

@@ -16,12 +16,16 @@ import typer
 from hb_assistant.actions.service import ActionService
 from hb_assistant.store.errors import StoreReadinessError
 
-app = typer.Typer(help="Action intelligence (local deterministic extraction + source-linked provenance). Dry-run safe by design.")
+app = typer.Typer(
+    help="Action intelligence (local deterministic extraction + source-linked provenance). Dry-run safe by design."
+)
 
 
 @app.command("extract")
 def extract_cmd(
-    dry_run: bool = typer.Option(True, "--dry-run", help="Preview only; never mutates DB when true (default)"),
+    dry_run: bool = typer.Option(
+        True, "--dry-run", help="Preview only; never mutates DB when true (default)"
+    ),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)"),
 ) -> None:
     """Extract action candidates (deterministic, source-linked). Dry-run is provably safe."""
@@ -40,11 +44,17 @@ def extract_cmd(
             "dry_run": dry_run,
             "results": results,
             "count": len(results),
-            "note": "dry-run: preview only; no writes to action_items or source_links" if dry_run else "persisted with source links",
+            "note": "dry-run: preview only; no writes to action_items or source_links"
+            if dry_run
+            else "persisted with source links",
         }
         if dry_run:
             payload["would_persist"] = len(results)
-        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else f"extracted {len(results)} candidates")
+        typer.echo(
+            json.dumps(payload, indent=2, default=str)
+            if json_out
+            else f"extracted {len(results)} candidates"
+        )
     except StoreReadinessError as e:
         payload = {"error": "StoreReadinessError", "command": "actions extract", "detail": str(e)}
         typer.echo(json.dumps(payload, indent=2) if json_out else f"error: {e}")
@@ -71,7 +81,9 @@ def list_cmd(
             "count": len(results),
             "note": "open actions only; full content never emitted",
         }
-        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else f"{len(results)} actions")
+        typer.echo(
+            json.dumps(payload, indent=2, default=str) if json_out else f"{len(results)} actions"
+        )
     except StoreReadinessError as e:
         payload = {"error": "StoreReadinessError", "command": "actions list", "detail": str(e)}
         typer.echo(json.dumps(payload, indent=2) if json_out else f"error: {e}")

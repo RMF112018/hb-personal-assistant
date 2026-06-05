@@ -129,11 +129,20 @@ def test_service_builds_manifest_from_store(populated_store: ConstructionStore) 
 
 def test_service_builds_sync_receipt_from_crawl_receipt() -> None:
     cr = CrawlReceipt(
-        run_id="r1", source_key="tropical-sharepoint", drive_id="b!drive-1",
-        mode="apply", status="ok",
-        started_at="2026-05-27T12:00:00+00:00", finished_at="2026-05-27T12:00:01+00:00",
-        pages_seen=2, items_seen=5, items_new=4, items_updated=1, items_deleted=0,
-        delta_link_recorded=True, sample_items=[],
+        run_id="r1",
+        source_key="tropical-sharepoint",
+        drive_id="b!drive-1",
+        mode="apply",
+        status="ok",
+        started_at="2026-05-27T12:00:00+00:00",
+        finished_at="2026-05-27T12:00:01+00:00",
+        pages_seen=2,
+        items_seen=5,
+        items_new=4,
+        items_updated=1,
+        items_deleted=0,
+        delta_link_recorded=True,
+        sample_items=[],
     )
     svc = ManifestService(ConstructionStore())
     receipt = svc.build_sync_receipt(cr)
@@ -145,7 +154,9 @@ def test_service_builds_sync_receipt_from_crawl_receipt() -> None:
 def test_service_projects_sync_receipt_from_store(populated_store: ConstructionStore) -> None:
     svc = ManifestService(populated_store)
     proj = svc.build_sync_receipt_from_store(
-        "tropical-sharepoint", run_id="r2", started_at="2026-05-27T12:00:00+00:00",
+        "tropical-sharepoint",
+        run_id="r2",
+        started_at="2026-05-27T12:00:00+00:00",
     )
     assert proj.status == "projected"
     assert proj.items_seen == 3  # carried from prior crawl receipt
@@ -156,7 +167,9 @@ def test_service_projects_empty_when_no_prior_receipt(tmp_path: Path) -> None:
     store = ConstructionStore(db)
     svc = ManifestService(store)
     proj = svc.build_sync_receipt_from_store(
-        "tropical-sharepoint", run_id="r3", started_at="2026-05-27T12:00:00+00:00",
+        "tropical-sharepoint",
+        run_id="r3",
+        started_at="2026-05-27T12:00:00+00:00",
     )
     assert proj.status == "projected"
     assert proj.items_seen == 0
@@ -167,20 +180,34 @@ def test_processing_receipt_aggregates_totals_and_errors() -> None:
     svc = ManifestService(ConstructionStore())
     rs = [
         SyncReceipt(
-            run_id="r", source_key="a", mode="apply", status="ok",
-            started_at="t", pages_seen=1, items_seen=2, items_new=2,
+            run_id="r",
+            source_key="a",
+            mode="apply",
+            status="ok",
+            started_at="t",
+            pages_seen=1,
+            items_seen=2,
+            items_new=2,
             guardrails=dict(GUARDRAILS_DEFAULT),
         ),
         SyncReceipt(
-            run_id="r", source_key="b", mode="apply", status="failed",
-            started_at="t", pages_seen=0, items_seen=0,
+            run_id="r",
+            source_key="b",
+            mode="apply",
+            status="failed",
+            started_at="t",
+            pages_seen=0,
+            items_seen=0,
             error_redacted="graph_503: timeout",
             guardrails=dict(GUARDRAILS_DEFAULT),
         ),
     ]
     pr = svc.build_processing_receipt(
-        run_id="r", mode="apply",
-        started_at="t0", finished_at="t1", per_source=rs,
+        run_id="r",
+        mode="apply",
+        started_at="t0",
+        finished_at="t1",
+        per_source=rs,
     )
     assert pr.source_count == 2
     assert pr.totals["items_seen"] == 2
@@ -204,8 +231,11 @@ def _example_manifest() -> SourceManifest:
         item_counts={"active": 3, "deleted": 1},
         sample_entries=[
             SourceManifestEntry(
-                item_id="i-1", name="design.pdf", size_bytes=2048,
-                is_folder=False, status="active",
+                item_id="i-1",
+                name="design.pdf",
+                size_bytes=2048,
+                is_folder=False,
+                status="active",
                 last_modified="2026-05-20T10:00:00Z",
             ),
         ],
@@ -259,17 +289,20 @@ def _build_all_renders(populated_store: ConstructionStore) -> dict[str, str]:
     test can prove the renderer never surfaces that token.
     """
     from hb_assistant.construction.config import load_source_registry
+
     reg = load_source_registry()
     svc = ManifestService(populated_store)
     source = next(s for s in reg.sources if s.source_key == "tropical-sharepoint")
 
     manifest = svc.build_source_manifest(source, run_id="run-x")
     sync_receipt = svc.build_sync_receipt_from_store(
-        "tropical-sharepoint", run_id="r1",
+        "tropical-sharepoint",
+        run_id="r1",
         started_at="2026-05-27T12:00:00+00:00",
     )
     processing_receipt = svc.build_processing_receipt(
-        run_id="r1", mode="apply",
+        run_id="r1",
+        mode="apply",
         started_at="2026-05-27T11:59:00+00:00",
         finished_at="2026-05-27T12:00:00+00:00",
         per_source=[sync_receipt],
@@ -278,7 +311,9 @@ def _build_all_renders(populated_store: ConstructionStore) -> dict[str, str]:
     card = svc.build_project_card(reg, "tropical")
     review_note = svc.build_review_required_note()
     document_card = svc.build_document_card(
-        source=source, item_id="item-0", policy_reason="manual review",
+        source=source,
+        item_id="item-0",
+        policy_reason="manual review",
     )
 
     return {
@@ -299,7 +334,8 @@ def all_renders(populated_store: ConstructionStore) -> dict[str, str]:
 
 @pytest.mark.parametrize("kind", ALL_OUTPUT_KINDS)
 def test_render_never_carries_body_or_text_fields_all_kinds(
-    all_renders: dict[str, str], kind: str,
+    all_renders: dict[str, str],
+    kind: str,
 ) -> None:
     forbidden = ["body:", "content:", "text:", "excerpt:", "full_text:"]
     lower = all_renders[kind].lower()
@@ -309,7 +345,8 @@ def test_render_never_carries_body_or_text_fields_all_kinds(
 
 @pytest.mark.parametrize("kind", ALL_OUTPUT_KINDS)
 def test_render_never_leaks_raw_delta_link_all_kinds(
-    all_renders: dict[str, str], kind: str,
+    all_renders: dict[str, str],
+    kind: str,
 ) -> None:
     rendered = all_renders[kind]
     # The populated_store fixture seeded delta_link with ABC123secret. No
@@ -332,7 +369,8 @@ _RENDERER_BY_KIND = {
 
 @pytest.mark.parametrize("kind", ALL_OUTPUT_KINDS)
 def test_render_is_byte_identical_on_repeat(
-    populated_store: ConstructionStore, kind: str,
+    populated_store: ConstructionStore,
+    kind: str,
 ) -> None:
     """Renderer is a pure function: rendering the same model instance twice
     must produce byte-identical Markdown. The service layer stamps
@@ -341,6 +379,7 @@ def test_render_is_byte_identical_on_repeat(
     # Re-render the same model instance — model objects are cached via the
     # all_renders pipeline; this test guards the renderer itself.
     from hb_assistant.construction.config import load_source_registry
+
     reg = load_source_registry()
     svc = ManifestService(populated_store)
     source = next(s for s in reg.sources if s.source_key == "tropical-sharepoint")
@@ -351,18 +390,21 @@ def test_render_is_byte_identical_on_repeat(
         b = ManifestRenderer.render_source_manifest(m)
     elif kind == "sync_receipt":
         m = svc.build_sync_receipt_from_store(
-            "tropical-sharepoint", run_id="r1",
+            "tropical-sharepoint",
+            run_id="r1",
             started_at="2026-05-27T12:00:00+00:00",
         )
         a = ManifestRenderer.render_sync_receipt(m)
         b = ManifestRenderer.render_sync_receipt(m)
     elif kind == "processing_receipt":
         sync = svc.build_sync_receipt_from_store(
-            "tropical-sharepoint", run_id="r1",
+            "tropical-sharepoint",
+            run_id="r1",
             started_at="2026-05-27T12:00:00+00:00",
         )
         m = svc.build_processing_receipt(
-            run_id="r1", mode="apply",
+            run_id="r1",
+            mode="apply",
             started_at="2026-05-27T11:59:00+00:00",
             finished_at="2026-05-27T12:00:00+00:00",
             per_source=[sync],
@@ -383,7 +425,9 @@ def test_render_is_byte_identical_on_repeat(
         b = ManifestRenderer.render_review_required(m)
     else:  # document_card
         m = svc.build_document_card(
-            source=source, item_id="item-0", policy_reason="manual review",
+            source=source,
+            item_id="item-0",
+            policy_reason="manual review",
         )
         a = ManifestRenderer.render_document_card(m)
         b = ManifestRenderer.render_document_card(m)
@@ -404,14 +448,14 @@ _TOKEN_SHAPE_REGEXES: tuple[re.Pattern[str], ...] = (
 
 @pytest.mark.parametrize("kind", ALL_OUTPUT_KINDS)
 def test_rendered_markdown_contains_no_token_shaped_secrets(
-    all_renders: dict[str, str], kind: str,
+    all_renders: dict[str, str],
+    kind: str,
 ) -> None:
     rendered = all_renders[kind]
     for rx in _TOKEN_SHAPE_REGEXES:
         match = rx.search(rendered)
         assert match is None, (
-            f"{kind} contains token-shaped substring {match.group()!r} "
-            f"matching {rx.pattern!r}"
+            f"{kind} contains token-shaped substring {match.group()!r} matching {rx.pattern!r}"
         )
 
 
@@ -420,7 +464,8 @@ def test_sync_receipt_renders_raw_delta_link_redacted_proof(
 ) -> None:
     svc = ManifestService(populated_store)
     receipt = svc.build_sync_receipt_from_store(
-        "tropical-sharepoint", run_id="r1",
+        "tropical-sharepoint",
+        run_id="r1",
         started_at="2026-05-27T12:00:00+00:00",
     )
     rendered = ManifestRenderer.render_sync_receipt(receipt)
@@ -430,12 +475,16 @@ def test_sync_receipt_renders_raw_delta_link_redacted_proof(
 def test_processing_receipt_renders_raw_delta_link_redacted_proof() -> None:
     svc = ManifestService(ConstructionStore())
     sync = SyncReceipt(
-        run_id="r", source_key="a", mode="apply", status="ok",
+        run_id="r",
+        source_key="a",
+        mode="apply",
+        status="ok",
         started_at="2026-05-27T12:00:00+00:00",
         guardrails=dict(GUARDRAILS_DEFAULT),
     )
     pr = svc.build_processing_receipt(
-        run_id="r", mode="apply",
+        run_id="r",
+        mode="apply",
         started_at="2026-05-27T11:59:00+00:00",
         finished_at="2026-05-27T12:00:00+00:00",
         per_source=[sync],
@@ -446,11 +495,13 @@ def test_processing_receipt_renders_raw_delta_link_redacted_proof() -> None:
 
 def test_manifest_sample_size_cap_respected() -> None:
     m = SourceManifest(
-        source_key="x", kind="sharepoint_site", display_name="x",
-        generated_at="t", run_id="r", sample_size_cap=2,
-        sample_entries=[
-            SourceManifestEntry(item_id=f"i-{i}") for i in range(5)
-        ],
+        source_key="x",
+        kind="sharepoint_site",
+        display_name="x",
+        generated_at="t",
+        run_id="r",
+        sample_size_cap=2,
+        sample_entries=[SourceManifestEntry(item_id=f"i-{i}") for i in range(5)],
         guardrails=dict(GUARDRAILS_DEFAULT),
     )
     rendered = ManifestRenderer.render_source_manifest(m)
@@ -465,11 +516,13 @@ def test_manifest_sample_size_cap_respected() -> None:
 
 def test_list_inventory_changed_since(populated_store: ConstructionStore) -> None:
     rows = populated_store.list_inventory_changed_since(
-        "tropical-sharepoint", since_iso="1970-01-01T00:00:00+00:00",
+        "tropical-sharepoint",
+        since_iso="1970-01-01T00:00:00+00:00",
     )
     assert len(rows) == 3
     rows_none = populated_store.list_inventory_changed_since(
-        "tropical-sharepoint", since_iso="2099-01-01T00:00:00+00:00",
+        "tropical-sharepoint",
+        since_iso="2099-01-01T00:00:00+00:00",
     )
     assert rows_none == []
 
@@ -489,11 +542,14 @@ def test_apply_writes_to_expected_subdirectories(tmp_path: Path) -> None:
     writer = ConstructionVaultWriter(vault_root=tmp_path)
     writer.write_source_manifest(source_key="tropical-sharepoint", rendered="hello manifest")
     writer.write_sync_receipt(
-        source_key="tropical-sharepoint", run_id="abcdef123456",
-        started_at="2026-05-27T12:00:00+00:00", rendered="hello sync",
+        source_key="tropical-sharepoint",
+        run_id="abcdef123456",
+        started_at="2026-05-27T12:00:00+00:00",
+        rendered="hello sync",
     )
     writer.write_processing_receipt(
-        run_id="abcdef123456", started_at="2026-05-27T12:00:00+00:00",
+        run_id="abcdef123456",
+        started_at="2026-05-27T12:00:00+00:00",
         rendered="hello processing",
     )
     assert (tmp_path / "10_Source_Manifests" / "tropical-sharepoint.manifest.md").exists()
@@ -507,9 +563,7 @@ def test_apply_is_marker_bounded_and_preserves_user_text(tmp_path: Path) -> None
     writer = ConstructionVaultWriter(vault_root=tmp_path)
     target = writer.manifest_path("tropical-sharepoint")
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(
-        "# My personal notes\n\nthis text must be preserved.\n", encoding="utf-8"
-    )
+    target.write_text("# My personal notes\n\nthis text must be preserved.\n", encoding="utf-8")
     writer.write_source_manifest(source_key="tropical-sharepoint", rendered="GENERATED V1")
     content_after_first = target.read_text(encoding="utf-8")
     assert "this text must be preserved." in content_after_first
@@ -559,7 +613,8 @@ def test_cli_sync_apply_without_env_var_returns_structured_error(
 
 
 def test_cli_sync_apply_with_env_var_writes_files(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     monkeypatch.setenv(ENV_VAR, str(tmp_path / "construction-vault"))
     runner = CliRunner()
@@ -589,7 +644,9 @@ def test_cli_sync_changed_only_skips_unchanged(
     payload = json.loads(result.output)
     # With a fresh store and no inventory rows, every source should be skipped.
     assert {s["source_key"] for s in payload["skipped"]} >= {
-        "tropical-sharepoint", "hilltop-sharepoint", "bobby-onedrive"
+        "tropical-sharepoint",
+        "hilltop-sharepoint",
+        "bobby-onedrive",
     }
     assert payload["processing_receipt"]["source_count"] == 0
 
@@ -709,9 +766,7 @@ def test_compute_baseline_comparison_matches_when_current_equals_historic(
             baseline_file_size_gb=0.3,  # 3 files × 100MB = 300MB = 0.3 GB
         )
     )
-    _seed_inventory(
-        store, src.source_key, file_count=3, folder_count=1, bytes_per_file=100_000_000
-    )
+    _seed_inventory(store, src.source_key, file_count=3, folder_count=1, bytes_per_file=100_000_000)
     cmp = compute_baseline_comparison(src, store)
     assert cmp.status == "matches", cmp.model_dump()
     assert cmp.current["file_count"] == 3
@@ -980,7 +1035,9 @@ def test_canonical_path_unknown_item_raises(tmp_path: Path) -> None:
         )
 
 
-def test_project_card_includes_procore_sync_summary_totals(populated_store: ConstructionStore) -> None:
+def test_project_card_includes_procore_sync_summary_totals(
+    populated_store: ConstructionStore,
+) -> None:
     conn = get_connection(populated_store._db_path)  # noqa: SLF001
     conn.executescript(
         """

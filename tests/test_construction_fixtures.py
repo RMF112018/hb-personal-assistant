@@ -78,8 +78,11 @@ def test_iter_fixtures_rejects_unknown_kind() -> None:
 
 def test_known_kind_aliases_match_documented_set() -> None:
     assert set(KIND_ALIASES) == {
-        "graph_delta", "source_registry", "review_policy",
-        "model_output", "procore",
+        "graph_delta",
+        "source_registry",
+        "review_policy",
+        "model_output",
+        "procore",
     }
 
 
@@ -131,10 +134,14 @@ def evaluator() -> ReviewPolicyEvaluator:
 
 @pytest.mark.parametrize("name,fixture", sorted(REVIEW_POLICY_FIXTURES.items()))
 def test_review_policy_fixture_fires_expected(
-    evaluator: ReviewPolicyEvaluator, name: str, fixture: dict,
+    evaluator: ReviewPolicyEvaluator,
+    name: str,
+    fixture: dict,
 ) -> None:
     matches = evaluator.evaluate(
-        source_key="fixture", project_key=None, item=fixture["inventory"],
+        source_key="fixture",
+        project_key=None,
+        item=fixture["inventory"],
     )
     actual = {m.rule_id for m in matches}
     expected = set(fixture["expected_rule_ids"])
@@ -143,9 +150,7 @@ def test_review_policy_fixture_fires_expected(
             f"{name}: expected {sorted(expected)}, got {sorted(actual)}"
         )
     else:
-        assert actual == set(), (
-            f"{name}: expected zero matches, got {sorted(actual)}"
-        )
+        assert actual == set(), f"{name}: expected zero matches, got {sorted(actual)}"
 
 
 # ---------------------------------------------------------------------------
@@ -166,10 +171,10 @@ def test_graph_delta_fixtures_have_no_body_text() -> None:
 
 
 _SECRET_PATTERNS = (
-    "AKIA",                # AWS access key prefix
-    "Bearer ",             # bearer-token header
-    "PRIVATE KEY",         # PEM blob
-    "-----BEGIN",          # PEM marker
+    "AKIA",  # AWS access key prefix
+    "Bearer ",  # bearer-token header
+    "PRIVATE KEY",  # PEM blob
+    "-----BEGIN",  # PEM marker
     "password=",
     "secret=",
     "api_key=",
@@ -197,7 +202,9 @@ def test_fixture_module_imports_no_http_client() -> None:
     import hb_assistant.construction.fixtures as pkg
 
     banned = {"requests", "httpx", "urllib3", "aiohttp"}
-    for _, name, ispkg in pkgutil.walk_packages(pkg.__path__, prefix="hb_assistant.construction.fixtures."):
+    for _, name, ispkg in pkgutil.walk_packages(
+        pkg.__path__, prefix="hb_assistant.construction.fixtures."
+    ):
         if ispkg:
             continue
         mod = importlib.import_module(name)

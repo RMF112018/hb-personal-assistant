@@ -58,7 +58,8 @@ def propose_memory_candidate(
         statement_redacted=statement_redacted,
         project_key=project_key,
         origin_id=origin_id,
-        provenance_class=provenance_class or ("operator" if confidence_class == "high" else "model_proposed"),
+        provenance_class=provenance_class
+        or ("operator" if confidence_class == "high" else "model_proposed"),
         confidence_class=confidence_class,
         review_required=tier != 1,
         review_tier=tier,
@@ -176,9 +177,12 @@ def build_memory_curator_agent_proof() -> dict[str, Any]:
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        mem_rows = [dict(r) for r in conn.execute("SELECT * FROM long_term_memory_items").fetchall()]
+        mem_rows = [
+            dict(r) for r in conn.execute("SELECT * FROM long_term_memory_items").fetchall()
+        ]
         sig_rows = [
-            dict(r) for r in conn.execute("SELECT * FROM long_term_memory_quality_signals").fetchall()
+            dict(r)
+            for r in conn.execute("SELECT * FROM long_term_memory_quality_signals").fetchall()
         ]
         cand_rows = [
             dict(r) for r in conn.execute("SELECT * FROM memory_update_candidates").fetchall()
@@ -186,9 +190,7 @@ def build_memory_curator_agent_proof() -> dict[str, Any]:
         conn.close()
 
     guard_cols = [c for c in (mem_rows[0] if mem_rows else {}) if c.endswith("_persisted")]
-    guards_zero = all(
-        all(r[c] == 0 for c in guard_cols) for r in mem_rows
-    ) and all(
+    guards_zero = all(all(r[c] == 0 for c in guard_cols) for r in mem_rows) and all(
         all(r[c] == 0 for c in guard_cols if c in r) for r in sig_rows
     )
     blob = "".join(c.model_dump_json() for c in (normal, sensitive)) + (
@@ -196,8 +198,15 @@ def build_memory_curator_agent_proof() -> dict[str, Any]:
     )
     no_raw = not any(
         t in blob
-        for t in ("raw_body", "raw_document_text", "raw_prompt", "raw_response", "signed_url",
-                  "download_url", "secret")
+        for t in (
+            "raw_body",
+            "raw_document_text",
+            "raw_prompt",
+            "raw_response",
+            "signed_url",
+            "download_url",
+            "secret",
+        )
     )
 
     proof_passed = bool(
@@ -259,7 +268,11 @@ def build_long_term_memory_proof() -> dict[str, Any]:
     from hb_assistant.construction.store import ConstructionStore
 
     refs = [
-        {"source_family": "phase_07d_source_evidence_trails", "source_ref": "ev-1", "evidence_ref": "ev-1"}
+        {
+            "source_family": "phase_07d_source_evidence_trails",
+            "source_ref": "ev-1",
+            "evidence_ref": "ev-1",
+        }
     ]
     with tempfile.TemporaryDirectory() as tmp:
         db = f"{tmp}/memory.sqlite3"
@@ -284,7 +297,8 @@ def build_long_term_memory_proof() -> dict[str, Any]:
             dict(r) for r in conn.execute("SELECT * FROM long_term_memory_source_refs").fetchall()
         ]
         sig_rows = [
-            dict(r) for r in conn.execute("SELECT * FROM long_term_memory_quality_signals").fetchall()
+            dict(r)
+            for r in conn.execute("SELECT * FROM long_term_memory_quality_signals").fetchall()
         ]
         conn.close()
 

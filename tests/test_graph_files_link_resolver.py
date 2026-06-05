@@ -43,7 +43,12 @@ def _folder_item() -> dict:
         "webUrl": "https://hedrickbrotherscom.sharepoint.com/sites/2023Projects/Shared%20Documents/23-435-01Tropical",
         "folder": {"childCount": 9},
         "parentReference": {"driveId": "b!drive1", "id": "PARENT1"},
-        "sharepointIds": {"siteId": "site-1", "webId": "web-1", "listId": "list-1", "listItemId": "7"},
+        "sharepointIds": {
+            "siteId": "site-1",
+            "webId": "web-1",
+            "listId": "list-1",
+            "listItemId": "7",
+        },
     }
 
 
@@ -109,7 +114,9 @@ def test_shares_api_folder_success() -> None:
     call = http.get.call_args
     assert call.args[0].startswith("/shares/u!")
     assert "headers" not in call.kwargs  # no redeemSharingLink header possible
-    assert "redeemSharingLink" not in json.dumps({"args": list(call.args), "kwargs": {k: str(v) for k, v in call.kwargs.items()}})
+    assert "redeemSharingLink" not in json.dumps(
+        {"args": list(call.args), "kwargs": {k: str(v) for k, v in call.kwargs.items()}}
+    )
 
 
 def test_shares_api_file_success() -> None:
@@ -145,7 +152,11 @@ def test_onedrive_business_root_fallback() -> None:
     # /shares 404 → fall through; then /me/drive resolves the root.
     http.get.side_effect = [
         GraphHttpError("GET", "/shares/x/driveItem", 404, "not found"),
-        {"id": "b!bizdrive", "webUrl": "https://h-my.sharepoint.com/personal/bfetting/Documents", "driveType": "business"},
+        {
+            "id": "b!bizdrive",
+            "webUrl": "https://h-my.sharepoint.com/personal/bfetting/Documents",
+            "driveType": "business",
+        },
     ]
     url = "https://hedrickbrotherscom-my.sharepoint.com/personal/bfetting/Documents/Forms/All.aspx"
     r = LinkResolver(http_client=http).resolve_link(url, dry_run=True)

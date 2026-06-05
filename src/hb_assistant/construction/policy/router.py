@@ -57,7 +57,9 @@ class ReviewQueueRouter:
 
         for item in items:
             for match in self._evaluator.evaluate(
-                source_key=source_key, project_key=project_key, item=item,
+                source_key=source_key,
+                project_key=project_key,
+                item=item,
             ):
                 result.matches_found += 1
                 result.matches.append(match)
@@ -77,12 +79,15 @@ class ReviewQueueRouter:
         apply: bool,
     ) -> list[RouterResult]:
         targets = [
-            s for s in registry.sources
+            s
+            for s in registry.sources
             if only_source_key is None or s.source_key == only_source_key
         ]
         return [
             self.evaluate_source(
-                source_key=s.source_key, project_key=s.project_key, apply=apply,
+                source_key=s.source_key,
+                project_key=s.project_key,
+                apply=apply,
             )
             for s in targets
         ]

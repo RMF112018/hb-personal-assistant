@@ -45,7 +45,9 @@ class FakeReader:
     def get_me(self) -> dict[str, Any]:
         return {"userPrincipalName": _OWNER}
 
-    def list_messages(self, *, folder_id=None, top=50, received_after=None, max_items=None) -> list[dict[str, Any]]:
+    def list_messages(
+        self, *, folder_id=None, top=50, received_after=None, max_items=None
+    ) -> list[dict[str, Any]]:
         return self._messages[:max_items] if max_items else list(self._messages)
 
     def list_attachment_metadata(self, message_id: str) -> list[dict[str, Any]]:
@@ -68,7 +70,11 @@ def _tmp_db() -> str:
 def _store_with_inbox(db: str) -> ConstructionStore:
     store = ConstructionStore(db)
     store.upsert_email_source_location(
-        source_id="sx", mailbox_owner_hash="h", folder_role="inbox", folder_id="F", include_in_sync=True
+        source_id="sx",
+        mailbox_owner_hash="h",
+        folder_role="inbox",
+        folder_id="F",
+        include_in_sync=True,
     )
     return store
 
@@ -97,7 +103,11 @@ def test_capture_encrypts_and_stores_ref_only() -> None:
     try:
         dump = " ".join(
             " ".join(str(c) for c in row)
-            for tbl in ("email_message_body_vault_refs", "email_messages", "email_processing_receipts")
+            for tbl in (
+                "email_message_body_vault_refs",
+                "email_messages",
+                "email_processing_receipts",
+            )
             for row in conn.execute(f"SELECT * FROM {tbl}")
         )
     finally:

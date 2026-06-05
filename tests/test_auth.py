@@ -13,7 +13,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from hb_assistant.auth.classifier import classify_token_claims, require_delegated, safe_redact_claims
+from hb_assistant.auth.classifier import (
+    classify_token_claims,
+    require_delegated,
+    safe_redact_claims,
+)
 from hb_assistant.auth.exceptions import ClassificationError
 from hb_assistant.auth.providers import AppOnlyAuthProvider, DelegatedAuthProvider
 from hb_assistant.auth.token_cache_manager import TokenCacheManager
@@ -23,6 +27,7 @@ from hb_assistant.graph.http_client import GraphHttpClient
 
 
 # --- Classifier tests (core, 4+ cases + edges) ---
+
 
 def test_classify_delegated() -> None:
     claims = {"scp": "User.Read Mail.Read", "tid": "abc"}
@@ -60,6 +65,7 @@ def test_safe_redact_claims() -> None:
 
 # --- Cache manager (temp dir, perms, roundtrip) ---
 
+
 def test_cache_manager_temp_perms_and_roundtrip() -> None:
     with tempfile.TemporaryDirectory() as td:
         # Override PathPolicy to use temp as app support root
@@ -96,6 +102,7 @@ def test_cache_manager_temp_perms_and_roundtrip() -> None:
 
 
 # --- Provider mocks (no real MSAL network) ---
+
 
 def test_delegated_provider_status_no_token() -> None:
     with tempfile.TemporaryDirectory() as td:
@@ -139,10 +146,15 @@ def test_app_only_provider_graceful_no_cert(mock_msal: MagicMock) -> None:
         pp = PathPolicy(cfg)
         prov = AppOnlyAuthProvider("tid", "cid", "/nonexistent/bundle.pem", path_policy=pp)
         info = prov.status_info()
-        assert "none" in str(info) or info.get("token_type") == "none" or "Certificate" in str(info.get("message", ""))
+        assert (
+            "none" in str(info)
+            or info.get("token_type") == "none"
+            or "Certificate" in str(info.get("message", ""))
+        )
 
 
 # --- Graph client retry/paging (mocked responses) ---
+
 
 @patch("hb_assistant.graph.http_client.requests")
 def test_graph_client_paging_and_retry(mock_requests: MagicMock) -> None:
@@ -157,7 +169,10 @@ def test_graph_client_paging_and_retry(mock_requests: MagicMock) -> None:
     # Simulate one page + nextLink
     mock_resp1 = MagicMock()
     mock_resp1.status_code = 200
-    mock_resp1.json.return_value = {"value": [{"id": "1"}], "@odata.nextLink": "https://graph.../next"}
+    mock_resp1.json.return_value = {
+        "value": [{"id": "1"}],
+        "@odata.nextLink": "https://graph.../next",
+    }
     mock_resp2 = MagicMock()
     mock_resp2.status_code = 200
     mock_resp2.json.return_value = {"value": [{"id": "2"}]}
@@ -190,7 +205,10 @@ def test_graph_client_get_all_pages_respects_max_items(mock_requests: MagicMock)
     client = GraphHttpClient(fake_token)
 
     page_1 = MagicMock(status_code=200)
-    page_1.json.return_value = {"value": [{"id": "1"}, {"id": "2"}], "@odata.nextLink": "https://graph.example/next"}
+    page_1.json.return_value = {
+        "value": [{"id": "1"}, {"id": "2"}],
+        "@odata.nextLink": "https://graph.example/next",
+    }
     page_2 = MagicMock(status_code=200)
     page_2.json.return_value = {"value": [{"id": "3"}, {"id": "4"}]}
     mock_requests.Session.return_value.request.side_effect = [page_1, page_2]
@@ -210,7 +228,10 @@ def test_graph_client_get_all_pages_respects_max_pages(mock_requests: MagicMock)
     client = GraphHttpClient(fake_token)
 
     page_1 = MagicMock(status_code=200)
-    page_1.json.return_value = {"value": [{"id": "1"}], "@odata.nextLink": "https://graph.example/next"}
+    page_1.json.return_value = {
+        "value": [{"id": "1"}],
+        "@odata.nextLink": "https://graph.example/next",
+    }
     page_2 = MagicMock(status_code=200)
     page_2.json.return_value = {"value": [{"id": "2"}]}
     mock_requests.Session.return_value.request.side_effect = [page_1, page_2]
@@ -247,13 +268,15 @@ def test_ensure_delegated_id_token_claims_decodes_jwt_for_scp_and_upn() -> None:
     token's own JWT payload to recover scp/upn/tid for the classifier."""
     from hb_assistant.auth.providers import _ensure_delegated_id_token_claims
 
-    access_token = _build_test_jwt({
-        "scp": "User.Read Files.ReadWrite.All",
-        "upn": "bfetting@hedrickbrothers.com",
-        "tid": "0e834bd7-628b-42c8-b9ec-ecebc9719be4",
-        "oid": "0026a9f0-8ed0-45ca-8bc4-8e1593fcc37b",
-        "aud": "https://graph.microsoft.com",
-    })
+    access_token = _build_test_jwt(
+        {
+            "scp": "User.Read Files.ReadWrite.All",
+            "upn": "bfetting@hedrickbrothers.com",
+            "tid": "0e834bd7-628b-42c8-b9ec-ecebc9719be4",
+            "oid": "0026a9f0-8ed0-45ca-8bc4-8e1593fcc37b",
+            "aud": "https://graph.microsoft.com",
+        }
+    )
     msal_silent_result = {
         "access_token": access_token,
         "expires_in": 3600,

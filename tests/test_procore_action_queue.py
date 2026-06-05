@@ -32,9 +32,16 @@ def _db() -> Path:
 
 def _start_run(db: Path | None) -> None:
     record_sync_run_start(
-        sync_run_id="run1", endpoint_id="rfis", command_endpoint="rfis",
-        legacy_endpoint_alias=None, project_key="tropical", procore_project_id="2525840",
-        company_id="5280", mode="live_apply", started_at_utc=_NOW, db_path=db,
+        sync_run_id="run1",
+        endpoint_id="rfis",
+        command_endpoint="rfis",
+        legacy_endpoint_alias=None,
+        project_key="tropical",
+        procore_project_id="2525840",
+        company_id="5280",
+        mode="live_apply",
+        started_at_utc=_NOW,
+        db_path=db,
     )
 
 
@@ -52,8 +59,24 @@ def _ins_record(
           last_seen_at_utc, last_sync_run_id, raw_body_persisted
         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)
         """,
-        ("tropical", "2525840", endpoint, "", rid, None, None, "open", _NOW, source,
-         canonical, review, None, _NOW, _NOW, "run1"),
+        (
+            "tropical",
+            "2525840",
+            endpoint,
+            "",
+            rid,
+            None,
+            None,
+            "open",
+            _NOW,
+            source,
+            canonical,
+            review,
+            None,
+            _NOW,
+            _NOW,
+            "run1",
+        ),
     )
     conn.commit()
 
@@ -67,8 +90,16 @@ def _ins_amount(db: Path | None, record_key: str, endpoint: str, name: str, valu
           source_field_path, created_at_utc, raw_body_persisted
         ) VALUES (?,?,?,?,?,?,?,?,0)
         """,
-        (f"af|{record_key}|{name}", "tropical", record_key, endpoint, name, value,
-         f"{endpoint}.{name}", _NOW),
+        (
+            f"af|{record_key}|{name}",
+            "tropical",
+            record_key,
+            endpoint,
+            name,
+            value,
+            f"{endpoint}.{name}",
+            _NOW,
+        ),
     )
     conn.commit()
 
@@ -76,39 +107,96 @@ def _ins_amount(db: Path | None, record_key: str, endpoint: str, name: str, valu
 def _seed(db: Path | None) -> None:
     _start_run(db)
     # observations/55: review-required; secret only lives in the canonical blob (never emitted).
-    _ins_record(db, "observations", "55", review=1, source="/x/55",
-                canonical=json.dumps({"subject": _SECRET_TITLE, "status": "open"}))
+    _ins_record(
+        db,
+        "observations",
+        "55",
+        review=1,
+        source="/x/55",
+        canonical=json.dumps({"subject": _SECRET_TITLE, "status": "open"}),
+    )
     # rfis/1: not review-required; carries a canonical due date used as a fallback.
-    _ins_record(db, "rfis", "1", review=0, source="/rest/v1.0/projects/2525840/rfis/1",
-                canonical=json.dumps({"due_date": _CANON_DUE, "status": "open"}))
+    _ins_record(
+        db,
+        "rfis",
+        "1",
+        review=0,
+        source="/rest/v1.0/projects/2525840/rfis/1",
+        canonical=json.dumps({"due_date": _CANON_DUE, "status": "open"}),
+    )
     # exposure fact on a commitment record (names/counts only; value must never leak).
     _ins_amount(db, "tropical|commitments||9", "commitments", "estimated_cost", _SECRET_AMOUNT)
 
     # explicitly overdue, high, with an owner key, on the rfis/1 record
-    emit_action_signal(project_key="tropical", record_key="tropical|rfis||1", endpoint_id="rfis",
-                       signal_type="rfi_overdue", importance="high", signal_status="open",
-                       due_at_utc=_PAST, owner_entity_key="user:pm1",
-                       reason_codes=["seed_reason"], now_utc=_NOW, db_path=db)
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|rfis||1",
+        endpoint_id="rfis",
+        signal_type="rfi_overdue",
+        importance="high",
+        signal_status="open",
+        due_at_utc=_PAST,
+        owner_entity_key="user:pm1",
+        reason_codes=["seed_reason"],
+        now_utc=_NOW,
+        db_path=db,
+    )
     # no signal due date -> canonical-record fallback (rfis/1 due_date) -> overdue
-    emit_action_signal(project_key="tropical", record_key="tropical|rfis||1", endpoint_id="rfis",
-                       signal_type="rfi_response_due", importance="medium", signal_status="open",
-                       now_utc=_NOW, db_path=db)
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|rfis||1",
+        endpoint_id="rfis",
+        signal_type="rfi_response_due",
+        importance="medium",
+        signal_status="open",
+        now_utc=_NOW,
+        db_path=db,
+    )
     # review-required, high, no due -> no_due_date_high_importance; safety dimension
-    emit_action_signal(project_key="tropical", record_key="tropical|observations||55",
-                       endpoint_id="observations", signal_type="observation_open_safety",
-                       importance="high", signal_status="open", now_utc=_NOW, db_path=db)
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|observations||55",
+        endpoint_id="observations",
+        signal_type="observation_open_safety",
+        importance="high",
+        signal_status="open",
+        now_utc=_NOW,
+        db_path=db,
+    )
     # cost exposure, high, no due; exposure fact present at this record_key
-    emit_action_signal(project_key="tropical", record_key="tropical|commitments||9",
-                       endpoint_id="commitments", signal_type="commitment_cost_impact_flagged",
-                       importance="high", signal_status="open", now_utc=_NOW, db_path=db)
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|commitments||9",
+        endpoint_id="commitments",
+        signal_type="commitment_cost_impact_flagged",
+        importance="high",
+        signal_status="open",
+        now_utc=_NOW,
+        db_path=db,
+    )
     # schedule exposure, medium, future due -> upcoming
-    emit_action_signal(project_key="tropical", record_key="tropical|deliveries||3",
-                       endpoint_id="deliveries", signal_type="delivery_due", importance="medium",
-                       signal_status="open", due_at_utc=_FUTURE, now_utc=_NOW, db_path=db)
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|deliveries||3",
+        endpoint_id="deliveries",
+        signal_type="delivery_due",
+        importance="medium",
+        signal_status="open",
+        due_at_utc=_FUTURE,
+        now_utc=_NOW,
+        db_path=db,
+    )
     # resolved -> excluded from the open queue
-    emit_action_signal(project_key="tropical", record_key="tropical|submittals||7",
-                       endpoint_id="submittals", signal_type="submittal_approved",
-                       importance="low", signal_status="resolved", now_utc=_NOW, db_path=db)
+    emit_action_signal(
+        project_key="tropical",
+        record_key="tropical|submittals||7",
+        endpoint_id="submittals",
+        signal_type="submittal_approved",
+        importance="low",
+        signal_status="resolved",
+        now_utc=_NOW,
+        db_path=db,
+    )
 
 
 def _q(db: Path | None, **kw):
@@ -189,7 +277,9 @@ def test_importance_filter() -> None:
     out = _q(db, importance="high")
     assert all(i["importance"] == "high" for i in out["queue"])
     assert {i["signal_type"] for i in out["queue"]} == {
-        "rfi_overdue", "observation_open_safety", "commitment_cost_impact_flagged"
+        "rfi_overdue",
+        "observation_open_safety",
+        "commitment_cost_impact_flagged",
     }
 
 
@@ -256,15 +346,28 @@ def test_cli_json_shape() -> None:
     _seed(None)
     get_connection().commit()
     res = CliRunner().invoke(
-        app, ["procore", "live", "overdue", "--project", "tropical", "--json"],
+        app,
+        ["procore", "live", "overdue", "--project", "tropical", "--json"],
         catch_exceptions=False,
     )
     assert res.exit_code == 0
     payload = json.loads(res.output)
-    for key in ("command", "ok", "phase", "project_key", "generated_at", "filters", "summary",
-                "queue", "queue_truncated", "unsupported_due_date_endpoints",
-                "no_live_call_performed", "no_raw_values_persisted", "determinations_made",
-                "guardrails"):
+    for key in (
+        "command",
+        "ok",
+        "phase",
+        "project_key",
+        "generated_at",
+        "filters",
+        "summary",
+        "queue",
+        "queue_truncated",
+        "unsupported_due_date_endpoints",
+        "no_live_call_performed",
+        "no_raw_values_persisted",
+        "determinations_made",
+        "guardrails",
+    ):
         assert key in payload, f"missing {key}"
     assert payload["no_live_call_performed"] is True
     assert payload["determinations_made"] is False

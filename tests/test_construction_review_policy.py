@@ -205,8 +205,13 @@ def test_invalid_sensitivity_rejected() -> None:
 def test_confidence_range_validated() -> None:
     with pytest.raises(ValidationError):
         ReviewRule(
-            rule_id="x", kind="risk_term", pattern="x", sensitivity="high",
-            classification_label="contract", reason="r", suggested_action="review",
+            rule_id="x",
+            kind="risk_term",
+            pattern="x",
+            sensitivity="high",
+            classification_label="contract",
+            reason="r",
+            suggested_action="review",
             confidence=1.5,
         )
 
@@ -215,13 +220,18 @@ def test_rule_id_must_be_kebab_case() -> None:
     with pytest.raises(ValidationError):
         ReviewRule(
             rule_id="Bad ID",
-            kind="risk_term", pattern="x", sensitivity="high",
-            classification_label="contract", reason="r", suggested_action="review",
+            kind="risk_term",
+            pattern="x",
+            sensitivity="high",
+            classification_label="contract",
+            reason="r",
+            suggested_action="review",
         )
 
 
 def test_env_var_override_replaces_seed(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     override = tmp_path / "rules.yml"
     override.write_text(
@@ -249,13 +259,18 @@ def test_env_var_override_replaces_seed(
     rules = load_review_rules()
     assert rules.version == 99
     assert {r.rule_id for r in rules.rules} == {
-        "only-contract", "only-financial", "only-legal",
-        "only-incident", "only-injury", "only-personnel",
+        "only-contract",
+        "only-financial",
+        "only-legal",
+        "only-incident",
+        "only-injury",
+        "only-personnel",
     }
 
 
 def test_missing_seed_raises(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     from hb_assistant.construction.policy import loader as loader_mod
 
@@ -277,7 +292,8 @@ def _item(item_id: str, name: str, parent_path: str) -> dict:
 
 def test_evaluator_matches_contract_folder(evaluator: ReviewPolicyEvaluator) -> None:
     matches = evaluator.evaluate(
-        source_key="src", project_key="p",
+        source_key="src",
+        project_key="p",
         item=_item("i1", "Master Agreement.pdf", "/Tropical/Contracts/Vendors"),
     )
     rule_ids = {m.rule_id for m in matches}
@@ -286,7 +302,8 @@ def test_evaluator_matches_contract_folder(evaluator: ReviewPolicyEvaluator) -> 
 
 def test_evaluator_matches_change_order_doc_name(evaluator: ReviewPolicyEvaluator) -> None:
     matches = evaluator.evaluate(
-        source_key="src", project_key="p",
+        source_key="src",
+        project_key="p",
         item=_item("i2", "Change Order 04 - Roofing.pdf", "/Tropical/General"),
     )
     assert any(m.rule_id == "doc-change-order" for m in matches)
@@ -295,7 +312,8 @@ def test_evaluator_matches_change_order_doc_name(evaluator: ReviewPolicyEvaluato
 
 def test_evaluator_matches_injury_risk_term(evaluator: ReviewPolicyEvaluator) -> None:
     matches = evaluator.evaluate(
-        source_key="src", project_key="p",
+        source_key="src",
+        project_key="p",
         item=_item("i3", "Worker Injury Log.pdf", "/Tropical/General"),
     )
     rule_ids = {m.rule_id for m in matches}
@@ -306,7 +324,8 @@ def test_evaluator_matches_injury_risk_term(evaluator: ReviewPolicyEvaluator) ->
 
 def test_evaluator_is_case_insensitive(evaluator: ReviewPolicyEvaluator) -> None:
     matches = evaluator.evaluate(
-        source_key="src", project_key=None,
+        source_key="src",
+        project_key=None,
         item=_item("i4", "INVOICE 99.pdf", "/TROPICAL/general"),
     )
     assert any(m.rule_id == "doc-invoice" for m in matches)
@@ -315,7 +334,8 @@ def test_evaluator_is_case_insensitive(evaluator: ReviewPolicyEvaluator) -> None
 def test_evaluator_emits_multiple_matches_for_one_item(evaluator: ReviewPolicyEvaluator) -> None:
     # Incident folder + incident risk term must both fire so controllers see provenance.
     matches = evaluator.evaluate(
-        source_key="src", project_key="p",
+        source_key="src",
+        project_key="p",
         item=_item("i5", "Site Incident Report.pdf", "/Tropical/Safety/Incidents"),
     )
     rule_ids = {m.rule_id for m in matches}
@@ -323,10 +343,12 @@ def test_evaluator_emits_multiple_matches_for_one_item(evaluator: ReviewPolicyEv
 
 
 def test_evaluator_low_confidence_rule_carries_low_confidence(
-    evaluator: ReviewPolicyEvaluator, seed_rules: ReviewRules,
+    evaluator: ReviewPolicyEvaluator,
+    seed_rules: ReviewRules,
 ) -> None:
     matches = evaluator.evaluate(
-        source_key="src", project_key=None,
+        source_key="src",
+        project_key=None,
         item=_item("i6", "Budget Estimate Draft.xlsx", "/Tropical/General"),
     )
     budget = next((m for m in matches if m.rule_id == "term-budget-ambiguous"), None)
@@ -336,7 +358,8 @@ def test_evaluator_low_confidence_rule_carries_low_confidence(
 
 def test_evaluator_clean_miss_yields_no_matches(evaluator: ReviewPolicyEvaluator) -> None:
     matches = evaluator.evaluate(
-        source_key="src", project_key="p",
+        source_key="src",
+        project_key="p",
         item=_item("i7", "Project Photos.zip", "/Tropical/General"),
     )
     assert matches == []
@@ -352,12 +375,15 @@ def test_evaluator_ignores_item_with_missing_id(evaluator: ReviewPolicyEvaluator
 
 
 def test_router_dry_run_does_not_persist(
-    store: ConstructionStore, evaluator: ReviewPolicyEvaluator,
+    store: ConstructionStore,
+    evaluator: ReviewPolicyEvaluator,
 ) -> None:
     _seed_inventory(store)
     router = ReviewQueueRouter(store, evaluator)
     result = router.evaluate_source(
-        source_key="tropical-sharepoint", project_key="tropical", apply=False,
+        source_key="tropical-sharepoint",
+        project_key="tropical",
+        apply=False,
     )
     assert result.matches_found > 0
     assert result.enqueued == 0
@@ -365,13 +391,16 @@ def test_router_dry_run_does_not_persist(
 
 
 def test_router_apply_enqueues_and_is_idempotent(
-    store: ConstructionStore, evaluator: ReviewPolicyEvaluator,
+    store: ConstructionStore,
+    evaluator: ReviewPolicyEvaluator,
 ) -> None:
     _seed_inventory(store)
     router = ReviewQueueRouter(store, evaluator)
 
     first = router.evaluate_source(
-        source_key="tropical-sharepoint", project_key="tropical", apply=True,
+        source_key="tropical-sharepoint",
+        project_key="tropical",
+        apply=True,
     )
     enqueued_first = first.enqueued
     assert enqueued_first > 0
@@ -379,7 +408,9 @@ def test_router_apply_enqueues_and_is_idempotent(
     assert store.count_review_queue() == enqueued_first
 
     second = router.evaluate_source(
-        source_key="tropical-sharepoint", project_key="tropical", apply=True,
+        source_key="tropical-sharepoint",
+        project_key="tropical",
+        apply=True,
     )
     assert second.enqueued == 0
     assert second.skipped_already_open == enqueued_first
@@ -387,12 +418,15 @@ def test_router_apply_enqueues_and_is_idempotent(
 
 
 def test_store_list_review_queue_filters_by_status_and_source(
-    store: ConstructionStore, evaluator: ReviewPolicyEvaluator,
+    store: ConstructionStore,
+    evaluator: ReviewPolicyEvaluator,
 ) -> None:
     _seed_inventory(store)
     router = ReviewQueueRouter(store, evaluator)
     router.evaluate_source(
-        source_key="tropical-sharepoint", project_key="tropical", apply=True,
+        source_key="tropical-sharepoint",
+        project_key="tropical",
+        apply=True,
     )
 
     all_rows = store.list_review_queue(status=None)
@@ -409,9 +443,16 @@ def test_store_enqueue_returns_false_on_duplicate(
     store: ConstructionStore,
 ) -> None:
     match = RuleMatch(
-        rule_id="folder-contracts", item_id="x", source_key="s", project_key="p",
-        name="n", parent_path="/Contracts", sensitivity="high",
-        classification_label="contract", reason="r", suggested_action="review",
+        rule_id="folder-contracts",
+        item_id="x",
+        source_key="s",
+        project_key="p",
+        name="n",
+        parent_path="/Contracts",
+        sensitivity="high",
+        classification_label="contract",
+        reason="r",
+        suggested_action="review",
     )
     assert store.enqueue_review_item(match) is True
     assert store.enqueue_review_item(match) is False
@@ -423,11 +464,14 @@ def test_store_enqueue_returns_false_on_duplicate(
 
 
 def test_build_review_required_note_defaults_to_store_pull(
-    store: ConstructionStore, evaluator: ReviewPolicyEvaluator,
+    store: ConstructionStore,
+    evaluator: ReviewPolicyEvaluator,
 ) -> None:
     _seed_inventory(store)
     ReviewQueueRouter(store, evaluator).evaluate_source(
-        source_key="tropical-sharepoint", project_key="tropical", apply=True,
+        source_key="tropical-sharepoint",
+        project_key="tropical",
+        apply=True,
     )
 
     svc = ManifestService(store)
@@ -438,11 +482,14 @@ def test_build_review_required_note_defaults_to_store_pull(
 
 
 def test_build_review_required_note_explicit_items_bypasses_store(
-    store: ConstructionStore, evaluator: ReviewPolicyEvaluator,
+    store: ConstructionStore,
+    evaluator: ReviewPolicyEvaluator,
 ) -> None:
     _seed_inventory(store)
     ReviewQueueRouter(store, evaluator).evaluate_source(
-        source_key="tropical-sharepoint", project_key="tropical", apply=True,
+        source_key="tropical-sharepoint",
+        project_key="tropical",
+        apply=True,
     )
 
     svc = ManifestService(store)
@@ -451,7 +498,8 @@ def test_build_review_required_note_explicit_items_bypasses_store(
 
 
 def test_rendered_note_never_leaks_body_text(
-    store: ConstructionStore, evaluator: ReviewPolicyEvaluator,
+    store: ConstructionStore,
+    evaluator: ReviewPolicyEvaluator,
 ) -> None:
     """Guardrail: only metadata fields appear in the rendered Markdown.
 
@@ -464,7 +512,9 @@ def test_rendered_note_never_leaks_body_text(
 
     svc = ManifestService(store)
     ReviewQueueRouter(store, evaluator).evaluate_source(
-        source_key="tropical-sharepoint", project_key="tropical", apply=True,
+        source_key="tropical-sharepoint",
+        project_key="tropical",
+        apply=True,
     )
     note = svc.build_review_required_note()
     rendered = ManifestRenderer.render_review_required(note)
@@ -491,12 +541,14 @@ def _patch_store_to_tmp(monkeypatch: pytest.MonkeyPatch, db_path: str) -> None:
     # Also patch the symbol re-exported into modules that imported it eagerly.
     from hb_assistant.construction.store import repositories as repo_mod
     from hb_assistant.store import migrator as mig_mod
+
     monkeypatch.setattr(repo_mod, "get_connection", _get)
     monkeypatch.setattr(mig_mod, "get_connection", _get)
 
 
 def test_cli_review_list_empty(
-    monkeypatch: pytest.MonkeyPatch, db_path: str,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     runner = CliRunner()
@@ -509,7 +561,8 @@ def test_cli_review_list_empty(
 
 
 def test_cli_review_evaluate_dry_run_does_not_persist(
-    monkeypatch: pytest.MonkeyPatch, db_path: str,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     store = ConstructionStore()
@@ -529,7 +582,8 @@ def test_cli_review_evaluate_dry_run_does_not_persist(
 
 
 def test_cli_review_evaluate_apply_then_list_then_idempotent(
-    monkeypatch: pytest.MonkeyPatch, db_path: str,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     store = ConstructionStore()
@@ -563,7 +617,8 @@ def test_cli_review_evaluate_apply_then_list_then_idempotent(
 
 
 def test_cli_review_list_invalid_status(
-    monkeypatch: pytest.MonkeyPatch, db_path: str,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     runner = CliRunner()
@@ -576,7 +631,8 @@ def test_cli_review_list_invalid_status(
 
 
 def test_cli_review_evaluate_unknown_source(
-    monkeypatch: pytest.MonkeyPatch, db_path: str,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     runner = CliRunner()
@@ -590,7 +646,9 @@ def test_cli_review_evaluate_unknown_source(
 
 
 def test_cli_vault_preview_populates_review_note_from_store(
-    monkeypatch: pytest.MonkeyPatch, db_path: str, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
+    tmp_path: Path,
 ) -> None:
     """End-to-end: enqueue items, then vault preview surfaces a populated note."""
     _patch_store_to_tmp(monkeypatch, db_path)
@@ -606,9 +664,7 @@ def test_cli_vault_preview_populates_review_note_from_store(
 
     vault_root = tmp_path / "vault"
     monkeypatch.setenv("HB_CONSTRUCTION_VAULT_ROOT", str(vault_root))
-    preview = runner.invoke(
-        construction_cli.app, ["vault", "preview", "--apply", "--json"]
-    )
+    preview = runner.invoke(construction_cli.app, ["vault", "preview", "--apply", "--json"])
     assert preview.exit_code == 0, preview.output
     rendered_review = json.loads(preview.output)["rendered"]["review_required_md"]
     assert "_no items currently flagged for review_" not in rendered_review
@@ -627,6 +683,7 @@ def test_cli_vault_preview_populates_review_note_from_store(
 
 def test_seed_source_key_used_by_tests_exists() -> None:
     from hb_assistant.construction.config import load_source_registry
+
     registry = load_source_registry()
     assert any(s.source_key == "tropical-sharepoint" for s in registry.sources)
 
@@ -953,7 +1010,8 @@ def test_loader_preserves_yaml_declaration_order(seed_rules: ReviewRules) -> Non
 
 
 def test_evaluator_emits_matches_in_declared_rule_order(
-    evaluator: ReviewPolicyEvaluator, seed_rules: ReviewRules,
+    evaluator: ReviewPolicyEvaluator,
+    seed_rules: ReviewRules,
 ) -> None:
     """When multiple rules match the same item, the evaluator must yield
     them in the rule-declaration order (rather than match-discovery,

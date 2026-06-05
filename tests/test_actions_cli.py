@@ -59,7 +59,10 @@ def test_actions_list_json_shape():
     assert data["command"] == "actions list"
     assert "results" in data
     assert "note" in data
-    assert "open actions" in data.get("note", "").lower() or "open" in str(data.get("results", [])).lower()
+    assert (
+        "open actions" in data.get("note", "").lower()
+        or "open" in str(data.get("results", [])).lower()
+    )
 
 
 def test_actions_extract_dry_run_no_mutation_via_direct_sql():
@@ -201,43 +204,88 @@ def test_actions_extract_signal_integration_from_bounded_store_signals():
     # Seed redacted synthetic signals (builds on P03 seeding)
     with transaction(conn):
         # Email with bobby_mention + "please review" (should -> review, high conf)
-        sr1 = conn.execute("INSERT INTO source_records (source_type, source_key, source_system, title_redacted) VALUES (?,?,?,?) RETURNING id",
-                           ("email", "e1", "graph", "[redacted]")).fetchone()[0]
-        conn.execute("INSERT INTO emails (source_record_id, body_mention_detected, body_match_excerpt_redacted, body_detection_method) VALUES (?,?,?,?)",
-                     (sr1, 1, "[redacted-body-mention-window] please review the Q3 deck", "body"))
+        sr1 = conn.execute(
+            "INSERT INTO source_records (source_type, source_key, source_system, title_redacted) VALUES (?,?,?,?) RETURNING id",
+            ("email", "e1", "graph", "[redacted]"),
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO emails (source_record_id, body_mention_detected, body_match_excerpt_redacted, body_detection_method) VALUES (?,?,?,?)",
+            (sr1, 1, "[redacted-body-mention-window] please review the Q3 deck", "body"),
+        )
 
         # Parser output (should -> task or file_review)
-        sr2 = conn.execute("INSERT INTO source_records (source_type, source_key, source_system, title_redacted) VALUES (?,?,?,?) RETURNING id",
-                           ("file", "f1", "drive", "[redacted]")).fetchone()[0]
-        conn.execute("INSERT INTO parser_outputs (file_source_record_id, parser_name, text_excerpt) VALUES (?,?,?)",
-                     (sr2, "pdf", "[redacted] file review needed for contract"))
+        sr2 = conn.execute(
+            "INSERT INTO source_records (source_type, source_key, source_system, title_redacted) VALUES (?,?,?,?) RETURNING id",
+            ("file", "f1", "drive", "[redacted]"),
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO parser_outputs (file_source_record_id, parser_name, text_excerpt) VALUES (?,?,?)",
+            (sr2, "pdf", "[redacted] file review needed for contract"),
+        )
 
         # Calendar event (should -> meeting_prep)
-        sr3 = conn.execute("INSERT INTO source_records (source_type, source_key, source_system, title_redacted) VALUES (?,?,?,?) RETURNING id",
-                           ("calendar", "c1", "graph", "[redacted]")).fetchone()[0]
-        conn.execute("INSERT INTO calendar_events (source_record_id, start_datetime, is_cancelled) VALUES (?,?,0)",
-                     (sr3, "2026-06-01T10:00:00Z"))
+        sr3 = conn.execute(
+            "INSERT INTO source_records (source_type, source_key, source_system, title_redacted) VALUES (?,?,?,?) RETURNING id",
+            ("calendar", "c1", "graph", "[redacted]"),
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO calendar_events (source_record_id, start_datetime, is_cancelled) VALUES (?,?,0)",
+            (sr3, "2026-06-01T10:00:00Z"),
+        )
 
         # File in pending (should -> file_review)
-        sr4 = conn.execute("INSERT INTO source_records (source_type, source_key, source_system, title_redacted) VALUES (?,?,?,?) RETURNING id",
-                           ("drive", "d1", "drive", "[redacted]")).fetchone()[0]
-        conn.execute("INSERT INTO files (source_record_id, name, download_status, parse_status) VALUES (?,?,?,?)",
-                     (sr4, "report.pdf", "pending", "none"))
+        sr4 = conn.execute(
+            "INSERT INTO source_records (source_type, source_key, source_system, title_redacted) VALUES (?,?,?,?) RETURNING id",
+            ("drive", "d1", "drive", "[redacted]"),
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO files (source_record_id, name, download_status, parse_status) VALUES (?,?,?,?)",
+            (sr4, "report.pdf", "pending", "none"),
+        )
 
         # Weak short signal (should -> monitor, low conf)
-        sr5 = conn.execute("INSERT INTO source_records (source_type, source_key, source_system, title_redacted) VALUES (?,?,?,?) RETURNING id",
-                           ("email", "e2", "graph", "[redacted]")).fetchone()[0]
-        conn.execute("INSERT INTO emails (source_record_id, body_mention_detected, body_match_excerpt_redacted, body_detection_method) VALUES (?,?,?,?)",
-                     (sr5, 0, "ok", "preview"))
+        sr5 = conn.execute(
+            "INSERT INTO source_records (source_type, source_key, source_system, title_redacted) VALUES (?,?,?,?) RETURNING id",
+            ("email", "e2", "graph", "[redacted]"),
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO emails (source_record_id, body_mention_detected, body_match_excerpt_redacted, body_detection_method) VALUES (?,?,?,?)",
+            (sr5, 0, "ok", "preview"),
+        )
 
     # Construct signals manually from the seeds we just inserted (bypass load isolation between test conn and CLI DB).
     # This exercises the new P04 load/mapping logic directly while keeping the test self-contained.
     manual_signals = [
-        {"classifications": ["bobby_mention"], "message_source_record_id": sr1, "title": "[redacted] Q3 deck", "excerpt": "[redacted-body-mention-window] please review the Q3 deck"},
-        {"classifications": ["parser_content"], "message_source_record_id": sr2, "title": "Parsed content", "excerpt": "[redacted] file review needed for contract"},
-        {"classifications": ["calendar_event"], "message_source_record_id": sr3, "title": "Meeting prep / calendar item", "excerpt": None},
-        {"classifications": ["pending_file"], "message_source_record_id": sr4, "title": "Pending file", "excerpt": None},
-        {"classifications": [], "message_source_record_id": sr5, "title": "Weak", "excerpt": "ok"},  # weak -> monitor
+        {
+            "classifications": ["bobby_mention"],
+            "message_source_record_id": sr1,
+            "title": "[redacted] Q3 deck",
+            "excerpt": "[redacted-body-mention-window] please review the Q3 deck",
+        },
+        {
+            "classifications": ["parser_content"],
+            "message_source_record_id": sr2,
+            "title": "Parsed content",
+            "excerpt": "[redacted] file review needed for contract",
+        },
+        {
+            "classifications": ["calendar_event"],
+            "message_source_record_id": sr3,
+            "title": "Meeting prep / calendar item",
+            "excerpt": None,
+        },
+        {
+            "classifications": ["pending_file"],
+            "message_source_record_id": sr4,
+            "title": "Pending file",
+            "excerpt": None,
+        },
+        {
+            "classifications": [],
+            "message_source_record_id": sr5,
+            "title": "Weak",
+            "excerpt": "ok",
+        },  # weak -> monitor
     ]
 
     from hb_assistant.actions.extractor import extract_candidates
@@ -248,7 +296,13 @@ def test_actions_extract_signal_integration_from_bounded_store_signals():
     confs = [c.confidence for c in cands]
 
     # Assert coverage of the 7+ signal types from the P04 spec (plus weak monitor)
-    assert "review" in types or "file_review" in types or "meeting_prep" in types or "waiting_on" in types or "monitor" in types
+    assert (
+        "review" in types
+        or "file_review" in types
+        or "meeting_prep" in types
+        or "waiting_on" in types
+        or "monitor" in types
+    )
     # High conf for explicit bobby+phrase or strong heuristic cases (0.9 or 0.75 from mapping)
     assert any(c >= 0.7 for c in confs)
     # Weak monitor case present with lower conf

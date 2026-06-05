@@ -24,16 +24,22 @@ AUTOMATION_POLICY_SEED_ENV_VAR = "HB_SECOND_BRAIN_08B_AUTOMATION_POLICY"
 
 # Prompt 01 addendum — dedicated executor policy seeds (details for the deferred automation executor;
 # high-level refs live in the main automation policy seed; reason codes are in the shared vocab).
-_EXECUTOR_POLICY_RELATIVE = Path("resources") / "config" / "phase_08b_automation_executor_policy.seed.yaml"
+_EXECUTOR_POLICY_RELATIVE = (
+    Path("resources") / "config" / "phase_08b_automation_executor_policy.seed.yaml"
+)
 EXECUTOR_POLICY_SEED_ENV_VAR = "HB_SECOND_BRAIN_08B_EXECUTOR_POLICY"
 
-_STAGE_REGISTRY_RELATIVE = Path("resources") / "config" / "phase_08b_executor_stage_registry.seed.yaml"
+_STAGE_REGISTRY_RELATIVE = (
+    Path("resources") / "config" / "phase_08b_executor_stage_registry.seed.yaml"
+)
 STAGE_REGISTRY_SEED_ENV_VAR = "HB_SECOND_BRAIN_08B_STAGE_REGISTRY"
 
 _RETRY_BACKOFF_RELATIVE = Path("resources") / "config" / "phase_08b_retry_backoff_policy.seed.yaml"
 RETRY_BACKOFF_SEED_ENV_VAR = "HB_SECOND_BRAIN_08B_RETRY_BACKOFF"
 
-_WEEKEND_CATCHUP_RELATIVE = Path("resources") / "config" / "phase_08b_weekend_catchup_policy.seed.yaml"
+_WEEKEND_CATCHUP_RELATIVE = (
+    Path("resources") / "config" / "phase_08b_weekend_catchup_policy.seed.yaml"
+)
 WEEKEND_CATCHUP_SEED_ENV_VAR = "HB_SECOND_BRAIN_08B_WEEKEND_CATCHUP"
 
 

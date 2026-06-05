@@ -91,9 +91,7 @@ def test_calendar_source_location_helper_round_trip_and_guard() -> None:
             "SELECT source_id, read_only, calendar_role FROM calendar_source_locations"
         ).fetchone()
         assert row == ("primary_calendar", 1, "primary")
-        state = conn.execute(
-            "SELECT source_id, sync_status FROM calendar_sync_state"
-        ).fetchone()
+        state = conn.execute("SELECT source_id, sync_status FROM calendar_sync_state").fetchone()
         assert state == ("primary_calendar", "pending")
         # read-only guard rejects any writeback-capable source
         with pytest.raises(ValueError):

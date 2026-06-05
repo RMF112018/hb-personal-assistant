@@ -66,11 +66,24 @@ def test_sensitive_filenames_route_to_review(name: str, expected_category: str) 
 def test_categories_match_package_set() -> None:
     # Every keyword category we use is a package sensitivity category name.
     package_categories = {
-        "contracts", "change_orders", "claims", "notices", "legal_correspondence",
-        "insurance_or_bonding", "pay_applications", "invoices", "lien_releases",
-        "personnel_or_hr", "incidents", "injuries", "medical_detail", "disputes",
-        "default_or_termination_language", "liquidated_damages",
-        "delay_or_time_extension_language", "additional_compensation_language",
+        "contracts",
+        "change_orders",
+        "claims",
+        "notices",
+        "legal_correspondence",
+        "insurance_or_bonding",
+        "pay_applications",
+        "invoices",
+        "lien_releases",
+        "personnel_or_hr",
+        "incidents",
+        "injuries",
+        "medical_detail",
+        "disputes",
+        "default_or_termination_language",
+        "liquidated_damages",
+        "delay_or_time_extension_language",
+        "additional_compensation_language",
         "privileged_or_confidential_markers",
     }
     used = {c for c, _kw, _lvl in SENSITIVITY_KEYWORDS}

@@ -83,17 +83,13 @@ def _historic_dict(source: SourceLocation) -> dict[str, Optional[float]]:
     }
 
 
-def _current_dict(
-    source: SourceLocation, store: ConstructionStore
-) -> dict[str, Optional[float]]:
+def _current_dict(source: SourceLocation, store: ConstructionStore) -> dict[str, Optional[float]]:
     status_counts = store.count_inventory(source.source_key)
     active = status_counts.get("active", 0)
     kind_counts = store.count_inventory_by_kind(source.source_key)
     total_size_bytes = kind_counts.get("total_size_bytes")
     file_size_gb: Optional[float] = (
-        None
-        if total_size_bytes is None
-        else round(total_size_bytes / 1_000_000_000, 2)
+        None if total_size_bytes is None else round(total_size_bytes / 1_000_000_000, 2)
     )
     return {
         "unique_item_count": active,

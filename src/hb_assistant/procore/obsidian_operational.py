@@ -24,8 +24,11 @@ _MEETING_ENDPOINTS = ("meetings", "meeting-detail")
 _MEETING_SIGNAL_TYPES = {"meeting_topic_open_high_priority"}
 
 _NOTES = {
-    "project_health": ("OPERATIONAL-PROJECT-HEALTH", "procore-project-health.md",
-                       "procore_project_health"),
+    "project_health": (
+        "OPERATIONAL-PROJECT-HEALTH",
+        "procore-project-health.md",
+        "procore_project_health",
+    ),
     "meeting_prep": ("OPERATIONAL-MEETING-PREP", "procore-meeting-prep.md", "procore_meeting_prep"),
     "daily_digest": ("OPERATIONAL-DAILY-DIGEST", "procore-daily-digest.md", "procore_daily_digest"),
 }
@@ -48,18 +51,27 @@ def _warnings_md(stale: List[Dict[str, Any]], review_count: int) -> str:
 
 
 def _render_note(
-    *, note_type: str, project_key: str, title: str, now_utc: str,
-    since_utc: Optional[str], order: List[str], sections: Dict[str, str], warnings_md: str,
+    *,
+    note_type: str,
+    project_key: str,
+    title: str,
+    now_utc: str,
+    since_utc: Optional[str],
+    order: List[str],
+    sections: Dict[str, str],
+    warnings_md: str,
 ) -> str:
-    frontmatter = "\n".join([
-        "---",
-        f"type: {note_type}",
-        f"project_key: {project_key}",
-        "source: procore_phase06b_read_models_sqlite",
-        "review_sensitive: false",
-        f"generated_utc: {now_utc}",
-        "---",
-    ])
+    frontmatter = "\n".join(
+        [
+            "---",
+            f"type: {note_type}",
+            f"project_key: {project_key}",
+            "source: procore_phase06b_read_models_sqlite",
+            "review_sensitive: false",
+            f"generated_utc: {now_utc}",
+            "---",
+        ]
+    )
     window = f"_Window since: {since_utc}._ " if since_utc else ""
     body = "\n\n".join(sections[k] for k in order)
     guardrails = "\n".join(f"- {k}: {v}" for k, v in PROCORE_GUARDRAILS.items())
@@ -71,8 +83,15 @@ def _render_note(
 
 
 def _result(
-    *, command: str, project_key: str, now_utc: str, since_utc: Optional[str],
-    sections: Dict[str, str], rendered: str, counts: Dict[str, int], warnings: Dict[str, Any],
+    *,
+    command: str,
+    project_key: str,
+    now_utc: str,
+    since_utc: Optional[str],
+    sections: Dict[str, str],
+    rendered: str,
+    counts: Dict[str, int],
+    warnings: Dict[str, Any],
 ) -> Dict[str, Any]:
     out = {
         "command": command,
@@ -97,7 +116,10 @@ def _result(
 
 
 def build_project_health_note(
-    project_key: str, *, now_utc: str, db_path: Optional[Path] = None,
+    project_key: str,
+    *,
+    now_utc: str,
+    db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     from ..store.procore_project_health import build_project_health
 
@@ -115,67 +137,109 @@ def build_project_health_note(
         ["Safety/quality/compliance signals", sc["safety_quality_compliance"]["open_signals"]],
         ["Overdue signals", sc["overdue"]["open_signals"]],
         ["Stale endpoints", sc["freshness"]["stale_endpoints"]],
-        ["Records missing responsibility edge",
-         sc["relationship_quality"]["records_missing_responsibility_edge"]],
+        [
+            "Records missing responsibility edge",
+            sc["relationship_quality"]["records_missing_responsibility_edge"],
+        ],
     ]
     risk_rows = [
-        [r.get("importance"), r.get("signal_type"), r.get("endpoint_id"), r.get("due_at_utc") or "",
-         ", ".join(r.get("dimensions") or []), r.get("title_redacted") or ""]
+        [
+            r.get("importance"),
+            r.get("signal_type"),
+            r.get("endpoint_id"),
+            r.get("due_at_utc") or "",
+            ", ".join(r.get("dimensions") or []),
+            r.get("title_redacted") or "",
+        ]
         for r in health["top_risks"]
     ]
     stale_rows = [
-        [s.get("endpoint_id"), s.get("state"), s.get("age_days") if s.get("age_days") is not None
-         else "", s.get("last_success_at_utc") or ""]
+        [
+            s.get("endpoint_id"),
+            s.get("state"),
+            s.get("age_days") if s.get("age_days") is not None else "",
+            s.get("last_success_at_utc") or "",
+        ]
         for s in health["stale_endpoints"]
     ]
     review_rows = [
-        [r.get("endpoint_id"), r.get("procore_record_id"), r.get("sensitive_reason") or "",
-         r.get("source_url_redacted") or ""]
+        [
+            r.get("endpoint_id"),
+            r.get("procore_record_id"),
+            r.get("sensitive_reason") or "",
+            r.get("source_url_redacted") or "",
+        ]
         for r in health["review_required_items"]
     ]
 
     sections = {
         "status": _section(
-            "Health Status", q,
-            f"**{health['health_status']}** — triggers: "
-            f"{', '.join(health['status_reason'])}\n",
+            "Health Status",
+            q,
+            f"**{health['health_status']}** — triggers: {', '.join(health['status_reason'])}\n",
         ),
         "components": _section(
-            "Score Components", q,
+            "Score Components",
+            q,
             _table(["Component", "Count"], component_rows, empty="No components."),
         ),
         "top_risks": _section(
-            "Top Risks", q,
-            _table(["Importance", "Signal", "Endpoint", "Due", "Dimensions", "Title"], risk_rows,
-                   empty="No top risks."),
+            "Top Risks",
+            q,
+            _table(
+                ["Importance", "Signal", "Endpoint", "Due", "Dimensions", "Title"],
+                risk_rows,
+                empty="No top risks.",
+            ),
         ),
         "stale": _section(
-            "Stale Endpoints", q,
-            _table(["Endpoint", "State", "Age (days)", "Last success"], stale_rows,
-                   empty="No stale endpoints."),
+            "Stale Endpoints",
+            q,
+            _table(
+                ["Endpoint", "State", "Age (days)", "Last success"],
+                stale_rows,
+                empty="No stale endpoints.",
+            ),
         ),
         "review_required": _section(
-            "Review-Required Items", q,
-            _table(["Endpoint", "Record ID", "Reason", "Source"], review_rows,
-                   empty="No review-required items."),
+            "Review-Required Items",
+            q,
+            _table(
+                ["Endpoint", "Record ID", "Reason", "Source"],
+                review_rows,
+                empty="No review-required items.",
+            ),
         ),
     }
     counts_out = {
-        "top_risks": len(risk_rows), "stale_endpoints": len(stale_rows),
-        "review_required_items": len(review_rows), "open_signals": counts["open_signals"],
+        "top_risks": len(risk_rows),
+        "stale_endpoints": len(stale_rows),
+        "review_required_items": len(review_rows),
+        "open_signals": counts["open_signals"],
     }
-    warnings = {"stale_endpoints": sc["freshness"]["stale_endpoints"],
-                "review_required_records": counts["review_required_records"]}
+    warnings = {
+        "stale_endpoints": sc["freshness"]["stale_endpoints"],
+        "review_required_records": counts["review_required_records"],
+    }
     warnings_md = _warnings_md(health["stale_endpoints"], counts["review_required_records"])
     rendered = _render_note(
-        note_type=_NOTES["project_health"][2], project_key=project_key,
-        title="Procore Project Health", now_utc=now_utc, since_utc=None,
+        note_type=_NOTES["project_health"][2],
+        project_key=project_key,
+        title="Procore Project Health",
+        now_utc=now_utc,
+        since_utc=None,
         order=["status", "components", "top_risks", "stale", "review_required"],
-        sections=sections, warnings_md=warnings_md,
+        sections=sections,
+        warnings_md=warnings_md,
     )
     return _result(
-        command="hb-assistant procore obsidian project-health", project_key=project_key,
-        now_utc=now_utc, since_utc=None, sections=sections, rendered=rendered, counts=counts_out,
+        command="hb-assistant procore obsidian project-health",
+        project_key=project_key,
+        now_utc=now_utc,
+        since_utc=None,
+        sections=sections,
+        rendered=rendered,
+        counts=counts_out,
         warnings=warnings,
     )
 
@@ -197,7 +261,11 @@ def _health_warnings(project_key: str, now_utc: str, db_path: Optional[Path]) ->
 
 
 def build_meeting_prep(
-    project_key: str, *, since_utc: str, now_utc: str, db_path: Optional[Path] = None,
+    project_key: str,
+    *,
+    since_utc: str,
+    now_utc: str,
+    db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     from ..store.procore_enrichment import get_procore_action_signals
     from ..store.procore_operational import build_risks
@@ -207,13 +275,20 @@ def build_meeting_prep(
         project_key=project_key, signal_status="open", db_path=db_path
     )
     meeting_actions = [
-        s for s in signals
+        s
+        for s in signals
         if s.get("signal_type") in _MEETING_SIGNAL_TYPES
         or (s.get("endpoint_id") in _MEETING_ENDPOINTS)
     ]
     action_rows = [
-        [s.get("importance"), s.get("signal_type"), s.get("endpoint_id"),
-         s.get("due_at_utc") or "", s.get("record_key"), s.get("title_redacted") or ""]
+        [
+            s.get("importance"),
+            s.get("signal_type"),
+            s.get("endpoint_id"),
+            s.get("due_at_utc") or "",
+            s.get("record_key"),
+            s.get("title_redacted") or "",
+        ]
         for s in meeting_actions
     ]
 
@@ -237,17 +312,26 @@ def build_meeting_prep(
         if bool(r["review_required"]):
             flagged_meetings += 1
             continue
-        meeting_rows.append([
-            r["procore_record_number"] or r["procore_record_id"],
-            r["title_redacted"] or "", r["status"] or "", r["updated_at_utc"] or "",
-            f"[{r['procore_record_id']}]({r['source_url_redacted'] or '#'})",
-        ])
+        meeting_rows.append(
+            [
+                r["procore_record_number"] or r["procore_record_id"],
+                r["title_redacted"] or "",
+                r["status"] or "",
+                r["updated_at_utc"] or "",
+                f"[{r['procore_record_id']}]({r['source_url_redacted'] or '#'})",
+            ]
+        )
 
     # --- carryover risks ---
     risks = build_risks(project_key, now_utc=now_utc, db_path=db_path)["risks"]
     risk_rows = [
-        [r.get("importance"), r.get("signal_type"), r.get("endpoint_id"),
-         ", ".join(r.get("dimensions") or []), r.get("title_redacted") or ""]
+        [
+            r.get("importance"),
+            r.get("signal_type"),
+            r.get("endpoint_id"),
+            ", ".join(r.get("dimensions") or []),
+            r.get("title_redacted") or "",
+        ]
         for r in risks
     ]
 
@@ -255,37 +339,60 @@ def build_meeting_prep(
         "actions": _section(
             "Open Meeting Actions",
             f"hb-assistant procore live actions --project {project_key} --status open --json",
-            _table(["Importance", "Signal", "Endpoint", "Due", "Record Key", "Title"], action_rows,
-                   empty="No open meeting actions."),
+            _table(
+                ["Importance", "Signal", "Endpoint", "Due", "Record Key", "Title"],
+                action_rows,
+                empty="No open meeting actions.",
+            ),
         ),
         "meetings": _section(
             "Recent / Upcoming Meetings",
-            f'hb-assistant procore live records count --project {project_key} --json',
-            _table(["Number", "Title", "Status", "Updated", "Source"], meeting_rows,
-                   empty="No meetings in the window (review-flagged meetings excluded)."),
+            f"hb-assistant procore live records count --project {project_key} --json",
+            _table(
+                ["Number", "Title", "Status", "Updated", "Source"],
+                meeting_rows,
+                empty="No meetings in the window (review-flagged meetings excluded).",
+            ),
         ),
         "risks": _section(
             "Carryover Risks",
             f"hb-assistant procore live risks --project {project_key} --json",
-            _table(["Importance", "Signal", "Endpoint", "Dimensions", "Title"], risk_rows,
-                   empty="No carryover risks."),
+            _table(
+                ["Importance", "Signal", "Endpoint", "Dimensions", "Title"],
+                risk_rows,
+                empty="No carryover risks.",
+            ),
         ),
     }
     hw = _health_warnings(project_key, now_utc, db_path)
     review_total = hw["review_required_records"] + flagged_meetings
-    counts_out = {"meeting_actions": len(action_rows), "meetings": len(meeting_rows),
-                  "carryover_risks": len(risk_rows), "review_flagged_meetings": flagged_meetings}
+    counts_out = {
+        "meeting_actions": len(action_rows),
+        "meetings": len(meeting_rows),
+        "carryover_risks": len(risk_rows),
+        "review_flagged_meetings": flagged_meetings,
+    }
     warnings = {"stale_endpoints": hw["stale_endpoints"], "review_required_records": review_total}
     warnings_md = _warnings_md(hw["stale_list"], review_total)
     rendered = _render_note(
-        note_type=_NOTES["meeting_prep"][2], project_key=project_key,
-        title="Procore Meeting Prep", now_utc=now_utc, since_utc=since_utc,
-        order=["actions", "meetings", "risks"], sections=sections, warnings_md=warnings_md,
+        note_type=_NOTES["meeting_prep"][2],
+        project_key=project_key,
+        title="Procore Meeting Prep",
+        now_utc=now_utc,
+        since_utc=since_utc,
+        order=["actions", "meetings", "risks"],
+        sections=sections,
+        warnings_md=warnings_md,
     )
     return _result(
-        command="hb-assistant procore obsidian meeting-prep", project_key=project_key,
-        now_utc=now_utc, since_utc=since_utc, sections=sections, rendered=rendered,
-        counts=counts_out, warnings=warnings,
+        command="hb-assistant procore obsidian meeting-prep",
+        project_key=project_key,
+        now_utc=now_utc,
+        since_utc=since_utc,
+        sections=sections,
+        rendered=rendered,
+        counts=counts_out,
+        warnings=warnings,
     )
 
 
@@ -295,7 +402,11 @@ def build_meeting_prep(
 
 
 def build_daily_digest(
-    project_key: str, *, since_utc: str, now_utc: str, db_path: Optional[Path] = None,
+    project_key: str,
+    *,
+    since_utc: str,
+    now_utc: str,
+    db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     from ..store.procore_action_queue import build_overdue_queue
     from ..store.procore_history import get_procore_changes
@@ -307,24 +418,42 @@ def build_daily_digest(
     overdue_items = [it for it in overdue["queue"] if it.get("status") == "overdue"][:15]
     risks = build_risks(project_key, now_utc=now_utc, db_path=db_path)["risks"]
     changes = [
-        c for c in get_procore_changes(project_key=project_key, db_path=db_path)
+        c
+        for c in get_procore_changes(project_key=project_key, db_path=db_path)
         if (c.get("detected_at_utc") or "") >= since_utc
     ]
 
     headline_rows = [[k.replace("_", " ").title(), v] for k, v in headline.items()]
     overdue_rows = [
-        [it.get("importance"), it.get("signal_type"), it.get("endpoint_id"),
-         it.get("due_at_utc") or "", it.get("days_overdue"), it.get("title_redacted") or ""]
+        [
+            it.get("importance"),
+            it.get("signal_type"),
+            it.get("endpoint_id"),
+            it.get("due_at_utc") or "",
+            it.get("days_overdue"),
+            it.get("title_redacted") or "",
+        ]
         for it in overdue_items
     ]
     risk_rows = [
-        [r.get("importance"), r.get("signal_type"), r.get("endpoint_id"),
-         ", ".join(r.get("dimensions") or []), r.get("title_redacted") or ""]
+        [
+            r.get("importance"),
+            r.get("signal_type"),
+            r.get("endpoint_id"),
+            ", ".join(r.get("dimensions") or []),
+            r.get("title_redacted") or "",
+        ]
         for r in risks
     ]
     change_rows = [
-        [c.get("detected_at_utc"), c.get("endpoint_id"), c.get("procore_record_id"),
-         c.get("field_path"), c.get("change_category"), c.get("record_key")]
+        [
+            c.get("detected_at_utc"),
+            c.get("endpoint_id"),
+            c.get("procore_record_id"),
+            c.get("field_path"),
+            c.get("change_category"),
+            c.get("record_key"),
+        ]
         for c in changes
     ]
 
@@ -339,39 +468,62 @@ def build_daily_digest(
         "overdue": _section(
             "Overdue",
             f"hb-assistant procore live overdue --project {project_key} --json",
-            _table(["Importance", "Signal", "Endpoint", "Due", "Days Overdue", "Title"], overdue_rows,
-                   empty="No overdue items."),
+            _table(
+                ["Importance", "Signal", "Endpoint", "Due", "Days Overdue", "Title"],
+                overdue_rows,
+                empty="No overdue items.",
+            ),
         ),
         "risks": _section(
             "Top Risks",
             f"hb-assistant procore live risks --project {project_key} --json",
-            _table(["Importance", "Signal", "Endpoint", "Dimensions", "Title"], risk_rows,
-                   empty="No top risks."),
+            _table(
+                ["Importance", "Signal", "Endpoint", "Dimensions", "Title"],
+                risk_rows,
+                empty="No top risks.",
+            ),
         ),
         "changes": _section(
             "Changes In Window",
             f'hb-assistant procore live changes --project {project_key} --since "24 hours ago" --json',
-            _table(["Detected", "Endpoint", "Record ID", "Field", "Category", "Record Key"],
-                   change_rows, empty="No changes in the window."),
+            _table(
+                ["Detected", "Endpoint", "Record ID", "Field", "Category", "Record Key"],
+                change_rows,
+                empty="No changes in the window.",
+            ),
         ),
     }
-    counts_out = {"overdue": len(overdue_rows), "top_risks": len(risk_rows),
-                  "changes_in_window": len(change_rows)}
-    warnings = {"stale_endpoints": headline["stale_endpoints"],
-                "review_required_records": headline["review_required_records"]}
+    counts_out = {
+        "overdue": len(overdue_rows),
+        "top_risks": len(risk_rows),
+        "changes_in_window": len(change_rows),
+    }
+    warnings = {
+        "stale_endpoints": headline["stale_endpoints"],
+        "review_required_records": headline["review_required_records"],
+    }
     # reuse the project-health stale list for the banner detail
     hw = _health_warnings(project_key, now_utc, db_path)
     warnings_md = _warnings_md(hw["stale_list"], headline["review_required_records"])
     rendered = _render_note(
-        note_type=_NOTES["daily_digest"][2], project_key=project_key,
-        title="Procore Daily Digest", now_utc=now_utc, since_utc=since_utc,
-        order=["headline", "overdue", "risks", "changes"], sections=sections,
+        note_type=_NOTES["daily_digest"][2],
+        project_key=project_key,
+        title="Procore Daily Digest",
+        now_utc=now_utc,
+        since_utc=since_utc,
+        order=["headline", "overdue", "risks", "changes"],
+        sections=sections,
         warnings_md=warnings_md,
     )
     return _result(
-        command="hb-assistant procore obsidian daily-digest", project_key=project_key,
-        now_utc=now_utc, since_utc=since_utc, sections=sections, rendered=rendered,
-        counts=counts_out, warnings=warnings,
+        command="hb-assistant procore obsidian daily-digest",
+        project_key=project_key,
+        now_utc=now_utc,
+        since_utc=since_utc,
+        sections=sections,
+        rendered=rendered,
+        counts=counts_out,
+        warnings=warnings,
     )
 
 
@@ -390,7 +542,10 @@ def _apply(result: Dict[str, Any], project_key: str, note_key: str) -> Dict[str,
         result["vault_configured"] = False
         return result
     path = _write_procore_artifact(
-        writer.root, f"{project_key}.{suffix}", result["rendered"], marker_kind,
+        writer.root,
+        f"{project_key}.{suffix}",
+        result["rendered"],
+        marker_kind,
     )
     result["written_paths"] = [str(path)]
     result["vault_configured"] = True
@@ -398,32 +553,51 @@ def _apply(result: Dict[str, Any], project_key: str, note_key: str) -> Dict[str,
 
 
 def apply_project_health_note(
-    project_key: str, *, now_utc: str, db_path: Optional[Path] = None,
+    project_key: str,
+    *,
+    now_utc: str,
+    db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    return _apply(build_project_health_note(project_key, now_utc=now_utc, db_path=db_path),
-                  project_key, "project_health")
+    return _apply(
+        build_project_health_note(project_key, now_utc=now_utc, db_path=db_path),
+        project_key,
+        "project_health",
+    )
 
 
 def apply_meeting_prep(
-    project_key: str, *, since_utc: str, now_utc: str, db_path: Optional[Path] = None,
+    project_key: str,
+    *,
+    since_utc: str,
+    now_utc: str,
+    db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     return _apply(
         build_meeting_prep(project_key, since_utc=since_utc, now_utc=now_utc, db_path=db_path),
-        project_key, "meeting_prep",
+        project_key,
+        "meeting_prep",
     )
 
 
 def apply_daily_digest(
-    project_key: str, *, since_utc: str, now_utc: str, db_path: Optional[Path] = None,
+    project_key: str,
+    *,
+    since_utc: str,
+    now_utc: str,
+    db_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     return _apply(
         build_daily_digest(project_key, since_utc=since_utc, now_utc=now_utc, db_path=db_path),
-        project_key, "daily_digest",
+        project_key,
+        "daily_digest",
     )
 
 
 __all__ = [
-    "build_project_health_note", "apply_project_health_note",
-    "build_meeting_prep", "apply_meeting_prep",
-    "build_daily_digest", "apply_daily_digest",
+    "build_project_health_note",
+    "apply_project_health_note",
+    "build_meeting_prep",
+    "apply_meeting_prep",
+    "build_daily_digest",
+    "apply_daily_digest",
 ]

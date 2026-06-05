@@ -66,18 +66,27 @@ class _PathAwareTransport:
         self.calls.append(url)
         page = int((params or {}).get("page", 1))
         if url.rstrip("/").endswith("/commitment_contracts"):  # parent list
-            return _FakeResponse({"data": [{"id": 501}, {"id": 502}, {"id": 503}]} if page == 1 else {"data": []})
+            return _FakeResponse(
+                {"data": [{"id": 501}, {"id": 502}, {"id": 503}]} if page == 1 else {"data": []}
+            )
         if "/commitment_contracts/503/line_items" in url:  # per-parent error path
             raise RuntimeError("synthetic child transport failure")
         if url.endswith("/line_items"):  # child line items
             pid = url.split("/commitment_contracts/")[1].split("/")[0]
             if page != 1:
                 return _FakeResponse({"data": []})
-            return _FakeResponse({"data": [
-                {"id": int(pid) * 10 + 1, "amount": "100.00",
-                 "wbs_code": {"id": 3, "flat_code": "01-100"}},
-                {"id": int(pid) * 10 + 2, "amount": "200.00"},
-            ]})
+            return _FakeResponse(
+                {
+                    "data": [
+                        {
+                            "id": int(pid) * 10 + 1,
+                            "amount": "100.00",
+                            "wbs_code": {"id": 3, "flat_code": "01-100"},
+                        },
+                        {"id": int(pid) * 10 + 2, "amount": "200.00"},
+                    ]
+                }
+            )
         return _FakeResponse({"data": []})
 
 
@@ -115,12 +124,7 @@ class _ManyLineItemsTransport:
             return _FakeResponse({"data": [{"id": 501}]})
         if "/commitment_contracts/501/line_items" in url:
             return _FakeResponse(
-                {
-                    "data": [
-                        {"id": 501000 + i, "amount": "100.00"}
-                        for i in range(250)
-                    ]
-                }
+                {"data": [{"id": 501000 + i, "amount": "100.00"} for i in range(250)]}
             )
         return _FakeResponse({"data": []})
 
@@ -141,17 +145,31 @@ class _ReqItemsTransport:
             pid = url.split("/requisitions/")[1].split("/")[0]
             if page != 1:
                 return _FakeResponse([])
-            return _FakeResponse([
-                {"id": int(pid) * 10 + 1, "item_type": "contract_detail_item",
-                 "cost_code_id": 21585118, "line_item_id": 3129856,
-                 "description_of_work": "Install windows", "scheduled_value": "1.00",
-                 "work_completed_this_period": "0.00", "materials_presently_stored": "2691.36",
-                 "subcontractor_claimed_amount": "0.0",
-                 "work_completed_retainage_retained_this_period": "12.50",
-                 "wbs_code": {"id": 999, "flat_code": "01-011.CT1", "description": "Eng.CT1"},
-                 "currency_configuration": {"currency_iso_code": "USD"},
-                 "comment": "Installation charges", "status": "no_action", "position": 1},
-            ])
+            return _FakeResponse(
+                [
+                    {
+                        "id": int(pid) * 10 + 1,
+                        "item_type": "contract_detail_item",
+                        "cost_code_id": 21585118,
+                        "line_item_id": 3129856,
+                        "description_of_work": "Install windows",
+                        "scheduled_value": "1.00",
+                        "work_completed_this_period": "0.00",
+                        "materials_presently_stored": "2691.36",
+                        "subcontractor_claimed_amount": "0.0",
+                        "work_completed_retainage_retained_this_period": "12.50",
+                        "wbs_code": {
+                            "id": 999,
+                            "flat_code": "01-011.CT1",
+                            "description": "Eng.CT1",
+                        },
+                        "currency_configuration": {"currency_iso_code": "USD"},
+                        "comment": "Installation charges",
+                        "status": "no_action",
+                        "position": 1,
+                    },
+                ]
+            )
         if url.rstrip("/").endswith("/requisitions"):  # parent list (v1.1, array)
             return _FakeResponse([{"id": 58820}, {"id": 58821}] if page == 1 else [])
         return _FakeResponse([])
@@ -172,15 +190,29 @@ class _RfqQuotesTransport:
             self.child_params.append(dict(params or {}))
             if page != 1:
                 return _FakeResponse([])
-            return _FakeResponse([
-                {"id": 105445, "cost": "4500.0", "schedule_impact": 2,
-                 "description": "Need to destroy some roofing.", "request_for_quote_id": 136264,
-                 "created_by": {"id": 160586, "login": "carl@example.com", "name": "Carl"},
-                 "attachments": [{"id": 42, "name": "f.ext",
-                                  "url": "https://storage.procore.com/x?sig=SECRETSIG"}]},
-            ])
+            return _FakeResponse(
+                [
+                    {
+                        "id": 105445,
+                        "cost": "4500.0",
+                        "schedule_impact": 2,
+                        "description": "Need to destroy some roofing.",
+                        "request_for_quote_id": 136264,
+                        "created_by": {"id": 160586, "login": "carl@example.com", "name": "Carl"},
+                        "attachments": [
+                            {
+                                "id": 42,
+                                "name": "f.ext",
+                                "url": "https://storage.procore.com/x?sig=SECRETSIG",
+                            }
+                        ],
+                    },
+                ]
+            )
         if url.rstrip("/").endswith("/rfqs"):  # parent list (array)
-            return _FakeResponse([{"id": 136264, "commitment_contract_id": 701973}] if page == 1 else [])
+            return _FakeResponse(
+                [{"id": 136264, "commitment_contract_id": 701973}] if page == 1 else []
+            )
         return _FakeResponse([])
 
 
@@ -216,7 +248,9 @@ def test_commitment_line_items_n1_fetch_projects_with_parent_id(
     assert any(u.rstrip("/").endswith("/commitment_contracts") for u in transport.calls)
     assert sum("/line_items" in u for u in transport.calls) == 3
     # children upserted with the correct parent_procore_id (501/502; 503 errored)
-    live = [r for r in _rows(db, "procore_live_records") if r["endpoint_id"] == "commitment-line-items"]
+    live = [
+        r for r in _rows(db, "procore_live_records") if r["endpoint_id"] == "commitment-line-items"
+    ]
     assert len(live) == 4  # 2 parents x 2 line items
     assert {r["parent_procore_id"] for r in live} == {"501", "502"}
     # the financial projection ran (commitment line items + amount facts)
@@ -277,7 +311,9 @@ def test_commitment_line_items_daily_sync_skips_existing_children_when_parent_st
     assert second["n1_fanout"]["child_request_count"] == 0
     assert second["n1_fanout"]["child_skipped_count"] == 1
     assert sum("/line_items" in u for u in second_transport.calls) == 0
-    live = [r for r in _rows(db, "procore_live_records") if r["endpoint_id"] == "commitment-line-items"]
+    live = [
+        r for r in _rows(db, "procore_live_records") if r["endpoint_id"] == "commitment-line-items"
+    ]
     assert len(live) == 1
     assert live[0]["procore_record_id"] == "5011"
 
@@ -308,7 +344,9 @@ def test_commitment_line_items_single_parent_can_return_hundreds_in_one_child_ge
     assert receipt["sqlite_upserted_count"] == 250
     assert receipt["n1_fanout"]["child_request_count"] == 1
     assert sum("/line_items" in u for u in transport.calls) == 1
-    live = [r for r in _rows(db, "procore_live_records") if r["endpoint_id"] == "commitment-line-items"]
+    live = [
+        r for r in _rows(db, "procore_live_records") if r["endpoint_id"] == "commitment-line-items"
+    ]
     assert len(live) == 250
     assert {r["parent_procore_id"] for r in live} == {"501"}
 
@@ -343,7 +381,9 @@ def test_commitment_line_items_parent_id_skips_parent_list(
     assert transport.calls == [
         "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/commitment_contracts/501/line_items"
     ]
-    live = [r for r in _rows(db, "procore_live_records") if r["endpoint_id"] == "commitment-line-items"]
+    live = [
+        r for r in _rows(db, "procore_live_records") if r["endpoint_id"] == "commitment-line-items"
+    ]
     assert len(live) == 250
     assert {r["parent_procore_id"] for r in live} == {"501"}
 
@@ -373,8 +413,11 @@ def test_v1_child_get_carries_project_id_query_param(monkeypatch: pytest.MonkeyP
     # every child GET carried project_id
     assert transport.child_params and all("project_id" in p for p in transport.child_params)
     # children upserted with the requisition id as parent + projected into invoice items
-    live = [r for r in _rows(db, "procore_live_records")
-            if r["endpoint_id"] == "subcontractor-invoice-contract-items"]
+    live = [
+        r
+        for r in _rows(db, "procore_live_records")
+        if r["endpoint_id"] == "subcontractor-invoice-contract-items"
+    ]
     assert len(live) == 2 and {r["parent_procore_id"] for r in live} == {"58820", "58821"}
     items = _rows(db, "procore_financial_invoice_items")
     assert len(items) == 2
@@ -408,9 +451,13 @@ def test_rfq_quote_child_get_carries_project_id_and_contract_id(
     assert receipt["state"] in ("success", "partial_success")
     # the child GET carried project_id AND contract_id (= parent rfq's commitment_contract_id)
     assert transport.child_params
-    assert all("project_id" in p and p.get("contract_id") == "701973" for p in transport.child_params)
+    assert all(
+        "project_id" in p and p.get("contract_id") == "701973" for p in transport.child_params
+    )
     # quote amount fact + quote_of edge; signed-URL attachment never persisted raw
-    facts = {f["amount_name"]: f["amount_value"] for f in _rows(db, "procore_financial_amount_facts")}
+    facts = {
+        f["amount_name"]: f["amount_value"] for f in _rows(db, "procore_financial_amount_facts")
+    }
     assert facts.get("cost") == "4500.0"
     edges = {(e["edge_type"], e["to_record_key"]) for e in _rows(db, "procore_record_edges")}
     assert ("quote_of", "tropical|rfqs||136264") in edges

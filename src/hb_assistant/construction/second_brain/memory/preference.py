@@ -109,14 +109,26 @@ def build_operator_preference_proof() -> dict[str, Any]:
 
         # Accepted preferences can NEVER override safety / review-tier routing.
         candidate_prefs = [
-            {"preference_key": "detail_level", "preference_value_redacted": "concise",
-             "review_status": "accepted"},
-            {"preference_key": "review_tier_override", "preference_value_redacted": "tier_1",
-             "review_status": "accepted"},
-            {"preference_key": "suppress_warnings", "preference_value_redacted": "true",
-             "review_status": "accepted"},
-            {"preference_key": "terminology", "preference_value_redacted": "RFI",
-             "review_status": "pending_review"},
+            {
+                "preference_key": "detail_level",
+                "preference_value_redacted": "concise",
+                "review_status": "accepted",
+            },
+            {
+                "preference_key": "review_tier_override",
+                "preference_value_redacted": "tier_1",
+                "review_status": "accepted",
+            },
+            {
+                "preference_key": "suppress_warnings",
+                "preference_value_redacted": "true",
+                "review_status": "accepted",
+            },
+            {
+                "preference_key": "terminology",
+                "preference_value_redacted": "RFI",
+                "review_status": "pending_review",
+            },
         ]
         applied, dropped = apply_operator_preferences(candidate_prefs)
 
@@ -124,7 +136,9 @@ def build_operator_preference_proof() -> dict[str, Any]:
         conn.row_factory = sqlite3.Row
         rows = [
             dict(r)
-            for r in conn.execute("SELECT * FROM second_brain_operator_preference_profiles").fetchall()
+            for r in conn.execute(
+                "SELECT * FROM second_brain_operator_preference_profiles"
+            ).fetchall()
         ]
         conn.close()
 

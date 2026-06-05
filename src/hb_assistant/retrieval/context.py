@@ -46,14 +46,16 @@ class WorkstreamContextBuilder:
         for q in focus[:3]:
             hits = self.retriever.search(q, limit=limit_per)
             for h in hits:
-                retrieved.append({
-                    "query": q,
-                    "source_record_id": h.source_record_id,
-                    "type": h.content_type,
-                    "excerpt": h.text_excerpt[:500],
-                    "score": h.score,
-                    "links": h.links or [],
-                })
+                retrieved.append(
+                    {
+                        "query": q,
+                        "source_record_id": h.source_record_id,
+                        "type": h.content_type,
+                        "excerpt": h.text_excerpt[:500],
+                        "score": h.score,
+                        "links": h.links or [],
+                    }
+                )
 
         actions = []
         if include_actions:

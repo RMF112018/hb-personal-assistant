@@ -41,7 +41,12 @@ POLICY_VERSION = "phase06-email-active-v1"
 
 # Folder roles that are out of operational scope (never body-capture eligible).
 _EXCLUDED_FOLDER_ROLES = {
-    "deleted", "deleted_items", "junk", "junk_email", "drafts", "draft",
+    "deleted",
+    "deleted_items",
+    "junk",
+    "junk_email",
+    "drafts",
+    "draft",
 }
 
 
@@ -151,9 +156,7 @@ class ReviewRouter:
         descriptor = descriptors[0] if descriptors else None
         project_number = descriptor.project_number if descriptor else None
 
-        received_after = (
-            (_utc_now() - timedelta(days=lookback)).replace(microsecond=0).isoformat()
-        )
+        received_after = (_utc_now() - timedelta(days=lookback)).replace(microsecond=0).isoformat()
 
         matches = self._store.list_email_project_matches(
             project_key=project_key, limit=max_messages

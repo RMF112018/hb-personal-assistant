@@ -52,9 +52,7 @@ class QueryResult(BaseModel):
 
     @field_validator("source_refs")
     @classmethod
-    def _refs_have_no_forbidden_fields(
-        cls, value: list[dict[str, str]]
-    ) -> list[dict[str, str]]:
+    def _refs_have_no_forbidden_fields(cls, value: list[dict[str, str]]) -> list[dict[str, str]]:
         for ref in value:
             forbidden = set(ref) & FORBIDDEN_REFERENCE_FIELDS
             if forbidden:

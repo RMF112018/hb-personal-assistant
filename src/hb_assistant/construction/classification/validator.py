@@ -48,7 +48,9 @@ def parse_and_validate(raw: str) -> ModelClassification:
         parsed = json.loads(raw)
     except json.JSONDecodeError as e:
         raise InvalidModelOutputError(
-            "json_parse_failed", snippet=raw, detail=str(e),
+            "json_parse_failed",
+            snippet=raw,
+            detail=str(e),
         ) from None
     if not isinstance(parsed, dict):
         raise InvalidModelOutputError("not_a_json_object", snippet=raw)

@@ -110,7 +110,9 @@ def test_promoted_rows_carry_verified_date() -> None:
 
 def test_cli_ledger_emits_matching_counts() -> None:
     runner = CliRunner()
-    res = runner.invoke(app, ["procore", "live", "endpoints", "ledger", "--json"], catch_exceptions=False)
+    res = runner.invoke(
+        app, ["procore", "live", "endpoints", "ledger", "--json"], catch_exceptions=False
+    )
     assert res.exit_code == 0
     payload = json.loads(res.output)
     assert payload["command"] == "hb-assistant procore live endpoints ledger"

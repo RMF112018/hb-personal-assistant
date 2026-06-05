@@ -39,9 +39,7 @@ def _load_json_resource(filename: str) -> dict[str, Any]:
         else:  # pragma: no cover - legacy importlib path
             text = importlib_resources.read_text(_RESOURCE_PKG, filename, encoding="utf-8")
     except Exception:
-        candidate = (
-            Path(__file__).resolve().parents[3] / "resources" / "json" / filename
-        )
+        candidate = Path(__file__).resolve().parents[3] / "resources" / "json" / filename
         if not candidate.exists():
             raise CalendarContractError(f"Contract resource not found: {filename}") from None
         text = candidate.read_text(encoding="utf-8")
@@ -61,8 +59,13 @@ def load_calendar_project_match_contract() -> dict[str, Any]:
     data = _load_json_resource(_CALENDAR_PROJECT_MATCH)
     _require_keys(
         data,
-        ["version", "candidate_types", "confidence_classes", "review_required_when",
-         "forbidden_persistence"],
+        [
+            "version",
+            "candidate_types",
+            "confidence_classes",
+            "review_required_when",
+            "forbidden_persistence",
+        ],
         _CALENDAR_PROJECT_MATCH,
     )
     if data.get("auto_promotion_allowed") is not False:
@@ -74,8 +77,14 @@ def load_email_thread_summary_contract() -> dict[str, Any]:
     data = _load_json_resource(_EMAIL_THREAD_SUMMARY)
     _require_keys(
         data,
-        ["version", "summary_modes", "default_mode", "persisted_fields",
-         "forbidden_persistence", "review_required_when"],
+        [
+            "version",
+            "summary_modes",
+            "default_mode",
+            "persisted_fields",
+            "forbidden_persistence",
+            "review_required_when",
+        ],
         _EMAIL_THREAD_SUMMARY,
     )
     return data

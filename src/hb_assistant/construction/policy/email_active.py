@@ -34,12 +34,8 @@ from pydantic import BaseModel, field_validator
 
 from hb_assistant.config.path_policy import PathPolicy
 
-SEED_RELATIVE_PATH = (
-    Path("resources") / "config" / "email_intelligence_active_policy.yaml"
-)
-REPO_OVERRIDE_RELATIVE_PATH = (
-    Path("config") / "email_intelligence_active_policy.yml"
-)
+SEED_RELATIVE_PATH = Path("resources") / "config" / "email_intelligence_active_policy.yaml"
+REPO_OVERRIDE_RELATIVE_PATH = Path("config") / "email_intelligence_active_policy.yml"
 
 
 class EmailIntelligenceActivePolicyError(RuntimeError):

@@ -26,7 +26,9 @@ def test_default_stages_present_and_ordered() -> None:
     for req in DEFAULT_STAGES:
         assert req in names
     # Order matches required list (registry may reorder but required present in seq)
-    assert names[: len(DEFAULT_STAGES)] == list(DEFAULT_STAGES) or set(DEFAULT_STAGES).issubset(set(names))
+    assert names[: len(DEFAULT_STAGES)] == list(DEFAULT_STAGES) or set(DEFAULT_STAGES).issubset(
+        set(names)
+    )
 
 
 def test_invalid_run_kind_is_blocked() -> None:
@@ -36,7 +38,10 @@ def test_invalid_run_kind_is_blocked() -> None:
     blocked = [d for d in plan.decisions if d.decision == "block"]
     # If blocked, has reason; otherwise proceeds (planner focuses decisions)
     if blocked:
-        assert any("BLOCK" in (d.reason_code or "") or "invalid" in (d.detail or "").lower() for d in blocked)
+        assert any(
+            "BLOCK" in (d.reason_code or "") or "invalid" in (d.detail or "").lower()
+            for d in blocked
+        )
 
 
 def test_weekend_and_catchup_decisions() -> None:
@@ -61,7 +66,9 @@ def test_duplicate_prevention_decision() -> None:
 def test_replay_mode_allows_idempotent() -> None:
     req = ExecutionRequest(run_kind="daily_brief", mode="replay")
     plan = build_execution_plan(request=req, dry_run=True)
-    repl = [d for d in plan.decisions if d.kind == "replay_safety" or "REPLAY" in (d.reason_code or "")]
+    repl = [
+        d for d in plan.decisions if d.kind == "replay_safety" or "REPLAY" in (d.reason_code or "")
+    ]
     assert repl  # at least one replay decision
 
 
@@ -83,7 +90,11 @@ def test_build_proof_emits_plan_with_stages_and_decisions() -> None:
     assert proof["dry_run_only"] is True
     assert proof["no_side_effects"] is True
     assert proof["stage_count"] >= len(DEFAULT_STAGES)
-    assert "catch_up" in proof["decision_kinds"] or "weekend_gate" in proof["decision_kinds"] or "duplicate_prevention" in proof["decision_kinds"]
+    assert (
+        "catch_up" in proof["decision_kinds"]
+        or "weekend_gate" in proof["decision_kinds"]
+        or "duplicate_prevention" in proof["decision_kinds"]
+    )
     plan = proof["plan"]
     assert set(DEFAULT_STAGES).issubset({s["name"] for s in plan["stages"]})
 

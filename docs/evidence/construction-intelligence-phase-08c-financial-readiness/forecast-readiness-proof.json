@@ -1,5 +1,5 @@
 {
-  "run_id": "08c-forecast-b3b51a7a",
+  "run_id": "08c-forecast-09ff7ffa",
   "project_key": null,
   "readiness_status": "ready_with_review_required",
   "gate_status": "warning",
@@ -18,7 +18,7 @@
     {
       "gate_name": "wbs_cost_code_completeness",
       "gate_status": "warning",
-      "review_items": 14457
+      "review_items": 0
     },
     {
       "gate_name": "source_coverage",

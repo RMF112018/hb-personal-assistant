@@ -41,23 +41,47 @@ def _phase_map(report: dict) -> dict:
 
 def _seed_card(store: ConstructionStore, *, key: str, classified: bool = True) -> None:
     store.upsert_inventory_item(
-        source_key="sp", drive_id="d", item_id=key, name="raw_" + key, web_url="https://x/" + key,
-        parent_path="/General", size_bytes=1024, is_folder=False, last_modified=None, etag="e",
+        source_key="sp",
+        drive_id="d",
+        item_id=key,
+        name="raw_" + key,
+        web_url="https://x/" + key,
+        parent_path="/General",
+        size_bytes=1024,
+        is_folder=False,
+        last_modified=None,
+        etag="e",
     )
     store.upsert_document_card(
-        card_id=key, document_card_id=key, source_id="sp", drive_item_id=key,
-        file_extension="pdf", project_key="alpha", document_type="unknown", size_class="small",
-        extraction_eligibility="manual_approval_required", review_required=True,
+        card_id=key,
+        document_card_id=key,
+        source_id="sp",
+        drive_item_id=key,
+        file_extension="pdf",
+        project_key="alpha",
+        document_type="unknown",
+        size_class="small",
+        extraction_eligibility="manual_approval_required",
+        review_required=True,
     )
     store.upsert_document_project_match_candidate(
-        candidate_id="pm_" + key, document_card_id=key, project_key="alpha",
-        candidate_type="deterministic", confidence=0.95, confidence_class="deterministic",
-        deterministic=True, review_required=False,
+        candidate_id="pm_" + key,
+        document_card_id=key,
+        project_key="alpha",
+        candidate_type="deterministic",
+        confidence=0.95,
+        confidence_class="deterministic",
+        deterministic=True,
+        review_required=False,
     )
     if classified:
         store.upsert_document_classification_candidate(
-            candidate_id="clf_" + key, document_card_id=key, document_type="rfi",
-            classifier_name="deterministic_v1", signal_class="deterministic", confidence=0.9,
+            candidate_id="clf_" + key,
+            document_card_id=key,
+            document_type="rfi",
+            classifier_name="deterministic_v1",
+            signal_class="deterministic",
+            confidence=0.9,
             confidence_class="deterministic",
         )
 
@@ -68,9 +92,15 @@ def test_full_07c_chain_passes_new_gates() -> None:
         store = ConstructionStore(db)
         _seed_card(store, key="c0")
         store.upsert_document_relationship_candidate(
-            candidate_id="rel_c0", document_card_id="c0", target_system="procore",
-            target_record_type="rfi", target_record_key_hash="hh", relationship_type="x",
-            candidate_type="heuristic", confidence=0.55, confidence_class="moderate_heuristic",
+            candidate_id="rel_c0",
+            document_card_id="c0",
+            target_system="procore",
+            target_record_type="rfi",
+            target_record_key_hash="hh",
+            relationship_type="x",
+            candidate_type="heuristic",
+            confidence=0.55,
+            confidence_class="moderate_heuristic",
             review_required=True,
         )
         report = evaluate_data_quality_gates(db_path=db, persist=False)
@@ -151,8 +181,14 @@ def test_review_routing_is_idempotent() -> None:
     try:
         store = ConstructionStore(db)
         _seed_card(store, key="c0")
-        r1 = _gate(evaluate_data_quality_gates(db_path=db, persist=False), "review_required_routing_presence")
-        r2 = _gate(evaluate_data_quality_gates(db_path=db, persist=False), "review_required_routing_presence")
+        r1 = _gate(
+            evaluate_data_quality_gates(db_path=db, persist=False),
+            "review_required_routing_presence",
+        )
+        r2 = _gate(
+            evaluate_data_quality_gates(db_path=db, persist=False),
+            "review_required_routing_presence",
+        )
         assert r1["gate_status"] == r2["gate_status"] == "pass"
         assert r1["review_routing_breakdown"] == r2["review_routing_breakdown"]
     finally:

@@ -33,26 +33,42 @@ def _seed_card(
     project_number_hash: str | None,
 ) -> None:
     store.upsert_inventory_item(
-        source_key="sp", drive_id="d", item_id=key, name="raw_" + key + ".pdf",
-        web_url="https://x/" + key, parent_path="/General", size_bytes=1024,
-        is_folder=False, last_modified=None, etag="e",
+        source_key="sp",
+        drive_id="d",
+        item_id=key,
+        name="raw_" + key + ".pdf",
+        web_url="https://x/" + key,
+        parent_path="/General",
+        size_bytes=1024,
+        is_folder=False,
+        last_modified=None,
+        etag="e",
     )
     store.upsert_document_card(
-        card_id=key, document_card_id=key, source_id="sp", drive_item_id=key,
-        file_extension="pdf", project_key=project_key,
+        card_id=key,
+        document_card_id=key,
+        source_id="sp",
+        drive_item_id=key,
+        file_extension="pdf",
+        project_key=project_key,
         project_number_hash=project_number_hash,
     )
 
 
 def _seed(store: ConstructionStore) -> None:
     # Full match: source key + corroborating registry project-number hash.
-    _seed_card(store, key="c_det", project_key="alpha",
-               project_number_hash=hash_value(_RAW_PROJECT_NUMBER))
+    _seed_card(
+        store, key="c_det", project_key="alpha", project_number_hash=hash_value(_RAW_PROJECT_NUMBER)
+    )
     # Source binding only (no project_number_hash on the card).
     _seed_card(store, key="c_src_only", project_key="beta", project_number_hash=None)
     # Conflict: card hash disagrees with the registry hash.
-    _seed_card(store, key="c_conflict", project_key="alpha",
-               project_number_hash=hash_value(_RAW_WRONG_NUMBER))
+    _seed_card(
+        store,
+        key="c_conflict",
+        project_key="alpha",
+        project_number_hash=hash_value(_RAW_WRONG_NUMBER),
+    )
     # Unmatchable: no project_key -> skipped (cannot write a candidate).
     _seed_card(store, key="c_noproj", project_key=None, project_number_hash=None)
 
@@ -60,9 +76,7 @@ def _seed(store: ConstructionStore) -> None:
 def _by_card(db: str) -> dict[str, sqlite3.Row]:
     conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        "SELECT * FROM construction_document_project_match_candidates"
-    ).fetchall()
+    rows = conn.execute("SELECT * FROM construction_document_project_match_candidates").fetchall()
     return {r["document_card_id"]: r for r in rows}
 
 

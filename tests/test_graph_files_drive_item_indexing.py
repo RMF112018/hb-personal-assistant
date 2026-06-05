@@ -59,13 +59,17 @@ def test_normalize_file() -> None:
 
 
 def test_normalize_folder() -> None:
-    k = normalize_drive_item("src", "D1", {"id": "FO1", "name": "07-RFI", "folder": {"childCount": 12}})
+    k = normalize_drive_item(
+        "src", "D1", {"id": "FO1", "name": "07-RFI", "folder": {"childCount": 12}}
+    )
     assert k["is_folder"] is True and k["is_file"] is False
     assert k["folder_child_count"] == 12
 
 
 def test_normalize_package() -> None:
-    k = normalize_drive_item("src", "D1", {"id": "P1", "name": "Notebook", "package": {"type": "oneNote"}})
+    k = normalize_drive_item(
+        "src", "D1", {"id": "P1", "name": "Notebook", "package": {"type": "oneNote"}}
+    )
     assert k["is_package"] is True
     assert k["is_file"] is False and k["is_folder"] is False
     assert json.loads(k["package_json_redacted"]) == {"type": "oneNote"}
@@ -83,7 +87,9 @@ def test_normalize_moved_renamed_captures_new_path_and_etag() -> None:
 
 
 def test_normalize_deleted_facet() -> None:
-    k = normalize_drive_item("src", "D1", {"id": "X", "name": "gone.pdf", "deleted": {"state": "deleted"}})
+    k = normalize_drive_item(
+        "src", "D1", {"id": "X", "name": "gone.pdf", "deleted": {"state": "deleted"}}
+    )
     assert k["deleted"] is True
 
 
@@ -119,9 +125,7 @@ def test_upsert_persists_rich_columns_and_drops_download_url(tmp_path: Path) -> 
 
     project_registry_to_v5_source_locations(load_source_registry(), store)
     store.upsert_drive_item(**k)
-    row = store.get_drive_item(
-        source_id="od_business_bobby_hedrickbrothers", drive_item_id="F1"
-    )
+    row = store.get_drive_item(source_id="od_business_bobby_hedrickbrothers", drive_item_id="F1")
     assert row is not None
     assert row["is_file"] is True
     assert row["mime_type"] == "application/pdf"
@@ -142,13 +146,9 @@ def test_upsert_idempotent_preserves_first_seen(tmp_path: Path) -> None:
     project_registry_to_v5_source_locations(load_source_registry(), store)
     k = normalize_drive_item("od_business_bobby_hedrickbrothers", "D1", _file_item())
     store.upsert_drive_item(**k)
-    first = store.get_drive_item(
-        source_id="od_business_bobby_hedrickbrothers", drive_item_id="F1"
-    )
+    first = store.get_drive_item(source_id="od_business_bobby_hedrickbrothers", drive_item_id="F1")
     store.upsert_drive_item(**k)
-    second = store.get_drive_item(
-        source_id="od_business_bobby_hedrickbrothers", drive_item_id="F1"
-    )
+    second = store.get_drive_item(source_id="od_business_bobby_hedrickbrothers", drive_item_id="F1")
     assert first["first_seen_utc"] == second["first_seen_utc"]
     assert len(store.list_drive_items(source_id="od_business_bobby_hedrickbrothers")) == 1
 

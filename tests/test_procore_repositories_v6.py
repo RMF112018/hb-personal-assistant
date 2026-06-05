@@ -59,9 +59,7 @@ def test_v6_migration_is_idempotent() -> None:
     _migrate(db)
     conn = sqlite3.connect(str(db))
     try:
-        row = conn.execute(
-            "SELECT COUNT(*) FROM schema_migrations WHERE version = 6"
-        ).fetchone()
+        row = conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 6").fetchone()
     finally:
         conn.close()
     assert row[0] == 1
@@ -115,9 +113,7 @@ def test_upsert_inserts_then_updates() -> None:
     )
     assert second == "updated"
 
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="rfis", db_path=db
-    ) == 1
+    assert count_procore_live_records(project_key="tropical", endpoint_id="rfis", db_path=db) == 1
 
     conn = sqlite3.connect(str(db))
     try:

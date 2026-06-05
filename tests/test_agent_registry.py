@@ -86,7 +86,9 @@ def test_no_agent_allows_a_globally_denied_or_self_denied_group() -> None:
 
 def test_default_model_profiles_are_known() -> None:
     reg = load_agent_registry()
-    profile_ids = {p["profile_id"] for p in load_phase_08a_contract("model_profile_contract")["profiles"]}
+    profile_ids = {
+        p["profile_id"] for p in load_phase_08a_contract("model_profile_contract")["profiles"]
+    }
     profile_ids.add("none")
     for agent in reg.agents:
         assert agent.default_model_profile in profile_ids
@@ -122,7 +124,15 @@ def test_tool_policy_proof_passes() -> None:
 
 def test_proofs_carry_no_raw_content() -> None:
     blob = json.dumps(build_agent_registry_proof()) + json.dumps(build_agent_tool_policy_proof())
-    for forbidden in ("signed_url", "download_url", "raw_body", "raw_prompt", "raw_response", "token", "secret"):
+    for forbidden in (
+        "signed_url",
+        "download_url",
+        "raw_body",
+        "raw_prompt",
+        "raw_response",
+        "token",
+        "secret",
+    ):
         assert forbidden not in blob
 
 

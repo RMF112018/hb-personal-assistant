@@ -27,22 +27,62 @@ TROPICAL = ProjectDescriptor(
 
 # (label, kwargs) -> expected (signal_name or None, confidence, review_required)
 FIXTURES = [
-    ("number_in_subject", {"subject": "RFI 12 — 23-435-01 slab", "body_preview": None, "sender_domain": "gc.com"},
-     ("hb_project_number_in_subject", 1.00, False)),
-    ("number_in_preview", {"subject": "RFI response", "body_preview": "ref 23-435-01 attached", "sender_domain": "gc.com"},
-     ("hb_project_number_in_body_preview", 0.95, True)),
-    ("name_in_subject", {"subject": "Tropical weekly schedule", "body_preview": None, "sender_domain": "gc.com"},
-     ("project_name_in_subject", 0.80, False)),
-    ("name_in_preview", {"subject": "weekly schedule", "body_preview": "updates for Tropical - S L", "sender_domain": "gc.com"},
-     ("project_name_in_body_preview", 0.70, True)),
-    ("procore_notification", {"subject": "New RFI on Tropical - S L", "body_preview": "project 2525840", "sender_domain": "mail.procore.com"},
-     ("procore_notification_identifier", 0.85, False)),
-    ("known_domain", {"subject": "site logistics", "body_preview": None, "sender_domain": "tropicalvendor.com"},
-     ("known_participant_domain_contact", 0.60, True)),
-    ("no_match", {"subject": "lunch plans friday", "body_preview": "see you at noon", "sender_domain": "friends.com"},
-     (None, 0.0, False)),
-    ("other_project_number", {"subject": "PGA 22-112-01 punchlist", "body_preview": None, "sender_domain": "gc.com"},
-     (None, 0.0, False)),
+    (
+        "number_in_subject",
+        {"subject": "RFI 12 — 23-435-01 slab", "body_preview": None, "sender_domain": "gc.com"},
+        ("hb_project_number_in_subject", 1.00, False),
+    ),
+    (
+        "number_in_preview",
+        {
+            "subject": "RFI response",
+            "body_preview": "ref 23-435-01 attached",
+            "sender_domain": "gc.com",
+        },
+        ("hb_project_number_in_body_preview", 0.95, True),
+    ),
+    (
+        "name_in_subject",
+        {"subject": "Tropical weekly schedule", "body_preview": None, "sender_domain": "gc.com"},
+        ("project_name_in_subject", 0.80, False),
+    ),
+    (
+        "name_in_preview",
+        {
+            "subject": "weekly schedule",
+            "body_preview": "updates for Tropical - S L",
+            "sender_domain": "gc.com",
+        },
+        ("project_name_in_body_preview", 0.70, True),
+    ),
+    (
+        "procore_notification",
+        {
+            "subject": "New RFI on Tropical - S L",
+            "body_preview": "project 2525840",
+            "sender_domain": "mail.procore.com",
+        },
+        ("procore_notification_identifier", 0.85, False),
+    ),
+    (
+        "known_domain",
+        {"subject": "site logistics", "body_preview": None, "sender_domain": "tropicalvendor.com"},
+        ("known_participant_domain_contact", 0.60, True),
+    ),
+    (
+        "no_match",
+        {
+            "subject": "lunch plans friday",
+            "body_preview": "see you at noon",
+            "sender_domain": "friends.com",
+        },
+        (None, 0.0, False),
+    ),
+    (
+        "other_project_number",
+        {"subject": "PGA 22-112-01 punchlist", "body_preview": None, "sender_domain": "gc.com"},
+        (None, 0.0, False),
+    ),
 ]
 
 
@@ -64,7 +104,10 @@ def test_matcher_bands(label: str, kwargs: dict, expected: tuple) -> None:
 def test_number_in_subject_takes_precedence_over_preview() -> None:
     # When the number is in the subject, the 0.95 preview signal is not also emitted.
     signals = ProjectMatcher().match(
-        descriptor=TROPICAL, subject="23-435-01 RFI", body_preview="23-435-01 again", sender_domain="gc.com"
+        descriptor=TROPICAL,
+        subject="23-435-01 RFI",
+        body_preview="23-435-01 again",
+        sender_domain="gc.com",
     )
     names = {s.name for s in signals}
     assert "hb_project_number_in_subject" in names

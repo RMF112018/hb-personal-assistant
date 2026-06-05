@@ -201,7 +201,9 @@ def test_body_context_routes_only_when_flag_and_policy_allow(tmp_path: Path, mon
 
     # Without body context: no sensitive term visible → no review.
     no_body = EmailThreadSummaryMaterializer(store).materialize(
-        project_key="tropical", lookback_days=60, dry_run=False,
+        project_key="tropical",
+        lookback_days=60,
+        dry_run=False,
         use_encrypted_body_context=True,  # flag on, but default policy disallows
     )
     assert no_body.review_required_count == 0
@@ -209,7 +211,9 @@ def test_body_context_routes_only_when_flag_and_policy_allow(tmp_path: Path, mon
 
     # With body context allowed by policy: the body term drives routing.
     with_body = EmailThreadSummaryMaterializer(store, policy=_allow_body_policy()).materialize(
-        project_key="tropical", lookback_days=60, dry_run=False,
+        project_key="tropical",
+        lookback_days=60,
+        dry_run=False,
         use_encrypted_body_context=True,
     )
     assert with_body.review_required_count == 1

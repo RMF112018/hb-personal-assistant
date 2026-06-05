@@ -30,7 +30,9 @@ from hb_assistant.store.repositories import Store
 class MorningRunOrchestrator:
     """Orchestrates the morning run with gates and existing services."""
 
-    def __init__(self, store: Optional[Store] = None, registry: Optional[SourceLinkRegistry] = None):
+    def __init__(
+        self, store: Optional[Store] = None, registry: Optional[SourceLinkRegistry] = None
+    ):
         self.store = store or Store()
         self.registry = registry or SourceLinkRegistry(self.store)
         self.pp = PathPolicy()
@@ -113,9 +115,14 @@ class MorningRunOrchestrator:
                 return evidence
 
             # Gate 2: Catch-up (ledger based)
-            if self.cfg.catch_up_if_machine_wakes_after and not self._last_run_was_before_5am_today():
+            if (
+                self.cfg.catch_up_if_machine_wakes_after
+                and not self._last_run_was_before_5am_today()
+            ):
                 # Recent successful run already happened today before/around 5am; still allow manual kick but note it
-                evidence.setdefault("notes", []).append("catch-up not required (recent ledger entry)")
+                evidence.setdefault("notes", []).append(
+                    "catch-up not required (recent ledger entry)"
+                )
 
             # P07: Full 05 stage model (verbatim from spec) with Graph consent blocker classification.
             # Local stages continue and succeed even if Graph stages are skipped (truthful EXTERNAL_ADMIN_CONSENT_BLOCKER posture).
@@ -138,7 +145,12 @@ class MorningRunOrchestrator:
 
             graph_skipped_reason = None
             for stage_name in stages_order:
-                stage_result: Dict[str, Any] = {"stage": stage_name, "status": "skipped", "reason": None, "counts": {}}
+                stage_result: Dict[str, Any] = {
+                    "stage": stage_name,
+                    "status": "skipped",
+                    "reason": None,
+                    "counts": {},
+                }
                 try:
                     if stage_name == "path_readiness":
                         # Reuse PathPolicy (already initialized in __init__)
@@ -153,11 +165,19 @@ class MorningRunOrchestrator:
                         try:
                             from hb_assistant.auth.providers import DelegatedAuthProvider
                             from hb_assistant.config.loader import load_config
+
                             cfg = load_config()
-                            prov = DelegatedAuthProvider(cfg.identity.tenant_id, cfg.identity.client_id, cfg.identity.delegated_scopes, path_policy=self.pp)
+                            prov = DelegatedAuthProvider(
+                                cfg.identity.tenant_id,
+                                cfg.identity.client_id,
+                                cfg.identity.delegated_scopes,
+                                path_policy=self.pp,
+                            )
                             tok = prov.get_token(["User.Read"])  # minimal
                             stage_result["status"] = "ok"
-                            stage_result["counts"] = {"delegated_token": bool(tok.get("access_token"))}
+                            stage_result["counts"] = {
+                                "delegated_token": bool(tok.get("access_token"))
+                            }
                         except Exception as ex:
                             msg = str(ex).lower()
                             if (
@@ -168,7 +188,11 @@ class MorningRunOrchestrator:
                                 or "connection" in msg
                                 or "timeout" in msg
                             ):
-                                graph_skipped_reason = "skipped_no_token" if "NoToken" in type(ex).__name__ else "skipped_external_admin_consent"
+                                graph_skipped_reason = (
+                                    "skipped_no_token"
+                                    if "NoToken" in type(ex).__name__
+                                    else "skipped_external_admin_consent"
+                                )
                                 stage_result["status"] = "skipped"
                                 stage_result["reason"] = graph_skipped_reason
                             else:
@@ -183,8 +207,16 @@ class MorningRunOrchestrator:
                             stage_result["reason"] = "graph_auth_failed"
                     elif stage_name == "local_signal_load":
                         # Load bounded signals already in store (body mentions, parser_outputs, calendar, files, retrieval)
-                        mentions = len(self.store.list_recent_body_mentions(limit=1)) if hasattr(self.store, "list_recent_body_mentions") else 0
-                        files = len(self.store.list_file_review_queue(limit=1)) if hasattr(self.store, "list_file_review_queue") else 0
+                        mentions = (
+                            len(self.store.list_recent_body_mentions(limit=1))
+                            if hasattr(self.store, "list_recent_body_mentions")
+                            else 0
+                        )
+                        files = (
+                            len(self.store.list_file_review_queue(limit=1))
+                            if hasattr(self.store, "list_file_review_queue")
+                            else 0
+                        )
                         stage_result["status"] = "ok"
                         stage_result["counts"] = {"body_mentions": mentions, "file_queue": files}
                     elif stage_name == "classification":
@@ -192,17 +224,23 @@ class MorningRunOrchestrator:
                         stage_result["status"] = "ok"
                     elif stage_name == "action_extraction":
                         from hb_assistant.actions.service import ActionService
+
                         actions = ActionService(store=self.store).extract(dry_run=dry_run)
                         stage_result["status"] = "ok"
                         stage_result["counts"] = {"extracted": len(actions) if actions else 0}
                     elif stage_name == "workstream_context":
                         from hb_assistant.retrieval import WorkstreamContextBuilder
+
                         builder = WorkstreamContextBuilder(store=self.store)
                         ctx = builder.build_for_today(limit_per=3)
                         stage_result["status"] = "ok"
-                        stage_result["counts"] = {"retrieved": len(ctx.retrieved), "actions": len(getattr(ctx, "recent_actions", []))}
+                        stage_result["counts"] = {
+                            "retrieved": len(ctx.retrieved),
+                            "actions": len(getattr(ctx, "recent_actions", [])),
+                        }
                     elif stage_name == "file_ingestion_preview":
                         from hb_assistant.files import FileIngestionService
+
                         svc = FileIngestionService(drive_client=object())  # type: ignore
                         discovered = svc.discover_and_ingest_pending(limit=3, dry_run=True)
                         stage_result["status"] = "ok"
@@ -211,14 +249,19 @@ class MorningRunOrchestrator:
                         from datetime import date
 
                         from hb_assistant.obsidian.brief import DailyBriefGenerator
+
                         gen = DailyBriefGenerator()
                         content, _fm = gen.generate_for_date(date.today())
                         stage_result["status"] = "ok"
-                        stage_result["counts"] = {"generated": bool(content), "len": len(content) if content else 0}
+                        stage_result["counts"] = {
+                            "generated": bool(content),
+                            "len": len(content) if content else 0,
+                        }
                     elif stage_name == "obsidian_write":
                         from datetime import date
 
                         from hb_assistant.obsidian import DailyBriefGenerator, MarkerBoundedWriter
+
                         gen = DailyBriefGenerator()
                         inner, fm = gen.generate_for_date(date.today())
                         writer = MarkerBoundedWriter()
@@ -241,7 +284,11 @@ class MorningRunOrchestrator:
                         self._finish_run(run_id, "completed-dry-run" if dry_run else "completed")
                         stage_result["status"] = "ok"
                 except Exception as ex:
-                    stage_result["status"] = "skipped" if "graph" not in stage_name and "store" not in stage_name else "error_isolated"
+                    stage_result["status"] = (
+                        "skipped"
+                        if "graph" not in stage_name and "store" not in stage_name
+                        else "error_isolated"
+                    )
                     stage_result["reason"] = f"{type(ex).__name__}: {str(ex)[:200]}"
 
                 evidence["stages"].append(stage_result)
@@ -249,8 +296,15 @@ class MorningRunOrchestrator:
             # Derive blocker_classification from stages (per 05 spec)
             blocker = "none"
             for s in evidence["stages"]:
-                if s.get("stage") == "graph_auth_status" and s.get("reason") in ("skipped_no_token", "skipped_external_admin_consent"):
-                    blocker = "EXTERNAL_ADMIN_CONSENT_BLOCKER" if "admin_consent" in str(s.get("reason")) else "NO_GRAPH_TOKEN"
+                if s.get("stage") == "graph_auth_status" and s.get("reason") in (
+                    "skipped_no_token",
+                    "skipped_external_admin_consent",
+                ):
+                    blocker = (
+                        "EXTERNAL_ADMIN_CONSENT_BLOCKER"
+                        if "admin_consent" in str(s.get("reason"))
+                        else "NO_GRAPH_TOKEN"
+                    )
                     break
                 if s.get("stage") == "store_readiness" and s.get("status") != "ok":
                     blocker = "STORE_NOT_READY"
@@ -259,7 +313,10 @@ class MorningRunOrchestrator:
 
             # Outputs per 05 contract
             evidence["outputs"] = {
-                "brief_generated": any(s.get("stage") == "brief_generation" and s.get("status") == "ok" for s in evidence["stages"]),
+                "brief_generated": any(
+                    s.get("stage") == "brief_generation" and s.get("status") == "ok"
+                    for s in evidence["stages"]
+                ),
                 "obsidian_write_mode": "dry_run" if dry_run else "apply",
                 "evidence_path": None,  # set below
             }

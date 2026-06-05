@@ -55,15 +55,28 @@ def test_all_required_surfaces_present() -> None:
     report = evaluate_phase_08a_data_quality_gates()
     by = report["by_field_status"]
     for surface in (
-        "runtime_readiness", "agent_registry", "model_profile", "retrieval",
-        "research_packet", "evaluation", "memory_provenance", "daily_brief_handoff",
+        "runtime_readiness",
+        "agent_registry",
+        "model_profile",
+        "retrieval",
+        "research_packet",
+        "evaluation",
+        "memory_provenance",
+        "daily_brief_handoff",
     ):
         assert surface in by
 
 
 def test_report_carries_no_raw_content() -> None:
     blob = json.dumps(evaluate_phase_08a_data_quality_gates(), default=str)
-    for forbidden in ("signed_url", "download_url", "raw_body", "raw_prompt", "raw_response", "secret"):
+    for forbidden in (
+        "signed_url",
+        "download_url",
+        "raw_body",
+        "raw_prompt",
+        "raw_response",
+        "secret",
+    ):
         assert forbidden not in blob
 
 

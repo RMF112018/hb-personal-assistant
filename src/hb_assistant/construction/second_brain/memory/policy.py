@@ -20,7 +20,9 @@ from hb_assistant.config.path_policy import PathPolicy
 from ..contracts import load_phase_08a_contract
 
 _MEMORY_SEED_RELATIVE = Path("resources") / "config" / "phase_08a_memory_policy.seed.yaml"
-_PREF_SEED_RELATIVE = Path("resources") / "config" / "phase_08a_operator_preference_policy.seed.yaml"
+_PREF_SEED_RELATIVE = (
+    Path("resources") / "config" / "phase_08a_operator_preference_policy.seed.yaml"
+)
 MEMORY_POLICY_ENV_VAR = "HB_SECOND_BRAIN_MEMORY_POLICY"
 PREFERENCE_POLICY_ENV_VAR = "HB_SECOND_BRAIN_PREFERENCE_POLICY"
 

@@ -39,16 +39,18 @@ def _minimal_endpoints() -> list[dict[str, Any]]:
                 "verified_at_utc": "2026-05-27T00:00:00Z",
                 "verified_by": "fixture",
             }
-        rows.append({
-            "endpoint_id": f"fixture-ep-{cat}",
-            "http_method": "GET",
-            "path_template": f"/vapid/projects/{{project_id}}/{cat.replace('-', '_')}",
-            "category": cat,
-            "status": status,
-            "sensitivity": sens,
-            "included_in_phase_01": status not in ("excluded", "deferred"),
-            **verif,
-        })
+        rows.append(
+            {
+                "endpoint_id": f"fixture-ep-{cat}",
+                "http_method": "GET",
+                "path_template": f"/vapid/projects/{{project_id}}/{cat.replace('-', '_')}",
+                "category": cat,
+                "status": status,
+                "sensitivity": sens,
+                "included_in_phase_01": status not in ("excluded", "deferred"),
+                **verif,
+            }
+        )
     return rows
 
 
@@ -742,9 +744,7 @@ DAILY_LOG_SAMPLE_PAYLOAD: list[dict[str, Any]] = [
                 "log_date": "2026-05-26",
                 "created_at": "2026-05-26T18:00:00Z",
                 "updated_at": "2026-05-26T18:00:00Z",
-                "description": (
-                    "Minor accident: slipped on wet planking; no injury reported."
-                ),
+                "description": ("Minor accident: slipped on wet planking; no injury reported."),
             },
         ],
         "injury_logs": [

@@ -23,7 +23,12 @@ _FULL_MAILBOX = [
     {"id": "AAMkInbox", "displayName": "Inbox", "totalItemCount": 42, "unreadItemCount": 3},
     {"id": "AAMkSent", "displayName": "Sent Items", "totalItemCount": 128, "unreadItemCount": 0},
     {"id": "AAMkArchive", "displayName": "Archive", "totalItemCount": 3000, "unreadItemCount": 0},
-    {"id": "AAMkDeleted", "displayName": "Deleted Items", "totalItemCount": 15, "unreadItemCount": 0},
+    {
+        "id": "AAMkDeleted",
+        "displayName": "Deleted Items",
+        "totalItemCount": 15,
+        "unreadItemCount": 0,
+    },
     {"id": "AAMkJunk", "displayName": "Junk Email", "totalItemCount": 2, "unreadItemCount": 1},
     {"id": "AAMkDrafts", "displayName": "Drafts", "totalItemCount": 0, "unreadItemCount": 0},
     {"id": "AAMkProjects", "displayName": "Projects", "totalItemCount": 9, "unreadItemCount": 0},
@@ -40,7 +45,9 @@ class FakeReader:
     def get_me(self) -> dict[str, Any]:
         return {"id": "me-id", "userPrincipalName": self._upn, "displayName": "Bobby"}
 
-    def list_mail_folders(self, *, top: int = 25, max_items: Optional[int] = None) -> list[dict[str, Any]]:
+    def list_mail_folders(
+        self, *, top: int = 25, max_items: Optional[int] = None
+    ) -> list[dict[str, Any]]:
         return list(self._folders)
 
 
@@ -95,7 +102,9 @@ def test_commit_persists_sources_and_sync_state() -> None:
     # Included folders get a pending sync cursor; excluded do not.
     included = [f for f in result.folders if f.include_in_sync]
     for f in included:
-        state = store.get_email_sync_state(source_id=f.source_id, folder_id=_folder_id_for(f.folder_role))
+        state = store.get_email_sync_state(
+            source_id=f.source_id, folder_id=_folder_id_for(f.folder_role)
+        )
         assert state is not None
         assert state["sync_status"] == "pending"
         assert state["sync_mode"] == "bounded_lookback"

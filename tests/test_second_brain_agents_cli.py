@@ -46,7 +46,15 @@ def test_agents_status_valid_exit_zero(runner: CliRunner) -> None:
 def test_agents_output_carries_no_raw_content(runner: CliRunner) -> None:
     out = runner.invoke(app, ["second-brain", "agents", "registry", "--json"]).output
     out += runner.invoke(app, ["second-brain", "agents", "status", "--json"]).output
-    for forbidden in ("signed_url", "download_url", "raw_body", "raw_prompt", "raw_response", "token", "secret"):
+    for forbidden in (
+        "signed_url",
+        "download_url",
+        "raw_body",
+        "raw_prompt",
+        "raw_response",
+        "token",
+        "secret",
+    ):
         assert forbidden not in out
 
 

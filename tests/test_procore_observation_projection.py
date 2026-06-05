@@ -35,8 +35,18 @@ _SAFETY_OBS: Dict[str, Any] = {
     "description": "Scaffold guardrail missing; worker nearly fell. Corrective action issued.",
     "location": {"id": 22001, "name": "Tower A>Level 5", "parent_id": 22000},
     "trade": {"id": 7, "name": "05 - structural steel"},
-    "assignee": {"id": 31, "login": "super@example.test", "name": "Site Super", "vendor": {"id": 900, "name": "Acme Safety"}},
-    "created_by": {"id": 12, "login": "pm@example.test", "name": "Project Manager", "company_name": "HB Construction"},
+    "assignee": {
+        "id": 31,
+        "login": "super@example.test",
+        "name": "Site Super",
+        "vendor": {"id": 900, "name": "Acme Safety"},
+    },
+    "created_by": {
+        "id": 12,
+        "login": "pm@example.test",
+        "name": "Project Manager",
+        "company_name": "HB Construction",
+    },
 }
 
 # Benign, closed, low-priority observation — no safety signal.
@@ -74,7 +84,9 @@ def _signals(db: Path) -> set[str]:
 
 def test_observation_safety_classification_and_priority() -> None:
     db = _db()
-    project_observation(_SAFETY_OBS, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db)
+    project_observation(
+        _SAFETY_OBS, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db
+    )
     sigs = _signals(db)
     assert {"observation_open_safety", "observation_high_priority", "observation_due_soon"} <= sigs
     assert "observation_closed" not in sigs
@@ -82,7 +94,9 @@ def test_observation_safety_classification_and_priority() -> None:
 
 def test_observation_location_trade_vendor_edges_hashed() -> None:
     db = _db()
-    project_observation(_SAFETY_OBS, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db)
+    project_observation(
+        _SAFETY_OBS, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db
+    )
     c = _conn(db)
     edges = {r[0] for r in c.execute("SELECT edge_type FROM procore_record_edges")}
     assert {"at_location", "trade", "vendor", "assignee", "created_by"} <= edges
@@ -99,16 +113,25 @@ def test_observation_location_trade_vendor_edges_hashed() -> None:
 
 def test_observation_description_text_intelligence_encrypted() -> None:
     db = _db()
-    project_observation(_SAFETY_OBS, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db)
-    row = _conn(db).execute(
-        "SELECT * FROM procore_text_intelligence WHERE source_field_path='description'"
-    ).fetchone()
-    assert row is not None and decrypt_text(row["encrypted_full_text_ref"]) == _SAFETY_OBS["description"]
+    project_observation(
+        _SAFETY_OBS, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db
+    )
+    row = (
+        _conn(db)
+        .execute("SELECT * FROM procore_text_intelligence WHERE source_field_path='description'")
+        .fetchone()
+    )
+    assert (
+        row is not None
+        and decrypt_text(row["encrypted_full_text_ref"]) == _SAFETY_OBS["description"]
+    )
 
 
 def test_observation_closed_signal_no_safety() -> None:
     db = _db()
-    project_observation(_BENIGN_OBS, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db)
+    project_observation(
+        _BENIGN_OBS, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db
+    )
     sigs = _signals(db)
     assert "observation_closed" in sigs
     assert "observation_open_safety" not in sigs
@@ -117,8 +140,17 @@ def test_observation_closed_signal_no_safety() -> None:
 
 def test_observation_projection_idempotent() -> None:
     db = _db()
-    project_observation(_SAFETY_OBS, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db)
-    project_observation(_SAFETY_OBS, project_key="tropical", sync_run_id="r2", now_utc=_NOW, db_path=db)
-    assert _conn(db).execute(
-        "SELECT COUNT(*) FROM procore_text_intelligence WHERE source_field_path='description'"
-    ).fetchone()[0] == 1
+    project_observation(
+        _SAFETY_OBS, project_key="tropical", sync_run_id="r1", now_utc=_NOW, db_path=db
+    )
+    project_observation(
+        _SAFETY_OBS, project_key="tropical", sync_run_id="r2", now_utc=_NOW, db_path=db
+    )
+    assert (
+        _conn(db)
+        .execute(
+            "SELECT COUNT(*) FROM procore_text_intelligence WHERE source_field_path='description'"
+        )
+        .fetchone()[0]
+        == 1
+    )

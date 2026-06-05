@@ -56,7 +56,9 @@ def test_render_is_redacted_markdown(db_path: str) -> None:
     md = render_brief_markdown(_context(db_path))
     assert md.startswith("# Daily Brief — 2026-06-02")
     assert "## Priority Actions" in md
-    assert "Review exceptions" in md or "Batched/suppressed" in md  # new summary-first review burden section (replaced full queue dump)
+    assert (
+        "Review exceptions" in md or "Batched/suppressed" in md
+    )  # new summary-first review burden section (replaced full queue dump)
     for forbidden in ("signed_url", "download_url", "raw_body", "raw_prompt", "raw_response"):
         assert forbidden not in md
 
@@ -111,9 +113,7 @@ def test_apply_preserves_user_text_outside_markers(tmp_path: Path, db_path: str)
         encoding="utf-8",
     )
     md = render_brief_markdown(_context(db_path))
-    write_brief_output(
-        brief_date="2026-06-02", content=md, vault_brief_dir=str(vault), apply=True
-    )
+    write_brief_output(brief_date="2026-06-02", content=md, vault_brief_dir=str(vault), apply=True)
     text = target.read_text(encoding="utf-8")
     assert "keep me" in text
     assert "keep me too" in text

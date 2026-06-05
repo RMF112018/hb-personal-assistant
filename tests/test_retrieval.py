@@ -32,13 +32,24 @@ def test_embedder_deterministic_and_fallback():
 def test_retriever_det_only_redacted(tmp_path):
     dbp = tmp_path / "r11.sqlite"
     store = Store(db_path=str(dbp))
-    sid = store.upsert_source_record(source_type="file", source_key="test:retr1", source_system="local")
+    sid = store.upsert_source_record(
+        source_type="file", source_key="test:retr1", source_system="local"
+    )
     from hb_assistant.store.connection import get_connection, transaction
+
     c = get_connection(str(dbp))
     with transaction(c):
         c.execute(
             "INSERT INTO parser_outputs (file_source_record_id, parser_name, parser_version, content_hash, extraction_status, text_excerpt, char_count) VALUES (?,?,?,?,?,?,?)",
-            (sid, "test", "1", "h1", "success", "The Q3 report mentions waiting on legal review for contract X. Action: follow up.", 120),
+            (
+                sid,
+                "test",
+                "1",
+                "h1",
+                "success",
+                "The Q3 report mentions waiting on legal review for contract X. Action: follow up.",
+                120,
+            ),
         )
 
     retr = Retriever(store=store, embedder=DeterministicEmbedder(), semantic_enabled=False)
@@ -55,13 +66,24 @@ def test_retriever_det_only_redacted(tmp_path):
 def test_retriever_semantic_blend_mocked(tmp_path):
     dbp = tmp_path / "r11s.sqlite"
     store = Store(db_path=str(dbp))
-    sid = store.upsert_source_record(source_type="file", source_key="test:retr2", source_system="local")
+    sid = store.upsert_source_record(
+        source_type="file", source_key="test:retr2", source_system="local"
+    )
     from hb_assistant.store.connection import get_connection, transaction
+
     c = get_connection(str(dbp))
     with transaction(c):
         c.execute(
             "INSERT INTO parser_outputs (file_source_record_id, parser_name, parser_version, content_hash, extraction_status, text_excerpt, char_count) VALUES (?,?,?,?,?,?,?)",
-            (sid, "p", "1", "h", "ok", "Please review the attached Q3 financial report and confirm action items for the board.", 90),
+            (
+                sid,
+                "p",
+                "1",
+                "h",
+                "ok",
+                "Please review the attached Q3 financial report and confirm action items for the board.",
+                90,
+            ),
         )
 
     class FixedEmbedder(Embedder):
@@ -93,8 +115,11 @@ def test_workstream_context_builder(tmp_path):
 def test_no_full_content_or_secrets_in_retrieval_artifacts(tmp_path):
     dbp = tmp_path / "leak11.sqlite"
     store = Store(db_path=str(dbp))
-    sid = store.upsert_source_record(source_type="file", source_key="leak:test", source_system="test")
+    sid = store.upsert_source_record(
+        source_type="file", source_key="leak:test", source_system="test"
+    )
     from hb_assistant.store.connection import get_connection, transaction
+
     secret = "SECRET_TOKEN_999_RETRIEVAL_LEAK_TEST"
     c = get_connection(str(dbp))
     with transaction(c):

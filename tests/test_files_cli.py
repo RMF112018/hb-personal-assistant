@@ -23,22 +23,31 @@ def test_files_sample_uses_synthetic_mode() -> None:
 
 
 def test_files_ingest_returns_no_provenance_candidates_when_empty() -> None:
-    result = runner.invoke(app, ["files", "ingest", "--dry-run", "--json", "--limit", "1"], env=_env())
+    result = runner.invoke(
+        app, ["files", "ingest", "--dry-run", "--json", "--limit", "1"], env=_env()
+    )
     assert result.exit_code == 1
     assert '"status": "no_provenance_candidates"' in result.stdout
 
 
 def test_files_ingest_uses_real_persisted_candidates() -> None:
-    with patch("hb_assistant.cli.files.Store.list_pending_ingest_candidates", return_value=[{
-        "source_record_id": 77,
-        "drive_item_id": "cli-test",
-        "name": "CliTest.pdf",
-        "size_bytes": 1024,
-        "web_url": None,
-        "download_status": "not_downloaded",
-        "parse_status": "not_parsed",
-    }]):
-        result = runner.invoke(app, ["files", "ingest", "--dry-run", "--json", "--limit", "5"], env=_env())
+    with patch(
+        "hb_assistant.cli.files.Store.list_pending_ingest_candidates",
+        return_value=[
+            {
+                "source_record_id": 77,
+                "drive_item_id": "cli-test",
+                "name": "CliTest.pdf",
+                "size_bytes": 1024,
+                "web_url": None,
+                "download_status": "not_downloaded",
+                "parse_status": "not_parsed",
+            }
+        ],
+    ):
+        result = runner.invoke(
+            app, ["files", "ingest", "--dry-run", "--json", "--limit", "5"], env=_env()
+        )
     assert result.exit_code == 0
     assert '"mode": "real"' in result.stdout
     assert '"status": "ok"' in result.stdout
@@ -51,7 +60,11 @@ def test_files_ingest_dry_run_returns_blocked_db_unavailable_json() -> None:
             status="blocked_db_unavailable",
             message="Database unavailable for dry-run",
             db_path="/tmp/test.sqlite",
-            report={"ok": False, "status": "blocked_db_unavailable", "error": "db_parent_not_writable"},
+            report={
+                "ok": False,
+                "status": "blocked_db_unavailable",
+                "error": "db_parent_not_writable",
+            },
         ),
     ):
         result = runner.invoke(app, ["files", "ingest", "--dry-run", "--json"], env=_env())

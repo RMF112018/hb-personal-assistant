@@ -140,9 +140,7 @@ def test_cache_provider_returns_token_when_no_expires_field(tmp_path: Path) -> N
 
 def test_cache_provider_returns_none_when_permissions_unsafe(tmp_path: Path) -> None:
     future = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
-    cache_file = _write_cache(
-        tmp_path, {"access_token": SYNTHETIC_TOKEN, "expires_at": future}
-    )
+    cache_file = _write_cache(tmp_path, {"access_token": SYNTHETIC_TOKEN, "expires_at": future})
     cache_file.chmod(0o644)  # group/other readable — unsafe
     if cache_file.stat().st_mode & 0o077 == 0:
         pytest.skip("filesystem does not honour group/other mode bits")
@@ -165,24 +163,28 @@ def test_default_chain_returns_none_when_all_empty(
 ) -> None:
     monkeypatch.delenv("PROCORE_ACCESS_TOKEN", raising=False)
     (tmp_path / "auth").mkdir()
-    with patch(
-        "hb_assistant.procore.config.get_macos_keychain_secret",
-        return_value=None,
-    ), _patch_auth_dir(tmp_path):
+    with (
+        patch(
+            "hb_assistant.procore.config.get_macos_keychain_secret",
+            return_value=None,
+        ),
+        _patch_auth_dir(tmp_path),
+    ):
         assert default_procore_token_provider().get_access_token() is None
 
 
-def test_default_chain_env_wins_over_cache(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_default_chain_env_wins_over_cache(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     env_token = "env-only-token"
     monkeypatch.setenv("PROCORE_ACCESS_TOKEN", env_token)
     future = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     _write_cache(tmp_path, {"access_token": "cache-token", "expires_at": future})
-    with patch(
-        "hb_assistant.procore.config.get_macos_keychain_secret",
-        return_value=None,
-    ), _patch_auth_dir(tmp_path):
+    with (
+        patch(
+            "hb_assistant.procore.config.get_macos_keychain_secret",
+            return_value=None,
+        ),
+        _patch_auth_dir(tmp_path),
+    ):
         assert default_procore_token_provider().get_access_token() == env_token
 
 
@@ -225,7 +227,6 @@ def test_provider_repr_never_includes_token_value() -> None:
 
 
 # --- RefreshingOAuthTokenProvider (Phase 04 Prompt 02 acquisition) -----------
-
 
 
 from hb_assistant.procore.oauth import TokenSet  # noqa: E402

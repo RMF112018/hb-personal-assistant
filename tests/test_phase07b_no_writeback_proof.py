@@ -62,8 +62,11 @@ def test_clean_pass_and_covers_07a_and_07b() -> None:
         assert any("event_indexer.py" in m for m in report["scanned_modules_07b"])
         # The guard probe lists the guarded 07B tables with their CHECK columns.
         guarded = {t["table"] for t in checks["sqlite_guardrail_07b_tables"]["tables"]}
-        assert {"calendar_event_index", "email_model_classifications",
-                "meeting_email_relationship_candidates"} <= guarded
+        assert {
+            "calendar_event_index",
+            "email_model_classifications",
+            "meeting_email_relationship_candidates",
+        } <= guarded
     finally:
         os.unlink(db)
 
@@ -75,29 +78,44 @@ def test_populated_store_still_passes_content_scan() -> None:
         now = _now()
         store.upsert_calendar_source_location(source_id="primary_calendar", mailbox_owner_hash="o")
         store.upsert_calendar_event_index(
-            event_index_id="E1", source_id="primary_calendar", graph_event_id_hash="g1",
-            start_datetime_utc=now, end_datetime_utc=now, organizer_domain="vendor.com",
+            event_index_id="E1",
+            source_id="primary_calendar",
+            graph_event_id_hash="g1",
+            start_datetime_utc=now,
+            end_datetime_utc=now,
+            organizer_domain="vendor.com",
         )
         store.upsert_email_source_location(
             source_id="sx", mailbox_owner_hash="h", folder_role="inbox", folder_id="F"
         )
-        store.upsert_email_message(message_id="m1", thread_key="T1", source_id="sx",
-                                   received_datetime=now)
+        store.upsert_email_message(
+            message_id="m1", thread_key="T1", source_id="sx", received_datetime=now
+        )
         store.upsert_email_model_classification(
-            classification_id="c1", message_id="m1", model_name="mistral",
-            schema_version="phase06-email-ollama-v1", classification_status="valid",
+            classification_id="c1",
+            message_id="m1",
+            model_name="mistral",
+            schema_version="phase06-email-ollama-v1",
+            classification_status="valid",
         )
         store.upsert_email_thread_summary(
-            thread_key="T1", project_key="tropical", message_count=1,
-            first_message_datetime=now, last_message_datetime=now,
+            thread_key="T1",
+            project_key="tropical",
+            message_count=1,
+            first_message_datetime=now,
+            last_message_datetime=now,
             summary_redacted="thread: 1 message(s), 1 participant(s)",
             summary_policy="metadata_only",
         )
         store.upsert_meeting_email_relationship_candidate(
-            candidate_id="cand1", event_index_id="E1", thread_key_hash="abc123",
+            candidate_id="cand1",
+            event_index_id="E1",
+            thread_key_hash="abc123",
             candidate_type="time_and_domain",
             source_reference_json=json.dumps({"event_index_id": "E1", "event_start_utc": now}),
-            confidence=0.8, confidence_class="strong", review_required=False,
+            confidence=0.8,
+            confidence_class="strong",
+            review_required=False,
         )
 
         report = build_data_quality_no_writeback_proof(db_path=db)
@@ -116,7 +134,9 @@ def test_fail_closed_on_raw_email_in_content() -> None:
         store = ConstructionStore(db)
         # A metadata-only 07B table with no blocking CHECK — inject a raw email.
         store.upsert_email_thread_summary(
-            thread_key="T1", project_key="tropical", message_count=1,
+            thread_key="T1",
+            project_key="tropical",
+            message_count=1,
             summary_redacted="ping me at vendor.person@example.com about the RFI",
             summary_policy="metadata_only",
         )

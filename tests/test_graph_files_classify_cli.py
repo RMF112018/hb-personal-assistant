@@ -21,16 +21,29 @@ def _seed(store: ConstructionStore) -> None:
         ("k3", "pdf", "summary.pdf", "/General"),
     ]:
         store.upsert_inventory_item(
-            source_key="sp", drive_id="d", item_id=key, name=name, web_url="https://x/" + key,
-            parent_path=path, size_bytes=1024, is_folder=False, last_modified=None, etag="e",
+            source_key="sp",
+            drive_id="d",
+            item_id=key,
+            name=name,
+            web_url="https://x/" + key,
+            parent_path=path,
+            size_bytes=1024,
+            is_folder=False,
+            last_modified=None,
+            etag="e",
         )
         store.upsert_document_card(
-            card_id=key, document_card_id=key, source_id="sp", drive_item_id=key,
+            card_id=key,
+            document_card_id=key,
+            source_id="sp",
+            drive_item_id=key,
             file_extension=ext,
         )
 
 
-def test_dry_run_then_apply_then_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_dry_run_then_apply_then_idempotent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     db = str(tmp_path / "cli.sqlite")
     _seed(ConstructionStore(db))
     monkeypatch.setattr(

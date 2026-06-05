@@ -26,16 +26,32 @@ def _seeded_db() -> Path:
     SQLiteMigrator(db_path=str(db)).apply()
     project_owner_contract_family(
         "prime-contracts",
-        {"id": 1, "number": "PC-1", "status": "Approved", "executed": False,
-         "grand_total": "1000000.00", "title": "Prime contract pm@example.test",
-         "currency_configuration": {"currency_iso_code": "USD"}},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 1,
+            "number": "PC-1",
+            "status": "Approved",
+            "executed": False,
+            "grand_total": "1000000.00",
+            "title": "Prime contract pm@example.test",
+            "currency_configuration": {"currency_iso_code": "USD"},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_commitment_family(
         "commitment-contracts",
-        {"id": 2, "number": "SC-1", "status": "Pending", "executed": False,
-         "grand_total": "500000.00", "vendor": {"id": 12, "name": "Acme LLC"}},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 2,
+            "number": "SC-1",
+            "status": "Pending",
+            "executed": False,
+            "grand_total": "500000.00",
+            "vendor": {"id": 12, "name": "Acme LLC"},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     return db
 
@@ -58,11 +74,16 @@ def test_build_has_ten_sections_and_record_keys() -> None:
 
 def test_build_emits_no_raw_sensitive() -> None:
     db = _seeded_db()
-    rendered = build_financial_register(
-        "tropical", now_utc=_NOW, since_utc=_SINCE, db_path=db
-    )["rendered"]
-    for pat in (r"https?://", r"[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}", r"Bearer\s+[A-Za-z0-9]",
-                r"-----BEGIN", r"sig="):
+    rendered = build_financial_register("tropical", now_utc=_NOW, since_utc=_SINCE, db_path=db)[
+        "rendered"
+    ]
+    for pat in (
+        r"https?://",
+        r"[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}",
+        r"Bearer\s+[A-Za-z0-9]",
+        r"-----BEGIN",
+        r"sig=",
+    ):
         assert re.search(pat, rendered) is None, f"leaked {pat!r}"
     assert "pm@example.test" not in rendered  # contract title email masked upstream
 

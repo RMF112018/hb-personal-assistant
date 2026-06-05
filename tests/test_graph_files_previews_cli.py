@@ -17,21 +17,42 @@ runner = CliRunner()
 def _seed(store: ConstructionStore) -> None:
     for key, document_type in [("k1", "rfi"), ("k2", "contract"), ("k3", "unknown_needs_review")]:
         store.upsert_inventory_item(
-            source_key="sp", drive_id="d", item_id=key, name="raw_" + key, web_url="https://x/" + key,
-            parent_path="/General", size_bytes=1024, is_folder=False, last_modified=None, etag="e",
+            source_key="sp",
+            drive_id="d",
+            item_id=key,
+            name="raw_" + key,
+            web_url="https://x/" + key,
+            parent_path="/General",
+            size_bytes=1024,
+            is_folder=False,
+            last_modified=None,
+            etag="e",
         )
         store.upsert_document_card(
-            card_id=key, document_card_id=key, source_id="sp", drive_item_id=key,
-            file_extension="pdf", project_key="alpha", review_required=True, size_class="small",
+            card_id=key,
+            document_card_id=key,
+            source_id="sp",
+            drive_item_id=key,
+            file_extension="pdf",
+            project_key="alpha",
+            review_required=True,
+            size_class="small",
         )
         store.upsert_document_classification_candidate(
-            candidate_id="clf_" + key, document_card_id=key, document_type=document_type,
-            classifier_name="deterministic_v1", signal_class="deterministic", confidence=0.9,
-            confidence_class="deterministic", review_required=True,
+            candidate_id="clf_" + key,
+            document_card_id=key,
+            document_type=document_type,
+            classifier_name="deterministic_v1",
+            signal_class="deterministic",
+            confidence=0.9,
+            confidence_class="deterministic",
+            review_required=True,
         )
 
 
-def test_dry_run_then_apply_then_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_dry_run_then_apply_then_idempotent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     db = str(tmp_path / "cli.sqlite")
     _seed(ConstructionStore(db))
     monkeypatch.setattr(

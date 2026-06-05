@@ -49,8 +49,21 @@ def test_gates_evaluator_basic_structure_and_classification():
         # Every gate has the required shape
         for g in report["gates"]:
             assert "gate_name" in g
-            assert g["gate_status"] in ("pass", "warning", "fail_blocking", "deferred_not_blocking", "not_applicable")
-            assert "future_phase" in g or g["gate_name"] in ("project_identity_coverage", "source_record_map_coverage", "review_required_routing_presence", "raw_content_leakage_scan", "external_writeback_scan", "query_latency_p95")
+            assert g["gate_status"] in (
+                "pass",
+                "warning",
+                "fail_blocking",
+                "deferred_not_blocking",
+                "not_applicable",
+            )
+            assert "future_phase" in g or g["gate_name"] in (
+                "project_identity_coverage",
+                "source_record_map_coverage",
+                "review_required_routing_presence",
+                "raw_content_leakage_scan",
+                "external_writeback_scan",
+                "query_latency_p95",
+            )
 
         # phase_go_nogo structure present
         assert "phase_go_nogo" in report
@@ -60,7 +73,9 @@ def test_gates_evaluator_basic_structure_and_classification():
 
         # Guardrails and stop conditions
         assert report["guardrails"]["phase_assignments_visible"] is True
-        assert "meeting_prep_readiness_requires_all_calendar_email_doc_gates" in report["guardrails"]
+        assert (
+            "meeting_prep_readiness_requires_all_calendar_email_doc_gates" in report["guardrails"]
+        )
         assert "gates_run_deterministically_offline" in report["stop_conditions_checked"]
     finally:
         Path(db_path).unlink(missing_ok=True)
@@ -72,11 +87,15 @@ def test_gates_meeting_prep_claim_is_blocked_when_calendar_or_doc_gates_are_not_
         report = evaluate_data_quality_gates(db_path=db_path, persist=False)
         claim = report["meeting_prep_readiness_claim"]
         # In a fresh/empty DB the calendar, email, and document gates will be not_applicable or deferred
-        assert claim in ("blocked", "needs_07b_07c_data", "needs_07d_data"), f"Unexpected meeting prep claim: {claim}"
+        assert claim in ("blocked", "needs_07b_07c_data", "needs_07d_data"), (
+            f"Unexpected meeting prep claim: {claim}"
+        )
         # Explicit stop-condition: we never claim "ready" while dependent gates are not pass
         if claim == "ready":
             # This would be a violation
-            raise AssertionError("Stop condition violated: meeting_prep claimed ready while calendar/email/doc gates not all pass")
+            raise AssertionError(
+                "Stop condition violated: meeting_prep claimed ready while calendar/email/doc gates not all pass"
+            )
     finally:
         Path(db_path).unlink(missing_ok=True)
 

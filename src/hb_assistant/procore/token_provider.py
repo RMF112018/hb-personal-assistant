@@ -347,7 +347,9 @@ class RefreshingOAuthTokenProvider:
             new_token = client.refresh_access_token(refresh_token)
         except Exception:  # noqa: BLE001 — fail closed
             return access_token if deadline > now else None
-        with contextlib.suppress(Exception):  # best-effort cache write; still return the fresh token
+        with contextlib.suppress(
+            Exception
+        ):  # best-effort cache write; still return the fresh token
             write_token_cache(new_token, self.cache_path)
         return new_token.access_token
 
@@ -426,9 +428,7 @@ def adapt_token_source(source: Any) -> ProcoreTokenProvider:
         return source
     if callable(source):
         return _CallableTokenProvider(fn=source)
-    raise TypeError(
-        f"Cannot adapt {type(source).__name__} to ProcoreTokenProvider"
-    )
+    raise TypeError(f"Cannot adapt {type(source).__name__} to ProcoreTokenProvider")
 
 
 __all__ = [

@@ -31,13 +31,28 @@ def _seed_card(
     project_number_hash: str | None = "ph_alpha",
 ) -> None:
     store.upsert_inventory_item(
-        source_key="sp", drive_id="d", item_id=key, name="raw_" + key, web_url="https://x/" + key,
-        parent_path="/General", size_bytes=1024, is_folder=False, last_modified=None, etag="e",
+        source_key="sp",
+        drive_id="d",
+        item_id=key,
+        name="raw_" + key,
+        web_url="https://x/" + key,
+        parent_path="/General",
+        size_bytes=1024,
+        is_folder=False,
+        last_modified=None,
+        etag="e",
     )
     store.upsert_document_card(
-        card_id=key, document_card_id=key, source_id="sp", drive_item_id=key,
-        file_extension=ext, size_class=size_class, review_required=review_required,
-        review_status=review_status, document_type=document_type, project_key=project_key,
+        card_id=key,
+        document_card_id=key,
+        source_id="sp",
+        drive_item_id=key,
+        file_extension=ext,
+        size_class=size_class,
+        review_required=review_required,
+        review_status=review_status,
+        document_type=document_type,
+        project_key=project_key,
         project_number_hash=project_number_hash,
     )
 
@@ -51,18 +66,33 @@ def _seed(store: ConstructionStore) -> None:
     _seed_card(store, key="c_review_pdf", ext="pdf", review_required=True)
     # cleared review, unparseable extension -> metadata_only.
     _seed_card(
-        store, key="c_unparseable", ext="xyz", review_required=False, review_status="approved",
+        store,
+        key="c_unparseable",
+        ext="xyz",
+        review_required=False,
+        review_status="approved",
         document_type="rfi",
     )
     # cleared review, parseable, but no deterministic project binding -> manual approval.
     _seed_card(
-        store, key="c_lowproj", ext="pdf", review_required=False, review_status="approved",
-        document_type="rfi", project_number_hash=None,
+        store,
+        key="c_lowproj",
+        ext="pdf",
+        review_required=False,
+        review_status="approved",
+        document_type="rfi",
+        project_number_hash=None,
     )
     # cleared review, parseable, deterministically bound -> eligible.
     _seed_card(
-        store, key="c_eligible", ext="pdf", review_required=False, review_status="approved",
-        document_type="rfi", project_key="alpha", project_number_hash="ph_alpha",
+        store,
+        key="c_eligible",
+        ext="pdf",
+        review_required=False,
+        review_status="approved",
+        document_type="rfi",
+        project_key="alpha",
+        project_number_hash="ph_alpha",
     )
     # no extension -> skipped.
     _seed_card(store, key="c_noext", ext=None)

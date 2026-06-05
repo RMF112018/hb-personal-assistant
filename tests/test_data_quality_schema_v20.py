@@ -27,12 +27,18 @@ def _migrate(db_path: str | Path) -> int:
 def _get_tables_and_indexes(db_path: str | Path) -> tuple[set[str], set[str]]:
     conn = sqlite3.connect(str(db_path))
     try:
-        tables = {r[0] for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%'"
-        )}
-        indexes = {r[0] for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'"
-        )}
+        tables = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%'"
+            )
+        }
+        indexes = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'"
+            )
+        }
         return tables, indexes
     finally:
         conn.close()
@@ -66,7 +72,9 @@ def test_v20_applies_and_creates_tables_and_indexes() -> None:
         assert version == LATEST_SCHEMA_VERSION
         tables, indexes = _get_tables_and_indexes(db)
         assert not (_V20_TABLES - tables), f"V20 tables missing: {sorted(_V20_TABLES - tables)}"
-        assert not (_V20_INDEXES - indexes), f"V20 indexes missing: {sorted(_V20_INDEXES - indexes)}"
+        assert not (_V20_INDEXES - indexes), (
+            f"V20 indexes missing: {sorted(_V20_INDEXES - indexes)}"
+        )
 
 
 def test_v20_preserves_all_prior_tables_and_views() -> None:
@@ -158,65 +166,98 @@ def test_construction_store_adapters_round_trip_and_enforce_flags() -> None:
         store = ConstructionStore(db_path=str(db))
 
         # data quality run
-        store.insert_data_quality_run(run_id="dq-run-1", phase="07A", started_utc="2026-05-31T05:00:00Z", status="ok", schema_version=20)
+        store.insert_data_quality_run(
+            run_id="dq-run-1",
+            phase="07A",
+            started_utc="2026-05-31T05:00:00Z",
+            status="ok",
+            schema_version=20,
+        )
         # table lifecycle
-        store.upsert_table_lifecycle_registry({
-            "table_name": "source_system_record_map",
-            "table_family": "data_quality_v20",
-            "lifecycle_status": "operational_populated",
-            "expected_population_status": "populated",
-        })
+        store.upsert_table_lifecycle_registry(
+            {
+                "table_name": "source_system_record_map",
+                "table_family": "data_quality_v20",
+                "lifecycle_status": "operational_populated",
+                "expected_population_status": "populated",
+            }
+        )
         # source record (adapter must force flags=0 even if caller tries bad value)
         with pytest.raises(ValueError, match="raw_body_persisted must be False"):
-            store.upsert_source_system_record({
+            store.upsert_source_system_record(
+                {
+                    "canonical_record_id": "c1",
+                    "source_system": "procore",
+                    "source_table": "procore_live_records",
+                    "source_primary_key": "2525840-123",
+                    "confidence_class": "deterministic",
+                    "raw_body_persisted": 1,
+                }
+            )
+        canon = store.upsert_source_system_record(
+            {
                 "canonical_record_id": "c1",
                 "source_system": "procore",
                 "source_table": "procore_live_records",
                 "source_primary_key": "2525840-123",
                 "confidence_class": "deterministic",
-                "raw_body_persisted": 1,
-            })
-        canon = store.upsert_source_system_record({
-            "canonical_record_id": "c1",
-            "source_system": "procore",
-            "source_table": "procore_live_records",
-            "source_primary_key": "2525840-123",
-            "confidence_class": "deterministic",
-            "project_key": "tropical",
-        })
+                "project_key": "tropical",
+            }
+        )
         assert canon == "c1"
 
         # relationship
-        store.insert_relationship_resolution_candidate({
-            "relationship_id": "r1",
-            "from_source_system": "procore",
-            "relationship_type": "same_project",
-            "relationship_status": "candidate",
-            "confidence_class": "heuristic",
-        })
+        store.insert_relationship_resolution_candidate(
+            {
+                "relationship_id": "r1",
+                "from_source_system": "procore",
+                "relationship_type": "same_project",
+                "relationship_status": "candidate",
+                "confidence_class": "heuristic",
+            }
+        )
 
         # coverage + gate
-        store.upsert_project_source_coverage({
-            "coverage_id": "cov-tropical-procore",
-            "run_id": "dq-run-1",
-            "project_key": "tropical",
-            "source_domain": "procore",
-            "quality_status": "partial",
-        })
-        store.insert_data_quality_gate_result({
-            "gate_result_id": "g1",
-            "run_id": "dq-run-1",
-            "gate_name": "identity_population",
-            "gate_status": "pass",
-            "blocking": 0,
-        })
+        store.upsert_project_source_coverage(
+            {
+                "coverage_id": "cov-tropical-procore",
+                "run_id": "dq-run-1",
+                "project_key": "tropical",
+                "source_domain": "procore",
+                "quality_status": "partial",
+            }
+        )
+        store.insert_data_quality_gate_result(
+            {
+                "gate_result_id": "g1",
+                "run_id": "dq-run-1",
+                "gate_name": "identity_population",
+                "gate_status": "pass",
+                "blocking": 0,
+            }
+        )
 
         # verify via direct query (light)
         conn = sqlite3.connect(str(db))
         try:
-            assert conn.execute("SELECT COUNT(*) FROM construction_data_quality_runs WHERE run_id='dq-run-1'").fetchone()[0] == 1
-            assert conn.execute("SELECT COUNT(*) FROM source_system_record_map WHERE canonical_record_id='c1'").fetchone()[0] == 1
-            assert conn.execute("SELECT COUNT(*) FROM relationship_resolution_queue WHERE relationship_id='r1'").fetchone()[0] == 1
+            assert (
+                conn.execute(
+                    "SELECT COUNT(*) FROM construction_data_quality_runs WHERE run_id='dq-run-1'"
+                ).fetchone()[0]
+                == 1
+            )
+            assert (
+                conn.execute(
+                    "SELECT COUNT(*) FROM source_system_record_map WHERE canonical_record_id='c1'"
+                ).fetchone()[0]
+                == 1
+            )
+            assert (
+                conn.execute(
+                    "SELECT COUNT(*) FROM relationship_resolution_queue WHERE relationship_id='r1'"
+                ).fetchone()[0]
+                == 1
+            )
         finally:
             conn.close()
 

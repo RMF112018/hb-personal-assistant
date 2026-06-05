@@ -61,9 +61,21 @@ _STOP_CONDITIONS = [
 
 _PEM_MARKER = "-----" + "begin"
 _FORBIDDEN_MARKERS = (
-    "deltatoken=", "?token=", "&token=", "sig=", "downloadurl", "authorization:", "bearer ",
-    "access_token", "refresh_token", "client_secret", "http://", "https://", _PEM_MARKER,
-    "full_document_text", "full_body_" + "plaintext",
+    "deltatoken=",
+    "?token=",
+    "&token=",
+    "sig=",
+    "downloadurl",
+    "authorization:",
+    "bearer ",
+    "access_token",
+    "refresh_token",
+    "client_secret",
+    "http://",
+    "https://",
+    _PEM_MARKER,
+    "full_document_text",
+    "full_body_" + "plaintext",
 )
 
 
@@ -91,7 +103,9 @@ def _replace_bounded(existing: str, inner: str, start: str, end: str) -> str:
 
 def _atomic_write_text(target: Path, content: str) -> int:
     target.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(dir=str(target.parent), prefix=f".{target.name}.", suffix=".tmp")
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(target.parent), prefix=f".{target.name}.", suffix=".tmp"
+    )
     tmp_path = Path(tmp_name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -107,8 +121,10 @@ def _atomic_write_text(target: Path, content: str) -> int:
 def _git_sha() -> str:
     try:
         out = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=PathPolicy().resolve_repo_root(),
-            stderr=subprocess.DEVNULL, timeout=5,
+            ["git", "rev-parse", "HEAD"],
+            cwd=PathPolicy().resolve_repo_root(),
+            stderr=subprocess.DEVNULL,
+            timeout=5,
         )
         return out.decode("utf-8").strip()
     except Exception:
@@ -117,18 +133,54 @@ def _git_sha() -> str:
 
 # (kind, title, filename, marker_key, status_fn, review_field)
 _NOTE_SPECS: tuple[tuple[str, str, str, str, Any, str], ...] = (
-    ("relationships", "Cross-Source Relationships", "Cross-Source Relationships.md",
-     "RELATIONSHIPS", relationship_substrate_status, "review_required"),
-    ("meeting_prep", "Meeting-Prep Readiness", "Meeting-Prep Readiness.md",
-     "MEETING-PREP", meeting_prep_brief_status, "review_required_sections"),
-    ("issue_history", "Project Issue History", "Project Issue History.md",
-     "ISSUE-HISTORY", project_issue_history_status, "review_required"),
-    ("risk_digest", "Risk Digest", "Risk Digest.md",
-     "RISK-DIGEST", project_risk_digest_status, "review_required"),
-    ("aging_exposure", "Aging and Exposure", "Aging and Exposure.md",
-     "AGING-EXPOSURE", project_aging_exposure_status, "review_required"),
-    ("correspondence", "Correspondence Context", "Correspondence Context.md",
-     "CORRESPONDENCE", correspondence_context_status, "review_required_threads"),
+    (
+        "relationships",
+        "Cross-Source Relationships",
+        "Cross-Source Relationships.md",
+        "RELATIONSHIPS",
+        relationship_substrate_status,
+        "review_required",
+    ),
+    (
+        "meeting_prep",
+        "Meeting-Prep Readiness",
+        "Meeting-Prep Readiness.md",
+        "MEETING-PREP",
+        meeting_prep_brief_status,
+        "review_required_sections",
+    ),
+    (
+        "issue_history",
+        "Project Issue History",
+        "Project Issue History.md",
+        "ISSUE-HISTORY",
+        project_issue_history_status,
+        "review_required",
+    ),
+    (
+        "risk_digest",
+        "Risk Digest",
+        "Risk Digest.md",
+        "RISK-DIGEST",
+        project_risk_digest_status,
+        "review_required",
+    ),
+    (
+        "aging_exposure",
+        "Aging and Exposure",
+        "Aging and Exposure.md",
+        "AGING-EXPOSURE",
+        project_aging_exposure_status,
+        "review_required",
+    ),
+    (
+        "correspondence",
+        "Correspondence Context",
+        "Correspondence Context.md",
+        "CORRESPONDENCE",
+        correspondence_context_status,
+        "review_required_threads",
+    ),
 )
 
 
@@ -144,9 +196,12 @@ def _render_section(title: str, summary: dict[str, Any], review_count: int) -> s
     lines = [f"### {title}", "", f"> [!info] Advisory — review-required items: {review_count}", ""]
     for key, value in summary.items():
         lines.append(f"- **{key}**: {_render_value(value)}")
-    lines += ["", "_Source: local SQLite (V25 read models, redacted aggregates). Advisory only — "
-              "no legal/contractual/claim/safety/financial determination; review-required items are "
-              "never presented as authoritative._"]
+    lines += [
+        "",
+        "_Source: local SQLite (V25 read models, redacted aggregates). Advisory only — "
+        "no legal/contractual/claim/safety/financial determination; review-required items are "
+        "never presented as authoritative._",
+    ]
     return "\n".join(lines)
 
 
@@ -234,20 +289,28 @@ class ObsidianCrossSourceRenderer:
             base = Path(base)
             base.mkdir(parents=True, exist_ok=True)
             preview = "\n\n".join(
-                f"## {title}\n\n{rendered[kind]}"
-                for kind, title, *_ in _NOTE_SPECS
+                f"## {title}\n\n{rendered[kind]}" for kind, title, *_ in _NOTE_SPECS
             )
             preview_path = base / "11-obsidian-cross-source-output-preview.md"
             _atomic_write_text(preview_path, preview + "\n")
             evidence_preview_path = str(preview_path)
             proof = {
-                "prompt": "11", "phase": "07D", "generated_utc": generated,
-                "repo_sha": _git_sha(), "schema_version": LATEST_SCHEMA_VERSION,
-                "mode": mode, "notes_planned": len(_NOTE_SPECS), "notes_written": 0,
-                "applied_to_vault": False, "marker_bounded": True, "no_raw_content": True,
-                "review_required_total": review_total, "guardrails": _OBSIDIAN_GUARDRAILS,
+                "prompt": "11",
+                "phase": "07D",
+                "generated_utc": generated,
+                "repo_sha": _git_sha(),
+                "schema_version": LATEST_SCHEMA_VERSION,
+                "mode": mode,
+                "notes_planned": len(_NOTE_SPECS),
+                "notes_written": 0,
+                "applied_to_vault": False,
+                "marker_bounded": True,
+                "no_raw_content": True,
+                "review_required_total": review_total,
+                "guardrails": _OBSIDIAN_GUARDRAILS,
                 "files_emitted": [
-                    "11-obsidian-cross-source-output-preview.md", "obsidian-cross-source-dry-run.json",
+                    "11-obsidian-cross-source-output-preview.md",
+                    "obsidian-cross-source-dry-run.json",
                 ],
             }
             _atomic_write_text(
@@ -258,9 +321,13 @@ class ObsidianCrossSourceRenderer:
         run_id = hash_value(f"cross_source_obsidian|{project_filter or '_all_'}|{mode}") or mode
         with contextlib.suppress(Exception):
             self._store.upsert_cross_source_intelligence_obsidian_run(
-                obsidian_run_id=run_id, project_key=project_filter, mode=mode,
-                output_kind="cross_source_intelligence", status=status,
-                notes_written=notes_written, review_required_count=review_total,
+                obsidian_run_id=run_id,
+                project_key=project_filter,
+                mode=mode,
+                output_kind="cross_source_intelligence",
+                status=status,
+                notes_written=notes_written,
+                review_required_count=review_total,
             )
 
         return {
@@ -300,8 +367,12 @@ def render_cross_source_obsidian_outputs(
     store = ConstructionStore(db_path=db_path) if db_path is not None else None
     renderer = ObsidianCrossSourceRenderer(store)
     return renderer.render(
-        dry_run=dry_run, apply=apply, project_filter=project_filter,
-        evidence_dir=evidence_dir, vault_root=vault_root, now_utc=now_utc,
+        dry_run=dry_run,
+        apply=apply,
+        project_filter=project_filter,
+        evidence_dir=evidence_dir,
+        vault_root=vault_root,
+        now_utc=now_utc,
     )
 
 

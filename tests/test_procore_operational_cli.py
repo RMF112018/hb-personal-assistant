@@ -50,9 +50,16 @@ def _record(db: Path, *, endpoint_id: str, record_id: str, parent: str = "") -> 
 
 def _seed(db: Path) -> None:
     rk = _record(db, endpoint_id="rfis", record_id="1")
-    emit_action_signal(project_key="tropical", record_key=rk, endpoint_id="rfis",
-                       signal_type="rfi_overdue", importance="high", due_at_utc=_PAST,
-                       now_utc=_NOW, db_path=db)
+    emit_action_signal(
+        project_key="tropical",
+        record_key=rk,
+        endpoint_id="rfis",
+        signal_type="rfi_overdue",
+        importance="high",
+        due_at_utc=_PAST,
+        now_utc=_NOW,
+        db_path=db,
+    )
 
 
 def _patch_conn(monkeypatch: pytest.MonkeyPatch, db: Path) -> None:
@@ -75,8 +82,21 @@ def _patch_conn(monkeypatch: pytest.MonkeyPatch, db: Path) -> None:
     def _get(_: object = None) -> sqlite3.Connection:
         return real(str(db))
 
-    for mod in (conn_mod, mig_mod, enr_mod, fin_mod, hist_mod, aq_mod, ce_mod, se_mod, ph_mod,
-                rq_mod, com_mod, op_mod, nwb_mod):
+    for mod in (
+        conn_mod,
+        mig_mod,
+        enr_mod,
+        fin_mod,
+        hist_mod,
+        aq_mod,
+        ce_mod,
+        se_mod,
+        ph_mod,
+        rq_mod,
+        com_mod,
+        op_mod,
+        nwb_mod,
+    ):
         monkeypatch.setattr(mod, "get_connection", _get, raising=False)
 
 
@@ -85,6 +105,7 @@ def _invoke(args: list[str]):
 
 
 # --- help tests (local-only / read-only must be stated) ---
+
 
 @pytest.mark.parametrize("command", _NEW_COMMANDS)
 def test_help_states_local_and_read_only(command: str) -> None:
@@ -97,6 +118,7 @@ def test_help_states_local_and_read_only(command: str) -> None:
 
 # --- JSON-shape tests ---
 
+
 def test_digest_json_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     db = tmp_path / "d.sqlite"
     SQLiteMigrator(db_path=str(db)).apply()
@@ -105,8 +127,19 @@ def test_digest_json_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     res = _invoke(["procore", "live", "digest", "--project", "tropical", "--json"])
     assert res.exit_code == 0, res.output
     payload = json.loads(res.output)
-    for key in ("command", "ok", "phase", "project_key", "generated_at", "health_status",
-                "headline", "sources", "no_live_call_performed", "determinations_made", "guardrails"):
+    for key in (
+        "command",
+        "ok",
+        "phase",
+        "project_key",
+        "generated_at",
+        "health_status",
+        "headline",
+        "sources",
+        "no_live_call_performed",
+        "determinations_made",
+        "guardrails",
+    ):
         assert key in payload, f"missing {key}"
     assert payload["headline"]["overdue"] >= 1
     assert payload["determinations_made"] is False
@@ -118,16 +151,18 @@ def test_digest_since_window(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     SQLiteMigrator(db_path=str(db)).apply()
     _seed(db)
     _patch_conn(monkeypatch, db)
-    res = _invoke(["procore", "live", "digest", "--project", "tropical",
-                   "--since", "24 hours ago", "--json"])
+    res = _invoke(
+        ["procore", "live", "digest", "--project", "tropical", "--since", "24 hours ago", "--json"]
+    )
     assert res.exit_code == 0, res.output
     payload = json.loads(res.output)
     assert payload["since_utc"] is not None
     assert "changes_in_window" in payload["headline"]
     assert isinstance(payload["headline"]["changes_in_window"], int)
     # unparseable --since fails closed
-    bad = _invoke(["procore", "live", "digest", "--project", "tropical",
-                   "--since", "not-a-date", "--json"])
+    bad = _invoke(
+        ["procore", "live", "digest", "--project", "tropical", "--since", "not-a-date", "--json"]
+    )
     assert bad.exit_code == 3
     assert "since_unparseable" in json.loads(bad.output)["reason_codes"]
 
@@ -140,8 +175,16 @@ def test_risks_json_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     res = _invoke(["procore", "live", "risks", "--project", "tropical", "--json"])
     assert res.exit_code == 0, res.output
     payload = json.loads(res.output)
-    for key in ("command", "ok", "phase", "summary", "risks", "risks_truncated",
-                "determinations_made", "guardrails"):
+    for key in (
+        "command",
+        "ok",
+        "phase",
+        "summary",
+        "risks",
+        "risks_truncated",
+        "determinations_made",
+        "guardrails",
+    ):
         assert key in payload, f"missing {key}"
     assert payload["summary"]["high_importance"] >= 1
     assert any(r["signal_type"] == "rfi_overdue" for r in payload["risks"])
@@ -155,8 +198,16 @@ def test_retrieval_ready_json_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     res = _invoke(["procore", "live", "retrieval-ready", "--project", "tropical", "--json"])
     assert res.exit_code == 0, res.output
     payload = json.loads(res.output)
-    for key in ("command", "ok", "retrieval_ready", "reasons", "corpus", "note",
-                "determinations_made", "guardrails"):
+    for key in (
+        "command",
+        "ok",
+        "retrieval_ready",
+        "reasons",
+        "corpus",
+        "note",
+        "determinations_made",
+        "guardrails",
+    ):
         assert key in payload, f"missing {key}"
     # seeded a live record but no text-intelligence -> not ready, reason recorded
     assert payload["retrieval_ready"] is False
@@ -181,6 +232,7 @@ def test_no_writeback_proof_json_shape(tmp_path: Path, monkeypatch: pytest.Monke
 
 # --- failure-mode tests ---
 
+
 @pytest.mark.parametrize("command", ("digest", "risks", "retrieval-ready"))
 def test_missing_project_fails(command: str) -> None:
     res = runner.invoke(app, ["procore", "live", command, "--json"])
@@ -200,11 +252,15 @@ def test_empty_project_is_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
 
 # --- static no-HTTP-client proof for the query read-model modules ---
 
-_FORBIDDEN = {"requests", "httpx", "urllib3", "urllib.request",
-              "hb_assistant.procore.http_client"}
+_FORBIDDEN = {"requests", "httpx", "urllib3", "urllib.request", "hb_assistant.procore.http_client"}
 _QUERY_MODULES = (
-    "procore_operational", "procore_project_health", "procore_freshness", "procore_action_queue",
-    "procore_cost_exposure", "procore_schedule_exposure", "procore_relationship_quality",
+    "procore_operational",
+    "procore_project_health",
+    "procore_freshness",
+    "procore_action_queue",
+    "procore_cost_exposure",
+    "procore_schedule_exposure",
+    "procore_relationship_quality",
 )
 
 
@@ -224,4 +280,6 @@ def test_query_models_do_not_import_http_client() -> None:
                         violations.append(f"{mod}: import {alias.name}")
             elif isinstance(node, ast.ImportFrom) and _forbidden(node.module or ""):
                 violations.append(f"{mod}: from {node.module} import ...")
-    assert not violations, "query read-model modules must not import an HTTP client: " + str(violations)
+    assert not violations, "query read-model modules must not import an HTTP client: " + str(
+        violations
+    )

@@ -63,15 +63,17 @@ class EndpointAuditor:
         for ep in self._contract.endpoints:
             verdict = _verdict_for(ep, mapped=mapped)
             counts[verdict] = counts.get(verdict, 0) + 1
-            endpoint_rows.append({
-                "endpoint_id": ep.endpoint_id,
-                "category": ep.category,
-                "http_method": ep.http_method,
-                "path_template": ep.path_template,
-                "status": ep.status,
-                "sensitivity": ep.sensitivity,
-                "verdict": verdict,
-            })
+            endpoint_rows.append(
+                {
+                    "endpoint_id": ep.endpoint_id,
+                    "category": ep.category,
+                    "http_method": ep.http_method,
+                    "path_template": ep.path_template,
+                    "status": ep.status,
+                    "sensitivity": ep.sensitivity,
+                    "verdict": verdict,
+                }
+            )
         return EndpointAuditReport(
             project_key=hb_project_key,
             procore_project_id=mapping.procore_project_id,
@@ -155,7 +157,9 @@ def _build_dry_run_envelope(
         "Accept": "application/json",
         "User-Agent": "hb-assistant-procore-dry-run/1.0",
     }
-    params: dict[str, Any] | None = None  # extend with pagination defaults from Prompt_04/01 research if needed
+    params: dict[str, Any] | None = (
+        None  # extend with pagination defaults from Prompt_04/01 research if needed
+    )
     return DryRunRequestEnvelope(
         url=url,
         headers_redacted=headers_redacted,
@@ -196,7 +200,10 @@ class EndpointAuditor(EndpointAuditor):  # noqa: F811  # extended in place
                 endpoint_id=ep.endpoint_id,
                 verdict=verdict,
                 request=envelope,
-                redacted_response_summary={"redacted": True, "reason": "default-body-redaction-in-dry-run"},
+                redacted_response_summary={
+                    "redacted": True,
+                    "reason": "default-body-redaction-in-dry-run",
+                },
                 category=getattr(ep, "category", None),
                 sensitivity=getattr(ep, "sensitivity", None),
                 notes_redacted="[REDACTED]" if getattr(ep, "notes", None) else None,
@@ -216,7 +223,9 @@ class EndpointAuditor(EndpointAuditor):  # noqa: F811  # extended in place
     ) -> EndpointAuditRunReceipt:
         """Top-level receipt builder. Dry-run default. Live only via explicit opt-in (never auto)."""
         if mode == "live_manual" and live_client is None:
-            raise ValueError("live_manual requires explicit live_client (opt-in only; never in tests)")
+            raise ValueError(
+                "live_manual requires explicit live_client (opt-in only; never in tests)"
+            )
 
         started = datetime.now(timezone.utc).isoformat()
         receipts = self.dry_run_audit_project(project_key, base_url=base_url)  # dry-run core

@@ -1,7 +1,7 @@
 {
-  "generated_utc": "2026-06-03T20:52:51.123124+00:00",
+  "generated_utc": "2026-06-05T16:52:08.064057+00:00",
   "repo_head": "644938c (post P06)",
-  "run_id": "08c-fact-d67b0a29",
+  "run_id": "08c-fact-1e1f4c4a",
   "project_key": null,
   "status": "succeeded",
   "items_evaluated": 80,
@@ -11,31 +11,31 @@
       "currency": {
         "explicit_source_currency": 0,
         "evidence_backed_project_default": 0,
-        "missing_currency": 85521,
+        "missing_currency": 0,
         "inconsistent_currency": 0,
         "ambiguous_currency": 0,
         "review_required": 0,
         "project_default_applied_total": 0
       },
       "wbs": {
-        "run_id": "08c-comp-9531c96b",
+        "run_id": "08c-comp-bd661e0b",
         "present": {
-          "wbs": 1849,
-          "cost_code": 1226,
+          "wbs": 0,
+          "cost_code": 0,
           "line_item_type": 0,
           "source_field_path": 0
         },
         "missing": {
           "wbs": 0,
-          "cost_code": 623,
-          "line_item_type": 667,
+          "cost_code": 0,
+          "line_item_type": 0,
           "source_field_path": 0
         },
-        "review_required_count": 1290,
+        "review_required_count": 0,
         "ambiguous": 0
       },
       "source": {
-        "run_id": "08c-comp-9531c96b",
+        "run_id": "08c-comp-bd661e0b",
         "families": [
           "owner_contracts",
           "commitments",

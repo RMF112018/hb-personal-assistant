@@ -126,9 +126,7 @@ class CorrespondenceReviewBuilder:
         )
         classification_risk_flagged = sum(1 for c in classifications if c.get("risk_flags"))
 
-        candidates = self._store.list_meeting_email_relationship_candidates(
-            project_key=project_key
-        )
+        candidates = self._store.list_meeting_email_relationship_candidates(project_key=project_key)
         candidates_review_required = sum(1 for c in candidates if c.get("review_required"))
 
         warnings = self._build_warnings(project_key=project_key, max_warnings=max_warnings)
@@ -195,9 +193,7 @@ class CorrespondenceReviewBuilder:
                         label=category.replace("_", " ").title(),
                         sensitivity_level="medium",
                         recommended_review_action="route_to_review_no_determination",
-                        evidence_safe_explanation=(
-                            "review required; not a determination"
-                        ),
+                        evidence_safe_explanation=("review required; not a determination"),
                         open_item_count=count,
                     )
                 )

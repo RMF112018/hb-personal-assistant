@@ -81,9 +81,7 @@ def test_tier3_is_blocked_and_review_required() -> None:
 
 
 def test_blocked_when_no_source_references() -> None:
-    result = MockClaudeAdapter().synthesize(
-        _good_envelope(source_references=[])
-    )
+    result = MockClaudeAdapter().synthesize(_good_envelope(source_references=[]))
     assert result.synthesized is False
     assert result.degradation_mode == "blocked"
     assert "no_source_references" in result.coverage_warnings
@@ -168,12 +166,16 @@ def test_model_call_receipt_holds_only_hashes() -> None:
 
 def test_model_call_receipt_is_deterministic_per_content() -> None:
     a = build_model_call_receipt(
-        model_profile_id="fast_summary", model_id="claude-haiku-4-5",
-        input_context="same", output_text="out",
+        model_profile_id="fast_summary",
+        model_id="claude-haiku-4-5",
+        input_context="same",
+        output_text="out",
     )
     b = build_model_call_receipt(
-        model_profile_id="fast_summary", model_id="claude-haiku-4-5",
-        input_context="same", output_text="out",
+        model_profile_id="fast_summary",
+        model_id="claude-haiku-4-5",
+        input_context="same",
+        output_text="out",
     )
     assert a.input_context_hash == b.input_context_hash
     assert a.output_hash == b.output_hash
@@ -182,8 +184,10 @@ def test_model_call_receipt_is_deterministic_per_content() -> None:
 
 def test_router_receipt_allows_no_model_id() -> None:
     receipt = build_model_call_receipt(
-        model_profile_id="deterministic_router", model_id=None,
-        input_context="route this", output_text="{}",
+        model_profile_id="deterministic_router",
+        model_id=None,
+        input_context="route this",
+        output_text="{}",
     )
     assert receipt.model_id is None
 

@@ -74,7 +74,14 @@ def test_nested_dict_change_uses_dotted_path() -> None:
 
 def test_arrays_with_stable_ids_diffed_by_id() -> None:
     prev = {"entities": {"attachments": {"count": 0, "items": []}}}
-    cur = {"entities": {"attachments": {"count": 1, "items": [{"id": 7, "filename_summary": {"hash_prefix": "f"}}]}}}
+    cur = {
+        "entities": {
+            "attachments": {
+                "count": 1,
+                "items": [{"id": 7, "filename_summary": {"hash_prefix": "f"}}],
+            }
+        }
+    }
     events = _by_path(diff_canonical_records(prev, cur))
     # count bump -> attachment_added; new keyed list element -> added at items[id=7]
     assert events["entities.attachments.count"].change_category == "attachment_added"
@@ -91,8 +98,14 @@ def test_response_added_via_count() -> None:
 
 
 def test_summary_and_long_values_are_hash_only() -> None:
-    prev = {"comment_summary": {"type": "string", "length": 5, "hash_prefix": "aaa"}, "blob": "x" * 200}
-    cur = {"comment_summary": {"type": "string", "length": 9, "hash_prefix": "bbb"}, "blob": "y" * 200}
+    prev = {
+        "comment_summary": {"type": "string", "length": 5, "hash_prefix": "aaa"},
+        "blob": "x" * 200,
+    }
+    cur = {
+        "comment_summary": {"type": "string", "length": 9, "hash_prefix": "bbb"},
+        "blob": "y" * 200,
+    }
     events = _by_path(diff_canonical_records(prev, cur))
     cs = events["comment_summary"]
     assert cs.change_category == "text_changed"
@@ -120,7 +133,9 @@ def test_inspection_item_categories() -> None:
 
 
 def test_significant_flags_drive_timeline_selection() -> None:
-    events = diff_canonical_records({"status": "open", "priority": "low"}, {"status": "closed", "priority": "high"})
+    events = diff_canonical_records(
+        {"status": "open", "priority": "low"}, {"status": "closed", "priority": "high"}
+    )
     sig = {e.change_category: e.significant for e in events}
     assert sig["closed"] is True
     assert sig["priority_changed"] is False

@@ -262,13 +262,15 @@ class ConstructionVaultWriter:
 
     def sync_path(self, *, source_key: str, run_id: str, started_at: str | None) -> Path:
         return (
-            self._root_or_raise() / _SUBDIRS["sync_receipt"]
+            self._root_or_raise()
+            / _SUBDIRS["sync_receipt"]
             / f"{_date_str(started_at)}__{_short_run(run_id)}__{source_key}.sync.md"
         )
 
     def processing_path(self, *, run_id: str, started_at: str | None) -> Path:
         return (
-            self._root_or_raise() / _SUBDIRS["processing_receipt"]
+            self._root_or_raise()
+            / _SUBDIRS["processing_receipt"]
             / f"{_date_str(started_at)}__{_short_run(run_id)}.processing.md"
         )
 
@@ -280,13 +282,15 @@ class ConstructionVaultWriter:
 
     def review_required_path(self, *, generated_at: str | None) -> Path:
         return (
-            self._root_or_raise() / _SUBDIRS["review_required"]
+            self._root_or_raise()
+            / _SUBDIRS["review_required"]
             / f"{_date_str(generated_at)}__review-required.md"
         )
 
     def document_card_path(self, *, source_key: str, item_id: str) -> Path:
         return (
-            self._root_or_raise() / _SUBDIRS["document_card"]
+            self._root_or_raise()
+            / _SUBDIRS["document_card"]
             / f"{source_key}__{_safe_item_id(item_id)}.doc.md"
         )
 
@@ -371,9 +375,7 @@ class ConstructionVaultWriter:
 
     # --- procore write methods (additive; delegate to _write for hybrid + reuse atomic/markers) ---
 
-    def write_procore_artifact(
-        self, *, project_key: str, kind: str, rendered: str
-    ) -> WriteResult:
+    def write_procore_artifact(self, *, project_key: str, kind: str, rendered: str) -> WriteResult:
         """Marker-bounded write for procore-* hybrid artifact in 01_Projects/.
 
         Maps kind -> procore_{kind} marker entry + calls _write (reuses atomic, ensure, replace).

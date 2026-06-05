@@ -83,16 +83,18 @@ def _minimal_valid_contract_dict() -> dict:
                 "verified_at_utc": "2026-05-27T00:00:00Z",
                 "verified_by": "test-fixture",
             }
-        base_endpoints.append({
-            "endpoint_id": f"ep-{cat}",
-            "http_method": "GET",
-            "path_template": f"/vapid/projects/{{project_id}}/{cat.replace('-', '_')}",
-            "category": cat,
-            "status": status,
-            "sensitivity": sens,
-            "included_in_phase_01": status not in ("excluded", "deferred"),
-            **verif,
-        })
+        base_endpoints.append(
+            {
+                "endpoint_id": f"ep-{cat}",
+                "http_method": "GET",
+                "path_template": f"/vapid/projects/{{project_id}}/{cat.replace('-', '_')}",
+                "category": cat,
+                "status": status,
+                "sensitivity": sens,
+                "included_in_phase_01": status not in ("excluded", "deferred"),
+                **verif,
+            }
+        )
     return {
         "version": 1,
         "company_id": "5280",
@@ -128,8 +130,12 @@ def test_endpoint_rejects_non_get_method() -> None:
 def test_endpoint_rejects_extra_fields() -> None:
     with pytest.raises(ValidationError):
         ProcoreEndpoint(
-            endpoint_id="x", http_method="GET", path_template="/x",
-            category="rfis", status="validated", sensitivity="low",
+            endpoint_id="x",
+            http_method="GET",
+            path_template="/x",
+            category="rfis",
+            status="validated",
+            sensitivity="low",
             stowaway="leak",  # type: ignore[call-arg]
         )
 
@@ -137,16 +143,23 @@ def test_endpoint_rejects_extra_fields() -> None:
 def test_endpoint_rejects_non_kebab_id() -> None:
     with pytest.raises(ValidationError):
         ProcoreEndpoint(
-            endpoint_id="Bad ID", http_method="GET", path_template="/x",
-            category="rfis", status="validated", sensitivity="low",
+            endpoint_id="Bad ID",
+            http_method="GET",
+            path_template="/x",
+            category="rfis",
+            status="validated",
+            sensitivity="low",
         )
 
 
 def test_endpoint_rejects_invalid_status() -> None:
     with pytest.raises(ValidationError):
         ProcoreEndpoint(
-            endpoint_id="x", http_method="GET", path_template="/x",
-            category="rfis", status="auto-accept",  # type: ignore[arg-type]
+            endpoint_id="x",
+            http_method="GET",
+            path_template="/x",
+            category="rfis",
+            status="auto-accept",  # type: ignore[arg-type]
             sensitivity="low",
         )
 
@@ -154,8 +167,12 @@ def test_endpoint_rejects_invalid_status() -> None:
 def test_endpoint_rejects_relative_path_template() -> None:
     with pytest.raises(ValidationError):
         ProcoreEndpoint(
-            endpoint_id="x", http_method="GET", path_template="no-slash",
-            category="rfis", status="validated", sensitivity="low",
+            endpoint_id="x",
+            http_method="GET",
+            path_template="no-slash",
+            category="rfis",
+            status="validated",
+            sensitivity="low",
         )
 
 
@@ -193,34 +210,70 @@ def test_contract_rejects_duplicate_endpoint_id() -> None:
 
 def test_projects_registry_rejects_duplicate_keys() -> None:
     with pytest.raises(ValidationError):
-        ProcoreProjectsRegistry.model_validate({
-            "company_id": "5280",
-            "projects": [
-                {"hb_project_key": "tropical", "procore_project_id": "1", "procore_project_name": "T", "status": "pilot"},
-                {"hb_project_key": "tropical", "procore_project_id": "2", "procore_project_name": "T2", "status": "pilot"},
-            ],
-        })
+        ProcoreProjectsRegistry.model_validate(
+            {
+                "company_id": "5280",
+                "projects": [
+                    {
+                        "hb_project_key": "tropical",
+                        "procore_project_id": "1",
+                        "procore_project_name": "T",
+                        "status": "pilot",
+                    },
+                    {
+                        "hb_project_key": "tropical",
+                        "procore_project_id": "2",
+                        "procore_project_name": "T2",
+                        "status": "pilot",
+                    },
+                ],
+            }
+        )
 
 
 def test_projects_registry_rejects_duplicate_procore_id() -> None:
     with pytest.raises(ValidationError):
-        ProcoreProjectsRegistry.model_validate({
-            "company_id": "5280",
-            "projects": [
-                {"hb_project_key": "a", "procore_project_id": "12345", "procore_project_name": "A", "status": "pilot"},
-                {"hb_project_key": "b", "procore_project_id": "12345", "procore_project_name": "B", "status": "pilot"},
-            ],
-        })
+        ProcoreProjectsRegistry.model_validate(
+            {
+                "company_id": "5280",
+                "projects": [
+                    {
+                        "hb_project_key": "a",
+                        "procore_project_id": "12345",
+                        "procore_project_name": "A",
+                        "status": "pilot",
+                    },
+                    {
+                        "hb_project_key": "b",
+                        "procore_project_id": "12345",
+                        "procore_project_name": "B",
+                        "status": "pilot",
+                    },
+                ],
+            }
+        )
 
 
 def test_projects_registry_allows_empty_procore_id_for_pending() -> None:
-    reg = ProcoreProjectsRegistry.model_validate({
-        "company_id": "5280",
-        "projects": [
-            {"hb_project_key": "x", "procore_project_id": "", "procore_project_name": "", "status": "pending"},
-            {"hb_project_key": "y", "procore_project_id": "", "procore_project_name": "", "status": "pending"},
-        ],
-    })
+    reg = ProcoreProjectsRegistry.model_validate(
+        {
+            "company_id": "5280",
+            "projects": [
+                {
+                    "hb_project_key": "x",
+                    "procore_project_id": "",
+                    "procore_project_name": "",
+                    "status": "pending",
+                },
+                {
+                    "hb_project_key": "y",
+                    "procore_project_id": "",
+                    "procore_project_name": "",
+                    "status": "pending",
+                },
+            ],
+        }
+    )
     assert len(reg.projects) == 2
 
 
@@ -242,10 +295,12 @@ def _make_mapping(**overrides: object) -> dict[str, object]:
 
 def test_procore_project_mapping_rejects_hb_number_shape() -> None:
     with pytest.raises(ValidationError) as exc:
-        ProcoreProjectsRegistry.model_validate({
-            "company_id": "5280",
-            "projects": [_make_mapping(procore_project_id="23-435-01")],
-        })
+        ProcoreProjectsRegistry.model_validate(
+            {
+                "company_id": "5280",
+                "projects": [_make_mapping(procore_project_id="23-435-01")],
+            }
+        )
     blob = str(exc.value)
     assert "23-435-01" in blob
     assert r"^\d{2}-\d{3}-\d{2}$" in blob
@@ -253,10 +308,12 @@ def test_procore_project_mapping_rejects_hb_number_shape() -> None:
 
 def test_procore_project_mapping_rejects_non_numeric_when_not_pending() -> None:
     with pytest.raises(ValidationError) as exc:
-        ProcoreProjectsRegistry.model_validate({
-            "company_id": "5280",
-            "projects": [_make_mapping(procore_project_id="abc-123")],
-        })
+        ProcoreProjectsRegistry.model_validate(
+            {
+                "company_id": "5280",
+                "projects": [_make_mapping(procore_project_id="abc-123")],
+            }
+        )
     blob = str(exc.value)
     assert "abc-123" in blob
     assert r"^\d+$" in blob
@@ -264,30 +321,38 @@ def test_procore_project_mapping_rejects_non_numeric_when_not_pending() -> None:
 
 def test_procore_project_mapping_rejects_blank_when_not_pending() -> None:
     with pytest.raises(ValidationError) as exc:
-        ProcoreProjectsRegistry.model_validate({
-            "company_id": "5280",
-            "projects": [_make_mapping(procore_project_id="")],
-        })
+        ProcoreProjectsRegistry.model_validate(
+            {
+                "company_id": "5280",
+                "projects": [_make_mapping(procore_project_id="")],
+            }
+        )
     assert "must be non-empty" in str(exc.value)
 
 
 def test_procore_project_mapping_rejects_non_empty_id_for_pending() -> None:
     with pytest.raises(ValidationError) as exc:
-        ProcoreProjectsRegistry.model_validate({
-            "company_id": "5280",
-            "projects": [_make_mapping(procore_project_id="2525840", status="pending")],
-        })
+        ProcoreProjectsRegistry.model_validate(
+            {
+                "company_id": "5280",
+                "projects": [_make_mapping(procore_project_id="2525840", status="pending")],
+            }
+        )
     assert "must be empty when status='pending'" in str(exc.value)
 
 
 def test_procore_project_mapping_accepts_numeric_id_when_not_pending() -> None:
-    reg = ProcoreProjectsRegistry.model_validate({
-        "company_id": "5280",
-        "projects": [
-            _make_mapping(procore_project_id="2525840", status="pilot"),
-            _make_mapping(hb_project_key="legacy", procore_project_id="9999999", status="deprecated"),
-        ],
-    })
+    reg = ProcoreProjectsRegistry.model_validate(
+        {
+            "company_id": "5280",
+            "projects": [
+                _make_mapping(procore_project_id="2525840", status="pilot"),
+                _make_mapping(
+                    hb_project_key="legacy", procore_project_id="9999999", status="deprecated"
+                ),
+            ],
+        }
+    )
     assert {p.hb_project_key for p in reg.projects} == {"tropical", "legacy"}
 
 
@@ -342,9 +407,7 @@ def test_seed_projects_covers_canonical_construction_registry_keys() -> None:
     )
     canonical = yaml.safe_load(canonical_seed.read_text(encoding="utf-8"))
     canonical_keys = {
-        p["project_key"]
-        for p in canonical.get("projects", [])
-        if p.get("project_key")
+        p["project_key"] for p in canonical.get("projects", []) if p.get("project_key")
     }
     procore_keys = {p.hb_project_key for p in load_procore_projects().projects}
     missing = (canonical_keys - procore_keys) - KNOWN_ORPHAN_SHAREPOINT_KEYS
@@ -357,11 +420,13 @@ def test_seed_projects_covers_canonical_construction_registry_keys() -> None:
 def test_loader_env_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     override = tmp_path / "contract.yml"
     override.write_text(
-        yaml.safe_dump({
-            **_minimal_valid_contract_dict(),
-            "company_id": "9999",
-            "company_display_name": "Override Co",
-        }),
+        yaml.safe_dump(
+            {
+                **_minimal_valid_contract_dict(),
+                "company_id": "9999",
+                "company_display_name": "Override Co",
+            }
+        ),
         encoding="utf-8",
     )
     monkeypatch.setenv(CONTRACT_ENV_VAR, str(override))
@@ -373,12 +438,19 @@ def test_loader_env_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
 def test_projects_loader_env_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     override = tmp_path / "projects.yml"
     override.write_text(
-        yaml.safe_dump({
-            "company_id": "5280",
-            "projects": [
-                {"hb_project_key": "alpha", "procore_project_id": "1234567", "procore_project_name": "Alpha", "status": "pilot"},
-            ],
-        }),
+        yaml.safe_dump(
+            {
+                "company_id": "5280",
+                "projects": [
+                    {
+                        "hb_project_key": "alpha",
+                        "procore_project_id": "1234567",
+                        "procore_project_name": "Alpha",
+                        "status": "pilot",
+                    },
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     monkeypatch.setenv(PROJECTS_ENV_VAR, str(override))
@@ -388,6 +460,7 @@ def test_projects_loader_env_override(tmp_path: Path, monkeypatch: pytest.Monkey
 
 def test_missing_seed_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from hb_assistant.procore import loader as loader_mod
+
     monkeypatch.setattr(loader_mod, "_resolve", lambda relative: tmp_path / relative.name)
     monkeypatch.delenv(CONTRACT_ENV_VAR, raising=False)
     monkeypatch.delenv(PROJECTS_ENV_VAR, raising=False)
@@ -404,6 +477,7 @@ def test_missing_seed_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
 
 def test_auth_status_env_absent(monkeypatch: pytest.MonkeyPatch) -> None:
     from hb_assistant.procore import auth as _auth_mod
+
     for k in REQUIRED_ENV_KEYS:
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setattr(_auth_mod, "macos_keychain_entry_exists", lambda: False)
@@ -428,6 +502,7 @@ def test_auth_status_env_partial(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_auth_status_env_present(monkeypatch: pytest.MonkeyPatch) -> None:
     from hb_assistant.procore import auth as _auth_mod
+
     for k in REQUIRED_ENV_KEYS:
         monkeypatch.setenv(k, "x")
     monkeypatch.setattr(_auth_mod, "macos_keychain_entry_exists", lambda: False)
@@ -469,15 +544,25 @@ def test_auditor_marks_unmapped_project_endpoints_not_mapped() -> None:
     # "unmapped project → project_not_mapped verdict" semantics tested, build
     # a synthetic registry that mixes a pilot and a pending row.
     contract = load_endpoint_contract()
-    registry = ProcoreProjectsRegistry.model_validate({
-        "company_id": "5280",
-        "projects": [
-            {"hb_project_key": "tropical", "procore_project_id": "2525840",
-             "procore_project_name": "Tropical - S L", "status": "pilot"},
-            {"hb_project_key": "synthetic-pending", "procore_project_id": "",
-             "procore_project_name": "", "status": "pending"},
-        ],
-    })
+    registry = ProcoreProjectsRegistry.model_validate(
+        {
+            "company_id": "5280",
+            "projects": [
+                {
+                    "hb_project_key": "tropical",
+                    "procore_project_id": "2525840",
+                    "procore_project_name": "Tropical - S L",
+                    "status": "pilot",
+                },
+                {
+                    "hb_project_key": "synthetic-pending",
+                    "procore_project_id": "",
+                    "procore_project_name": "",
+                    "status": "pending",
+                },
+            ],
+        }
+    )
     a = EndpointAuditor(contract, registry)
     r = a.audit_project("synthetic-pending")
     assert r.procore_project_id == ""
@@ -500,15 +585,25 @@ def test_mapping_validation_reports_pending_as_not_ok() -> None:
     # `test_mapping_validation_passes_when_only_pilots_and_deprecated`
     # exercises the positive case from the same idiom.
     contract = load_endpoint_contract()
-    registry = ProcoreProjectsRegistry.model_validate({
-        "company_id": "5280",
-        "projects": [
-            {"hb_project_key": "tropical", "procore_project_id": "2525840",
-             "procore_project_name": "Tropical - S L", "status": "pilot"},
-            {"hb_project_key": "synthetic-pending", "procore_project_id": "",
-             "procore_project_name": "", "status": "pending"},
-        ],
-    })
+    registry = ProcoreProjectsRegistry.model_validate(
+        {
+            "company_id": "5280",
+            "projects": [
+                {
+                    "hb_project_key": "tropical",
+                    "procore_project_id": "2525840",
+                    "procore_project_name": "Tropical - S L",
+                    "status": "pilot",
+                },
+                {
+                    "hb_project_key": "synthetic-pending",
+                    "procore_project_id": "",
+                    "procore_project_name": "",
+                    "status": "pending",
+                },
+            ],
+        }
+    )
     a = EndpointAuditor(contract, registry)
     r = a.validate_mapping()
     assert r.total == 2
@@ -519,15 +614,25 @@ def test_mapping_validation_reports_pending_as_not_ok() -> None:
 
 def test_mapping_validation_passes_when_only_pilots_and_deprecated() -> None:
     contract = load_endpoint_contract()
-    fully_mapped = ProcoreProjectsRegistry.model_validate({
-        "company_id": "5280",
-        "projects": [
-            {"hb_project_key": "tropical", "procore_project_id": "2525840",
-             "procore_project_name": "Tropical - S L", "status": "pilot"},
-            {"hb_project_key": "old-thing", "procore_project_id": "9999999",
-             "procore_project_name": "Legacy", "status": "deprecated"},
-        ],
-    })
+    fully_mapped = ProcoreProjectsRegistry.model_validate(
+        {
+            "company_id": "5280",
+            "projects": [
+                {
+                    "hb_project_key": "tropical",
+                    "procore_project_id": "2525840",
+                    "procore_project_name": "Tropical - S L",
+                    "status": "pilot",
+                },
+                {
+                    "hb_project_key": "old-thing",
+                    "procore_project_id": "9999999",
+                    "procore_project_name": "Legacy",
+                    "status": "deprecated",
+                },
+            ],
+        }
+    )
     a = EndpointAuditor(contract, fully_mapped)
     r = a.validate_mapping()
     assert r.ok is True
@@ -560,6 +665,7 @@ def test_cli_procore_help(runner: CliRunner) -> None:
 
 def test_cli_auth_status(runner: CliRunner, monkeypatch: pytest.MonkeyPatch) -> None:
     from hb_assistant.procore import auth as _auth_mod
+
     for k in REQUIRED_ENV_KEYS:
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setattr(_auth_mod, "macos_keychain_entry_exists", lambda: False)
@@ -588,7 +694,8 @@ def test_cli_tools_list(runner: CliRunner) -> None:
 
 def test_cli_tools_audit_tropical(runner: CliRunner) -> None:
     r = runner.invoke(
-        procore_cli.app, ["tools", "audit", "--project", "tropical", "--json"],
+        procore_cli.app,
+        ["tools", "audit", "--project", "tropical", "--json"],
     )
     assert r.exit_code == 0
     p = json.loads(r.output)
@@ -600,7 +707,8 @@ def test_cli_tools_audit_tropical(runner: CliRunner) -> None:
 
 def test_cli_tools_audit_unknown_project_exit_1(runner: CliRunner) -> None:
     r = runner.invoke(
-        procore_cli.app, ["tools", "audit", "--project", "no-such-key", "--json"],
+        procore_cli.app,
+        ["tools", "audit", "--project", "no-such-key", "--json"],
     )
     assert r.exit_code == 1
     p = json.loads(r.output)
@@ -684,7 +792,9 @@ def test_procore_endpoint_audit_dry_run_with_injected_mock_produces_receipt_no_n
     projects = MagicMock()
     projects.company_id = "5280"
     projects.projects = []
-    projects.get.return_value = MagicMock(procore_project_id="2525840", procore_project_name="Tropical")
+    projects.get.return_value = MagicMock(
+        procore_project_id="2525840", procore_project_name="Tropical"
+    )
 
     auditor = EndpointAuditor(contract, projects)  # type: ignore[arg-type]
     # Exercise the new dry-run path (base_url placeholder)
@@ -714,7 +824,9 @@ def test_procore_endpoint_audit_live_requires_explicit_opt_in_guard(bad_mode):
 
     auditor = EndpointAuditor(contract, projects)  # type: ignore[arg-type]
     with pytest.raises((ValueError, TypeError)):
-        auditor.build_audit_run_receipt("tropical", base_url="https://api.procore.com", mode=bad_mode)
+        auditor.build_audit_run_receipt(
+            "tropical", base_url="https://api.procore.com", mode=bad_mode
+        )
 
 
 def test_audit_dry_run_cli_json_has_mode_dry_run_and_guardrails(runner: CliRunner):

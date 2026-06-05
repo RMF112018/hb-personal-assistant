@@ -52,7 +52,10 @@ def test_snapshot_all_registries_persists_four_rows() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = str(Path(td) / "a.db")
         ids = snapshot_all_registries(db_path=db, persist=True)
-        assert all(ids[k] for k in ("server_config", "tool_registry", "resource_registry", "prompt_registry"))
+        assert all(
+            ids[k]
+            for k in ("server_config", "tool_registry", "resource_registry", "prompt_registry")
+        )
         conn = sqlite3.connect(db)
         for table in (
             "second_brain_mcp_server_config_snapshots",
@@ -66,7 +69,9 @@ def test_snapshot_all_registries_persists_four_rows() -> None:
 def test_permission_audit_passes_all_ten_checks() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = str(Path(td) / "a.db")
-        report = run_mcp_permission_audit(db_path=db, evidence_dir=td, persist=True, write_evidence=True)
+        report = run_mcp_permission_audit(
+            db_path=db, evidence_dir=td, persist=True, write_evidence=True
+        )
         assert report["proof_passed"] is True
         assert report["status"] == "ok"
         assert report["finding_count"] == 0

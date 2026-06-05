@@ -34,6 +34,7 @@ def db_path(tmp_path: Path) -> str:
 
 def _patch_store_to_tmp(monkeypatch: pytest.MonkeyPatch, db_path: str) -> None:
     from hb_assistant.store import connection as conn_mod
+
     real = conn_mod.get_connection
 
     def _get(_: str | None = None):
@@ -42,6 +43,7 @@ def _patch_store_to_tmp(monkeypatch: pytest.MonkeyPatch, db_path: str) -> None:
     monkeypatch.setattr(conn_mod, "get_connection", _get)
     from hb_assistant.construction.store import repositories as repo_mod
     from hb_assistant.store import migrator as mig_mod
+
     monkeypatch.setattr(repo_mod, "get_connection", _get)
     monkeypatch.setattr(mig_mod, "get_connection", _get)
 
@@ -100,7 +102,9 @@ def test_sources_list_returns_registered_sources(
 
 
 def test_index_status_returns_dashboard(
-    runner: CliRunner, monkeypatch: pytest.MonkeyPatch, db_path: str,
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     r = runner.invoke(construction_cli.app, ["index", "status", "--json"])
@@ -118,14 +122,17 @@ def test_index_status_returns_dashboard(
     assert p["policies"]["review_rules"]["rule_count"] >= 1
     assert p["policies"]["model_routing"]["default_model"]
     assert set(p["policies"]["model_routing"]["tasks"]) >= {
-        "classification", "review_reason",
+        "classification",
+        "review_reason",
     }
     # Guardrails
     assert p["guardrails"]["command_role"] == "read_only_dashboard"
 
 
 def test_index_status_per_source_filter(
-    runner: CliRunner, monkeypatch: pytest.MonkeyPatch, db_path: str,
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     r = runner.invoke(
@@ -139,7 +146,9 @@ def test_index_status_per_source_filter(
 
 
 def test_index_status_unknown_source_returns_not_found(
-    runner: CliRunner, monkeypatch: pytest.MonkeyPatch, db_path: str,
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     _patch_store_to_tmp(monkeypatch, db_path)
     r = runner.invoke(
@@ -161,7 +170,9 @@ def test_index_status_unsupported_operation(runner: CliRunner) -> None:
 
 
 def test_index_status_reflects_review_queue_and_model_decisions(
-    runner: CliRunner, monkeypatch: pytest.MonkeyPatch, db_path: str,
+    runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path: str,
 ) -> None:
     """End-to-end: seed via the existing review + classify CLIs, then ensure
     index status counts both surfaces."""
@@ -169,15 +180,20 @@ def test_index_status_reflects_review_queue_and_model_decisions(
     # Seed inventory + review-evaluate to put rows in the review queue
     store = ConstructionStore()
     store.upsert_inventory_item(
-        source_key="tropical-sharepoint", drive_id="d", item_id="seed-1",
-        name="Master Agreement.pdf", web_url="https://e/i",
+        source_key="tropical-sharepoint",
+        drive_id="d",
+        item_id="seed-1",
+        name="Master Agreement.pdf",
+        web_url="https://e/i",
         parent_path="/Tropical/Contracts/Vendors",
-        size_bytes=1, is_folder=False, last_modified=None, etag=None,
+        size_bytes=1,
+        is_folder=False,
+        last_modified=None,
+        etag=None,
     )
     r = runner.invoke(
         construction_cli.app,
-        ["review", "evaluate", "--source", "tropical-sharepoint",
-         "--apply", "--json"],
+        ["review", "evaluate", "--source", "tropical-sharepoint", "--apply", "--json"],
     )
     assert r.exit_code == 0
     # Seed a model decision
@@ -214,20 +230,29 @@ def test_validate_clean_repo_passes(runner: CliRunner) -> None:
 
 
 def test_validate_reports_failure_with_broken_rules(
-    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    runner: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Point HB_CONSTRUCTION_REVIEW_RULES at a broken file → validate exits 1
     with the offending check flagged."""
     bad = tmp_path / "broken.yml"
     bad.write_text(
-        yaml.safe_dump({
-            "rules": [{
-                "rule_id": "Bad ID",  # not kebab-case → ValidationError
-                "kind": "risk_term", "pattern": "x", "sensitivity": "high",
-                "classification_label": "contract",
-                "reason": "r", "suggested_action": "review",
-            }],
-        }),
+        yaml.safe_dump(
+            {
+                "rules": [
+                    {
+                        "rule_id": "Bad ID",  # not kebab-case → ValidationError
+                        "kind": "risk_term",
+                        "pattern": "x",
+                        "sensitivity": "high",
+                        "classification_label": "contract",
+                        "reason": "r",
+                        "suggested_action": "review",
+                    }
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     monkeypatch.setenv(REVIEW_RULES_ENV, str(bad))

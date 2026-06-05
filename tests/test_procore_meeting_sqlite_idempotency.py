@@ -51,9 +51,11 @@ def _promoted_contract(*, also_strip_topic_meeting_id: bool = False):
 
 def _apply_once_meetings(coord: ProcoreSyncCoordinator) -> dict:
     contract = _promoted_contract()
-    with patch.object(coord, "auditor") as mock_auditor, \
-         patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls, \
-         patch("hb_assistant.procore.sync.load_endpoint_contract", return_value=contract):
+    with (
+        patch.object(coord, "auditor") as mock_auditor,
+        patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls,
+        patch("hb_assistant.procore.sync.load_endpoint_contract", return_value=contract),
+    ):
         mock_auditor.audit_endpoints_for_pilots.return_value = {"meeting": "available"}
         mock_client = MagicMock()
         mock_client.paginate.return_value = list(MEETING_SAMPLE_PAYLOAD)
@@ -63,9 +65,11 @@ def _apply_once_meetings(coord: ProcoreSyncCoordinator) -> dict:
 
 def _apply_once_topics(coord: ProcoreSyncCoordinator) -> dict:
     contract = _promoted_contract(also_strip_topic_meeting_id=True)
-    with patch.object(coord, "auditor") as mock_auditor, \
-         patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls, \
-         patch("hb_assistant.procore.sync.load_endpoint_contract", return_value=contract):
+    with (
+        patch.object(coord, "auditor") as mock_auditor,
+        patch("hb_assistant.procore.sync.ProcoreHTTPClient") as mock_client_cls,
+        patch("hb_assistant.procore.sync.load_endpoint_contract", return_value=contract),
+    ):
         mock_auditor.audit_endpoints_for_pilots.return_value = {"meeting-topic": "available"}
         mock_client = MagicMock()
         mock_client.paginate.return_value = list(MEETING_TOPIC_SAMPLE_PAYLOAD)

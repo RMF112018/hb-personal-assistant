@@ -26,8 +26,16 @@ runner = CliRunner()
 # "determination" is intentionally excluded — the only occurrence is the structural
 # attestation key ``determinations_made: false``; _content_blob() drops that key before scanning.
 _BANNED_WORDS = (
-    "liable", "liability", "entitled", "entitlement", "breach", "owes", "must pay",
-    "guilty", "at fault", "negligent",
+    "liable",
+    "liability",
+    "entitled",
+    "entitlement",
+    "breach",
+    "owes",
+    "must pay",
+    "guilty",
+    "at fault",
+    "negligent",
 )
 
 
@@ -52,32 +60,63 @@ def _db() -> Path:
 def _seed(db: Path) -> None:
     project_commitment_family(
         "commitment-contracts",
-        {"id": 2, "number": "SC-1", "status": "Pending", "executed": False,
-         "grand_total": "500000.00", "vendor": {"id": 12, "name": "Acme LLC"}},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 2,
+            "number": "SC-1",
+            "status": "Pending",
+            "executed": False,
+            "grand_total": "500000.00",
+            "vendor": {"id": 12, "name": "Acme LLC"},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_invoice_family(
         "subcontractor-invoices",
-        {"id": 40, "status": "approved", "vendor_id": 12, "commitment_id": 2,
-         "summary": {"current_payment_due": "100000.00", "total_retainage": "5000.00"}},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 40,
+            "status": "approved",
+            "vendor_id": 12,
+            "commitment_id": 2,
+            "summary": {"current_payment_due": "100000.00", "total_retainage": "5000.00"},
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_rfq_change_event_family(
         "rfqs",
-        {"id": 10, "number": "RFQ-1", "status": "open", "estimated_amount": "50000.00",
-         "commitment_contract_id": 2},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "id": 10,
+            "number": "RFQ-1",
+            "status": "open",
+            "estimated_amount": "50000.00",
+            "commitment_contract_id": 2,
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_rfq_change_event_family(
         "change-events",
         {"id": 77, "number": 12, "status": "open", "estimated_cost": _CE_AMOUNT},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     project_budget_family(
         "budget-change-history",
-        {"budget_code": "01-100", "column": "Revised Budget", "old_value": "100.00",
-         "new_value": "150.00", "created_at": "2026-05-20"},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        {
+            "budget_code": "01-100",
+            "column": "Revised Budget",
+            "old_value": "100.00",
+            "new_value": "150.00",
+            "created_at": "2026-05-20",
+        },
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
 
 
@@ -90,15 +129,22 @@ def test_classifies_all_expected_types() -> None:
     _seed(db)
     by_type = _exp(db)["summary"]["by_type"]
     # every canonical type is keyed (0 when absent)
-    for t in ("pending_change", "unapproved_change", "budget_movement",
-              "invoice_retainage_risk", "rfq_quote_pending", "compliance_risk", "amount_changed"):
+    for t in (
+        "pending_change",
+        "unapproved_change",
+        "budget_movement",
+        "invoice_retainage_risk",
+        "rfq_quote_pending",
+        "compliance_risk",
+        "amount_changed",
+    ):
         assert t in by_type
     # the seeded fixture exercises these lenses
-    assert by_type["pending_change"] >= 1          # change-event ROM / pending
-    assert by_type["unapproved_change"] >= 1       # commitment_unexecuted
+    assert by_type["pending_change"] >= 1  # change-event ROM / pending
+    assert by_type["unapproved_change"] >= 1  # commitment_unexecuted
     assert by_type["invoice_retainage_risk"] >= 1  # approved-not-paid / payment-due / retainage
-    assert by_type["rfq_quote_pending"] >= 1       # rfq cost exposure / under review
-    assert by_type["amount_changed"] >= 1          # budget change from/to
+    assert by_type["rfq_quote_pending"] >= 1  # rfq cost exposure / under review
+    assert by_type["amount_changed"] >= 1  # budget change from/to
 
 
 def test_amounts_remain_strings() -> None:
@@ -149,9 +195,11 @@ def test_review_required_high_sensitivity() -> None:
     db = _db()
     _seed(db)
     out = _exp(db)
-    sensitive = [it for it in out["exposure"]
-                 if it["exposure_type"] in ("compliance_risk", "unapproved_change",
-                                            "invoice_retainage_risk")]
+    sensitive = [
+        it
+        for it in out["exposure"]
+        if it["exposure_type"] in ("compliance_risk", "unapproved_change", "invoice_retainage_risk")
+    ]
     assert sensitive
     for it in sensitive:
         assert it["review_required"] is True
@@ -210,14 +258,28 @@ def test_cli_json_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     _seed(db)
     _patch_conn(monkeypatch, db)
     res = runner.invoke(
-        app, ["procore", "live", "financial", "exposure", "--project", "tropical", "--json"],
+        app,
+        ["procore", "live", "financial", "exposure", "--project", "tropical", "--json"],
         catch_exceptions=False,
     )
     assert res.exit_code == 0, res.output
     payload = json.loads(res.output)
-    for key in ("command", "ok", "phase", "project_key", "generated_at", "filters", "summary",
-                "exposure", "exposure_truncated", "amounts_are_strings", "no_live_call_performed",
-                "no_raw_values_persisted", "determinations_made", "guardrails"):
+    for key in (
+        "command",
+        "ok",
+        "phase",
+        "project_key",
+        "generated_at",
+        "filters",
+        "summary",
+        "exposure",
+        "exposure_truncated",
+        "amounts_are_strings",
+        "no_live_call_performed",
+        "no_raw_values_persisted",
+        "determinations_made",
+        "guardrails",
+    ):
         assert key in payload, f"missing {key}"
     assert payload["ok"] is True
     assert payload["determinations_made"] is False

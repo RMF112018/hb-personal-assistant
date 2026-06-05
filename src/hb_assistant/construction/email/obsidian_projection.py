@@ -51,12 +51,9 @@ def _contains_forbidden_marker(value: str) -> bool:
 
 @lru_cache(maxsize=16)
 def _load_template(name: str) -> str:
-    return (
-        PathPolicy().resolve_repo_root()
-        / "resources"
-        / "templates"
-        / name
-    ).read_text(encoding="utf-8")
+    return (PathPolicy().resolve_repo_root() / "resources" / "templates" / name).read_text(
+        encoding="utf-8"
+    )
 
 
 class EmailObsidianReport(BaseModel):
@@ -168,7 +165,9 @@ class EmailObsidianProjector:
         relationship_candidates = self._store.list_email_relationship_candidates(
             project_key=project_key, limit=5000
         )
-        review_rows = self._store.list_email_review_queue(project_key=project_key, status=None, limit=5000)
+        review_rows = self._store.list_email_review_queue(
+            project_key=project_key, status=None, limit=5000
+        )
         model_rows = self._query_model_classifications(project_key=project_key)
         thread_rows = self._query_thread_summaries(project_key=project_key)
 
@@ -195,7 +194,7 @@ class EmailObsidianProjector:
                     receipt=receipt,
                     messages=messages,
                     encrypted_count=encrypted_count,
-                    review_count=len([r for r in review_rows if r.get('status') == 'open']),
+                    review_count=len([r for r in review_rows if r.get("status") == "open"]),
                 ),
             ),
             _EmailArtifact(

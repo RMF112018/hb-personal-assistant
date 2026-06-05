@@ -69,7 +69,17 @@ def test_graph_mail_folders_dry_run_parses(tmp_path: Path) -> None:
 
 
 def test_graph_mail_index_parses(tmp_path: Path) -> None:
-    res = _invoke(tmp_path, "graph", "mail", "index", "--project", "tropical", "--lookback-days", "30", "--json")
+    res = _invoke(
+        tmp_path,
+        "graph",
+        "mail",
+        "index",
+        "--project",
+        "tropical",
+        "--lookback-days",
+        "30",
+        "--json",
+    )
     assert res.exit_code in (0, 1)
     payload = json.loads(res.output)
     assert payload["command"] == "graph mail index"
@@ -78,7 +88,18 @@ def test_graph_mail_index_parses(tmp_path: Path) -> None:
 
 
 def test_graph_mail_discover_dry_run_parses(tmp_path: Path) -> None:
-    res = _invoke(tmp_path, "graph", "mail", "discover", "--project", "tropical", "--lookback-days", "30", "--dry-run", "--json")
+    res = _invoke(
+        tmp_path,
+        "graph",
+        "mail",
+        "discover",
+        "--project",
+        "tropical",
+        "--lookback-days",
+        "30",
+        "--dry-run",
+        "--json",
+    )
     assert res.exit_code in (0, 1)
     payload = json.loads(res.output)
     assert payload["command"] == "graph mail discover"
@@ -88,18 +109,42 @@ def test_graph_mail_discover_dry_run_parses(tmp_path: Path) -> None:
 
 def test_graph_mail_relationships_parses(tmp_path: Path) -> None:
     # Local-only command (no Graph); should run cleanly.
-    res = _invoke(tmp_path, "graph", "mail", "relationships", "--project", "tropical", "--lookback-days", "30", "--dry-run", "--json")
+    res = _invoke(
+        tmp_path,
+        "graph",
+        "mail",
+        "relationships",
+        "--project",
+        "tropical",
+        "--lookback-days",
+        "30",
+        "--dry-run",
+        "--json",
+    )
     assert res.exit_code in (0, 1)
     payload = json.loads(res.output)
     assert payload["command"] == "graph mail relationships"
-    assert payload.get("disclaimer", "").find("not determinations") >= 0 or payload.get("ok") is False
+    assert (
+        payload.get("disclaimer", "").find("not determinations") >= 0 or payload.get("ok") is False
+    )
     assert "access_token" not in res.output
     assert "Bearer " not in res.output
 
 
 def test_graph_mail_review_queue_parses(tmp_path: Path) -> None:
     # Local-only command (no Graph); evidence-safe dry-run preview.
-    res = _invoke(tmp_path, "graph", "mail", "review-queue", "--project", "tropical", "--lookback-days", "30", "--dry-run", "--json")
+    res = _invoke(
+        tmp_path,
+        "graph",
+        "mail",
+        "review-queue",
+        "--project",
+        "tropical",
+        "--lookback-days",
+        "30",
+        "--dry-run",
+        "--json",
+    )
     assert res.exit_code in (0, 1)
     payload = json.loads(res.output)
     assert payload["command"] == "graph mail review-queue"
@@ -115,8 +160,17 @@ def test_graph_mail_review_queue_parses(tmp_path: Path) -> None:
 def test_graph_mail_classify_parses(tmp_path: Path) -> None:
     # Local-only advisory classification; evidence-safe dry-run preview.
     res = _invoke(
-        tmp_path, "graph", "mail", "classify", "--project", "tropical",
-        "--lookback-days", "30", "--use-encrypted-body-context", "--dry-run", "--json",
+        tmp_path,
+        "graph",
+        "mail",
+        "classify",
+        "--project",
+        "tropical",
+        "--lookback-days",
+        "30",
+        "--use-encrypted-body-context",
+        "--dry-run",
+        "--json",
     )
     assert res.exit_code in (0, 1)
     payload = json.loads(res.output)
@@ -124,8 +178,12 @@ def test_graph_mail_classify_parses(tmp_path: Path) -> None:
     if payload.get("ok"):
         assert payload["plaintext_persisted"] is False
         assert payload["dry_run"] is True
-        for key in ("messages_considered", "encrypted_body_context_used_count",
-                    "model_outputs_valid", "review_required_count"):
+        for key in (
+            "messages_considered",
+            "encrypted_body_context_used_count",
+            "model_outputs_valid",
+            "review_required_count",
+        ):
             assert key in payload
     assert "access_token" not in res.output
     assert "Bearer " not in res.output

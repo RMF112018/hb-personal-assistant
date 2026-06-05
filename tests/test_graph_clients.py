@@ -37,12 +37,16 @@ def test_mail_client_inbound_redaction():
     assert isinstance(e, Email)
     assert "redacted" in (e.subject_redacted or "")
     assert e.sender_domain == "ex.com"
-    assert "bobby" not in (e.body_preview_redacted or "").lower() or "..." in (e.body_preview_redacted or "")  # truncated if long
+    assert "bobby" not in (e.body_preview_redacted or "").lower() or "..." in (
+        e.body_preview_redacted or ""
+    )  # truncated if long
 
 
 def test_calendar_client_window():
     mock_http = MagicMock()
-    mock_http.get_all_pages.return_value = [{"id": "evt1", "subject": "Team Sync", "start": {"dateTime": "2026-05-26T09:00:00"}}]
+    mock_http.get_all_pages.return_value = [
+        {"id": "evt1", "subject": "Team Sync", "start": {"dateTime": "2026-05-26T09:00:00"}}
+    ]
     cfg = load_config()
     client = CalendarClient(mock_http, cfg)
     events = client.list_events(top=1)
@@ -52,7 +56,12 @@ def test_calendar_client_window():
 
 def test_drive_item_client_metadata():
     mock_http = MagicMock()
-    mock_http.get.return_value = {"id": "item1", "name": "Q2 Plan.pdf", "size": 12345, "file": {"mimeType": "application/pdf"}}
+    mock_http.get.return_value = {
+        "id": "item1",
+        "name": "Q2 Plan.pdf",
+        "size": 12345,
+        "file": {"mimeType": "application/pdf"},
+    }
     client = DriveItemClient(mock_http)
     item = client.get_item("item1")
     assert item.name == "Q2 Plan.pdf"

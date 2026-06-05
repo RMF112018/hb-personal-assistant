@@ -52,9 +52,7 @@ def test_write_creates_file_with_0o600_and_parent_dir_0o700(
     assert parent_mode == 0o700, f"auth dir perms must be 0o700, got {oct(parent_mode)}"
 
 
-def test_write_then_read_round_trip(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_write_then_read_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_auth_dir(monkeypatch, tmp_path)
     write_token_cache(_make_token_set())
     payload = read_token_cache_payload()
@@ -99,9 +97,7 @@ def test_write_replaces_existing_atomically(
     assert leftovers == []
 
 
-def test_clear_token_cache_removes_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_clear_token_cache_removes_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_auth_dir(monkeypatch, tmp_path)
     write_token_cache(_make_token_set())
     assert clear_token_cache() is True

@@ -37,15 +37,25 @@ def _store(tmp_path: Path) -> ConstructionStore:
 
 def _add(store, item_id, name, path, *, ext=None, size=None):
     store.upsert_drive_item(
-        source_id=_SID, drive_id="D", drive_item_id=item_id, name=name, path=path,
-        parent_reference_path=path, is_file=True, file_extension=ext, size_bytes=size,
+        source_id=_SID,
+        drive_id="D",
+        drive_item_id=item_id,
+        name=name,
+        path=path,
+        parent_reference_path=path,
+        is_file=True,
+        file_extension=ext,
+        size_bytes=size,
     )
 
 
 def _match(store, item_id, status):
     store.update_drive_item_project_match(
-        source_id=_SID, drive_item_id=item_id, project_key="tropical",
-        match_confidence=("high" if status == "matched" else "low"), match_status=status,
+        source_id=_SID,
+        drive_item_id=item_id,
+        project_key="tropical",
+        match_confidence=("high" if status == "matched" else "low"),
+        match_status=status,
         review_required=(status != "matched"),
     )
 
@@ -168,14 +178,24 @@ def test_cli_ingestion_policy_offline(tmp_path: Path, monkeypatch: pytest.Monkey
     db = str(tmp_path / "ip.sqlite")
     seed = ConstructionStore(db)
     project_registry_to_v5_source_locations(load_source_registry(), seed)
-    seed.upsert_drive_item(source_id=_SID, drive_id="D", drive_item_id="a1",
-                           name="RFI-001.pdf", path="/drive/root:/23-435-01/07-RFI",
-                           parent_reference_path="/drive/root:/23-435-01/07-RFI",
-                           is_file=True, file_extension="pdf", size_bytes=10)
-    monkeypatch.setattr("hb_assistant.cli.graph.ConstructionStore", lambda *a, **k: ConstructionStore(db))
+    seed.upsert_drive_item(
+        source_id=_SID,
+        drive_id="D",
+        drive_item_id="a1",
+        name="RFI-001.pdf",
+        path="/drive/root:/23-435-01/07-RFI",
+        parent_reference_path="/drive/root:/23-435-01/07-RFI",
+        is_file=True,
+        file_extension="pdf",
+        size_bytes=10,
+    )
+    monkeypatch.setattr(
+        "hb_assistant.cli.graph.ConstructionStore", lambda *a, **k: ConstructionStore(db)
+    )
     result = runner.invoke(app, ["files", "ingestion-policy", "--source", _SID, "--json"])
     assert result.exit_code == 0, result.output
     import json
+
     payload = json.loads(result.output)
     assert payload["command"] == "graph files ingestion-policy"
     assert payload["guardrails"]["block_review_required_extraction"] is True

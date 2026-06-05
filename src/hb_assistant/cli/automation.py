@@ -15,12 +15,16 @@ import typer
 
 from hb_assistant.automation import LaunchdManager
 
-app = typer.Typer(help="Launchd automation (install/uninstall/kickstart user LaunchAgent for morning run). Dry-run safe.")
+app = typer.Typer(
+    help="Launchd automation (install/uninstall/kickstart user LaunchAgent for morning run). Dry-run safe."
+)
 
 
 @app.command("install-launchd")
 def install(
-    dry_run: bool = typer.Option(True, "--dry-run", help="Preview plist + commands without writing or calling launchctl."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run", help="Preview plist + commands without writing or calling launchctl."
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Install (or preview) the morning LaunchAgent."""

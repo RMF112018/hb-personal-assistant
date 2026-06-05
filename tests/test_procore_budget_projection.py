@@ -45,8 +45,11 @@ def _edges(db: Path) -> set[tuple]:
 def test_budget_view_row() -> None:
     db = _db()
     out = project_budget_family(
-        "budget-views", {"id": 1, "name": "Detailed Budget", "description": "note"},
-        project_key="tropical", now_utc=_NOW, db_path=db,
+        "budget-views",
+        {"id": 1, "name": "Detailed Budget", "description": "note"},
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
     )
     assert out["projected"] is True
     row = _rows(db, "procore_financial_budget_views")[0]
@@ -57,8 +60,12 @@ def test_budget_view_row() -> None:
 def test_budget_detail_column_edge_to_view() -> None:
     db = _db()
     project_budget_family(
-        "budget-detail-columns", {"id": "col_1", "name": "Projected", "type": "currency"},
-        project_key="tropical", now_utc=_NOW, db_path=db, parent_procore_id="1",
+        "budget-detail-columns",
+        {"id": "col_1", "name": "Projected", "type": "currency"},
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
+        parent_procore_id="1",
     )
     assert ("column_of", "tropical|budget-views||1") in _edges(db)
 
@@ -107,7 +114,10 @@ def test_budget_detail_row_under_budget_no_signal() -> None:
     project_budget_family(
         "budget-detail-rows",
         {"id": 10, "original_budget_amount": "1000.00", "budget_forecast": {"amount": "900.00"}},
-        project_key="tropical", now_utc=_NOW, db_path=db, parent_procore_id="1",
+        project_key="tropical",
+        now_utc=_NOW,
+        db_path=db,
+        parent_procore_id="1",
     )
     sigs = _signals(db)
     assert "budget_forecast_exceeds_budget" not in sigs and "budget_variance_negative" not in sigs
@@ -117,8 +127,14 @@ def test_budget_change_history_facts_and_signal() -> None:
     db = _db()
     project_budget_family(
         "budget-change-history",
-        {"budget_code": "01-100", "column": "Revised Budget", "type": "adjustment",
-         "old_value": "100.00", "new_value": "150.50", "created_at": "2026-05-20"},
+        {
+            "budget_code": "01-100",
+            "column": "Revised Budget",
+            "type": "adjustment",
+            "old_value": "100.00",
+            "new_value": "150.50",
+            "created_at": "2026-05-20",
+        },
         project_key="tropical",
         now_utc=_NOW,
         db_path=db,
@@ -136,8 +152,14 @@ def test_budget_change_line_item_parent_edge_and_query() -> None:
     db = _db()
     project_budget_family(
         "budget-change-line-items",
-        {"id": 7, "budget_change_id": "bc1", "budget_change_number": "BC-1",
-         "budget_change_status": "approved", "amount": "5000.00", "wbs_code_id": "3"},
+        {
+            "id": 7,
+            "budget_change_id": "bc1",
+            "budget_change_number": "BC-1",
+            "budget_change_status": "approved",
+            "amount": "5000.00",
+            "wbs_code_id": "3",
+        },
         project_key="tropical",
         now_utc=_NOW,
         db_path=db,
@@ -156,8 +178,13 @@ def test_budget_modification_signal_and_edges() -> None:
     db = _db()
     project_budget_family(
         "budget-modifications",
-        {"id": 11, "from_budget_line_item_id": 100, "to_budget_line_item_id": 200,
-         "transfer_amount": "2500.00", "created_at": "2026-05-21"},
+        {
+            "id": 11,
+            "from_budget_line_item_id": 100,
+            "to_budget_line_item_id": 200,
+            "transfer_amount": "2500.00",
+            "created_at": "2026-05-21",
+        },
         project_key="tropical",
         now_utc=_NOW,
         db_path=db,
@@ -176,7 +203,10 @@ def test_budget_rows_query_by_view_and_wbs() -> None:
         project_budget_family(
             "budget-detail-rows",
             {"id": rid, "wbs_code_id": wbs, "original_budget_amount": "1.00"},
-            project_key="tropical", now_utc=_NOW, db_path=db, parent_procore_id="1",
+            project_key="tropical",
+            now_utc=_NOW,
+            db_path=db,
+            parent_procore_id="1",
         )
     by_view = read_financial_budget_rows(
         project_key="tropical", budget_view_key="tropical|budget-views||1", db_path=db

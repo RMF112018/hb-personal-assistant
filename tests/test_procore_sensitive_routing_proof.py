@@ -50,16 +50,12 @@ def _common_kwargs() -> Dict[str, Any]:
 
 def _normalize_rfi(blob: str) -> Dict[str, Any]:
     raw = {"id": "r1", "body": blob}
-    return normalize_rfi_reply(
-        raw, parent_procore_id="rfi-parent-1", **_common_kwargs()
-    )
+    return normalize_rfi_reply(raw, parent_procore_id="rfi-parent-1", **_common_kwargs())
 
 
 def _normalize_submittal(blob: str) -> Dict[str, Any]:
     raw = {"id": "s1", "comment": blob}
-    return normalize_submittal_response(
-        raw, parent_procore_id="sub-parent-1", **_common_kwargs()
-    )
+    return normalize_submittal_response(raw, parent_procore_id="sub-parent-1", **_common_kwargs())
 
 
 def _normalize_observation(blob: str) -> Dict[str, Any]:
@@ -181,7 +177,9 @@ def _submittal_bucket(title: str) -> Dict[str, Any]:
     return normalize_submittal(raw, **_common_kwargs())
 
 
-def _observation_bucket(*, type_: str = "", title: str = "", description: str = "") -> Dict[str, Any]:
+def _observation_bucket(
+    *, type_: str = "", title: str = "", description: str = ""
+) -> Dict[str, Any]:
     raw: Dict[str, Any] = {"id": "obs-bucket", "assignee_id": "12345"}
     if type_:
         raw["type"] = type_
@@ -266,14 +264,11 @@ def test_bucket_routes_to_review_and_redacts(bucket: str) -> None:
         f"bucket {bucket!r}: routing_reason must be a non-empty string"
     )
     assert expected_reason_substr in reason, (
-        f"bucket {bucket!r}: expected {expected_reason_substr!r} in "
-        f"routing_reason={reason!r}"
+        f"bucket {bucket!r}: expected {expected_reason_substr!r} in routing_reason={reason!r}"
     )
 
     if bucket == "safety":
-        assert record.get("safety_route") is True, (
-            "safety bucket must set safety_route=True"
-        )
+        assert record.get("safety_route") is True, "safety bucket must set safety_route=True"
 
     # Never carry the synthetic literals; they would leak if any field had
     # been copied verbatim. The same guarantee already applies to the raw

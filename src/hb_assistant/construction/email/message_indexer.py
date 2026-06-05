@@ -482,7 +482,9 @@ class EmailMessageIndexer:
             return counts
         for att in self._mail.list_attachment_metadata(message_id):
             att_id = att.get("id")
-            analysis = analyze_attachment(att.get("name"), att.get("contentType"), bool(att.get("isInline")))
+            analysis = analyze_attachment(
+                att.get("name"), att.get("contentType"), bool(att.get("isInline"))
+            )
             self._store.upsert_email_message_attachment(
                 attachment_key=f"{message_id}:{att_id}",
                 message_id=message_id,

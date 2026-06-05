@@ -117,7 +117,9 @@ def test_allowed_tool_with_wrapper_succeeds_and_writes_metadata_receipt() -> Non
         assert rcount == 1
         assert (raw_prompt, ext_wb) == (0, 0)
         # receipt table has no raw arg/result columns
-        cols = {r[1] for r in conn.execute("PRAGMA table_info(second_brain_mcp_tool_call_receipts)")}
+        cols = {
+            r[1] for r in conn.execute("PRAGMA table_info(second_brain_mcp_tool_call_receipts)")
+        }
         assert not ({"raw_args", "raw_result"} & cols)
 
 
@@ -148,6 +150,9 @@ def test_broker_proof_passes() -> None:
     with tempfile.TemporaryDirectory() as td:
         proof = build_mcp_tool_broker_proof(evidence_dir=td, write_evidence=True)
         assert proof["proof_passed"] is True
-        assert proof["registries"] == {"allowed_tools": 9, "denied_actions": len(load_denied_actions())}
+        assert proof["registries"] == {
+            "allowed_tools": 9,
+            "denied_actions": len(load_denied_actions()),
+        }
         assert proof["metadata_only"]["all_guard_columns_zero"] is True
         assert (Path(td) / "mcp-tool-broker-proof.json").exists()

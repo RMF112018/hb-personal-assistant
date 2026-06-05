@@ -22,9 +22,7 @@ _HASH_PREFIX_RE = re.compile(r"^[0-9a-f]{12}$")
 _PII_EMAIL = "synthetic-fixture@example.invalid"
 _PII_NAME = "Synthetic Tester"
 _PII_COMPANY = "Synthetic Co."
-_FREE_TEXT_DESCRIPTION = (
-    "Detailed checklist description that must not appear in canonical storage."
-)
+_FREE_TEXT_DESCRIPTION = "Detailed checklist description that must not appear in canonical storage."
 
 
 def _person(person_id: int = 160586, *, name: str = _PII_NAME) -> dict:
@@ -68,9 +66,7 @@ def _make_inspection_raw(**overrides) -> dict:
         "point_of_contact": _person(person_id=160588, name="Synthetic Contact"),
         "trade": {"id": 999, "name": "09 - acoustical panels", "active": True},
         "inspectors": [_person(person_id=200001, name="Synthetic Inspector A")],
-        "distribution_members": [
-            _person(person_id=300001, name="Synthetic Member A")
-        ],
+        "distribution_members": [_person(person_id=300001, name="Synthetic Member A")],
         "signature_requests": [
             {
                 "id": 21,
@@ -140,13 +136,29 @@ def test_inspection_canonical_structural_keys_preserved() -> None:
     cf = record["canonical_fields"]
     # All structured whitelist keys preserved.
     for key in (
-        "id", "name", "number", "status", "list_template_id",
-        "list_template_name", "inspection_date", "due_at", "closed_at",
-        "created_at", "updated_at", "deleted", "private", "overdue",
-        "conforming_item_count", "deficient_item_count",
-        "not_applicable_item_count", "neutral_item_count",
-        "inspected_item_count", "observations_count",
-        "closed_observations_count", "item_count", "template_id",
+        "id",
+        "name",
+        "number",
+        "status",
+        "list_template_id",
+        "list_template_name",
+        "inspection_date",
+        "due_at",
+        "closed_at",
+        "created_at",
+        "updated_at",
+        "deleted",
+        "private",
+        "overdue",
+        "conforming_item_count",
+        "deficient_item_count",
+        "not_applicable_item_count",
+        "neutral_item_count",
+        "inspected_item_count",
+        "observations_count",
+        "closed_observations_count",
+        "item_count",
+        "template_id",
         "managed_equipment_id",
     ):
         assert key in cf, f"missing canonical key {key!r}"
@@ -183,7 +195,9 @@ def test_inspection_pii_and_free_text_never_persists() -> None:
     att = record["canonical_fields"]["attachments_summary"]["items"][0]
     assert "filename_summary" in att
     assert att["url_path"] == "/attachments/foo.pdf"
-    sig_att = record["canonical_fields"]["signature_requests_summary"]["items"][0]["signature"]["attachment_summary"]
+    sig_att = record["canonical_fields"]["signature_requests_summary"]["items"][0]["signature"][
+        "attachment_summary"
+    ]
     assert "filename_summary" in sig_att
     # Custom field string value never persists.
     assert "secret string" not in serialized

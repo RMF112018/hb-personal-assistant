@@ -160,9 +160,7 @@ def test_first_apply_receipt_counts_reconcile_with_sqlite_row_count() -> None:
     assert receipt["raw_body_persisted"] == 0
     assert receipt["redaction_applied"] == 1
 
-    actual = count_procore_live_records(
-        project_key=_PROJECT, endpoint_id=_ENDPOINT, db_path=db
-    )
+    actual = count_procore_live_records(project_key=_PROJECT, endpoint_id=_ENDPOINT, db_path=db)
     assert actual == receipt["sqlite_upserted_count"]
 
 
@@ -190,19 +188,12 @@ def test_second_apply_produces_only_updates_zero_new_inserts() -> None:
     assert second_results == ["updated"] * 4
 
     # Row count must not grow.
-    assert (
-        count_procore_live_records(
-            project_key=_PROJECT, endpoint_id=_ENDPOINT, db_path=db
-        )
-        == 4
-    )
+    assert count_procore_live_records(project_key=_PROJECT, endpoint_id=_ENDPOINT, db_path=db) == 4
 
     # Every row's last_sync_run_id must now point at the second run.
     conn = sqlite3.connect(str(db))
     try:
-        rows = conn.execute(
-            "SELECT last_sync_run_id FROM procore_live_records"
-        ).fetchall()
+        rows = conn.execute("SELECT last_sync_run_id FROM procore_live_records").fetchall()
     finally:
         conn.close()
     assert rows and all(r[0] == second_run for r in rows)
@@ -281,33 +272,23 @@ def test_delete_by_sync_run_id_rolls_back_only_targeted_rows() -> None:
     _upsert_batch(
         db,
         run_b,
-        tuple(
-            (str(3000 + i), {"number": f"B-{3000 + i}", "status": "open"})
-            for i in range(2)
-        ),
+        tuple((str(3000 + i), {"number": f"B-{3000 + i}", "status": "open"}) for i in range(2)),
     )
     _seed_run_complete(db, run_b, upserted=2)
 
     # Dry-run preview must report the right count and mutate nothing.
-    preview = delete_procore_live_records_by_sync_run(
-        sync_run_id=run_a, db_path=db, dry_run=True
-    )
+    preview = delete_procore_live_records_by_sync_run(sync_run_id=run_a, db_path=db, dry_run=True)
     assert preview == {
         "sync_run_id": run_a,
         "would_delete": 3,
         "dry_run": True,
     }
     assert (
-        count_procore_live_records(
-            project_key=_PROJECT, endpoint_id=_ENDPOINT, db_path=db
-        )
-        == 5
+        count_procore_live_records(project_key=_PROJECT, endpoint_id=_ENDPOINT, db_path=db) == 5
     ), "dry-run preview must not delete"
 
     # Apply the rollback.
-    result = delete_procore_live_records_by_sync_run(
-        sync_run_id=run_a, db_path=db, dry_run=False
-    )
+    result = delete_procore_live_records_by_sync_run(sync_run_id=run_a, db_path=db, dry_run=False)
     assert result == {
         "sync_run_id": run_a,
         "deleted": 3,
@@ -315,12 +296,7 @@ def test_delete_by_sync_run_id_rolls_back_only_targeted_rows() -> None:
     }
 
     # Only run B's rows survive.
-    assert (
-        count_procore_live_records(
-            project_key=_PROJECT, endpoint_id=_ENDPOINT, db_path=db
-        )
-        == 2
-    )
+    assert count_procore_live_records(project_key=_PROJECT, endpoint_id=_ENDPOINT, db_path=db) == 2
 
     # Audit trail preserved: the procore_live_sync_runs row for A still exists.
     audit = get_sync_run(sync_run_id=run_a, db_path=db)
@@ -329,9 +305,7 @@ def test_delete_by_sync_run_id_rolls_back_only_targeted_rows() -> None:
     assert audit["sqlite_upserted_count"] == 3
 
     # Idempotency of rollback itself: a second apply finds zero rows.
-    second = delete_procore_live_records_by_sync_run(
-        sync_run_id=run_a, db_path=db, dry_run=False
-    )
+    second = delete_procore_live_records_by_sync_run(sync_run_id=run_a, db_path=db, dry_run=False)
     assert second == {
         "sync_run_id": run_a,
         "deleted": 0,
@@ -363,12 +337,8 @@ def test_backup_restore_round_trip_restores_pre_apply_state(tmp_path: Path) -> N
     # Sanity: backup is empty (no rows, no sync_run row).
     conn = sqlite3.connect(str(backup))
     try:
-        records_before = conn.execute(
-            "SELECT COUNT(*) FROM procore_live_records"
-        ).fetchone()[0]
-        runs_before = conn.execute(
-            "SELECT COUNT(*) FROM procore_live_sync_runs"
-        ).fetchone()[0]
+        records_before = conn.execute("SELECT COUNT(*) FROM procore_live_records").fetchone()[0]
+        runs_before = conn.execute("SELECT COUNT(*) FROM procore_live_sync_runs").fetchone()[0]
     finally:
         conn.close()
     assert records_before == 0
@@ -380,22 +350,12 @@ def test_backup_restore_round_trip_restores_pre_apply_state(tmp_path: Path) -> N
     _upsert_batch(db, sync_run_id, _payloads(4))
     _seed_run_complete(db, sync_run_id, upserted=4)
 
-    assert (
-        count_procore_live_records(
-            project_key=_PROJECT, endpoint_id=_ENDPOINT, db_path=db
-        )
-        == 4
-    )
+    assert count_procore_live_records(project_key=_PROJECT, endpoint_id=_ENDPOINT, db_path=db) == 4
     assert get_sync_run(sync_run_id=sync_run_id, db_path=db) is not None
 
     # Restore the backup over the live DB (backup direction reversed).
     _sqlite_backup(backup, db)
 
     # Restored state matches pre-apply state on both tables.
-    assert (
-        count_procore_live_records(
-            project_key=_PROJECT, endpoint_id=_ENDPOINT, db_path=db
-        )
-        == 0
-    )
+    assert count_procore_live_records(project_key=_PROJECT, endpoint_id=_ENDPOINT, db_path=db) == 0
     assert get_sync_run(sync_run_id=sync_run_id, db_path=db) is None

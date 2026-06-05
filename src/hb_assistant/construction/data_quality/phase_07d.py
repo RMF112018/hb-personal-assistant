@@ -59,9 +59,14 @@ _PREREQ_FIELDS = (
 
 # (table, guard columns, safe text columns) for the 07D no-writeback / no-raw-content proof.
 _V25_GUARDS = [
-    "raw_email_body_persisted", "raw_document_text_persisted", "raw_calendar_payload_persisted",
-    "raw_prompt_persisted", "raw_response_persisted", "signed_url_persisted",
-    "download_url_persisted", "external_writeback_performed",
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
 ]
 _V25_SCAN: list[tuple[str, list[str]]] = [
     ("cross_source_relationship_candidates", ["signals_json", "source_reference_json"]),
@@ -75,7 +80,14 @@ _V25_SCAN: list[tuple[str, list[str]]] = [
     ("cross_source_intelligence_obsidian_runs", ["error_redacted"]),
     ("phase_07d_validation_runs", ["commands_json", "error_redacted"]),
 ]
-_FORBIDDEN_PATTERNS = ["%http://%", "%https://%", "%token=%", "%access_token%", "%bearer %", "%-----begin%"]
+_FORBIDDEN_PATTERNS = [
+    "%http://%",
+    "%https://%",
+    "%token=%",
+    "%access_token%",
+    "%bearer %",
+    "%-----begin%",
+]
 
 
 def _table_exists(conn: Any, table: str) -> bool:
@@ -96,10 +108,17 @@ def _scalar(conn: Any, sql: str, params: tuple = ()) -> int:
         return 0
 
 
-def _gate(name: str, status: str, *, blocking: int = 0, reason: Optional[str] = None,
-          **extra: Any) -> dict[str, Any]:
-    return {"gate_name": name, "gate_status": status, "blocking": blocking, "reason": reason,
-            "future_phase": "07D", **extra}
+def _gate(
+    name: str, status: str, *, blocking: int = 0, reason: Optional[str] = None, **extra: Any
+) -> dict[str, Any]:
+    return {
+        "gate_name": name,
+        "gate_status": status,
+        "blocking": blocking,
+        "reason": reason,
+        "future_phase": "07D",
+        **extra,
+    }
 
 
 def _coverage(name: str, count: int) -> dict[str, Any]:
@@ -108,7 +127,9 @@ def _coverage(name: str, count: int) -> dict[str, Any]:
     return _gate(name, status, reason=reason, observed=count)
 
 
-def evaluate_phase_07d_data_quality_gates(*, db_path: Optional[str | Path] = None) -> dict[str, Any]:
+def evaluate_phase_07d_data_quality_gates(
+    *, db_path: Optional[str | Path] = None
+) -> dict[str, Any]:
     """Evaluate the full Phase 07D data-quality gate set. Read-only; persists nothing."""
     generated = datetime.now(timezone.utc).isoformat()
     store = ConstructionStore(db_path=db_path)
@@ -142,19 +163,26 @@ def evaluate_phase_07d_data_quality_gates(*, db_path: Optional[str | Path] = Non
 
     # 3. obsidian_output_safety — guard columns of the obsidian-run audit table all 0.
     if obsidian_n == 0:
-        obsidian_gate = _gate("obsidian_output_safety", "deferred_not_blocking",
-                              reason="no_obsidian_runs_yet")
+        obsidian_gate = _gate(
+            "obsidian_output_safety", "deferred_not_blocking", reason="no_obsidian_runs_yet"
+        )
     else:
         guard_sum = _scalar(
             conn,
-            "SELECT " + " + ".join(f"COALESCE(SUM({g}),0)" for g in _V25_GUARDS)
+            "SELECT "
+            + " + ".join(f"COALESCE(SUM({g}),0)" for g in _V25_GUARDS)
             + " FROM cross_source_intelligence_obsidian_runs",
         )
         obsidian_gate = (
             _gate("obsidian_output_safety", "pass", observed_guard_sum=guard_sum)
             if guard_sum == 0
-            else _gate("obsidian_output_safety", "fail_blocking", blocking=1,
-                       reason="obsidian_guard_violation", observed_guard_sum=guard_sum)
+            else _gate(
+                "obsidian_output_safety",
+                "fail_blocking",
+                blocking=1,
+                reason="obsidian_guard_violation",
+                observed_guard_sum=guard_sum,
+            )
         )
 
     # 4. stale_unknown_warning_coverage — stale/unknown warnings are surfaced where data exists.
@@ -162,20 +190,28 @@ def evaluate_phase_07d_data_quality_gates(*, db_path: Optional[str | Path] = Non
     source_rows = issue_n + risk_n + aging_n
     with contextlib.suppress(Exception):
         stale_signals += _scalar(
-            conn, "SELECT COUNT(*) FROM project_issue_history_items "
-            "WHERE stale_unknown_flags_json IS NOT NULL")
+            conn,
+            "SELECT COUNT(*) FROM project_issue_history_items "
+            "WHERE stale_unknown_flags_json IS NOT NULL",
+        )
         stale_signals += _scalar(
-            conn, "SELECT COUNT(*) FROM project_risk_digest_items "
-            "WHERE stale_unknown_flags_json IS NOT NULL")
+            conn,
+            "SELECT COUNT(*) FROM project_risk_digest_items "
+            "WHERE stale_unknown_flags_json IS NOT NULL",
+        )
         stale_signals += _scalar(
-            conn, "SELECT COUNT(*) FROM aging_exposure_report_items "
-            "WHERE missing_status_flag = 1 OR threshold_band = 'unknown'")
+            conn,
+            "SELECT COUNT(*) FROM aging_exposure_report_items "
+            "WHERE missing_status_flag = 1 OR threshold_band = 'unknown'",
+        )
     if source_rows == 0:
-        stale_gate = _gate("stale_unknown_warning_coverage", "deferred_not_blocking",
-                           reason="no_source_rows_yet")
+        stale_gate = _gate(
+            "stale_unknown_warning_coverage", "deferred_not_blocking", reason="no_source_rows_yet"
+        )
     else:
-        stale_gate = _gate("stale_unknown_warning_coverage", "pass",
-                           observed_stale_unknown_warnings=stale_signals)
+        stale_gate = _gate(
+            "stale_unknown_warning_coverage", "pass", observed_stale_unknown_warnings=stale_signals
+        )
 
     # 5. no_writeback_no_secret_no_raw_content_proof — 07D-scoped guard + pattern scan.
     guard_violations = 0
@@ -198,14 +234,20 @@ def evaluate_phase_07d_data_quality_gates(*, db_path: Optional[str | Path] = Non
     proof_gate = (
         _gate("no_writeback_no_secret_no_raw_content_proof", "pass")
         if proof_passed
-        else _gate("no_writeback_no_secret_no_raw_content_proof", "fail_blocking", blocking=1,
-                   reason="guard_or_forbidden_pattern_violation")
+        else _gate(
+            "no_writeback_no_secret_no_raw_content_proof",
+            "fail_blocking",
+            blocking=1,
+            reason="guard_or_forbidden_pattern_violation",
+        )
     )
 
     gates = [*prereq_gates, *coverage_gates, obsidian_gate, stale_gate, proof_gate]
     by_field_status = {g["gate_name"]: g["gate_status"] for g in gates}
     coverage_names = (
-        "meeting_prep_brief_generation_coverage", "issue_history_coverage", "risk_digest_coverage",
+        "meeting_prep_brief_generation_coverage",
+        "issue_history_coverage",
+        "risk_digest_coverage",
         "aging_report_coverage",
     )
     intelligence_ready = all(by_field_status.get(n) == "pass" for n in coverage_names)

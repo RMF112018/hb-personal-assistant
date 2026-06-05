@@ -19,7 +19,9 @@ from hb_assistant.construction.store import ConstructionStore
 _OWNER = "bobby@example.com"
 
 
-def _msg(mid: str, *, subject: str, conversation_id: str = "conv-1", sender: str = "gc@vendor.com") -> dict[str, Any]:
+def _msg(
+    mid: str, *, subject: str, conversation_id: str = "conv-1", sender: str = "gc@vendor.com"
+) -> dict[str, Any]:
     return {
         "id": mid,
         "subject": subject,
@@ -82,12 +84,18 @@ def _match_count(db: str) -> int:
 def test_dry_run_matches_without_persisting() -> None:
     db = _tmp_db()
     store = _store_with_inbox(db)
-    reader = FakeReader([
-        _msg("m1", subject="RFI 23-435-01 slab"),       # number in subject -> tropical 1.0
-        _msg("m2", subject="Tropical schedule", conversation_id="conv-2"),  # name -> tropical 0.8
-        _msg("m3", subject="lunch plans", conversation_id="conv-3"),        # no match
-    ])
-    report = ProjectEmailDiscovery(reader, store).discover(project_key="tropical", lookback_days=30, dry_run=True)
+    reader = FakeReader(
+        [
+            _msg("m1", subject="RFI 23-435-01 slab"),  # number in subject -> tropical 1.0
+            _msg(
+                "m2", subject="Tropical schedule", conversation_id="conv-2"
+            ),  # name -> tropical 0.8
+            _msg("m3", subject="lunch plans", conversation_id="conv-3"),  # no match
+        ]
+    )
+    report = ProjectEmailDiscovery(reader, store).discover(
+        project_key="tropical", lookback_days=30, dry_run=True
+    )
 
     assert report.dry_run is True and report.persisted is False
     assert report.pilot_projects == ["tropical"]
@@ -103,7 +111,9 @@ def test_commit_persists_matches_and_message_verdict() -> None:
     db = _tmp_db()
     store = _store_with_inbox(db)
     reader = FakeReader([_msg("m1", subject="RFI 23-435-01 slab")])
-    ProjectEmailDiscovery(reader, store).discover(project_key="tropical", lookback_days=30, dry_run=False)
+    ProjectEmailDiscovery(reader, store).discover(
+        project_key="tropical", lookback_days=30, dry_run=False
+    )
 
     assert _match_count(db) >= 1
     msg = store.get_email_message("m1")
@@ -125,11 +135,17 @@ def test_commit_persists_matches_and_message_verdict() -> None:
 def test_thread_continuation_propagates() -> None:
     db = _tmp_db()
     store = _store_with_inbox(db)
-    reader = FakeReader([
-        _msg("m1", subject="RFI 23-435-01", conversation_id="conv-A"),       # direct match
-        _msg("m2", subject="re: follow up", conversation_id="conv-A"),        # same thread, no direct signal
-    ])
-    report = ProjectEmailDiscovery(reader, store).discover(project_key="tropical", lookback_days=30, dry_run=False)
+    reader = FakeReader(
+        [
+            _msg("m1", subject="RFI 23-435-01", conversation_id="conv-A"),  # direct match
+            _msg(
+                "m2", subject="re: follow up", conversation_id="conv-A"
+            ),  # same thread, no direct signal
+        ]
+    )
+    report = ProjectEmailDiscovery(reader, store).discover(
+        project_key="tropical", lookback_days=30, dry_run=False
+    )
     assert report.matched_messages == 2  # m2 inherits via thread continuation
     m2 = store.get_email_message("m2")
     assert m2 is not None and m2["project_match_confidence"] == 0.75
@@ -139,7 +155,12 @@ def test_thread_continuation_propagates() -> None:
 def test_idempotent_recommit() -> None:
     db = _tmp_db()
     store = _store_with_inbox(db)
-    reader = FakeReader([_msg("m1", subject="RFI 23-435-01"), _msg("m2", subject="Tropical update", conversation_id="c2")])
+    reader = FakeReader(
+        [
+            _msg("m1", subject="RFI 23-435-01"),
+            _msg("m2", subject="Tropical update", conversation_id="c2"),
+        ]
+    )
     d = ProjectEmailDiscovery(reader, store)
     d.discover(project_key="tropical", lookback_days=30, dry_run=False)
     first = _match_count(db)
@@ -150,7 +171,14 @@ def test_idempotent_recommit() -> None:
 def test_no_match_window_persists_nothing() -> None:
     db = _tmp_db()
     store = _store_with_inbox(db)
-    reader = FakeReader([_msg("m1", subject="lunch", conversation_id="c1"), _msg("m2", subject="coffee", conversation_id="c2")])
-    report = ProjectEmailDiscovery(reader, store).discover(project_key="tropical", lookback_days=30, dry_run=False)
+    reader = FakeReader(
+        [
+            _msg("m1", subject="lunch", conversation_id="c1"),
+            _msg("m2", subject="coffee", conversation_id="c2"),
+        ]
+    )
+    report = ProjectEmailDiscovery(reader, store).discover(
+        project_key="tropical", lookback_days=30, dry_run=False
+    )
     assert report.matched_messages == 0
     assert _match_count(db) == 0

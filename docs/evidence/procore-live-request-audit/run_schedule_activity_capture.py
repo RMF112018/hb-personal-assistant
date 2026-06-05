@@ -42,12 +42,16 @@ def _safe_request_headers(headers: Dict[str, str]) -> Dict[str, str]:
 def _safe_response_headers(headers: Dict[str, str]) -> Dict[str, str]:
     out: Dict[str, str] = {}
     for k, v in headers.items():
-        if k in SAFE_RESPONSE_HEADERS or any(k.startswith(prefix) for prefix in SAFE_RESPONSE_HEADER_PREFIXES):
+        if k in SAFE_RESPONSE_HEADERS or any(
+            k.startswith(prefix) for prefix in SAFE_RESPONSE_HEADER_PREFIXES
+        ):
             out[k] = v
     return out
 
 
-def capture_transport(method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]] = None) -> Any:
+def capture_transport(
+    method: str, url: str, headers: Dict[str, str], params: Optional[Dict[str, Any]] = None
+) -> Any:
     entry: dict[str, Any] = {
         "seq": len(request_log) + 1,
         "method": method,
@@ -61,7 +65,9 @@ def capture_transport(method: str, url: str, headers: Dict[str, str], params: Op
     try:
         resp = live_client._default_live_transport(method, url, headers, params)
         entry["status_code"] = getattr(resp, "status_code", None)
-        entry["response_headers_redacted"] = _safe_response_headers(dict(getattr(resp, "headers", {}) or {}))
+        entry["response_headers_redacted"] = _safe_response_headers(
+            dict(getattr(resp, "headers", {}) or {})
+        )
         request_log.append(entry)
         with REQUESTS_PATH.open("a", encoding="utf-8") as f:
             f.write(json.dumps(entry, sort_keys=True) + "\n")
@@ -100,7 +106,9 @@ def main() -> None:
         "receipts_path": str(RECEIPTS_PATH),
         "request_count_observed": len(request_log),
         "requests_by_endpoint_hint": {
-            "schedules_urls": [r["url"] for r in request_log if r["url"].rstrip("/").endswith("/schedules")],
+            "schedules_urls": [
+                r["url"] for r in request_log if r["url"].rstrip("/").endswith("/schedules")
+            ],
             "activity_urls": [r["url"] for r in request_log if "/activities" in r["url"]],
         },
         "receipts": {

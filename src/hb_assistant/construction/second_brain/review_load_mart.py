@@ -381,6 +381,7 @@ def build_review_load_proof(db_path: str | None = None) -> dict[str, Any]:
     payload["suppressed_noise_count"] = 0
     try:
         from .review_burden_mart import build_review_burden_proof
+
         burden = build_review_burden_proof(db_path)
         payload["review_burden_policy"] = burden
         # Promote key new fields to top-level for easy consumption by CLI / daily / retrieval

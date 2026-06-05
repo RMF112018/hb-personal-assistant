@@ -38,7 +38,14 @@ def test_query_returns_required_output_fields(runner: CliRunner) -> None:
 
 def test_query_output_carries_no_raw_content(runner: CliRunner) -> None:
     out = runner.invoke(app, ["second-brain", "query", "summarize risk", "--json"]).output
-    for forbidden in ("signed_url", "download_url", "raw_body", "raw_prompt", "raw_response", "secret"):
+    for forbidden in (
+        "signed_url",
+        "download_url",
+        "raw_body",
+        "raw_prompt",
+        "raw_response",
+        "secret",
+    ):
         assert forbidden not in out
 
 

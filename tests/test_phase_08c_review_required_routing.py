@@ -114,7 +114,10 @@ def test_v36_confidence_label_column_and_version(tmp_path: Path) -> None:
     assert LATEST_SCHEMA_VERSION >= 36
     conn = sqlite3.connect(str(db))
     try:
-        cols = {r[1] for r in conn.execute("PRAGMA table_info(second_brain_financial_review_required_items)")}
+        cols = {
+            r[1]
+            for r in conn.execute("PRAGMA table_info(second_brain_financial_review_required_items)")
+        }
         assert "confidence_label" in cols
         # idempotent re-apply must not error on the additive ALTER
         assert _migrate(db) == LATEST_SCHEMA_VERSION

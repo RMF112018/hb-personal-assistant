@@ -269,7 +269,14 @@ def test_output_carries_no_raw_content(db_path: str) -> None:
         emit_receipt=False,
     )
     blob = result.model_dump_json()
-    for forbidden in ("signed_url", "download_url", "raw_body", "raw_prompt", "raw_response", "secret"):
+    for forbidden in (
+        "signed_url",
+        "download_url",
+        "raw_body",
+        "raw_prompt",
+        "raw_response",
+        "secret",
+    ):
         assert forbidden not in blob
 
 

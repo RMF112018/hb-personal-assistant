@@ -24,9 +24,7 @@ _LEAK_MARKERS = ("SYNTH", "example.test", "SYNTHSIG", "must be hashed only")
 
 
 def _matrix(with_fixtures: bool = True):
-    return build_coverage_matrix(
-        payloads_dir=_FIXTURES if with_fixtures else None, now_utc=_NOW
-    )
+    return build_coverage_matrix(payloads_dir=_FIXTURES if with_fixtures else None, now_utc=_NOW)
 
 
 def _row(matrix, endpoint_id: str):
@@ -87,8 +85,12 @@ def test_high_sensitivity_endpoint_coverage() -> None:
     assert r["sensitivity"] == "high" and r["review_required_default"] is True
     cov = r["coverage"]
     # all people refs + free-text are hash-only summaries, never raw.
-    assert {"created_by_summary", "assignees_summary", "description_summary",
-            "schedule_risk_reason_summary"} <= set(cov["hash_only_fields"])
+    assert {
+        "created_by_summary",
+        "assignees_summary",
+        "description_summary",
+        "schedule_risk_reason_summary",
+    } <= set(cov["hash_only_fields"])
     assert "description" not in cov["captured_scalar_fields"]
     assert "created_by" not in cov["captured_scalar_fields"]
 

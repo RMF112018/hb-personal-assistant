@@ -33,14 +33,73 @@ class Finding:
 
 
 _RULES: list[tuple[str, str, str, str, re.Pattern[str], str | None]] = [
-    ("pem_private_key", "critical", "SEC-PEM-001", "pem_private_key", re.compile(r"-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"), "Private key header detected"),
-    ("pem_block", "high", "SEC-PEM-002", "pem_block", re.compile(r"-----BEGIN [A-Z0-9 ]+-----"), "PEM-like block header detected"),
-    ("jwt_like", "high", "SEC-TOK-001", "jwt_like", re.compile(r"\beyJ[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}\b"), "JWT-like token structure"),
-    ("oauth_access_token_field", "high", "SEC-TOK-002", "oauth_access_token_field", re.compile(r"\b(access_token|refresh_token|id_token)\b\s*[:=]", re.IGNORECASE), "OAuth token field assignment"),
-    ("client_secret_assignment", "critical", "SEC-TOK-003", "client_secret_assignment", re.compile(r"\bclient[_-]?secret\b\s*[:=]", re.IGNORECASE), "Client secret assignment"),
-    ("bearer_token", "high", "SEC-TOK-004", "bearer_token", re.compile(r"\bBearer\s+[A-Za-z0-9._\-+/=]{16,}"), "Bearer token pattern"),
-    ("env_secret_assignment", "high", "SEC-ENV-001", "env_secret_assignment", re.compile(r"^\s*([A-Z0-9_]*(SECRET|TOKEN|PASSWORD|API_KEY|CLIENT_SECRET)[A-Z0-9_]*)\s*=\s*.+$", re.IGNORECASE), ".env-style secret assignment"),
-    ("msal_cache_content", "medium", "SEC-MSAL-001", "msal_cache_content", re.compile(r"\b(msal|token_cache|refresh_token|access_token)\b", re.IGNORECASE), "MSAL/token cache indicator"),
+    (
+        "pem_private_key",
+        "critical",
+        "SEC-PEM-001",
+        "pem_private_key",
+        re.compile(r"-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+        "Private key header detected",
+    ),
+    (
+        "pem_block",
+        "high",
+        "SEC-PEM-002",
+        "pem_block",
+        re.compile(r"-----BEGIN [A-Z0-9 ]+-----"),
+        "PEM-like block header detected",
+    ),
+    (
+        "jwt_like",
+        "high",
+        "SEC-TOK-001",
+        "jwt_like",
+        re.compile(r"\beyJ[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}\b"),
+        "JWT-like token structure",
+    ),
+    (
+        "oauth_access_token_field",
+        "high",
+        "SEC-TOK-002",
+        "oauth_access_token_field",
+        re.compile(r"\b(access_token|refresh_token|id_token)\b\s*[:=]", re.IGNORECASE),
+        "OAuth token field assignment",
+    ),
+    (
+        "client_secret_assignment",
+        "critical",
+        "SEC-TOK-003",
+        "client_secret_assignment",
+        re.compile(r"\bclient[_-]?secret\b\s*[:=]", re.IGNORECASE),
+        "Client secret assignment",
+    ),
+    (
+        "bearer_token",
+        "high",
+        "SEC-TOK-004",
+        "bearer_token",
+        re.compile(r"\bBearer\s+[A-Za-z0-9._\-+/=]{16,}"),
+        "Bearer token pattern",
+    ),
+    (
+        "env_secret_assignment",
+        "high",
+        "SEC-ENV-001",
+        "env_secret_assignment",
+        re.compile(
+            r"^\s*([A-Z0-9_]*(SECRET|TOKEN|PASSWORD|API_KEY|CLIENT_SECRET)[A-Z0-9_]*)\s*=\s*.+$",
+            re.IGNORECASE,
+        ),
+        ".env-style secret assignment",
+    ),
+    (
+        "msal_cache_content",
+        "medium",
+        "SEC-MSAL-001",
+        "msal_cache_content",
+        re.compile(r"\b(msal|token_cache|refresh_token|access_token)\b", re.IGNORECASE),
+        "MSAL/token cache indicator",
+    ),
 ]
 
 
@@ -67,7 +126,14 @@ class SensitiveScanner:
 
     def _should_exclude(self, path: Path) -> bool:
         text = str(path)
-        exclusions = ["/.git/", "/.venv/", "/__pycache__/", "/.mypy_cache/", "/.pytest_cache/", "/node_modules/"]
+        exclusions = [
+            "/.git/",
+            "/.venv/",
+            "/__pycache__/",
+            "/.mypy_cache/",
+            "/.pytest_cache/",
+            "/node_modules/",
+        ]
         return any(e in text for e in exclusions)
 
     def _scan_file(self, path: Path, repo_root: Path) -> tuple[list[Finding], dict[str, int]]:

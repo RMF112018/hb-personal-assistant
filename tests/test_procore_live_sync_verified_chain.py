@@ -175,9 +175,7 @@ def test_verified_chain_is_idempotent_across_re_runs(
     second = _go()
     assert first["sqlite_upserted_count"] == 2
     assert second["sqlite_upserted_count"] == 2  # upsert, not duplicate insert
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="rfis", db_path=db
-    ) == 2
+    assert count_procore_live_records(project_key="tropical", endpoint_id="rfis", db_path=db) == 2
 
 
 def test_smoke_mode_does_not_write_to_sqlite(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -199,9 +197,7 @@ def test_smoke_mode_does_not_write_to_sqlite(monkeypatch: pytest.MonkeyPatch) ->
     assert receipt["retrieved_count"] == 2
     assert receipt["normalized_count"] == 2
     assert receipt["sqlite_upserted_count"] == 0
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="rfis", db_path=db
-    ) == 0
+    assert count_procore_live_records(project_key="tropical", endpoint_id="rfis", db_path=db) == 0
 
 
 def test_raw_response_body_never_persisted(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -317,7 +313,9 @@ def _reply(reply_id: int) -> Dict[str, Any]:
     }
 
 
-def _rfi_with_replies(rfi_id: int, subject: str, *, replies: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _rfi_with_replies(
+    rfi_id: int, subject: str, *, replies: List[Dict[str, Any]]
+) -> Dict[str, Any]:
     return {
         "id": rfi_id,
         "number": f"RFI-{rfi_id}",
@@ -360,12 +358,11 @@ def test_rfis_apply_persists_parents_and_replies_inline(
     assert receipt["child_errors_count"] == 0
     # Only ONE HTTP call: the parent list. Children come inline (no N+1).
     assert len(transport.calls) == 1
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="rfis", db_path=db
-    ) == 2
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="rfi-responses", db_path=db
-    ) == 5
+    assert count_procore_live_records(project_key="tropical", endpoint_id="rfis", db_path=db) == 2
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="rfi-responses", db_path=db)
+        == 5
+    )
 
 
 def test_rfis_apply_is_idempotent_for_parents_and_replies(
@@ -395,12 +392,11 @@ def test_rfis_apply_is_idempotent_for_parents_and_replies(
     second = _go()
     assert first["sqlite_upserted_count"] == 5
     assert second["sqlite_upserted_count"] == 5
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="rfis", db_path=db
-    ) == 2
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="rfi-responses", db_path=db
-    ) == 3
+    assert count_procore_live_records(project_key="tropical", endpoint_id="rfis", db_path=db) == 2
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="rfi-responses", db_path=db)
+        == 3
+    )
 
 
 def test_rfis_apply_tolerates_missing_replies_field(
@@ -581,12 +577,16 @@ def test_submittals_apply_persists_parents_and_responses_inline(
     assert receipt["sqlite_upserted_count"] == 7
     assert receipt["child_errors_count"] == 0
     assert len(transport.calls) == 1
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="submittals", db_path=db
-    ) == 2
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="submittal-responses", db_path=db
-    ) == 5
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="submittals", db_path=db)
+        == 2
+    )
+    assert (
+        count_procore_live_records(
+            project_key="tropical", endpoint_id="submittal-responses", db_path=db
+        )
+        == 5
+    )
 
 
 def test_submittals_apply_is_idempotent_for_parents_and_responses(
@@ -600,9 +600,7 @@ def test_submittals_apply_is_idempotent_for_parents_and_responses(
             "Door hardware",
             responses=[_submittal_response(8001), _submittal_response(8002)],
         ),
-        _submittal_with_responses(
-            202, "Claim impact", responses=[_submittal_response(8101)]
-        ),
+        _submittal_with_responses(202, "Claim impact", responses=[_submittal_response(8101)]),
     ]
 
     def _go() -> Dict[str, Any]:
@@ -622,12 +620,16 @@ def test_submittals_apply_is_idempotent_for_parents_and_responses(
     second = _go()
     assert first["sqlite_upserted_count"] == 5
     assert second["sqlite_upserted_count"] == 5
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="submittals", db_path=db
-    ) == 2
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="submittal-responses", db_path=db
-    ) == 3
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="submittals", db_path=db)
+        == 2
+    )
+    assert (
+        count_procore_live_records(
+            project_key="tropical", endpoint_id="submittal-responses", db_path=db
+        )
+        == 3
+    )
 
 
 def test_submittals_apply_tolerates_missing_responses_field(
@@ -688,9 +690,7 @@ def test_submittal_response_canonical_json_carries_no_body_literal(
         "comment": secret_body_marker,
     }
     payload = [
-        _submittal_with_responses(
-            201, "Door hardware", responses=[response_with_marker]
-        ),
+        _submittal_with_responses(201, "Door hardware", responses=[response_with_marker]),
         _submittal_with_responses(202, "Other", responses=[]),
     ]
     transport = _FakeTransport(payload)
@@ -783,9 +783,10 @@ def test_observations_apply_persists_with_heuristic_review_routing(
     assert receipt["normalized_count"] == 3
     assert receipt["sqlite_upserted_count"] == 3
     assert receipt["endpoint_id"] == "observations"
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="observations", db_path=db
-    ) == 3
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="observations", db_path=db)
+        == 3
+    )
 
     conn = sqlite3.connect(str(db))
     try:
@@ -830,9 +831,10 @@ def test_observations_apply_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> No
     second = _go()
     assert first["sqlite_upserted_count"] == 3
     assert second["sqlite_upserted_count"] == 3
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="observations", db_path=db
-    ) == 3
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="observations", db_path=db)
+        == 3
+    )
 
 
 def test_observation_canonical_json_carries_no_description_body_literal(
@@ -900,9 +902,7 @@ def _meetings_promoted(monkeypatch: pytest.MonkeyPatch) -> None:
     promoted = replace(base, live_verified=True)
     monkeypatch.setitem(ep_registry._BY_ID, "meetings", promoted)
     if base.legacy_endpoint_alias:
-        monkeypatch.setitem(
-            ep_registry._BY_LEGACY, base.legacy_endpoint_alias, promoted
-        )
+        monkeypatch.setitem(ep_registry._BY_LEGACY, base.legacy_endpoint_alias, promoted)
 
 
 _MEETING_PAYLOAD = [
@@ -943,9 +943,9 @@ def _meeting_topic(topic_id: int) -> Dict[str, Any]:
     }
 
 
-
 def test_meetings_apply_flattens_v1_1_grouped_payload(
-    monkeypatch: pytest.MonkeyPatch, _meetings_promoted: None,
+    monkeypatch: pytest.MonkeyPatch,
+    _meetings_promoted: None,
 ) -> None:
     """Procore's v1.1 meetings endpoint returns grouped responses; the
     orchestrator must flatten before normalization. This test fakes the
@@ -1015,9 +1015,9 @@ def test_meetings_apply_flattens_v1_1_grouped_payload(
     assert receipt["state"] == "success"
     # 3 meetings across 2 groups -> 3 parent rows persisted
     assert receipt["parent_upserted_count"] == 3
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="meetings", db_path=db
-    ) == 3
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="meetings", db_path=db) == 3
+    )
 
 
 # ----------------------------------------------------------------------------
@@ -1134,7 +1134,11 @@ def test_daily_log_manpower_persists_with_review_required_false(
             "num_workers": 25,
             "num_hours": "8.0",
             "status": "pending",
-            "contact": {"id": 9001, "email": "synthetic-contact@example.test", "name": "Synthetic Contact"},
+            "contact": {
+                "id": 9001,
+                "email": "synthetic-contact@example.test",
+                "name": "Synthetic Contact",
+            },
             "updated_at": "2026-03-03T00:00:00Z",
         }
     ]
@@ -1223,9 +1227,10 @@ def test_meeting_topics_apply_persists_as_standalone_endpoint(
     assert receipt["sqlite_upserted_count"] == 2
     assert len(transport.calls) == 1
     assert transport.calls[0]["params"]["per_page"] == 10
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="meeting-topics", db_path=db
-    ) == 2
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="meeting-topics", db_path=db)
+        == 2
+    )
     # The free-text `minutes` content does not appear in canonical storage.
     conn = sqlite3.connect(str(db))
     try:
@@ -1331,16 +1336,18 @@ def test_meeting_detail_apply_persists_meeting_and_nested_topics(
         "conclusion": "Conclusion that must not be persisted.",
         "remote_meeting_url": "https://zoom.us/j/abc?pwd=SECRET",
         "attendees": [
-            {"id": 1, "status": "Present",
-             "login_information": {"login": secret_attendee_email, "name": "PII Name"}},
+            {
+                "id": 1,
+                "status": "Present",
+                "login_information": {"login": secret_attendee_email, "name": "PII Name"},
+            },
         ],
         "meeting_categories": [
             {
                 "id": 999,
                 "title": "Items",
                 "meeting_topic": [
-                    {"id": 7001, "title": "T1", "status": "Open",
-                     "minutes": secret_minutes_marker},
+                    {"id": 7001, "title": "T1", "status": "Open", "minutes": secret_minutes_marker},
                     {"id": 7002, "title": "T2", "status": "Open"},
                 ],
             }
@@ -1381,12 +1388,14 @@ def test_meeting_detail_apply_persists_meeting_and_nested_topics(
     assert receipt["parent_upserted_count"] == 2
     assert receipt["child_endpoint_id"] == "meeting-topics"
     assert receipt["child_upserted_count"] == 2  # 2 topics from meeting 11
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="meeting-detail", db_path=db
-    ) == 2
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="meeting-topics", db_path=db
-    ) == 2
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="meeting-detail", db_path=db)
+        == 2
+    )
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="meeting-topics", db_path=db)
+        == 2
+    )
 
     # PII redaction attestation
     conn = sqlite3.connect(str(db))
@@ -1458,9 +1467,10 @@ def test_meeting_detail_stops_detail_fanout_on_rate_limit(
     assert not any(url.endswith("/meetings/33") for url in called_urls)
     assert "meeting_detail_rate_limited" in receipt["reason_codes"]
     assert receipt["state"] == "partial_success"
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="meeting-detail", db_path=db
-    ) == 1
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="meeting-detail", db_path=db)
+        == 1
+    )
 
 
 # ----------------------------------------------------------------------------
@@ -1607,9 +1617,9 @@ def test_schedules_apply_unwraps_data_envelope(monkeypatch: pytest.MonkeyPatch) 
     assert len(transport.calls) == 1
     # v2.0 path includes both {company_id} and {project_id} substituted
     assert "/rest/v2.0/companies/5280/projects/2525840/schedules" in transport.calls[0]["url"]
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="schedules", db_path=db
-    ) == 2
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="schedules", db_path=db) == 2
+    )
 
 
 def test_activities_apply_list_plus_n_per_schedule(
@@ -1679,9 +1689,10 @@ def test_activities_apply_list_plus_n_per_schedule(
     assert receipt["state"] == "success"
     # 3 activities across 2 schedules
     assert receipt["sqlite_upserted_count"] == 3
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="activities", db_path=db
-    ) == 3
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="activities", db_path=db)
+        == 3
+    )
 
     # Each activity row carries parent_procore_id = its source schedule_id
     conn = sqlite3.connect(str(db))
@@ -1734,7 +1745,9 @@ def test_activities_daily_sync_skips_existing_children_when_schedule_not_recentl
     daily_transport = _PathAwareFakeTransport(
         {
             "/rest/v2.0/companies/5280/projects/2525840/schedules/100/activities": {
-                "data": [{"activity_id": "A2", "activity_name": "Should not fetch", "schedule_id": "100"}]
+                "data": [
+                    {"activity_id": "A2", "activity_name": "Should not fetch", "schedule_id": "100"}
+                ]
             },
             "/rest/v2.0/companies/5280/projects/2525840/schedules": {
                 "data": [
@@ -1763,12 +1776,12 @@ def test_activities_daily_sync_skips_existing_children_when_schedule_not_recentl
     assert second["request_count"] == 1
     assert second["retrieved_count"] == 0
     assert second["sqlite_upserted_count"] == 0
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="activities", db_path=db
-    ) == 1
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="activities", db_path=db)
+        == 1
+    )
     assert not any(
-        call["url"].endswith("/schedules/100/activities")
-        for call in daily_transport.calls
+        call["url"].endswith("/schedules/100/activities") for call in daily_transport.calls
     )
 
 
@@ -1810,12 +1823,12 @@ def test_activities_single_schedule_can_return_hundreds_without_internal_child_c
     assert receipt["state"] == "success"
     assert receipt["retrieved_count"] == 250
     assert receipt["sqlite_upserted_count"] == 250
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="activities", db_path=db
-    ) == 250
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="activities", db_path=db)
+        == 250
+    )
     activity_calls = [
-        call for call in transport.calls
-        if call["url"].endswith("/schedules/100/activities")
+        call for call in transport.calls if call["url"].endswith("/schedules/100/activities")
     ]
     assert len(activity_calls) == 1
 
@@ -1854,9 +1867,10 @@ def test_activities_parent_id_skips_schedule_list_and_fetches_one_schedule(
     assert receipt["state"] == "success"
     assert receipt["request_count"] == 1
     assert receipt["retrieved_count"] == 2
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="activities", db_path=db
-    ) == 2
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="activities", db_path=db)
+        == 2
+    )
     urls = [call["url"] for call in transport.calls]
     assert urls == [
         "https://api.procore.com/rest/v2.0/companies/5280/projects/2525840/schedules/100/activities"
@@ -1901,7 +1915,11 @@ def test_inspections_apply_list_only(
                 }
             ],
             "attachments": [
-                {"id": 5324, "url": "https://procore.example.com/foo.pdf?token=x", "filename": "foo.pdf"}
+                {
+                    "id": 5324,
+                    "url": "https://procore.example.com/foo.pdf?token=x",
+                    "filename": "foo.pdf",
+                }
             ],
         }
     ]
@@ -1923,9 +1941,10 @@ def test_inspections_apply_list_only(
 
     assert receipt["state"] == "success"
     assert receipt["sqlite_upserted_count"] == 1
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="inspections", db_path=db
-    ) == 1
+    assert (
+        count_procore_live_records(project_key="tropical", endpoint_id="inspections", db_path=db)
+        == 1
+    )
 
     conn = sqlite3.connect(str(db))
     try:
@@ -1953,9 +1972,27 @@ def test_inspection_sections_apply_flat_list(
     _setup_env(monkeypatch)
     db = _db()
     sections_payload = [
-        {"id": 11, "name": "Framing", "position": 1, "template_section_id": 3, "updated_at": "2012-10-23T21:39:40Z"},
-        {"id": 12, "name": "Glass", "position": 2, "template_section_id": 4, "updated_at": "2012-10-23T21:39:40Z"},
-        {"id": 21, "name": "Hinges", "position": 1, "template_section_id": 5, "updated_at": "2012-10-23T21:39:40Z"},
+        {
+            "id": 11,
+            "name": "Framing",
+            "position": 1,
+            "template_section_id": 3,
+            "updated_at": "2012-10-23T21:39:40Z",
+        },
+        {
+            "id": 12,
+            "name": "Glass",
+            "position": 2,
+            "template_section_id": 4,
+            "updated_at": "2012-10-23T21:39:40Z",
+        },
+        {
+            "id": 21,
+            "name": "Hinges",
+            "position": 1,
+            "template_section_id": 5,
+            "updated_at": "2012-10-23T21:39:40Z",
+        },
     ]
     transport = _PathAwareFakeTransport(
         {"/rest/v1.0/projects/2525840/checklist/list_sections": sections_payload}
@@ -1975,9 +2012,12 @@ def test_inspection_sections_apply_flat_list(
 
     assert receipt["state"] == "success"
     assert receipt["sqlite_upserted_count"] == 3
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="inspection-sections", db_path=db
-    ) == 3
+    assert (
+        count_procore_live_records(
+            project_key="tropical", endpoint_id="inspection-sections", db_path=db
+        )
+        == 3
+    )
 
     conn = sqlite3.connect(str(db))
     try:
@@ -2066,9 +2106,12 @@ def test_inspection_items_apply_flat_list(
 
     assert receipt["state"] == "success"
     assert receipt["sqlite_upserted_count"] == 3
-    assert count_procore_live_records(
-        project_key="tropical", endpoint_id="inspection-items", db_path=db
-    ) == 3
+    assert (
+        count_procore_live_records(
+            project_key="tropical", endpoint_id="inspection-items", db_path=db
+        )
+        == 3
+    )
 
     conn = sqlite3.connect(str(db))
     try:

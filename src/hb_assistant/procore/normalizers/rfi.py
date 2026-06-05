@@ -128,8 +128,15 @@ def _rfi_extra_fields(raw: Dict[str, Any]) -> Dict[str, Any]:
     """
     out: Dict[str, Any] = {}
     for key in (
-        "full_number", "prefix", "revision", "current_revision", "has_revisions",
-        "location_id", "translated_status", "time_resolved", "private",
+        "full_number",
+        "prefix",
+        "revision",
+        "current_revision",
+        "has_revisions",
+        "location_id",
+        "translated_status",
+        "time_resolved",
+        "private",
     ):
         if raw.get(key) is not None:
             out[key] = raw[key]
@@ -155,7 +162,10 @@ def _rfi_extra_fields(raw: Dict[str, Any]) -> Dict[str, Any]:
     if bic_count:
         out["ball_in_court_count"] = bic_count
 
-    for impact_key, prefix in (("cost_impact", "cost_impact"), ("schedule_impact", "schedule_impact")):
+    for impact_key, prefix in (
+        ("cost_impact", "cost_impact"),
+        ("schedule_impact", "schedule_impact"),
+    ):
         impact = raw.get(impact_key)
         if isinstance(impact, dict):
             if impact.get("status") is not None:
@@ -251,7 +261,11 @@ def normalize_rfi_reply(
             canonical_fields[key] = raw[key]
 
     body = next(
-        (raw[k] for k in ("plain_text_body", "rich_text_body", "body", "comment") if raw.get(k) is not None),
+        (
+            raw[k]
+            for k in ("plain_text_body", "rich_text_body", "body", "comment")
+            if raw.get(k) is not None
+        ),
         None,
     )
     body_summary = hash_summary(body) if body is not None else None

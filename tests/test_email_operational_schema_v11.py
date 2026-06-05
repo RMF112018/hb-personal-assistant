@@ -57,8 +57,7 @@ def _names(db: Path, kind: str) -> set[str]:
     conn = sqlite3.connect(str(db))
     try:
         return {
-            row[0]
-            for row in conn.execute("SELECT name FROM sqlite_master WHERE type=?", (kind,))
+            row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type=?", (kind,))
         }
     finally:
         conn.close()
@@ -108,9 +107,7 @@ def test_email_source_locations_not_redeclared_in_v11() -> None:
     _migrate(db)
     conn = sqlite3.connect(str(db))
     try:
-        name = conn.execute(
-            "SELECT name FROM schema_migrations WHERE version = 11"
-        ).fetchone()[0]
+        name = conn.execute("SELECT name FROM schema_migrations WHERE version = 11").fetchone()[0]
     finally:
         conn.close()
     assert name == "v11_email_operational_intelligence_schema"
@@ -138,9 +135,7 @@ def test_crawl_runs_check_rejects_loosened_flag(column: str) -> None:
         conn.close()
 
 
-@pytest.mark.parametrize(
-    "column", ["full_body_persisted", "mailbox_mutation_allowed"]
-)
+@pytest.mark.parametrize("column", ["full_body_persisted", "mailbox_mutation_allowed"])
 def test_messages_check_rejects_loosened_flag(column: str) -> None:
     db = _temp_db()
     _migrate(db)
@@ -156,9 +151,7 @@ def test_messages_check_rejects_loosened_flag(column: str) -> None:
         conn.close()
 
 
-@pytest.mark.parametrize(
-    "column,value", [("metadata_only", 0), ("content_downloaded", 1)]
-)
+@pytest.mark.parametrize("column,value", [("metadata_only", 0), ("content_downloaded", 1)])
 def test_attachments_check_rejects_loosened_flag(column: str, value: int) -> None:
     db = _temp_db()
     _migrate(db)
@@ -262,9 +255,7 @@ def test_upsert_email_message_round_trip_and_idempotent() -> None:
 def test_upsert_email_message_adapter_guards(kwargs: dict) -> None:
     store, source_id = _store_with_source()
     with pytest.raises(ValueError):
-        store.upsert_email_message(
-            message_id="m", thread_key="t", source_id=source_id, **kwargs
-        )
+        store.upsert_email_message(message_id="m", thread_key="t", source_id=source_id, **kwargs)
 
 
 def test_recipient_upsert_is_idempotent_on_unique_key() -> None:
@@ -331,13 +322,8 @@ def test_project_match_and_relationship_candidate_idempotent() -> None:
     conn = sqlite3.connect(str(store._db_path))  # type: ignore[attr-defined]
     try:
         assert conn.execute("SELECT COUNT(*) FROM email_project_matches").fetchone()[0] == 1
-        assert (
-            conn.execute("SELECT confidence FROM email_project_matches").fetchone()[0] == 0.95
-        )
-        assert (
-            conn.execute("SELECT COUNT(*) FROM email_relationship_candidates").fetchone()[0]
-            == 1
-        )
+        assert conn.execute("SELECT confidence FROM email_project_matches").fetchone()[0] == 0.95
+        assert conn.execute("SELECT COUNT(*) FROM email_relationship_candidates").fetchone()[0] == 1
     finally:
         conn.close()
 

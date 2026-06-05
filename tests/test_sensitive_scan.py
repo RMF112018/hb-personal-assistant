@@ -16,14 +16,18 @@ def _write_cfg(tmp_path: Path) -> Path:
     return cfg
 
 
-def test_sensitive_scan_detects_synthetic_token_without_leaking_value(tmp_path: Path, monkeypatch) -> None:
+def test_sensitive_scan_detects_synthetic_token_without_leaking_value(
+    tmp_path: Path, monkeypatch
+) -> None:
     cfg = _write_cfg(tmp_path)
     monkeypatch.setenv("HB_PA_CONFIG", str(cfg))
 
     target = tmp_path / "sample.env"
     target.write_text("CLIENT_SECRET=super-secret-value\n", encoding="utf-8")
 
-    scanner = SensitiveScanner(ScanConfig(max_file_size_bytes=100_000, max_lines_per_file=100, max_files=200))
+    scanner = SensitiveScanner(
+        ScanConfig(max_file_size_bytes=100_000, max_lines_per_file=100, max_files=200)
+    )
     payload = scanner.scan(repo=str(tmp_path))
 
     assert payload["implemented"] is True
@@ -66,7 +70,9 @@ def test_sensitive_scan_oversize_skip_and_high_risk_override(tmp_path: Path, mon
     big_env = tmp_path / ".env"
     big_env.write_text("API_KEY=abcdef1234567890\n" + ("X" * 700_000), encoding="utf-8")
 
-    scanner = SensitiveScanner(ScanConfig(max_file_size_bytes=100_000, max_lines_per_file=200, max_files=300))
+    scanner = SensitiveScanner(
+        ScanConfig(max_file_size_bytes=100_000, max_lines_per_file=200, max_files=300)
+    )
     payload = scanner.scan(repo=str(tmp_path))
 
     assert payload["stats"]["files_oversize_skipped"] >= 1

@@ -33,6 +33,7 @@ class BriefWriteResult(NamedTuple):
     output_path_hash: str | None
     content_hash: str
 
+
 SECTION_START = "<!-- HB-SECOND-BRAIN-DAILY-BRIEF:START -->"
 SECTION_END = "<!-- HB-SECOND-BRAIN-DAILY-BRIEF:END -->"
 _VAULT_SUBDIR = Path("Construction Intelligence") / "Phase 08A Daily Briefs"
@@ -58,7 +59,9 @@ def _replace_bounded(existing: str, inner: str, start: str, end: str) -> str:
 def _atomic_write_text(target: Path, content: str) -> None:
     """Atomic write (temp + os.replace) within the target directory."""
     target.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(dir=str(target.parent), prefix=f".{target.name}.", suffix=".tmp")
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(target.parent), prefix=f".{target.name}.", suffix=".tmp"
+    )
     tmp_path = Path(tmp_name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -72,8 +75,10 @@ def _atomic_write_text(target: Path, content: str) -> None:
 
 def resolve_brief_path(brief_date: str, *, vault_brief_dir: str | Path | None = None) -> Path:
     """Resolve the approved output path for a brief date (vault-governed by default)."""
-    base = Path(vault_brief_dir) if vault_brief_dir is not None else (
-        PathPolicy().get_vault_root() / _VAULT_SUBDIR
+    base = (
+        Path(vault_brief_dir)
+        if vault_brief_dir is not None
+        else (PathPolicy().get_vault_root() / _VAULT_SUBDIR)
     )
     return base / f"{brief_date}_daily_brief.md"
 

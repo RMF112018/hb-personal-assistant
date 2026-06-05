@@ -86,10 +86,7 @@ def assert_live_mapping_strict(
         raise ProcoreAPIError(
             status=0,
             code="live_mapping_strict_violation",
-            message=(
-                "live mapping strict-check rejected target(s); "
-                f"offenders={offenders}"
-            ),
+            message=(f"live mapping strict-check rejected target(s); offenders={offenders}"),
         )
 
 

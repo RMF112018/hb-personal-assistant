@@ -37,9 +37,24 @@ def test_high_confidence_source_backed_is_tier_1() -> None:
 
 
 def test_unsupported_and_model_only_and_conflict_are_tier_3() -> None:
-    assert classify_memory_tier(sensitivity_category=None, confidence_class="high", source_linked=False)[0] == 3
-    assert classify_memory_tier(sensitivity_category=None, confidence_class="high", source_linked=True, model_only=True)[0] == 3
-    assert classify_memory_tier(sensitivity_category=None, confidence_class="high", source_linked=True, conflict=True)[0] == 3
+    assert (
+        classify_memory_tier(
+            sensitivity_category=None, confidence_class="high", source_linked=False
+        )[0]
+        == 3
+    )
+    assert (
+        classify_memory_tier(
+            sensitivity_category=None, confidence_class="high", source_linked=True, model_only=True
+        )[0]
+        == 3
+    )
+    assert (
+        classify_memory_tier(
+            sensitivity_category=None, confidence_class="high", source_linked=True, conflict=True
+        )[0]
+        == 3
+    )
 
 
 def test_medium_confidence_is_tier_2() -> None:
@@ -62,11 +77,31 @@ def test_sensitive_preference_routes_tier_3_and_never_auto_accepted() -> None:
 def test_accepted_preferences_cannot_override_safety() -> None:
     applied, dropped = apply_operator_preferences(
         [
-            {"preference_key": "detail_level", "preference_value_redacted": "concise", "review_status": "accepted"},
-            {"preference_key": "review_tier_override", "preference_value_redacted": "tier_1", "review_status": "accepted"},
-            {"preference_key": "suppress_warnings", "preference_value_redacted": "true", "review_status": "accepted"},
-            {"preference_key": "disable_high_impact_review", "preference_value_redacted": "1", "review_status": "accepted"},
-            {"preference_key": "terminology", "preference_value_redacted": "RFI", "review_status": "pending_review"},
+            {
+                "preference_key": "detail_level",
+                "preference_value_redacted": "concise",
+                "review_status": "accepted",
+            },
+            {
+                "preference_key": "review_tier_override",
+                "preference_value_redacted": "tier_1",
+                "review_status": "accepted",
+            },
+            {
+                "preference_key": "suppress_warnings",
+                "preference_value_redacted": "true",
+                "review_status": "accepted",
+            },
+            {
+                "preference_key": "disable_high_impact_review",
+                "preference_value_redacted": "1",
+                "review_status": "accepted",
+            },
+            {
+                "preference_key": "terminology",
+                "preference_value_redacted": "RFI",
+                "review_status": "pending_review",
+            },
         ]
     )
     assert applied == {"detail_level": "concise"}

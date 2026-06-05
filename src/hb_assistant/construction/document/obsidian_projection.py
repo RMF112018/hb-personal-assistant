@@ -78,9 +78,9 @@ def _counts(items: list[dict[str, Any]], key: str) -> dict[str, int]:
     out: dict[str, int] = {}
     for it in items:
         v = it.get(key)
-        out[str(v if v is not None else "unknown")] = out.get(
-            str(v if v is not None else "unknown"), 0
-        ) + 1
+        out[str(v if v is not None else "unknown")] = (
+            out.get(str(v if v is not None else "unknown"), 0) + 1
+        )
     return dict(sorted(out.items()))
 
 
@@ -281,9 +281,9 @@ class DocumentObsidianProjector:
             "- (none)"
         ]
         lines += ["", "## Counts by confidence class", ""]
-        lines += [
-            f"- {_md_cell(k)}: {v}" for k, v in _counts(clf, "confidence_class").items()
-        ] or ["- (none)"]
+        lines += [f"- {_md_cell(k)}: {v}" for k, v in _counts(clf, "confidence_class").items()] or [
+            "- (none)"
+        ]
         lines += ["", "## Counts by extraction eligibility", ""]
         lines += [
             f"- {_md_cell(k)}: {v}" for k, v in _counts(cards, "extraction_eligibility").items()
@@ -297,9 +297,7 @@ class DocumentObsidianProjector:
             f"- {_md_cell(k)}: {v}" for k, v in _counts(rel, "target_record_type").items()
         ] or ["- (none)"]
         lines += ["", "## Warnings", ""]
-        lines += [f"- {_md_cell(w)}" for w in warnings.get("warnings", [])] or [
-            "- (none)"
-        ]
+        lines += [f"- {_md_cell(w)}" for w in warnings.get("warnings", [])] or ["- (none)"]
         lines += [
             "",
             "## Source reference",

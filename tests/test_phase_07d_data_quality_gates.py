@@ -20,7 +20,8 @@ from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.store.migrator import SQLiteMigrator
 
 _LEAK = re.compile(
-    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}", re.IGNORECASE
+    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}",
+    re.IGNORECASE,
 )
 _CONTRACT_FIELDS = set(load_phase_07d_contract("phase_07d_data_quality_gates")["required_fields"])
 
@@ -34,34 +35,68 @@ def _fresh_db() -> str:
 
 def _seed_full(store: ConstructionStore) -> None:
     store.upsert_cross_source_relationship_candidate(
-        candidate_id="c0", source_family="email", source_record_type="m", source_record_ref="m0",
-        target_family="procore", target_record_type="rfi", target_record_ref="r0",
-        relationship_type="references", confidence_score=1.0, confidence_class="deterministic",
-        source_reference_json="{}", deterministic=True, review_required=False,
-        project_key="tropical", evidence_trail_id="et0",
+        candidate_id="c0",
+        source_family="email",
+        source_record_type="m",
+        source_record_ref="m0",
+        target_family="procore",
+        target_record_type="rfi",
+        target_record_ref="r0",
+        relationship_type="references",
+        confidence_score=1.0,
+        confidence_class="deterministic",
+        source_reference_json="{}",
+        deterministic=True,
+        review_required=False,
+        project_key="tropical",
+        evidence_trail_id="et0",
     )
     store.upsert_source_evidence_trail(
-        evidence_trail_id="et0", evidence_kind="x", source_refs_json="{}",
-        confidence_class="deterministic", project_key="tropical",
+        evidence_trail_id="et0",
+        evidence_kind="x",
+        source_refs_json="{}",
+        confidence_class="deterministic",
+        project_key="tropical",
     )
     store.upsert_meeting_prep_brief_run(
-        brief_run_id="b0", project_key="tropical", mode="apply", lookahead_days=7,
-        status="materialized", sections_written=8,
+        brief_run_id="b0",
+        project_key="tropical",
+        mode="apply",
+        lookahead_days=7,
+        status="materialized",
+        sections_written=8,
     )
     store.upsert_project_issue_history_item(
-        issue_family_id="i0", project_key="tropical", status="open", source_families_json="[]",
-        confidence_class="deterministic", stale_unknown_flags_json=json.dumps({"x": 1}),
+        issue_family_id="i0",
+        project_key="tropical",
+        status="open",
+        source_families_json="[]",
+        confidence_class="deterministic",
+        stale_unknown_flags_json=json.dumps({"x": 1}),
     )
     store.upsert_project_risk_digest_item(
-        risk_digest_id="r0", project_key="tropical", risk_indicator_type="x",
-        risk_source_class="source_stated", summary_redacted="{}", confidence_class="deterministic",
+        risk_digest_id="r0",
+        project_key="tropical",
+        risk_indicator_type="x",
+        risk_source_class="source_stated",
+        summary_redacted="{}",
+        confidence_class="deterministic",
     )
     store.upsert_aging_exposure_report_item(
-        aging_item_id="a0", project_key="tropical", record_family="rfis", record_ref="k",
-        status="open", threshold_band="unknown", missing_status_flag=True,
+        aging_item_id="a0",
+        project_key="tropical",
+        record_family="rfis",
+        record_ref="k",
+        status="open",
+        threshold_band="unknown",
+        missing_status_flag=True,
     )
     store.upsert_cross_source_intelligence_obsidian_run(
-        obsidian_run_id="o0", mode="dry_run", output_kind="x", status="rendered", notes_written=0,
+        obsidian_run_id="o0",
+        mode="dry_run",
+        output_kind="x",
+        status="rendered",
+        notes_written=0,
     )
 
 
@@ -82,8 +117,11 @@ def test_full_twelve_field_report() -> None:
         assert set(report["by_field_status"].keys()) == _CONTRACT_FIELDS
         assert report["required_fields_covered"] is True
         for field in (
-            "meeting_prep_brief_generation_coverage", "issue_history_coverage",
-            "risk_digest_coverage", "aging_report_coverage", "obsidian_output_safety",
+            "meeting_prep_brief_generation_coverage",
+            "issue_history_coverage",
+            "risk_digest_coverage",
+            "aging_report_coverage",
+            "obsidian_output_safety",
             "stale_unknown_warning_coverage",
         ):
             assert report["by_field_status"][field] == "pass"
@@ -98,8 +136,11 @@ def test_empty_db_defers_coverage_never_overstated() -> None:
         report = evaluate_phase_07d_data_quality_gates(db_path=db)
         assert report["ok"] is True
         for field in (
-            "meeting_prep_brief_generation_coverage", "issue_history_coverage",
-            "risk_digest_coverage", "aging_report_coverage", "stale_unknown_warning_coverage",
+            "meeting_prep_brief_generation_coverage",
+            "issue_history_coverage",
+            "risk_digest_coverage",
+            "aging_report_coverage",
+            "stale_unknown_warning_coverage",
             "obsidian_output_safety",
         ):
             assert report["by_field_status"][field] == "deferred_not_blocking"
@@ -132,16 +173,28 @@ def test_review_required_total_surfaced() -> None:
         store = ConstructionStore(db_path=db)
         # a sensitive candidate routed to review -> a review item is recorded
         store.upsert_cross_source_relationship_candidate(
-            candidate_id="c1", source_family="email", source_record_type="m",
-            source_record_ref="m1", target_family="procore", target_record_type="rfi",
-            target_record_ref="r1", relationship_type="claim_notice", confidence_score=0.5,
-            confidence_class="weak_heuristic", source_reference_json="{}",
-            sensitive_high_impact=True, review_required=False, project_key="tropical",
+            candidate_id="c1",
+            source_family="email",
+            source_record_type="m",
+            source_record_ref="m1",
+            target_family="procore",
+            target_record_type="rfi",
+            target_record_ref="r1",
+            relationship_type="claim_notice",
+            confidence_score=0.5,
+            confidence_class="weak_heuristic",
+            source_reference_json="{}",
+            sensitive_high_impact=True,
+            review_required=False,
+            project_key="tropical",
             evidence_trail_id="et1",
         )
         report = evaluate_phase_07d_data_quality_gates(db_path=db)
         # the misrouted sensitive candidate makes the routing gate fail and adds a review item
-        assert report["by_field_status"]["weak_model_sensitive_review_routing_accuracy"] == "fail_blocking"
+        assert (
+            report["by_field_status"]["weak_model_sensitive_review_routing_accuracy"]
+            == "fail_blocking"
+        )
         assert report["review_required_total"] >= 1
         assert report["ok"] is False
     finally:
@@ -172,7 +225,9 @@ def test_source_scope_safe_counts(monkeypatch) -> None:
         report = evaluate_phase_07d_data_quality_gates(db_path=db)
         counts = report["source_scope_safe_counts"]
         assert counts["onedrive_explicit_subset_sources"] == 1
-        assert counts["onedrive_explicit_all_folders_sources"] == 1  # explicit -> compliant, not blocked
+        assert (
+            counts["onedrive_explicit_all_folders_sources"] == 1
+        )  # explicit -> compliant, not blocked
         assert counts["onedrive_implicit_root_blocked_sources"] == 1
         assert counts["sharepoint_approved_all_nested_sources"] == 1
         # no raw folder names / paths / urls / ids in the output
@@ -206,8 +261,10 @@ def test_gates_command_carries_safe_counts() -> None:
         # may be None when registry/policy unavailable in the test env; if present, the four keys
         if sc is not None:
             assert set(sc.keys()) == {
-                "onedrive_explicit_subset_sources", "onedrive_explicit_all_folders_sources",
-                "onedrive_implicit_root_blocked_sources", "sharepoint_approved_all_nested_sources",
+                "onedrive_explicit_subset_sources",
+                "onedrive_explicit_all_folders_sources",
+                "onedrive_implicit_root_blocked_sources",
+                "sharepoint_approved_all_nested_sources",
             }
     finally:
         Path(db).unlink(missing_ok=True)

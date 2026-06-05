@@ -100,8 +100,15 @@ def test_no_raw_source_access(db_path: str) -> None:
     _seed(db_path)
     env = RetrievalBroker(db_path=db_path).retrieve(project_key="P1")
     blob = env.model_dump_json()
-    for forbidden in ("raw_body", "raw_document_text", "raw_calendar_payload",
-                      "raw_prompt", "raw_response", "signed_url", "download_url"):
+    for forbidden in (
+        "raw_body",
+        "raw_document_text",
+        "raw_calendar_payload",
+        "raw_prompt",
+        "raw_response",
+        "signed_url",
+        "download_url",
+    ):
         assert forbidden not in blob
 
 

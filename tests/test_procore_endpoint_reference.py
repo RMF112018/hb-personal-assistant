@@ -49,14 +49,17 @@ def test_core_endpoints_use_modern_rest_paths_after_01a():
 
     for ep in contract.endpoints:
         if ep.endpoint_id in modern_checks:
-            assert ep.path_template.startswith(modern_checks[ep.endpoint_id]), \
+            assert ep.path_template.startswith(modern_checks[ep.endpoint_id]), (
                 f"{ep.endpoint_id} still uses legacy path after 01A: {ep.path_template}"
+            )
             # Phase 04 Prompt 03 lifted the freeform "Prompt 01A" / "official_docs_verified"
             # marker from notes into the structured verification fields.
-            assert ep.verification_status == "official_docs_verified", \
+            assert ep.verification_status == "official_docs_verified", (
                 f"{ep.endpoint_id} missing structured verification_status"
-            assert ep.verified_by == "phase-03-prompt-01a", \
+            )
+            assert ep.verified_by == "phase-03-prompt-01a", (
                 f"{ep.endpoint_id} missing verified_by provenance"
+            )
 
 
 def test_unverified_candidate_catalog_does_not_promote_without_metadata():
@@ -74,8 +77,7 @@ def test_unverified_candidate_catalog_does_not_promote_without_metadata():
             or "candidate" in vs.lower()
             or vs == ""
             or vs in {"excluded", "deferred"}
-        ), \
-            f"Unverified catalog has premature verified status on {ep.get('endpoint_id')}: {vs}"
+        ), f"Unverified catalog has premature verified status on {ep.get('endpoint_id')}: {vs}"
 
 
 def test_no_hb_number_patterns_in_procore_ids():
@@ -87,11 +89,10 @@ def test_no_hb_number_patterns_in_procore_ids():
         if p.procore_project_id:
             pid = p.procore_project_id
             assert not (
-                len(pid) == 8
-                and pid[2] == "-"
-                and pid[6] == "-"
-                and pid.replace("-", "").isdigit()
-            ), f"HB-number-shaped ID leaked into procore_project_id: {p.hb_project_key} -> {p.procore_project_id}"
+                len(pid) == 8 and pid[2] == "-" and pid[6] == "-" and pid.replace("-", "").isdigit()
+            ), (
+                f"HB-number-shaped ID leaked into procore_project_id: {p.hb_project_key} -> {p.procore_project_id}"
+            )
 
 
 # Prompt_06 + 2026-05-29 consolidation: HB project-number vs Procore ID
@@ -105,16 +106,23 @@ def test_procore_projects_5280_pilots_only_post_consolidation():
     2026-05-29 retirement of hilltop / hilltop-gardens. HB-number vs Procore-ID
     separation invariant still pinned."""
     from hb_assistant.procore.loader import load_procore_projects
+
     reg = load_procore_projects()
-    projs = reg.projects if hasattr(reg, 'projects') else reg
+    projs = reg.projects if hasattr(reg, "projects") else reg
     assert len(projs) == 4
-    pending_keys = [getattr(p, 'hb_project_key', getattr(p, 'project_key', '')) for p in projs if not getattr(p, 'procore_project_id', None) or getattr(p, 'status', None) == 'pending']
+    pending_keys = [
+        getattr(p, "hb_project_key", getattr(p, "project_key", ""))
+        for p in projs
+        if not getattr(p, "procore_project_id", None) or getattr(p, "status", None) == "pending"
+    ]
     assert pending_keys == [], (
         "live seed must carry no pending rows; hilltop / hilltop-gardens were "
         "retired into alton-hilltop-pbg on 2026-05-29"
     )
     for p in projs:
-        pid = getattr(p, 'procore_project_id', '') or ''
+        pid = getattr(p, "procore_project_id", "") or ""
         if pid:
             # Separation: no HB-number shapes (00-000-00 or HB-/HT-*) allowed as Procore ID
-            assert not (pid.replace('-', '').isdigit() and len(pid) <= 7 and '-' in pid), f"HB pattern leaked as procore id: {pid}"
+            assert not (pid.replace("-", "").isdigit() and len(pid) <= 7 and "-" in pid), (
+                f"HB pattern leaked as procore id: {pid}"
+            )

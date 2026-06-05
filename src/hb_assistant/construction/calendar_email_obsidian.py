@@ -114,7 +114,10 @@ class CalendarEmailObsidianProjector:
         max_rows: int = 25,
     ) -> CalendarEmailObsidianReport:
         review = CorrespondenceReviewBuilder(self._store).review(
-            project_key=project_key, lookback_days=3660, max_previews=max_rows, max_warnings=max_rows
+            project_key=project_key,
+            lookback_days=3660,
+            max_previews=max_rows,
+            max_warnings=max_rows,
         )
         candidates = self._store.list_meeting_email_relationship_candidates(
             project_key=project_key, limit=5000

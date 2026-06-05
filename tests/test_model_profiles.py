@@ -48,7 +48,16 @@ def test_no_raw_persistence_in_seed_or_contract() -> None:
 
 
 def test_missing_profile_flagged() -> None:
-    seed = {"version": "x", "profiles": {"fast_summary": {"model": "claude-haiku-4-5", "raw_prompt_persisted": False, "raw_response_persisted": False}}}
+    seed = {
+        "version": "x",
+        "profiles": {
+            "fast_summary": {
+                "model": "claude-haiku-4-5",
+                "raw_prompt_persisted": False,
+                "raw_response_persisted": False,
+            }
+        },
+    }
     report = validate_model_profiles(seed, _contract())
     assert report["valid"] is False
     assert "deterministic_router" in report["missing_profiles"]

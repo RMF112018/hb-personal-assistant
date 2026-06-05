@@ -31,7 +31,9 @@ def sample_config_dict() -> dict:
     return {
         "project": {"name": "Test HB PA", "slug": "test-hb-pa"},
         "paths": {
-            "application_support_root": str(Path("/tmp/fake-support")),  # will be overridden in tests
+            "application_support_root": str(
+                Path("/tmp/fake-support")
+            ),  # will be overridden in tests
             "obsidian_vault": "/tmp/fake-vault",
         },
     }

@@ -174,19 +174,27 @@ def _build_delivery_handoff(
 ) -> DeliveryHandoffInput:
     sections: dict[str, list[HandoffLine]] = {s: [] for s in HANDOFF_SECTIONS}
     sections["priority_actions"] = [
-        HandoffLine(title_redacted=c.title_redacted, review_tier=c.review_tier, source_refs=c.source_refs)
+        HandoffLine(
+            title_redacted=c.title_redacted, review_tier=c.review_tier, source_refs=c.source_refs
+        )
         for c in attention
     ]
     sections["waiting_on"] = [
-        HandoffLine(title_redacted=c.summary_redacted, review_tier=c.review_tier, source_refs=c.source_refs)
+        HandoffLine(
+            title_redacted=c.summary_redacted, review_tier=c.review_tier, source_refs=c.source_refs
+        )
         for c in warnings
     ]
     sections["meeting_prep"] = [
-        HandoffLine(title_redacted=c.title_redacted, review_tier=c.review_tier, source_refs=c.source_refs)
+        HandoffLine(
+            title_redacted=c.title_redacted, review_tier=c.review_tier, source_refs=c.source_refs
+        )
         for c in meetings
     ]
     sections["file_review_queue"] = [
-        HandoffLine(title_redacted=c.title_redacted, review_tier=c.review_tier, source_refs=c.source_refs)
+        HandoffLine(
+            title_redacted=c.title_redacted, review_tier=c.review_tier, source_refs=c.source_refs
+        )
         for c in review_required
     ]
     sections["project_signals"] = [
@@ -398,8 +406,14 @@ def build_daily_brief_context_builder_proof() -> dict[str, Any]:
     no_raw_content = not any(
         t in blob
         for t in (
-            "raw_body", "raw_document_text", "raw_calendar_payload", "raw_prompt",
-            "raw_response", "signed_url", "download_url", "secret",
+            "raw_body",
+            "raw_document_text",
+            "raw_calendar_payload",
+            "raw_prompt",
+            "raw_response",
+            "signed_url",
+            "download_url",
+            "secret",
         )
     )
     guards_zero = all(
@@ -407,8 +421,8 @@ def build_daily_brief_context_builder_proof() -> dict[str, Any]:
         for c in run_row
         if c.endswith("_persisted") or c == "external_writeback_performed"
     )
-    has_coverage_and_tiers = (
-        isinstance(context.source_coverage, float) and bool(context.review_tier_counts)
+    has_coverage_and_tiers = isinstance(context.source_coverage, float) and bool(
+        context.review_tier_counts
     )
     handoff_source_linked = bool(context.delivery_handoff.source_refs) and all(
         bool(line.source_refs)

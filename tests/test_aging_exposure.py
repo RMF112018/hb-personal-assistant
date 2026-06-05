@@ -23,13 +23,19 @@ from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.store.migrator import SQLiteMigrator
 
 _LEAK = re.compile(
-    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}", re.IGNORECASE
+    r"https?://|@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|BEGIN:V|-----BEGIN|Bearer |eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{6,}",
+    re.IGNORECASE,
 )
 _NOW = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
 _GUARDS = (
-    "raw_email_body_persisted", "raw_document_text_persisted",
-    "raw_calendar_payload_persisted", "raw_prompt_persisted", "raw_response_persisted",
-    "signed_url_persisted", "download_url_persisted", "external_writeback_performed",
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
 )
 
 
@@ -52,8 +58,19 @@ def _live(
             " last_sync_run_id, raw_body_persisted, status, updated_at_utc) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                "tropical", "PP1", endpoint, "", rid, "{}", review, "2026-01-01T00:00:00Z",
-                "2026-05-30T00:00:00Z", "run1", 0, status, ts,
+                "tropical",
+                "PP1",
+                endpoint,
+                "",
+                rid,
+                "{}",
+                review,
+                "2026-01-01T00:00:00Z",
+                "2026-05-30T00:00:00Z",
+                "run1",
+                0,
+                status,
+                ts,
             ),
         )
         raw.commit()
@@ -85,16 +102,21 @@ def test_band_assignment() -> None:
     db = _fresh_db()
     try:
         store = ConstructionStore(db_path=db)
-        _live(db, "rfis", "1", "open", "2026-05-28T00:00:00Z")       # 4d -> current
+        _live(db, "rfis", "1", "open", "2026-05-28T00:00:00Z")  # 4d -> current
         _live(db, "submittals", "2", "approved", "2026-05-10T00:00:00Z")  # 22d -> aging
-        _live(db, "rfis", "3", "open", "2026-04-20T00:00:00Z")       # 42d -> stale
+        _live(db, "rfis", "3", "open", "2026-04-20T00:00:00Z")  # 42d -> stale
         _live(db, "inspections", "4", "open", "2026-01-01T00:00:00Z")  # 151d -> critical_review
         report = AgingExposureBuilder(store).build(dry_run=False, now_utc=_NOW)
         assert report["ok"] is True
         assert report["summary"]["by_threshold_band"] == {
-            "aging": 1, "critical_review": 1, "current": 1, "stale": 1
+            "aging": 1,
+            "critical_review": 1,
+            "current": 1,
+            "stale": 1,
         }
-        items = {it["record_ref"].split("|")[-1]: it for it in store.list_aging_exposure_report_items()}
+        items = {
+            it["record_ref"].split("|")[-1]: it for it in store.list_aging_exposure_report_items()
+        }
         assert items["3"]["threshold_band"] == "stale" and items["3"]["stale_flag"] is True
         assert items["4"]["threshold_band"] == "critical_review"
         assert items["4"]["review_required"] is True  # critical band
@@ -109,7 +131,7 @@ def test_financial_exposure() -> None:
     try:
         store = ConstructionStore(db_path=db)
         _live(db, "subcontractor-invoices", "1", "open", "2026-01-01T00:00:00Z")  # 151d critical
-        _live(db, "commitment-contracts", "2", "open", "2026-04-25T00:00:00Z")    # 37d stale
+        _live(db, "commitment-contracts", "2", "open", "2026-04-25T00:00:00Z")  # 37d stale
         report = AgingExposureBuilder(store).build(dry_run=False, now_utc=_NOW)
         fin = report["summary"]["financial_exposure"]
         assert fin["total_financial"] == 2
@@ -179,8 +201,13 @@ def test_no_raw_content_and_status_normalization() -> None:
     db = _fresh_db()
     try:
         store = ConstructionStore(db_path=db)
-        _live(db, "rfis", "1", "{'id': 20577, 'name': 'Open', 'mapped_to_status': 'open'}",
-              "2026-05-20T00:00:00Z")
+        _live(
+            db,
+            "rfis",
+            "1",
+            "{'id': 20577, 'name': 'Open', 'mapped_to_status': 'open'}",
+            "2026-05-20T00:00:00Z",
+        )
         AgingExposureBuilder(store).build(dry_run=False, now_utc=_NOW)
         it = store.list_aging_exposure_report_items()[0]
         assert it["status"] == "open"
@@ -225,7 +252,9 @@ def test_status_reports_coverage() -> None:
     try:
         store = ConstructionStore(db_path=db)
         _live(db, "rfis", "1", "open", "2026-04-20T00:00:00Z")  # stale
-        _live(db, "subcontractor-invoices", "2", "open", "2026-01-01T00:00:00Z")  # critical financial
+        _live(
+            db, "subcontractor-invoices", "2", "open", "2026-01-01T00:00:00Z"
+        )  # critical financial
         AgingExposureBuilder(store).build(dry_run=False, now_utc=_NOW)
         status = project_aging_exposure_status(store)
         assert status["ok"] is True

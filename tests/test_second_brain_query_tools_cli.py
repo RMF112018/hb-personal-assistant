@@ -30,9 +30,7 @@ def test_query_tools_list_exit_zero(runner: CliRunner) -> None:
 
 def test_query_tools_run_unbacked_tool_exit_zero(runner: CliRunner) -> None:
     # project_context has no read-model and does not touch the DB (emit_receipt off).
-    result = runner.invoke(
-        app, ["second-brain", "query-tools", "run", "project_context", "--json"]
-    )
+    result = runner.invoke(app, ["second-brain", "query-tools", "run", "project_context", "--json"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["tool"] == "project_context"
@@ -41,9 +39,7 @@ def test_query_tools_run_unbacked_tool_exit_zero(runner: CliRunner) -> None:
 
 
 def test_query_tools_run_unknown_tool_rejected(runner: CliRunner) -> None:
-    result = runner.invoke(
-        app, ["second-brain", "query-tools", "run", "DROP TABLE x", "--json"]
-    )
+    result = runner.invoke(app, ["second-brain", "query-tools", "run", "DROP TABLE x", "--json"])
     assert result.exit_code == 3, result.output
     payload = json.loads(result.output)
     assert payload["error"] == "tool_not_allowlisted"

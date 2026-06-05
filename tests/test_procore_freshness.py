@@ -52,27 +52,49 @@ def _wm(db, endpoint_id: str, ts: str | None) -> None:
         conn.commit()
         conn.close()
         return
-    update_watermark(company_id="5280", project_key="tropical", procore_project_id="2525840",
-                     endpoint_id=endpoint_id, cursor_redacted=None, receipt_id="r",
-                     now_utc=ts, db_path=db)
+    update_watermark(
+        company_id="5280",
+        project_key="tropical",
+        procore_project_id="2525840",
+        endpoint_id=endpoint_id,
+        cursor_redacted=None,
+        receipt_id="r",
+        now_utc=ts,
+        db_path=db,
+    )
 
 
 def _seed(db: Path) -> None:
-    _wm(db, "rfis", _NOW)            # current
-    _wm(db, "submittals", _OLD)      # stale
-    _wm(db, "meetings", None)        # unknown (watermark row, NULL last_success, no records)
+    _wm(db, "rfis", _NOW)  # current
+    _wm(db, "submittals", _OLD)  # stale
+    _wm(db, "meetings", None)  # unknown (watermark row, NULL last_success, no records)
     # observations + the rest: left untouched -> never_synced
     # a record under rfis (with a secret title) to exercise record_count + no-leak.
-    record_sync_run_start(sync_run_id="run1", endpoint_id="rfis", command_endpoint="rfis",
-                          legacy_endpoint_alias=None, project_key="tropical",
-                          procore_project_id="2525840", company_id="5280", mode="live_apply",
-                          started_at_utc=_NOW, db_path=db)
+    record_sync_run_start(
+        sync_run_id="run1",
+        endpoint_id="rfis",
+        command_endpoint="rfis",
+        legacy_endpoint_alias=None,
+        project_key="tropical",
+        procore_project_id="2525840",
+        company_id="5280",
+        mode="live_apply",
+        started_at_utc=_NOW,
+        db_path=db,
+    )
     upsert_procore_live_record(
-        project_key="tropical", procore_project_id="2525840", endpoint_id="rfis",
-        procore_record_id="1", parent_procore_id=None,
+        project_key="tropical",
+        procore_project_id="2525840",
+        endpoint_id="rfis",
+        procore_record_id="1",
+        parent_procore_id=None,
         normalized_fields={"number": "RFI-001", "subject": _SECRET_TITLE, "status": "open"},
-        review_required=False, sensitive_reason=None, source_url_redacted="/x/1",
-        last_sync_run_id="run1", now_utc=_NOW, db_path=db,
+        review_required=False,
+        sensitive_reason=None,
+        source_url_redacted="/x/1",
+        last_sync_run_id="run1",
+        now_utc=_NOW,
+        db_path=db,
     )
 
 
@@ -136,16 +158,31 @@ def test_no_raw_values_or_secrets() -> None:
 
 def test_cli_json_shape() -> None:
     SQLiteMigrator().apply()
-    update_watermark(company_id="5280", project_key="tropical", procore_project_id="2525840",
-                     endpoint_id="submittals", cursor_redacted=None, receipt_id="r",
-                     now_utc=_OLD)
+    update_watermark(
+        company_id="5280",
+        project_key="tropical",
+        procore_project_id="2525840",
+        endpoint_id="submittals",
+        cursor_redacted=None,
+        receipt_id="r",
+        now_utc=_OLD,
+    )
     get_connection().commit()
-    res = CliRunner().invoke(app, ["live", "stale", "--project", "tropical", "--json"],
-                            catch_exceptions=False)
+    res = CliRunner().invoke(
+        app, ["live", "stale", "--project", "tropical", "--json"], catch_exceptions=False
+    )
     assert res.exit_code == 0
     payload = json.loads(res.output)
-    for key in ("command", "summary", "endpoints", "stale_endpoints", "stale_threshold_days",
-                "no_live_call_performed", "determinations_made", "guardrails"):
+    for key in (
+        "command",
+        "summary",
+        "endpoints",
+        "stale_endpoints",
+        "stale_threshold_days",
+        "no_live_call_performed",
+        "determinations_made",
+        "guardrails",
+    ):
         assert key in payload, f"missing {key}"
     assert payload["no_live_call_performed"] is True
     assert payload["summary"]["fail_closed"] == 3

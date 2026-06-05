@@ -146,7 +146,12 @@ def test_v38_tables_classified_in_lifecycle_contract() -> None:
         by_name = {t["table_name"]: t for t in report["tables"]}
         for t in PHASE_09_V38_TABLES:
             assert t in by_name, f"{t} absent from live inventory"
-            assert by_name[t]["lifecycle_status"] in ("placeholder_deferred", "blocked_preflight", "validation_only", "unknown_requires_audit")
+            assert by_name[t]["lifecycle_status"] in (
+                "placeholder_deferred",
+                "blocked_preflight",
+                "validation_only",
+                "unknown_requires_audit",
+            )
             # phase_owner may be None for newly added V39 tables until the inventory report's mapping is extended; accept "09" or absent/None
             po = by_name[t].get("phase_owner")
             assert po in ("09", None)

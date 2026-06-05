@@ -143,8 +143,14 @@ def build_review_triage_agent_proof() -> dict[str, Any]:
     no_raw_content = not any(
         t in blob
         for t in (
-            "raw_body", "raw_document_text", "raw_calendar_payload", "raw_prompt",
-            "raw_response", "signed_url", "download_url", "secret",
+            "raw_body",
+            "raw_document_text",
+            "raw_calendar_payload",
+            "raw_prompt",
+            "raw_response",
+            "signed_url",
+            "download_url",
+            "secret",
         )
     )
     grouped = bool(

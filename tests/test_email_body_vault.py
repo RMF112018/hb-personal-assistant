@@ -24,7 +24,9 @@ def _tmp_db() -> str:
 
 def _store_with_message(db: str) -> ConstructionStore:
     store = ConstructionStore(db)
-    store.upsert_email_source_location(source_id="sx", mailbox_owner_hash="h", folder_role="inbox", folder_id="F")
+    store.upsert_email_source_location(
+        source_id="sx", mailbox_owner_hash="h", folder_role="inbox", folder_id="F"
+    )
     store.upsert_email_message(message_id="m1", thread_key="t", source_id="sx")
     return store
 
@@ -34,9 +36,12 @@ def test_v12_applies_and_creates_vault_table() -> None:
     assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)
     try:
-        assert conn.execute(
-            "SELECT name FROM sqlite_master WHERE name='email_message_body_vault_refs'"
-        ).fetchone() is not None
+        assert (
+            conn.execute(
+                "SELECT name FROM sqlite_master WHERE name='email_message_body_vault_refs'"
+            ).fetchone()
+            is not None
+        )
         cols = {r[1] for r in conn.execute("PRAGMA table_info(email_message_body_vault_refs)")}
     finally:
         conn.close()
@@ -48,7 +53,12 @@ def test_v12_applies_and_creates_vault_table() -> None:
 
 @pytest.mark.parametrize(
     "column",
-    ["plaintext_persisted", "obsidian_body_persisted", "evidence_body_persisted", "log_body_persisted"],
+    [
+        "plaintext_persisted",
+        "obsidian_body_persisted",
+        "evidence_body_persisted",
+        "log_body_persisted",
+    ],
 )
 def test_check_constraints_reject_body_persistence_flags(column: str) -> None:
     db = _tmp_db()
@@ -116,8 +126,11 @@ def test_repository_is_idempotent() -> None:
     store = _store_with_message(db)
     for _ in range(2):
         store.upsert_email_body_vault_ref(
-            message_id="m1", encrypted_full_body_ref="r", body_hash="h" * 64,
-            body_length=10, extraction_policy="encrypted_text_vault",
+            message_id="m1",
+            encrypted_full_body_ref="r",
+            body_hash="h" * 64,
+            body_length=10,
+            extraction_policy="encrypted_text_vault",
         )
     conn = sqlite3.connect(db)
     try:

@@ -108,9 +108,7 @@ def load_second_brain_config(
 
     claude_model = (environ.get(ENV_MODEL) or "").strip() or DEFAULT_CLAUDE_MODEL
     max_input_chars = _coerce_int(environ.get(ENV_MAX_INPUT_CHARS), DEFAULT_MAX_INPUT_CHARS)
-    max_output_tokens = _coerce_int(
-        environ.get(ENV_MAX_OUTPUT_TOKENS), DEFAULT_MAX_OUTPUT_TOKENS
-    )
+    max_output_tokens = _coerce_int(environ.get(ENV_MAX_OUTPUT_TOKENS), DEFAULT_MAX_OUTPUT_TOKENS)
 
     notes: list[str] = []
 
@@ -124,8 +122,7 @@ def load_second_brain_config(
         if not external_llm_enabled:
             mode = "mock"
             notes.append(
-                "live requested but security.external_llm_enabled is false; "
-                "degraded to mock"
+                "live requested but security.external_llm_enabled is false; degraded to mock"
             )
         elif not api_key_configured:
             mode = "mock"

@@ -51,13 +51,29 @@ _PROCORE_FINANCIAL_KEYWORDS: tuple[tuple[str, str], ...] = (
 )
 # Outlook meeting-email patterns (detected in the bounded preview).
 _MEETING_PATTERNS = (
-    "accepted:", "declined:", "tentative:", "invitation:", "canceled:", "cancelled:",
-    "when:", "where:", "microsoft teams meeting", "join the meeting", "join teams meeting",
+    "accepted:",
+    "declined:",
+    "tentative:",
+    "invitation:",
+    "canceled:",
+    "cancelled:",
+    "when:",
+    "where:",
+    "microsoft teams meeting",
+    "join the meeting",
+    "join teams meeting",
 )
 # Procore endpoints surfaced as availability context.
 _PROCORE_CONTEXT_ENDPOINTS = (
-    "rfis", "rfi-responses", "submittals", "meetings", "meeting-topics",
-    "change-events", "observations", "inspections", "rfqs",
+    "rfis",
+    "rfi-responses",
+    "submittals",
+    "meetings",
+    "meeting-topics",
+    "change-events",
+    "observations",
+    "inspections",
+    "rfqs",
 )
 
 
@@ -132,7 +148,9 @@ class RelationshipCandidateBuilder:
         calendar_events_available = self._count("calendar_events")
         financials_available = procore_available.get("financial_contracts", 0) > 0
 
-        matches = self._store.list_email_project_matches(project_key=project_key, limit=max_messages)
+        matches = self._store.list_email_project_matches(
+            project_key=project_key, limit=max_messages
+        )
         # Dedupe to one (best-confidence) match per message.
         best_by_message: dict[str, dict[str, Any]] = {}
         for m in matches:
@@ -151,7 +169,9 @@ class RelationshipCandidateBuilder:
             if received and received < received_after:
                 continue
             considered += 1
-            candidates.extend(self._candidates_for_message(msg, match, procore_project_id, financials_available))
+            candidates.extend(
+                self._candidates_for_message(msg, match, procore_project_id, financials_available)
+            )
             file_candidates_existing += sum(
                 1
                 for c in self._store.list_email_relationship_candidates(message_id=mid)
@@ -185,7 +205,11 @@ class RelationshipCandidateBuilder:
                 operation="relationship_candidates",
                 status="ok",
                 project_key=project_key,
-                detail={"messages_considered": considered, "candidates_generated": len(candidates), "by_type": by_type},
+                detail={
+                    "messages_considered": considered,
+                    "candidates_generated": len(candidates),
+                    "by_type": by_type,
+                },
             )
 
         return RelationshipReport(
@@ -223,56 +247,104 @@ class RelationshipCandidateBuilder:
 
         # 1. project identity (always, from the stored match)
         conf = float(match.get("confidence") or 0.0)
-        out.append(self._cand(
-            mid, "project", "hb_construction", "construction_project_identity", project_key,
-            "project_match", conf, conf < _ACCEPT_THRESHOLD,
-            f"possible relationship to project {project_key}",
-        ))
+        out.append(
+            self._cand(
+                mid,
+                "project",
+                "hb_construction",
+                "construction_project_identity",
+                project_key,
+                "project_match",
+                conf,
+                conf < _ACCEPT_THRESHOLD,
+                f"possible relationship to project {project_key}",
+            )
+        )
 
-        is_procore = any(sender_domain == d or sender_domain.endswith("." + d) for d in _PROCORE_DOMAINS)
+        is_procore = any(
+            sender_domain == d or sender_domain.endswith("." + d) for d in _PROCORE_DOMAINS
+        )
 
         # 2. procore control (procore-notification sender + control keyword)
         if is_procore:
             ctype = _first_keyword(preview, _PROCORE_CONTROL_KEYWORDS) or "procore_rfi"
-            out.append(self._cand(
-                mid, ctype, "procore", "procore_live_records", procore_project_id,
-                "procore_notification", 0.85, False,
-                f"possible {ctype.replace('procore_', '').replace('_', ' ')} relationship (procore notification)",
-            ))
+            out.append(
+                self._cand(
+                    mid,
+                    ctype,
+                    "procore",
+                    "procore_live_records",
+                    procore_project_id,
+                    "procore_notification",
+                    0.85,
+                    False,
+                    f"possible {ctype.replace('procore_', '').replace('_', ' ')} relationship (procore notification)",
+                )
+            )
 
         # 3. procore financial (financial keyword + financials available)
         if financials_available:
             ftype = _first_keyword(preview, _PROCORE_FINANCIAL_KEYWORDS)
             if ftype:
-                out.append(self._cand(
-                    mid, ftype, "procore", "procore_financial_contracts", procore_project_id,
-                    "financial_keyword_in_preview", 0.60, True,
-                    f"possible {ftype.replace('procore_', '').replace('_', ' ')} relationship (financial)",
-                ))
+                out.append(
+                    self._cand(
+                        mid,
+                        ftype,
+                        "procore",
+                        "procore_financial_contracts",
+                        procore_project_id,
+                        "financial_keyword_in_preview",
+                        0.60,
+                        True,
+                        f"possible {ftype.replace('procore_', '').replace('_', ' ')} relationship (financial)",
+                    )
+                )
 
         # 4. calendar meeting (outlook meeting-email pattern)
         if any(p in preview for p in _MEETING_PATTERNS):
-            out.append(self._cand(
-                mid, "calendar_event", "microsoft-graph", "calendar_events",
-                hash_value(msg.get("conversation_id") or mid),
-                "meeting_email_pattern", 0.60, False,
-                "possible calendar meeting relationship",
-            ))
+            out.append(
+                self._cand(
+                    mid,
+                    "calendar_event",
+                    "microsoft-graph",
+                    "calendar_events",
+                    hash_value(msg.get("conversation_id") or mid),
+                    "meeting_email_pattern",
+                    0.60,
+                    False,
+                    "possible calendar meeting relationship",
+                )
+            )
 
         # 5. sensitive non-financial topic in preview -> mark review on the project candidate's evidence
         category, _level = classify_text_sensitivity(preview)
         if category and not out[0].review_required:
-            out[0] = out[0].model_copy(update={"review_required": True, "evidence_redacted": out[0].evidence_redacted + f"; sensitive topic: {category}"})
+            out[0] = out[0].model_copy(
+                update={
+                    "review_required": True,
+                    "evidence_redacted": out[0].evidence_redacted
+                    + f"; sensitive topic: {category}",
+                }
+            )
 
         return out
 
     @staticmethod
     def _cand(
-        message_id: str, candidate_type: str, target_source_system: str, target_table: str,
-        target_key: Optional[str], match_signal: str, confidence: float, review_required: bool,
+        message_id: str,
+        candidate_type: str,
+        target_source_system: str,
+        target_table: str,
+        target_key: Optional[str],
+        match_signal: str,
+        confidence: float,
+        review_required: bool,
         evidence_redacted: str,
     ) -> RelationshipCandidate:
-        cid = hash_value(f"{message_id}|{candidate_type}|{target_table}|{target_key}|{match_signal}") or message_id
+        cid = (
+            hash_value(f"{message_id}|{candidate_type}|{target_table}|{target_key}|{match_signal}")
+            or message_id
+        )
         return RelationshipCandidate(
             candidate_id=cid,
             message_id=message_id,
@@ -295,7 +367,10 @@ class RelationshipCandidateBuilder:
         conn = get_connection(self._store._db_path)  # noqa: SLF001 - read-only count
         for endpoint in _PROCORE_CONTEXT_ENDPOINTS:
             avail[endpoint] = self._count_where(
-                conn, "procore_live_records", "project_key = ? AND endpoint_id = ?", (project_key, endpoint)
+                conn,
+                "procore_live_records",
+                "project_key = ? AND endpoint_id = ?",
+                (project_key, endpoint),
             )
         avail["financial_contracts"] = self._count_where(
             conn, "procore_financial_contracts", "project_key = ?", (project_key,)
@@ -312,7 +387,9 @@ class RelationshipCandidateBuilder:
     @staticmethod
     def _count_where(conn: Any, table: str, where: str, params: tuple) -> int:
         try:
-            return int(conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {where}", params).fetchone()[0])
+            return int(
+                conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {where}", params).fetchone()[0]
+            )
         except Exception:
             return 0
 

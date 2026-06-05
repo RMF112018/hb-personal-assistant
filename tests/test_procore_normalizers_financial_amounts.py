@@ -64,7 +64,9 @@ def test_source_value_hash_stable():
 
 
 def test_classify_amount_parseable():
-    res = classify_amount("10200000.50", field_path="procore_financial_contracts.grand_total", currency_code="USD")
+    res = classify_amount(
+        "10200000.50", field_path="procore_financial_contracts.grand_total", currency_code="USD"
+    )
     assert res["parse_status"] == "parseable"
     assert res["canonical_decimal_text"] == "10200000.50"
     assert res["minor_units"] == 1020000050  # scale 2
@@ -91,7 +93,11 @@ def test_classify_amount_rejected_non_numeric():
     res = classify_amount("N/A", field_path="x.foo")
     assert res["parse_status"] == "rejected"
     # impl maps to decimal_parse_failed (or non_numeric); either acceptable for rejection
-    assert res["rejection_reason"] and ("non_numeric" in res["rejection_reason"] or "parse_failed" in res["rejection_reason"] or "decimal" in res["rejection_reason"])
+    assert res["rejection_reason"] and (
+        "non_numeric" in res["rejection_reason"]
+        or "parse_failed" in res["rejection_reason"]
+        or "decimal" in res["rejection_reason"]
+    )
 
 
 def test_classify_amount_decimal_safety_no_float_loss():
@@ -100,6 +106,7 @@ def test_classify_amount_decimal_safety_no_float_loss():
     b = classify_amount("0.2", field_path="t.b")
     # simulate add in caller using Decimal
     from decimal import Decimal
+
     s = str(Decimal(a["canonical_decimal_text"]) + Decimal(b["canonical_decimal_text"]))
     assert s == "0.3"
 
@@ -116,6 +123,7 @@ def test_no_float_literal_in_money_helpers_source():
     import inspect
 
     import hb_assistant.procore.normalizers.financial as mod
+
     src = inspect.getsource(mod)
     # allow in comments/docs for prohibition, but not executable money calc
     # crude: no bare 'float(' in def bodies for the new helpers

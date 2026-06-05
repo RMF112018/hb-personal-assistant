@@ -12,7 +12,9 @@ SCRIPT = (
     / "proofs"
     / "phase_08d_agent_data_evaluation_evidence_collector.py"
 )
-spec = importlib.util.spec_from_file_location("phase_08d_agent_data_evaluation_evidence_collector", SCRIPT)
+spec = importlib.util.spec_from_file_location(
+    "phase_08d_agent_data_evaluation_evidence_collector", SCRIPT
+)
 assert spec is not None
 collector = importlib.util.module_from_spec(spec)
 assert spec.loader is not None
@@ -44,7 +46,9 @@ def test_risky_field_profile_does_not_export_values(tmp_path: Path) -> None:
     conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
     conn.execute("CREATE TABLE sample(id INTEGER PRIMARY KEY, raw_body TEXT, status TEXT)")
-    conn.execute("INSERT INTO sample(raw_body, status) VALUES ('raw email body secret text', 'open')")
+    conn.execute(
+        "INSERT INTO sample(raw_body, status) VALUES ('raw email body secret text', 'open')"
+    )
     conn.commit()
 
     profile = collector.column_profile(
@@ -81,7 +85,9 @@ def test_json_key_inventory_exports_keys_not_values(tmp_path: Path) -> None:
     conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
     conn.execute("CREATE TABLE sample(id INTEGER PRIMARY KEY, metadata_json TEXT)")
-    conn.execute("INSERT INTO sample(metadata_json) VALUES (?)", ('{"safe_key":"do not export this value"}',))
+    conn.execute(
+        "INSERT INTO sample(metadata_json) VALUES (?)", ('{"safe_key":"do not export this value"}',)
+    )
     conn.commit()
 
     profile = collector.column_profile(

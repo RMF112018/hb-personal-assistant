@@ -53,8 +53,19 @@ _ELIGIBLE_CONFIDENCE_CLASSES = frozenset({"deterministic", "strong_heuristic"})
 # Bounded, safe status vocabulary; anything else collapses to "other"/"unknown".
 _KNOWN_STATUS = frozenset(
     {
-        "open", "closed", "approved", "draft", "void", "pending", "none", "rejected",
-        "in_review", "submitted", "answered", "overdue", "mixed",
+        "open",
+        "closed",
+        "approved",
+        "draft",
+        "void",
+        "pending",
+        "none",
+        "rejected",
+        "in_review",
+        "submitted",
+        "answered",
+        "overdue",
+        "mixed",
     }
 )
 
@@ -186,9 +197,7 @@ class IssueHistoryBuilder:
                 )
                 by_status[item["status"]] = by_status.get(item["status"], 0) + 1
                 if item["issue_kind"]:
-                    by_issue_kind[item["issue_kind"]] = (
-                        by_issue_kind.get(item["issue_kind"], 0) + 1
-                    )
+                    by_issue_kind[item["issue_kind"]] = by_issue_kind.get(item["issue_kind"], 0) + 1
                 if item["review_required"]:
                     review_required_total += 1
                 if item["latest_activity_utc"] is not None:
@@ -197,10 +206,14 @@ class IssueHistoryBuilder:
                     unresolved_activity += 1
                 if not dry_run:
                     self._store.upsert_project_issue_history_item(
-                        issue_family_id=item["issue_family_id"], project_key=project_key,
-                        status=item["status"], source_families_json=item["source_families_json"],
-                        confidence_class=item["confidence_class"], issue_kind=item["issue_kind"],
-                        age_days=item["age_days"], latest_activity_utc=item["latest_activity_utc"],
+                        issue_family_id=item["issue_family_id"],
+                        project_key=project_key,
+                        status=item["status"],
+                        source_families_json=item["source_families_json"],
+                        confidence_class=item["confidence_class"],
+                        issue_kind=item["issue_kind"],
+                        age_days=item["age_days"],
+                        latest_activity_utc=item["latest_activity_utc"],
                         evidence_trail_id=item["evidence_trail_id"],
                         review_required=item["review_required"],
                         stale_unknown_flags_json=item["stale_unknown_flags_json"],
@@ -237,10 +250,10 @@ class IssueHistoryBuilder:
         activity: dict[str, tuple[Optional[str], str]],
         now: datetime,
     ) -> dict[str, Any]:
-        issue_family_id = hash_value(f"issue|{project_key}|{source_family}|{source_ref}") or source_ref
-        all_deterministic = all(
-            e.get("confidence_class") == "deterministic" for e in edges
+        issue_family_id = (
+            hash_value(f"issue|{project_key}|{source_family}|{source_ref}") or source_ref
         )
+        all_deterministic = all(e.get("confidence_class") == "deterministic" for e in edges)
         confidence_class = "deterministic" if all_deterministic else "strong_heuristic"
         review_required = (confidence_class != "deterministic") or any(
             e.get("review_required") for e in edges
