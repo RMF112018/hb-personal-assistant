@@ -1,0 +1,65 @@
+{
+  "contract_name": "phase_09_retrieval_benchmark_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 25 — deterministic vs semantic benchmark. Benchmarks the three retrieval modes (deterministic, semantic, hybrid) against each other over the approved Obsidian + reviewed-memory corpus and emits comparative, bucketed, metadata-only metrics. Probes are built at runtime from each approved node's already-redacted excerpt and are never persisted; only labeled metric bands are stored. Deterministic results are authoritative; semantic results are advisory (floored at review tier 2, source-linked, re-validated no-raw). The benchmark is a measurement leaf — it assembles no final answer (assembles_final_answer is always false) and the semantic_retrieval_bypassed_policy guard stays 0; semantic context never reaches an answer / Research Packet / Evaluation path from here.",
+  "approved_source_families": [
+    "approved_obsidian_generated_outputs",
+    "accepted_long_term_memory"
+  ],
+  "benchmark_modes": ["deterministic", "semantic", "hybrid"],
+  "max_probes_per_run": 50,
+  "metric_names": [
+    "result_count:deterministic",
+    "result_count:semantic",
+    "result_count:hybrid",
+    "semantic_hit_rate:hybrid",
+    "semantic_lift:hybrid",
+    "tier_floor:semantic",
+    "semantic_status:hybrid"
+  ],
+  "benchmark_run_column_allowlist": [
+    "run_id",
+    "created_at_utc",
+    "policy_version",
+    "schema_version",
+    "eval_set_id",
+    "config_snapshot_id",
+    "metric_name",
+    "metric_value_label"
+  ],
+  "status_values": ["built", "empty", "blocked"],
+  "forbidden_emitted_fields": [
+    "raw_query",
+    "query",
+    "query_text",
+    "probe",
+    "probe_text",
+    "answer",
+    "content",
+    "content_excerpt",
+    "content_excerpt_redacted",
+    "text_redacted",
+    "source_ref",
+    "embedding",
+    "vector",
+    "raw_vector",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "approved_outputs_only",
+    "advisory_only",
+    "no_final_answer",
+    "no_semantic_retrieval_bypass",
+    "preserve_review_tier",
+    "preserve_confidence_class",
+    "preserve_source_references",
+    "preserve_freshness"
+  ]
+}

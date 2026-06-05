@@ -178,6 +178,13 @@ retrieval_eval_set_app = typer.Typer(
 )
 retrieval_app.add_typer(retrieval_eval_set_app, name="eval-set")
 
+retrieval_benchmark_app = typer.Typer(
+    name="benchmark",
+    help="Phase 09 deterministic vs semantic benchmark (comparative metadata-only metrics; read-only).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(retrieval_benchmark_app, name="benchmark")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3228,6 +3235,19 @@ _RETRIEVAL_EVAL_SET_GUARDRAILS = {
     "fail_closed": True,
 }
 
+_RETRIEVAL_BENCHMARK_GUARDRAILS = {
+    "advisory_only": True,
+    "no_final_answer": True,
+    "no_semantic_retrieval_bypass": True,
+    "approved_outputs_only": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "preserve_review_tier_confidence_source_refs_freshness": True,
+    "read_only_by_default": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
 
 @llamaindex_app.command("build")
 def retrieval_llamaindex_build(
@@ -4017,6 +4037,90 @@ def retrieval_eval_set_proof(
         f"Retrieval eval set proof passed={proof['proof_passed']}"
         f" (cases={proof['case_count']}, source_linked={proof['cases_source_linked']},"
         f" unsafe_excluded={proof['unsafe_node_excluded']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+@retrieval_benchmark_app.command("build")
+def retrieval_benchmark_build(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    name: str | None = typer.Option(
+        None, "--name", help="Benchmark name (hashed in the receipt; never stored raw)."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Benchmark deterministic vs semantic vs hybrid retrieval over the approved corpus (read-only).
+
+    Probes are built at runtime from each approved node's redacted excerpt (never persisted) and run
+    through the three modes; emits a metadata-only summary of bucketed comparative metrics (no raw
+    query/content/source ref). Persists nothing to the operator DB. The semantic side degrades
+    fail-closed (blocked status) when the SDK/applied index is absent. Exit 0 on success; 3 fail-closed.
+    """
+    from hb_assistant.construction.second_brain.retrieval.benchmark import (
+        RetrievalBenchmarkError,
+        build_retrieval_benchmark,
+    )
+
+    try:
+        result = build_retrieval_benchmark(project_key=project, name=name)
+    except RetrievalBenchmarkError as exc:
+        payload = {
+            "command": "second-brain retrieval benchmark build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _RETRIEVAL_BENCHMARK_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _RETRIEVAL_BENCHMARK_GUARDRAILS}
+    payload.pop("metric_rows", None)  # row labels summarized by count; not echoed in bulk
+    sem = (result.get("mode_metrics") or {}).get("semantic", {})
+    human = [
+        "Phase 09 deterministic vs semantic benchmark (read-only, advisory)",
+        f"  status: {result['status']} | probes: {result['probe_count']}"
+        f" | metric rows: {result['metric_row_count']}",
+        f"  semantic: {sem.get('status', 'n/a')}"
+        f" | hit-rate: {sem.get('hit_rate_pct', 0)}% | warnings: {result['warnings']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@retrieval_benchmark_app.command("proof")
+def retrieval_benchmark_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the benchmark proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove all three modes are compared, metrics persisted metadata-only, semantic advisory + floored."""
+    from hb_assistant.construction.second_brain.retrieval.benchmark import (
+        RetrievalBenchmarkError,
+        build_retrieval_benchmark_proof,
+    )
+
+    try:
+        proof = build_retrieval_benchmark_proof(write_evidence=evidence)
+    except RetrievalBenchmarkError as exc:
+        payload = {
+            "command": "second-brain retrieval benchmark proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _RETRIEVAL_BENCHMARK_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _RETRIEVAL_BENCHMARK_GUARDRAILS}
+    human = [
+        f"Retrieval benchmark proof passed={proof['proof_passed']}"
+        f" (modes={proof['all_three_modes_compared']}, semantic={proof['semantic_available']},"
+        f" guard_clean={proof['rows_persisted_guard_clean']}, blocked_path={proof['semantic_blocked_path_status']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 

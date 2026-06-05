@@ -247,6 +247,28 @@ executing/scoring the set against the index (`eval_runs`) is a later prompt. No 
   `eval_sets` + `eval_cases` receipts, unsafe/unlinked/excluded-family node exclusion, and no raw source
   ref emitted; persists nothing to the operator DB.
 
+## Deterministic vs semantic benchmark (Prompt 25)
+
+The `second-brain retrieval benchmark` group **benchmarks the three retrieval modes — deterministic,
+semantic, hybrid — against each other** over the approved corpus and emits **comparative, bucketed,
+metadata-only metrics**. It answers "does the semantic/hybrid path add retrieval value over the
+deterministic baseline?" — a measurement leaf that assembles no answer (`assembles_final_answer=false`)
+and never routes semantic context into an answer / Research Packet / Evaluation path. Probes are built at
+runtime from each approved node's already-redacted excerpt and are **never persisted or emitted**; only
+seven bucketed `(metric, mode)` rows reach the V38 `benchmark_runs` table.
+
+- `benchmark build [--project P] [--name NAME]` — runs the deterministic baseline once and one advisory
+  semantic query per probe over the applied vector index, then emits a metadata-only summary
+  (`status` built/blocked/empty, `probe_count`, `metric_row_count`, per-mode `mode_metrics`, semantic
+  hit-rate, warnings). The semantic side degrades **fail-closed** (a `blocked` `semantic_status`) when the
+  SDK / applied index is absent — the deterministic baseline is unaffected. The benchmark name is
+  **hashed** (never stored raw); **persists nothing** to the operator DB. On the operator DB (no approved
+  outputs) the benchmark is honestly `empty`. Exit 0 on success; 3 fail-closed.
+- `benchmark proof` — demonstrates all three modes compared over an applied index, guard-clean
+  metadata-only `benchmark_runs` receipts (all 23 `CHECK(=0)` guards 0; `semantic_retrieval_bypassed_policy`
+  0), semantic floored at review tier 2, the blocked-semantic fail-closed path, unsafe-node exclusion, and
+  no raw query/probe/content/source ref emitted; persists nothing to the operator DB.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

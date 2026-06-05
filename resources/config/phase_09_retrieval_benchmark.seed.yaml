@@ -1,0 +1,18 @@
+# Phase 09 Prompt 25 — deterministic vs semantic benchmark (resolved values; advisory).
+# Benchmarks the three retrieval modes (deterministic, semantic, hybrid) against each other over the
+# approved Obsidian + reviewed-memory corpus. Probes are built at runtime from each approved node's
+# already-redacted excerpt and are never persisted; only bucketed comparative metric labels are stored
+# (metadata-only, guard-clean second_brain_retrieval_benchmark_runs rows). Read-only by default — the
+# builder persists nothing unless emit_receipt is set. The benchmark assembles no final answer.
+version: phase_09_retrieval_benchmark_v1
+
+default_benchmark_name: approved_retrieval_benchmark
+# Modes benchmarked, in report order. Semantic + hybrid degrade fail-closed when the optional
+# LlamaIndex SDK or an applied vector index is absent (recorded as a blocked semantic_status).
+modes:
+  - deterministic
+  - semantic
+  - hybrid
+# Cap on the number of approved nodes probed per run (no silent truncation — the cap is surfaced as a
+# warning when the corpus is larger). Each probe runs one advisory semantic query.
+max_probes: 50

@@ -1,0 +1,45 @@
+{
+  "command": "second-brain retrieval benchmark build",
+  "phase": "09",
+  "generated_utc": "2026-06-05T09:16:02.212881+00:00",
+  "repo_sha": "28853e6f6b321a01360172f867c3ff1bea762ca7",
+  "status": "empty",
+  "bench_run_id": "bmk_cf7bb3ce03c61c47892cbf2179b8ab03",
+  "eval_set_id": "res_cf7bb3ce03c61c47892cbf2179b8ab03",
+  "name_hash": "1e9b5a985b5721c8bd94729edb774261801625cd39a0d675",
+  "schema_version": 38,
+  "project_key": null,
+  "manifest_id": "asm_e3b0c44298fc1c149afbf4c8996fb924",
+  "config_snapshot_id": "none",
+  "modes": [
+    "deterministic",
+    "semantic",
+    "hybrid"
+  ],
+  "probe_count": 0,
+  "deterministic_authoritative": true,
+  "semantic_advisory_only": true,
+  "assembles_final_answer": false,
+  "semantic_min_review_tier": 2,
+  "mode_metrics": null,
+  "metric_row_count": 0,
+  "warnings": [
+    "no_approved_outputs"
+  ],
+  "policy_version": "phase_09_retrieval_benchmark_v1",
+  "contract_version": "1.4.0-phase-09",
+  "receipt_emitted": false,
+  "read_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "no_final_answer": true,
+    "no_semantic_retrieval_bypass": true,
+    "approved_outputs_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "preserve_review_tier_confidence_source_refs_freshness": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

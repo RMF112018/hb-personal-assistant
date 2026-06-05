@@ -1,0 +1,99 @@
+{
+  "prompt": "Phase 09 Prompt 25 — Deterministic vs Semantic Benchmark",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "28853e6f6b321a01360172f867c3ff1bea762ca7",
+  "schema_version": 38,
+  "objective": "Benchmark deterministic vs semantic vs hybrid retrieval over the approved corpus — comparative, bucketed, metadata-only metrics; advisory (assembles_final_answer=false), read-only by default, fail-closed.",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/retrieval/benchmark.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_retrieval_benchmark_contract.json"],
+    "new_seeds": ["resources/config/phase_09_retrieval_benchmark.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_retrieval_benchmark.py"],
+    "migrator_change": "None — reuses the existing V38 second_brain_retrieval_benchmark_runs table; schema stays 38, contract table count stays 190.",
+    "embeddings": "Advisory semantic path embeds probes via the applied vector index (LlamaIndex / bge-small or MockEmbedding offline); deterministic baseline uses no embeddings. Probes are runtime-only and never persisted."
+  },
+  "design": {
+    "modes_compared": ["deterministic", "semantic", "hybrid"],
+    "deterministic": "RetrievalBroker.retrieve(...) — authoritative, query-free corpus baseline (computed once).",
+    "semantic": "One advisory _semantic_query per runtime probe over the applied vector index; floored at review tier 2, source-linked, re-validated no-raw; fail-closed (blocked semantic_status) when the SDK / applied index is absent.",
+    "hybrid": "Deterministic + net-new advisory semantic (semantic refs are hashed, disjoint from the deterministic raw-ref space).",
+    "probes": "Built at runtime from each approved node's already-redacted excerpt (_build_probes); used in-memory only as semantic queries; never persisted or emitted. Capped at max_probes (50) with a surfaced warning — no silent truncation.",
+    "metrics": "Seven bucketed (metric, mode) rows: result_count:{deterministic,semantic,hybrid}, semantic_hit_rate:hybrid, semantic_lift:hybrid, tier_floor:semantic, semantic_status:hybrid. Stored to benchmark_runs (run_id, eval_set_id linkage, config_snapshot_id, metric_name, metric_value_label) — metadata-only, guard-clean.",
+    "doctrine": "Measurement leaf — assembles_final_answer=false and the semantic_retrieval_bypassed_policy guard stays 0; semantic context never reaches an answer / Research Packet / Evaluation path from here.",
+    "read_only": "emit_receipt defaults False (no operator-DB write); receipt persistence (benchmark_runs, metadata-only, guard-clean) exercised in the proof on a temp DB."
+  },
+  "operator_db_outcome": {
+    "benchmark_build_status": "empty",
+    "probe_count": 0,
+    "metric_row_count": 0,
+    "warnings": ["no_approved_outputs"],
+    "rationale": "The operator DB has no approved Obsidian/reviewed-memory outputs -> no probes -> the benchmark is honestly empty. emit_receipt defaulted False -> no persist.",
+    "benchmark_runs_rows": 0,
+    "schema_version": 38,
+    "operator_db_mutated": false
+  },
+  "benchmark_proof": {
+    "command": "second-brain retrieval benchmark proof --json",
+    "proof_passed": true,
+    "status": "built",
+    "probe_count": 3,
+    "metric_row_count": 7,
+    "all_three_modes_compared": true,
+    "semantic_available": true,
+    "semantic_floored_tier_2": true,
+    "assembles_final_answer": false,
+    "rows_persisted_guard_clean": true,
+    "semantic_retrieval_bypassed_policy": 0,
+    "no_raw_emitted": true,
+    "semantic_blocked_path_status": "blocked",
+    "unsafe_node_excluded": true
+  },
+  "real_huggingface_smoke": {
+    "file": "validation-outputs-prompt-25/real-huggingface-benchmark-smoke.json",
+    "embedding_backend": "BAAI/bge-small-en-v1.5 (real)",
+    "apply_embedding_dim": 384,
+    "benchmark_status": "built",
+    "probe_count": 3,
+    "metric_row_count": 7,
+    "semantic_status": "available",
+    "assembles_final_answer": false,
+    "note": "End-to-end real LlamaIndex + HuggingFace pipeline: applied index embedded dim-384 vectors; the benchmark compared all three modes and emitted seven bucketed metric rows."
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "Success: no issues found in 293 source files",
+    "pytest_not_live_integration_manual": "3180 passed, 0 failed",
+    "construction_agent_validate": "exit 0 (4/4 checks: schema, source_registry, review_rules, model_routing; schema 38)",
+    "data_quality_table_inventory": "exit 0 (schema 38; contract_table_count=190; live_table_count=186; in_db_not_in_contract=[] -> 0 unmapped live tables)",
+    "data_quality_no_writeback_proof": "exit 0 (ok=true, proof_passed=true)",
+    "phase_08a_gates": "exit 0 (ok=true, readiness_overstated=false)",
+    "phase_08b_gates": "exit 0 (ok=true, readiness_overstated=false)",
+    "phase_08c_gates": "SKIPPED (its append-only financial ledger mutates the operator DB ~1,299 rows/call — disclosed defect from Prompts 02/05)",
+    "phase_08d_gates": "exit 0 (proof_passed=true, ok=true, readiness_overstated=false)",
+    "mcp_no_raw_access": "exit 0 (proof_passed=true)",
+    "mcp_no_writeback": "exit 0 (proof_passed=true)",
+    "retrieval_benchmark_build": "exit 0 (operator DB: status=empty, 0 probes, 0 rows, no persist)",
+    "retrieval_benchmark_proof": "exit 0 (proof_passed=true; 3 probes, all three modes compared, semantic available + floored tier 2, guard-clean receipts, blocked-semantic fail-closed path, unsafe nodes excluded)",
+    "repo_sensitive_scan_and_no_writeback_guard_tests": "pass"
+  },
+  "guard_columns_result": {
+    "benchmark_runs_guard_sum_on_persisted_rows": 0,
+    "semantic_retrieval_bypassed_policy": 0,
+    "note": "All 23 CHECK(=0) guard columns remain 0 on the proof-persisted rows; no raw query/content/probe/source-ref/token/url persisted or emitted (only hashes + bucketed labels)."
+  },
+  "deferred": [
+    "Executing/scoring the eval set against the index (eval_runs + pass/fail) — a later prompt.",
+    "Wiring semantic context into the default synthesize_answer (A04) — deferred; must route via Research Packet / Evaluation if ever adopted.",
+    "generated_outputs (research-packet) loader — carried as generated_outputs_loader_deferred."
+  ],
+  "blocker_classifications": {
+    "operator_corpus_empty": "Not a defect — the operator DB has no approved outputs, so the benchmark is honestly empty/read-only; the proof exercises the full path on a temp applied index.",
+    "semantic_blocked_without_applied_index": "Expected fail-closed degradation — recorded as a blocked semantic_status; the deterministic baseline is unaffected."
+  }
+}
