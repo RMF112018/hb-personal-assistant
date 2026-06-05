@@ -142,12 +142,12 @@ def load_source_linked_retrieval_proof_seed() -> dict[str, Any]:
     return data
 
 
-def _coverage_layers(db_path: str | None, project_key: str | None) -> dict[str, Any]:
-    """Best-effort coverage-layer distinction (deterministic / manifest / vector-indexed / deferred)."""
+def _coverage_parity(db_path: str | None, project_key: str | None) -> dict[str, Any]:
+    """Best-effort coverage-parity distinction (deterministic / manifest / vector-indexed / deferred)."""
     try:
-        from ..corpus_balance_mart import build_retrieval_coverage_layers
+        from ..corpus_balance_mart import build_coverage_parity_report
 
-        return build_retrieval_coverage_layers(db_path, project_key=project_key)
+        return build_coverage_parity_report(db_path, project_key=project_key)
     except Exception:
         return {}
 
@@ -245,7 +245,7 @@ def build_source_linked_retrieval_proof(
         "unlinked_count": ls["unlinked_count"],
         "proof_passed": proof_passed,
         "per_family": ls["per_family"],
-        "coverage_layers": _coverage_layers(db_path, project_key),
+        "coverage_parity": _coverage_parity(db_path, project_key),
         "deterministic_count": meta.get("deterministic_count"),
         "semantic_count": meta.get("semantic_count"),
         "semantic_skip_reason": meta.get("semantic_skip_reason"),

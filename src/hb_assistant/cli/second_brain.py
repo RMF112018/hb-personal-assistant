@@ -1298,6 +1298,104 @@ def retrieval_no_raw_vector_index_proof(
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
 
 
+@retrieval_app.command("reader-registry-parity-proof")
+def retrieval_reader_registry_parity_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the reader-registry-parity proof to evidence."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Prove the deterministic retrieval allowlist and the reader registry are in parity.
+
+    Passes iff every allowlisted family has a registered reader (or a documented deferral) and no
+    reader is registered for a non-allowlisted family. Static, read-only, metadata-only. Exit 0/3.
+    """
+    from hb_assistant.construction.second_brain.retrieval.coverage_parity import (
+        build_reader_registry_parity_proof,
+    )
+
+    result = build_reader_registry_parity_proof(write_evidence=evidence)
+    human = [
+        f"Reader registry parity passed={result['proof_passed']} "
+        f"(reader {result['deterministic_reader_family_count']}/"
+        f"{result['deterministic_allowlisted_family_count']}, "
+        f"missing={result['missing_reader_families']})"
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
+@retrieval_app.command("approved-read-model-manifest-proof")
+def retrieval_approved_read_model_manifest_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the approved-read-model-manifest proof."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Prove the ``approved_read_models`` manifest category admits eligible, metadata-only, guard-clean
+    entries while rejecting high-impact / review-required / excluded / raw-shape candidates. Exit 0/3."""
+    from hb_assistant.construction.second_brain.retrieval.source_manifest import (
+        build_approved_read_model_manifest_proof,
+    )
+
+    result = build_approved_read_model_manifest_proof(write_evidence=evidence)
+    human = [
+        f"Approved read-model manifest proof passed={result['proof_passed']} "
+        f"(approved_read_models={result['approved_read_models_approved_count']}, "
+        f"metadata_only_row={result['manifest_row_metadata_only']})"
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
+@retrieval_app.command("read-model-vector-loader-proof")
+def retrieval_read_model_vector_loader_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the read-model-vector-loader proof."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Prove the read-model loader bridges eligible deterministic items into safe, in-memory-only vector
+    nodes (no-raw, nothing persisted to SQLite), excludes review-required / high-impact items, and
+    rejects raw/excluded candidates. Exit 0/3."""
+    from hb_assistant.construction.second_brain.retrieval.read_model_loader import (
+        build_read_model_vector_loader_proof,
+    )
+
+    result = build_read_model_vector_loader_proof(write_evidence=evidence)
+    human = [
+        f"Read-model vector loader proof passed={result['proof_passed']} "
+        f"(families={result['indexed_family_count']}, nodes={result['node_count']}, "
+        f"persists_nothing={result['loader_persists_nothing_to_sqlite']})"
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
+@retrieval_app.command("coverage-parity-closeout")
+def retrieval_coverage_parity_closeout(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the coverage-parity closeout to evidence."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Aggregate the coverage-parity report (deterministic / approved-manifest / vector-indexed /
+    memory / deferred planes) with the three approved-read-model proofs into one closeout. Read-only;
+    reports empties as deferred (no readiness overstatement). Exit 0/3."""
+    from hb_assistant.construction.second_brain.retrieval.coverage_parity import (
+        build_coverage_parity_closeout,
+    )
+
+    result = build_coverage_parity_closeout(write_evidence=evidence)
+    rep = result.get("coverage_parity", {})
+    human = [
+        f"Coverage parity closeout ok={result['closeout_ok']} "
+        f"(parity_ok={rep.get('coverage_parity_ok')}, "
+        f"reader={rep.get('deterministic_reader_family_count')}/"
+        f"{rep.get('deterministic_allowlisted_family_count')}, "
+        f"manifest={rep.get('approved_manifest_family_count')}, "
+        f"vector={rep.get('vector_indexed_family_count')})"
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["closeout_ok"] else 3)
+
+
 @preference_app.command("capture")
 def preference_capture(
     preference_key: str = typer.Option(..., "--key", help="Preference key (presentation only)."),

@@ -2,10 +2,18 @@
 
 - operator_status_ok: True
 - overall_status: advisory_ready
-- generated_utc: 2026-06-05T20:17:48.233885+00:00
+- generated_utc: 2026-06-05T23:50:21.142352+00:00
 - schema_ready: True | gates_ok: True | all_contracts_present: True
 - readiness_overstated: False (must be false)
 - surface_count: 24 | with status/build/proof/eval/gates: {'status': 7, 'build': 14, 'proof': 22, 'eval': 0, 'gates': 1}
+- substrate: populated
+
+## Readiness Categories (Prompt 40; truthful, no overstatement)
+- safe_advisory_readiness: False
+- semantic_retrieval_readiness: False
+- vector_apply_readiness: True
+- production_readiness: False
+- deferred_limitations: ['external embedding providers (policy-gated; deferred per embedding policy)', 'full synthesis / claim / determination flows (advisory signals and review burden only)', 'MCP dispatch of Phase 09 actions (08D isolation preserved; no Phase 09 in MCP surface)', 'richer operator UX (Obsidian commands, TUI) over review / retrieval surfaces', 'persist of review burden clusters (current is read-only mart + proof)', 'using clusters as additional corpus family for retrieval']
 
 ## Surfaces (repo-consistent CLI command inventory)
 

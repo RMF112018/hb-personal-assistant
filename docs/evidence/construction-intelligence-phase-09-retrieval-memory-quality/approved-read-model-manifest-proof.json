@@ -1,0 +1,82 @@
+{
+  "proof": "phase_09_approved_read_model_manifest",
+  "command": "second-brain retrieval approved-read-model-manifest-proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T23:50:23.096740+00:00",
+  "repo_sha": "5a71cc5ec679d598870ff48d731288599d8d1d11",
+  "approved_read_models_category_present": true,
+  "approved_read_models_approved_count": 5,
+  "approved_family_count": 1,
+  "approved_ref_count": 5,
+  "manifest_row_persisted": true,
+  "manifest_row_metadata_only": true,
+  "no_raw_emitted": true,
+  "case_count": 6,
+  "cases": [
+    {
+      "name": "safe_read_model_entry",
+      "expected_approved": true,
+      "approved": true,
+      "violations": [],
+      "passed": true
+    },
+    {
+      "name": "review_required_unresolved",
+      "expected_approved": false,
+      "approved": false,
+      "violations": [
+        "excluded_review_status:review_required",
+        "unresolved_high_impact"
+      ],
+      "passed": true
+    },
+    {
+      "name": "tier_3_unaccepted",
+      "expected_approved": false,
+      "approved": false,
+      "violations": [
+        "excluded_review_status:review_required",
+        "unresolved_high_impact"
+      ],
+      "passed": true
+    },
+    {
+      "name": "excluded_family",
+      "expected_approved": false,
+      "approved": false,
+      "violations": [
+        "excluded_family:raw_email_body"
+      ],
+      "passed": true
+    },
+    {
+      "name": "forbidden_field",
+      "expected_approved": false,
+      "approved": false,
+      "violations": [
+        "forbidden_field:content_excerpt_redacted"
+      ],
+      "passed": true
+    },
+    {
+      "name": "raw_content_shape",
+      "expected_approved": false,
+      "approved": false,
+      "violations": [
+        "raw_content_shape:content_hash"
+      ],
+      "passed": true
+    }
+  ],
+  "metadata_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "exclude_unresolved_high_impact": true,
+    "metadata_only_persisted_rows": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

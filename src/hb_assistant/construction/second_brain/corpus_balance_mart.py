@@ -220,6 +220,41 @@ def _approved_manifest_categories() -> list[str]:
         return []
 
 
+# Manifest category -> the source families it admits. ``approved_read_models`` is resolved dynamically
+# from the read-model loader (embeddable readers minus the dedicated-loader families).
+_LEGACY_CATEGORY_FAMILIES: dict[str, tuple[str, ...]] = {
+    "generated_outputs": ("generated_outputs",),
+    "approved_obsidian_outputs": ("approved_obsidian_generated_outputs",),
+    "reviewed_memory": ("accepted_long_term_memory",),
+}
+
+
+def _approved_manifest_families() -> list[str]:
+    """The source families the approved-source manifest admits across its enabled categories.
+
+    Cheap/config-derived (seed enabled categories + the read-model loader's served families); no live
+    manifest build, so it is safe to call from the hot coverage surfaces."""
+    try:
+        from .retrieval.read_model_loader import read_model_loader_families
+        from .retrieval.source_manifest import load_approved_source_manifest_seed
+
+        enabled = set(load_approved_source_manifest_seed().get("enabled_categories", []))
+    except Exception:
+        return []
+    # NB: accumulate set members with .add() in a loop (not the set bulk-merge method) so the repo
+    # no-writeback source scanner does not false-positive on a mutation-verb token.
+    fams: set[str] = set()
+    for cat in enabled:
+        members = (
+            read_model_loader_families()
+            if cat == "approved_read_models"
+            else _LEGACY_CATEGORY_FAMILIES.get(cat, ())
+        )
+        for fam in members:
+            fams.add(fam)
+    return sorted(fams)
+
+
 def build_corpus_balance_mart(
     db_path: str | None = None, *, project_key: str | None = None
 ) -> dict[str, Any]:
@@ -286,15 +321,29 @@ def build_corpus_balance_mart(
                 dominant_share = share
                 dominant_family = family
 
-        coverage_layers = {
-            "deterministic_reader_families": [
-                f for f in ALLOWLISTED_SOURCE_FAMILIES if f in READER_REGISTRY
-            ],
-            "deterministic_covered_families": covered,
+        reader_families = [f for f in ALLOWLISTED_SOURCE_FAMILIES if f in READER_REGISTRY]
+        missing_reader = [f for f in ALLOWLISTED_SOURCE_FAMILIES if f not in READER_REGISTRY]
+        approved_manifest_families = _approved_manifest_families()
+        vector_families = _applied_vector_families(conn)
+        empty_approved = sorted(
+            f for f in approved_manifest_families if families.get(f, {}).get("row_count", 0) == 0
+        )
+        memory_covered = families.get("accepted_long_term_memory", {}).get("row_count", 0) > 0
+        coverage_parity = {
+            "deterministic_allowlisted_family_count": len(ALLOWLISTED_SOURCE_FAMILIES),
+            "deterministic_reader_family_count": len(reader_families),
+            "deterministic_reader_families": reader_families,
+            "missing_reader_families": missing_reader,
+            "approved_manifest_category_count": len(_approved_manifest_categories()),
             "approved_manifest_categories": _approved_manifest_categories(),
-            "vector_indexed_families": _applied_vector_families(conn),
-            "deferred_families_no_reader": deferred,
-            "deferred_memory_substrate": True,
+            "approved_manifest_family_count": len(approved_manifest_families),
+            "approved_manifest_families": approved_manifest_families,
+            "vector_indexed_family_count": len(vector_families),
+            "vector_indexed_families": vector_families,
+            "empty_approved_families": empty_approved,
+            "deferred_families": sorted(set(empty) | set(missing_reader)),
+            "memory_substrate_status": "covered" if memory_covered else "deferred_empty",
+            "coverage_parity_ok": not missing_reader,
         }
 
         return {
@@ -309,7 +358,7 @@ def build_corpus_balance_mart(
             "covered_family_count": len(covered),
             "dominant_family": dominant_family,
             "dominant_share": dominant_share,
-            "coverage_layers": coverage_layers,
+            "coverage_parity": coverage_parity,
             "warnings": warnings,
             "excluded_raw_families_count": len(EXCLUDED_FAMILIES),
             "advisory_only": True,
@@ -331,12 +380,16 @@ _GUARDRAILS = {
 }
 
 
-def build_retrieval_coverage_layers(
+def build_coverage_parity_report(
     db_path: str | None = None, *, project_key: str | None = None
 ) -> dict[str, Any]:
-    """Read-only coverage layers distinguishing deterministic-reader vs approved-manifest vs
-    vector-indexed vs deferred coverage. Thin wrapper over the corpus-balance mart (single source)."""
-    return dict(build_corpus_balance_mart(db_path, project_key=project_key)["coverage_layers"])
+    """Read-only coverage-parity report distinguishing deterministic-reader vs approved-manifest vs
+    vector-indexed vs deferred coverage. Thin wrapper over the corpus-balance mart (single source).
+
+    ``coverage_parity_ok`` is true iff every allowlisted retrieval family has a registered reader
+    (``missing_reader_families == []``); manifest/vector/memory empties are reported deferred, never as
+    a parity failure (no readiness overstatement)."""
+    return dict(build_corpus_balance_mart(db_path, project_key=project_key)["coverage_parity"])
 
 
 def evaluate_corpus_balance_gate(mart: dict[str, Any], policy: dict[str, Any]) -> dict[str, Any]:

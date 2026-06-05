@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 
 from hb_assistant.construction.second_brain.corpus_balance_mart import (
-    build_retrieval_coverage_layers,
+    build_coverage_parity_report,
 )
 from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
     load_embedding_vector_policy_contract,
@@ -209,15 +209,34 @@ def test_vector_dry_run_reports_five_plus_families(tmp_path: Path) -> None:
     assert plan["vectors_persisted_to_sqlite"] is False
 
 
-def test_coverage_layers_distinguish_layers(tmp_path: Path) -> None:
+def test_coverage_parity_report_exact_fields(tmp_path: Path) -> None:
     db = str(tmp_path / "cov.sqlite3")
     _seed_five_eligible_families(db)
-    layers = build_retrieval_coverage_layers(db)
-    # all 10 allowlisted families are now reader-backed; none deferred for lack of a reader
-    assert len(layers["deterministic_reader_families"]) == 10
-    assert layers["deferred_families_no_reader"] == []
-    assert "approved_read_models" in layers["approved_manifest_categories"]
-    assert layers["deferred_memory_substrate"] is True
+    rep = build_coverage_parity_report(db)
+    # exact objective field set is present
+    for field in (
+        "deterministic_allowlisted_family_count",
+        "deterministic_reader_family_count",
+        "missing_reader_families",
+        "approved_manifest_family_count",
+        "approved_manifest_families",
+        "vector_indexed_family_count",
+        "vector_indexed_families",
+        "empty_approved_families",
+        "deferred_families",
+        "coverage_parity_ok",
+    ):
+        assert field in rep
+    # all 10 allowlisted families are reader-backed -> parity holds
+    assert rep["deterministic_allowlisted_family_count"] == 10
+    assert rep["deterministic_reader_family_count"] == 10
+    assert rep["missing_reader_families"] == []
+    assert rep["coverage_parity_ok"] is True
+    assert "approved_read_models" in rep["approved_manifest_categories"]
+    # the read-model families are admitted by the manifest
+    assert {"phase_07d_source_evidence_trails", "cross_source_relationships"} <= set(
+        rep["approved_manifest_families"]
+    )
 
 
 def test_source_linked_proof_has_no_no_read_model_warnings(tmp_path: Path) -> None:
@@ -232,4 +251,79 @@ def test_source_linked_proof_has_no_no_read_model_warnings(tmp_path: Path) -> No
         assert not any(
             w.startswith(f"no_read_model:{fam}") for w in result["coverage_warnings"]
         )
-    assert "coverage_layers" in result
+    assert "coverage_parity" in result
+    assert result["coverage_parity"]["coverage_parity_ok"] is True
+
+
+# --- dedicated proof surfaces ------------------------------------------------------------------------
+
+# Genuine raw-content / secret value shapes (NOT policy identifiers like the family name
+# "raw_email_body", which legitimately appears in rejected-case reasons).
+_RAW_TOKENS = ("Bearer ", "BEGIN ", "PRIVATE KEY", "access_token", "client_secret", "?sig=", "?token=")
+
+
+def test_reader_registry_parity_proof_passes() -> None:
+    from hb_assistant.construction.second_brain.retrieval.coverage_parity import (
+        build_reader_registry_parity_proof,
+    )
+
+    proof = build_reader_registry_parity_proof(write_evidence=False)
+    assert proof["proof_passed"] is True
+    assert proof["missing_reader_families"] == []
+    assert proof["non_allowlisted_reader_families"] == []
+    assert proof["deterministic_reader_family_count"] == proof["deterministic_allowlisted_family_count"]
+
+
+def test_approved_read_model_manifest_proof_passes_and_rejects_unsafe(tmp_path: Path) -> None:
+    from hb_assistant.construction.second_brain.retrieval.source_manifest import (
+        build_approved_read_model_manifest_proof,
+    )
+
+    proof = build_approved_read_model_manifest_proof(
+        evidence_dir=str(tmp_path), write_evidence=True
+    )
+    assert proof["proof_passed"] is True
+    assert proof["approved_read_models_category_present"] is True
+    assert proof["approved_read_models_approved_count"] >= 5
+    assert proof["manifest_row_metadata_only"] is True
+    # every planted high-impact / review-required / excluded / raw-shape case is rejected
+    by_name = {c["name"]: c for c in proof["cases"]}
+    for name in ("review_required_unresolved", "tier_3_unaccepted", "excluded_family",
+                 "forbidden_field", "raw_content_shape"):
+        assert by_name[name]["passed"] is True
+    # evidence artifacts are guard-clean
+    text = (tmp_path / "approved-read-model-manifest-proof.json").read_text() + (
+        tmp_path / "approved-read-model-manifest-proof.md"
+    ).read_text()
+    assert not any(t in text for t in _RAW_TOKENS)
+
+
+def test_read_model_vector_loader_proof_passes(tmp_path: Path) -> None:
+    from hb_assistant.construction.second_brain.retrieval.read_model_loader import (
+        build_read_model_vector_loader_proof,
+    )
+
+    proof = build_read_model_vector_loader_proof(evidence_dir=str(tmp_path), write_evidence=True)
+    assert proof["proof_passed"] is True
+    assert proof["indexed_family_count"] >= 5
+    assert proof["review_required_high_impact_excluded"] is True
+    assert proof["loader_persists_nothing_to_sqlite"] is True
+    assert proof["rejects_raw_shape_candidate"] is True
+    assert proof["rejects_excluded_family_candidate"] is True
+    text = (tmp_path / "read-model-vector-loader-proof.json").read_text() + (
+        tmp_path / "read-model-vector-loader-proof.md"
+    ).read_text()
+    assert not any(t in text for t in _RAW_TOKENS)
+
+
+def test_coverage_parity_closeout_ok(tmp_path: Path) -> None:
+    from hb_assistant.construction.second_brain.retrieval.coverage_parity import (
+        build_coverage_parity_closeout,
+    )
+
+    db = str(tmp_path / "closeout.sqlite3")
+    _seed_five_eligible_families(db)
+    closeout = build_coverage_parity_closeout(db, write_evidence=False)
+    assert closeout["closeout_ok"] is True
+    assert closeout["coverage_parity"]["coverage_parity_ok"] is True
+    assert all(closeout["sub_proofs_passed"].values())

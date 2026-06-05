@@ -600,3 +600,166 @@ def build_approved_source_manifest_proof(
         proof["proof_md_path"] = str(out_dir / _PROOF_MD)
 
     return proof
+
+
+# --- Approved read-model manifest proof --------------------------------------------------------------
+
+_RM_PROOF_JSON = "approved-read-model-manifest-proof.json"
+_RM_PROOF_MD = "approved-read-model-manifest-proof.md"
+
+
+def _read_model_proof_cases(contract: dict[str, Any]) -> list[dict[str, Any]]:
+    """Planted read-model manifest candidates exercising the approval / no-raw guardrail."""
+
+    def _safe() -> dict[str, Any]:
+        return {
+            "source_family": "phase_07d_source_evidence_trails",
+            "source_ref": "et-1",
+            "content_hash": "f" * 64,
+            "review_tier": 1,
+            "review_status": "auto_advisory",
+            "confidence_class": "deterministic",
+            "review_required": False,
+        }
+
+    synthetic_secret = "Bea" + "rer " + "z" * 32
+    planted: list[tuple[str, dict[str, Any]]] = [
+        ("review_required_unresolved", {**_safe(), "review_required": True, "review_tier": 3,
+                                        "review_status": "review_required"}),
+        ("tier_3_unaccepted", {**_safe(), "review_tier": 3, "review_status": "review_required"}),
+        ("excluded_family", {**_safe(), "source_family": "raw_email_body"}),
+        ("forbidden_field", {**_safe(), "content_excerpt_redacted": "x"}),
+        ("raw_content_shape", {**_safe(), "content_hash": synthetic_secret}),
+    ]
+    cases: list[dict[str, Any]] = []
+    v = validate_manifest_entry(_safe(), contract=contract)
+    cases.append(
+        {"name": "safe_read_model_entry", "expected_approved": True, "approved": not v,
+         "violations": v, "passed": not v}
+    )
+    for name, entry in planted:
+        v = validate_manifest_entry(entry, contract=contract)
+        cases.append(
+            {"name": name, "expected_approved": False, "approved": not v, "violations": v,
+             "passed": bool(v)}
+        )
+    return cases
+
+
+def build_approved_read_model_manifest_proof(
+    *, evidence_dir: str | None = None, write_evidence: bool = True
+) -> dict[str, Any]:
+    """Fail-closed proof: over a controlled seeded DB the manifest's ``approved_read_models`` category
+    is populated with eligible, metadata-only, guard-clean entries, while planted high-impact /
+    review-required / excluded / raw-shape candidates are rejected. No raw content is emitted; persisted
+    manifest rows remain metadata-only."""
+    import tempfile
+
+    from .read_model_loader import _proof_db
+
+    contract = load_approved_source_manifest_contract()
+    cases = _read_model_proof_cases(contract)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        db = _proof_db(tmp)
+        manifest = build_approved_source_manifest(db_path=db)
+        manifest_id = persist_approved_source_manifest(
+            db, manifest, policy_version=str(manifest["policy_version"])
+        )
+        conn = sqlite3.connect(db)
+        try:
+            row = conn.execute(
+                f"SELECT approved_family_count, approved_ref_count FROM {_MANIFEST_TABLE} "
+                "WHERE manifest_id = ?",
+                (manifest_id,),
+            ).fetchone()
+            row_cols = {str(r[1]) for r in conn.execute(f"PRAGMA table_info({_MANIFEST_TABLE})")}
+        finally:
+            conn.close()
+
+    fam = manifest["families"].get(_READ_MODELS, {})
+    category_present = _READ_MODELS in manifest["families"]
+    category_approved = int(fam.get("approved_count", 0)) >= 1
+    cases_pass = all(c["passed"] for c in cases)
+    persisted = row is not None and int(row[1]) >= 1
+    # Persisted manifest row must carry no raw/excerpt columns (metadata-only summary by construction).
+    forbidden_cols = {"summary_redacted", "content_excerpt_redacted", "raw_body", "text_redacted"}
+    metadata_only_row = not (forbidden_cols & row_cols)
+    serialized_manifest = json.dumps(manifest, default=str)
+    no_raw = not _FORBIDDEN.search(serialized_manifest)
+
+    proof_passed = bool(
+        category_present
+        and category_approved
+        and cases_pass
+        and persisted
+        and metadata_only_row
+        and no_raw
+    )
+
+    proof: dict[str, Any] = {
+        "proof": "phase_09_approved_read_model_manifest",
+        "command": "second-brain retrieval approved-read-model-manifest-proof",
+        "phase": "09",
+        "proof_passed": proof_passed,
+        "generated_utc": _now(),
+        "repo_sha": _repo_sha(),
+        "approved_read_models_category_present": category_present,
+        "approved_read_models_approved_count": int(fam.get("approved_count", 0)),
+        "approved_family_count": int(manifest["approved_family_count"]),
+        "approved_ref_count": int(manifest["approved_ref_count"]),
+        "manifest_row_persisted": persisted,
+        "manifest_row_metadata_only": metadata_only_row,
+        "no_raw_emitted": no_raw,
+        "case_count": len(cases),
+        "cases": cases,
+        "metadata_only": True,
+        "guardrails": {
+            "read_only": True,
+            "no_raw": True,
+            "no_writeback": True,
+            "exclude_unresolved_high_impact": True,
+            "metadata_only_persisted_rows": True,
+            "local_first": True,
+            "fail_closed": True,
+        },
+    }
+
+    if write_evidence:
+        out_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        serialized = json.dumps(proof, indent=2, default=str)
+        _assert_no_raw(serialized, "approved-read-model-manifest proof json")
+        (out_dir / _RM_PROOF_JSON).write_text(serialized + "\n", encoding="utf-8")
+        markdown = _render_read_model_proof_md(proof)
+        _assert_no_raw(markdown, "approved-read-model-manifest proof markdown")
+        (out_dir / _RM_PROOF_MD).write_text(markdown, encoding="utf-8")
+        proof["proof_path"] = str(out_dir / _RM_PROOF_JSON)
+        proof["proof_md_path"] = str(out_dir / _RM_PROOF_MD)
+
+    return proof
+
+
+def _render_read_model_proof_md(proof: dict[str, Any]) -> str:
+    lines = [
+        "# Phase 09 — Approved Read-Model Manifest Proof",
+        "",
+        f"- proof_passed: {proof['proof_passed']}",
+        f"- generated_utc: {proof['generated_utc']}",
+        f"- approved_read_models_category_present: {proof['approved_read_models_category_present']}",
+        f"- approved_read_models_approved_count: {proof['approved_read_models_approved_count']}",
+        f"- manifest_row_persisted: {proof['manifest_row_persisted']}",
+        f"- manifest_row_metadata_only: {proof['manifest_row_metadata_only']}",
+        f"- no_raw_emitted: {proof['no_raw_emitted']}",
+        "",
+        "## Approval / no-raw guardrail cases",
+        "",
+    ]
+    for c in proof["cases"]:
+        lines.append(
+            f"- [{'ok' if c['passed'] else 'FAIL'}] {c['name']}: "
+            f"expected_approved={c['expected_approved']} approved={c['approved']} "
+            f"violations={len(c['violations'])}"
+        )
+    lines.append("")
+    return "\n".join(lines)
