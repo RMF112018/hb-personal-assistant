@@ -94,8 +94,14 @@ See the runbook and the CI-like sequence in the implementation plan (includes th
 - New seed/contract load from installed package context.
 - Daily brief is summary-first capped exceptions (target text shape).
 - top_examples_json hash-only (prohibited fields absent in proof/tests).
+- Within each cluster, top examples are deduplicated by safe key (item_hash > source_ref_hash > composite of family+project+impact+conf+reason+freshness) so the operator sees unique hash-only examples; each cluster carries `unique_example_count` (distinct) alongside full `item_count`.
 - All no-raw/no-writeback/no-determination/source-linked guardrails and existing proofs pass.
 - Tests + full validation command matrix pass.
+
+Example cluster snippet (post-dedup):
+```json
+{ "cluster_id": "...", "item_count": 42, "unique_example_count": 3, "top_examples": [ {"item_hash":"h1", "source_family":"...", ...}, ... ] }
+```
 
 ## Stop conditions (observed)
 

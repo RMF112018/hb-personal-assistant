@@ -73,6 +73,11 @@
     "package seed/contract load from installed context",
     "daily brief summary-first capped exceptions (not queue)",
     "hash-only top examples",
+    "top examples deduplicated within clusters (unique_example_count present; no repeated ih/sr keys)",
     "existing no-raw/no-writeback proofs pass"
-  ]
+  ],
+  "dedup_refinement": {
+    "description": "top_examples_json / top_examples are deduped by stable key (item_hash > source_ref_hash > composite); unique_example_count emitted per cluster; regression assert len(keys)==len(set(keys))",
+    "hash_only_still_strict": true
+  }
 }

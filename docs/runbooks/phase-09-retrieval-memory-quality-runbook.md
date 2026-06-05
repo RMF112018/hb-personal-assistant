@@ -89,3 +89,7 @@ See the sibling runbooks and the per-prompt architecture notes (120–150 range)
 - Persist of burden clusters from the review CLI (current is read-only compute + proof).
 - Using the clusters table as an additional corpus family.
 - Richer operator UX (Obsidian commands, TUI) over the Typer review group.
+
+## Review burden clusters: deduplicated examples
+
+The `second-brain review clusters` (and `burden`) outputs include per-cluster `unique_example_count` and a deduplicated `top_examples` list (hash-only keys only: prefer item_hash, then source_ref_hash, safe composite otherwise). This is a quality refinement; policy, schema (V39), and guardrails are unchanged. The CLI human output uses `len(top_examples)` which now reflects uniques. See the architecture note + evidence for examples and the regression test asserting no repeated dedup keys.

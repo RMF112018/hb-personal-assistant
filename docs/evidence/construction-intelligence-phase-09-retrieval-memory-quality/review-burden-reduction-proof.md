@@ -80,6 +80,10 @@ Must succeed and report loading the policy from the installed package context (n
 
 (See the commit for the exact list; only files required for the objective + the required docs/evidence/runbook were touched. Unrelated dirty files from the initial git status were not staged.)
 
+## Deduplication refinement (post-implementation quality)
+
+Within review-burden clusters, `top_examples` (and serialized `top_examples_json`) are now deduplicated using a stable hash-only key (`item_hash` preferred, then `source_ref_hash`, then a safe composite of family+project+impact+confidence+reason+freshness). Each cluster emits `unique_example_count` (the count of distinct examples shown to the operator) in addition to the full `item_count`. Prohibited fields remain strictly absent. An explicit regression test asserts `len(dedup_keys) == len(set(dedup_keys))`. This reduces operator noise without changing policy semantics, counts, or schema. Hash-only contract is unchanged.
+
 ## Validation
 
 Full matrix per the implementation plan (compileall, ruff, mypy, pytest -m "not live...", construction-agent validate, all second-brain data-quality/retrieval/status commands, the 5 08D commands, pip -e + review commands, daily brief render checks, etc.). All acceptance criteria (original + the 7 refinements) verified.

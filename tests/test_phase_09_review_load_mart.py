@@ -124,3 +124,21 @@ def test_stale_schema_is_handled_gracefully(tmp_path: Path) -> None:
     assert proof["schema_version"] == 5
     assert proof["proof_passed"] is False  # below V37; review tables absent
     assert proof["mart"]["present_review_tables"] == 0
+
+
+def test_review_load_proof_attaches_burden_fields_including_unique_example_count(tmp_path: Path) -> None:
+    """The legacy review-load proof now carries burden keys (including unique_example_count post-dedup)."""
+    db = str(tmp_path / "rlm.db")
+    # minimal schema
+    from hb_assistant.store.migrator import SQLiteMigrator
+    SQLiteMigrator(db).apply()
+    proof = build_review_load_proof(db)
+    # promoted fields from burden
+    for k in ("advisory_retrieval_allowed", "blanket_review_block", "financial_review_burden", "high_impact_summary", "operator_visible_count", "suppressed_noise_count"):
+        assert k in proof
+    # unique_example_count lives on the attached burden mart clusters (when present)
+    burden = proof.get("review_burden_proof") or {}
+    for c in (burden.get("mart", {}).get("clusters") or burden.get("clusters") or [])[:1]:
+        if "item_count" in c:
+            assert "unique_example_count" in c
+            assert isinstance(c["unique_example_count"], int)

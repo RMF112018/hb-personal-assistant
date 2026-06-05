@@ -17,8 +17,10 @@ high_impact_always_visible: high-impact *categories and totals* are always prese
 only top clusters (capped to operator daily budget) are "visible" for operator action. Never
 silently hide high-impact counts.
 
-top_examples_json contains *only* hash-safe fields (no text, titles, emails, URLs, PII, bodies).
+top_examples (and top_examples_json) contain *only* hash-safe fields (no text, titles, emails, URLs, PII, bodies).
+Within each cluster, examples are deduplicated by stable key (item_hash > source_ref_hash > safe composite of family+project+impact+conf+reason+freshness).
 Prohibited fields are rejected.
+Each cluster also carries "unique_example_count" (number of distinct examples shown) alongside the full "item_count".
 
 All outputs metadata-only + source-linked (hashes/refs/counts); every persisted row carries the
 23 Phase 09 guard columns =0 (no-raw, no-writeback, no-determinations).
@@ -252,6 +254,24 @@ def _safe_top_example(item: dict[str, Any]) -> dict[str, Any]:
     return ex
 
 
+def _example_dedup_key(ex: dict[str, Any]) -> str:
+    """Stable dedup key for top_examples (hash-only). Preference: item_hash > source_ref_hash > safe composite."""
+    if ex.get("item_hash"):
+        return "ih:" + str(ex["item_hash"])
+    if ex.get("source_ref_hash"):
+        return "sr:" + str(ex["source_ref_hash"])
+    # safe composite (no PII/text)
+    parts = [
+        (ex.get("source_family") or "").lower(),
+        (ex.get("project_key") or "").lower(),
+        (ex.get("impact_category") or "").lower(),
+        (ex.get("confidence_class") or "").lower(),
+        (ex.get("review_reason_code") or "").lower(),
+        (ex.get("freshness_bucket") or "").lower(),
+    ]
+    return "cmp:" + "|".join(parts)
+
+
 def _collect_review_candidates(
     conn: sqlite3.Connection, *, project_key: str | None = None
 ) -> list[dict[str, Any]]:
@@ -376,7 +396,8 @@ def _build_clusters_from_candidates(
     max_examples: int = 5,
     daily_budget: int = 10,
 ) -> dict[str, Any]:
-    """Apply two-step, group, dedupe via cluster_hash, produce counts + top hash-only examples.
+    """Apply two-step, group by cluster_hash, produce counts + top hash-only examples (deduplicated by safe key: item_hash preferred, then source_ref_hash, then composite).
+    Emits "unique_example_count" (distinct displayed examples) in addition to full "item_count".
     Returns structure with separated financial, high_impact_summary (clustered), advisory_allowed etc.
     """
     policy_families = set(seed.get("auto_allow_advisory", {}).get("allowed_families", []))
@@ -456,10 +477,19 @@ def _build_clusters_from_candidates(
                 "tier": c["tier"],
                 "item_count": 0,
                 "top_examples": [],
+                "_seen": set(),
             }
         clusters[ck]["item_count"] += 1
-        if len(clusters[ck]["top_examples"]) < max_examples:
-            clusters[ck]["top_examples"].append(_safe_top_example(c))
+        ex = _safe_top_example(c)
+        key = _example_dedup_key(ex)
+        if key not in clusters[ck]["_seen"] and len(clusters[ck]["top_examples"]) < max_examples:
+            clusters[ck]["top_examples"].append(ex)
+            clusters[ck]["_seen"].add(key)
+
+    # After all candidates: materialize unique counts (deduped top_examples) and clean temp
+    for cl in clusters.values():
+        cl["unique_example_count"] = len(cl.get("top_examples", []))
+        cl.pop("_seen", None)
 
     # high impact summary (always categories + totals; visible clusters capped)
     high_clusters = [cl for cl in clusters.values() if cl["tier"] == "C"]

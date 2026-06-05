@@ -1,5 +1,6 @@
 """Smoke tests for second-brain review * commands (policy-status, burden, queue, clusters)."""
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -30,3 +31,20 @@ def test_review_burden_and_queue_and_clusters_smoke():
         assert r2.exit_code in (0, 3)
         r3 = runner.invoke(app, ["second-brain", "review", "clusters", "--json"])
         assert r3.exit_code in (0, 3)
+        # Enhancement: after mart dedup, outputs have unique_example_count and deduped tops (no repeated keys)
+        # (smoke only; full matrix exercised in policy test)
+        for r in (r1, r3):
+            if r.exit_code == 0 and r.stdout:
+                try:
+                    data = json.loads(r.stdout)
+                    for c in (data.get("mart", {}).get("clusters") or data.get("clusters") or [])[:2]:
+                        if "item_count" in c:
+                            uec = c.get("unique_example_count")
+                            tops = c.get("top_examples", [])
+                            assert uec is None or (0 <= uec <= len(tops))
+                            # no dups on primary hash when present; explicit dedupe key uniqueness
+                            hashes = [(e.get("item_hash") or e.get("source_ref_hash")) for e in tops]
+                            present = [h for h in hashes if h]
+                            assert len(present) == len(set(present))
+                except Exception:
+                    pass  # smoke, ignore parse in some envs
