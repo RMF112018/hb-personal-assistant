@@ -574,3 +574,43 @@ With/without matrix (practical verification):
 The vector-index build (dry-run + apply) landed in Prompts 18–19. Config-snapshot persistence into
 `second_brain_retrieval_llamaindex_config_snapshots`, hybrid retrieval, and evaluation are owned by later
 Phase 09 prompts (20–39).
+
+## Final validation closeout (Prompt 39)
+
+Prompt 39 closed Phase 09 after **operationalizing** the retrieval substrate against the live operator
+DB. Reproduce the operationalization (the Phase-09 retrieval commands need the optional `retrieval-local`
+extra, so run them via the 3.12 toolchain — the `hb-assistant` console script targets an empty 3.14 and
+reports the deps absent):
+
+```bash
+# Readiness + dry-run plan (read-only)
+.venv/bin/python3.12 -m hb_assistant.cli.main second-brain retrieval llamaindex status --json
+.venv/bin/python3.12 -m hb_assistant.cli.main second-brain retrieval llamaindex build --json   # dry-run
+
+# Build the REAL index (embeds approved nodes; one-time HF model download on first run;
+# vectors to Application Support, metadata-only receipts to SQLite)
+.venv/bin/python3.12 -m hb_assistant.cli.main second-brain retrieval llamaindex build --apply --json
+
+# Prove semantic retrieval works + run a real merged search
+.venv/bin/python3.12 -m hb_assistant.cli.main second-brain retrieval hybrid proof --json
+.venv/bin/python3.12 -m hb_assistant.cli.main second-brain retrieval hybrid search "<approved-topic query>" --json
+
+# Confirm gates + guards after the live mutation
+.venv/bin/python3.12 -m hb_assistant.cli.main second-brain data-quality phase-09-gates --json
+.venv/bin/python3.12 -m hb_assistant.cli.main second-brain retrieval no-raw-vector-index-proof --json
+.venv/bin/python3.12 -m hb_assistant.cli.main second-brain data-quality phase-09-no-writeback-proof --json
+```
+
+Expected: `build --apply` → `status=applied`, 8 items (384-dim BAAI/bge-small-en-v1.5),
+`vectors_persisted_to_sqlite=false`; `hybrid proof` → `proof_passed=true`, `semantic_count=3`,
+source-linked; `phase-09-gates` → **14 pass / 9 deferred / 0 fail_blocking** (`vector_index` now pass);
+all guard proofs `proof_passed=true` **after** the mutation; `readiness_overstated=false`.
+
+**Honestly deferred at closeout (not failures):** the 7 advisory run-record gates (`hybrid_retrieval`,
+`retrieval_eval_set`, `retrieval_benchmark`, `unsupported_claim_checks`, `agent_performance_feedback`,
+`source_linked_retrieval_proof`, `llamaindex_config`) stay deferred because the read-only CLI persists
+nothing to the operator DB by design — their run-record tables fill only when a future automation layer
+wires the internal `persist_*` APIs. The 2 memory gates (`memory_quality_review`,
+`memory_consolidation_preview`) stay deferred until the operator reviews/accepts long-term memory
+(`long_term_memory_items` currently 0). See
+`docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/final-validation-closeout.md`.

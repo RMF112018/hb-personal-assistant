@@ -1,0 +1,27 @@
+{
+  "proof": "phase_09_retrieval_eval_set",
+  "command": "second-brain retrieval eval-set proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T20:49:28.137667+00:00",
+  "repo_sha": "f4a5c916f7555ad7d69ac3a7beb8b8adeb70d03a",
+  "case_count": 3,
+  "cases_source_linked": true,
+  "set_persisted_guard_clean": true,
+  "cases_persisted_guard_clean": true,
+  "unsafe_node_excluded": true,
+  "no_raw_source_ref_emitted": true,
+  "metadata_only": true,
+  "guardrails": {
+    "approved_outputs_only": true,
+    "source_linked_cases_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "preserve_review_tier_confidence_source_refs_freshness": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  },
+  "proof_path": "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/retrieval-eval-set-proof.json",
+  "proof_md_path": "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/retrieval-eval-set-proof.md"
+}

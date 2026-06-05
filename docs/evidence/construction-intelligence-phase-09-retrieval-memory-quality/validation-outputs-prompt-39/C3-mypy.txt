@@ -1,0 +1,5 @@
+src/hb_assistant/construction/second_brain/review_burden_mart.py:169: error: Argument 2 to "_risk_category" has incompatible type "set[Any]"; expected "frozenset[str]"  [arg-type]
+src/hb_assistant/construction/second_brain/review_burden_mart.py:171: error: Incompatible return value type (got "str | None", expected "str")  [return-value]
+src/hb_assistant/construction/second_brain/automation_executor.py:2613: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+pyproject.toml: note: unused section(s): module = ['hb_assistant.retrieval.context']
+Found 2 errors in 1 file (checked 308 source files)

@@ -1,0 +1,3322 @@
+{
+  "command": "second-brain retrieval hybrid search",
+  "phase": "09",
+  "generated_utc": "2026-06-05T20:49:59.261557+00:00",
+  "repo_sha": "f4a5c916f7555ad7d69ac3a7beb8b8adeb70d03a",
+  "status": "ok",
+  "run_id": "hyq_91f21b8a67398edcc5ca277d306696b0",
+  "schema_version": 39,
+  "project_key": null,
+  "query_hash": "91f21b8a67398edcc5ca277d306696b0a2d2d6670f9d2a65ec9f18d070c8dc45",
+  "mode": "hybrid",
+  "deterministic_authoritative": true,
+  "semantic_advisory_only": true,
+  "assembles_final_answer": false,
+  "result_count": 408,
+  "deterministic_count": 408,
+  "semantic_count": 0,
+  "semantic_skip_reason": null,
+  "per_family_count": {
+    "cross_source_relationships": 407,
+    "approved_obsidian_generated_outputs": 1
+  },
+  "tier_distribution": {
+    "1": 408,
+    "2": 0,
+    "3": 0
+  },
+  "degradation_mode": "narrow_claims",
+  "context_char_count": 23958,
+  "truncated": true,
+  "latency_bucket": "slow",
+  "coverage_warnings": [
+    "no_read_model:meeting_prep_brief_sections",
+    "no_read_model:review_controlled_correspondence_context",
+    "no_read_model:generated_outputs",
+    "semantic_advisory_only"
+  ],
+  "stale_unknown_warnings": [],
+  "conflict_warnings": [],
+  "policy_version": "phase_09_hybrid_retrieval_v1",
+  "filter_applied": false,
+  "filter_summary": null,
+  "results": [
+    {
+      "rank": 1,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f4a1e722b4f08b1ad66612fea60725f7cba6d31f1c729f12",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 2,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cc31fe0cb02d43152c8bb3669d5cdb18a8070dd97e4b1d60",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 3,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "3be639c6b25c5c0e1037431a14c90e123a0e4266ab550bb1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 4,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "61f72af47cec7366d164d39f7bf8a3ddfe81e94838fbd7df",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 5,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "32321a4359a66d68ba44b9857092e0eb6d437fb7e88b5069",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 6,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "5f07f313e71c244f95e3353b0729e7bffc34a57623fbe4e3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 7,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "9717e56b4cdabb888be38f9bde3b9587340ea975ae874e8d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 8,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "95cbc27af3b8eb9cdf3867a2a27a20ec42c9d6b033aebbbe",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 9,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "164a6521664e6fc211cf7fd5786abc4e521086f0a4e7c5d6",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 10,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0ce9fec36b13fa69fc2bdfd44ecea970d118ffbc723f9aad",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 11,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "2ffb032bebe146ebbc889ac0c0039d37620eef7efdd248d1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 12,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cdef052a80a9eff7a063c7dc5a80a27ef2afb1a43e26010c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 13,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "dbcb527017a886e9596fda5e86e614ab3150915623d3047b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 14,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4dba82f88213c1d71e59c43b5a53dc08d192192317780b7a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 15,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "86e97f0b595bb34dd5d9f476fd05201f15cdeedf6e945d72",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 16,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4a4c8df00ce8bf4686931b7d4c610f8491fac60e4ed029d4",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 17,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ff7adbd19df69eb1c22e06096acdd219b40810f35bbdd2e8",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 18,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "84bcf39290424d3282a767c930cb044ad4a5572525e2dce1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 19,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "de3604be37de3e631f920b93bc42f80bde7afa8efeb6e94e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 20,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ba5c598f98c7717ef056f0a630c1a0790e1c8569aed69249",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 21,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "a2a236e0f7ab7b2091d57577bd75915e04935c4079b58f5b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 22,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "561500d41ac81f61bdfd5624192fbba5c0b185d4e0c96f4a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 23,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "adb878a22727065f991490058339ddc8f1acdbe0a453c508",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 24,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "579cec0d779f9f0bab3d07d167f80321f34275b45b28f17c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 25,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "fa319bd2ac16877c7c890d029747d168e07e30ec9b40e208",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 26,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "1b53edfc4c233175b9da50544b5115c21615208a97ca9f49",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 27,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e90bf82bd73a454f7a2ef69e59ee995212e69bc5758233ba",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 28,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "fe1d9d106bcd8c4742e3bf7016dc7273e9d591b95506c628",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 29,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ff31341f103ee7bae934f74f275d9c93dd6b91d2d4ca3f91",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 30,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "24d443ec80c9ba350d935815492e4e7386158717619304d1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 31,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6869f75223dbb9a15b3a010e77e282a322195bf6ece50b6c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 32,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "9c5f95322c8d569f19a6008c90f94f86e0e7b9a34db05880",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 33,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c8d933966368c0e3c3430248e0aeb22a4adac011f70a462d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 34,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "1806535c4de266487d7a3d9d24bb9fc333ee1fb90004e7dc",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 35,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ad05e24bc5bff288aca5b63bcfc069aea581457b75e0a346",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 36,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c055f9970dee25d2d455cc42573880792e04ed0cb083a2ca",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 37,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4e50a5aed76e3bc20a044c4e5c35b514b589eec6a2678f8e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 38,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "464d62b06c196ac4b137eb5bd333d432cd0496cfe320759d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 39,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "36481b3e5dfd7f4df42af58d45fc4ccb1479e9d7fe4f2b1a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 40,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f3534c54cc3d419d59781294bf1207d6288f9ab63c1004ba",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 41,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cce027cb4a831735648bfc27d4b5b31f5e58201fb30233a8",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 42,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "9e448608cb30bdee8afc62a570d3ea187d73bbfe3ae581a5",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 43,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "69bf36ae19a1a1fd200758fd3300e85903f1165e3d0cbcd2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 44,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e74161ae1bd766de7719b9f9795280a2d900266056a84294",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 45,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d2fbf00cbddc587116462dfb302439e5f486a164709fa294",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 46,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "61cd57f618b0a2387800f1333c69477410b9b84ff598deea",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 47,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "a45cadef0a5cdc753aaf3d462bd07c4d25275aea9957365b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 48,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b1071d2a4dcbcb2a55610b772ae1fa24f0c59dca06cad6de",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 49,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "5d53d2491f69ec8af1c04650713cfec1535aa3a649494dd0",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 50,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b8f83b8057570cfe8401aae52b530f4a28886060ca41ac68",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 51,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "48f98d7504016c9f8926ec803b3aedf07a6513753dc0b991",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 52,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "80342ee294f63d3d6943f7e94caecdcd995fc7b20be9d4a5",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 53,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "9d6aacc62134447df0a230300128124d003212c46d4f032b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 54,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ef2add2490fbf4c7da87ed3ac79db3cd5313995ea1c25298",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 55,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "8a2945bb00c72819231b6a91a5726b5a0bada5e4b2520f8b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 56,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0711f7b818cba172181766dd9f0c47cc90ecd1acd6393000",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 57,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6a1de0aee0fd78a9be38830fa3655ffd0a6beddd5ea2597f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 58,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "9b93b35b9a80a3e462591d95c7bda510e6a57ae2402f8d4d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 59,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cf4bf4371529015e776bcc11b2042c2d293aadb754a1dd44",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 60,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d3c94ce36a3adbfb9e54f10984009f850a1e70881494be56",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 61,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4578c254e42331c13b43c2d20d9549e09f211b5f9c228953",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 62,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "72e8f4dafe790ec1864a2c32244b0b98bab09b7f1789ed0c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 63,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b156187c3654e792f769f9582833fa49a7036953fec6f0b3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 64,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "09da1fa25823d7d9222889a1bca42da803048f07bbdedf79",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 65,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "5b396cb5a732bca8d1330a907140f9c4ff379bdc81cf6dd7",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 66,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0a01c13d6d59e0ba23c6b7fe82755c1a4570e820b2111d62",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 67,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4aa781a6391452c09d4a3c0cebdedb8e7ff2864fbdace9e1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 68,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0578659e3b10b2e3b0930e35cd75ae5c4f4269563101a2a0",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 69,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "71deb71b9cd8384707a1c8f316f9d37389bd6e685e8a9f42",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 70,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e9aa1f4056394751b76d9bddcafb8ce106b9861420ca0b5f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 71,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f8ca9756f7ea562ffe1e14b7cdd83b9d9bea6bb1e94c4354",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 72,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "71f1617eada226b15cfcb27f701e0a18c2e8ee3a3c0d738d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 73,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e67a8bf985c7aade804f10872fb149095cf6c26b4ace6c76",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 74,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b23e4a4d95c8ccd85df2fb19caa6ea3b2a18733cd499834c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 75,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "72f7d5e7e686193f62ab34b8bad71997ccdf1577aaeb63ed",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 76,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "3ea8e8bdb2fc41a251aa266d67c155b52e48e99dc53ac58c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 77,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c4dcea13a3910727605b8689f7d6b0ec5616e4a953fd58d1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 78,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0d46c4f56d2c0584cc803b25184cd6d19211d89ca4a16f13",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 79,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ee158f75655a050e985eb7cf1ad4024582f7f4c9663e145d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 80,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0e6c1112ecd4ffe3c5674661e0b9598cc10c89b04dab0f22",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 81,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6050e4aeab23b72f2b7e51e15b5c40615bdfc6a66674a3ac",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 82,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "76e19ebbe7bf28644485ff0f683495d4428e501cecf75f53",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 83,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "593899779f0e1f15f826ce61304def2309f6fe400da23bb2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 84,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "2f35defac3d71a6489b86dc68db458df2f6f80927754a844",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 85,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "bdfac278a9845ae2c876f0d0e75a5d1ebfdd7fdd7fc3727a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 86,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "1ea2d3d0ddeb6ec45940c0f227f0383f7f3b345418c29f90",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 87,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "de0a230e6ce9aaa4a14ede9f24476f806a777f3769ba970c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 88,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c2ed958058c0cc551347b9c75e825fe4b6e979d28330a360",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 89,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4082e416adca0df8b2674789dd0f7ad49b28d29d9ffa414b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 90,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e158959f436d0f45bd3235809bd79ae08056321fdd30f61f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 91,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6226c0a45cf9ca28a00cb49c4953fc6d0bdd127f250901a6",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 92,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b534778b51873bb0e553744c29ad77f25f125273d8aaba76",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 93,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4f856b20b5a2da27d7318a93b38d8507f9f047f657d697d2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 94,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "84654d24798ef2db5e04ff9808ee7f6f5335eb7aa55d188c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 95,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "04577545c8237ebd981f90de13dbff756628f1375ded2131",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 96,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "644f971e8e52f440d341849224c342a3b8813bc171da952c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 97,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6cc42d3b5a74be0af021a5d143a836e40469d71aafb5ffa9",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 98,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "38f170b5ea7ccc2ec9cca498f96fbedf5962dac84a41b335",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 99,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "23bc4899fab385e49648cd172586248c51e2579960e7752e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 100,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f2f3aa72cc9dfecc29bc5b63d0d3e9efdebece1263b1d9f1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 101,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "8a6d57169c654bf9fd830ff01515e8ba9723836342b0ddda",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 102,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4eebe6b7bde2a80e9ee930a4a0b4524108f69aa19b259f6f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 103,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b6cb621d58cbc4ac64e7522acae54cadaff697f193ae93eb",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 104,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "43e89162978363257201ae3df1dd61b05bf2232b043e5f6c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 105,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "55f9b433926b1cc3c15c198f2dc29847f382d999db2851da",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 106,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "2ae11c12bf48cca307e15fe581b7a123096178a412322031",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 107,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "af2c0712eb539ff780f9f4891deac4eb4edcb9a8dfc61649",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 108,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "43a70fcddf75ea77b975a0385f658593124a15249c0e2ade",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 109,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "2068625557648c0ab7aed2a6a934ae7b3d8eedf1671423f7",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 110,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c898be8da137f39fe41734a6f4789f01bdb9326e51e17c87",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 111,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "958e0f6e75fea76da5a61ec399c8ef6abb029b238fe2287e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 112,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "32311dc2f8e0dac7c8af8b9ce0814bca18fbe4c0b08e7b8a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 113,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "953146e013447059b6ef8b444f9ffe827bc30aa584dca49b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 114,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "77af4a59c162c8976dcb18e01e249b67c6f461523903bb47",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 115,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "94961db561da64f04bce40fb128204a2502154fe2f59c3f1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 116,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0f81bf6e5085891e1b2c4639bc5cd5c8c41acd89e8345936",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 117,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d242d4051d9617dae875f7f9029e9fbf6b05f00403641f7d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 118,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "3ad0b1d0d5b492ed434d3d9cbbbf773574aa3aca3a4ca4f4",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 119,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "95d878dd234b05e537bc2f956619c99e90b50cbed593e290",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 120,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f7f8a1f038e8c012548507a838f6ca16d26aad3445dd7ab9",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 121,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "853a1570b7b8e9cd652f272f5e52338c3491b02fc73046a3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 122,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "be48e4a57cdb97c04fbf5cb62cfb60730c8836c446755fb1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 123,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "14e29569f978bd3f27958d8e95f2dd9d37faf19f4b55fba1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 124,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c7877c995c2a2f3e2027455b99da4f30dadd1872669ba1e4",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 125,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "9f66f916bf0972b1746fcb83fb1014f0773d8714fb2da9b7",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 126,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0db7d1ca72d0bf48296cf70deb2b76e7f98d0c5267fdb458",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 127,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "53657a206b8fb6fef686cc2bbbf323a0ccdd40565320336d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 128,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "1586e5432d21ac1cbdc8c1d4d1ed1ae2f97096253ff69a05",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 129,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ecd2c15cffe044a55a45b4c5d1f716c459a70820daca2b5d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 130,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "a6a566dd30d9ac8e537572e2966b27c0e2aeada131931a47",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 131,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0a9462af48b2ac36b10a5207df1a77d131d7e3817ff71790",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 132,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "29e1dedc42f50a5ecf8b5d7c1ae7d284e059a7f44f16f938",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 133,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "3c1caafbe2e6218a04cc741079dc4d1296c0bfdfe4b71ce3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 134,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "7a0c378fe4bd8fa0a02de56a896d047734fd9a04f9621dbc",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 135,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "1266edf866869ee5d4b93a026a0ecf002e04d524cc1c5a87",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 136,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d2987e2cf594cc796d5734c8e335f52f01bb72427c6b13c3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 137,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b403573db6c499b7cd320ac907513d2883aa9f3c38221973",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 138,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ee86ef4e614eb4438fb8e37de1b5f956125db1f8ffdca5a1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 139,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "7d75831568c79baa1becd7affb00484d40a2befc426f9a07",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 140,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f4612e85d0d3a3c1beaca12fae1e3acd1fccef5f615a6311",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 141,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cd3c58ed5b25acfe4cde5f374931bdf7993163c26cf5d7cc",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 142,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "2bdefaea02df020e3962fd2b8bba7d8f7dc3e475730f70bb",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 143,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "52c4d96c79301896f396b7c84f4f1eae28878ad7534c8281",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 144,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f0d6f80ceaf4c2363deea400f3015ac12abb3b5636a836a4",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 145,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d778454866198e21e1031bea6d7afc922813c990789c2da3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 146,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "007bfc261f4fea801a37dd6eb27dea4b29b62e3033645075",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 147,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6a309085554a01edbca4a95b35bc78d91a0c651de2e24690",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 148,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "78600d0d3ab1abb1cef1a46f17b3238b5acdc102e30b2f2e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 149,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "57958928c6b723bec40a5e9a513aa1d15f07696db604842b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 150,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "a2d5356c59877aebf4cf155e194887cca4280fc968026fe4",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 151,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "453c4642fd2729c71ee13fd2f8d5f8473b2ba087dcfc747d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 152,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c36b55cf491405d1480027028a893e8850e5a32fc6139b46",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 153,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ec7bfc54220e1c4a42cb29eb06a428ef331eac158fa37f8e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 154,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "dcdd522fb5d5f277e90c5123230f83f431f8baacd20a086a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 155,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "61c601686c7227283422c354389457ad9727b962d81abd8f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 156,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d5ffcbe3b06562052e7ec0ee817e7690b52bc1df3f7600ec",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 157,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "1a90eb0bbccf0a0173bba36dc42e42fc3e314d0d273e1652",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 158,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "92ac2dee180c8fc83f76a53d7ac122ca7df10629f25e234b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 159,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "94c2e962db217ffacf2aa792916f11480593d07ac6aa98f7",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 160,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e647d95f7aaa1b10fde8da326551aa309c2e4578ee2d2889",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 161,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b0e570994ca6e63e24e6db3ce1eec7eac089ecf41409893e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 162,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "389d8cf0bc9510cde4bc0fdfd4d335bf8f9dd1b50a6839db",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 163,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ee2576a2954c0bffa1c8a8eaebd13c52636d07dadd423813",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 164,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "57072ff8885ba6847b9aaec871d494307d0b2577e38a457a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 165,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6b0a18f60a61ef2b7cc6007178d8583ce9ebe68d047dcd2a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 166,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "bce631dde69eaa2d2e287cc561fe7a85f7dc0cec4f5418d6",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 167,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "2d5feca06890e1da2340c939f422945bf672cd853ec1d3ee",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 168,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e21a259b0b1ccc497ee758148f4a4b06d94662b590016144",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 169,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e73211087279ce675b717b6da3835011e2a7f57fe55003c0",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 170,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "8d8c7ca17ff0be4075cc43f41ccef6a0fe38480afe197a3c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 171,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "079cf49719958310800071357b95e0b1178a3b93de7229ec",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 172,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e0ef24c33f523c36ee143fc57d492627faf8578ba82cd4e1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 173,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f4c1bad873fe0975ac532b8ff69bc6ebaffa22b4670075ab",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 174,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "38d37a25ea2036135fd76d3f88fe0e7081773af5e7e89ba9",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 175,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ecfa1212d010b26a8e6a22a9c1cad2565a891f9a42da859a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 176,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "76d9bbe63942e709a7a241e1091903002a9d222c22b76ec9",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 177,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ae16d912ec104424ec0c4014885fcaf98fd3232a3566f86e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 178,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "75fd4b09448e2d0c8f589803976c998b1035b2e56238b7b2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 179,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "7c0451a443af51b5d435a8972e623045fea3e2a76e758ead",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 180,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cf2733418a7ea04ea39c82dd639f03ec4dd1353f5feed087",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 181,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "3d5a8a64e229b64975d2d88ef3e663deacf07707e7ed4300",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 182,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b04236a804aa4b8c9399fee387655cd3b02d8efe8d76877a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 183,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e3e099104062d94e57af012ec34392f0784f5ff3f8fc6e25",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 184,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "2626bc7847b7ea45ee9aa88acf96c00e5c094052027b7b27",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 185,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6b42451b4e440efed842d1f29eee8fc8e9ccb2dba8db17b0",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 186,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "62a637f9ed91a9aebda475e14d0e6e5c5a8899b19aceaaf2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 187,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "3247548f508fdf203b565f9ef255f4726035d1bbfeb2f710",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 188,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "349d52b4d68bb938d34e98a4c6cf36b239f6c5714599c897",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 189,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "745a8b3cac9ad63fd118f267eb9af56dc68ebf524e312c69",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 190,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "565c34ce630899af3ae5ff0e5b6e2fb771a9dc2b22aff7df",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 191,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b11989752be6b0c7e2b208e9b62f1a5761a556bd9a4a719b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 192,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "8bcbd5f0c25df2cefbbb289b3868f9a86d3f7e349a537a34",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 193,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "8180a757bbe0e034014ba2483f6d8516dc55bab8a719d029",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 194,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e5014c5e54b0e576d28cabe97f043514050e6e2732356bc3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 195,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "bbd06032f54915c6bc43b70149839fe96e5b1146f5f0928e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 196,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0247c40d661b42823377c3c7a6b63cc4778cf4e2525c3595",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 197,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "417c3255378236ee5083a3aadc06c6070ab76e8aaf7afdc9",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 198,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c6b2a60b0aeb4a4205917707b84cab5f2526abaa6d1b5df2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 199,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "fb173eab2cca23c40abaac8ab19cec46739719a8f1c1d4df",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 200,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "092e8b59a0f4639370ee39a1d321d55fb9cd92116ab38ae1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 201,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "79dc50a7be140438f835fb11f13f579cd3a53f0a63fcfee6",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 202,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ccc9d41350b4c187bf7e4a43c994c04541a9fce459999087",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 203,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e03d51e23ed79af6be1ae0467713c09108222e7e5b0c6615",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 204,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "13626d10ad08b402f0f8367be889f63c097a1ffb6f7b1c57",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 205,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "48400098adb471e86dc980d6663e194d9b29cbbb0ffbf624",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 206,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f0a02360b19a54f77970320bfd49511c724525f2f50ebe91",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 207,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "66913b85f6cc4390aa5f70090416f84dd2664c93f81fa055",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 208,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e3ac2724adca8d8a5ad5626aed020c65dbd0f889902b5c21",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 209,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "82ab986e17aec51c33a74888bf964beb8423d188a66cd631",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 210,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6a2073c06f4e0c5acce633f38a9a9668374129068e3284bc",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 211,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "55ea429a328382212bbd7e396767a02171301201702e9b3b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 212,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e48d561807ea12900a36340e828b3576d4c306c25190162e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 213,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b2ba37b9e4ef8f9c9d74206f81ad1bf5ca3ad61eb0eb18f3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 214,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "3834ad920e7c13575df0ed7ab75d6ff3e3d0e736df78ba50",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 215,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "31e59652f6599ad2c0ba118fe27946cdaead7c9bf4bdfd92",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 216,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "704348f80825ba5892f53dded6fb995fa0343b6dad36c3e4",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 217,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6ad8527b533cf3fd162806eda3750151dcea4a3d4600f548",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 218,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e17f71f73a3574003c90d947c9925aed6de5a97e5b39b72b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 219,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "9c8a53cb7f870a4545973e93100a87becda01bc090e8e05b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 220,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "dc6ab0aa6f4d815b96c447b18f9aab630597864aabecd931",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 221,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "bd1b1657e3f9b85c4a0264e0f5dba658f00a060d61689b02",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 222,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0ad8d9448112e7269fe82cc56c5b045c335ca7ada7540c06",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 223,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "2e770dfce3cfb44fcb0360a1410e501e05de30c2429ce5b7",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 224,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "51754f45d2386d782f6ee02380fb0f1198cf2d0b6866a613",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 225,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "38751e369c1b1f8071fe27470137a3257e709f8912267aad",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 226,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f276e4e8a2ff78d2b94e334d4cfc8405cf3aa13c92705487",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 227,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "407ea72400728f430452c412ae46b5d4cfbf173133c68443",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 228,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "7be63f42eafe77063911cc0b759619bb78b5dd9415bd785f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 229,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "a4ddc54d1019e1b7c79538e4f1c85eb0fa957777418640da",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 230,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "094ae9c50ce7c8c09a9da02c14174e2909f61881ca11f1ca",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 231,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0f41f3e2cf99c5b225d15b1d94903b8b188fa995d26de3fe",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 232,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "06eb3f20d4260687388879ec2263b090121b1f41dd19e42b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 233,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "385155b72c259218f6c2ef19309aae8b50eb6291c9aff9a2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 234,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f4bf63914bf1d6bccb411720b41ed9aa92439bc451d10fe6",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 235,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4a74d0debdd2ce464d4190d6a34a9e7b94d6b15109d02f91",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 236,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4b342e2016f9099acace53bbf522f9cc61b5286f18bf4255",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 237,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "77ce806726338cf81a4e8b6c43ead1e3b992e2cc06da5297",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 238,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "7fd6f7daae1716f7d4773e2246f991c98d91edb6aa46f23e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 239,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b04ec5c7dcc60c1bbaf52642d8bd029284da0b111ab45e7d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 240,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d1b5c23f120703038023c899cba87c0b087692048c2d78aa",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 241,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "7157e57285c83d9a8945ff79783f07d71aa381effaf09fac",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 242,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "326d807ae308a2d3aef4e3687860ca1dda7459464774ac4c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 243,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f235dffa04060b93d9c9cd7573042a78672299f4944d2976",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 244,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "778d19474b67b009de39a2d9ac28c5abb3a8528109db83be",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 245,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d86188d777ccac219390c78fb8d49d04dd4f3d1501d7eaff",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 246,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "5b04b5b58ea35df52674cfffd000866ceed1ae91a8f409f3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 247,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e0abcc50b4dd793bd1f20100aecdc3b7983b1b6966316ef0",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 248,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0ae2777b563ff5b8ecfe02dfc6784abb8a0f5f484cd48fab",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 249,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "78ddf73c0c0cb9d87661edc560793b6c3b549d5b0c4d038c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 250,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "93448976a35470caa45e2b4e998b7fc82fa49a52ff08b185",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 251,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "90234d2dcc93c2c875151975bf916b2a427f9743ebed3c61",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 252,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ff60d439a1e3c2b5f1967bf1dd55997c3f51fd1d577e6458",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 253,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f037b3a9fd0e8ddc26e23c9c66aef95cc9beb752e8b77abb",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 254,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "47190e01c50e4fb55fc55318b4c5a52e66824474ed02f8f3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 255,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c4a90ae1ca9de79cf7d4a68a072de263127708131c2a295e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 256,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "feb2d60bc181480f9c8c5e74a4ff5fa52b493afe94488bca",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 257,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "35b9143fbedd5f8a3f08aabf217401c4cbbb2d60f384dd92",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 258,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "747e8e3a0887ced32802d9e8c1dcf72da73d7ca0ba8ac64c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 259,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "dc2043d9304e4832cfd3fab29ab8fac85c22511392d742e1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 260,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ac7325d3d9b893c4c236fd2127056f6fb805b871b2ed21a4",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 261,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "a08571d5cd1fe36474049336340116236742b632739e74e2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 262,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c22a9d97625031f3206ad1a7716bba6c541f71c432db9070",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 263,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ed2c9cf4e38fbbd423b382d4d9c506d63238adf2430f9bcd",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 264,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "45b8808d990f7c6f5e719e7c9dcc345c6dbca21c18347ba9",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 265,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4c809ce8a5d7c1f8b545fad7550df71701a667e0aedb6e5b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 266,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "151ff689fa65e9cd795ca5746baecd9b450e4abf48582313",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 267,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "88656ec55a61939de1a76db407ab29de5191504be1a8863e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 268,
+      "origin": "deterministic",
+      "source_family": "approved_obsidian_generated_outputs",
+      "source_ref_hash": "d3325008f360b4ee8cc248f1de619a4337d92c736622f163",
+      "confidence_class": "high",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 269,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "aa8bdc43ca9bb3b0adecd34b330d26335cfb8b2c7b3c8cc3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 270,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "08c88f817662beb5f3647e5e30ef2f2bc397659389dcdccf",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 271,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "5084ab9f2302e8201fb16697b4ec3d4fec6afd714a765b4e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 272,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "1329086f32a781dd693fb38636af169e1e23daef1f892d05",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 273,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d89763f3f95b001cd31898de54535cea87109ef46b95eef3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 274,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ba872198ff424bc52fd5845cd7d473cc5ecbee1f49bab60b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 275,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "3bf6953bdb0dbd188b31474a572da0859919531bf92d1061",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 276,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "51e74546dd4616047c323ec2fb0a21894026b7f47fee844f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 277,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "fcb0399bce3f2b3e6be02c7469939b2f5e56f119731f174d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 278,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "322fa9ae377daae767c53678b3bd659e8bbc9572848cd4b2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 279,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "33ad5cbde38d8636ab336b8dbd29958d3aebff21d9de48e1",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 280,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e5f44b8ccd1dc3bd89e136cf62362471db00b351a7000832",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 281,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "486f3ad0fbd6abc97d4222c8ea69e0e1dfce2070489fbf09",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 282,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "10ce0a1cdbe126955fd52b7ec4ec5ca29fd1fa040ceb8e98",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 283,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b0ee58870d067e43dd30d19eb932d812396d6896e1ec0639",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 284,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f4077bbf64537a018a8ee7692ae6ca6da7c86c0f31d5cf25",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 285,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "7014465724a94a1e2d12c797bd54d186438007807f89ab8e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 286,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "aa5fbd343070f7d6c5e35aede08226f13758780b32ffde83",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 287,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "87082c4ca54dbab14fa59af5656205b5f1b5314181bf0fd6",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 288,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cb5cf2c122d465efc7cb727a3fb899e586db76ea63cbde13",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 289,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "5007f989c72fa6032d0334d1167944d08f140832b2c27a3f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 290,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0981a3aea74067422c93d4bfb8c45a7b1402ed7df55d6ae3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 291,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "71eba64c0c3563fad9212181e51d931e9f554058bd93d80a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 292,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0bdbe8c2fcdca0fbb8dd62c18c211341574292d0f5f18e5f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 293,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "361ea7a65743b6285b7666a51e81a952874e5205428a4051",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 294,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "90391e3caef9d21fbbafcf3e3a10119c862e47a444765b5f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 295,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "7963616cea1cbd94e3940cbace887fbefbb4e3874e369ee3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 296,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "82cdaf9324bd1ca9ac59c83188d85c19561739d37bb86e80",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 297,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "a59515eca5a63a7aaa8217f187c431ea727d4393c4a65b7b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 298,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "9f5aad340ca015e297e00cc9e50f701c202907dee33cb5de",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 299,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "423a3d732d8f3762aa4b1120eef775b5f80b838ebe1d5f72",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 300,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "588bb1feda9996822fa3d470e636255d47226eb7e968b069",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 301,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "009857c2450cc21854f37c650e17a270e281aecb19b5ecec",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 302,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "48223b03dac4395444088e54fbb4d9f7fc34bac6dd8d5466",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 303,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4c9bb122fb88220bc44cf65f1cb2d05ce9b637760bdb061f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 304,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "9ba559faf8c47d0ff9c64899b46268d67e80173e1e63d097",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 305,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "88df865c7e1b43875d6dba40011b627a3f9c05fad10ad77d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 306,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c420205cb59d4edf6eaaa4dca28d64853d88aa1c6bc8db59",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 307,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "20a7b57d96ad43ee94065cb076e78ca3d44f515ca2d80df6",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 308,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "2db6e0d58fa118842254dbed423ab921aa59029eefe4fb5f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 309,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "fbab98869c9061f14bbb586f5f7bf7dabbdc47b88f82ab4a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 310,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "80a05a91bfab181293ba01154925693fa8d770d47a742247",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 311,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "a319abae4d415d393aa0aea66e9f0da1a7cdec95c54c3a43",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 312,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ca6c63316fb84bbc965dae69db6b560463f095f747795f6c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 313,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6715690750dd333dee68a10c5bc996f3dbc9acbe1ddad2eb",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 314,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6d0029961054a90172fd376566401c2636b81f4cb6e1f7b6",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 315,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "3d6398980861ece8fd1a42a833cb3eeef4a2066a3def289c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 316,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "636fd854535c40a1005c982cd6af2478bf499820f792f085",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 317,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4507aedada6b22ad74ca27e247da3dee13e036dd5cd94548",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 318,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cd42e529f7df73b4598865203e0c78a69ba33462b0001526",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 319,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6ff06a6ce4b0758fac1f45720adb52befcef5ffd5ad83e83",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 320,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "84c45a5a03a65185d816cdc9a07a65198dd57d3e645599a6",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 321,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0a6bfe0999efb43c70b2edbebe04e46f834ef66a43f528ac",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 322,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "7ce4669ea294dbf501780049a1ce0f7afdad9c5935e00576",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 323,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "3985442925d4ef3eb428b46346daed579a2bbe6a336ca097",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 324,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f3a3f11037249d57f81721f47a4cbb61a69ea147509d646e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 325,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "1775b41796c7d2c6daa22b8d7f4eba2bd0bbd7acc3bf3111",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 326,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "5848f1b201f2a4e969c1315460cbe1efd3f5979abf6d219a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 327,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c6d0de5016e45bc2dd0db67f9c16c241d0d7951890a97407",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 328,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0df1a7e9b92dc2c2af66b74aa71d8f9523dc758cd71264dd",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 329,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "fe4b46c70fa6e8ef99c3252bc34eea2347fdaf0bb11adefb",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 330,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "167a5cdf983c5e6bb97b500cce727caaec1e30d7bd0b773a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 331,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "9e2d68c4bc78d067135ca547fcacd06ebcf5ec7599792735",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 332,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ffadd12e33e133c84d6378795d730b83c85681c978f6d152",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 333,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "af84e2f0b2685e4a0fbcc9a49667a7e66c3ccc88f4bc8b71",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 334,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f089e73826fa902ae48256ff272cb6a1fd72295f98013208",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 335,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "631c555c2216b3a4b557b7f3c2acebd918d3a22c3d59fda2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 336,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "7ddca821fea2c251e8d9a4fda631fd076aea92d145cbd9f4",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 337,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "1d2233ad58b24b1ace503012d60ab678ddc7ad25bb7635db",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 338,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "404f49266b46fd22c5181a3724ef94270ba75a9961ca82e2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 339,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "019a65d2c0a64c329ea54c73661f7dfd335a3bec50aa5a12",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 340,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6d9b8d63a1c5d12ae854f0dd7db1664b71da37e4e7797f64",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 341,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e1efb37cb30561e4ab667fce08795fe6fdd88e2e57971f02",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 342,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e88e5b182f7ef694831e80a208370ae6327899945d2ca0e5",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 343,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "00f00f28f2d58c19bb72f9397c100c6bcffbbb7889acd894",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 344,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d9b7535c96d4aac7e083113569aeefd8702139c28f20056e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 345,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cde64832f8d42127c7141ac1668c7d87b4c1a39ae8fb0552",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 346,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c8bd0540753be352f5536cead961d014a2b534bb9704466c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 347,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "040f6fbf8f44e94595a981128ee36ddd3d12f3d1db27ebf7",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 348,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c139da6565979fe6274453c8c3f90df59832d1af1f51eb13",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 349,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "92085535e4a1ae00cf45c19cdaa571850e8c549e8258db97",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 350,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "36be2e379c84afb5ddfc0d3e5eaa54ca35b79275ef387a8a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 351,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "38db1876b976b684b83c2046e733876984dd2994781acac2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 352,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ecc7e77520c7987f8353244afac17dbf7eea3218da1b9c2f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 353,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "38f616678fa7a8a1e9c6ca0b2bb0b606022d4901744670e9",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 354,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cb7ec6f744d7854d4108cc55f1f0950603f6bd9c5e576ada",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 355,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f54e060ac47e12d612853830d5b32c2833f21ddd229eaa86",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 356,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e00cf33f4e4583d92c8d698328b0c54e584674a33471fb4e",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 357,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "93843db43aadd56b5e3cf6180bf4fff3044ff28d2383af16",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 358,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "48c230d0a6a22f26703ff6b147c0e870707dd8ecc2d475ca",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 359,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c08f0582c2988da80c850c7bc0e2ebd36ca36b8bb1331a3f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 360,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cfb9ab8c86750ce0e29457aada2f269623d1ef442c913395",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 361,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "a38c734d563e51d1942a6a59525fa82869f809dded6ed566",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 362,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ef80c583f20889702c76101f88edb91ebeadb943fc6b3930",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 363,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "c39a29f737a96604ba0c23e6533486e568e05db1af5c8b66",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 364,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f34d4c563f3a951483de29bca85a124ecf2b60c3010463f3",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 365,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "1a4d267588246db967a2a8ce2e079c1b4c825f207cbc7291",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 366,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "45b6a53e8bea2fd8685d916a44fd9f3b4253675672a9e754",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 367,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "580b1be40378a427b16963ae56f652ae04a51e5937c57e6c",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 368,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6d39f6372f564cc7d55d9e37ecc42d05981289aaaefb468d",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 369,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "aeaa7d6e760eea97f8238db709c3f9874e34095aa6d9acc6",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 370,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "b9f778c8a06bf8a96d1a662cc175a2021aceac40fc9a4ab2",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 371,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6b475ae91bd98724ef6eb85b6ea11dab6b56dbc2cd7349bf",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 372,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e1ecaff8f9c39d3da6fdc1630fc988777a2f9713a18097d9",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 373,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "10d8526d5afb499f9d78cccdae145a686f29a0cf6a4b5ad6",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 374,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "5a6f513e81681c6bd808dde1e5151a3049449330a90aff72",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 375,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d90d510000f5412c1240790c9ec0338617d5330c8768a7e7",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 376,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cd90e7732b49fe7bac1cfb39ff3550c9030d578e11e32e73",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 377,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "48b9fd95c1a73743a53a35d8780673ef99abcd7c68da78ee",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 378,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e59e9af9fd87114f1fc07e9408f0e96b7ea5bdc2361e91e0",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 379,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "0cfabdcfc2161b157a5b5d6409d832e078622b28f5b30251",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 380,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ece32ba209549e8fc026eff67355c7e991520aae8eaf2a85",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 381,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f03848dd5c2227b857a4a9e13c6316670c3898079fffc420",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 382,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "fd38d57dc83a51fe8ce215dbddbaeb2e72ffd0a9923bc6cf",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 383,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "10dc84106c07fe7b16318e27de59dc9cecc5eed9d1c9ccd4",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 384,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "980191b6a285acece31200caca4f6d46f62e0f69b4d67c9a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 385,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "92bb0115bc193c62845b3247c545f94b9aa2c6bf55cf54da",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 386,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "43cc859e902d0034be44074ecad785244a8c7d9908b02a4a",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 387,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "cbf86943d9a1bad4f2c804315085695ed0054ca9f678e7a5",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 388,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "883652e1af9bce7a92aa4865401dc9c16b9eeac80f97dcef",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 389,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "ca8b2bc80cb7aba566a10aef2795204686a0deef597a2ba4",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 390,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d86cba49f7a5145e0b6dab033ee35628ded5bd75a0f699c9",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 391,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d1fd4901815ee022e904513e90879bb1e83cdce08036ee48",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 392,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "9b9a9bc38f5ddf7e3f7820af0eaeb67251cb7abdb10a22e7",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 393,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "17d81b9ca91b9da5cc71a042c2a66d801ce3e576789282a7",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 394,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f35967a87ccdfbedd81aaa25569262612958d19153626eca",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 395,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "bc16b0a61d3d8030df18f4b614e5e33532a6b321501f7400",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 396,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "6eba77006ac1ad1dbb7f44073b850529c5898a9faec479f9",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 397,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "4e5dfbf4ea096eae6271503c13da32cc5463ba703cd410ee",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 398,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "84b83958d078add98bb0bbd90af8ae882140dbc63cb7e219",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 399,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "2733eabf20d72df21875c454463a784b2a99bcf1cc2d1a17",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 400,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "e12009b5f3c312a07a8fec9ef5c48fec3c52deb301c603fc",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 401,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "52e9a2ec6624b073145007ea9770872d8553c9441a7f2f3f",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 402,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "07cdee0046fda3f460ff641f68bd6617c5ca9b5e4bf33355",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 403,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "153a0826fa017759912fdc37da7b32dba5ae88744a93abbc",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 404,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "63ae295da7bc8e7f8e601f0c7438b51127ce9619adc8dc1b",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 405,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "2590e24e48c8ac48d3ab9a0f987edd8ec4d428667fdda933",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 406,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "adb9cc13e38b8ac9857f4d13256c91292bd66c78308aa581",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 407,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "d54bcc4d85e73d6feb0186d6d0bef6e17b04dc65e0a6aa44",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    },
+    {
+      "rank": 408,
+      "origin": "deterministic",
+      "source_family": "cross_source_relationships",
+      "source_ref_hash": "f6a1c0657871bfa84455341544c50ad677c1687cc159fd82",
+      "confidence_class": "deterministic",
+      "score_bucket": "deterministic"
+    }
+  ],
+  "read_only": true,
+  "guardrails": {
+    "deterministic_source_of_truth": true,
+    "semantic_advisory_only": true,
+    "no_final_answer_assembly": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "vectors_outside_sqlite": true,
+    "no_semantic_retrieval_bypass": true,
+    "raw_query_not_persisted": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

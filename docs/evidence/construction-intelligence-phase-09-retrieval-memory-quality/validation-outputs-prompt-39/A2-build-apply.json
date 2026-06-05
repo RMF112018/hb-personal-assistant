@@ -1,0 +1,39 @@
+{
+  "command": "second-brain retrieval llamaindex build --apply",
+  "phase": "09",
+  "generated_utc": "2026-06-05T20:47:48.604358+00:00",
+  "repo_sha": "f4a5c916f7555ad7d69ac3a7beb8b8adeb70d03a",
+  "manifest_id": "asm_1ce19c3faaac98d6f48a4c73ef9dc21f",
+  "manifest_hash": "1ce19c3faaac98d6f48a4c73ef9dc21f9a344270a588b177f5169ef398d376f7",
+  "schema_version": 39,
+  "config_hash": "c1aac21b856a8156307b7093772eab34a9bdc03c47e08073c204fad52e6662d3",
+  "index_plan_hash": "537b5e90de1c3ecded10e95eed04136a3c087a2d656accc3f0600799aef64a87",
+  "embedding_model_label": "BAAI/bge-small-en-v1.5",
+  "vector_store_kind": "simple",
+  "persist_dir_label": "app_support_retrieval_index",
+  "vector_store_location": "external_filesystem",
+  "vectors_persisted_to_sqlite": false,
+  "apply_policy_version": "phase_09_vector_index_apply_v1",
+  "policy_version": "phase_09_embedding_vector_policy_v1",
+  "project_key": null,
+  "status": "applied",
+  "run_id": "vir_apply_537b5e90de1c3ecded10e95eed04136a",
+  "total_items": 8,
+  "per_family_item_count": {
+    "approved_obsidian_generated_outputs": 1,
+    "generated_outputs": 7
+  },
+  "embedding_dim": 384,
+  "vector_files_present": true,
+  "warnings": [],
+  "guardrails": {
+    "no_raw": true,
+    "no_external_writeback": true,
+    "metadata_only_receipts": true,
+    "approved_manifest_only_input": true,
+    "vectors_outside_sqlite": true,
+    "no_raw_vector_content_in_sqlite": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}
