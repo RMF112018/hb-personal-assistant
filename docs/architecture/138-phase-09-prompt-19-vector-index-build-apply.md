@@ -83,3 +83,27 @@ The generated-outputs loader feeds the same apply writer path (in-memory redacte
 full build rule and embedding guard before any embedding or vector write. The test in 137 (node count
 increase on applied brief fixture) also validates that apply would see the additional nodes if SDK + other
 gates allow.
+
+## LlamaIndex readiness truthful across installs (post-Prompt 19/20 follow-up)
+
+**This prompt's apply surface made truthful (follow-up after 18/19/20 + 132).** Original: early gate only
+checked `_llama_index_available()` (core) → `sdk_not_available`; bare `from llama_index.embeddings.huggingface`
+in `_llamaindex_vector_writer` after core try (would traceback on `[retrieval]`-only for real --apply, and
+CLI only caught VectorIndexBuildError so unhandled ImportError); `ready_to_apply` overstated on core-only.
+
+Changes (see vector_index.py, llamaindex_config, cli): split gate (core absent → `sdk_not_available`;
+core ok + local absent on default writer → `local_embedding_not_ready`); guard HF import (raise
+VectorIndexBuildError with hint if `_local_embedding_available()` false); plan now carries
+`local_embedding_available` and truthful `ready_to_apply = core and local and nodes`; _mock writer
+unchanged (still core-only for proofs). `build-apply-proof` (always injects Mock) remains runnable after
+just `[retrieval]`.
+
+**Modeled directly on 121 §3 MCP gap+resolution** (unconditional absent asserts → state-aware on
+find_spec; present/absent both covered; `ready_to_*` made truthful rather than post-install surprising).
+
+`build-apply-proof` explicitly documents it uses Mock so it does not require `retrieval-local`. Real
+`build --apply` (default writer) now cleanly blocks with the new reason + exit 3.
+
+No schema/contract change. Guardrails: apply still fail-closed, vectors outside SQLite, metadata receipts
+only, no-raw re-asserted, honest empty on no nodes. See runbook for install matrix + verification steps
+(status/build-proof on base; build-apply-proof after [retrieval]; note real apply needs local).

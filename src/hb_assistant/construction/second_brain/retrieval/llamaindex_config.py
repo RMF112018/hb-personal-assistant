@@ -1,17 +1,20 @@
 """Phase 09 Prompt 13 — optional LlamaIndex dependency + config/status surface (read-only).
 
 A deterministic, **read-only**, **lazy-import** status probe for the optional LlamaIndex retrieval
-layer. It reports whether the optional `llama-index-core` SDK is installed (without importing it),
-resolves and validates the metadata-only retrieval config (a YAML seed validated against a JSON
-contract), computes a stable `config_hash`, and checks schema readiness (the V38
-`second_brain_retrieval_llamaindex_config_snapshots` substrate). It builds **no** embeddings / vector
-index and performs **no** semantic retrieval — those land in later Phase 09 prompts.
+layer. It reports whether the optional `llama-index-core` SDK (core) is installed (without importing it),
+whether the local embedding backend (`llama-index-embeddings-huggingface`) is present, resolves and
+validates the metadata-only retrieval config (a YAML seed validated against a JSON contract), computes
+a stable `config_hash`, and checks schema readiness (the V38 `second_brain_retrieval_llamaindex_config_snapshots`
+substrate). It builds **no** embeddings / vector index and performs **no** semantic retrieval — those land
+in later Phase 09 prompts.
 
-The SDK is an optional extra (`pip install -e ".[retrieval]"`); the base install, migrations, and the
-full test suite all run with it **absent** (local-first default), so SDK-absent is the expected state
-and is reported, not failed. Fail-closed on a missing/invalid contract or seed (`LlamaIndexConfigError`).
-The probe opens the database **read-only** (`?mode=ro`) and never writes; outputs are labels / counts /
-booleans / hashes only — no raw content, prompts, responses, tokens, URLs, secrets, or paths.
+`llama-index-core` is provided by the `retrieval` extra; the local embedding package is in `retrieval-local`.
+The base install, migrations, and the full test suite all run with both **absent** (local-first default),
+so absent is the expected state and is reported, not failed. `ready_to_index` is truthful: it requires
+core + (for provider="local") the local embedding runtime. Fail-closed on a missing/invalid contract or
+seed (`LlamaIndexConfigError`). The probe opens the database **read-only** (`?mode=ro`) and never writes;
+outputs are labels / counts / booleans / hashes only — no raw content, prompts, responses, tokens, URLs,
+secrets, or paths.
 
 Public entry points:
   load_llamaindex_config_contract() -> dict
@@ -44,6 +47,7 @@ _SEED_RELATIVE = Path("resources") / "config" / "phase_09_llamaindex_config.seed
 SEED_ENV_VAR = "HB_SECOND_BRAIN_LLAMAINDEX_CONFIG"
 _SNAPSHOT_TABLE = "second_brain_retrieval_llamaindex_config_snapshots"
 _SDK_PACKAGE = "llama-index-core"
+_LOCAL_EMBED_PACKAGE = "llama-index-embeddings-huggingface"
 
 # Config fields hashed into config_hash (stable, sorted) — the resolved, metadata-only shape.
 _CONFIG_FIELDS = (
@@ -77,19 +81,57 @@ def _repo_sha() -> str:
         return "unknown"
 
 
-def _llama_index_available() -> bool:
-    """Probe for the optional SDK without importing it (import-free)."""
+def _llama_index_core_available() -> bool:
+    """Probe for the optional llama-index-core SDK without importing it (import-free).
+
+    This is the core availability for the `retrieval` extra. It powers status/dry-run surfaces
+    even without local embeddings. The `retrieval-local` extra adds the HF backend required for
+    the default "local" embedding_provider on --apply and semantic paths.
+    """
     try:
         return importlib.util.find_spec("llama_index") is not None
     except (ImportError, ValueError):
         return False
 
 
-def _llama_index_version() -> str | None:
+def _llama_index_core_version() -> str | None:
     try:
         return importlib.metadata.version(_SDK_PACKAGE)
     except Exception:
         return None
+
+
+def _local_embedding_available() -> bool:
+    """Probe for the optional local embedding backend without importing it (import-free).
+
+    Corresponds to the `llama-index-embeddings-huggingface` package from the `retrieval-local` extra.
+    Required (together with core) when the configured embedding_provider is "local".
+    """
+    try:
+        return importlib.util.find_spec("llama_index.embeddings.huggingface") is not None
+    except (ImportError, ValueError):
+        return False
+
+
+def _local_embedding_version() -> str | None:
+    try:
+        return importlib.metadata.version(_LOCAL_EMBED_PACKAGE)
+    except Exception:
+        return None
+
+
+def _embedding_provider_runtime_ready(provider: str | None) -> bool:
+    """Return whether runtime embedding deps for the configured provider are present (truthful).
+
+    - provider="local": requires core (llama-index-core) AND local HF embedding package.
+    - provider="mock": requires only core (MockEmbedding is in llama-index-core).
+    - other/None: False (config validation will surface provider issues separately).
+    """
+    if provider == "local":
+        return _llama_index_core_available() and _local_embedding_available()
+    if provider == "mock":
+        return _llama_index_core_available()
+    return False
 
 
 def load_llamaindex_config_contract() -> dict[str, Any]:
@@ -163,8 +205,11 @@ def build_llamaindex_config_status(db_path: str | None = None) -> dict[str, Any]
     config_valid = not violations
     config_hash = _config_hash(seed)
 
-    sdk_available = _llama_index_available()
-    sdk_version = _llama_index_version() if sdk_available else None
+    core_available = _llama_index_core_available()
+    core_version = _llama_index_core_version() if core_available else None
+    local_embedding_available = _local_embedding_available()
+    local_embedding_version = _local_embedding_version() if local_embedding_available else None
+    embedding_runtime_ready = _embedding_provider_runtime_ready(seed.get("embedding_provider"))
 
     conn = _open_ro(db_path)
     schema_version = 0
@@ -191,15 +236,19 @@ def build_llamaindex_config_status(db_path: str | None = None) -> dict[str, Any]
             conn.close()
 
     schema_ready = schema_version >= 38 and snapshot_table_present
-    ready_to_index = sdk_available and config_valid and schema_ready
+    ready_to_index = core_available and config_valid and schema_ready and embedding_runtime_ready
 
     blockers: list[str] = []
-    if not sdk_available:
+    if not core_available:
         blockers.append("llama_index_not_installed")
     if not config_valid:
         blockers.append("config_invalid")
     if not schema_ready:
         blockers.append("schema_not_ready")
+    provider = seed.get("embedding_provider")
+    if not embedding_runtime_ready and provider == "local" and not local_embedding_available:
+        blockers.append("local_embedding_not_ready")
+    # for "mock", missing core is already reported as llama_index_not_installed
 
     return {
         "command": "second-brain retrieval llamaindex status",
@@ -208,10 +257,19 @@ def build_llamaindex_config_status(db_path: str | None = None) -> dict[str, Any]
         "repo_sha": _repo_sha(),
         "sdk": {
             "package": _SDK_PACKAGE,
-            "available": sdk_available,
-            "version": sdk_version,
+            "available": core_available,
+            "version": core_version,
             "install_hint": 'pip install -e ".[retrieval]"',
+            "core_available": core_available,
+            "core_version": core_version,
+            "local_embedding_available": local_embedding_available,
+            "local_embedding_package": _LOCAL_EMBED_PACKAGE,
+            "local_embedding_version": local_embedding_version,
         },
+        "core_available": core_available,
+        "local_embedding_available": local_embedding_available,
+        "local_embedding_package": _LOCAL_EMBED_PACKAGE,
+        "embedding_runtime_ready": embedding_runtime_ready,
         "config": {
             "version": seed.get("version"),
             "embedding_provider": seed.get("embedding_provider"),

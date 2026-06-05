@@ -76,3 +76,26 @@ Full matrix in the evidence bundle.
 
 Hybrid broker adoption by A02/A04; the `generated_outputs` loader (semantic corpus = Obsidian + reviewed
 memory only); eval sets / benchmarks / memory-quality review — later Phase 09 prompts.
+
+## LlamaIndex readiness truthful across installs (post-Prompt 19/20 follow-up)
+
+**Follow-up after 20 (and 18/19).** The semantic path pre-checked only `_llama_index_available()` (core)
+for `semantic_sdk_not_available`, then after core try did bare `from ...huggingface` (potential unhandled
+ImportError on core-only install during `_collect_hybrid` / research-packet / output-eval paths that
+call hybrid). Status computed `sdk_available` (core) + `semantic_ready = sdk and applied` (overstated
+if local missing for default embed).
+
+Changes: precheck tightened to core name; HF import wrapped in try/except returning
+`semantic_local_embedding_not_ready`; status now computes local, sets `semantic_ready = core and local
+and applied`, appends local blocker when core present but not local, and emits
+`local_embedding_available` (sdk_available kept as core for the retrieval extra surface).
+
+**Cites 121 §3** (MCP): unconditional absent → state-aware branching + truthful ready flags that hold
+after optional install.
+
+`build_hybrid_retrieval_proof` + `hybrid proof` continue to use injected Mock (core sufficient); real
+hybrid semantic (default embed) now requires `retrieval-local` and degrades cleanly with the new
+skip_reason. Deterministic path unaffected.
+
+Guardrails preserved (read-only, no persistence on skip, deterministic source of truth, metadata-only,
+fail-closed). See updated runbook + 132/137/138 for cross-refs. No schema change.

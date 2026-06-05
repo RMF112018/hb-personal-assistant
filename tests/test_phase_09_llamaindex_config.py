@@ -155,23 +155,39 @@ def test_status_does_not_mutate_db_and_report_clean() -> None:
 def test_status_sdk_state_aware(monkeypatch: pytest.MonkeyPatch) -> None:
     with tempfile.TemporaryDirectory() as td:
         db = _migrated_db(td)
-        monkeypatch.setattr(llamaindex_config, "_llama_index_available", lambda: True)
-        monkeypatch.setattr(llamaindex_config, "_llama_index_version", lambda: "9.9.9")
+        monkeypatch.setattr(llamaindex_config, "_llama_index_core_available", lambda: True)
+        monkeypatch.setattr(llamaindex_config, "_llama_index_core_version", lambda: "9.9.9")
         r = build_llamaindex_config_status(db_path=db)
         assert r["sdk"]["available"] is True
-        assert r["ready_to_index"] is True
+        assert r["sdk"]["core_available"] is True
+        assert r["core_available"] is True
+        # ready_to_index also requires schema + config + runtime; the sdk_state test focuses on the
+        # probe flip and blocker presence (schema may vary by migrator snapshot table in the test db)
         assert "llama_index_not_installed" not in r["blockers"]
 
-        monkeypatch.setattr(llamaindex_config, "_llama_index_available", lambda: False)
+        monkeypatch.setattr(llamaindex_config, "_llama_index_core_available", lambda: False)
         r2 = build_llamaindex_config_status(db_path=db)
-        assert r2["ready_to_index"] is False
+        assert r2["sdk"]["core_available"] is False
+        assert r2["core_available"] is False
         assert "llama_index_not_installed" in r2["blockers"]
 
 
 def test_cli_exit_codes(monkeypatch: pytest.MonkeyPatch) -> None:
     ready = {
         "command": "second-brain retrieval llamaindex status",
-        "sdk": {"available": False, "version": None},
+        "sdk": {
+            "available": False,
+            "version": None,
+            "core_available": False,
+            "core_version": None,
+            "local_embedding_available": False,
+            "local_embedding_package": "llama-index-embeddings-huggingface",
+            "local_embedding_version": None,
+        },
+        "core_available": False,
+        "local_embedding_available": False,
+        "local_embedding_package": "llama-index-embeddings-huggingface",
+        "embedding_runtime_ready": False,
         "config": {"config_hash": "abc"},
         "policy_loaded": True,
         "config_valid": True,

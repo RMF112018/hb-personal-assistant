@@ -63,3 +63,19 @@ tokens, signed/download URLs, or PEMs; no raw vector search via MCP; advisory on
 triggered — the 0-receipt operator DB and the (now-resolved) SDK-presence test gap are not safety
 regressions; the no-raw/no-writeback proofs pass and `ready_to_serve=true` is the documented SDK-present
 state.
+
+## LlamaIndex readiness truthful across installs (post-Prompt 19/20 follow-up) — precedent reference
+
+The MCP SDK-state-aware pattern and test fixes in §3 of this record (unconditional `ready_to_serve=False`
+/ absent-only asserts written before the optional extra was installed → made state-aware on
+`find_spec("mcp")` so both present (`True`/[]) and absent (`False`/["mcp_sdk_not_installed"]) are covered,
+making the readiness flag truthful post-install) was explicitly used as the model for the Phase 09
+LlamaIndex follow-up.
+
+See the appended subsections in 132 (LlamaIndex config/status), 137 (dry-run), 138 (apply), 139 (hybrid),
+and the implementation in `llamaindex_config.py` (split core/local probes + runtime_ready + blockers),
+`vector_index.py` (plan fields, split apply gate, HF guard), `hybrid_broker.py` (query guard, status),
+CLI updates, test monkey renames + new local-not-ready case, pyproject/runbook, and 120/131/00-README.
+
+This preserves the "no overstatement of readiness" and "truthful final state" discipline called out in
+this record and the Phase 09 rebaseline (120).

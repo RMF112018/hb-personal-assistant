@@ -70,3 +70,25 @@ extended with raw inserts for one accepted packet + one apply brief + source ref
 subsequent `build_vector_index_dry_run` reports a strictly higher `total_nodes` (and planned chunks),
 proving the loader contributes approved nodes to the dry-run plan. All other guardrails (no raw, no SQLite
 vectors, manifest-only input) continue to hold.
+
+## LlamaIndex readiness truthful across installs (post-Prompt 19/20 follow-up)
+
+**Follow-up after this prompt + 19/20.** The dry-run plan (and `_build_plan`) originally computed
+`sdk_available = _llama_index_available()` (core probe) and `ready_to_apply = sdk_available and bool(indexable)`.
+The writer and apply gates only checked core; HF import in `_llamaindex_vector_writer` was bare after
+core try (would raise on `retrieval`-only install for real --apply).
+
+This follow-up (see 132/138/139) splits the probe into core + local, adds `local_embedding_available` to
+the plan, sets `ready_to_apply = core and local and nodes`, splits the default-writer gate in apply
+(core-missing → `sdk_not_available`; local-missing → `local_embedding_not_ready`), and guards the HF
+import (raise `VectorIndexBuildError` with install hint if absent). Dry-run itself never imports HF (or
+even core), so status/build/build-proof remain safe on base.
+
+**Cites the truthful-MCP precedent** in record 121 §3 (SDK-state-aware branching on find_spec; tests
+covering present/absent instead of unconditional absent asserts; making `ready_to_*` truthful rather than
+overstated).
+
+No contract/seed/schema impact. See runbook for with/without verification matrix (dry surfaces always
+green; real apply requires local).
+
+Guardrails unchanged: dry-run is read-only, no embeddings, plan is metadata-only, vectors never in SQLite.

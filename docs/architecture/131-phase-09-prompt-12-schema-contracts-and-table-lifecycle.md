@@ -65,3 +65,20 @@ Additive schema only (V1–V37 immutable); metadata-only tables guarded by 23 `C
 helper/CLI strictly read-only (`mode=ro`), DB unmutated; no LlamaIndex/embeddings/vector/semantic code;
 no external writeback; no determinations; review tier / confidence class / source refs / freshness
 preserved in the column design. No stop condition triggered.
+
+## LlamaIndex readiness truthful across installs (post-Prompt 19/20 follow-up) — schema surface note
+
+The V38 substrate (and `phase-09-schema-status`) landed with the explicit preflight "no LlamaIndex /
+embeddings / vector / semantic-retrieval code" (see §1, §4). Later prompts (13+) added the optional
+LlamaIndex layer and its readiness surfaces.
+
+The truthful-readiness follow-up (132 config/status + 137/138/139) is **purely additive metadata** in
+the *reports* (new fields `core_available`/`local_embedding_available`/`embedding_runtime_ready`/
+`local_embedding_not_ready` etc. in the Python dicts/CLI JSON); it does **not** touch the V38 tables,
+the schema status helper, or any migration. The schema surface remains the honest "substrate present
+and guarded" check; the runtime truth for optional deps is layered in the llamaindex/hybrid status
+reports (which already open the DB read-only for their own V38 checks).
+
+Cites the MCP truthful pattern (121) and the rebaseline emphasis on "correct precondition" / no
+overstatement (120). No schema impact; V38 + table lifecycle contracts unchanged. See 132 etc. for
+details.

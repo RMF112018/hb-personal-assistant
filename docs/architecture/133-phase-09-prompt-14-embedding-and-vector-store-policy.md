@@ -73,3 +73,18 @@ enforce the same rules as Obsidian/memory (source-linked, no raw, approved revie
 high-impact). The dry-run/apply plans now include these nodes when present (and suppress the prior
 deferred warning). The embedding policy proof and status continue to report the expanded embeddable set;
 no change to forbidden fields or persistence rules.
+
+## LlamaIndex readiness truthful across installs (post-Prompt 19/20 follow-up)
+
+**Cross-ref update.** The embedding policy (contract + seed + `validate_embedding_candidate`) already
+governs `allowed_embedding_providers: ["local", "mock"]` and `deferred_embedding_providers` (incl.
+huggingface_remote). The runtime truthful split (core vs local HF for the "local" provider at
+apply/hybrid time) lives in the LlamaIndex config + vector/hybrid writers (see 132/137/138/139 updates).
+
+This ensures that even though policy allows "local", the readiness surface + gates will report
+`embedding_runtime_ready=false` + `local_embedding_not_ready` blocker (and apply/hybrid will fail-closed
+with precise reason) unless the `retrieval-local` extra is present. The policy status itself remains
+pure (no llama probes); the runtime truth is layered on top by the llamaindex config status.
+
+Cites the same 121 MCP precedent for making readiness state-aware rather than assuming absent or
+overstating when partially installed. No policy contract/seed change required.

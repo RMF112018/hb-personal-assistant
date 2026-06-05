@@ -106,3 +106,23 @@ review items entering an approved source manifest (no approved manifest exists y
 Obsidian indexing, and no semantic retrieval bypassing Research Packet / Evaluation (no semantic retrieval
 exists yet). All eight no-writeback / no-raw / gate proofs re-ran green at HEAD `23e6d87` — see the
 evidence bundle for the full command table.
+
+## LlamaIndex readiness truthful across installs (post-Prompt 19/20 follow-up) — rebaseline note
+
+At the time of this rebaseline (pre-18/19/20), retrieval surfaces had "no LlamaIndex / embeddings / vector
+/ semantic-retrieval code" (see absence audit §5 and "Preflight boundary unchanged" notes throughout).
+Later prompts introduced the optional layer (132 config/status; 137 dry-run with `ready_to_apply`;
+138 apply gated on SDK; 139 hybrid with `semantic_ready`).
+
+This follow-up (after 19/20) ensures the introduced readiness fields do not overstate: `ready_to_index`,
+`ready_to_apply`, and `semantic_ready` now factor the split core (`retrieval`) vs local-embedding
+(`retrieval-local`) reality, with explicit blockers (`local_embedding_not_ready`,
+`semantic_local_embedding_not_ready`) and tests that cover both installed and absent states (modeled on
+the MCP truthful fix in record 121 §3 of this phase).
+
+The rebaseline "correct precondition" and "no overstatement of readiness" invariants (see §1, §5, §6
+here and the 00-README truthful ledger) are upheld by the split probes + gates + state-aware tests.
+No change to the pre-18 "no Llama at baseline" facts; this is additive truthful reporting for the
+optional surfaces once they exist.
+
+See appended subsections in 132/137/138/139/133/121/131/00-README + runbook + pyproject comment.

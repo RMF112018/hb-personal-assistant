@@ -12,8 +12,11 @@ Source-of-truth discipline: the broker returns an *envelope*, never a final answ
 stays in the Research Packet / Evaluation layers (``assembles_final_answer`` is always ``False`` and the
 ``semantic_retrieval_bypassed_policy`` guard stays 0). Everything is metadata-only: the raw query string
 is never persisted (only its hash), no excerpts/vectors are persisted, and vectors live outside SQLite.
-The semantic path is fail-closed — skipped (deterministic still returned) when the optional LlamaIndex
-SDK is absent or there is no applied vector index. The embedder is injectable so proofs/tests run offline.
+The semantic path is fail-closed — skipped (deterministic still returned) when core LlamaIndex SDK
+(from `retrieval`) is absent (`semantic_sdk_not_available`), local embedding backend (from `retrieval-local`)
+is absent for the default path (`semantic_local_embedding_not_ready`), or there is no applied vector index
+(`semantic_no_applied_index`). The embedder is injectable (MockEmbedding for proofs) so the suite runs
+with just the `retrieval` extra; real semantic requires `retrieval-local` for local embeddings.
 
 Public entry points:
   build_hybrid_retrieval(query, *, db_path=None, project_key=None, families=None, mode='hybrid',
@@ -46,7 +49,11 @@ from .embedding_policy import (
     load_embedding_vector_policy_seed,
     validate_embedding_candidate,
 )
-from .llamaindex_config import _llama_index_available, load_llamaindex_config_seed
+from .llamaindex_config import (
+    _llama_index_core_available,
+    _local_embedding_available,
+    load_llamaindex_config_seed,
+)
 from .models import RetrievalEnvelope, RetrievalItem
 from .policy import EXCLUDED_FAMILIES, apply_context_budget, load_context_budget
 
@@ -241,10 +248,12 @@ def _semantic_query(
     """Advisory semantic retrieval over the applied vector index (fail-closed).
 
     Returns ``(items_with_scores, skip_reason)``. ``skip_reason`` is non-None when the semantic path was
-    skipped (SDK absent / no applied index) — the deterministic path is unaffected. Each admitted item is
-    source-linked to a ``vector_index_items`` receipt and re-validated with the no-raw guardrail.
+    skipped (core SDK absent / local embedding absent / no applied index) — the deterministic path is
+    unaffected. Each admitted item is source-linked to a ``vector_index_items`` receipt and re-validated
+    with the no-raw guardrail. Default path (no injected embed_model) requires both core and local HF;
+    injected MockEmbedding (for proofs) requires only core.
     """
-    if embed_model is None and not _llama_index_available():
+    if embed_model is None and not _llama_index_core_available():
         return [], "semantic_sdk_not_available"
     located = _latest_applied_vector_index_run(db_path, persist_root)
     if located is None:
@@ -258,9 +267,14 @@ def _semantic_query(
 
     config = load_llamaindex_config_seed()
     if embed_model is None:
-        from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+        if not _local_embedding_available():
+            return [], "semantic_local_embedding_not_ready"
+        try:
+            from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
-        embed_model = HuggingFaceEmbedding(model_name=str(config.get("embedding_model_label")))
+            embed_model = HuggingFaceEmbedding(model_name=str(config.get("embedding_model_label")))
+        except ImportError:
+            return [], "semantic_local_embedding_not_ready"
     Settings.embed_model = embed_model
 
     storage_context = StorageContext.from_defaults(persist_dir=str(persist_dir))
@@ -311,7 +325,12 @@ def _semantic_query(
 def build_hybrid_status(
     db_path: str | None = None, *, persist_root: str | None = None
 ) -> dict[str, Any]:
-    """Read-only hybrid-retrieval readiness (deterministic always; semantic iff SDK + applied index)."""
+    """Read-only hybrid-retrieval readiness (deterministic always; semantic iff core+local SDK + applied index).
+
+    `sdk_available` reflects core (`retrieval` extra); `local_embedding_available` reflects HF backend
+    (`retrieval-local`); `semantic_ready` is true only when both + an applied index exists. Blockers
+    include `semantic_local_embedding_not_ready` when core present but local backend missing.
+    """
     contract = load_hybrid_retrieval_contract()
     seed = load_hybrid_retrieval_seed()
     # Phase 09 review burden policy (two-step) integration: advisory retrieval for low-risk
@@ -330,14 +349,17 @@ def build_hybrid_status(
     except HybridRetrievalError:
         schema_version = 0
         schema_ready = False
-    sdk_available = _llama_index_available()
+    core_available = _llama_index_core_available()
+    local_embedding_available = _local_embedding_available()
     applied = _latest_applied_vector_index_run(db_path, persist_root) is not None
-    semantic_ready = sdk_available and applied
+    semantic_ready = core_available and local_embedding_available and applied
     blockers: list[str] = []
-    if not sdk_available:
+    if not core_available:
         blockers.append("semantic_sdk_not_available")
     if not applied:
         blockers.append("semantic_no_applied_index")
+    if core_available and not local_embedding_available:
+        blockers.append("semantic_local_embedding_not_ready")
     return {
         "command": "second-brain retrieval hybrid status",
         "phase": "09",
@@ -346,7 +368,8 @@ def build_hybrid_status(
         "schema_version": schema_version,
         "schema_ready": schema_ready,
         "deterministic_ready": True,
-        "sdk_available": sdk_available,
+        "sdk_available": core_available,
+        "local_embedding_available": local_embedding_available,
         "applied_vector_index_present": applied,
         "semantic_ready": semantic_ready,
         "modes": list(contract.get("modes", ())),

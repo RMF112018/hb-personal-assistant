@@ -57,3 +57,52 @@ Optional extra (not installed); lazy import only; read-only over the DB, persist
 config (labels + bounded numbers; no raw content / URL / path / token); external embedding providers
 deferred and flagged invalid if selected; no embeddings / vector index / semantic retrieval built. No
 stop condition triggered.
+
+## LlamaIndex readiness truthful across installs (post-Prompt 19/20 follow-up)
+
+**Follow-up to this prompt (after Prompts 18/19/20 landed).** The original design declared both `retrieval`
+(`llama-index-core`) and `retrieval-local` (adds HF) extras (see §2 and pyproject), and the probe was
+import-free `find_spec("llama_index")`. Status reported a flat `sdk.available` + `ready_to_index = sdk_available and config_valid and schema_ready`.
+
+This follow-up makes readiness **truthful and easy to validate across base / retrieval / retrieval-local**
+installs:
+
+- Split probes: `_llama_index_core_available()` (for `retrieval`; powers status/dry-run) and
+  `_local_embedding_available()` (find_spec on the HF submodule; for `retrieval-local`).
+- New helper `_embedding_provider_runtime_ready(provider)`: "local" requires core+local; "mock" requires
+  only core.
+- Status surface expanded (additive): `sdk` dict now includes `core_available`/`core_version`/`local_embedding_available`/`local_embedding_package`/`local_embedding_version` (compat `available`/`version` kept as core); top-level `core_available`, `local_embedding_available`, `local_embedding_package`, `embedding_runtime_ready`.
+- `ready_to_index` recomputed as `core and config_valid and schema_ready and embedding_runtime_ready`.
+- Blockers now include `local_embedding_not_ready` (when provider=local and HF absent; core absent still
+  emits the original `llama_index_not_installed`).
+- Install hint remains `pip install -e ".[retrieval]"` (core); docs/runbook clarify `retrieval-local` for
+  real apply/semantic.
+
+**Modeled on MCP truthful readiness precedent (this file's sibling record 121).** See record 121 §3:
+> **Gap.** Four tests asserted the **SDK-absent** posture unconditionally: ... `assert status["ready_to_serve"] is False` ...
+> These were written ... before Prompt 15 ... installed the optional `mcp` SDK and made `ready_to_serve`
+> truthful (`policy.py:188,213-215` — `find_spec("mcp")` → `ready_to_serve = foundation_ok and not serve_blockers`).
+> ...
+> **Resolution (tests only).** The four tests now assert SDK-state-aware: ... SDK present → `ready_to_serve=True` / `serve_blockers=[]`; absent → `False` / `["mcp_sdk_not_installed"]`.
+
+We replicated the pattern for LlamaIndex: renamed probes for clarity, added local probe + runtime gate,
+split the apply gate (core → `sdk_not_available`; local-missing on default → `local_embedding_not_ready`),
+wrapped the unguarded HF imports in vector writer + hybrid _semantic_query with proper blocker returns,
+updated all plan/status/hybrid returns + CLI humans + docstrings, and made tests branch on both states
+(renamed 3 monkeypatch sites; extended vector apply gate test with core-true + local-false case asserting
+the new blocker).
+
+**No change to contract/seed/schema** (additive fields only; V38 unchanged). External providers remain
+deferred (per contract).
+
+**Verification (per plan):** `llamaindex status`/`build`/`build-proof` (base, no extras — core=false,
+local=false, ready=false, appropriate blockers, exit 0 for dry surfaces); after `pip install -e ".[retrieval]"`
+(core present, local absent) re-run status (core=true, local=false, ready=false, local_embedding_not_ready
+in blockers for default provider), `build-apply-proof` passes (Mock, core only), `build --apply` blocks
+with `local_embedding_not_ready`; targeted ruff/mypy/pytest on the surfaces + `construction-agent validate`;
+hybrid status reflects local + new blocker. All guardrails (lazy, base-clean, fail-closed, metadata-only,
+Mock-in-proofs, deferred externals, no SQLite vectors) preserved; final commit emits only the manifest
+summary+body.
+
+See also updates in 120 (rebaseline), 121 (MCP precedent), 131 (schema), 133 (embedding policy), 137
+(dry-run), 138 (apply), 139 (hybrid), runbook, and 00-README.

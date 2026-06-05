@@ -130,16 +130,23 @@ agent_performance_app = typer.Typer(
 )
 app.add_typer(agent_performance_app, name="agent-performance")
 
+daily_brief_reproducibility_app = typer.Typer(
+    name="daily-brief-reproducibility",
+    help="Phase 09 daily brief reproducibility proof (controlled inputs + source refs; advisory, read-only).",
+    no_args_is_help=True,
+)
+app.add_typer(daily_brief_reproducibility_app, name="daily-brief-reproducibility")
+
 retrieval_app = typer.Typer(
     name="retrieval",
-    help="Phase 09 semantic-retrieval backend (optional LlamaIndex; local-first, fail-closed).",
+    help="Phase 09 semantic-retrieval backend (optional LlamaIndex core+local; truthful readiness across base/retrieval/retrieval-local installs; local-first, fail-closed).",
     no_args_is_help=True,
 )
 app.add_typer(retrieval_app, name="retrieval")
 
 llamaindex_app = typer.Typer(
     name="llamaindex",
-    help="Optional LlamaIndex dependency + retrieval config status (read-only).",
+    help="Optional LlamaIndex (core via [retrieval]; local emb via [retrieval-local]) + truthful readiness status for build/apply/semantic (read-only, fail-closed).",
     no_args_is_help=True,
 )
 retrieval_app.add_typer(llamaindex_app, name="llamaindex")
@@ -174,7 +181,7 @@ retrieval_app.add_typer(memory_loader_app, name="memory-loader")
 
 hybrid_app = typer.Typer(
     name="hybrid",
-    help="Phase 09 hybrid retrieval broker (deterministic + advisory semantic; read-only, fail-closed).",
+    help="Phase 09 hybrid retrieval broker (deterministic + advisory semantic; truthful on core+local SDKs; read-only, fail-closed).",
     no_args_is_help=True,
 )
 retrieval_app.add_typer(hybrid_app, name="hybrid")
@@ -789,7 +796,9 @@ def memory_quality_review_build(
         return
 
     payload = {**result, "guardrails": _MEMORY_QUALITY_REVIEW_GUARDRAILS}
-    payload.pop("flag_records", None)  # per-candidate hashed records summarized by counts; not echoed
+    payload.pop(
+        "flag_records", None
+    )  # per-candidate hashed records summarized by counts; not echoed
     human = [
         "Phase 09 memory quality review (read-only, advisory)",
         f"  status: {result['status']} | reviewed: {result['reviewed_count']}"
@@ -885,7 +894,9 @@ def memory_consolidation_preview_build(
         return
 
     payload = {**result, "guardrails": _MEMORY_CONSOLIDATION_PREVIEW_GUARDRAILS}
-    payload.pop("proposals", None)  # per-cluster hashed records summarized by counts; not echoed in bulk
+    payload.pop(
+        "proposals", None
+    )  # per-cluster hashed records summarized by counts; not echoed in bulk
     human = [
         "Phase 09 memory consolidation preview (read-only, advisory; review-only proposals)",
         f"  status: {result['status']} | accepted items: {result['accepted_item_count']}"
@@ -899,7 +910,9 @@ def memory_consolidation_preview_build(
 @memory_consolidation_preview_app.command("proof")
 def memory_consolidation_preview_proof(
     evidence: bool = typer.Option(
-        True, "--evidence/--no-evidence", help="Write the consolidation-preview proof to the evidence dir."
+        True,
+        "--evidence/--no-evidence",
+        help="Write the consolidation-preview proof to the evidence dir.",
     ),
     json_out: bool = typer.Option(
         True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
@@ -996,7 +1009,9 @@ def agent_performance_build(
 @agent_performance_app.command("proof")
 def agent_performance_proof(
     evidence: bool = typer.Option(
-        True, "--evidence/--no-evidence", help="Write the agent-performance proof to the evidence dir."
+        True,
+        "--evidence/--no-evidence",
+        help="Write the agent-performance proof to the evidence dir.",
     ),
     json_out: bool = typer.Option(
         True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
@@ -1025,6 +1040,99 @@ def agent_performance_proof(
         f"Agent performance feedback proof passed={proof['proof_passed']}"
         f" (corrections={proof['corrections_attributed']}, review_burden={proof['review_burden_computed']},"
         f" recommendation={proof['recommendation_emitted']}, determination={proof['makes_determination']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+_DAILY_BRIEF_REPRODUCIBILITY_GUARDRAILS = {
+    "advisory_only": True,
+    "no_determination": True,
+    "preserve_source_refs": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "read_only_by_default": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
+
+@daily_brief_reproducibility_app.command("build")
+def daily_brief_reproducibility_build(
+    project: str | None = typer.Option(None, "--project", help="Optional project key override."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove the daily brief is reproducible over controlled inputs (read-only, advisory).
+
+    Runs the Phase 08A generator twice over the identical seeded inputs (each in its own temp DB +
+    temp vault, mock adapter) and reports whether the approved-output SHA256 hash + metadata-only
+    source-ref coverage match, with a present evaluation receipt. Persists nothing to the operator
+    DB; makes no determination. Exit 0 on success; 3 on a fail-closed failure.
+    """
+    from hb_assistant.construction.second_brain.daily_brief_reproducibility import (
+        DailyBriefReproducibilityError,
+        build_daily_brief_reproducibility,
+    )
+
+    try:
+        result = build_daily_brief_reproducibility(project_key=project)
+    except DailyBriefReproducibilityError as exc:
+        payload = {
+            "command": "second-brain daily-brief-reproducibility build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _DAILY_BRIEF_REPRODUCIBILITY_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _DAILY_BRIEF_REPRODUCIBILITY_GUARDRAILS}
+    human = [
+        "Phase 09 daily brief reproducibility (read-only, advisory)",
+        f"  status: {result['status']} | reproducible: {result['reproducible']}"
+        f" | output_hash_match: {result['output_hash_match']} | source_refs: {result['source_ref_count']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@daily_brief_reproducibility_app.command("proof")
+def daily_brief_reproducibility_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the daily-brief-reproducibility proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove identical controlled inputs reproduce an identical brief output hash + source refs."""
+    from hb_assistant.construction.second_brain.daily_brief_reproducibility import (
+        DailyBriefReproducibilityError,
+        build_daily_brief_reproducibility_proof,
+    )
+
+    try:
+        proof = build_daily_brief_reproducibility_proof(write_evidence=evidence)
+    except DailyBriefReproducibilityError as exc:
+        payload = {
+            "command": "second-brain daily-brief-reproducibility proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _DAILY_BRIEF_REPRODUCIBILITY_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _DAILY_BRIEF_REPRODUCIBILITY_GUARDRAILS}
+    human = [
+        f"Daily brief reproducibility proof passed={proof['proof_passed']}"
+        f" (output_hash_match={proof['output_hash_match']},"
+        f" source_refs_preserved={proof['source_refs_preserved']},"
+        f" evaluation_receipt_present={proof['evaluation_receipt_present']},"
+        f" determination={proof['makes_determination']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 
@@ -3263,7 +3371,7 @@ def data_quality_review_load(
         f"  legacy promotion gate: blocked {gate.get('blocked_from_promotion')} / "
         f"promotable {gate.get('promotable_review_ready')}",
         f"  advisory_retrieval_allowed: {proof.get('advisory_retrieval_allowed')} (blanket_block={proof.get('blanket_review_block')})",
-        f"  financial separate: raw={ (proof.get('financial_review_burden') or {}).get('raw_unresolved') } distinct={(proof.get('financial_review_burden') or {}).get('distinct_items') } (always advisory_only, promotion blocked, does not block low-risk non-fin advisory)",
+        f"  financial separate: raw={(proof.get('financial_review_burden') or {}).get('raw_unresolved')} distinct={(proof.get('financial_review_burden') or {}).get('distinct_items')} (always advisory_only, promotion blocked, does not block low-risk non-fin advisory)",
         f"  operator visible (capped): {proof.get('operator_visible_count')} | suppressed/batched: {proof.get('suppressed_noise_count')}",
     ]
     _emit_08c(
@@ -3274,6 +3382,7 @@ def data_quality_review_load(
 # --- Phase 09 review burden policy commands (under second-brain review) ---
 # These are intentionally under the root "review" group (second-brain review burden ...)
 # and also exposed for data-quality compatibility via the augmented review-load.
+
 
 def _review_common_guardrails() -> dict[str, Any]:
     return {
@@ -3335,7 +3444,11 @@ def review_policy_status(
         ]
         _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
     except ReviewBurdenPolicyError as e:
-        typer.echo(json.dumps({"ok": False, "error": str(e)}, indent=2, default=str) if json_out else str(e))
+        typer.echo(
+            json.dumps({"ok": False, "error": str(e)}, indent=2, default=str)
+            if json_out
+            else str(e)
+        )
         raise typer.Exit(3) from None
 
 
@@ -3379,12 +3492,16 @@ def review_burden(
         f"  operator visible (budget cap): {mart.get('operator_visible_count')} | suppressed: {mart.get('suppressed_noise_count')}",
         f"  advisory retrieval allowed: {gate.get('advisory_retrieval_allowed')} (blanket={gate.get('blanket_review_block')})",
     ]
-    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3)
+    _emit_08c(
+        payload, json_out=json_out, human=human, exit_code=0 if proof.get("proof_passed") else 3
+    )
 
 
 @review_app.command("queue")
 def review_queue(
-    top: int = typer.Option(10, "--top", help="Max top clusters to show (capped by policy budget too)."),
+    top: int = typer.Option(
+        10, "--top", help="Max top clusters to show (capped by policy budget too)."
+    ),
     project: str | None = typer.Option(None, "--project"),
     json_out: bool = typer.Option(True, "--json/--no-json"),
 ) -> None:
@@ -3661,11 +3778,14 @@ def retrieval_llamaindex_status(
 ) -> None:
     """Phase 09 optional LlamaIndex dependency + retrieval config status (read-only, fail-closed).
 
-    Reports whether the optional `llama-index-core` SDK is installed (probed without importing it),
-    the resolved metadata-only retrieval config + its config_hash, and schema readiness (V38). The
-    SDK is absent by default (local-first) — that is reported, not failed. Read-only over the DB;
-    builds no embeddings/index. Exit 0 when the contract/seed load, the config is valid, and the
-    schema is ready; exit 3 on a fail-closed contract/seed failure, invalid config, or stale schema.
+    Reports core SDK availability (`llama-index-core` from `retrieval` extra; probed without import),
+    local embedding backend readiness (`llama-index-embeddings-huggingface` from `retrieval-local`),
+    the resolved metadata-only retrieval config + its config_hash, schema readiness (V38), and
+    `embedding_runtime_ready` (core+local for provider="local"; core for "mock"). `ready_to_index`
+    is now truthful across installs. The SDK(s) absent by default (local-first) — reported, not failed.
+    Read-only over the DB; builds no embeddings/index. Exit 0 when contract/seed load, config valid,
+    and schema ready (runtime readiness is advisory in exit code for status); 3 on fail-closed load/config/schema issues.
+    New blockers include `local_embedding_not_ready`.
     """
     from hb_assistant.construction.second_brain.retrieval.llamaindex_config import (
         LlamaIndexConfigError,
@@ -3690,10 +3810,11 @@ def retrieval_llamaindex_status(
     payload = {**report, "guardrails": _LLAMAINDEX_GUARDRAILS}
     human = [
         "Phase 09 LlamaIndex dependency + retrieval config status (read-only, advisory)",
-        f"  sdk available: {report['sdk']['available']} (version {report['sdk']['version']})",
+        f"  sdk core: {report['sdk']['core_available']} (v{report['sdk']['core_version']})"
+        f" | local emb: {report['sdk']['local_embedding_available']} ({report['sdk']['local_embedding_package']})",
+        f"  runtime ready: {report.get('embedding_runtime_ready')} | ready to index: {report['ready_to_index']}",
         f"  config valid: {report['config_valid']} | schema ready: {report['schema_ready']}"
-        f" | ready to index: {report['ready_to_index']}",
-        f"  config_hash: {report['config']['config_hash']} | blockers: {report['blockers']}",
+        f" | config_hash: {report['config']['config_hash']} | blockers: {report['blockers']}",
     ]
     ready = report["policy_loaded"] and report["config_valid"] and report["schema_ready"]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if ready else 3)
@@ -3866,10 +3987,14 @@ def retrieval_llamaindex_build(
     The dry-run produces a metadata-only plan (per-family node counts, planned chunk count, config/plan
     hashes, no-raw attestation) over the approved manifest's loader nodes, rejecting any node lacking
     review tier / confidence / source ref / freshness / no-raw proof — computing **no embeddings**.
+    Plan now includes truthful `sdk_available` (core), `local_embedding_available`, and `ready_to_apply`
+    (both + nodes).
     `--apply` embeds those approved nodes via LlamaIndex and writes a vector store on the local
     filesystem (**never to SQLite**), persisting metadata-only receipts. Apply fails closed
-    (`apply_blocked`) when the optional SDK is absent, there are no indexable nodes, or policy/schema is
-    not ready. Exit 0 on a dry-run plan or an applied build; 3 on `apply_blocked` or a fail-closed failure.
+    (`apply_blocked`) with `sdk_not_available` (core from `retrieval` absent), `local_embedding_not_ready`
+    (HF from `retrieval-local` absent for default writer), `no_indexable_nodes`, or policy/schema not ready.
+    `build --apply` requires `.[retrieval-local]`; `build-apply-proof` (uses Mock) requires only `.[retrieval]`.
+    Exit 0 on a dry-run plan or an applied build; 3 on `apply_blocked` or a fail-closed failure.
     """
     from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
         EmbeddingVectorPolicyError,
@@ -3927,7 +4052,8 @@ def retrieval_llamaindex_build(
         f"  status: {plan['status']} | total nodes: {plan['total_nodes']}"
         f" | planned chunks: {plan['planned_chunk_count']}",
         f"  per-family: {plan['per_family_node_count']} | rejected: {plan['rejected_node_count']}",
-        f"  sdk available: {plan['sdk_available']} | ready to apply: {plan['ready_to_apply']}"
+        f"  sdk core: {plan['sdk_available']} | local emb: {plan.get('local_embedding_available')}"
+        f" | ready to apply: {plan['ready_to_apply']}"
         f" | vectors in sqlite: {plan['vectors_persisted_to_sqlite']}",
         f"  warnings: {plan['warnings']}",
     ]
@@ -3947,7 +4073,9 @@ def retrieval_llamaindex_build_proof(
 
     Demonstrates a controlled approved index loads indexable nodes, the build rule rejects nodes lacking
     metadata / no-raw proof, and a guard-clean `status='dry_run'` run record persists (no vectors in
-    SQLite). Computes no embeddings; persists nothing to the operator DB. Exit 0 if the proof passes.
+    SQLite). Computes no embeddings; persists nothing to the operator DB. The plan in proof includes
+    `sdk_available` (core) + `local_embedding_available` for truthful readiness across installs.
+    Exit 0 if the proof passes.
     """
     from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
         EmbeddingVectorPolicyError,
@@ -3993,7 +4121,9 @@ def retrieval_llamaindex_build_apply_proof(
     vectors are written to a directory **outside SQLite**, a guard-clean `status='applied'` run plus
     metadata-only per-node item rows persist (no vectors / text / raw in SQLite), and the build blocks
     when there are no indexable nodes. Computes embeddings only in a temp dir; never touches the operator
-    DB. Exit 0 if the proof passes.
+    DB. Uses Mock (core only) so proof runs after `pip install -e ".[retrieval]"`; real --apply requires
+    `.[retrieval-local]` and will block with `local_embedding_not_ready` on missing local backend.
+    Exit 0 if the proof passes.
     """
     from hb_assistant.construction.second_brain.retrieval.embedding_policy import (
         EmbeddingVectorPolicyError,
@@ -4032,7 +4162,11 @@ def retrieval_hybrid_status(
         True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
     ),
 ) -> None:
-    """Hybrid retrieval readiness — deterministic always; semantic iff SDK + applied index (read-only)."""
+    """Hybrid retrieval readiness — deterministic always; semantic iff core+local SDKs + applied index (read-only).
+
+    `sdk_available` = core LlamaIndex (`retrieval`); `local_embedding_available` = HF backend (`retrieval-local`);
+    `semantic_ready` requires both + applied index. Blockers may include `semantic_local_embedding_not_ready`.
+    """
     from hb_assistant.construction.second_brain.retrieval.hybrid_broker import (
         HybridRetrievalError,
         build_hybrid_status,
@@ -4055,7 +4189,7 @@ def retrieval_hybrid_status(
         "Phase 09 hybrid retrieval status (read-only, advisory)",
         f"  deterministic ready: {report['deterministic_ready']}"
         f" | semantic ready: {report['semantic_ready']}",
-        f"  sdk available: {report['sdk_available']}"
+        f"  sdk core: {report['sdk_available']} | local emb: {report.get('local_embedding_available')}"
         f" | applied index: {report['applied_vector_index_present']}",
         f"  semantic blockers: {report['semantic_blockers']}",
     ]
@@ -4079,7 +4213,8 @@ def retrieval_hybrid_search(
     degradation, warnings, `assembles_final_answer=false`, `query_hash`). Never echoes the raw query or
     any excerpt, and never persists to the operator DB (the receipt path is exercised in `hybrid proof`).
     Semantic results are advisory and source-linked; the path fails closed (semantic skipped, deterministic
-    still returned) when the SDK is absent or there is no applied vector index. Exit 0 on success; 3 on a
+    still returned) when core SDK absent (`semantic_sdk_not_available`), local embedding absent
+    (`semantic_local_embedding_not_ready`), or no applied index. Exit 0 on success; 3 on a
     fail-closed contract/schema failure.
     """
     from hb_assistant.construction.second_brain.retrieval.hybrid_broker import (
@@ -4777,7 +4912,9 @@ def retrieval_project_benchmark_build(
 @retrieval_project_benchmark_app.command("proof")
 def retrieval_project_benchmark_proof(
     evidence: bool = typer.Option(
-        True, "--evidence/--no-evidence", help="Write the project-benchmark proof to the evidence dir."
+        True,
+        "--evidence/--no-evidence",
+        help="Write the project-benchmark proof to the evidence dir.",
     ),
     json_out: bool = typer.Option(
         True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
@@ -4924,7 +5061,9 @@ def retrieval_claim_checks_build(
         return
 
     payload = {**result, "guardrails": _RETRIEVAL_CLAIM_CHECKS_GUARDRAILS}
-    payload.pop("routing_records", None)  # per-claim hashed records summarized by counts; not echoed in bulk
+    payload.pop(
+        "routing_records", None
+    )  # per-claim hashed records summarized by counts; not echoed in bulk
     human = [
         "Phase 09 unsupported claim checks + review routing (read-only, advisory)",
         f"  status: {result['status']} | claims: {result['claim_count']}"
@@ -5015,7 +5154,9 @@ def retrieval_hallucination_risk_build(
 @retrieval_hallucination_risk_app.command("proof")
 def retrieval_hallucination_risk_proof(
     evidence: bool = typer.Option(
-        True, "--evidence/--no-evidence", help="Write the hallucination-risk proof to the evidence dir."
+        True,
+        "--evidence/--no-evidence",
+        help="Write the hallucination-risk proof to the evidence dir.",
     ),
     json_out: bool = typer.Option(
         True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."

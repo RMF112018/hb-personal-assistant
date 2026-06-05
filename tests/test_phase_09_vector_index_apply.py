@@ -155,12 +155,22 @@ def test_no_raw_no_writeback_and_sdk_absent_gate(monkeypatch: pytest.MonkeyPatch
         assert item_guard_sum == 0
 
     # SDK-absent gate: default writer + no SDK -> fail-closed, persists nothing.
-    monkeypatch.setattr(vector_index, "_llama_index_available", lambda: False)
+    monkeypatch.setattr(vector_index, "_llama_index_core_available", lambda: False)
     with tempfile.TemporaryDirectory() as td:
         db = _proof_db(td)
         receipt = build_vector_index_apply(db, persist_root=td)
         assert receipt["status"] == "apply_blocked"
         assert receipt["blocker_reason"] == "sdk_not_available"
+        assert _counts(db) == (0, 0)
+
+    # local-embedding-not-ready gate: core present but no local HF (default writer) -> blocked with new reason.
+    monkeypatch.setattr(vector_index, "_llama_index_core_available", lambda: True)
+    monkeypatch.setattr(vector_index, "_local_embedding_available", lambda: False)
+    with tempfile.TemporaryDirectory() as td:
+        db = _proof_db(td)
+        receipt = build_vector_index_apply(db, persist_root=td)
+        assert receipt["status"] == "apply_blocked"
+        assert receipt["blocker_reason"] == "local_embedding_not_ready"
         assert _counts(db) == (0, 0)
 
 

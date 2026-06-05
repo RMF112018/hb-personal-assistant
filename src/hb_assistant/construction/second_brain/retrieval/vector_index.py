@@ -6,8 +6,12 @@ nodes — what *would* be embedded and indexed — computing no embeddings and w
 The **apply** (Prompt 19) embeds those approved nodes via LlamaIndex and writes a vector store **on the
 local filesystem under Application Support — never to SQLite**, persisting metadata-only receipts (one
 `status='applied'` `vector_index_runs` row + one `vector_index_items` row per node). Apply is gated: it
-fails closed (`status='apply_blocked'`) when the optional LlamaIndex SDK is absent, when there are no
-indexable nodes, or when policy/schema is not ready — persisting nothing in those cases.
+fails closed (`status='apply_blocked'`) when the optional LlamaIndex core SDK is absent
+(`sdk_not_available`), when the local embedding backend required for the default provider is absent
+(`local_embedding_not_ready`), when there are no indexable nodes, or when policy/schema is not ready —
+persisting nothing in those cases. `build --apply` requires `pip install -e ".[retrieval-local]"` (core
++ local HF); `build-apply-proof` and dry-run/build-proof run with only `[retrieval]` (core) via injected
+`MockEmbedding`.
 
 The **approved source manifest is the only input** (provenance + authorization), and the node sources
 are the per-category loaders (Obsidian + reviewed memory), which already enforce approved + source-linked
@@ -58,7 +62,11 @@ from .embedding_policy import (
     validate_embedding_candidate,
 )
 from .generated_outputs_loader import load_approved_generated_output_nodes
-from .llamaindex_config import _llama_index_available, load_llamaindex_config_seed
+from .llamaindex_config import (
+    _llama_index_core_available,
+    _local_embedding_available,
+    load_llamaindex_config_seed,
+)
 from .memory_loader import load_reviewed_memory_nodes
 from .obsidian_loader import load_approved_obsidian_nodes
 from .source_manifest import build_approved_source_manifest
@@ -77,7 +85,9 @@ _APPLY_SEED_RELATIVE = Path("resources") / "config" / "phase_09_vector_index_app
 
 # A vector-store writer embeds the approved nodes and persists the store to `persist_dir` (outside
 # SQLite), returning a metadata-only receipt: written_count, embedding_dim, vector_store_kind, and a
-# {node_id: chunk_count} map. The default is LlamaIndex-backed; proofs/tests inject a MockEmbedding one.
+# {node_id: chunk_count} map. The default is LlamaIndex-backed using the local HF embedder (requires
+# both `retrieval` and `retrieval-local` extras for the real --apply path); proofs/tests inject a
+# MockEmbedding (core only, via `[retrieval]`) to keep the default-safe suite offline.
 VectorStoreWriter = Callable[..., dict[str, Any]]
 
 
@@ -200,6 +210,9 @@ def _build_plan(
     Returns ``(plan, indexable_nodes, embedding_contract, embedding_seed, llamaindex_config)``. The plan
     is the read-only dry-run dict (``status='dry_run'``); ``indexable_nodes`` is the in-memory node list
     the apply path embeds (never persisted).
+
+    The plan includes truthful `sdk_available` (core from `retrieval`), `local_embedding_available` (HF
+    from `retrieval-local`), and `ready_to_apply` which is true only when both + indexable nodes.
     """
     contract = load_embedding_vector_policy_contract()
     seed = load_embedding_vector_policy_seed()
@@ -227,7 +240,8 @@ def _build_plan(
         text_len = len(str(node.get("text_redacted", "")))
         planned_chunks += max(1, math.ceil(text_len / chunk_size))
 
-    sdk_available = _llama_index_available()
+    core_available = _llama_index_core_available()
+    local_embedding_available = _local_embedding_available()
     config_hash = _hash(
         json.dumps({k: config.get(k) for k in sorted(config)}, sort_keys=True, default=str)
     )
@@ -265,8 +279,9 @@ def _build_plan(
         "rejected_node_count": rejected,
         "rejected_reasons": reasons,
         "planned_chunk_count": planned_chunks,
-        "sdk_available": sdk_available,
-        "ready_to_apply": sdk_available and bool(indexable),
+        "sdk_available": core_available,
+        "local_embedding_available": local_embedding_available,
+        "ready_to_apply": core_available and local_embedding_available and bool(indexable),
         "no_raw_attested": True,
         "vectors_persisted_to_sqlite": False,
         "warnings": warnings,
@@ -334,10 +349,12 @@ def _llamaindex_vector_writer(
 ) -> dict[str, Any]:
     """Default writer: embed redacted node text via LlamaIndex and persist a SimpleVectorStore to disk.
 
-    Lazy-imports the optional SDK (fail-closed if absent). Builds one `Document` per approved node
-    (keyed by `node_id`), embeds with the configured local model (or an injected `embed_model` — the
-    proof/tests pass a deterministic `MockEmbedding`), and persists the vector store to `persist_dir`,
-    which lives **outside SQLite**. Returns a metadata-only receipt (no vectors, no text).
+    Lazy-imports the optional core SDK (fail-closed if absent). If no embed_model is injected, requires
+    the local HF embedding backend (from `retrieval-local`) and imports it; proofs/tests always inject
+    `MockEmbedding` (from core only) so the default-safe suite and build-apply-proof run with just
+    `[retrieval]`. Builds one `Document` per approved node (keyed by `node_id`), embeds, and persists the
+    vector store to `persist_dir` (under Application Support, **never to SQLite**). Returns a
+    metadata-only receipt (no vectors, no text).
     """
     try:
         from llama_index.core import Document, Settings, StorageContext, VectorStoreIndex
@@ -346,6 +363,11 @@ def _llamaindex_vector_writer(
         raise VectorIndexBuildError(f"llama-index core not available: {exc}") from exc
 
     if embed_model is None:
+        if not _local_embedding_available():
+            raise VectorIndexBuildError(
+                "local embedding backend (llama-index-embeddings-huggingface) not available; "
+                "install with `pip install -e '.[retrieval-local]'` for the default 'local' provider"
+            )
         from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
         embed_model = HuggingFaceEmbedding(model_name=str(config.get("embedding_model_label")))
@@ -417,8 +439,10 @@ def build_vector_index_apply(
     source ref / freshness metadata and pass the no-raw guardrail (re-asserted here). Vectors are written
     to `persist_root` (default: Application Support) — **never to SQLite**; only metadata-only receipts
     (`vector_index_runs` `status='applied'` + per-node `vector_index_items`) are persisted. Fails closed
-    (`status='apply_blocked'`, nothing persisted) when the SDK is absent, there are no indexable nodes, or
-    policy/schema is not ready.
+    (`status='apply_blocked'`, nothing persisted) when core SDK absent (`sdk_not_available`), local
+    embedding backend absent for default writer (`local_embedding_not_ready`), there are no indexable
+    nodes, or policy/schema is not ready. Default writer path requires `retrieval-local`; proofs use
+    injected writer + MockEmbedding and need only `retrieval`.
     """
     load_vector_index_apply_contract()
     apply_seed = load_vector_index_apply_seed()
@@ -446,8 +470,10 @@ def build_vector_index_apply(
     }
 
     using_default_writer = writer is None
-    if using_default_writer and not _llama_index_available():
+    if using_default_writer and not _llama_index_core_available():
         return {**base, "status": "apply_blocked", "blocker_reason": "sdk_not_available"}
+    if using_default_writer and not _local_embedding_available():
+        return {**base, "status": "apply_blocked", "blocker_reason": "local_embedding_not_ready"}
     if not indexable:
         return {**base, "status": "apply_blocked", "blocker_reason": "no_indexable_nodes"}
 
@@ -699,7 +725,11 @@ def build_vector_index_dry_run_proof(
 def _mock_vector_writer(
     nodes: list[dict[str, Any]], *, persist_dir: str, config: dict[str, Any]
 ) -> dict[str, Any]:
-    """Deterministic offline writer for proofs/tests: real LlamaIndex pipeline + `MockEmbedding`."""
+    """Deterministic offline writer for proofs/tests: real LlamaIndex pipeline + `MockEmbedding`.
+
+    Requires only `llama-index-core` (`[retrieval]`); bypasses the HF local embedding import entirely by
+    passing embed_model. Used by build-apply-proof so it passes on base + retrieval install (no local).
+    """
     from llama_index.core.embeddings import MockEmbedding
 
     dim = int(load_embedding_vector_policy_seed().get("embedding_dim", 384))
@@ -757,7 +787,12 @@ def build_vector_index_apply_proof(
     *, evidence_dir: str | None = None, write_evidence: bool = True
 ) -> dict[str, Any]:
     """Fail-closed proof: a guard-clean apply embeds approved nodes, writes vectors **outside SQLite**,
-    persists metadata-only receipts, and blocks when there are no indexable nodes or the SDK is absent."""
+    persists metadata-only receipts, and blocks when there are no indexable nodes or the SDK is absent.
+
+    Uses `_mock_vector_writer` (injects MockEmbedding) so the proof runs with only the `retrieval` extra
+    (core); it never exercises the real HF import path. The real `build --apply` (default writer) requires
+    `retrieval-local` for local embeddings and will block with `local_embedding_not_ready` otherwise.
+    """
     apply_contract = load_vector_index_apply_contract()
     forbidden_cols = {str(c) for c in apply_contract.get("forbidden_persisted_fields", [])}
 

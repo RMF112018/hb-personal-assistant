@@ -11,18 +11,20 @@ this runbook builds an index, computes an embedding, or mutates the operator dat
 hb-assistant second-brain retrieval llamaindex status --json
 ```
 
-Reports (read-only):
-- `sdk.available` — whether `llama-index-core` is importable (probed without importing it). `false` is
-  the normal default.
+Reports (read-only; truthful across installs):
+- `sdk` (and top-level): `core_available` / `sdk.core_available` (llama-index-core from `retrieval`),
+  `local_embedding_available` (HF from `retrieval-local`), versions, packages.
+- `embedding_runtime_ready` — true when core+(local if provider=local) or core if mock.
 - `config` + `config_hash` — the resolved metadata-only retrieval config (embedding provider/label,
   index kind, vector store kind, chunk size/overlap). Labels only — no paths or secrets.
 - `schema_ready` — the V38 retrieval substrate is present.
-- `ready_to_index` — `true` only when the SDK is installed **and** the config is valid **and** the
-  schema is ready.
-- `blockers` — e.g. `llama_index_not_installed`, `config_invalid`, `schema_not_ready`.
+- `ready_to_index` — now truthful: `true` only when core present **and** (runtime for provider) **and**
+  config valid **and** schema ready. (Base: false + llama_index_not_installed or local_embedding_not_ready.)
+- `blockers` — e.g. `llama_index_not_installed`, `local_embedding_not_ready`, `config_invalid`, `schema_not_ready`.
 
-Exit code: `0` when the contract/seed load, the config is valid, and the schema is ready (regardless of
-SDK presence); `3` on a fail-closed contract/seed failure, an invalid config, or a stale schema.
+Exit code: `0` when the contract/seed load, the config is valid, and the schema is ready (runtime
+readiness reported in fields/blockers but does not affect status exit); `3` on a fail-closed
+contract/seed failure, an invalid config, or a stale schema.
 
 ## 2. Install the optional retrieval extra (operator-run, optional)
 
@@ -32,9 +34,12 @@ pip install -e ".[retrieval]"        # llama-index-core
 pip install -e ".[retrieval-local]"  # llama-index-core + llama-index-embeddings-huggingface
 ```
 
-After installing, `status` reports `sdk.available=true` and a version; `ready_to_index` becomes `true`
-once the config + schema checks also pass. The build/apply paths that consume this are introduced in
-later Phase 09 prompts.
+After `pip install -e ".[retrieval]"` (core): `sdk.core_available=true`, `local_embedding_available=false`,
+`ready_to_index=false` (for default local provider), `blockers` may include `local_embedding_not_ready`.
+`build-apply-proof` (Mock) and status/dry-run/build-proof now see core=true in reports.
+After `pip install -e ".[retrieval-local]"` (adds HF): `local_embedding_available=true`, `embedding_runtime_ready=true`,
+`ready_to_index` can become true (with config+schema), `ready_to_apply` true if nodes, real `--apply` succeeds.
+See "Installing the optional embedding extra" below for matrix. The build/apply paths are in later prompts.
 
 ## 3. Configuration
 
@@ -142,8 +147,9 @@ hb-assistant second-brain retrieval llamaindex build-proof --json
   the local filesystem under Application Support (`retrieval/vector_store/<run_id>/`, **never SQLite**),
   and persists metadata-only receipts (a `status='applied'` `vector_index_runs` row + one
   `vector_index_items` row per node). It **fails closed** (`status='apply_blocked'`, persisting nothing)
-  when the optional SDK is absent (`sdk_not_available`), there are no indexable nodes
-  (`no_indexable_nodes`), or policy/schema is not ready. Exit 0 on `applied`; 3 on `apply_blocked`.
+  with `sdk_not_available` (core absent), `local_embedding_not_ready` (HF backend absent for default
+  writer on local provider), `no_indexable_nodes`, or policy/schema not ready. Exit 0 on `applied`; 3 on
+  `apply_blocked`. Dry-run/build-proof/build-apply-proof are safe with partial installs (proof uses Mock).
 - `build-proof` demonstrates the dry-run plan + build rule + a guard-clean `status='dry_run'` run record
   on a controlled fixture; persists nothing to the operator DB.
 - `build-apply-proof` demonstrates a guard-clean **apply** on a controlled fixture via an offline
@@ -166,7 +172,7 @@ assembles a final answer (`assembles_final_answer=false`) — answer assembly st
   summary (counts, per-family + origin split, tier distribution, score buckets, degradation, warnings).
   The raw query is **never persisted** (only its hash), no excerpts are echoed, and **nothing is
   persisted to the operator DB**. The semantic path fails closed (skipped, deterministic still returned)
-  when the SDK is absent or there is no applied index.
+  when core SDK absent (`semantic_sdk_not_available`), local embedding absent (`semantic_local_embedding_not_ready`), or no applied index.
 - `hybrid proof` — demonstrates a guard-clean hybrid query on a controlled fixture (applied index +
   offline `MockEmbedding`): deterministic + advisory semantic results merge, receipts are metadata-only
   with all 23 guard `CHECK(=0)` columns 0, `semantic_retrieval_bypassed_policy=0`, and the
@@ -403,6 +409,25 @@ never applied.
   a determination), guard-clean metadata-only per-(agent, metric) receipts, read-only default persists
   nothing, and **no raw feedback reason emitted** (only counts/bands/recommendation codes).
 
+## Daily brief reproducibility (Prompt 33)
+
+`second-brain daily-brief-reproducibility` is a read-only, **advisory** proof that the Phase 08A daily
+brief is reproducible. It runs the generator **twice** over the identical seeded controlled inputs (one
+cross-source relationship + one project-issue-history item), each in its own throwaway temp DB + temp
+vault with the mock adapter, and checks that both runs produce the **same** approved-output SHA256 hash
+with the **same** metadata-only source-ref coverage and a present evaluation receipt. It **makes no
+determination**, persists **nothing** to the operator DB (the operator DB is opened read-only only for the
+fail-closed schema-readiness gate), and adds **no schema/table**.
+
+- `daily-brief-reproducibility build [--project P]` — emits a metadata-only summary (`date`,
+  `input_snapshot_hash`, `output_hash` + `output_hash_match`, `source_refs` as `{source_family, count}`,
+  `evaluation_receipt_id` / `evaluation_receipt_present`, `reproducible`, `review_tier`, `degradation_mode`,
+  `guard_attestation` = all 23 guard columns attested false; `advisory_only=true`,
+  `makes_determination=false`, `read_only=true`). Exit 0 on success; 3 fail-closed.
+- `daily-brief-reproducibility proof` — runs the build against a throwaway migrated temp DB and proves
+  `output_hash_match`, `source_refs_preserved`, `evaluation_receipt_present`, no determination, guard-clean
+  attestations, and **no raw content emitted**; writes `daily-brief-reproducibility-proof.{json,md}`.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;
@@ -413,13 +438,22 @@ never applied.
 pip install -e ".[retrieval-local]"
 ```
 
-Without it, `--apply` stays fail-closed (`apply_blocked: sdk_not_available`) and the rest of the surface
-(status, dry-run, all proofs) continues to run with the SDK absent.
+Without `[retrieval-local]`, `--apply` (default writer) stays fail-closed with `local_embedding_not_ready`
+(even if core present); without `[retrieval]` core, it blocks earlier with `sdk_not_available`. The rest
+of the surface (status, dry-run, build-proof, build-apply-proof via Mock, hybrid deterministic) continues
+to run cleanly.
+
+With/without matrix (practical verification):
+- Base (no extra): `llamaindex status` (core=false, local=false, ready_to_index=false, blocker llama_index_not_installed or local...); `build` (dry), `build-proof` → exit 0; `build --apply` → 3 (sdk_not); `build-apply-proof` → may fail (no core for Mock) or pass if somehow, but normally run after [retrieval].
+- After `pip install -e ".[retrieval]"` (core): status core=true/local=false; ready_to_index=false (runtime); ready_to_apply=false; `build-apply-proof` passes (Mock); real `build --apply` → local_embedding_not_ready.
+- After `pip install -e ".[retrieval-local]"`: core+local=true; ready_to_index/apply can be true (with nodes+config+schema); real --apply works; semantic ready if applied index.
 
 ## Guardrails
 
-- Optional + lazy: the SDK is imported only inside Phase 09 retrieval code paths; the base install,
-  migrations, and full test suite run with it absent.
+- Optional + lazy + truthful: core (llama-index-core) and local-embedding (HF) are imported only inside
+  Phase 09 retrieval code paths (after find_spec probes); base install + full suite run with both absent;
+  readiness fields (`sdk_available`/`core_available`/`local_embedding_available`/`ready_to_*`/blockers)
+  accurately reflect the installed extras (no overstatement on partial installs).
 - Embeddings/vectors: only approved, redacted, source-linked families may be embedded; vectors are
   never written to SQLite (the V38 `raw_vector_content_persisted` guard enforces it).
 - Read-only: the status surface opens the database read-only and persists nothing.

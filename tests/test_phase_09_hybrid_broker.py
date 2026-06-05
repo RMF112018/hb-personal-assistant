@@ -190,7 +190,7 @@ def test_no_raw_no_writeback_and_sdk_absent_gate(monkeypatch: pytest.MonkeyPatch
         assert raw_query not in stored_query_hash  # only the hash is persisted
 
     # SDK-absent: default writer + no SDK -> semantic skipped, deterministic still returned.
-    monkeypatch.setattr(hybrid_broker, "_llama_index_available", lambda: False)
+    monkeypatch.setattr(hybrid_broker, "_llama_index_core_available", lambda: False)
     with tempfile.TemporaryDirectory() as td:
         db, persist_root = _applied_db(td)
         result = build_hybrid_retrieval(
