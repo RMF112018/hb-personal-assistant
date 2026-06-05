@@ -1,0 +1,14 @@
+{
+  "smoke": "phase_09_hybrid_real_huggingface_query",
+  "embedding_model_label": "BAAI/bge-small-en-v1.5",
+  "status": "ok",
+  "deterministic_count": 3,
+  "semantic_count": 3,
+  "assembles_final_answer": false,
+  "mode": "hybrid",
+  "score_buckets": [
+    "high",
+    "medium"
+  ],
+  "semantic_skip_reason": null
+}

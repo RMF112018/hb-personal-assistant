@@ -1,0 +1,37 @@
+{
+  "command": "second-brain retrieval hybrid status",
+  "phase": "09",
+  "generated_utc": "2026-06-05T07:06:22.218906+00:00",
+  "repo_sha": "3d9e34216a9d94c8889e08f61387cb31e48b50e2",
+  "schema_version": 38,
+  "schema_ready": true,
+  "deterministic_ready": true,
+  "sdk_available": true,
+  "applied_vector_index_present": false,
+  "semantic_ready": false,
+  "modes": [
+    "deterministic_only",
+    "hybrid"
+  ],
+  "default_mode": "hybrid",
+  "semantic_blockers": [
+    "semantic_no_applied_index"
+  ],
+  "deterministic_source_of_truth": true,
+  "semantic_advisory_only": true,
+  "assembles_final_answer": false,
+  "policy_version": "phase_09_hybrid_retrieval_v1",
+  "read_only": true,
+  "guardrails": {
+    "deterministic_source_of_truth": true,
+    "semantic_advisory_only": true,
+    "no_final_answer_assembly": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "vectors_outside_sqlite": true,
+    "no_semantic_retrieval_bypass": true,
+    "raw_query_not_persisted": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

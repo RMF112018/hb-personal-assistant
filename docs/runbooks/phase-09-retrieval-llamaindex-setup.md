@@ -151,6 +151,28 @@ hb-assistant second-brain retrieval llamaindex build-proof --json
   rows persist with all 23 guard `CHECK(=0)` columns 0, and the blocked-no-nodes path is exercised;
   persists nothing to the operator DB.
 
+## Hybrid retrieval (Prompt 20)
+
+The `second-brain retrieval hybrid` group combines the deterministic Retrieval Broker (the source of
+truth) with an advisory semantic path over the applied vector index. Deterministic results are
+authoritative; semantic results are advisory, source-linked suggestions only and the broker never
+assembles a final answer (`assembles_final_answer=false`) — answer assembly stays in the Research Packet
+/ Evaluation layers.
+
+- `hybrid status` — readiness: deterministic is always ready; semantic is ready only when the SDK is
+  installed **and** a vector index has been applied (otherwise `semantic_no_applied_index` /
+  `semantic_sdk_not_available`).
+- `hybrid search "<query>" [--project P] [--mode hybrid|deterministic-only]` — returns a metadata-only
+  summary (counts, per-family + origin split, tier distribution, score buckets, degradation, warnings).
+  The raw query is **never persisted** (only its hash), no excerpts are echoed, and **nothing is
+  persisted to the operator DB**. The semantic path fails closed (skipped, deterministic still returned)
+  when the SDK is absent or there is no applied index.
+- `hybrid proof` — demonstrates a guard-clean hybrid query on a controlled fixture (applied index +
+  offline `MockEmbedding`): deterministic + advisory semantic results merge, receipts are metadata-only
+  with all 23 guard `CHECK(=0)` columns 0, `semantic_retrieval_bypassed_policy=0`, and the
+  no-applied-index / deterministic-only / unsafe-node paths are exercised; persists nothing to the
+  operator DB.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

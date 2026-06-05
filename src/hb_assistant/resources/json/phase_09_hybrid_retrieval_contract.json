@@ -1,0 +1,84 @@
+{
+  "contract_name": "phase_09_hybrid_retrieval_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 20 — hybrid retrieval broker. Combines the deterministic Retrieval Broker (A03, the source of truth over the allowlisted families) with an advisory semantic path that queries the applied vector index. Deterministic results are authoritative; semantic results are advisory 'suggested context' only — source-linked back to approved/reviewed nodes, with review tier, confidence class, source references, and freshness preserved, never raw. The broker returns a merged RetrievalEnvelope and must never assemble a final answer (that stays in the Research Packet and Evaluation layers). Receipts are metadata-only; the raw query string is never persisted (only its hash); vectors live outside SQLite.",
+  "modes": ["deterministic_only", "hybrid"],
+  "default_mode": "hybrid",
+  "deterministic_authoritative": true,
+  "semantic_advisory_only": true,
+  "assembles_final_answer": false,
+  "semantic_min_review_tier": 2,
+  "semantic_max_top_k": 20,
+  "score_bucket_thresholds": {
+    "high": 0.66,
+    "medium": 0.33
+  },
+  "run_column_allowlist": [
+    "run_id",
+    "created_at_utc",
+    "policy_version",
+    "schema_version",
+    "project_key",
+    "query_hash",
+    "mode",
+    "result_count",
+    "latency_bucket"
+  ],
+  "result_column_allowlist": [
+    "result_id",
+    "created_at_utc",
+    "policy_version",
+    "schema_version",
+    "run_id",
+    "rank",
+    "source_family",
+    "source_ref_hash",
+    "confidence_class",
+    "score_bucket"
+  ],
+  "forbidden_persisted_fields": [
+    "raw_query",
+    "query",
+    "query_text",
+    "embedding",
+    "vector",
+    "raw_vector",
+    "text",
+    "content_excerpt",
+    "content_excerpt_redacted",
+    "source_ref",
+    "persist_dir",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret",
+    "raw_body",
+    "raw_prompt",
+    "raw_response"
+  ],
+  "semantic_skip_reasons": [
+    "semantic_sdk_not_available",
+    "semantic_no_applied_index",
+    "semantic_disabled_mode"
+  ],
+  "blocker_reasons": [
+    "schema_not_ready",
+    "policy_unavailable"
+  ],
+  "global_requirements": [
+    "local_first",
+    "deterministic_source_of_truth",
+    "semantic_advisory_only",
+    "no_final_answer_assembly",
+    "vectors_outside_sqlite",
+    "no_raw",
+    "no_external_writeback",
+    "preserve_review_tier",
+    "preserve_confidence_class",
+    "preserve_source_references",
+    "preserve_freshness",
+    "preserve_coverage_warnings",
+    "no_semantic_retrieval_bypass",
+    "fail_closed"
+  ]
+}

@@ -143,6 +143,13 @@ memory_loader_app = typer.Typer(
 )
 retrieval_app.add_typer(memory_loader_app, name="memory-loader")
 
+hybrid_app = typer.Typer(
+    name="hybrid",
+    help="Phase 09 hybrid retrieval broker (deterministic + advisory semantic; read-only, fail-closed).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(hybrid_app, name="hybrid")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3134,11 +3141,26 @@ _VECTOR_INDEX_APPLY_GUARDRAILS = {
     "fail_closed": True,
 }
 
+_HYBRID_RETRIEVAL_GUARDRAILS = {
+    "deterministic_source_of_truth": True,
+    "semantic_advisory_only": True,
+    "no_final_answer_assembly": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "vectors_outside_sqlite": True,
+    "no_semantic_retrieval_bypass": True,
+    "raw_query_not_persisted": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
 
 @llamaindex_app.command("build")
 def retrieval_llamaindex_build(
     apply: bool = typer.Option(
-        False, "--apply/--dry-run", help="Apply build (embed + write vector store); default dry-run."
+        False,
+        "--apply/--dry-run",
+        help="Apply build (embed + write vector store); default dry-run.",
     ),
     project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
     json_out: bool = typer.Option(
@@ -3305,6 +3327,141 @@ def retrieval_llamaindex_build_apply_proof(
         f" (items={proof['applied_item_count']}, dim={proof['embedding_dim']},"
         f" vectors_outside_sqlite={proof['vectors_written_outside_sqlite']})",
         *[f"  [{'ok' if c['passed'] else 'FAIL'}] {c['name']}" for c in proof["cases"]],
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+@hybrid_app.command("status")
+def retrieval_hybrid_status(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Hybrid retrieval readiness — deterministic always; semantic iff SDK + applied index (read-only)."""
+    from hb_assistant.construction.second_brain.retrieval.hybrid_broker import (
+        HybridRetrievalError,
+        build_hybrid_status,
+    )
+
+    try:
+        report = build_hybrid_status()
+    except HybridRetrievalError as exc:
+        payload = {
+            "command": "second-brain retrieval hybrid status",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "guardrails": _HYBRID_RETRIEVAL_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**report, "guardrails": _HYBRID_RETRIEVAL_GUARDRAILS}
+    human = [
+        "Phase 09 hybrid retrieval status (read-only, advisory)",
+        f"  deterministic ready: {report['deterministic_ready']}"
+        f" | semantic ready: {report['semantic_ready']}",
+        f"  sdk available: {report['sdk_available']}"
+        f" | applied index: {report['applied_vector_index_present']}",
+        f"  semantic blockers: {report['semantic_blockers']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@hybrid_app.command("search")
+def retrieval_hybrid_search(
+    query: str = typer.Argument(..., help="Query text (never persisted; only its hash is stored)."),
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    mode: str = typer.Option(
+        "hybrid", "--mode", help="Retrieval mode: 'hybrid' or 'deterministic-only'."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Hybrid retrieval — deterministic (authoritative) + advisory semantic, merged (read-only).
+
+    Emits a metadata-only summary (counts, per-family + origin split, tier distribution, score buckets,
+    degradation, warnings, `assembles_final_answer=false`, `query_hash`). Never echoes the raw query or
+    any excerpt, and never persists to the operator DB (the receipt path is exercised in `hybrid proof`).
+    Semantic results are advisory and source-linked; the path fails closed (semantic skipped, deterministic
+    still returned) when the SDK is absent or there is no applied vector index. Exit 0 on success; 3 on a
+    fail-closed contract/schema failure.
+    """
+    from hb_assistant.construction.second_brain.retrieval.hybrid_broker import (
+        HybridRetrievalError,
+        build_hybrid_retrieval,
+    )
+
+    normalized_mode = (
+        "deterministic_only" if mode in ("deterministic-only", "deterministic_only") else mode
+    )
+    try:
+        result = build_hybrid_retrieval(query, project_key=project, mode=normalized_mode)
+    except HybridRetrievalError as exc:
+        payload = {
+            "command": "second-brain retrieval hybrid search",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "guardrails": _HYBRID_RETRIEVAL_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _HYBRID_RETRIEVAL_GUARDRAILS}
+    human = [
+        "Phase 09 hybrid retrieval — merged context (read-only, advisory)",
+        f"  mode: {result['mode']} | total: {result['result_count']}"
+        f" | deterministic: {result['deterministic_count']} | semantic: {result['semantic_count']}",
+        f"  per-family: {result['per_family_count']} | tiers: {result['tier_distribution']}",
+        f"  assembles final answer: {result['assembles_final_answer']}"
+        f" | semantic skip: {result['semantic_skip_reason']}",
+        f"  warnings: {result['coverage_warnings']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@hybrid_app.command("proof")
+def retrieval_hybrid_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the hybrid retrieval proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove the hybrid broker is safe — deterministic + advisory semantic merge, source-of-truth kept.
+
+    Demonstrates (on a controlled fixture with an applied index + an offline MockEmbedding) a guard-clean
+    hybrid query: deterministic + advisory-only semantic results merge, the raw query is never persisted
+    (only its hash), receipts are metadata-only with all 23 guard `CHECK(=0)` columns 0,
+    `assembles_final_answer=false`, `semantic_retrieval_bypassed_policy=0`, and the semantic path fails
+    closed when there is no applied index. Persists nothing to the operator DB. Exit 0 if the proof passes.
+    """
+    from hb_assistant.construction.second_brain.retrieval.hybrid_broker import (
+        HybridRetrievalError,
+        build_hybrid_retrieval_proof,
+    )
+
+    try:
+        proof = build_hybrid_retrieval_proof(write_evidence=evidence)
+    except HybridRetrievalError as exc:
+        payload = {
+            "command": "second-brain retrieval hybrid proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _HYBRID_RETRIEVAL_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _HYBRID_RETRIEVAL_GUARDRAILS}
+    human = [
+        f"Hybrid retrieval proof passed={proof['proof_passed']}"
+        f" (deterministic={proof['deterministic_count']}, semantic={proof['semantic_count']},"
+        f" assembles_final_answer={proof['assembles_final_answer']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 

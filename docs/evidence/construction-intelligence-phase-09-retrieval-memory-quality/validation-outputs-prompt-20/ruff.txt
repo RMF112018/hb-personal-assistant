@@ -1,0 +1,26 @@
+=== ruff ===
+F401 [*] `.models.RetrievalEnvelope` imported but unused
+  --> src/hb_assistant/construction/second_brain/retrieval/hybrid_broker.py:47:21
+   |
+45 | )
+46 | from .llamaindex_config import _llama_index_available, load_llamaindex_config_seed
+47 | from .models import RetrievalEnvelope, RetrievalItem
+   |                     ^^^^^^^^^^^^^^^^^
+48 | from .policy import EXCLUDED_FAMILIES, apply_context_budget, load_context_budget
+   |
+help: Remove unused import: `.models.RetrievalEnvelope`
+
+F841 Local variable `applied` is assigned to but never used
+   --> src/hb_assistant/construction/second_brain/retrieval/hybrid_broker.py:582:9
+    |
+580 |         db = _proof_db(tmp)
+581 |         persist_root = str(Path(tmp) / "vector_store")
+582 |         applied = build_vector_index_apply(
+    |         ^^^^^^^
+583 |             db, writer=_mock_vector_writer, persist_root=persist_root
+584 |         )
+    |
+help: Remove assignment to unused variable `applied`
+
+Found 2 errors.
+[*] 1 fixable with the `--fix` option (1 hidden fix can be enabled with the `--unsafe-fixes` option).

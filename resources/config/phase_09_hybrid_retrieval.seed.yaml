@@ -1,0 +1,14 @@
+# Phase 09 Prompt 20 — hybrid retrieval broker (resolved values; advisory).
+# Metadata-only: mode + bounded numeric params + the advisory review posture for semantic suggestions.
+# Deterministic results are authoritative; semantic results are advisory only and are floored at review
+# tier 2 (review_recommended) — a semantic match is never auto-tier-1. No raw content/query/vectors are
+# persisted (only a query hash); the vector store lives outside SQLite. The broker never assembles a
+# final answer (that stays in the Research Packet / Evaluation layers).
+version: phase_09_hybrid_retrieval_v1
+
+default_mode: hybrid
+semantic_top_k: 5
+semantic_min_review_tier: 2
+score_bucket_thresholds:
+  high: 0.66
+  medium: 0.33

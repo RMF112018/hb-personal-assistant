@@ -1,0 +1,117 @@
+{
+  "prompt": "Phase 09 Prompt 20 — Hybrid Retrieval Broker",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "3d9e34216a9d94c8889e08f61387cb31e48b50e2",
+  "schema_version": 38,
+  "objective": "Combine deterministic and semantic retrieval while preserving source-of-truth discipline: deterministic results are authoritative; semantic results are advisory, source-linked suggestions that never assemble a final answer (that stays in the Research Packet / Evaluation layers).",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/retrieval/hybrid_broker.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_hybrid_retrieval_contract.json"],
+    "new_seeds": ["resources/config/phase_09_hybrid_retrieval.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_hybrid_broker.py"],
+    "migrator_change": "None — V38 already created hybrid_query_runs + hybrid_query_results; schema stays 38, contract table count stays 190.",
+    "synthesis_rewiring": "None — the hybrid broker is wiring-ready (returns a merged context) but A02/A04 adoption is deferred to a later prompt to avoid an unproven synthesis behavior change."
+  },
+  "hybrid_broker": {
+    "entry_points": [
+      "build_hybrid_retrieval(query, *, db_path=None, project_key=None, families=None, mode='hybrid', embed_model=None, top_k=None, persist_root=None) -> dict",
+      "build_hybrid_status(db_path=None, *, persist_root=None) -> dict",
+      "persist_hybrid_query_record(db_path, result, *, policy_version) -> str",
+      "build_hybrid_retrieval_proof(*, evidence_dir=None, write_evidence=True) -> dict"
+    ],
+    "deterministic_path": "Reuses RetrievalBroker(db_path).retrieve(emit_receipt=False) over ALLOWLISTED_SOURCE_FAMILIES — authoritative.",
+    "semantic_path": "Loads the latest applied SimpleVectorStore from disk (StorageContext.from_defaults + load_index_from_storage + as_retriever.retrieve), embedding the query with the configured local model. Injectable embed_model (default HuggingFace bge-small; proofs/tests inject MockEmbedding). Each match is source-linked to a vector_index_items receipt, floored at review tier 2 (never auto-tier-1), and re-validated with the Prompt 14 no-raw guardrail before admission.",
+    "merge": "Deterministic items first (authoritative), then non-duplicate advisory semantic items; re-bounded with apply_context_budget(load_context_budget()).",
+    "fail_closed": "Semantic path skipped (deterministic still returned) when SDK absent (semantic_sdk_not_available), no applied index (semantic_no_applied_index), or deterministic-only mode (semantic_disabled_mode). The whole surface is V38-gated (HybridRetrievalError on stale schema / missing policy).",
+    "read_only": "build_hybrid_retrieval and the `hybrid search` CLI persist nothing to the operator DB; the raw query is never persisted (only its hash); the receipt path is exercised in the proof."
+  },
+  "source_of_truth_discipline": {
+    "deterministic_authoritative": true,
+    "semantic_advisory_only": true,
+    "assembles_final_answer": false,
+    "semantic_retrieval_bypassed_policy": 0,
+    "preserved": ["review_tier", "confidence_class", "source_references (hashed)", "freshness", "coverage_warnings"],
+    "no_mcp_exposure": "Vector/semantic search is not registered as an MCP tool (no-raw-access contract honored)."
+  },
+  "operator_db_outcome": {
+    "hybrid_status_semantic_ready": false,
+    "hybrid_status_blockers": ["semantic_no_applied_index"],
+    "hybrid_search_status": "ok (deterministic results returned; semantic empty; no persist)",
+    "hybrid_query_runs_rows": 0,
+    "hybrid_query_results_rows": 0,
+    "schema_version": 38,
+    "operator_db_mutated": false
+  },
+  "hybrid_proof": {
+    "command": "second-brain retrieval hybrid proof --json",
+    "proof_passed": true,
+    "deterministic_count": 3,
+    "semantic_count": 3,
+    "assembles_final_answer": false,
+    "semantic_retrieval_bypassed_policy": 0,
+    "run_record_guard_clean": true,
+    "result_records_guard_clean": true,
+    "no_forbidden_persisted_columns": true,
+    "raw_query_not_persisted": true,
+    "no_applied_index_semantic_skipped": true,
+    "deterministic_only_mode_skips_semantic": true,
+    "unsafe_semantic_node_dropped": true,
+    "guard_columns_checked": 23
+  },
+  "real_huggingface_hybrid_smoke": {
+    "embedding_model_label": "BAAI/bge-small-en-v1.5",
+    "status": "ok",
+    "deterministic_count": 3,
+    "semantic_count": 3,
+    "assembles_final_answer": false,
+    "score_buckets_observed": ["high", "medium"],
+    "note": "Genuine local embed + semantic retrieval over the applied SimpleVectorStore; real cosine scores bucketed high/medium (not the uniform MockEmbedding scores). Captured at validation-outputs-prompt-20/real-huggingface-hybrid-smoke.json. Automated equivalent: tests/test_phase_09_hybrid_broker.py::test_hybrid_real_huggingface_query_smoke (marked integration)."
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "Success: no issues found in 288 source files",
+    "pytest_not_live_integration_manual": "3142 passed, 0 failed, 3 deselected",
+    "construction_agent_validate": "exit 0 (schema 38)",
+    "data_quality_table_inventory": "exit 0 (contract_table_count=190, in_db_not_in_contract=[] i.e. 0 unmapped)",
+    "data_quality_no_writeback_proof": "exit 0",
+    "second_brain_phase_08a_gates": "exit 0",
+    "second_brain_phase_08b_gates": "exit 0",
+    "second_brain_phase_08c_gates": "SKIPPED — appends ~1,299 financial-ledger rows to the operator DB per call (disclosed defect from Prompts 02/05)",
+    "second_brain_data_quality_phase_08d_gates": "exit 0",
+    "second_brain_mcp_no_raw_access": "exit 0",
+    "second_brain_mcp_no_writeback": "exit 0",
+    "retrieval_hybrid_status": "exit 0 (deterministic_ready=true, semantic_ready=false: semantic_no_applied_index on the operator DB)",
+    "retrieval_hybrid_search": "exit 0 (deterministic results; semantic empty/honest; no operator-DB persist)",
+    "retrieval_hybrid_search_deterministic_only": "exit 0 (semantic skipped: semantic_disabled_mode)",
+    "retrieval_hybrid_proof": "exit 0 (proof_passed=true)",
+    "post_cli_guard_rerun": "tests/test_repo_sensitive_scan.py + tests/test_second_brain_no_writeback_proof.py — pass"
+  },
+  "command_path_corrections": {
+    "note": "The prompt's exact-command list used stale MCP paths (`mcp data-quality …`). The real commands are `second-brain data-quality phase-08d-gates`, `second-brain mcp no-raw-access`, `second-brain mcp no-writeback` — all run, all exit 0."
+  },
+  "guardrails_enforced": [
+    "deterministic source of truth; semantic results advisory-only and source-linked",
+    "broker returns a merged context envelope, never a final answer (assembles_final_answer=false)",
+    "no raw source content / prompt / response / tokens / signed-or-download URLs persisted; raw query never persisted (only query_hash)",
+    "vectors live outside SQLite; receipts metadata-only; all 23 guard CHECK(=0) columns 0",
+    "semantic_retrieval_bypassed_policy stays 0 (no Research Packet / Evaluation bypass)",
+    "no Graph/Procore/email/calendar/source-system/external-delivery writeback; no MCP vector-search exposure",
+    "fail-closed when SDK absent / no applied index / stale schema / missing policy",
+    "operator DB data-pristine (no migration; hybrid search does not persist; hybrid tables stay 0 rows)"
+  ],
+  "deferred_items": [
+    "Wiring the hybrid broker into Research Packet (A02) / Answer Synthesis (A04) — behavior change, later prompt",
+    "generated_outputs (research-packet) loader still absent — the semantic corpus is Obsidian + reviewed memory only",
+    "Eval sets, benchmarks, memory-quality review — later Phase 09 prompts"
+  ],
+  "blocker_classifications": {
+    "build_blockers": "none (hybrid broker implemented + proven; semantic empty on the operator DB only because no vector index has been applied there, which is expected)",
+    "external_blockers": "none"
+  }
+}
