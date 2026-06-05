@@ -60,6 +60,7 @@ _MANIFEST_TABLE = "second_brain_retrieval_approved_source_manifests"
 _GENERATED = "generated_outputs"
 _OBSIDIAN = "approved_obsidian_outputs"
 _MEMORY = "reviewed_memory"
+_READ_MODELS = "approved_read_models"
 
 
 class ApprovedSourceManifestError(RuntimeError):
@@ -307,8 +308,38 @@ def _read_memory(conn: sqlite3.Connection, project_key: str | None, limit: int) 
     return out
 
 
+def _read_read_models(db_path: str | None, project_key: str | None, limit: int) -> list[dict]:
+    """Eligible deterministic read-model items (shared loader) → manifest candidate entries.
+
+    Reuses ``read_model_loader.load_approved_read_model_nodes`` so the manifest's approved set is exactly
+    what the vector-index gather will index. Entries carry hashes/labels only — never the redacted
+    excerpt text itself (``content_excerpt_redacted`` is a forbidden entry field).
+    """
+    from .read_model_loader import load_approved_read_model_nodes
+
+    out: list[dict] = []
+    for node in load_approved_read_model_nodes(db_path, project_key=project_key)[:limit]:
+        out.append(
+            {
+                "source_family": str(node["source_family"]),
+                "source_ref": str(node["source_ref"]),
+                "source_ref_hash": _hash(str(node["source_ref"])),
+                "content_hash": str(node["content_hash"]),
+                "review_tier": int(node["review_tier"]),
+                "review_status": str(node["review_status"]),
+                "confidence_class": str(node["confidence_class"]),
+                "freshness_label": str(node["freshness_label"]),
+                "review_required": bool(node["review_required"]),
+            }
+        )
+    return out
+
+
 def _read_candidates(
-    conn: sqlite3.Connection, seed: dict[str, Any], project_key: str | None
+    conn: sqlite3.Connection,
+    seed: dict[str, Any],
+    project_key: str | None,
+    db_path: str | None,
 ) -> dict[str, list[dict]]:
     enabled = set(seed.get("enabled_categories", []))
     limit = int(seed.get("max_refs_per_category", 2000))
@@ -319,6 +350,8 @@ def _read_candidates(
         candidates[_OBSIDIAN] = _read_obsidian(conn, project_key, limit)
     if _MEMORY in enabled:
         candidates[_MEMORY] = _read_memory(conn, project_key, limit)
+    if _READ_MODELS in enabled:
+        candidates[_READ_MODELS] = _read_read_models(db_path, project_key, limit)
     return candidates
 
 
@@ -347,7 +380,7 @@ def build_approved_source_manifest(
             schema_version = int(row[0]) if row and row[0] is not None else 0
             schema_ready = schema_version >= 38 and _table_exists(conn, _MANIFEST_TABLE)
             if schema_ready:
-                candidates = _read_candidates(conn, seed, project_key)
+                candidates = _read_candidates(conn, seed, project_key, db_path)
                 for family, items in candidates.items():
                     fam_approved: list[dict] = []
                     fam_excluded = 0

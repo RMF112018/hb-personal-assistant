@@ -43,7 +43,7 @@ QUERY_TOOL_FAMILY_MAP: dict[str, str | None] = {
     "relationship_candidates": "cross_source_relationships",
     "accepted_relationships": "cross_source_relationships",
     "source_evidence_trails": "phase_07d_source_evidence_trails",
-    "meeting_prep_briefs": "meeting_prep_brief_sections",  # no reader (intentionally deferred)
+    "meeting_prep_briefs": "meeting_prep_brief_sections",  # reader-backed (Phase 09 coverage expansion)
     "issue_history": "project_issue_history_items",
     "risk_digest": "project_risk_digest_items",
     "aging_exposure": "aging_exposure_report_items",

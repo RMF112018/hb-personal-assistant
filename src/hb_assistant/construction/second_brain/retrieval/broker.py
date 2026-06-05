@@ -68,7 +68,12 @@ class RetrievalBroker:
             if reader is None:
                 coverage_warnings.append(f"no_read_model:{family}")
                 continue
-            items.extend(reader(self._store, self._db_path, project_key))
+            fam_items = reader(self._store, self._db_path, project_key)
+            if not fam_items:
+                # Backed family with no rows is a genuine coverage gap; surface it so downstream
+                # evaluation never silently treats a missing family as full coverage.
+                coverage_warnings.append(f"empty_read_model:{family}")
+            items.extend(fam_items)
 
         budget = load_context_budget()
         kept, char_count, truncated, degradation = apply_context_budget(items, budget)

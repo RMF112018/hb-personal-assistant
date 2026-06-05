@@ -151,6 +151,16 @@ def _guard_sum(conn: sqlite3.Connection, tables: list[str], columns: list[str]) 
     return total
 
 
+def _coverage_layers(db_path: str | None) -> dict[str, Any]:
+    """Best-effort coverage-layer distinction (deterministic / manifest / vector-indexed / deferred)."""
+    try:
+        from .corpus_balance_mart import build_retrieval_coverage_layers
+
+        return build_retrieval_coverage_layers(db_path)
+    except Exception:
+        return {}
+
+
 def evaluate_phase_09_data_quality_gates(*, db_path: str | None = None) -> dict[str, Any]:
     """Evaluate the Phase 09 data-quality gate set (read-only; advisory; no persistence).
 
@@ -349,6 +359,7 @@ def evaluate_phase_09_data_quality_gates(*, db_path: str | None = None) -> dict[
         "required_fields_covered": required_fields_covered,
         "readiness_overstated": False,
         "phase_09_substrate_status": substrate_status,
+        "coverage_layers": _coverage_layers(db_path),
         "advisory_only": True,
         "makes_determination": False,
         "read_only": True,

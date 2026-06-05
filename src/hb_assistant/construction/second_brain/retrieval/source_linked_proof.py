@@ -142,6 +142,16 @@ def load_source_linked_retrieval_proof_seed() -> dict[str, Any]:
     return data
 
 
+def _coverage_layers(db_path: str | None, project_key: str | None) -> dict[str, Any]:
+    """Best-effort coverage-layer distinction (deterministic / manifest / vector-indexed / deferred)."""
+    try:
+        from ..corpus_balance_mart import build_retrieval_coverage_layers
+
+        return build_retrieval_coverage_layers(db_path, project_key=project_key)
+    except Exception:
+        return {}
+
+
 def _link_status(items: list[Any]) -> dict[str, Any]:
     """Count source-linked vs unlinked retrieval results (metadata-only, no raw refs emitted).
 
@@ -235,6 +245,7 @@ def build_source_linked_retrieval_proof(
         "unlinked_count": ls["unlinked_count"],
         "proof_passed": proof_passed,
         "per_family": ls["per_family"],
+        "coverage_layers": _coverage_layers(db_path, project_key),
         "deterministic_count": meta.get("deterministic_count"),
         "semantic_count": meta.get("semantic_count"),
         "semantic_skip_reason": meta.get("semantic_skip_reason"),
