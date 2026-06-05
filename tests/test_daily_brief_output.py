@@ -55,12 +55,44 @@ def test_render_is_redacted_markdown(db_path: str) -> None:
     _seed(db_path)
     md = render_brief_markdown(_context(db_path))
     assert md.startswith("# Daily Brief — 2026-06-02")
+    # Prompt 37: what matters first, then priority, review capped, project (may be ranked)
+    assert "## What Matters Today" in md
     assert "## Priority Actions" in md
+    assert "## Review exceptions (capped; see `second-brain review burden` for full clusters)" in md
+    assert "## Project Signals" in md
+    # basic order check (what before priority)
+    wm_pos = md.find("## What Matters Today")
+    pa_pos = md.find("## Priority Actions")
+    assert wm_pos >= 0 and pa_pos > wm_pos
     assert (
         "Review exceptions" in md or "Batched/suppressed" in md
     )  # new summary-first review burden section (replaced full queue dump)
     for forbidden in ("signed_url", "download_url", "raw_body", "raw_prompt", "raw_response"):
         assert forbidden not in md
+    # no overclaim language (Prompt 37)
+    for over in (
+        "final",
+        "determined",
+        "concluded",
+        "approved for payment",
+        "approved for claim",
+        "safety determination",
+        "legal sign-off",
+        "settled",
+    ):
+        assert over.lower() not in md.lower()
+    # positive advisory
+    assert (
+        "advisory" in md.lower()
+        or "signals" in md.lower()
+        or "never presented as fact" in md.lower()
+    )
+    # non-spam (rough)
+    assert md.count("\n") < 300
+    # context shape (full keys including new)
+    ctx = _context(db_path)
+    assert hasattr(ctx, "what_matters_today")
+    assert isinstance(ctx.what_matters_today, list)
 
 
 def test_dry_run_writes_nothing(tmp_path: Path, db_path: str) -> None:

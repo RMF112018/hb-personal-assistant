@@ -90,7 +90,13 @@ def _line(title: str, source_refs: list[dict[str, str]], tier: int) -> str:
 
 
 def render_brief_markdown(context: DailyBriefContext) -> str:
-    """Render the redacted, deterministic inner brief content (no raw, no model text)."""
+    """Render the redacted, deterministic inner brief content (no raw, no model text).
+
+    Includes (Prompt 37) leading 'What Matters Today' summary (capped advisory bullets from
+    ranked priorities) before Priority Actions. Project Signals reflect rank order when
+    context provides it. Review exceptions remain capped at 10 + batched/suppressed note.
+    All language advisory-only; no final/determination/claim/safety/legal/payment language.
+    """
     lines: list[str] = [
         f"# Daily Brief — {context.brief_date}",
         "",
@@ -100,6 +106,14 @@ def render_brief_markdown(context: DailyBriefContext) -> str:
             f"review_tier={context.review_tier} ({context.review_tier_reason_code}); "
             f"source_coverage={context.source_coverage}. "
             "Tier-3 items are routed to mandatory review and never presented as fact._"
+        ),
+        "",
+        "## What Matters Today",
+        *(
+            [f"- {b}" for b in (getattr(context, "what_matters_today", None) or [])]
+            or [
+                "_No high-priority signals in window (advisory; review exceptions capped; see below)._"
+            ]
         ),
         "",
         "## Priority Actions",

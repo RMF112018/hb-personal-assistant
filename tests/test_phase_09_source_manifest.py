@@ -171,6 +171,7 @@ def test_daily_brief_output_populates_approved_obsidian_sources(tmp_path: Path) 
     assert manifest["families"]["approved_obsidian_outputs"]["approved_count"] > 0
     assert "generated_outputs" in manifest["families"]
     assert "approved_obsidian_outputs" in manifest["families"]
+    # Prompt 37: content change (new what_matters + ranked) still populates same approved paths (root unchanged)
 
 
 def test_unsafe_candidates_excluded() -> None:

@@ -6,6 +6,8 @@ consume. It performs no DB access, no model call, and no IO; it never emits HTML
 stays False) and carries no raw source content (only the handoff's already-redacted titles +
 safe source-ref pairs). Sections are emitted in canonical ``HANDOFF_SECTIONS`` order so the
 output is byte-stable across runs.
+
+Prompt 37: what_matters_today is first (from HANDOFF) for exec summary + ranked priorities.
 """
 
 from __future__ import annotations

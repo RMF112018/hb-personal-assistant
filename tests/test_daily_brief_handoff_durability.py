@@ -144,6 +144,8 @@ def test_render_view_is_deterministic_and_ordered(tmp_path: Path, db_path: str) 
     v2 = build_daily_brief_render_view(recon)
     assert v1.model_dump_json() == v2.model_dump_json()
     assert [s.name for s in v1.sections] == list(HANDOFF_SECTIONS)
+    # Prompt 37: what_matters_today is first in order (exec summary before priorities)
+    assert v1.sections[0].name == "what_matters_today"
     assert v1.total_line_count == sum(s.line_count for s in v1.sections)
     assert v1.format == "render_view"
     assert v1.rendered is False

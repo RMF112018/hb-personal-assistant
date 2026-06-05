@@ -89,6 +89,11 @@ def test_context_builds_all_card_kinds(db_path: str) -> None:
     assert ctx.attention_cards  # tier-2 issue
     assert ctx.project_cards  # project rollup
     assert ctx.warning_cards  # stale flag
+    # Prompt 37: what matters summary + ranked projects (may be empty in minimal seed but shape present)
+    assert hasattr(ctx, "what_matters_today")
+    assert isinstance(ctx.what_matters_today, list)
+    # project_cards may be re-ranked by composite (review_exc + stale + exposure + recency)
+    assert isinstance(ctx.project_cards, list)
     # No meeting read model -> meeting cards degrade gracefully with a coverage warning.
     assert ctx.meeting_cards == []
     assert any(w.startswith("no_read_model:meeting_prep_brief_sections") for w in ctx.warnings)
@@ -103,9 +108,13 @@ def test_delivery_handoff_structured_and_source_linked(db_path: str) -> None:
     assert handoff.output_format == "structured_data"
     assert handoff.notification_emitted is False
     assert handoff.source_refs  # source-linked
-    # Every emitted handoff line carries its own source refs.
-    for lines in handoff.sections.values():
+    # Prompt 37: what_matters_today section present (first) and source linked overall
+    assert "what_matters_today" in handoff.sections
+    # Every emitted handoff line carries its own source refs (except what_matters_today aggregate summary bullets, which are derived and carry none; their contributing cards do).
+    for sec_name, lines in handoff.sections.items():
         for line in lines:
+            if sec_name == "what_matters_today":
+                continue
             assert line.source_refs
 
 

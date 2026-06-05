@@ -66,6 +66,7 @@ _BLOCKED_STATUS = "blocked"
 
 # Human-facing section headings for the rendered vault note (HANDOFF_SECTIONS order).
 _SECTION_HEADINGS: dict[str, str] = {
+    "what_matters_today": "What Matters Today",
     "priority_actions": "Priority Actions",
     "waiting_on": "Waiting On / Warnings",
     "meeting_prep": "Meeting Prep",

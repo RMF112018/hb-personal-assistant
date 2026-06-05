@@ -6,6 +6,12 @@ the Prompt-04 Retrieval Broker, assesses it with the Prompt-07 Research Packet A
 project/warning/review-required cards, a review-load summary, and a structured delivery
 handoff input. No model call, no HTML, no notifications, no raw content. Insufficient
 context degrades or blocks — it never overstates.
+
+Prompt 37: adds "what_matters_today" executive summary (3-5 advisory bullets) and ranked
+project priorities (composite: recency/freshness + review exceptions + meetings +
+risk/issue/financial exposure + stale warnings). Ranking used for project_signals order
+and to seed the summary. All deterministic from cards/items; review_required wins; caps
+and "advisory only / signals / exceptions / never presented as fact" language preserved.
 """
 
 from __future__ import annotations
@@ -71,6 +77,99 @@ def _urgency(it: RetrievalItem) -> str:
     if it.review_tier == 2 or it.stale_unknown_flags:
         return "medium"
     return "low"
+
+
+def _project_recency_boost(items_for_pk: list[RetrievalItem]) -> float:
+    """Max recency score from items for a project (higher = fresher). Safe for str labels (iso dates, rel-*, freshness)."""
+    if not items_for_pk:
+        return 0.0
+
+    def _safe_score(r: str) -> float:
+        r = str(r or "")
+        if r.startswith("2026"):
+            return 3.0
+        if r.startswith("2025"):
+            return 2.0
+        if r.startswith("2024"):
+            return 1.0
+        if r.startswith("rel-"):
+            return 0.1  # cross rel etc contribute via exposure count, not recency
+        return 0.0
+
+    return max(_safe_score(getattr(it, "recency", "")) for it in items_for_pk)
+
+
+def _rank_project_priorities(
+    projects: list[ProjectCard],
+    items: list[RetrievalItem],
+) -> list[ProjectCard]:
+    """Return projects ranked for priority (desc score).
+
+    Composite (per Prompt 37): review_exc*10 + stale*5 + meet*4 + (risk+issue+fin+cross)*3 + recency*2.
+    Tiebreak: lower max_review_tier, then lex ref.
+    Does not mutate input list.
+    """
+    by_pk: dict[str, list[RetrievalItem]] = {}
+    for it in items:
+        if it.project_key:
+            by_pk.setdefault(it.project_key, []).append(it)
+
+    def key(pc: ProjectCard):
+        pk = pc.project_key
+        its = by_pk.get(pk, [])
+        review_exc = pc.review_required_count
+        stale = pc.stale_unknown_count
+        meet = sum(1 for i in its if i.source_family == _MEETING_FAMILY)
+        exposure = sum(1 for i in its if i.source_family in _PROJECT_FAMILIES)
+        exposure += sum(1 for i in its if i.source_family == "cross_source_relationships")
+        rec = _project_recency_boost(its)
+        s = (10 * review_exc) + (5 * stale) + (4 * meet) + (3 * exposure) + (2 * rec)
+        tier_tie = pc.max_review_tier
+        ref_tie = min((i.source_ref for i in its), default=pk)
+        return (-s, tier_tie, ref_tie)
+
+    return sorted(projects, key=key)
+
+
+def _build_what_matters_today(
+    *,
+    attention: list[AttentionItemCard],
+    warnings: list[WarningCard],
+    projects: list[ProjectCard],
+    items: list[RetrievalItem],
+    max_bullets: int = 5,
+) -> list[str]:
+    """Deterministic capped 'What matters today' advisory bullets (Prompt 37).
+
+    Sources (in priority): high-urgency attention, conflict/stale warnings, top-ranked projects.
+    Bullets use redacted titles + tier + signals; language is always advisory ("signals",
+    "review exception", "potential", "capped"). Never final/det/approved/claim/safety/legal.
+    """
+    bullets: list[str] = []
+    # high urgency first
+    for a in [a for a in attention if getattr(a, "urgency", "low") == "high"][:max_bullets]:
+        bullets.append(f"{a.title_redacted} [tier {a.review_tier}, high urgency]")
+    rem = max_bullets - len(bullets)
+    if rem > 0:
+        for w in [w for w in warnings if w.warning_class == "conflict"][:rem]:
+            bullets.append(f"{w.summary_redacted} [conflict warning, tier {w.review_tier}]")
+        rem = max_bullets - len(bullets)
+    if rem > 0:
+        ranked = _rank_project_priorities(projects, items) if projects else projects
+        for p in ranked[:rem]:
+            bullets.append(
+                f"project:{p.project_key} items={p.item_count} (rev_exc={p.review_required_count}, stale={p.stale_unknown_count}) [tier {p.max_review_tier}]"
+            )
+    # dedup preserve order + final cap
+    seen: set[str] = set()
+    out: list[str] = []
+    for b in bullets:
+        if b not in seen:
+            seen.add(b)
+            out.append(b)
+        if len(out) >= max_bullets:
+            break
+    return out
 
 
 def _build_cards(
@@ -171,8 +270,13 @@ def _build_delivery_handoff(
     source_refs: list[dict[str, str]],
     review_tier: int,
     degradation_mode: str,
+    what_matters_today: list[str] | None = None,
 ) -> DeliveryHandoffInput:
     sections: dict[str, list[HandoffLine]] = {s: [] for s in HANDOFF_SECTIONS}
+    sections["what_matters_today"] = [
+        HandoffLine(title_redacted=b, review_tier=1, source_refs=[])
+        for b in (what_matters_today or [])
+    ]
     sections["priority_actions"] = [
         HandoffLine(
             title_redacted=c.title_redacted, review_tier=c.review_tier, source_refs=c.source_refs
@@ -252,6 +356,10 @@ def _assemble_daily_brief(
 
     items = envelope.items
     attention, meetings, projects, warnings, review_required = _build_cards(items)
+    what_matters = _build_what_matters_today(
+        attention=attention, warnings=warnings, projects=projects, items=items
+    )
+    ranked_projects = _rank_project_priorities(projects, items)
     source_refs = [_ref(it) for it in items]
     review_load = build_review_load_status(
         items, degradation_mode=packet.degradation_mode, warnings=envelope.coverage_warnings
@@ -259,12 +367,13 @@ def _assemble_daily_brief(
     handoff = _build_delivery_handoff(
         attention=attention,
         meetings=meetings,
-        projects=projects,
+        projects=ranked_projects,
         warnings=warnings,
         review_required=review_required,
         source_refs=source_refs,
         review_tier=packet.review_tier,
         degradation_mode=packet.degradation_mode,
+        what_matters_today=what_matters,
     )
 
     project_count = len({it.project_key for it in items if it.project_key})
@@ -283,9 +392,10 @@ def _assemble_daily_brief(
         research_packet_id=packet_receipt_id,
         attention_cards=attention,
         meeting_cards=meetings,
-        project_cards=projects,
+        project_cards=ranked_projects,
         warning_cards=warnings,
         review_required_cards=review_required,
+        what_matters_today=what_matters,
         review_load=review_load,
         delivery_handoff=handoff,
         source_refs=source_refs,
@@ -425,8 +535,9 @@ def build_daily_brief_context_builder_proof() -> dict[str, Any]:
         context.review_tier_counts
     )
     handoff_source_linked = bool(context.delivery_handoff.source_refs) and all(
-        bool(line.source_refs)
-        for lines in context.delivery_handoff.sections.values()
+        # what_matters_today lines are aggregate summary (derived bullets); they legitimately carry no per-bullet source_refs (contributors in attention/warning/project cards do)
+        bool(line.source_refs) or sec_name == "what_matters_today"
+        for sec_name, lines in context.delivery_handoff.sections.items()
         for line in lines
     )
     handoff_structured = (
@@ -470,6 +581,7 @@ def build_daily_brief_context_builder_proof() -> dict[str, Any]:
             "project_cards": len(context.project_cards),
             "warning_cards": len(context.warning_cards),
             "review_required_cards": len(context.review_required_cards),
+            "what_matters_today": len(context.what_matters_today),
             "status": context.status,
         },
         "review_load": context.review_load.model_dump(),

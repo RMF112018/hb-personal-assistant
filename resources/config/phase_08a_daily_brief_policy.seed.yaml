@@ -6,7 +6,11 @@
 # prioritization is deterministic (tier -> urgency -> source). Loaded like the research
 # packet / context budget seeds (standalone deterministic config; the daily_brief_contract
 # owns the brief-section + card-kind vocabulary).
-version: phase_08a_daily_brief_policy_v1
+#
+# Prompt 37 follow-up: added what_matters_today summary and priority_ranking for construction
+# exec usefulness (rank by freshness/recency, review exceptions, meetings, risk/issue/financial
+# exposure, stale warnings). Caps and non-spam preserved; always advisory/source-linked language.
+version: phase_08a_daily_brief_policy_v1  # + Prompt 37 what_matters + ranking (additive)
 brief_assembly:
   dry_run_first: true
   context_from_research_packet: true
@@ -30,6 +34,24 @@ card_kinds:
   - project
   - warning
   - review_required
+# Prompt 37 — daily brief usefulness (exec summary + ranked priorities for construction exec).
+# Deterministic (no model prose in output); composite ranking over existing signals; caps enforced.
+what_matters_today:
+  max_bullets: 5
+  sources: ["high_urgency_attention", "top_warnings", "top_ranked_project_signals"]
+  language: "advisory signals only; review exceptions capped; never determinations"
+priority_ranking:
+  # Score for project signals / what-matters selection. Higher = more prominent.
+  # Ties broken by review_tier asc then recency desc (via broker + context).
+  weights:
+    review_exception: 10
+    stale_warning: 5
+    meeting_signal: 4
+    risk_issue_fin_exposure: 3
+    recency_freshness: 2
+  # Project signals in ## Project Signals and handoff may be presented in rank order (top first).
+  # Review exceptions remain capped at 10 in output (see render).
+  cap_top_project_signals_in_summary: 5
 # Prompt 12 — generation/apply gate + delivery posture. Apply (writing approved Obsidian
 # output) is blocked unless the Output Evaluation Agent (A05) passes and the context is not
 # blocked; delivery handoff is local-only and never performs external delivery.

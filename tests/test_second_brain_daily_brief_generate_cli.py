@@ -17,7 +17,16 @@ def runner() -> CliRunner:
 
 def test_generate_dry_run_exit_zero(runner: CliRunner) -> None:
     result = runner.invoke(
-        app, ["second-brain", "daily-brief", "generate", "--date", "2026-06-02", "--json"]
+        app,
+        [
+            "second-brain",
+            "daily-brief",
+            "generate",
+            "--date",
+            "2026-06-02",
+            "--emit-receipt",
+            "--json",
+        ],
     )
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
@@ -28,6 +37,8 @@ def test_generate_dry_run_exit_zero(runner: CliRunner) -> None:
     assert payload["delivery_handoff"]["external_delivery_performed"] is False
     assert payload["delivery_handoff"]["html_rendering"]["rendered"] is False
     assert payload["delivery_handoff"]["notification_summary"]["emitted"] is False
+    # Prompt 37: new section appears in CLI payload section_counts (generate summarizes; full sections in handoff models/render-view)
+    assert "what_matters_today" in payload["delivery_handoff"]["section_counts"]
     assert payload["guardrails"]["apply_blocked_when_evaluation_fails"] is True
     assert payload["guardrails"]["no_external_delivery"] is True
 
@@ -53,7 +64,16 @@ def test_generate_invalid_mode_rejected(runner: CliRunner) -> None:
 
 def test_generate_output_carries_no_raw_content(runner: CliRunner) -> None:
     out = runner.invoke(
-        app, ["second-brain", "daily-brief", "generate", "--date", "2026-06-02", "--json"]
+        app,
+        [
+            "second-brain",
+            "daily-brief",
+            "generate",
+            "--date",
+            "2026-06-02",
+            "--emit-receipt",
+            "--json",
+        ],
     ).output
     for forbidden in (
         "signed_url",

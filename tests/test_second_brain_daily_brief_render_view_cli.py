@@ -66,6 +66,7 @@ def test_render_view_by_date(runner: CliRunner) -> None:
     assert payload["rendered"] is False
     assert payload["brief_date"] == brief_date
     assert [s["name"] for s in payload["sections"]] == [
+        "what_matters_today",
         "priority_actions",
         "waiting_on",
         "meeting_prep",

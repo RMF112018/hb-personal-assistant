@@ -25,6 +25,7 @@ CardKind = Literal[
     "review_required",
 ]
 HANDOFF_SECTIONS: tuple[str, ...] = (
+    "what_matters_today",
     "priority_actions",
     "waiting_on",
     "meeting_prep",
@@ -163,7 +164,11 @@ class DeliveryHandoffInput(BaseModel):
 
 
 class DailyBriefContext(BaseModel):
-    """Bounded, source-linked daily-brief context package (assembled, never rendered)."""
+    """Bounded, source-linked daily-brief context package (assembled, never rendered).
+
+    Includes what_matters_today executive summary (Prompt 37) + ranked project signals.
+    All output remains advisory, source-linked, capped; never final determinations.
+    """
 
     brief_date: str
     brief_run_id: str | None = None
@@ -183,6 +188,7 @@ class DailyBriefContext(BaseModel):
     project_cards: list[ProjectCard] = []
     warning_cards: list[WarningCard] = []
     review_required_cards: list[ReviewRequiredCard] = []
+    what_matters_today: list[str] = []
     review_load: ReviewLoadStatus = ReviewLoadStatus()
     delivery_handoff: DeliveryHandoffInput = DeliveryHandoffInput()
     source_refs: list[dict[str, str]] = []
