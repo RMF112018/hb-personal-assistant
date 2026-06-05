@@ -1,0 +1,5 @@
+compileall src tests -> exit 0
+ruff check . -> All checks passed!
+mypy src -> Success: no issues found in 297 source files
+pytest "not live and not integration and not manual" -> 3220 passed, 0 failed (exit 0)
+repo_sensitive_scan + second_brain_no_writeback_proof -> pass

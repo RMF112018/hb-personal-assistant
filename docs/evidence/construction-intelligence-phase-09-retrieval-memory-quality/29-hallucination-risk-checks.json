@@ -1,0 +1,78 @@
+{
+  "prompt": "Phase 09 Prompt 29 — Hallucination Risk Checks",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "e4c24b6",
+  "schema_version": 38,
+  "objective": "Measure hallucination risk and overconfidence indicators over the deterministic retrieval corpus — a read-only advisory measurement (how risky the corpus is to present as fact). Makes no determination and blocks nothing.",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/retrieval/hallucination_risk.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_hallucination_risk_checks_contract.json"],
+    "new_seeds": ["resources/config/phase_09_hallucination_risk_checks.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_hallucination_risk_checks.py"],
+    "migrator_change": "None — read-only advisory measurement with NO DB writes at all (no dedicated risk table exists/is reserved in V38). Schema stays 38, contract table count stays 190.",
+    "reuse": "Prompt 28's detect_and_route_claims (fabrication signal); the deterministic RetrievalBroker + RetrievalEnvelope (degradation/coverage/stale/conflict + tier distribution); EXCLUDED_FAMILIES."
+  },
+  "design": {
+    "hallucination_risk_indicators": "unsupported claims (fabrication), tier-3 items presented as fact, stale/conflict items, coverage gaps, degradation mode.",
+    "overconfidence_indicators": "high confidence on weakly-grounded items (tier-3 / unsupported / stale-or-conflict); high_confidence_tier3 mismatch count; confidence distribution.",
+    "risk_band": "Deterministic: high if any unsupported claim OR degradation=blocked OR overconfidence-rate > high_overconfidence_rate (0.25); medium if any overconfidence OR tier3-share > high_tier3_share (0.50) OR stale/conflict OR degradation=narrow_claims OR coverage gap; else low. Plus an indicators list.",
+    "doctrine": "Advisory measurement — assembles_final_answer=false, makes_determination=false, blocks_nothing=true. Persists nothing (no DB writes). Metadata-only: counts, bucketed bands, distributions, family names, indicator flags — no raw content/source ref."
+  },
+  "operator_db_outcome": {
+    "hallucination_risk_build_status": "built",
+    "claim_count": 408,
+    "risk_band": "medium",
+    "indicators": ["coverage_gap", "degradation"],
+    "overconfident_count": 0,
+    "unsupported_count": 0,
+    "read_only": true,
+    "rationale": "On the real operator corpus there are no unsupported claims and no overconfidence (the corpus is well source-grounded — consistent with Prompt 28's 0 unsupported), but a coverage gap and a degraded retrieval mode fire -> medium risk. An honest, nuanced assessment.",
+    "operator_db_mutated": false,
+    "schema_version": 38
+  },
+  "hallucination_risk_proof": {
+    "command": "second-brain retrieval hallucination-risk proof --json",
+    "proof_passed": true,
+    "risk_band": "high",
+    "unsupported_count": 1,
+    "overconfident_count": 1,
+    "fabrication_indicator_present": true,
+    "overconfidence_indicator_present": true,
+    "makes_determination": false,
+    "assembles_final_answer": false,
+    "build_path_no_db_writes": true,
+    "no_raw_emitted": true
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "Success: no issues found in 297 source files",
+    "pytest_not_live_integration_manual": "3220 passed, 0 failed",
+    "construction_agent_validate": "exit 0 (4/4 checks; schema 38)",
+    "data_quality_table_inventory": "exit 0 (schema 38; contract_table_count=190; in_db_not_in_contract=[] -> 0 unmapped live tables)",
+    "data_quality_no_writeback_proof": "exit 0 (ok=true, proof_passed=true)",
+    "phase_08a_gates": "exit 0 (ok=true)",
+    "phase_08b_gates": "exit 1 — PRE-EXISTING ENVIRONMENTAL FAILURE, NOT caused by this change (see blocker_classifications)",
+    "phase_08c_gates": "SKIPPED (its append-only financial ledger mutates the operator DB ~1,299 rows/call)",
+    "phase_08d_gates": "exit 0 (proof_passed=true, ok=true)",
+    "mcp_no_raw_access": "exit 0 (proof_passed=true)",
+    "mcp_no_writeback": "exit 0 (proof_passed=true)",
+    "retrieval_hallucination_risk_build": "exit 0 (operator DB: status=built, 408 claims, risk_band=medium [coverage_gap+degradation], 0 overconfident, read-only, no writes)",
+    "retrieval_hallucination_risk_proof": "exit 0 (proof_passed=true)",
+    "repo_sensitive_scan_and_no_writeback_guard_tests": "pass (in the full suite)"
+  },
+  "deferred": [
+    "Rolling the risk band into the synthesis evaluation gate (A05).",
+    "Executing/scoring the eval set against the index (eval_runs).",
+    "Wiring semantic context into the default synthesize_answer (A04)."
+  ],
+  "blocker_classifications": {
+    "phase_08b_gates_pre_existing_failure": "phase-08b-gates fails (AssertionError 'assert failed_count >= 1' in automation_executor.build_automation_execution_proof, automation_executor.py:1485). NOT caused by this change (no automation code touched). Reproduces on a pristine checkout of clean HEAD 6c43844 in an isolated git worktree (verified in Prompt 26) -> operator Application-Support automation-state drift; the proof is not fully temp-isolated. The full pytest suite passes (fixtures redirect PathPolicy to a temp root). Documented as pre-existing.",
+    "concurrent_working_tree_status": "The parallel 'Daily Brief Approved Source Population' prompt committed (dc0b74e) earlier; the tree is otherwise clean. This commit stages only the isolated hallucination-risk files. Architecture record uses 149 (145=daily-brief, 146=project-benchmark, 147=context-budget, 148=claim-checks)."
+  }
+}

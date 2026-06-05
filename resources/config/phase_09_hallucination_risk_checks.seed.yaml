@@ -1,0 +1,13 @@
+# Phase 09 Prompt 29 — hallucination risk checks (resolved values; advisory).
+# A read-only, advisory measurement over the deterministic retrieval corpus that scores hallucination-risk
+# and overconfidence indicators (how risky the corpus is to present as fact), for human awareness. It
+# makes no determination and blocks nothing — it scores risk only. Persists nothing (no DB writes);
+# metadata-only (counts, bucketed bands, distributions, family names, indicator flags — no raw content).
+version: phase_09_hallucination_risk_checks_v1
+
+# Deterministic risk-band thresholds (advisory). HIGH when any unsupported claim is present, or the
+# context is degradation-blocked, or the overconfidence rate exceeds high_overconfidence_rate. MEDIUM when
+# any overconfidence is present, the tier-3 share exceeds high_tier3_share, stale/conflict items exist,
+# the context is narrow_claims-degraded, or a coverage gap exists. LOW otherwise.
+high_overconfidence_rate: 0.25
+high_tier3_share: 0.50

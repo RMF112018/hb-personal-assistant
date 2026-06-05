@@ -1,0 +1,49 @@
+{
+  "contract_name": "phase_09_hallucination_risk_checks_contract",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 29 — hallucination risk checks. A read-only, advisory measurement over the deterministic retrieval corpus that scores hallucination-risk and overconfidence indicators (how risky the corpus is to present as fact), for human awareness. Hallucination-risk indicators: unsupported claims (fabrication), tier-3 items presented as fact, stale/conflict items, coverage gaps, degradation mode. Overconfidence indicators: high confidence assigned to weakly-grounded items (tier-3 / unsupported / stale-or-conflict), and a high-confidence-tier-3 mismatch count. It computes a deterministic risk band (low/medium/high) with an indicators list. It makes NO determination and blocks nothing — it scores risk only. assembles_final_answer is always false; persists nothing (no DB writes); metadata-only (counts, bucketed bands, distributions, family names, indicator flags — no raw content/source ref).",
+  "risk_bands": ["low", "medium", "high"],
+  "indicator_names": [
+    "unsupported_claims",
+    "tier3_presented_as_fact",
+    "stale_or_conflict",
+    "coverage_gap",
+    "degradation",
+    "overconfidence",
+    "high_confidence_tier3"
+  ],
+  "forbidden_emitted_fields": [
+    "content",
+    "content_excerpt",
+    "content_excerpt_redacted",
+    "excerpt",
+    "text",
+    "text_redacted",
+    "source_ref",
+    "claim_text",
+    "answer",
+    "raw_prompt",
+    "raw_response",
+    "embedding",
+    "vector",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "advisory_only",
+    "no_final_answer",
+    "no_determination",
+    "no_blocking",
+    "preserve_review_tier",
+    "preserve_confidence_class",
+    "preserve_source_references",
+    "preserve_freshness",
+    "preserve_source_coverage_warnings"
+  ]
+}

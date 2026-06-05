@@ -328,6 +328,23 @@ only** — it makes no claim or entitlement determination, assembles no answer, 
   (`claim_or_entitlement_decision_performed` + `unsupported_claim_performed` guards 0), a guard-clean
   metadata-only receipt, the read-only default persisting nothing, and no raw claim text emitted.
 
+## Hallucination risk checks (Prompt 29)
+
+The `second-brain retrieval hallucination-risk` group is a **read-only advisory measurement** that scores
+**hallucination-risk and overconfidence indicators** over the deterministic corpus — how risky the corpus
+is to present as fact, for human awareness. It **makes no determination and blocks nothing**. Indicators:
+unsupported claims (fabrication), tier-3 items presented as fact, stale/conflict items, coverage gaps,
+degradation mode; and overconfidence (high confidence on weakly-grounded items, plus the
+high-confidence-tier-3 mismatch). A deterministic `risk_band` (low/medium/high) is derived with an
+`indicators` list.
+
+- `hallucination-risk build [--project P]` — gathers the corpus and emits a metadata-only summary
+  (`risk_band`, the firing `indicators`, hallucination + overconfidence indicator counts/bands, tier &
+  confidence distributions). Read-only — **performs no DB writes**. Exit 0 on success; 3 fail-closed.
+- `hallucination-risk proof` — demonstrates each indicator firing on a synthetic corpus (risk band high,
+  overconfidence detected), **no determination** made, the build path performing no DB writes, and no raw
+  content/source ref emitted.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

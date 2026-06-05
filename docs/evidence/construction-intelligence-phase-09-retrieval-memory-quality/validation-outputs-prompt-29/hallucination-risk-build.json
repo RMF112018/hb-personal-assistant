@@ -1,0 +1,64 @@
+{
+  "command": "second-brain retrieval hallucination-risk build",
+  "phase": "09",
+  "generated_utc": "2026-06-05T12:42:50.101787+00:00",
+  "repo_sha": "e4c24b691b63e1101cf270c9ab87f9c4e749d936",
+  "status": "built",
+  "schema_version": 38,
+  "project_key": null,
+  "claim_count": 408,
+  "risk_band": "medium",
+  "indicators": [
+    "coverage_gap",
+    "degradation"
+  ],
+  "hallucination_indicators": {
+    "unsupported_count": 0,
+    "unsupported_rate_band": "0.00",
+    "tier3_count": 0,
+    "tier3_share_band": "0.00",
+    "stale_count": 0,
+    "stale_share_band": "0.00",
+    "conflict_count": 0,
+    "conflict_share_band": "0.00",
+    "coverage_gap": true,
+    "degradation_mode": "narrow_claims"
+  },
+  "overconfidence_indicators": {
+    "overconfident_count": 0,
+    "overconfidence_rate_band": "0.00",
+    "high_confidence_tier3_count": 0,
+    "confidence_distribution": {
+      "deterministic": 407,
+      "high": 1
+    }
+  },
+  "tier_distribution": {
+    "1": 408,
+    "2": 0,
+    "3": 0
+  },
+  "coverage_warnings": [
+    "no_read_model:meeting_prep_brief_sections",
+    "no_read_model:review_controlled_correspondence_context"
+  ],
+  "advisory_only": true,
+  "assembles_final_answer": false,
+  "makes_determination": false,
+  "blocks_nothing": true,
+  "policy_version": "phase_09_hallucination_risk_checks_v1",
+  "contract_version": "1.4.0-phase-09",
+  "read_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "no_final_answer": true,
+    "no_determination": true,
+    "no_blocking": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "preserve_review_tier_confidence_source_refs_freshness_coverage_warnings": true,
+    "read_only": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

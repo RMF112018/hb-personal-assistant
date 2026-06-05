@@ -1,0 +1,36 @@
+{
+  "proof": "phase_09_hallucination_risk_checks",
+  "command": "second-brain retrieval hallucination-risk proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T12:42:50.749837+00:00",
+  "repo_sha": "e4c24b691b63e1101cf270c9ab87f9c4e749d936",
+  "risk_band": "high",
+  "unsupported_count": 1,
+  "overconfident_count": 1,
+  "indicators": [
+    "unsupported_claims",
+    "stale_or_conflict",
+    "coverage_gap",
+    "degradation",
+    "overconfidence",
+    "high_confidence_tier3"
+  ],
+  "fabrication_indicator_present": true,
+  "overconfidence_indicator_present": true,
+  "makes_determination": false,
+  "assembles_final_answer": false,
+  "build_path_no_db_writes": true,
+  "no_raw_emitted": true,
+  "metadata_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "no_final_answer": true,
+    "no_determination": true,
+    "no_blocking": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

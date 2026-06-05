@@ -1,0 +1,77 @@
+{
+  "proof": "phase_08d_no_raw_mcp_access",
+  "command": "second-brain mcp no-raw-access",
+  "phase": "08D",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T12:42:48.870494+00:00",
+  "scanned_surface_count": 7,
+  "surfaces": [
+    {
+      "surface": "registries",
+      "passed": true,
+      "detail": "no raw keys/patterns"
+    },
+    {
+      "surface": "resources",
+      "passed": true,
+      "detail": "no raw keys/patterns"
+    },
+    {
+      "surface": "prompts",
+      "passed": true,
+      "detail": "no raw keys/patterns"
+    },
+    {
+      "surface": "receipts",
+      "passed": true,
+      "detail": "hash-only columns; no raw columns; all guard columns zero",
+      "no_raw_columns": true,
+      "hash_columns_present": true,
+      "guard_columns_zero": true
+    },
+    {
+      "surface": "config_preview",
+      "passed": true,
+      "detail": "no raw keys/patterns",
+      "env_values_persisted": false,
+      "config_safe": true
+    },
+    {
+      "surface": "server_status",
+      "passed": true,
+      "detail": "no raw keys/patterns"
+    },
+    {
+      "surface": "evidence",
+      "passed": true,
+      "detail": "12 evidence json artifacts scanned",
+      "scanned": [
+        "claude-desktop-config-preview.json",
+        "mcp-audit-receipt-proof.json",
+        "mcp-claude-desktop-runbook-proof.json",
+        "mcp-denied-tool-proof.json",
+        "mcp-prompt-contract-proof.json",
+        "mcp-resource-contract-proof.json",
+        "mcp-tool-broker-proof.json",
+        "mcp-tool-contract-proof.json",
+        "no-mcp-writeback-proof.json",
+        "no-raw-mcp-access-proof.json",
+        "phase-08d-gates-proof.json",
+        "phase-08d-validation-matrix-proof.json"
+      ]
+    }
+  ],
+  "metadata_only": {
+    "no_raw_requested_content": true,
+    "static_scan_no_wrapper_dispatch": true,
+    "receipts_hash_only": true
+  },
+  "guardrails": {
+    "read_only": true,
+    "no_raw_content": true,
+    "no_resource_dispatch": true,
+    "metadata_only": true
+  },
+  "proof_path": "docs/evidence/construction-intelligence-phase-08d-mcp-bridge/no-raw-mcp-access-proof.json",
+  "proof_md_path": "docs/evidence/construction-intelligence-phase-08d-mcp-bridge/no-raw-mcp-access-proof.md"
+}

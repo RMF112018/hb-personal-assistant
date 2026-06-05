@@ -206,6 +206,13 @@ retrieval_claim_checks_app = typer.Typer(
 )
 retrieval_app.add_typer(retrieval_claim_checks_app, name="claim-checks")
 
+retrieval_hallucination_risk_app = typer.Typer(
+    name="hallucination-risk",
+    help="Phase 09 hallucination risk + overconfidence indicators (advisory measurement; read-only).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(retrieval_hallucination_risk_app, name="hallucination-risk")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -3311,6 +3318,19 @@ _RETRIEVAL_CLAIM_CHECKS_GUARDRAILS = {
     "fail_closed": True,
 }
 
+_RETRIEVAL_HALLUCINATION_RISK_GUARDRAILS = {
+    "advisory_only": True,
+    "no_final_answer": True,
+    "no_determination": True,
+    "no_blocking": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "preserve_review_tier_confidence_source_refs_freshness_coverage_warnings": True,
+    "read_only": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
 
 @llamaindex_app.command("build")
 def retrieval_llamaindex_build(
@@ -4429,6 +4449,85 @@ def retrieval_claim_checks_proof(
         f"Unsupported claim checks proof passed={proof['proof_passed']}"
         f" (unsupported={proof['unsupported_count']}, routed_review_required={proof['unsupported_routed_to_review_required']},"
         f" determination_made={proof['claim_determination_made']}, guard_clean={proof['receipt_guard_clean']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+@retrieval_hallucination_risk_app.command("build")
+def retrieval_hallucination_risk_build(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Measure hallucination risk + overconfidence indicators over the deterministic corpus (read-only).
+
+    Scores fabrication / ungrounded / overconfident signals (unsupported claims, tier-3 items, stale /
+    conflict, coverage gaps, degradation, high-confidence-on-weak-grounding) into a deterministic risk
+    band with an indicators list — advisory only. Makes no determination, blocks nothing, persists
+    nothing to the operator DB. Exit 0 on success; 3 on a fail-closed failure.
+    """
+    from hb_assistant.construction.second_brain.retrieval.hallucination_risk import (
+        HallucinationRiskError,
+        build_hallucination_risk_checks,
+    )
+
+    try:
+        result = build_hallucination_risk_checks(project_key=project)
+    except HallucinationRiskError as exc:
+        payload = {
+            "command": "second-brain retrieval hallucination-risk build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _RETRIEVAL_HALLUCINATION_RISK_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _RETRIEVAL_HALLUCINATION_RISK_GUARDRAILS}
+    human = [
+        "Phase 09 hallucination risk + overconfidence indicators (read-only, advisory)",
+        f"  status: {result['status']} | claims: {result['claim_count']} | risk band: {result['risk_band']}",
+        f"  indicators: {result['indicators']}",
+        f"  overconfidence: {result['overconfidence_indicators']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@retrieval_hallucination_risk_app.command("proof")
+def retrieval_hallucination_risk_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the hallucination-risk proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove the risk + overconfidence indicators fire, with no determination and no DB writes."""
+    from hb_assistant.construction.second_brain.retrieval.hallucination_risk import (
+        HallucinationRiskError,
+        build_hallucination_risk_checks_proof,
+    )
+
+    try:
+        proof = build_hallucination_risk_checks_proof(write_evidence=evidence)
+    except HallucinationRiskError as exc:
+        payload = {
+            "command": "second-brain retrieval hallucination-risk proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _RETRIEVAL_HALLUCINATION_RISK_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _RETRIEVAL_HALLUCINATION_RISK_GUARDRAILS}
+    human = [
+        f"Hallucination risk checks proof passed={proof['proof_passed']}"
+        f" (risk_band={proof['risk_band']}, unsupported={proof['unsupported_count']},"
+        f" overconfident={proof['overconfident_count']}, determination={proof['makes_determination']},"
+        f" no_db_writes={proof['build_path_no_db_writes']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 
