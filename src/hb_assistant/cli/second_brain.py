@@ -249,6 +249,13 @@ retrieval_hallucination_risk_app = typer.Typer(
 )
 retrieval_app.add_typer(retrieval_hallucination_risk_app, name="hallucination-risk")
 
+retrieval_source_linked_app = typer.Typer(
+    name="source-linked",
+    help="Phase 09 source-linked retrieval proof (every result maps to an approved source ref; advisory, read-only).",
+    no_args_is_help=True,
+)
+retrieval_app.add_typer(retrieval_source_linked_app, name="source-linked")
+
 _GUARDRAILS = {
     "local_first": True,
     "model_direct_external_api_access": False,
@@ -1133,6 +1140,100 @@ def daily_brief_reproducibility_proof(
         f" source_refs_preserved={proof['source_refs_preserved']},"
         f" evaluation_receipt_present={proof['evaluation_receipt_present']},"
         f" determination={proof['makes_determination']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+_SOURCE_LINKED_RETRIEVAL_GUARDRAILS = {
+    "advisory_only": True,
+    "no_determination": True,
+    "preserve_source_refs": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "no_semantic_retrieval_bypass": True,
+    "read_only_by_default": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
+
+@retrieval_source_linked_app.command("build")
+def retrieval_source_linked_build(
+    project: str | None = typer.Option(None, "--project", help="Optional project key override."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove every hybrid-retrieval result maps to an approved source ref (read-only, advisory).
+
+    Runs the hybrid broker over the seed query and counts source-linked vs unlinked results; a result is
+    source-linked iff it carries a non-empty source_ref and an allowlisted source_family. Emits a
+    metadata-only summary (counts + hashed run id + per-family breakdown + status; no raw query/refs);
+    persists nothing to the operator DB. Makes no determination. Exit 0 on success; 3 on fail-closed.
+    """
+    from hb_assistant.construction.second_brain.retrieval.source_linked_proof import (
+        SourceLinkedRetrievalProofError,
+        build_source_linked_retrieval_proof,
+    )
+
+    try:
+        result = build_source_linked_retrieval_proof(project_key=project)
+    except SourceLinkedRetrievalProofError as exc:
+        payload = {
+            "command": "second-brain retrieval source-linked build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _SOURCE_LINKED_RETRIEVAL_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _SOURCE_LINKED_RETRIEVAL_GUARDRAILS}
+    human = [
+        "Phase 09 source-linked retrieval proof (read-only, advisory)",
+        f"  status: {result['status']} | results: {result['result_count']}"
+        f" | linked: {result['linked_count']} | unlinked: {result['unlinked_count']}"
+        f" | proof_passed: {result['proof_passed']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@retrieval_source_linked_app.command("proof")
+def retrieval_source_linked_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the source-linked retrieval proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove (over a controlled seeded index) every retrieval result maps to an approved source ref."""
+    from hb_assistant.construction.second_brain.retrieval.source_linked_proof import (
+        SourceLinkedRetrievalProofError,
+        build_source_linked_retrieval_proof_proof,
+    )
+
+    try:
+        proof = build_source_linked_retrieval_proof_proof(write_evidence=evidence)
+    except SourceLinkedRetrievalProofError as exc:
+        payload = {
+            "command": "second-brain retrieval source-linked proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _SOURCE_LINKED_RETRIEVAL_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _SOURCE_LINKED_RETRIEVAL_GUARDRAILS}
+    human = [
+        f"Source-linked retrieval proof passed={proof['proof_passed']}"
+        f" (results={proof['result_count']}, linked={proof['linked_count']},"
+        f" unlinked={proof['unlinked_count']}, every_result_source_linked="
+        f"{proof['every_result_source_linked']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 

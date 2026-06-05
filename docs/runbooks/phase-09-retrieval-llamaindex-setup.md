@@ -428,6 +428,27 @@ fail-closed schema-readiness gate), and adds **no schema/table**.
   `output_hash_match`, `source_refs_preserved`, `evaluation_receipt_present`, no determination, guard-clean
   attestations, and **no raw content emitted**; writes `daily-brief-reproducibility-proof.{json,md}`.
 
+## Source-linked retrieval proof (Prompt 34)
+
+`second-brain retrieval source-linked` is a read-only, **advisory** proof that **every** retrieval result
+returned by the hybrid broker maps to an approved source ref. A result is source-linked iff it carries a
+non-empty `source_ref` and an allowlisted `source_family` (not in the `EXCLUDED_FAMILIES` raw-family set —
+the same rule `output-eval` uses). It reuses the reserved V38 `second_brain_retrieval_source_linked_proof_runs`
+table (no migration, schema stays **V39**, adds no table — contract count stays 190), persists nothing to
+the operator DB by default, and **makes no determination**.
+
+- `retrieval source-linked build [--project P]` — runs the hybrid broker over the seed query and emits a
+  metadata-only summary (`status`, `result_count`, `linked_count`, `unlinked_count`, `proof_passed`,
+  per-family linked/unlinked breakdown, `query_hash` (never the raw query), `deterministic_count` /
+  `semantic_count`, `guard_attestation`; `advisory_only=true`, `makes_determination=false`,
+  `read_only=true`). `proof_passed` is true only when `result_count > 0` and `unlinked_count == 0`. Exit 0
+  on success; 3 fail-closed.
+- `retrieval source-linked proof` — over a controlled seeded index (Obsidian apply-index + accepted memory
+  + mock-embedded vector store) runs the build with both deterministic + semantic results and proves every
+  result is source-linked (`unlinked_count == 0`), a guard-clean metadata-only summary row persists,
+  read-only default persists nothing, and **no raw content is emitted**; writes
+  `source-linked-retrieval-proof.{json,md}`.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

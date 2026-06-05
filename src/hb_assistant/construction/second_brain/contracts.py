@@ -185,6 +185,7 @@ PHASE_09_CONTRACT_FILES: dict[str, str] = {
     "memory_consolidation_preview_contract": "phase_09_memory_consolidation_preview_contract.json",
     "agent_performance_feedback_contract": "phase_09_agent_performance_feedback_contract.json",
     "daily_brief_reproducibility_contract": "phase_09_daily_brief_reproducibility_contract.json",
+    "source_linked_retrieval_proof_contract": "phase_09_source_linked_retrieval_proof_contract.json",
 }
 
 def load_phase_09_contract(name: str) -> dict[str, Any]:

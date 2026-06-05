@@ -34,7 +34,10 @@
     "no_raw": true,
     "no_external_writeback": true,
     "no_semantic_retrieval_bypass": true,
+    "read_only_by_default": true,
     "local_first": true,
     "fail_closed": true
-  }
+  },
+  "proof_path": "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/source-linked-retrieval-proof.json",
+  "proof_md_path": "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/source-linked-retrieval-proof.md"
 }

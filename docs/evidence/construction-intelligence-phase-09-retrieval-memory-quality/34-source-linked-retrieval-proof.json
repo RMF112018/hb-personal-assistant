@@ -1,0 +1,77 @@
+{
+  "prompt": "Phase 09 Prompt 34 — Source Linked Retrieval Proof",
+  "objective": "Prove every retrieval result maps to approved source refs.",
+  "repo_sha": "e757ef97a1021d173a90bbe4e51888f2540a6f46",
+  "schema_version": 39,
+  "package_version": "1.4.0-phase-09",
+  "design": {
+    "persistence": "standalone surface; reuses the reserved V38 second_brain_retrieval_source_linked_proof_runs table (no migration, schema stays V39, adds no table; contract count stays 190; table already classified in both lifecycle contracts)",
+    "module": "src/hb_assistant/construction/second_brain/retrieval/source_linked_proof.py",
+    "cli": "second-brain retrieval source-linked build|proof --json",
+    "contract": "src/hb_assistant/resources/json/phase_09_source_linked_retrieval_proof_contract.json",
+    "seed": "resources/config/phase_09_source_linked_retrieval_proof.seed.yaml",
+    "linkage_rule": "a result is source-linked iff source_ref is non-empty AND source_family is allowlisted (not in retrieval/policy.py EXCLUDED_FAMILIES) — the same rule output-eval (_source_linked_proof) uses",
+    "method": "runs the hybrid broker (build_hybrid_envelope); the proof seeds a controlled temp index (vector_index._proof_db + build_vector_index_apply(_mock_vector_writer)) and runs with _mock_embed_model() so both deterministic and advisory-semantic results are exercised; co-owned table rows use a distinct slr_ run_id prefix"
+  },
+  "contract_required_fields": ["run_id", "result_count", "linked_count", "unlinked_count", "proof_passed"],
+  "build_result_operator_db": {
+    "status": "source_linked",
+    "result_count": 1,
+    "linked_count": 1,
+    "unlinked_count": 0,
+    "proof_passed": true,
+    "per_family": {"approved_obsidian_generated_outputs": {"linked": 1, "unlinked": 0}},
+    "read_only": true,
+    "makes_determination": false
+  },
+  "proof_result": {
+    "proof_passed": true,
+    "result_count": 3,
+    "deterministic_count": 0,
+    "semantic_count": 3,
+    "unlinked_count": 0,
+    "every_result_source_linked": true,
+    "rows_persisted_guard_clean": true,
+    "read_only_default_no_persist": true,
+    "no_raw_emitted": true,
+    "note": "the controlled seeded index yields 3 advisory-semantic results (the riskier arm); all carry an approved source ref and an allowlisted source_family",
+    "artifacts": ["source-linked-retrieval-proof.json", "source-linked-retrieval-proof.md"]
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "2 pre-existing errors in review_burden_mart.py:165,167 (concurrent review-burden); this module clean (304 files)",
+    "pytest_new": "tests/test_phase_09_source_linked_retrieval_proof.py — 6 passed",
+    "construction_agent_validate": "exit 0, 4/4, schema V39",
+    "table_inventory": "190 contract / 189 live; in_db_not_in_contract = [second_brain_review_burden_clusters, _policy_evals, _runs] (concurrent review-burden; this prompt adds no table)",
+    "no_writeback_proof": "exit 0",
+    "phase_08a_gates": "exit 0",
+    "phase_08b_gates": "exit 1 — pre-existing automation_executor.py:1485 AssertionError (environmental)",
+    "phase_08c_gates": "SKIPPED — mutates the operator DB (append-only ledger)",
+    "phase_08d_gates": "exit 0",
+    "mcp_no_raw_access": "exit 0",
+    "mcp_no_writeback": "exit 0",
+    "source_linked_build": "exit 0 — status=source_linked, all results linked, proof_passed=true",
+    "source_linked_proof": "exit 0 — proof_passed=true (every result source-linked)",
+    "repo_sensitive_scan_and_no_writeback_tests": "pass"
+  },
+  "guardrails": {
+    "local_first": true,
+    "fail_closed": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "advisory_only": true,
+    "no_determination": true,
+    "preserve_source_refs": true,
+    "no_semantic_retrieval_bypass": true,
+    "read_only_by_default": true
+  },
+  "pre_existing_not_ours": [
+    "mypy: review_burden_mart.py:165,167",
+    "pytest: test_v*_table_classified_in_lifecycle_contract failures (3 unmapped second_brain_review_burden_* tables)",
+    "pytest: test_phase_09_embedding_policy::test_normal_path (embeddable_family_count 8 != 7 — concurrent Prompt 18/19 vector-loader work)",
+    "phase-08b-gates exit 1 (automation_executor.py:1485)"
+  ],
+  "stop_conditions_triggered": "none",
+  "artifact_supersession_note": "The proof companion source-linked-retrieval-proof.{json,md} is now produced by this prompt's executable `retrieval source-linked proof` command. It supersedes the earlier Prompt-03 preflight snapshot of the same filename (a gap G-01 research-packet data sample, committed at b2d3e42), which the package spec assigns to this prompt (Prompt 34). The Prompt-03 content remains in git history at b2d3e42."
+}

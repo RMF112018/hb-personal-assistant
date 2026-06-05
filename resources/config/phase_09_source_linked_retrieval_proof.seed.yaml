@@ -1,0 +1,15 @@
+# Phase 09 Prompt 34 — source-linked retrieval proof (resolved values; advisory).
+# A read-only, advisory proof that every retrieval result returned by the hybrid retrieval broker maps
+# to an approved source ref (non-empty source_ref + an allowlisted, non-EXCLUDED source_family). The
+# proof runs the hybrid broker and counts result_count / linked_count / unlinked_count; proof_passed is
+# true only when result_count > 0 and unlinked_count == 0. Metadata-only: persists a guard-clean summary
+# row (read-only by default; on --emit-receipt) to the reserved V38
+# second_brain_retrieval_source_linked_proof_runs table. No raw query / content / excerpt / vector is
+# persisted or emitted. Makes no determination; fail-closed.
+version: phase_09_source_linked_retrieval_proof_v1
+
+# Default advisory retrieval query for the operator build / controlled proof (hashed, never persisted raw).
+query: "open project risks and aging exposure"
+project_key: P1
+# proof_passed requires at least this many retrieval results (an empty result set is not a pass).
+min_result_count: 1

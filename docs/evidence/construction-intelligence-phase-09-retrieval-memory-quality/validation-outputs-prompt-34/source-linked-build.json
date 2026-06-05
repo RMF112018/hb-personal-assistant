@@ -1,0 +1,53 @@
+{
+  "command": "second-brain retrieval source-linked build",
+  "phase": "09",
+  "generated_utc": "2026-06-05T15:43:53.920901+00:00",
+  "repo_sha": "e757ef97a1021d173a90bbe4e51888f2540a6f46",
+  "schema_version": 39,
+  "status": "source_linked",
+  "run_id": "slr_412ae4bbb81ae2b49e977ec6e6424f58",
+  "project_key": "P1",
+  "query_hash": "4ccc11639375879a6e6dcd027e6ebcfb3caa8cb8509fe5010f4e7dc6e5e7be67",
+  "mode": "hybrid",
+  "result_count": 1,
+  "linked_count": 1,
+  "unlinked_count": 0,
+  "proof_passed": true,
+  "per_family": {
+    "approved_obsidian_generated_outputs": {
+      "linked": 1,
+      "unlinked": 0
+    }
+  },
+  "deterministic_count": 1,
+  "semantic_count": 0,
+  "semantic_skip_reason": "semantic_no_applied_index",
+  "coverage_warnings": [
+    "no_read_model:meeting_prep_brief_sections",
+    "no_read_model:review_controlled_correspondence_context",
+    "no_read_model:generated_outputs",
+    "semantic_unavailable:semantic_no_applied_index"
+  ],
+  "min_result_count": 1,
+  "advisory_only": true,
+  "makes_determination": false,
+  "read_only": true,
+  "receipt_emitted": false,
+  "policy_version": "phase_09_source_linked_retrieval_proof_v1",
+  "contract_version": "1.4.0-phase-09",
+  "guard_attestation": {
+    "all_false": true,
+    "column_count": 23
+  },
+  "guardrails": {
+    "advisory_only": true,
+    "no_determination": true,
+    "preserve_source_refs": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "no_semantic_retrieval_bypass": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}
