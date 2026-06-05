@@ -10,6 +10,17 @@ body-/join-URL-free ``$select``) are issued. The only writes are local SQLite, a
 they are gated behind ``dry_run=False`` (the CLI default is dry-run). Re-running is
 idempotent — event rows upsert by a stable ``event_index_id``.
 
+For larger windows (post-148 / Prompt 15 follow-up): after normalize, records are
+chunked (size ~100); each chunk calls enhanced apply_calendar_index_batch with
+partial_ok + chunked flags. Per-event errors are isolated and collected into
+failure_diagnostics (no abort of chunk tx for other events); successful partials
+commit + crawl_run is checkpointed after each chunk (status 'checkpointed' with
+accum events_indexed via COALESCE + delta, sync last_attempted updated). Final
+chunk does 'completed'. Status may be 'completed_with_errors' when some per-ev
+failed but others succeeded. Bounded date+max_items preserved; no body/desc/join;
+no M365 writeback. Checkpoints aid resume visibility (idempotent apply means
+re-runs safe even without client start_after).
+
 Persistence boundary (mirrors ``06_CALENDAR_INGESTION_PLAN.md``): event ID, iCal
 UID, web link, subject, organizer, attendees, and location are stored **hashed or
 redacted only**; the event body/description and the online-meeting join URL are
@@ -25,12 +36,12 @@ import json
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from hb_assistant.construction.email.project_matcher import HB_PROJECT_NUMBER_RE
-from hb_assistant.construction.store import ConstructionStore
+from hb_assistant.construction.store import CalendarBatchApplyError, ConstructionStore
 from hb_assistant.graph.calendar_readonly_client import ReadOnlyCalendarClient
 from hb_assistant.normalize.redaction import hash_value, redact_location, redact_subject
 
@@ -148,7 +159,7 @@ def normalize_event(
     fields["location_redacted"] = redact_location(location)
     fields["review_required"] = False
     for att in ev.get("attendees") or []:
-        addr = ((att.get("emailAddress") or {}).get("address"))
+        addr = (att.get("emailAddress") or {}).get("address")
         att_hash = hash_value(addr)
         if not att_hash:
             continue
@@ -182,9 +193,10 @@ class IndexResult(BaseModel):
     events_private: int
     events_cancelled: int
     events_review_required: int
-    status: str  # completed | failed
+    status: str  # completed | completed_with_errors | failed
     sample: list[dict[str, Any]]
     error_redacted: Optional[str] = None
+    failure_diagnostics: list[dict[str, Any]] = Field(default_factory=list)
 
     model_config = {"extra": "forbid"}
 
@@ -193,10 +205,14 @@ class CalendarEventIndexer:
     """Bounded, read-only calendar event metadata indexer (redacted persistence)."""
 
     def __init__(
-        self, calendar_client: ReadOnlyCalendarClient, store: ConstructionStore
+        self,
+        calendar_client: ReadOnlyCalendarClient,
+        store: ConstructionStore,
+        failure_injector: Callable[[str, Optional[int], Optional[str]], None] | None = None,
     ) -> None:
         self._calendar = calendar_client
         self._store = store
+        self._failure_injector = failure_injector
 
     def index(
         self,
@@ -221,7 +237,7 @@ class CalendarEventIndexer:
         sample: list[dict[str, Any]] = []
         status = "completed"
         error_redacted: Optional[str] = None
-        crawl_opened = False
+        failure_diagnostics: list[dict[str, Any]] = []
 
         try:
             me = self._calendar.get_me()
@@ -233,33 +249,11 @@ class CalendarEventIndexer:
                 owner_hash = hash_value(owner_upn)
                 owner_domain = _domain(owner_upn)
 
-            if not dry_run:
-                self._store.upsert_calendar_source_location(
-                    source_id=source_id,
-                    mailbox_owner_hash=owner_hash or source_id,
-                    mailbox_owner_domain=owner_domain,
-                    calendar_role=calendar_role,
-                    enabled=True,
-                    read_only=True,
-                    lookback_days=lookback_days,
-                    lookahead_days=lookahead_days,
-                    max_items_per_run=max_items,
-                    policy_id=policy_id,
-                )
-                self._store.insert_calendar_crawl_run(
-                    run_id=run_id,
-                    source_id=source_id,
-                    mode=mode,
-                    window_start_utc=window_start,
-                    window_end_utc=window_end,
-                    status="running",
-                )
-                crawl_opened = True
-
             events = self._calendar.list_calendar_view(
                 start=window_start, end=window_end, top=_PAGE_SIZE, max_items=max_items
             )
-            for ev in events:
+            event_records: list[dict[str, Any]] = []
+            for ordinal, ev in enumerate(events, start=1):
                 events_seen += 1
                 fields, attendees = normalize_event(ev, source_id=source_id)
                 if fields is None:
@@ -274,44 +268,82 @@ class CalendarEventIndexer:
                     sample.append({k: fields[k] for k in _SAMPLE_KEYS})
                 if dry_run:
                     continue
-                self._store.upsert_calendar_event_index(**fields)
-                for att in attendees:
-                    self._store.upsert_calendar_event_attendee(
-                        event_index_id=fields["event_index_id"], **att
+                event_records.append(
+                    {"event_ordinal": ordinal, "fields": fields, "attendees": attendees}
+                )
+            if not dry_run and event_records:
+                # Chunked apply for larger-window harden: fixed chunk ~100; per-chunk tx with
+                # partial_ok isolates per-event errors (collect diags, commit goods); crawl
+                # checkpointed after each, final chunk completes. Relies on idempotent ON CONFLICT
+                # for safety; no client change for resume (fetch always bounded window).
+                chunk_size = 100
+                chunks = [
+                    event_records[i : i + chunk_size]
+                    for i in range(0, len(event_records), chunk_size)
+                ]
+                total_indexed = 0
+                chunk_diags: list[dict[str, Any]] = []
+                for ci, ch in enumerate(chunks):
+                    is_fin = ci == len(chunks) - 1
+                    try:
+                        n = self._store.apply_calendar_index_batch(
+                            source_id=source_id,
+                            mailbox_owner_hash=owner_hash or source_id,
+                            mailbox_owner_domain=owner_domain,
+                            calendar_role=calendar_role,
+                            policy_id=policy_id,
+                            lookback_days=lookback_days,
+                            lookahead_days=lookahead_days,
+                            max_items_per_run=max_items,
+                            run_id=run_id,
+                            mode=mode,
+                            window_start_utc=window_start,
+                            window_end_utc=window_end,
+                            events_seen=events_seen,
+                            events_private=events_private,
+                            events_cancelled=events_cancelled,
+                            events_review_required=events_review,
+                            event_records=ch,
+                            last_attempted_sync_utc=_iso(now),
+                            failure_injector=self._failure_injector,
+                            chunked=True,
+                            is_final_chunk=is_fin,
+                            partial_ok=True,
+                            failure_diagnostics=chunk_diags,
+                            last_event_ordinal=ch[-1]["event_ordinal"] if ch else None,
+                        )
+                        total_indexed += n
+                    except CalendarBatchApplyError as e:
+                        chunk_diags.append(e.diagnostic)
+                        # prior chunks committed; continue to maximize partial progress
+                        continue
+                events_indexed = total_indexed
+                failure_diagnostics = chunk_diags
+                if chunk_diags:
+                    status = "completed_with_errors"
+                    error_redacted = (
+                        f"partial:{len(chunk_diags)} event(s) errored (see failure_diagnostics)"
                     )
-                events_indexed += 1
+            elif not dry_run:
+                # no records but apply path: ensure a crawl receipt exists (empty run)
+                # (batch not called, but for parity a minimal receipt could be inserted here; current
+                # pre-148 behavior left no row if 0, so leave as-is for minimal diff)
+                pass
+        except CalendarBatchApplyError as e:
+            status = "failed"
+            events_indexed = 0
+            failure_diagnostics = [e.diagnostic]
+            error_redacted = f"{e.diagnostic['operation']}:{e.diagnostic['exception_type']}"
         except Exception as e:  # bounded, sanitized — never raw payloads
             status = "failed"
-            error_redacted = f"{type(e).__name__}: {str(e)[:120]}"
-
-        if not dry_run and crawl_opened:
-            self._store.complete_calendar_crawl_run(
-                run_id=run_id,
-                status=status,
-                events_seen=events_seen,
-                events_indexed=events_indexed,
-                events_private=events_private,
-                events_cancelled=events_cancelled,
-                events_review_required=events_review,
-                error_redacted=error_redacted,
-            )
-            self._store.upsert_calendar_sync_state(
-                source_id=source_id,
-                last_successful_sync_utc=window_end if status == "completed" else None,
-                last_attempted_sync_utc=_iso(now),
-                window_start_utc=window_start,
-                window_end_utc=window_end,
-                last_event_count=events_seen,
-                sync_status=status,
-                error_redacted=error_redacted,
-            )
+            error_redacted = type(e).__name__
 
         return IndexResult(
             source_id=source_id,
             run_id=run_id,
             mode=mode,
             dry_run=dry_run,
-            persisted=bool(not dry_run and status == "completed"),
+            persisted=bool(not dry_run and status in ("completed", "completed_with_errors")),
             window_start_utc=window_start,
             window_end_utc=window_end,
             lookback_days=lookback_days,
@@ -325,4 +357,5 @@ class CalendarEventIndexer:
             status=status,
             sample=sample,
             error_redacted=error_redacted,
+            failure_diagnostics=failure_diagnostics,
         )

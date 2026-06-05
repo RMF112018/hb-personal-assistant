@@ -66,3 +66,12 @@ Full success requires the delegated scopes from Phase 3 proof (User.Read, Mail.R
 - Phase 2 GraphHttpClient + auth foundation
 
 This phase completes the read-model layer. The system can now produce normalized, traceable objects for the local state store and all downstream intelligence.
+
+## Post-148 / Prompt 15: mail discover batch + calendar chunked apply (read models + persistence)
+
+The Phase 4 read models (redacted metadata only) are unchanged. The reliability harden (Prompt 15 follow-up) affects only the *persistence* layer that consumes the models:
+
+- Mail discover (`project_discovery` + `apply_project_email_discover_batch` in repositories): collects normalized (metadata) records, one-tx batch upsert to `email_messages` / `email_message_recipients` / `email_project_matches` + `email_processing_receipts` + `email_crawl_runs` + `email_sync_state` updates. Per-project diags + `persistence` shape added to report (still no raw body/preview beyond hashes/excerpts already in Phase 6 models).
+- Calendar (`event_indexer` chunking + enhanced `apply_calendar_index_batch`): chunks the normalized event records (from Phase 4/07B normalizer), applies per-chunk with partial_ok (per-ev diags collected for `failure_diagnostics`; goods commit), crawl_run checkpointed (accum indexed, status checkpointed/completed), sync updated progressively. Still only the redacted columns defined in V23 (no body, no joinUrl, no desc).
+
+All redaction/safety policy from this doc remains in force; new batch paths re-assert the same guards and CHECKs. No new columns or model fields. See 148/21/00-README for details + guardrails matrix. Commands stay outside MCP.

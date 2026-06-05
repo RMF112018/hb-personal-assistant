@@ -11,10 +11,12 @@ body, content, or text excerpts — only metadata identifiers and provenance.
 
 from __future__ import annotations
 
+import contextlib
 import json
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
+from hb_assistant.normalize.redaction import hash_value
 from hb_assistant.store.connection import get_connection, transaction
 from hb_assistant.store.migrator import SQLiteMigrator
 
@@ -23,20 +25,70 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+class CalendarBatchApplyError(RuntimeError):
+    """Calendar apply failed after producing a sanitized operation diagnostic."""
+
+    def __init__(self, diagnostic: dict[str, Any]) -> None:
+        self.diagnostic = diagnostic
+        operation = diagnostic.get("operation") or "calendar_apply"
+        exception_type = diagnostic.get("exception_type") or "Exception"
+        super().__init__(f"{operation}:{exception_type}")
+
+
+class EmailDiscoverBatchApplyError(RuntimeError):
+    """Email project discover batch apply failed after producing a sanitized operation diagnostic.
+
+    Used for all-project (and scoped) discover hardening: single-tx batch for messages +
+    recipients + matches + receipt + sync/crawl side effects. On failure, best-effort
+    failed receipt written in separate tx (redacted diag only: op, msg_id_hash, pk, exc_type).
+    """
+
+    def __init__(self, diagnostic: dict[str, Any]) -> None:
+        self.diagnostic = diagnostic
+        operation = diagnostic.get("operation") or "email_discover_apply"
+        exception_type = diagnostic.get("exception_type") or "Exception"
+        super().__init__(f"{operation}:{exception_type}")
+
+
 # Column order for construction_drive_items reads (V5 base + V15 rich metadata).
 _DRIVE_ITEM_KEYS: tuple[str, ...] = (
-    "source_id", "drive_id", "drive_item_id", "parent_drive_item_id",
-    "site_id", "list_id", "list_item_id", "name", "path", "web_url",
-    "is_folder", "is_file", "file_extension", "mime_type", "size_bytes",
-    "last_modified_datetime", "deleted", "quick_xor_hash",
-    "project_number_detected", "document_type_detected",
-    "indexing_policy", "classification_status",
-    "created_utc", "updated_utc",
-    "is_package", "e_tag", "c_tag", "created_datetime",
-    "parent_reference_path", "folder_child_count",
-    "sharepoint_web_id", "sharepoint_list_item_id",
-    "file_hashes_json", "package_json_redacted",
-    "remote_item_json_redacted", "first_seen_utc", "last_seen_utc",
+    "source_id",
+    "drive_id",
+    "drive_item_id",
+    "parent_drive_item_id",
+    "site_id",
+    "list_id",
+    "list_item_id",
+    "name",
+    "path",
+    "web_url",
+    "is_folder",
+    "is_file",
+    "file_extension",
+    "mime_type",
+    "size_bytes",
+    "last_modified_datetime",
+    "deleted",
+    "quick_xor_hash",
+    "project_number_detected",
+    "document_type_detected",
+    "indexing_policy",
+    "classification_status",
+    "created_utc",
+    "updated_utc",
+    "is_package",
+    "e_tag",
+    "c_tag",
+    "created_datetime",
+    "parent_reference_path",
+    "folder_child_count",
+    "sharepoint_web_id",
+    "sharepoint_list_item_id",
+    "file_hashes_json",
+    "package_json_redacted",
+    "remote_item_json_redacted",
+    "first_seen_utc",
+    "last_seen_utc",
 )
 
 
@@ -92,8 +144,15 @@ class ConstructionStore:
         row = cur.fetchone()
         if row is None:
             return None
-        keys = ("source_key", "kind", "site_id", "drive_id", "web_url",
-                "resolution_status", "resolved_at")
+        keys = (
+            "source_key",
+            "kind",
+            "site_id",
+            "drive_id",
+            "web_url",
+            "resolution_status",
+            "resolved_at",
+        )
         return dict(zip(keys, row, strict=True))
 
     # --- delta tokens -------------------------------------------------------
@@ -185,9 +244,18 @@ class ConstructionStore:
                     last_seen_at = excluded.last_seen_at
                 """,
                 (
-                    source_key, drive_id, item_id, name, web_url, parent_path,
-                    size_bytes, 1 if is_folder else 0, last_modified, etag,
-                    now, now,
+                    source_key,
+                    drive_id,
+                    item_id,
+                    name,
+                    web_url,
+                    parent_path,
+                    size_bytes,
+                    1 if is_folder else 0,
+                    last_modified,
+                    etag,
+                    now,
+                    now,
                 ),
             )
         return "updated" if existed else "new"
@@ -244,9 +312,19 @@ class ConstructionStore:
             params = (source_key, int(limit))
         conn = get_connection(self._db_path)
         keys = (
-            "source_key", "drive_id", "item_id", "name", "web_url", "parent_path",
-            "size_bytes", "is_folder", "last_modified", "etag", "status",
-            "first_seen_at", "last_seen_at",
+            "source_key",
+            "drive_id",
+            "item_id",
+            "name",
+            "web_url",
+            "parent_path",
+            "size_bytes",
+            "is_folder",
+            "last_modified",
+            "etag",
+            "status",
+            "first_seen_at",
+            "last_seen_at",
         )
         out: list[dict[str, Any]] = []
         for row in conn.execute(sql, params).fetchall():
@@ -285,7 +363,11 @@ class ConstructionStore:
         }
 
     def list_inventory_for_source(
-        self, source_key: str, *, include_deleted: bool = False, limit: int = 5000,
+        self,
+        source_key: str,
+        *,
+        include_deleted: bool = False,
+        limit: int = 5000,
     ) -> list[dict[str, Any]]:
         """List inventory rows for a source (active only by default)."""
         conn = get_connection(self._db_path)
@@ -302,9 +384,21 @@ class ConstructionStore:
         sql += " ORDER BY item_id LIMIT ?"
         params = (*params, limit)
         cur = conn.execute(sql, params)
-        keys = ("source_key", "drive_id", "item_id", "name", "web_url", "parent_path",
-                "size_bytes", "is_folder", "last_modified", "etag", "status",
-                "first_seen_at", "last_seen_at")
+        keys = (
+            "source_key",
+            "drive_id",
+            "item_id",
+            "name",
+            "web_url",
+            "parent_path",
+            "size_bytes",
+            "is_folder",
+            "last_modified",
+            "etag",
+            "status",
+            "first_seen_at",
+            "last_seen_at",
+        )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
     def list_inventory_changed_since(
@@ -327,9 +421,21 @@ class ConstructionStore:
             """,
             (source_key, since_iso, limit),
         )
-        keys = ("source_key", "drive_id", "item_id", "name", "web_url", "parent_path",
-                "size_bytes", "is_folder", "last_modified", "etag", "status",
-                "first_seen_at", "last_seen_at")
+        keys = (
+            "source_key",
+            "drive_id",
+            "item_id",
+            "name",
+            "web_url",
+            "parent_path",
+            "size_bytes",
+            "is_folder",
+            "last_modified",
+            "etag",
+            "status",
+            "first_seen_at",
+            "last_seen_at",
+        )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
     # --- receipts -----------------------------------------------------------
@@ -362,10 +468,19 @@ class ConstructionStore:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    run_id, source_key, mode, started_at, finished_at,
-                    pages_seen, items_seen, items_new, items_updated,
-                    items_deleted, 1 if delta_link_recorded else 0,
-                    status, error_redacted,
+                    run_id,
+                    source_key,
+                    mode,
+                    started_at,
+                    finished_at,
+                    pages_seen,
+                    items_seen,
+                    items_new,
+                    items_updated,
+                    items_deleted,
+                    1 if delta_link_recorded else 0,
+                    status,
+                    error_redacted,
                 ),
             )
             return int(cur.lastrowid)
@@ -389,10 +504,18 @@ class ConstructionStore:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)
                 """,
                 (
-                    match.source_key, match.project_key, match.item_id,
-                    match.name, match.parent_path, match.rule_id,
-                    match.classification_label, match.sensitivity, match.reason,
-                    match.suggested_action, match.confidence, _utc_now(),
+                    match.source_key,
+                    match.project_key,
+                    match.item_id,
+                    match.name,
+                    match.parent_path,
+                    match.rule_id,
+                    match.classification_label,
+                    match.sensitivity,
+                    match.reason,
+                    match.suggested_action,
+                    match.confidence,
+                    _utc_now(),
                 ),
             )
             return cur.rowcount > 0
@@ -423,13 +546,30 @@ class ConstructionStore:
         sql += " ORDER BY routed_at DESC, id DESC LIMIT ?"
         params.append(limit)
         cur = conn.execute(sql, tuple(params))
-        keys = ("id", "source_key", "project_key", "item_id", "name", "parent_path",
-                "rule_id", "classification_label", "sensitivity", "reason",
-                "suggested_action", "confidence", "status", "routed_at", "resolved_at")
+        keys = (
+            "id",
+            "source_key",
+            "project_key",
+            "item_id",
+            "name",
+            "parent_path",
+            "rule_id",
+            "classification_label",
+            "sensitivity",
+            "reason",
+            "suggested_action",
+            "confidence",
+            "status",
+            "routed_at",
+            "resolved_at",
+        )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
     def count_review_queue(
-        self, *, source_key: str | None = None, status: str | None = "open",
+        self,
+        *,
+        source_key: str | None = None,
+        status: str | None = "open",
     ) -> int:
         conn = get_connection(self._db_path)
         sql = "SELECT COUNT(*) FROM construction_review_queue WHERE 1=1"
@@ -458,11 +598,18 @@ class ConstructionStore:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    decision.source_key, decision.item_id, decision.project_key,
-                    decision.model_name, decision.model_task,
-                    decision.proposed_label, decision.confidence,
-                    decision.rationale_truncated, decision.raw_output_truncated,
-                    decision.status, decision.routing_reason, decision.routed_at,
+                    decision.source_key,
+                    decision.item_id,
+                    decision.project_key,
+                    decision.model_name,
+                    decision.model_task,
+                    decision.proposed_label,
+                    decision.confidence,
+                    decision.rationale_truncated,
+                    decision.raw_output_truncated,
+                    decision.status,
+                    decision.routing_reason,
+                    decision.routed_at,
                 ),
             )
             return int(cur.lastrowid)
@@ -497,9 +644,21 @@ class ConstructionStore:
         sql += " ORDER BY id DESC LIMIT ?"
         params.append(limit)
         cur = conn.execute(sql, tuple(params))
-        keys = ("id", "source_key", "item_id", "project_key", "model_name", "model_task",
-                "proposed_label", "confidence", "rationale_truncated",
-                "raw_output_truncated", "status", "routing_reason", "routed_at")
+        keys = (
+            "id",
+            "source_key",
+            "item_id",
+            "project_key",
+            "model_name",
+            "model_task",
+            "proposed_label",
+            "confidence",
+            "rationale_truncated",
+            "raw_output_truncated",
+            "status",
+            "routing_reason",
+            "routed_at",
+        )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
     def count_model_decisions(
@@ -534,9 +693,21 @@ class ConstructionStore:
             """,
             (source_key, limit),
         )
-        keys = ("id", "run_id", "mode", "started_at", "finished_at", "pages_seen",
-                "items_seen", "items_new", "items_updated", "items_deleted",
-                "delta_link_recorded", "status", "error_redacted")
+        keys = (
+            "id",
+            "run_id",
+            "mode",
+            "started_at",
+            "finished_at",
+            "pages_seen",
+            "items_seen",
+            "items_new",
+            "items_updated",
+            "items_deleted",
+            "delta_link_recorded",
+            "status",
+            "error_redacted",
+        )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
     # =====================================================================
@@ -635,14 +806,30 @@ class ConstructionStore:
                     updated_utc = excluded.updated_utc
                 """,
                 (
-                    source_id, source_system, source_scope, source_name,
-                    project_key, project_number, project_name, tenant_id,
-                    site_url, site_id, drive_id, folder_item_id, folder_path,
-                    folder_web_url, library_name, list_id, local_sync_path,
-                    sync_mode, sync_frequency_minutes, 1 if enabled else 0,
+                    source_id,
+                    source_system,
+                    source_scope,
+                    source_name,
+                    project_key,
+                    project_number,
+                    project_name,
+                    tenant_id,
+                    site_url,
+                    site_id,
+                    drive_id,
+                    folder_item_id,
+                    folder_path,
+                    folder_web_url,
+                    library_name,
+                    list_id,
+                    local_sync_path,
+                    sync_mode,
+                    sync_frequency_minutes,
+                    1 if enabled else 0,
                     self._dump_json(baseline_policy),
                     self._dump_json(folder_policies),
-                    _utc_now(), _utc_now(),
+                    _utc_now(),
+                    _utc_now(),
                 ),
             )
 
@@ -691,10 +878,19 @@ class ConstructionStore:
                     updated_utc = excluded.updated_utc
                 """,
                 (
-                    source_id, mailbox_owner_hash, mailbox_owner_domain, calendar_id_hash,
-                    calendar_role, calendar_display_name_hash, 1 if enabled else 0,
-                    lookback_days, lookahead_days, max_items_per_run, policy_id,
-                    _utc_now(), _utc_now(),
+                    source_id,
+                    mailbox_owner_hash,
+                    mailbox_owner_domain,
+                    calendar_id_hash,
+                    calendar_role,
+                    calendar_display_name_hash,
+                    1 if enabled else 0,
+                    lookback_days,
+                    lookahead_days,
+                    max_items_per_run,
+                    policy_id,
+                    _utc_now(),
+                    _utc_now(),
                 ),
             )
 
@@ -730,11 +926,421 @@ class ConstructionStore:
                     error_redacted = excluded.error_redacted
                 """,
                 (
-                    source_id, last_successful_sync_utc, last_attempted_sync_utc,
-                    window_start_utc, window_end_utc, last_event_count, sync_status,
+                    source_id,
+                    last_successful_sync_utc,
+                    last_attempted_sync_utc,
+                    window_start_utc,
+                    window_end_utc,
+                    last_event_count,
+                    sync_status,
                     error_redacted,
                 ),
             )
+
+    def apply_calendar_index_batch(
+        self,
+        *,
+        source_id: str,
+        mailbox_owner_hash: str,
+        mailbox_owner_domain: Optional[str] = None,
+        calendar_role: str = "primary",
+        policy_id: Optional[str] = None,
+        lookback_days: int = 14,
+        lookahead_days: int = 30,
+        max_items_per_run: int = 250,
+        run_id: str,
+        mode: str,
+        window_start_utc: str,
+        window_end_utc: str,
+        events_seen: int,
+        events_private: int,
+        events_cancelled: int,
+        events_review_required: int,
+        event_records: list[dict[str, Any]],
+        last_attempted_sync_utc: str,
+        failure_injector: Callable[[str, Optional[int], Optional[str]], None] | None = None,
+        chunked: bool = False,
+        is_final_chunk: bool = True,
+        partial_ok: bool = False,
+        failure_diagnostics: Optional[list[dict[str, Any]]] = None,
+        last_event_ordinal: Optional[int] = None,
+    ) -> int:
+        """Apply a (chunk of) calendar index batch in one SQLite transaction.
+
+        For larger-window reliability (post-148 / Prompt 15): when chunked=True + partial_ok=True,
+        per-event errors are isolated (try per upsert, collect diag, continue; successful events
+        in the chunk are committed). Chunked calls use INSERT OR IGNORE for crawl + partial
+        UPDATEs to checkpointed (non-final) or completed (final chunk); sync_state updated on
+        each chunk. On structural failure, still best-effort failed receipt in sep tx + raise.
+        Caller (event_indexer) chunks the records (50-100), accumulates, surfaces per-ev diags
+        in IndexResult. Idempotent upserts + bounded windows preserved; no body/desc/join ever.
+        """
+
+        def _diag(
+            operation: str,
+            exc: BaseException,
+            *,
+            event_ordinal: Optional[int] = None,
+            event_index_id: Optional[str] = None,
+        ) -> dict[str, Any]:
+            return {
+                "event_index_id": event_index_id,
+                "event_ordinal": event_ordinal,
+                "operation": operation,
+                "exception_type": type(exc).__name__,
+            }
+
+        def _inject(
+            operation: str,
+            event_ordinal: Optional[int] = None,
+            event_index_id: Optional[str] = None,
+        ) -> None:
+            if failure_injector is not None:
+                failure_injector(operation, event_ordinal, event_index_id)
+
+        def _persist_failed_receipt(diagnostic: dict[str, Any]) -> None:
+            if diagnostic["operation"] == "source_location_upsert":
+                return
+            conn2 = get_connection(self._db_path)
+            with transaction(conn2):
+                now2 = _utc_now()
+                conn2.execute(
+                    """
+                    INSERT INTO calendar_source_locations
+                        (source_id, mailbox_owner_hash, mailbox_owner_domain, calendar_role,
+                         enabled, read_only, lookback_days, lookahead_days, max_items_per_run,
+                         policy_id, created_utc, updated_utc)
+                    VALUES (?, ?, ?, ?, 1, 1, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(source_id) DO UPDATE SET
+                        mailbox_owner_hash = excluded.mailbox_owner_hash,
+                        mailbox_owner_domain = excluded.mailbox_owner_domain,
+                        calendar_role = excluded.calendar_role,
+                        enabled = excluded.enabled,
+                        lookback_days = excluded.lookback_days,
+                        lookahead_days = excluded.lookahead_days,
+                        max_items_per_run = excluded.max_items_per_run,
+                        policy_id = excluded.policy_id,
+                        updated_utc = excluded.updated_utc
+                    """,
+                    (
+                        source_id,
+                        mailbox_owner_hash,
+                        mailbox_owner_domain,
+                        calendar_role,
+                        lookback_days,
+                        lookahead_days,
+                        max_items_per_run,
+                        policy_id,
+                        now2,
+                        now2,
+                    ),
+                )
+                conn2.execute(
+                    """
+                    INSERT OR REPLACE INTO calendar_crawl_runs
+                        (run_id, source_id, mode, started_at_utc, completed_at_utc,
+                         window_start_utc, window_end_utc, events_seen, events_indexed,
+                         events_private, events_cancelled, events_review_required, status,
+                         error_redacted)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 'failed', ?)
+                    """,
+                    (
+                        run_id,
+                        source_id,
+                        mode,
+                        now2,
+                        now2,
+                        window_start_utc,
+                        window_end_utc,
+                        events_seen,
+                        events_private,
+                        events_cancelled,
+                        events_review_required,
+                        f"{diagnostic['operation']}:{diagnostic['exception_type']}",
+                    ),
+                )
+                conn2.execute(
+                    """
+                    INSERT INTO calendar_sync_state
+                        (source_id, last_successful_sync_utc, last_attempted_sync_utc,
+                         window_start_utc, window_end_utc, last_event_count, sync_status,
+                         error_redacted)
+                    VALUES (?, NULL, ?, ?, ?, ?, 'failed', ?)
+                    ON CONFLICT(source_id) DO UPDATE SET
+                        last_successful_sync_utc = NULL,
+                        last_attempted_sync_utc = excluded.last_attempted_sync_utc,
+                        window_start_utc = excluded.window_start_utc,
+                        window_end_utc = excluded.window_end_utc,
+                        last_event_count = excluded.last_event_count,
+                        sync_status = excluded.sync_status,
+                        error_redacted = excluded.error_redacted
+                    """,
+                    (
+                        source_id,
+                        last_attempted_sync_utc,
+                        window_start_utc,
+                        window_end_utc,
+                        events_seen,
+                        f"{diagnostic['operation']}:{diagnostic['exception_type']}",
+                    ),
+                )
+
+        conn = get_connection(self._db_path)
+        indexed = 0
+        operation = "calendar_apply"
+        event_ordinal: Optional[int] = None
+        event_index_id: Optional[str] = None
+        try:
+            with transaction(conn):
+                now = _utc_now()
+                operation = "source_location_upsert"
+                event_ordinal = None
+                event_index_id = None
+                _inject(operation)
+                conn.execute(
+                    """
+                    INSERT INTO calendar_source_locations
+                        (source_id, mailbox_owner_hash, mailbox_owner_domain, calendar_role,
+                         enabled, read_only, lookback_days, lookahead_days, max_items_per_run,
+                         policy_id, created_utc, updated_utc)
+                    VALUES (?, ?, ?, ?, 1, 1, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(source_id) DO UPDATE SET
+                        mailbox_owner_hash = excluded.mailbox_owner_hash,
+                        mailbox_owner_domain = excluded.mailbox_owner_domain,
+                        calendar_role = excluded.calendar_role,
+                        enabled = excluded.enabled,
+                        lookback_days = excluded.lookback_days,
+                        lookahead_days = excluded.lookahead_days,
+                        max_items_per_run = excluded.max_items_per_run,
+                        policy_id = excluded.policy_id,
+                        updated_utc = excluded.updated_utc
+                    """,
+                    (
+                        source_id,
+                        mailbox_owner_hash,
+                        mailbox_owner_domain,
+                        calendar_role,
+                        lookback_days,
+                        lookahead_days,
+                        max_items_per_run,
+                        policy_id,
+                        now,
+                        now,
+                    ),
+                )
+
+                operation = "crawl_run_insert"
+                event_ordinal = None
+                event_index_id = None
+                _inject(operation)
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO calendar_crawl_runs
+                        (run_id, source_id, mode, started_at_utc, window_start_utc,
+                         window_end_utc, status)
+                    VALUES (?, ?, ?, ?, ?, ?, 'running')
+                    """,
+                    (run_id, source_id, mode, now, window_start_utc, window_end_utc),
+                )
+
+                for rec in event_records:
+                    fields = rec["fields"]
+                    event_ordinal = rec["event_ordinal"]
+                    event_index_id = fields["event_index_id"]
+                    operation = "event_upsert"
+                    _inject(operation, event_ordinal, event_index_id)
+                    try:
+                        conn.execute(
+                            """
+                            INSERT INTO calendar_event_index
+                                (event_index_id, source_id, graph_event_id_hash, ical_uid_hash,
+                                 series_master_id_hash, web_link_hash, subject_hash, subject_redacted,
+                                 subject_token_hashes_json, organizer_hash, organizer_domain,
+                                 location_hash, location_redacted, start_datetime_utc, end_datetime_utc,
+                                 timezone, is_cancelled, is_private, is_online_meeting,
+                                 online_meeting_provider, has_attachments, project_key,
+                                 project_match_method, project_match_confidence, review_required,
+                                 review_reasons_json, created_utc, updated_utc)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                                    ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ON CONFLICT(source_id, graph_event_id_hash) DO UPDATE SET
+                                ical_uid_hash = excluded.ical_uid_hash,
+                                series_master_id_hash = excluded.series_master_id_hash,
+                                web_link_hash = excluded.web_link_hash,
+                                subject_hash = excluded.subject_hash,
+                                subject_redacted = excluded.subject_redacted,
+                                subject_token_hashes_json = excluded.subject_token_hashes_json,
+                                organizer_hash = excluded.organizer_hash,
+                                organizer_domain = excluded.organizer_domain,
+                                location_hash = excluded.location_hash,
+                                location_redacted = excluded.location_redacted,
+                                start_datetime_utc = excluded.start_datetime_utc,
+                                end_datetime_utc = excluded.end_datetime_utc,
+                                timezone = excluded.timezone,
+                                is_cancelled = excluded.is_cancelled,
+                                is_private = excluded.is_private,
+                                is_online_meeting = excluded.is_online_meeting,
+                                online_meeting_provider = excluded.online_meeting_provider,
+                                has_attachments = excluded.has_attachments,
+                                project_key = excluded.project_key,
+                                project_match_method = excluded.project_match_method,
+                                project_match_confidence = excluded.project_match_confidence,
+                                review_required = excluded.review_required,
+                                review_reasons_json = excluded.review_reasons_json,
+                                updated_utc = excluded.updated_utc
+                            """,
+                            (
+                                fields["event_index_id"],
+                                fields["source_id"],
+                                fields["graph_event_id_hash"],
+                                fields.get("ical_uid_hash"),
+                                fields.get("series_master_id_hash"),
+                                fields.get("web_link_hash"),
+                                fields.get("subject_hash"),
+                                fields.get("subject_redacted"),
+                                fields.get("subject_token_hashes_json"),
+                                fields.get("organizer_hash"),
+                                fields.get("organizer_domain"),
+                                fields.get("location_hash"),
+                                fields.get("location_redacted"),
+                                fields["start_datetime_utc"],
+                                fields["end_datetime_utc"],
+                                fields.get("timezone"),
+                                1 if fields.get("is_cancelled") else 0,
+                                1 if fields.get("is_private") else 0,
+                                1 if fields.get("is_online_meeting") else 0,
+                                fields.get("online_meeting_provider"),
+                                1 if fields.get("has_attachments") else 0,
+                                fields.get("project_key"),
+                                fields.get("project_match_method"),
+                                fields.get("project_match_confidence"),
+                                1 if fields.get("review_required") else 0,
+                                fields.get("review_reasons_json"),
+                                now,
+                                now,
+                            ),
+                        )
+                        for att in rec["attendees"]:
+                            operation = "attendee_upsert"
+                            _inject(operation, event_ordinal, event_index_id)
+                            conn.execute(
+                                """
+                                INSERT INTO calendar_event_attendees
+                                    (event_index_id, attendee_hash, attendee_domain, attendee_role,
+                                     response_status, review_required)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                                ON CONFLICT(event_index_id, attendee_hash) DO UPDATE SET
+                                    attendee_domain = excluded.attendee_domain,
+                                    attendee_role = excluded.attendee_role,
+                                    response_status = excluded.response_status,
+                                    review_required = excluded.review_required
+                                """,
+                                (
+                                    event_index_id,
+                                    att["attendee_hash"],
+                                    att.get("attendee_domain"),
+                                    att.get("attendee_role"),
+                                    att.get("response_status"),
+                                    1 if att.get("review_required") else 0,
+                                ),
+                            )
+                        indexed += 1
+                    except Exception as ev_exc:
+                        if not partial_ok:
+                            raise
+                        d = _diag(
+                            operation,
+                            ev_exc,
+                            event_ordinal=event_ordinal,
+                            event_index_id=event_index_id,
+                        )
+                        if failure_diagnostics is not None:
+                            failure_diagnostics.append(d)
+                        # continue; chunk tx commits prior successes in this chunk
+                        continue
+
+                now_done = _utc_now()
+                # For chunked runs: non-final chunks -> 'checkpointed' + accum events_indexed via COALESCE + delta;
+                # final chunk (or non-chunked) -> 'completed'. Sync always updated (last_attempted) for progress.
+                if not chunked or is_final_chunk:
+                    status_val = "completed"
+                    err_for_crawl: Optional[str] = None
+                else:
+                    status_val = "checkpointed"
+                    err_for_crawl = None
+
+                operation = (
+                    "crawl_run_finalize"
+                    if (not chunked or is_final_chunk)
+                    else "crawl_run_checkpoint"
+                )
+                event_ordinal = None
+                event_index_id = None
+                _inject(operation)
+                conn.execute(
+                    """
+                    UPDATE calendar_crawl_runs SET
+                        status = ?, completed_at_utc = ?, events_seen = ?,
+                        events_indexed = COALESCE(events_indexed, 0) + ?,
+                        events_private = ?, events_cancelled = ?, events_review_required = ?,
+                        error_redacted = ?
+                    WHERE run_id = ?
+                    """,
+                    (
+                        status_val,
+                        now_done,
+                        events_seen,
+                        indexed,
+                        events_private,
+                        events_cancelled,
+                        events_review_required,
+                        err_for_crawl,
+                        run_id,
+                    ),
+                )
+
+                # Sync state updated on every chunk (or single) to reflect attempted progress even for partials.
+                operation = "sync_state_update"
+                event_ordinal = None
+                event_index_id = None
+                _inject(operation)
+                conn.execute(
+                    """
+                    INSERT INTO calendar_sync_state
+                        (source_id, last_successful_sync_utc, last_attempted_sync_utc,
+                         window_start_utc, window_end_utc, last_event_count, sync_status,
+                         error_redacted)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+                    ON CONFLICT(source_id) DO UPDATE SET
+                        last_successful_sync_utc = excluded.last_successful_sync_utc,
+                        last_attempted_sync_utc = excluded.last_attempted_sync_utc,
+                        window_start_utc = excluded.window_start_utc,
+                        window_end_utc = excluded.window_end_utc,
+                        last_event_count = excluded.last_event_count,
+                        sync_status = excluded.sync_status,
+                        error_redacted = excluded.error_redacted
+                    """,
+                    (
+                        source_id,
+                        window_end_utc if (not chunked or is_final_chunk) else None,
+                        last_attempted_sync_utc,
+                        window_start_utc,
+                        window_end_utc,
+                        events_seen,
+                        "completed" if (not chunked or is_final_chunk) else "checkpointed",
+                    ),
+                )
+        except Exception as exc:
+            diagnostic = _diag(
+                operation,
+                exc,
+                event_ordinal=event_ordinal,
+                event_index_id=event_index_id,
+            )
+            with contextlib.suppress(Exception):
+                _persist_failed_receipt(diagnostic)
+            raise CalendarBatchApplyError(diagnostic) from exc
+        return indexed
 
     def insert_calendar_crawl_run(
         self,
@@ -759,8 +1365,13 @@ class ConstructionStore:
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    run_id, source_id, mode, started_at_utc or _utc_now(),
-                    window_start_utc, window_end_utc, status,
+                    run_id,
+                    source_id,
+                    mode,
+                    started_at_utc or _utc_now(),
+                    window_start_utc,
+                    window_end_utc,
+                    status,
                 ),
             )
 
@@ -789,9 +1400,15 @@ class ConstructionStore:
                 WHERE run_id = ?
                 """,
                 (
-                    status, completed_at_utc or _utc_now(), events_seen,
-                    events_indexed, events_private, events_cancelled,
-                    events_review_required, error_redacted, run_id,
+                    status,
+                    completed_at_utc or _utc_now(),
+                    events_seen,
+                    events_indexed,
+                    events_private,
+                    events_cancelled,
+                    events_review_required,
+                    error_redacted,
+                    run_id,
                 ),
             )
             return cur.rowcount > 0
@@ -871,15 +1488,34 @@ class ConstructionStore:
                     updated_utc = excluded.updated_utc
                 """,
                 (
-                    event_index_id, source_id, graph_event_id_hash, ical_uid_hash,
-                    series_master_id_hash, web_link_hash, subject_hash, subject_redacted,
-                    subject_token_hashes_json, organizer_hash, organizer_domain,
-                    location_hash, location_redacted, start_datetime_utc, end_datetime_utc,
-                    timezone, 1 if is_cancelled else 0, 1 if is_private else 0,
-                    1 if is_online_meeting else 0, online_meeting_provider,
-                    1 if has_attachments else 0, project_key, project_match_method,
-                    project_match_confidence, 1 if review_required else 0,
-                    review_reasons_json, _utc_now(), _utc_now(),
+                    event_index_id,
+                    source_id,
+                    graph_event_id_hash,
+                    ical_uid_hash,
+                    series_master_id_hash,
+                    web_link_hash,
+                    subject_hash,
+                    subject_redacted,
+                    subject_token_hashes_json,
+                    organizer_hash,
+                    organizer_domain,
+                    location_hash,
+                    location_redacted,
+                    start_datetime_utc,
+                    end_datetime_utc,
+                    timezone,
+                    1 if is_cancelled else 0,
+                    1 if is_private else 0,
+                    1 if is_online_meeting else 0,
+                    online_meeting_provider,
+                    1 if has_attachments else 0,
+                    project_key,
+                    project_match_method,
+                    project_match_confidence,
+                    1 if review_required else 0,
+                    review_reasons_json,
+                    _utc_now(),
+                    _utc_now(),
                 ),
             )
 
@@ -910,8 +1546,12 @@ class ConstructionStore:
                     review_required = excluded.review_required
                 """,
                 (
-                    event_index_id, attendee_hash, attendee_domain, attendee_role,
-                    response_status, 1 if review_required else 0,
+                    event_index_id,
+                    attendee_hash,
+                    attendee_domain,
+                    attendee_role,
+                    response_status,
+                    1 if review_required else 0,
                 ),
             )
 
@@ -935,15 +1575,26 @@ class ConstructionStore:
         sql += " ORDER BY start_datetime_utc LIMIT ?"
         params = (*params, limit)
         keys = (
-            "event_index_id", "source_id", "subject_token_hashes_json", "organizer_domain",
-            "start_datetime_utc", "end_datetime_utc",
-            "is_private", "is_cancelled", "project_key", "project_match_method",
-            "project_match_confidence", "review_required", "review_reasons_json",
+            "event_index_id",
+            "source_id",
+            "subject_token_hashes_json",
+            "organizer_domain",
+            "start_datetime_utc",
+            "end_datetime_utc",
+            "is_private",
+            "is_cancelled",
+            "project_key",
+            "project_match_method",
+            "project_match_confidence",
+            "review_required",
+            "review_reasons_json",
         )
         rows: list[dict[str, Any]] = []
         for row in conn.execute(sql, params):
             rec = dict(zip(keys, row, strict=True))
-            rec["subject_token_hashes"] = self._load_json(rec.pop("subject_token_hashes_json")) or []
+            rec["subject_token_hashes"] = (
+                self._load_json(rec.pop("subject_token_hashes_json")) or []
+            )
             rec["review_reasons"] = self._load_json(rec.pop("review_reasons_json")) or []
             rec["is_private"] = bool(rec["is_private"])
             rec["is_cancelled"] = bool(rec["is_cancelled"])
@@ -992,10 +1643,18 @@ class ConstructionStore:
                     promotion_status = excluded.promotion_status
                 """,
                 (
-                    candidate_id, event_index_id, project_key, candidate_type,
-                    signals_json, confidence, confidence_class, 1 if deterministic else 0,
-                    1 if model_proposed else 0, 1 if review_required else 0,
-                    promotion_status, _utc_now(),
+                    candidate_id,
+                    event_index_id,
+                    project_key,
+                    candidate_type,
+                    signals_json,
+                    confidence,
+                    confidence_class,
+                    1 if deterministic else 0,
+                    1 if model_proposed else 0,
+                    1 if review_required else 0,
+                    promotion_status,
+                    _utc_now(),
                 ),
             )
 
@@ -1052,20 +1711,42 @@ class ConstructionStore:
                     promotion_status = excluded.promotion_status
                 """,
                 (
-                    candidate_id, event_index_id, thread_key_hash, project_key,
-                    candidate_type, time_window_signal, participant_signal,
-                    subject_topic_signal, source_reference_json, confidence,
-                    confidence_class, 1 if deterministic else 0, 1 if model_proposed else 0,
-                    1 if review_required else 0, promotion_status, _utc_now(),
+                    candidate_id,
+                    event_index_id,
+                    thread_key_hash,
+                    project_key,
+                    candidate_type,
+                    time_window_signal,
+                    participant_signal,
+                    subject_topic_signal,
+                    source_reference_json,
+                    confidence,
+                    confidence_class,
+                    1 if deterministic else 0,
+                    1 if model_proposed else 0,
+                    1 if review_required else 0,
+                    promotion_status,
+                    _utc_now(),
                 ),
             )
 
     _MEETING_EMAIL_CANDIDATE_KEYS: tuple[str, ...] = (
-        "candidate_id", "event_index_id", "thread_key_hash", "project_key",
-        "candidate_type", "time_window_signal", "participant_signal",
-        "subject_topic_signal", "source_reference_json", "confidence",
-        "confidence_class", "deterministic", "model_proposed", "review_required",
-        "promotion_status", "created_utc",
+        "candidate_id",
+        "event_index_id",
+        "thread_key_hash",
+        "project_key",
+        "candidate_type",
+        "time_window_signal",
+        "participant_signal",
+        "subject_topic_signal",
+        "source_reference_json",
+        "confidence",
+        "confidence_class",
+        "deterministic",
+        "model_proposed",
+        "review_required",
+        "promotion_status",
+        "created_utc",
     )
 
     def list_meeting_email_relationship_candidates(
@@ -1103,7 +1784,9 @@ class ConstructionStore:
         for row in cur.fetchall():
             record = dict(zip(keys, row, strict=True))
             for json_field in (
-                "time_window_signal", "participant_signal", "subject_topic_signal",
+                "time_window_signal",
+                "participant_signal",
+                "subject_topic_signal",
                 "source_reference_json",
             ):
                 record[json_field] = self._load_json(record[json_field])
@@ -1132,13 +1815,31 @@ class ConstructionStore:
         if row is None:
             return None
         keys = (
-            "source_id", "source_system", "source_scope", "source_name",
-            "project_key", "project_number", "project_name", "tenant_id",
-            "site_url", "site_id", "drive_id", "folder_item_id", "folder_path",
-            "folder_web_url", "library_name", "list_id", "local_sync_path",
-            "sync_mode", "sync_frequency_minutes", "enabled", "read_only",
-            "baseline_policy_json", "folder_policies_json",
-            "created_utc", "updated_utc",
+            "source_id",
+            "source_system",
+            "source_scope",
+            "source_name",
+            "project_key",
+            "project_number",
+            "project_name",
+            "tenant_id",
+            "site_url",
+            "site_id",
+            "drive_id",
+            "folder_item_id",
+            "folder_path",
+            "folder_web_url",
+            "library_name",
+            "list_id",
+            "local_sync_path",
+            "sync_mode",
+            "sync_frequency_minutes",
+            "enabled",
+            "read_only",
+            "baseline_policy_json",
+            "folder_policies_json",
+            "created_utc",
+            "updated_utc",
         )
         record = dict(zip(keys, row, strict=True))
         record["baseline_policy"] = self._load_json(record.pop("baseline_policy_json"))
@@ -1148,7 +1849,10 @@ class ConstructionStore:
         return record
 
     def list_source_locations(
-        self, *, project_key: Optional[str] = None, limit: int = 1000,
+        self,
+        *,
+        project_key: Optional[str] = None,
+        limit: int = 1000,
     ) -> list[dict[str, Any]]:
         conn = get_connection(self._db_path)
         sql = "SELECT source_id FROM construction_source_locations WHERE 1=1"
@@ -1202,10 +1906,17 @@ class ConstructionStore:
                     error_message_redacted = excluded.error_message_redacted
                 """,
                 (
-                    source_id, drive_id, folder_item_id, delta_link,
-                    delta_link_fingerprint, last_successful_sync_utc,
-                    last_attempted_sync_utc, last_baseline_item_count,
-                    last_change_count, sync_status, error_message_redacted,
+                    source_id,
+                    drive_id,
+                    folder_item_id,
+                    delta_link,
+                    delta_link_fingerprint,
+                    last_successful_sync_utc,
+                    last_attempted_sync_utc,
+                    last_baseline_item_count,
+                    last_change_count,
+                    sync_status,
+                    error_message_redacted,
                 ),
             )
 
@@ -1226,10 +1937,17 @@ class ConstructionStore:
         if row is None:
             return None
         keys = (
-            "source_id", "drive_id", "folder_item_id", "delta_link",
-            "delta_link_fingerprint", "last_successful_sync_utc",
-            "last_attempted_sync_utc", "last_baseline_item_count",
-            "last_change_count", "sync_status", "error_message_redacted",
+            "source_id",
+            "drive_id",
+            "folder_item_id",
+            "delta_link",
+            "delta_link_fingerprint",
+            "last_successful_sync_utc",
+            "last_attempted_sync_utc",
+            "last_baseline_item_count",
+            "last_change_count",
+            "sync_status",
+            "error_message_redacted",
         )
         return dict(zip(keys, row, strict=True))
 
@@ -1264,15 +1982,27 @@ class ConstructionStore:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    run_id, source_id, source_scope, mode, started_at,
-                    completed_at, pages_seen, items_seen, items_in_scope,
-                    items_out_of_scope_filtered, 1 if delta_link_recorded else 0,
-                    status, error_redacted,
+                    run_id,
+                    source_id,
+                    source_scope,
+                    mode,
+                    started_at,
+                    completed_at,
+                    pages_seen,
+                    items_seen,
+                    items_in_scope,
+                    items_out_of_scope_filtered,
+                    1 if delta_link_recorded else 0,
+                    status,
+                    error_redacted,
                 ),
             )
 
     def list_source_crawl_runs(
-        self, *, source_id: Optional[str] = None, limit: int = 100,
+        self,
+        *,
+        source_id: Optional[str] = None,
+        limit: int = 100,
     ) -> list[dict[str, Any]]:
         conn = get_connection(self._db_path)
         sql = """
@@ -1291,9 +2021,18 @@ class ConstructionStore:
         params.append(limit)
         cur = conn.execute(sql, tuple(params))
         keys = (
-            "run_id", "source_id", "source_scope", "mode", "started_at",
-            "completed_at", "pages_seen", "items_seen", "items_in_scope",
-            "items_out_of_scope_filtered", "delta_link_recorded", "status",
+            "run_id",
+            "source_id",
+            "source_scope",
+            "mode",
+            "started_at",
+            "completed_at",
+            "pages_seen",
+            "items_seen",
+            "items_in_scope",
+            "items_out_of_scope_filtered",
+            "delta_link_recorded",
+            "status",
             "error_redacted",
         )
         rows = [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
@@ -1397,24 +2136,51 @@ class ConstructionStore:
                     last_seen_utc = excluded.last_seen_utc
                 """,
                 (
-                    source_id, drive_id, drive_item_id, parent_drive_item_id,
-                    site_id, list_id, list_item_id, name, path, web_url,
-                    1 if is_folder else 0, 1 if is_file else 0,
-                    file_extension, mime_type, size_bytes,
-                    last_modified_datetime, 1 if deleted else 0, quick_xor_hash,
-                    project_number_detected, document_type_detected,
-                    indexing_policy, classification_status,
-                    now, now,
-                    1 if is_package else 0, e_tag, c_tag, created_datetime,
-                    parent_reference_path, folder_child_count,
-                    sharepoint_web_id, sharepoint_list_item_id,
-                    file_hashes_json, package_json_redacted,
-                    remote_item_json_redacted, now, now,
+                    source_id,
+                    drive_id,
+                    drive_item_id,
+                    parent_drive_item_id,
+                    site_id,
+                    list_id,
+                    list_item_id,
+                    name,
+                    path,
+                    web_url,
+                    1 if is_folder else 0,
+                    1 if is_file else 0,
+                    file_extension,
+                    mime_type,
+                    size_bytes,
+                    last_modified_datetime,
+                    1 if deleted else 0,
+                    quick_xor_hash,
+                    project_number_detected,
+                    document_type_detected,
+                    indexing_policy,
+                    classification_status,
+                    now,
+                    now,
+                    1 if is_package else 0,
+                    e_tag,
+                    c_tag,
+                    created_datetime,
+                    parent_reference_path,
+                    folder_child_count,
+                    sharepoint_web_id,
+                    sharepoint_list_item_id,
+                    file_hashes_json,
+                    package_json_redacted,
+                    remote_item_json_redacted,
+                    now,
+                    now,
                 ),
             )
 
     def get_drive_item(
-        self, *, source_id: str, drive_item_id: str,
+        self,
+        *,
+        source_id: str,
+        drive_item_id: str,
     ) -> Optional[dict[str, Any]]:
         conn = get_connection(self._db_path)
         cur = conn.execute(
@@ -1517,9 +2283,16 @@ class ConstructionStore:
                  WHERE source_id = ? AND drive_item_id = ?
                 """,
                 (
-                    project_key, project_number_detected, match_confidence,
-                    match_status, 1 if review_required else 0, review_reason,
-                    match_signals_json, _utc_now(), source_id, drive_item_id,
+                    project_key,
+                    project_number_detected,
+                    match_confidence,
+                    match_status,
+                    1 if review_required else 0,
+                    review_reason,
+                    match_signals_json,
+                    _utc_now(),
+                    source_id,
+                    drive_item_id,
                 ),
             )
 
@@ -1552,11 +2325,21 @@ class ConstructionStore:
         sql += " ORDER BY drive_item_id LIMIT ?"
         params.append(int(limit))
         keys = (
-            "source_id", "drive_item_id", "name", "path", "project_key",
-            "project_number_detected", "match_confidence", "match_status",
-            "review_required", "review_reason", "match_signals_json",
+            "source_id",
+            "drive_item_id",
+            "name",
+            "path",
+            "project_key",
+            "project_number_detected",
+            "match_confidence",
+            "match_status",
+            "review_required",
+            "review_reason",
+            "match_signals_json",
         )
-        rows = [dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()]
+        rows = [
+            dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()
+        ]
         for r in rows:
             r["review_required"] = bool(r["review_required"])
         return rows
@@ -1606,11 +2389,20 @@ class ConstructionStore:
                     decided_utc = excluded.decided_utc
                 """,
                 (
-                    decision_id, source_id, drive_id, drive_item_id, project_key,
-                    project_number_detected, document_type_detected,
-                    ingestion_disposition, 1 if review_required else 0, review_reason,
-                    1 if extraction_allowed else 0, 1 if download_allowed else 0,
-                    reason_codes_json, _utc_now(),
+                    decision_id,
+                    source_id,
+                    drive_id,
+                    drive_item_id,
+                    project_key,
+                    project_number_detected,
+                    document_type_detected,
+                    ingestion_disposition,
+                    1 if review_required else 0,
+                    review_reason,
+                    1 if extraction_allowed else 0,
+                    1 if download_allowed else 0,
+                    reason_codes_json,
+                    _utc_now(),
                 ),
             )
 
@@ -1647,12 +2439,24 @@ class ConstructionStore:
         sql += " ORDER BY drive_item_id LIMIT ?"
         params.append(int(limit))
         keys = (
-            "decision_id", "source_id", "drive_id", "drive_item_id", "project_key",
-            "project_number_detected", "document_type_detected", "ingestion_disposition",
-            "review_required", "review_reason", "extraction_allowed", "download_allowed",
-            "reason_codes_json", "decided_utc",
+            "decision_id",
+            "source_id",
+            "drive_id",
+            "drive_item_id",
+            "project_key",
+            "project_number_detected",
+            "document_type_detected",
+            "ingestion_disposition",
+            "review_required",
+            "review_reason",
+            "extraction_allowed",
+            "download_allowed",
+            "reason_codes_json",
+            "decided_utc",
         )
-        rows = [dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()]
+        rows = [
+            dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()
+        ]
         for r in rows:
             for b in ("review_required", "extraction_allowed", "download_allowed"):
                 r[b] = bool(r[b])
@@ -1693,16 +2497,29 @@ class ConstructionStore:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
                 """,
                 (
-                    receipt_id, source_id, drive_id, drive_item_id, project_key, mode,
-                    1 if download_attempted else 0, 1 if download_completed else 0,
-                    bytes_written, sha256, cache_path_redacted,
-                    1 if cache_deleted_after_parse else 0, status, error_redacted,
+                    receipt_id,
+                    source_id,
+                    drive_id,
+                    drive_item_id,
+                    project_key,
+                    mode,
+                    1 if download_attempted else 0,
+                    1 if download_completed else 0,
+                    bytes_written,
+                    sha256,
+                    cache_path_redacted,
+                    1 if cache_deleted_after_parse else 0,
+                    status,
+                    error_redacted,
                     _utc_now(),
                 ),
             )
 
     def list_download_receipts(
-        self, *, source_id: Optional[str] = None, limit: int = 1000,
+        self,
+        *,
+        source_id: Optional[str] = None,
+        limit: int = 1000,
     ) -> list[dict[str, Any]]:
         conn = get_connection(self._db_path)
         sql = (
@@ -1719,15 +2536,35 @@ class ConstructionStore:
         sql += " ORDER BY created_utc DESC LIMIT ?"
         params.append(int(limit))
         keys = (
-            "receipt_id", "source_id", "drive_id", "drive_item_id", "project_key", "mode",
-            "download_attempted", "download_completed", "bytes_written", "sha256",
-            "cache_path_redacted", "cache_deleted_after_parse", "status", "error_redacted",
-            "created_utc", "raw_download_url_persisted", "source_file_copied_to_vault",
+            "receipt_id",
+            "source_id",
+            "drive_id",
+            "drive_item_id",
+            "project_key",
+            "mode",
+            "download_attempted",
+            "download_completed",
+            "bytes_written",
+            "sha256",
+            "cache_path_redacted",
+            "cache_deleted_after_parse",
+            "status",
+            "error_redacted",
+            "created_utc",
+            "raw_download_url_persisted",
+            "source_file_copied_to_vault",
         )
-        rows = [dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()]
+        rows = [
+            dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()
+        ]
         for r in rows:
-            for b in ("download_attempted", "download_completed", "cache_deleted_after_parse",
-                      "raw_download_url_persisted", "source_file_copied_to_vault"):
+            for b in (
+                "download_attempted",
+                "download_completed",
+                "cache_deleted_after_parse",
+                "raw_download_url_persisted",
+                "source_file_copied_to_vault",
+            ):
                 r[b] = bool(r[b])
         return rows
 
@@ -1762,15 +2599,28 @@ class ConstructionStore:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
                 """,
                 (
-                    extraction_id, source_id, drive_id, drive_item_id, project_key,
-                    parser_name, parser_version, content_hash, extraction_status,
-                    text_excerpt_redacted, char_count, 1 if review_required else 0,
-                    error_redacted, _utc_now(),
+                    extraction_id,
+                    source_id,
+                    drive_id,
+                    drive_item_id,
+                    project_key,
+                    parser_name,
+                    parser_version,
+                    content_hash,
+                    extraction_status,
+                    text_excerpt_redacted,
+                    char_count,
+                    1 if review_required else 0,
+                    error_redacted,
+                    _utc_now(),
                 ),
             )
 
     def list_file_extraction_runs(
-        self, *, source_id: Optional[str] = None, limit: int = 1000,
+        self,
+        *,
+        source_id: Optional[str] = None,
+        limit: int = 1000,
     ) -> list[dict[str, Any]]:
         conn = get_connection(self._db_path)
         sql = (
@@ -1787,12 +2637,25 @@ class ConstructionStore:
         sql += " ORDER BY created_utc DESC LIMIT ?"
         params.append(int(limit))
         keys = (
-            "extraction_id", "source_id", "drive_id", "drive_item_id", "project_key",
-            "parser_name", "parser_version", "content_hash", "extraction_status",
-            "text_excerpt_redacted", "char_count", "full_text_persisted", "review_required",
-            "error_redacted", "created_utc",
+            "extraction_id",
+            "source_id",
+            "drive_id",
+            "drive_item_id",
+            "project_key",
+            "parser_name",
+            "parser_version",
+            "content_hash",
+            "extraction_status",
+            "text_excerpt_redacted",
+            "char_count",
+            "full_text_persisted",
+            "review_required",
+            "error_redacted",
+            "created_utc",
         )
-        rows = [dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()]
+        rows = [
+            dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()
+        ]
         for r in rows:
             r["full_text_persisted"] = bool(r["full_text_persisted"])
             r["review_required"] = bool(r["review_required"])
@@ -1838,10 +2701,17 @@ class ConstructionStore:
                     match_confidence = excluded.match_confidence
                 """,
                 (
-                    project_key, hb_project_number, project_name_raw,
-                    project_name_normalized, 1 if is_active else 0,
-                    procore_project_id, project_stage, last_seen_utc,
-                    last_validated_utc, match_status, match_confidence,
+                    project_key,
+                    hb_project_number,
+                    project_name_raw,
+                    project_name_normalized,
+                    1 if is_active else 0,
+                    procore_project_id,
+                    project_stage,
+                    last_seen_utc,
+                    last_validated_utc,
+                    match_status,
+                    match_confidence,
                 ),
             )
 
@@ -1862,10 +2732,17 @@ class ConstructionStore:
         if row is None:
             return None
         keys = (
-            "project_key", "hb_project_number", "project_name_raw",
-            "project_name_normalized", "is_active", "procore_project_id",
-            "project_stage", "last_seen_utc", "last_validated_utc",
-            "match_status", "match_confidence",
+            "project_key",
+            "hb_project_number",
+            "project_name_raw",
+            "project_name_normalized",
+            "is_active",
+            "procore_project_id",
+            "project_stage",
+            "last_seen_utc",
+            "last_validated_utc",
+            "match_status",
+            "match_confidence",
         )
         record = dict(zip(keys, row, strict=True))
         record["is_active"] = bool(record["is_active"])
@@ -1898,8 +2775,12 @@ class ConstructionStore:
                 RETURNING id
                 """,
                 (
-                    project_key, source_id, match_method, match_confidence,
-                    1 if review_required else 0, _utc_now(),
+                    project_key,
+                    source_id,
+                    match_method,
+                    match_confidence,
+                    1 if review_required else 0,
+                    _utc_now(),
                 ),
             )
             row = cur.fetchone()
@@ -1930,8 +2811,13 @@ class ConstructionStore:
         params.append(limit)
         cur = conn.execute(sql, tuple(params))
         keys = (
-            "id", "project_key", "source_id", "match_method", "match_confidence",
-            "review_required", "created_utc",
+            "id",
+            "project_key",
+            "source_id",
+            "match_method",
+            "match_confidence",
+            "review_required",
+            "created_utc",
         )
         rows = [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
         for r in rows:
@@ -2024,17 +2910,35 @@ class ConstructionStore:
                     guardrail_flags_json = excluded.guardrail_flags_json
                 """,
                 (
-                    card_id, source_id, drive_item_id, project_key,
-                    document_type, status, confidence,
-                    1 if needs_review else 0, card_path,
-                    _utc_now(), _utc_now(),
-                    document_card_id, drive_id_hash, drive_item_id_hash,
-                    project_number_hash, title_hash, title_redacted, file_extension,
-                    mime_type, size_class, source_path_hash,
-                    source_path_token_hashes_json, last_modified_datetime,
-                    source_reference_json, review_status,
+                    card_id,
+                    source_id,
+                    drive_item_id,
+                    project_key,
+                    document_type,
+                    status,
+                    confidence,
+                    1 if needs_review else 0,
+                    card_path,
+                    _utc_now(),
+                    _utc_now(),
+                    document_card_id,
+                    drive_id_hash,
+                    drive_item_id_hash,
+                    project_number_hash,
+                    title_hash,
+                    title_redacted,
+                    file_extension,
+                    mime_type,
+                    size_class,
+                    source_path_hash,
+                    source_path_token_hashes_json,
+                    last_modified_datetime,
+                    source_reference_json,
+                    review_status,
                     1 if review_required else 0,
-                    review_reasons_json, extraction_eligibility, confidence_class,
+                    review_reasons_json,
+                    extraction_eligibility,
+                    confidence_class,
                     guardrail_flags_json,
                 ),
             )
@@ -2083,10 +2987,20 @@ class ConstructionStore:
             """
         )
         keys = (
-            "card_id", "document_card_id", "source_id", "drive_item_id", "file_extension",
-            "mime_type", "project_key", "project_number_hash", "document_type",
-            "source_path_token_hashes_json", "review_status", "review_required",
-            "extraction_eligibility", "size_class",
+            "card_id",
+            "document_card_id",
+            "source_id",
+            "drive_item_id",
+            "file_extension",
+            "mime_type",
+            "project_key",
+            "project_number_hash",
+            "document_type",
+            "source_path_token_hashes_json",
+            "review_status",
+            "review_required",
+            "extraction_eligibility",
+            "size_class",
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
@@ -2134,17 +3048,23 @@ class ConstructionStore:
                     promotion_status = excluded.promotion_status
                 """,
                 (
-                    candidate_id, document_card_id, document_type, classifier_name,
-                    signal_class, confidence, confidence_class, signals_json,
-                    1 if review_required else 0, promotion_status, _utc_now(),
+                    candidate_id,
+                    document_card_id,
+                    document_type,
+                    classifier_name,
+                    signal_class,
+                    confidence,
+                    confidence_class,
+                    signals_json,
+                    1 if review_required else 0,
+                    promotion_status,
+                    _utc_now(),
                 ),
             )
 
     def count_document_classification_candidates(self) -> int:
         conn = get_connection(self._db_path)
-        cur = conn.execute(
-            "SELECT COUNT(*) FROM construction_document_classification_candidates"
-        )
+        cur = conn.execute("SELECT COUNT(*) FROM construction_document_classification_candidates")
         row = cur.fetchone()
         return int(row[0]) if row else 0
 
@@ -2193,18 +3113,24 @@ class ConstructionStore:
                     signals_json = excluded.signals_json
                 """,
                 (
-                    candidate_id, document_card_id, project_key, candidate_type,
-                    confidence, confidence_class, 1 if deterministic else 0,
-                    1 if model_proposed else 0, 1 if review_required else 0,
-                    promotion_status, signals_json, _utc_now(),
+                    candidate_id,
+                    document_card_id,
+                    project_key,
+                    candidate_type,
+                    confidence,
+                    confidence_class,
+                    1 if deterministic else 0,
+                    1 if model_proposed else 0,
+                    1 if review_required else 0,
+                    promotion_status,
+                    signals_json,
+                    _utc_now(),
                 ),
             )
 
     def count_document_project_match_candidates(self) -> int:
         conn = get_connection(self._db_path)
-        cur = conn.execute(
-            "SELECT COUNT(*) FROM construction_document_project_match_candidates"
-        )
+        cur = conn.execute("SELECT COUNT(*) FROM construction_document_project_match_candidates")
         row = cur.fetchone()
         return int(row[0]) if row else 0
 
@@ -2220,8 +3146,12 @@ class ConstructionStore:
             """
         )
         keys = (
-            "candidate_id", "document_card_id", "document_type", "confidence_class",
-            "review_required", "promotion_status",
+            "candidate_id",
+            "document_card_id",
+            "document_type",
+            "confidence_class",
+            "review_required",
+            "promotion_status",
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
@@ -2276,18 +3206,26 @@ class ConstructionStore:
                     promotion_status = excluded.promotion_status
                 """,
                 (
-                    candidate_id, document_card_id, target_system, target_record_type,
-                    target_record_key_hash, relationship_type, candidate_type,
-                    confidence, confidence_class, source_reference_json, signals_json,
-                    1 if review_required else 0, promotion_status, _utc_now(),
+                    candidate_id,
+                    document_card_id,
+                    target_system,
+                    target_record_type,
+                    target_record_key_hash,
+                    relationship_type,
+                    candidate_type,
+                    confidence,
+                    confidence_class,
+                    source_reference_json,
+                    signals_json,
+                    1 if review_required else 0,
+                    promotion_status,
+                    _utc_now(),
                 ),
             )
 
     def count_document_relationship_candidates(self) -> int:
         conn = get_connection(self._db_path)
-        cur = conn.execute(
-            "SELECT COUNT(*) FROM construction_document_relationship_candidates"
-        )
+        cur = conn.execute("SELECT COUNT(*) FROM construction_document_relationship_candidates")
         row = cur.fetchone()
         return int(row[0]) if row else 0
 
@@ -2303,8 +3241,12 @@ class ConstructionStore:
             """
         )
         keys = (
-            "candidate_id", "document_card_id", "project_key", "candidate_type",
-            "confidence_class", "review_required",
+            "candidate_id",
+            "document_card_id",
+            "project_key",
+            "candidate_type",
+            "confidence_class",
+            "review_required",
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
@@ -2320,8 +3262,13 @@ class ConstructionStore:
             """
         )
         keys = (
-            "candidate_id", "document_card_id", "target_system", "target_record_type",
-            "candidate_type", "confidence_class", "review_required",
+            "candidate_id",
+            "document_card_id",
+            "target_system",
+            "target_record_type",
+            "candidate_type",
+            "confidence_class",
+            "review_required",
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
@@ -2341,9 +3288,17 @@ class ConstructionStore:
             """
         )
         keys = (
-            "candidate_id", "document_card_id", "target_system", "target_record_type",
-            "target_record_key_hash", "relationship_type", "candidate_type",
-            "confidence", "confidence_class", "review_required", "source_reference_json",
+            "candidate_id",
+            "document_card_id",
+            "target_system",
+            "target_record_type",
+            "target_record_key_hash",
+            "relationship_type",
+            "candidate_type",
+            "confidence",
+            "confidence_class",
+            "review_required",
+            "source_reference_json",
         )
         results: list[dict[str, Any]] = []
         for row in cur.fetchall():
@@ -2418,13 +3373,27 @@ class ConstructionStore:
                     updated_utc = excluded.updated_utc
                 """,
                 (
-                    candidate_id, project_key, source_family, source_record_type,
-                    source_record_ref, target_family, target_record_type, target_record_ref,
-                    relationship_type, confidence_score, confidence_class,
-                    1 if deterministic else 0, 1 if model_proposed else 0,
-                    1 if sensitive_high_impact else 0, 1 if review_required else 0,
-                    promotion_status, signals_json, source_reference_json, evidence_trail_id,
-                    _utc_now(), _utc_now(),
+                    candidate_id,
+                    project_key,
+                    source_family,
+                    source_record_type,
+                    source_record_ref,
+                    target_family,
+                    target_record_type,
+                    target_record_ref,
+                    relationship_type,
+                    confidence_score,
+                    confidence_class,
+                    1 if deterministic else 0,
+                    1 if model_proposed else 0,
+                    1 if sensitive_high_impact else 0,
+                    1 if review_required else 0,
+                    promotion_status,
+                    signals_json,
+                    source_reference_json,
+                    evidence_trail_id,
+                    _utc_now(),
+                    _utc_now(),
                 ),
             )
 
@@ -2435,11 +3404,25 @@ class ConstructionStore:
         return int(row[0]) if row else 0
 
     _CROSS_SOURCE_CANDIDATE_KEYS: tuple[str, ...] = (
-        "candidate_id", "project_key", "source_family", "source_record_type",
-        "source_record_ref", "target_family", "target_record_type", "target_record_ref",
-        "relationship_type", "confidence_score", "confidence_class", "deterministic",
-        "model_proposed", "sensitive_high_impact", "review_required", "promotion_status",
-        "signals_json", "source_reference_json", "evidence_trail_id",
+        "candidate_id",
+        "project_key",
+        "source_family",
+        "source_record_type",
+        "source_record_ref",
+        "target_family",
+        "target_record_type",
+        "target_record_ref",
+        "relationship_type",
+        "confidence_score",
+        "confidence_class",
+        "deterministic",
+        "model_proposed",
+        "sensitive_high_impact",
+        "review_required",
+        "promotion_status",
+        "signals_json",
+        "source_reference_json",
+        "evidence_trail_id",
     )
 
     def list_cross_source_relationship_candidates(
@@ -2474,7 +3457,10 @@ class ConstructionStore:
             for json_field in ("signals_json", "source_reference_json"):
                 record[json_field] = self._load_json(record[json_field])
             for bool_field in (
-                "deterministic", "model_proposed", "sensitive_high_impact", "review_required",
+                "deterministic",
+                "model_proposed",
+                "sensitive_high_impact",
+                "review_required",
             ):
                 record[bool_field] = bool(record[bool_field])
             results.append(record)
@@ -2514,9 +3500,15 @@ class ConstructionStore:
                     stale_unknown_flags_json = excluded.stale_unknown_flags_json
                 """,
                 (
-                    evidence_trail_id, project_key, evidence_kind, relationship_candidate_id,
-                    source_refs_json, confidence_class, 1 if review_required else 0,
-                    stale_unknown_flags_json, _utc_now(),
+                    evidence_trail_id,
+                    project_key,
+                    evidence_kind,
+                    relationship_candidate_id,
+                    source_refs_json,
+                    confidence_class,
+                    1 if review_required else 0,
+                    stale_unknown_flags_json,
+                    _utc_now(),
                 ),
             )
 
@@ -2527,12 +3519,20 @@ class ConstructionStore:
         return int(row[0]) if row else 0
 
     def list_source_evidence_trails(
-        self, *, project_key: Optional[str] = None, limit: int = 2000,
+        self,
+        *,
+        project_key: Optional[str] = None,
+        limit: int = 2000,
     ) -> list[dict[str, Any]]:
         """List redacted source evidence trails (V25). Safe fields only; JSON decoded."""
         keys = (
-            "evidence_trail_id", "project_key", "evidence_kind", "relationship_candidate_id",
-            "source_refs_json", "confidence_class", "review_required",
+            "evidence_trail_id",
+            "project_key",
+            "evidence_kind",
+            "relationship_candidate_id",
+            "source_refs_json",
+            "confidence_class",
+            "review_required",
             "stale_unknown_flags_json",
         )
         clauses: list[str] = []
@@ -2613,11 +3613,25 @@ class ConstructionStore:
                     updated_utc = excluded.updated_utc
                 """,
                 (
-                    relationship_id, candidate_id, project_key, source_family,
-                    source_record_type, source_record_ref, target_family, target_record_type,
-                    target_record_ref, relationship_type, confidence_class, promotion_status,
-                    promoted_by, 1 if review_required else 0, signals_json,
-                    source_reference_json, evidence_trail_id, _utc_now(), _utc_now(),
+                    relationship_id,
+                    candidate_id,
+                    project_key,
+                    source_family,
+                    source_record_type,
+                    source_record_ref,
+                    target_family,
+                    target_record_type,
+                    target_record_ref,
+                    relationship_type,
+                    confidence_class,
+                    promotion_status,
+                    promoted_by,
+                    1 if review_required else 0,
+                    signals_json,
+                    source_reference_json,
+                    evidence_trail_id,
+                    _utc_now(),
+                    _utc_now(),
                 ),
             )
 
@@ -2628,15 +3642,30 @@ class ConstructionStore:
         return int(row[0]) if row else 0
 
     _CROSS_SOURCE_RELATIONSHIP_KEYS: tuple[str, ...] = (
-        "relationship_id", "candidate_id", "project_key", "source_family",
-        "source_record_type", "source_record_ref", "target_family", "target_record_type",
-        "target_record_ref", "relationship_type", "confidence_class", "promotion_status",
-        "promoted_by", "review_required", "signals_json", "source_reference_json",
+        "relationship_id",
+        "candidate_id",
+        "project_key",
+        "source_family",
+        "source_record_type",
+        "source_record_ref",
+        "target_family",
+        "target_record_type",
+        "target_record_ref",
+        "relationship_type",
+        "confidence_class",
+        "promotion_status",
+        "promoted_by",
+        "review_required",
+        "signals_json",
+        "source_reference_json",
         "evidence_trail_id",
     )
 
     def list_cross_source_relationships(
-        self, *, project_key: Optional[str] = None, limit: int = 2000,
+        self,
+        *,
+        project_key: Optional[str] = None,
+        limit: int = 2000,
     ) -> list[dict[str, Any]]:
         """List promoted cross-source relationships (V25). Safe identifier/enum fields only;
         JSON columns decoded. The eight guard CHECK columns are not selected."""
@@ -2699,8 +3728,15 @@ class ConstructionStore:
                     generated_utc = excluded.generated_utc
                 """,
                 (
-                    brief_run_id, project_key, event_index_id, mode, lookahead_days, status,
-                    sections_written, review_required_count, _utc_now(),
+                    brief_run_id,
+                    project_key,
+                    event_index_id,
+                    mode,
+                    lookahead_days,
+                    status,
+                    sections_written,
+                    review_required_count,
+                    _utc_now(),
                 ),
             )
 
@@ -2739,19 +3775,35 @@ class ConstructionStore:
                     generated_utc = excluded.generated_utc
                 """,
                 (
-                    section_id, brief_run_id, section_kind, section_redacted, evidence_trail_id,
-                    confidence_class, 1 if review_required else 0, stale_unknown_flags_json,
+                    section_id,
+                    brief_run_id,
+                    section_kind,
+                    section_redacted,
+                    evidence_trail_id,
+                    confidence_class,
+                    1 if review_required else 0,
+                    stale_unknown_flags_json,
                     _utc_now(),
                 ),
             )
 
     def list_meeting_prep_brief_runs(
-        self, *, project_key: Optional[str] = None, limit: int = 2000,
+        self,
+        *,
+        project_key: Optional[str] = None,
+        limit: int = 2000,
     ) -> list[dict[str, Any]]:
         """List meeting-prep brief runs (V25). Safe fields only."""
         keys = (
-            "brief_run_id", "project_key", "event_index_id", "mode", "lookahead_days",
-            "status", "sections_written", "review_required_count", "generated_utc",
+            "brief_run_id",
+            "project_key",
+            "event_index_id",
+            "mode",
+            "lookahead_days",
+            "status",
+            "sections_written",
+            "review_required_count",
+            "generated_utc",
         )
         clauses: list[str] = []
         params: list[Any] = []
@@ -2769,13 +3821,22 @@ class ConstructionStore:
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
     def list_meeting_prep_brief_sections(
-        self, *, brief_run_id: Optional[str] = None, limit: int = 2000,
+        self,
+        *,
+        brief_run_id: Optional[str] = None,
+        limit: int = 2000,
     ) -> list[dict[str, Any]]:
         """List meeting-prep brief sections (V25). Safe fields only; JSON decoded."""
         keys = (
-            "section_id", "brief_run_id", "section_kind", "section_redacted",
-            "evidence_trail_id", "confidence_class", "review_required",
-            "stale_unknown_flags_json", "generated_utc",
+            "section_id",
+            "brief_run_id",
+            "section_kind",
+            "section_redacted",
+            "evidence_trail_id",
+            "confidence_class",
+            "review_required",
+            "stale_unknown_flags_json",
+            "generated_utc",
         )
         clauses: list[str] = []
         params: list[Any] = []
@@ -2793,9 +3854,7 @@ class ConstructionStore:
         results: list[dict[str, Any]] = []
         for row in cur.fetchall():
             record = dict(zip(keys, row, strict=True))
-            record["stale_unknown_flags_json"] = self._load_json(
-                record["stale_unknown_flags_json"]
-            )
+            record["stale_unknown_flags_json"] = self._load_json(record["stale_unknown_flags_json"])
             record["review_required"] = bool(record["review_required"])
             results.append(record)
         return results
@@ -2856,21 +3915,41 @@ class ConstructionStore:
                     updated_utc = excluded.updated_utc
                 """,
                 (
-                    issue_family_id, project_key, issue_kind, status, age_days,
-                    latest_activity_utc, source_families_json, evidence_trail_id,
-                    confidence_class, 1 if review_required else 0, stale_unknown_flags_json,
-                    _utc_now(), _utc_now(),
+                    issue_family_id,
+                    project_key,
+                    issue_kind,
+                    status,
+                    age_days,
+                    latest_activity_utc,
+                    source_families_json,
+                    evidence_trail_id,
+                    confidence_class,
+                    1 if review_required else 0,
+                    stale_unknown_flags_json,
+                    _utc_now(),
+                    _utc_now(),
                 ),
             )
 
     def list_project_issue_history_items(
-        self, *, project_key: Optional[str] = None, limit: int = 2000,
+        self,
+        *,
+        project_key: Optional[str] = None,
+        limit: int = 2000,
     ) -> list[dict[str, Any]]:
         """List project issue-history families (V25). Safe fields only; JSON decoded."""
         keys = (
-            "issue_family_id", "project_key", "issue_kind", "status", "age_days",
-            "latest_activity_utc", "source_families_json", "evidence_trail_id",
-            "confidence_class", "review_required", "stale_unknown_flags_json",
+            "issue_family_id",
+            "project_key",
+            "issue_kind",
+            "status",
+            "age_days",
+            "latest_activity_utc",
+            "source_families_json",
+            "evidence_trail_id",
+            "confidence_class",
+            "review_required",
+            "stale_unknown_flags_json",
         )
         clauses: list[str] = []
         params: list[Any] = []
@@ -2911,8 +3990,14 @@ class ConstructionStore:
         """List Procore action signals (V7) — safe identifier/enum fields only (never
         title_redacted / summary_redacted / metadata_json free-text)."""
         keys = (
-            "action_signal_id", "project_key", "record_key", "endpoint_id", "signal_type",
-            "signal_status", "importance", "due_at_utc",
+            "action_signal_id",
+            "project_key",
+            "record_key",
+            "endpoint_id",
+            "signal_type",
+            "signal_status",
+            "importance",
+            "due_at_utc",
         )
         clauses: list[str] = []
         params: list[Any] = []
@@ -2971,19 +4056,36 @@ class ConstructionStore:
                     updated_utc = excluded.updated_utc
                 """,
                 (
-                    risk_digest_id, project_key, risk_indicator_type, risk_source_class,
-                    summary_redacted, evidence_trail_id, confidence_class,
-                    1 if review_required else 0, stale_unknown_flags_json, _utc_now(), _utc_now(),
+                    risk_digest_id,
+                    project_key,
+                    risk_indicator_type,
+                    risk_source_class,
+                    summary_redacted,
+                    evidence_trail_id,
+                    confidence_class,
+                    1 if review_required else 0,
+                    stale_unknown_flags_json,
+                    _utc_now(),
+                    _utc_now(),
                 ),
             )
 
     def list_project_risk_digest_items(
-        self, *, project_key: Optional[str] = None, limit: int = 2000,
+        self,
+        *,
+        project_key: Optional[str] = None,
+        limit: int = 2000,
     ) -> list[dict[str, Any]]:
         """List project risk-digest items (V25). Safe fields only; JSON decoded."""
         keys = (
-            "risk_digest_id", "project_key", "risk_indicator_type", "risk_source_class",
-            "summary_redacted", "evidence_trail_id", "confidence_class", "review_required",
+            "risk_digest_id",
+            "project_key",
+            "risk_indicator_type",
+            "risk_source_class",
+            "summary_redacted",
+            "evidence_trail_id",
+            "confidence_class",
+            "review_required",
             "stale_unknown_flags_json",
         )
         clauses: list[str] = []
@@ -3002,9 +4104,7 @@ class ConstructionStore:
         results: list[dict[str, Any]] = []
         for row in cur.fetchall():
             record = dict(zip(keys, row, strict=True))
-            record["stale_unknown_flags_json"] = self._load_json(
-                record["stale_unknown_flags_json"]
-            )
+            record["stale_unknown_flags_json"] = self._load_json(record["stale_unknown_flags_json"])
             record["review_required"] = bool(record["review_required"])
             results.append(record)
         return results
@@ -3061,21 +4161,43 @@ class ConstructionStore:
                     updated_utc = excluded.updated_utc
                 """,
                 (
-                    aging_item_id, project_key, record_family, record_ref, status, age_days,
-                    threshold_band, 1 if stale_flag else 0, 1 if missing_status_flag else 0,
-                    evidence_trail_id, confidence_class, 1 if review_required else 0,
-                    _utc_now(), _utc_now(),
+                    aging_item_id,
+                    project_key,
+                    record_family,
+                    record_ref,
+                    status,
+                    age_days,
+                    threshold_band,
+                    1 if stale_flag else 0,
+                    1 if missing_status_flag else 0,
+                    evidence_trail_id,
+                    confidence_class,
+                    1 if review_required else 0,
+                    _utc_now(),
+                    _utc_now(),
                 ),
             )
 
     def list_aging_exposure_report_items(
-        self, *, project_key: Optional[str] = None, limit: int = 2000,
+        self,
+        *,
+        project_key: Optional[str] = None,
+        limit: int = 2000,
     ) -> list[dict[str, Any]]:
         """List aging/exposure report items (V25). Safe fields only."""
         keys = (
-            "aging_item_id", "project_key", "record_family", "record_ref", "status",
-            "age_days", "threshold_band", "stale_flag", "missing_status_flag",
-            "evidence_trail_id", "confidence_class", "review_required",
+            "aging_item_id",
+            "project_key",
+            "record_family",
+            "record_ref",
+            "status",
+            "age_days",
+            "threshold_band",
+            "stale_flag",
+            "missing_status_flag",
+            "evidence_trail_id",
+            "confidence_class",
+            "review_required",
         )
         clauses: list[str] = []
         params: list[Any] = []
@@ -3139,18 +4261,35 @@ class ConstructionStore:
                     generated_utc = excluded.generated_utc
                 """,
                 (
-                    obsidian_run_id, project_key, mode, output_kind, notes_written,
-                    review_required_count, status, error_redacted, _utc_now(),
+                    obsidian_run_id,
+                    project_key,
+                    mode,
+                    output_kind,
+                    notes_written,
+                    review_required_count,
+                    status,
+                    error_redacted,
+                    _utc_now(),
                 ),
             )
 
     def list_cross_source_intelligence_obsidian_runs(
-        self, *, project_key: Optional[str] = None, limit: int = 2000,
+        self,
+        *,
+        project_key: Optional[str] = None,
+        limit: int = 2000,
     ) -> list[dict[str, Any]]:
         """List cross-source-intelligence Obsidian run records (V25). Safe fields only."""
         keys = (
-            "obsidian_run_id", "project_key", "mode", "output_kind", "notes_written",
-            "review_required_count", "status", "error_redacted", "generated_utc",
+            "obsidian_run_id",
+            "project_key",
+            "mode",
+            "output_kind",
+            "notes_written",
+            "review_required_count",
+            "status",
+            "error_redacted",
+            "generated_utc",
         )
         clauses: list[str] = []
         params: list[Any] = []
@@ -3177,13 +4316,22 @@ class ConstructionStore:
     # --- Phase 07D Prompt 04 normalization source readers --------------------
 
     def list_procore_record_edges(
-        self, *, project_key: Optional[str] = None, limit: int = 100000,
+        self,
+        *,
+        project_key: Optional[str] = None,
+        limit: int = 100000,
     ) -> list[dict[str, Any]]:
         """List Procore-native record edges (V7) — safe identifier fields only (no
         metadata_json free-text). Keys are stable internal Procore identifiers / hashes."""
         keys = (
-            "edge_id", "project_key", "from_record_key", "to_record_key", "to_entity_key",
-            "edge_type", "source_endpoint_id", "confidence",
+            "edge_id",
+            "project_key",
+            "from_record_key",
+            "to_record_key",
+            "to_entity_key",
+            "edge_type",
+            "source_endpoint_id",
+            "confidence",
         )
         clauses: list[str] = []
         params: list[Any] = []
@@ -3194,21 +4342,29 @@ class ConstructionStore:
         params.append(limit)
         conn = get_connection(self._db_path)
         cur = conn.execute(
-            f"SELECT {', '.join(keys)} FROM procore_record_edges {where} "
-            "ORDER BY edge_id LIMIT ?",
+            f"SELECT {', '.join(keys)} FROM procore_record_edges {where} ORDER BY edge_id LIMIT ?",
             tuple(params),
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
     def list_relationship_resolution_queue(
-        self, *, limit: int = 100000,
+        self,
+        *,
+        limit: int = 100000,
     ) -> list[dict[str, Any]]:
         """List relationship-resolution-queue edges (V20) — safe fields only (no
         evidence_redacted free-text). Carries the row's confidence_class verbatim."""
         keys = (
-            "relationship_id", "from_canonical_record_id", "to_canonical_record_id",
-            "from_source_system", "to_source_system", "relationship_type",
-            "relationship_status", "confidence_class", "confidence", "review_required",
+            "relationship_id",
+            "from_canonical_record_id",
+            "to_canonical_record_id",
+            "from_source_system",
+            "to_source_system",
+            "relationship_type",
+            "relationship_status",
+            "confidence_class",
+            "confidence",
+            "review_required",
             "promotion_status",
         )
         conn = get_connection(self._db_path)
@@ -3279,17 +4435,21 @@ class ConstructionStore:
                     generated_utc = excluded.generated_utc
                 """,
                 (
-                    preview_id, project_key, document_card_id, preview_kind,
-                    preview_redacted, warnings_json, confidence_class,
-                    1 if review_required else 0, _utc_now(),
+                    preview_id,
+                    project_key,
+                    document_card_id,
+                    preview_kind,
+                    preview_redacted,
+                    warnings_json,
+                    confidence_class,
+                    1 if review_required else 0,
+                    _utc_now(),
                 ),
             )
 
     def count_document_intelligence_previews(self) -> int:
         conn = get_connection(self._db_path)
-        cur = conn.execute(
-            "SELECT COUNT(*) FROM construction_document_intelligence_previews"
-        )
+        cur = conn.execute("SELECT COUNT(*) FROM construction_document_intelligence_previews")
         row = cur.fetchone()
         return int(row[0]) if row else 0
 
@@ -3310,8 +4470,14 @@ class ConstructionStore:
         sql += " ORDER BY project_key"
         cur = conn.execute(sql, params)
         keys = (
-            "preview_id", "project_key", "preview_kind", "preview_redacted", "warnings_json",
-            "confidence_class", "review_required", "generated_utc",
+            "preview_id",
+            "project_key",
+            "preview_kind",
+            "preview_redacted",
+            "warnings_json",
+            "confidence_class",
+            "review_required",
+            "generated_utc",
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
@@ -3379,13 +4545,20 @@ class ConstructionStore:
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    receipt_id, source_id, operation, status,
-                    self._dump_json(detail), _utc_now(),
+                    receipt_id,
+                    source_id,
+                    operation,
+                    status,
+                    self._dump_json(detail),
+                    _utc_now(),
                 ),
             )
 
     def list_processing_receipts(
-        self, *, source_id: Optional[str] = None, limit: int = 100,
+        self,
+        *,
+        source_id: Optional[str] = None,
+        limit: int = 100,
     ) -> list[dict[str, Any]]:
         conn = get_connection(self._db_path)
         sql = """
@@ -3401,8 +4574,7 @@ class ConstructionStore:
         sql += " ORDER BY generated_at DESC LIMIT ?"
         params.append(limit)
         cur = conn.execute(sql, tuple(params))
-        keys = ("receipt_id", "source_id", "operation", "status", "generated_at",
-                "detail_json")
+        keys = ("receipt_id", "source_id", "operation", "status", "generated_at", "detail_json")
         rows = [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
         for r in rows:
             r["detail"] = self._load_json(r.pop("detail_json"))
@@ -3451,17 +4623,36 @@ class ConstructionStore:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
                 """,
                 (
-                    resolution_id, source_id, redacted_url, hostname,
-                    normalized_path, url_fingerprint, share_token_fingerprint,
-                    resolution_method, status, site_id, drive_id, drive_item_id,
-                    folder_item_id, parent_drive_id, parent_drive_item_id,
-                    list_id, list_item_id, web_url, name, item_kind,
-                    error_redacted, _utc_now(),
+                    resolution_id,
+                    source_id,
+                    redacted_url,
+                    hostname,
+                    normalized_path,
+                    url_fingerprint,
+                    share_token_fingerprint,
+                    resolution_method,
+                    status,
+                    site_id,
+                    drive_id,
+                    drive_item_id,
+                    folder_item_id,
+                    parent_drive_id,
+                    parent_drive_item_id,
+                    list_id,
+                    list_item_id,
+                    web_url,
+                    name,
+                    item_kind,
+                    error_redacted,
+                    _utc_now(),
                 ),
             )
 
     def list_link_resolutions(
-        self, *, source_id: Optional[str] = None, limit: int = 100,
+        self,
+        *,
+        source_id: Optional[str] = None,
+        limit: int = 100,
     ) -> list[dict[str, Any]]:
         conn = get_connection(self._db_path)
         sql = """
@@ -3481,14 +4672,33 @@ class ConstructionStore:
         sql += " ORDER BY created_utc DESC LIMIT ?"
         params.append(limit)
         keys = (
-            "resolution_id", "source_id", "redacted_url", "hostname",
-            "normalized_path", "url_fingerprint", "share_token_fingerprint",
-            "resolution_method", "status", "site_id", "drive_id", "drive_item_id",
-            "folder_item_id", "parent_drive_id", "parent_drive_item_id",
-            "list_id", "list_item_id", "web_url", "name", "item_kind",
-            "error_redacted", "raw_tokenized_url_persisted", "created_utc",
+            "resolution_id",
+            "source_id",
+            "redacted_url",
+            "hostname",
+            "normalized_path",
+            "url_fingerprint",
+            "share_token_fingerprint",
+            "resolution_method",
+            "status",
+            "site_id",
+            "drive_id",
+            "drive_item_id",
+            "folder_item_id",
+            "parent_drive_id",
+            "parent_drive_item_id",
+            "list_id",
+            "list_item_id",
+            "web_url",
+            "name",
+            "item_kind",
+            "error_redacted",
+            "raw_tokenized_url_persisted",
+            "created_utc",
         )
-        return [dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()]
+        return [
+            dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()
+        ]
 
     # --- canonical sync errors (V5) -----------------------------------------
 
@@ -3545,8 +4755,15 @@ class ConstructionStore:
         sql += " ORDER BY occurred_utc DESC LIMIT ?"
         params.append(limit)
         cur = conn.execute(sql, tuple(params))
-        keys = ("id", "source_id", "operation", "error_class", "error_redacted",
-                "occurred_utc", "resolved_utc")
+        keys = (
+            "id",
+            "source_id",
+            "operation",
+            "error_class",
+            "error_redacted",
+            "occurred_utc",
+            "resolved_utc",
+        )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
     # --- email-intelligence deferred state singleton (V5) -------------------
@@ -3566,8 +4783,7 @@ class ConstructionStore:
             )
         if persist_full_body is not False:
             raise ValueError(
-                "persist_full_body must be False — Phase 02 never persists full "
-                "mailbox bodies"
+                "persist_full_body must be False — Phase 02 never persists full mailbox bodies"
             )
         conn = get_connection(self._db_path)
         with transaction(conn):
@@ -3602,8 +4818,14 @@ class ConstructionStore:
         row = cur.fetchone()
         if row is None:
             return None
-        keys = ("id", "mail_read_all_granted", "mail_readwrite_all_granted",
-                "mailbox_writeback_allowed", "persist_full_body", "updated_utc")
+        keys = (
+            "id",
+            "mail_read_all_granted",
+            "mail_readwrite_all_granted",
+            "mailbox_writeback_allowed",
+            "persist_full_body",
+            "updated_utc",
+        )
         record = dict(zip(keys, row, strict=True))
         for bool_field in (
             "mail_read_all_granted",
@@ -3645,9 +4867,7 @@ class ConstructionStore:
         ollama_invalid_json_routes_to_review: bool = True,
     ) -> None:
         if mailbox_mode != "read_only":
-            raise ValueError(
-                "mailbox_mode must be 'read_only' — Phase 06 mailbox stays read-only"
-            )
+            raise ValueError("mailbox_mode must be 'read_only' — Phase 06 mailbox stays read-only")
         for flag_name, flag_value in (
             ("writeback_allowed", writeback_allowed),
             ("mailbox_mutation_allowed", mailbox_mutation_allowed),
@@ -3721,20 +4941,35 @@ class ConstructionStore:
         if row is None:
             return None
         keys = (
-            "id", "policy_phase", "mailbox_mode", "writeback_allowed",
-            "mailbox_mutation_allowed", "full_archive_crawl", "source_copy_to_vault",
-            "full_email_body_in_obsidian", "attachment_content_download_by_default",
-            "metadata_only_by_default", "review_required_for_sensitive",
-            "initial_backfill_mode", "ollama_invalid_json_routes_to_review",
-            "default_lookback_days", "ollama_enabled_for_email_intelligence",
-            "low_confidence_threshold", "updated_utc",
+            "id",
+            "policy_phase",
+            "mailbox_mode",
+            "writeback_allowed",
+            "mailbox_mutation_allowed",
+            "full_archive_crawl",
+            "source_copy_to_vault",
+            "full_email_body_in_obsidian",
+            "attachment_content_download_by_default",
+            "metadata_only_by_default",
+            "review_required_for_sensitive",
+            "initial_backfill_mode",
+            "ollama_invalid_json_routes_to_review",
+            "default_lookback_days",
+            "ollama_enabled_for_email_intelligence",
+            "low_confidence_threshold",
+            "updated_utc",
         )
         record = dict(zip(keys, row, strict=True))
         for bool_field in (
-            "writeback_allowed", "mailbox_mutation_allowed", "full_archive_crawl",
-            "source_copy_to_vault", "full_email_body_in_obsidian",
-            "attachment_content_download_by_default", "metadata_only_by_default",
-            "review_required_for_sensitive", "ollama_invalid_json_routes_to_review",
+            "writeback_allowed",
+            "mailbox_mutation_allowed",
+            "full_archive_crawl",
+            "source_copy_to_vault",
+            "full_email_body_in_obsidian",
+            "attachment_content_download_by_default",
+            "metadata_only_by_default",
+            "review_required_for_sensitive",
+            "ollama_invalid_json_routes_to_review",
             "ollama_enabled_for_email_intelligence",
         ):
             record[bool_field] = bool(record[bool_field])
@@ -3763,9 +4998,7 @@ class ConstructionStore:
         full_email_body_in_obsidian_allowed: bool = False,
     ) -> None:
         if read_only is not True:
-            raise ValueError(
-                "email_source_locations.read_only must be True (no mailbox writeback)"
-            )
+            raise ValueError("email_source_locations.read_only must be True (no mailbox writeback)")
         for flag_name, flag_value in (
             ("mailbox_mutation_allowed", mailbox_mutation_allowed),
             ("full_archive_crawl_allowed", full_archive_crawl_allowed),
@@ -3820,13 +5053,24 @@ class ConstructionStore:
     @staticmethod
     def _email_source_location_keys() -> tuple[str, ...]:
         return (
-            "source_id", "source_system", "mailbox_owner_hash",
-            "mailbox_display_name_redacted", "mailbox_user_principal_name_hash",
-            "folder_id", "folder_display_name", "folder_role", "include_in_sync",
-            "sync_mode", "default_lookback_days", "read_only",
-            "mailbox_mutation_allowed", "full_archive_crawl_allowed",
-            "source_copy_to_vault_allowed", "full_email_body_in_obsidian_allowed",
-            "created_utc", "updated_utc",
+            "source_id",
+            "source_system",
+            "mailbox_owner_hash",
+            "mailbox_display_name_redacted",
+            "mailbox_user_principal_name_hash",
+            "folder_id",
+            "folder_display_name",
+            "folder_role",
+            "include_in_sync",
+            "sync_mode",
+            "default_lookback_days",
+            "read_only",
+            "mailbox_mutation_allowed",
+            "full_archive_crawl_allowed",
+            "source_copy_to_vault_allowed",
+            "full_email_body_in_obsidian_allowed",
+            "created_utc",
+            "updated_utc",
         )
 
     def get_email_source_location(self, source_id: str) -> Optional[dict[str, Any]]:
@@ -3841,8 +5085,11 @@ class ConstructionStore:
             return None
         record = dict(zip(keys, row, strict=True))
         for bool_field in (
-            "include_in_sync", "read_only", "mailbox_mutation_allowed",
-            "full_archive_crawl_allowed", "source_copy_to_vault_allowed",
+            "include_in_sync",
+            "read_only",
+            "mailbox_mutation_allowed",
+            "full_archive_crawl_allowed",
+            "source_copy_to_vault_allowed",
             "full_email_body_in_obsidian_allowed",
         ):
             record[bool_field] = bool(record[bool_field])
@@ -3876,8 +5123,11 @@ class ConstructionStore:
         for row in cur.fetchall():
             record = dict(zip(keys, row, strict=True))
             for bool_field in (
-                "include_in_sync", "read_only", "mailbox_mutation_allowed",
-                "full_archive_crawl_allowed", "source_copy_to_vault_allowed",
+                "include_in_sync",
+                "read_only",
+                "mailbox_mutation_allowed",
+                "full_archive_crawl_allowed",
+                "source_copy_to_vault_allowed",
                 "full_email_body_in_obsidian_allowed",
             ):
                 record[bool_field] = bool(record[bool_field])
@@ -3945,20 +5195,24 @@ class ConstructionStore:
                 ),
             )
 
-    def get_email_sync_state(
-        self, *, source_id: str, folder_id: str
-    ) -> Optional[dict[str, Any]]:
+    def get_email_sync_state(self, *, source_id: str, folder_id: str) -> Optional[dict[str, Any]]:
         keys = (
-            "source_id", "folder_id", "sync_mode", "lookback_days",
-            "last_successful_sync_utc", "last_attempted_sync_utc",
-            "latest_received_datetime", "latest_sent_datetime",
-            "delta_token_fingerprint", "delta_token_supported", "sync_status",
+            "source_id",
+            "folder_id",
+            "sync_mode",
+            "lookback_days",
+            "last_successful_sync_utc",
+            "last_attempted_sync_utc",
+            "latest_received_datetime",
+            "latest_sent_datetime",
+            "delta_token_fingerprint",
+            "delta_token_supported",
+            "sync_status",
             "error_redacted",
         )
         conn = get_connection(self._db_path)
         cur = conn.execute(
-            f"SELECT {', '.join(keys)} FROM email_sync_state "
-            "WHERE source_id = ? AND folder_id = ?",
+            f"SELECT {', '.join(keys)} FROM email_sync_state WHERE source_id = ? AND folder_id = ?",
             (source_id, folder_id),
         )
         row = cur.fetchone()
@@ -4060,21 +5314,437 @@ class ConstructionStore:
             )
             return cur.rowcount > 0
 
+    def apply_project_email_discover_batch(
+        self,
+        *,
+        matches: list[dict[str, Any]],
+        owner_hash: Optional[str],
+        op_id: str,
+        requested_project: Optional[str] = None,
+        messages_scanned: int = 0,
+        matched_messages: int = 0,
+        signal_counts: Optional[dict[str, int]] = None,
+        failure_injector: Callable[[str, Optional[str], Optional[str]], None] | None = None,
+    ) -> int:
+        """Apply a batch of project email discover matches (messages+recipients+matches + crawl/processing_receipt + sync_state) in ONE SQLite transaction.
+
+        This fixes all-project connection lifecycle/churn (when project_key=None yields many pilot descriptors):
+        caller collects instead of per-item _persist_match; batch opens 1 conn + 1 tx for all upserts + receipt.
+        On write failure the batch rolls back and attempts a failed receipt (redacted diag only) + failed crawl
+        in separate tx. Diagnostics are metadata-only (op, message_id_hash, project_key, exc_type).
+
+        Mirrors apply_calendar_index_batch robustness (post-148). Re-uses SQL patterns from upsert_email_* but
+        inlines executes on the shared conn (separate conn/tx methods cannot participate in outer tx).
+        Guardrails preserved: no raw body, no mutation, metadata_only, CHECKs, no M365 writeback.
+        """
+
+        signal_counts = signal_counts or {}
+
+        def _diag(
+            operation: str,
+            exc: BaseException,
+            *,
+            message_id: Optional[str] = None,
+            project_key: Optional[str] = None,
+        ) -> dict[str, Any]:
+            return {
+                "message_id_hash": hash_value(message_id) if message_id else None,
+                "project_key": project_key,
+                "operation": operation,
+                "exception_type": type(exc).__name__,
+                "message": str(exc)[:120],
+            }
+
+        def _inject(
+            operation: str,
+            message_id: Optional[str] = None,
+            project_key: Optional[str] = None,
+        ) -> None:
+            if failure_injector is not None:
+                failure_injector(operation, message_id, project_key)
+
+        def _persist_failed_receipt(diagnostic: dict[str, Any]) -> None:
+            conn2 = get_connection(self._db_path)
+            with transaction(conn2):
+                now2 = _utc_now()
+                conn2.execute(
+                    """
+                    INSERT INTO email_processing_receipts
+                        (receipt_id, run_id, message_id, project_key, operation, status,
+                         detail_json, mailbox_mutation_attempted, full_body_persisted,
+                         attachment_content_downloaded, generated_utc)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)
+                    """,
+                    (
+                        f"{op_id}:discover:failed",
+                        op_id,
+                        None,
+                        requested_project,
+                        "project_discovery",
+                        "failed",
+                        self._dump_json(
+                            {
+                                "diagnostic": diagnostic,
+                                "messages_scanned": messages_scanned,
+                                "matched_messages": matched_messages,
+                                "signal_counts": signal_counts,
+                            }
+                        ),
+                        now2,
+                    ),
+                )
+                # best-effort failed crawl markers for sources involved (redacted)
+                sources = diagnostic.get("_sources") or []
+                for sid in sources:
+                    crid = f"{op_id}:{sid}:failed"
+                    conn2.execute(
+                        """
+                        INSERT INTO email_crawl_runs
+                            (run_id, source_id, project_key, project_number, mode, dry_run,
+                             lookback_days, started_utc, completed_utc, folders_seen,
+                             messages_seen, messages_in_scope, messages_indexed,
+                             messages_skipped, relationship_candidates_created,
+                             review_items_created, mailbox_mutation_attempted,
+                             full_body_persisted, attachment_content_downloaded, status,
+                             error_redacted)
+                        VALUES (?, ?, ?, ?, 'project_discover', 0, 0, ?, ?, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 'failed', ?)
+                        """,
+                        (
+                            crid,
+                            sid,
+                            requested_project,
+                            None,
+                            now2,
+                            now2,
+                            messages_scanned,
+                            messages_scanned,
+                            f"{diagnostic.get('operation')}:{diagnostic.get('exception_type')}",
+                        ),
+                    )
+
+        # precompute for failed path (visible outside try)
+        sources_seen: list[str] = sorted(
+            {m.get("source_id") for m in matches if m.get("source_id")}
+        )
+
+        self._reject_email_mutation_flags(
+            mailbox_mutation_attempted=False,
+            full_body_persisted=False,
+            attachment_content_downloaded=False,
+        )
+
+        conn = get_connection(self._db_path)
+        persisted = 0
+        operation = "email_discover_batch"
+        mid: Optional[str] = None
+        pk: Optional[str] = None
+        try:
+            with transaction(conn):
+                now = _utc_now()
+                touched_folders: set[tuple[str, str]] = set()
+                for item in matches:
+                    mid = item.get("message_id")
+                    pk = item.get("project_key")
+                    fields = item.get("fields") or {}
+                    recips = item.get("recipients") or []
+                    sigs = item.get("signals") or []
+                    sid = item.get("source_id")
+                    fid = item.get("folder_id")
+                    if sid and fid:
+                        touched_folders.add((sid, fid))
+
+                    # guards (same as upsert_email_message); use .get( , default) because normalize_message
+                    # does not emit the full/mutation keys (relies on upsert defaults); absent -> treat as False.
+                    if fields.get("full_body_persisted", False) is not False:
+                        raise ValueError(
+                            "email_messages.full_body_persisted must be False — Phase 06 "
+                            "never persists full email bodies"
+                        )
+                    if fields.get("mailbox_mutation_allowed", False) is not False:
+                        raise ValueError(
+                            "email_messages.mailbox_mutation_allowed must be False — Phase 06 "
+                            "mailbox stays read-only"
+                        )
+                    if fields.get("extraction_policy", "metadata_only") != "metadata_only":
+                        raise ValueError(
+                            "email_messages.extraction_policy must be 'metadata_only' in Phase 06"
+                        )
+
+                    operation = "email_message_upsert"
+                    _inject(operation, mid, pk)
+                    conn.execute(
+                        """
+                        INSERT INTO email_messages
+                            (message_id, internet_message_id, conversation_id, thread_key,
+                             source_id, folder_id, folder_display_name, subject_redacted,
+                             subject_hash, sender_name_redacted, sender_address_hash,
+                             sender_domain, to_recipient_count, cc_recipient_count,
+                             bcc_recipient_count, received_datetime, sent_datetime,
+                             last_modified_datetime, has_attachments, importance,
+                             categories_metadata_json, sensitivity_metadata, web_link,
+                             body_preview_hash, body_preview_excerpt_redacted, body_checked,
+                             body_mention_detected, project_number_detected,
+                             project_match_confidence, sensitivity_classification,
+                             extraction_policy, review_required, full_body_persisted,
+                             mailbox_mutation_allowed, indexed_utc, updated_utc)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'metadata_only', ?, 0, 0, ?, ?)
+                        ON CONFLICT(message_id) DO UPDATE SET
+                            internet_message_id = excluded.internet_message_id,
+                            conversation_id = excluded.conversation_id,
+                            thread_key = excluded.thread_key,
+                            source_id = excluded.source_id,
+                            folder_id = excluded.folder_id,
+                            folder_display_name = excluded.folder_display_name,
+                            subject_redacted = excluded.subject_redacted,
+                            subject_hash = excluded.subject_hash,
+                            sender_name_redacted = excluded.sender_name_redacted,
+                            sender_address_hash = excluded.sender_address_hash,
+                            sender_domain = excluded.sender_domain,
+                            to_recipient_count = excluded.to_recipient_count,
+                            cc_recipient_count = excluded.cc_recipient_count,
+                            bcc_recipient_count = excluded.bcc_recipient_count,
+                            received_datetime = excluded.received_datetime,
+                            sent_datetime = excluded.sent_datetime,
+                            last_modified_datetime = excluded.last_modified_datetime,
+                            has_attachments = excluded.has_attachments,
+                            importance = excluded.importance,
+                            categories_metadata_json = excluded.categories_metadata_json,
+                            sensitivity_metadata = excluded.sensitivity_metadata,
+                            web_link = excluded.web_link,
+                            body_preview_hash = excluded.body_preview_hash,
+                            body_preview_excerpt_redacted = excluded.body_preview_excerpt_redacted,
+                            body_checked = excluded.body_checked,
+                            body_mention_detected = excluded.body_mention_detected,
+                            project_number_detected = excluded.project_number_detected,
+                            project_match_confidence = excluded.project_match_confidence,
+                            sensitivity_classification = excluded.sensitivity_classification,
+                            review_required = excluded.review_required,
+                            updated_utc = excluded.updated_utc
+                        """,
+                        (
+                            fields.get("message_id") or mid,
+                            fields.get("internet_message_id"),
+                            fields.get("conversation_id"),
+                            fields.get("thread_key"),
+                            fields.get("source_id"),
+                            fields.get("folder_id"),
+                            fields.get("folder_display_name"),
+                            fields.get("subject_redacted"),
+                            fields.get("subject_hash"),
+                            fields.get("sender_name_redacted"),
+                            fields.get("sender_address_hash"),
+                            fields.get("sender_domain"),
+                            fields.get("to_recipient_count", 0),
+                            fields.get("cc_recipient_count", 0),
+                            fields.get("bcc_recipient_count", 0),
+                            fields.get("received_datetime"),
+                            fields.get("sent_datetime"),
+                            fields.get("last_modified_datetime"),
+                            1 if fields.get("has_attachments") else 0,
+                            fields.get("importance"),
+                            self._dump_json(fields.get("categories_metadata")),
+                            fields.get("sensitivity_metadata"),
+                            fields.get("web_link"),
+                            fields.get("body_preview_hash"),
+                            fields.get("body_preview_excerpt_redacted"),
+                            1 if fields.get("body_checked") else 0,
+                            1 if fields.get("body_mention_detected") else 0,
+                            fields.get("project_number_detected"),
+                            fields.get("project_match_confidence"),
+                            fields.get("sensitivity_classification"),
+                            1 if fields.get("review_required") else 0,
+                            now,
+                            now,
+                        ),
+                    )
+
+                    for r in recips:
+                        operation = "email_recipient_add"
+                        _inject(operation, mid, pk)
+                        conn.execute(
+                            """
+                            INSERT OR IGNORE INTO email_message_recipients
+                                (message_id, recipient_role, display_name_redacted, address_hash,
+                                 domain, is_bobby, known_project_participant, created_utc)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            (
+                                mid,
+                                r.get("recipient_role"),
+                                r.get("display_name_redacted"),
+                                r.get("address_hash"),
+                                r.get("domain"),
+                                1 if r.get("is_bobby") else 0,
+                                1 if r.get("known_project_participant") else 0,
+                                now,
+                            ),
+                        )
+
+                    for s in sigs:
+                        operation = "email_project_match_upsert"
+                        _inject(operation, mid, pk)
+                        conn.execute(
+                            """
+                            INSERT INTO email_project_matches
+                                (match_id, message_id, project_key, project_number,
+                                 project_name_normalized, match_signal, match_value_hash,
+                                 confidence, review_required, evidence_redacted, created_utc)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ON CONFLICT(message_id, project_key, match_signal) DO UPDATE SET
+                                project_number = excluded.project_number,
+                                project_name_normalized = excluded.project_name_normalized,
+                                match_value_hash = excluded.match_value_hash,
+                                confidence = excluded.confidence,
+                                review_required = excluded.review_required,
+                                evidence_redacted = excluded.evidence_redacted
+                            """,
+                            (
+                                f"{mid}:{pk}:{s.get('name')}",
+                                mid,
+                                pk,
+                                item.get("project_number"),
+                                item.get("project_name_normalized"),
+                                s.get("name"),
+                                s.get("match_value_hash"),
+                                s.get("confidence"),
+                                1 if s.get("review_required") else 0,
+                                s.get("evidence_redacted"),
+                                now,
+                            ),
+                        )
+
+                    persisted += 1
+
+                # sync_state last_attempted + status for touched folders (in same tx)
+                for sid, fid in touched_folders:
+                    operation = "email_sync_state_upsert"
+                    _inject(operation, None, pk)
+                    conn.execute(
+                        """
+                        INSERT INTO email_sync_state
+                            (source_id, folder_id, sync_mode, lookback_days,
+                             last_successful_sync_utc, last_attempted_sync_utc,
+                             latest_received_datetime, latest_sent_datetime,
+                             delta_token_fingerprint, delta_token_supported, sync_status,
+                             error_redacted)
+                        VALUES (?, ?, 'project_discover', 30, NULL, ?, NULL, NULL, NULL, 0, 'completed', NULL)
+                        ON CONFLICT(source_id, folder_id) DO UPDATE SET
+                            last_attempted_sync_utc = excluded.last_attempted_sync_utc,
+                            sync_status = excluded.sync_status
+                        """,
+                        (sid, fid, now),
+                    )
+
+                # crawl run markers per source involved (mode=project_discover for audit trail)
+                for sid in sources_seen:
+                    crun_id = f"{op_id}:{sid}"
+                    operation = "email_crawl_run_insert"
+                    _inject(operation)
+                    conn.execute(
+                        """
+                        INSERT INTO email_crawl_runs
+                            (run_id, source_id, project_key, project_number, mode, dry_run,
+                             lookback_days, started_utc, completed_utc, folders_seen,
+                             messages_seen, messages_in_scope, messages_indexed,
+                             messages_skipped, relationship_candidates_created,
+                             review_items_created, mailbox_mutation_attempted,
+                             full_body_persisted, attachment_content_downloaded, status,
+                             error_redacted)
+                        VALUES (?, ?, ?, ?, 'project_discover', 0, 0, ?, ?, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 'completed', NULL)
+                        """,
+                        (
+                            crun_id,
+                            sid,
+                            requested_project,
+                            None,
+                            now,
+                            now,
+                            messages_scanned,
+                            messages_scanned,
+                        ),
+                    )
+
+                # processing receipt (ok) inside the tx (safe even if 0 matches)
+                operation = "email_processing_receipt"
+                _inject(operation)
+                conn.execute(
+                    """
+                    INSERT INTO email_processing_receipts
+                        (receipt_id, run_id, message_id, project_key, operation, status,
+                         detail_json, mailbox_mutation_attempted, full_body_persisted,
+                         attachment_content_downloaded, generated_utc)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)
+                    """,
+                    (
+                        f"{op_id}:discover",
+                        op_id,
+                        None,
+                        requested_project,
+                        "project_discovery",
+                        "ok",
+                        self._dump_json(
+                            {
+                                "messages_scanned": messages_scanned,
+                                "matched_messages": matched_messages,
+                                "signal_counts": signal_counts,
+                            }
+                        ),
+                        now,
+                    ),
+                )
+        except Exception as exc:
+            diagnostic = _diag(
+                operation,
+                exc,
+                message_id=mid,
+                project_key=pk,
+            )
+            diagnostic["_sources"] = sources_seen
+            with contextlib.suppress(Exception):
+                _persist_failed_receipt(diagnostic)
+            raise EmailDiscoverBatchApplyError(diagnostic) from exc
+        return persisted
+
     @staticmethod
     def _email_message_keys() -> tuple[str, ...]:
         return (
-            "message_id", "internet_message_id", "conversation_id", "thread_key",
-            "source_id", "folder_id", "folder_display_name", "subject_redacted",
-            "subject_hash", "sender_name_redacted", "sender_address_hash",
-            "sender_domain", "to_recipient_count", "cc_recipient_count",
-            "bcc_recipient_count", "received_datetime", "sent_datetime",
-            "last_modified_datetime", "has_attachments", "importance",
-            "categories_metadata_json", "sensitivity_metadata", "web_link",
-            "body_preview_hash", "body_preview_excerpt_redacted", "body_checked",
-            "body_mention_detected", "project_number_detected",
-            "project_match_confidence", "sensitivity_classification",
-            "extraction_policy", "review_required", "full_body_persisted",
-            "mailbox_mutation_allowed", "indexed_utc", "updated_utc",
+            "message_id",
+            "internet_message_id",
+            "conversation_id",
+            "thread_key",
+            "source_id",
+            "folder_id",
+            "folder_display_name",
+            "subject_redacted",
+            "subject_hash",
+            "sender_name_redacted",
+            "sender_address_hash",
+            "sender_domain",
+            "to_recipient_count",
+            "cc_recipient_count",
+            "bcc_recipient_count",
+            "received_datetime",
+            "sent_datetime",
+            "last_modified_datetime",
+            "has_attachments",
+            "importance",
+            "categories_metadata_json",
+            "sensitivity_metadata",
+            "web_link",
+            "body_preview_hash",
+            "body_preview_excerpt_redacted",
+            "body_checked",
+            "body_mention_detected",
+            "project_number_detected",
+            "project_match_confidence",
+            "sensitivity_classification",
+            "extraction_policy",
+            "review_required",
+            "full_body_persisted",
+            "mailbox_mutation_allowed",
+            "indexed_utc",
+            "updated_utc",
         )
 
     def upsert_email_message(
@@ -4126,9 +5796,7 @@ class ConstructionStore:
                 "mailbox stays read-only"
             )
         if extraction_policy != "metadata_only":
-            raise ValueError(
-                "email_messages.extraction_policy must be 'metadata_only' in Phase 06"
-            )
+            raise ValueError("email_messages.extraction_policy must be 'metadata_only' in Phase 06")
         conn = get_connection(self._db_path)
         with transaction(conn):
             conn.execute(
@@ -4261,16 +5929,18 @@ class ConstructionStore:
         return [self._email_message_row_to_record(keys, row) for row in cur.fetchall()]
 
     @staticmethod
-    def _email_message_row_to_record(
-        keys: tuple[str, ...], row: Any
-    ) -> dict[str, Any]:
+    def _email_message_row_to_record(keys: tuple[str, ...], row: Any) -> dict[str, Any]:
         record = dict(zip(keys, row, strict=True))
         record["categories_metadata"] = ConstructionStore._load_json(
             record.pop("categories_metadata_json")
         )
         for bool_field in (
-            "has_attachments", "body_checked", "body_mention_detected",
-            "review_required", "full_body_persisted", "mailbox_mutation_allowed",
+            "has_attachments",
+            "body_checked",
+            "body_mention_detected",
+            "review_required",
+            "full_body_persisted",
+            "mailbox_mutation_allowed",
         ):
             record[bool_field] = bool(record[bool_field])
         return record
@@ -4352,13 +6022,27 @@ class ConstructionStore:
             )
 
     _EMAIL_MODEL_CLASSIFICATION_KEYS: tuple[str, ...] = (
-        "classification_id", "message_id", "conversation_id", "project_key",
-        "model_name", "model_version", "schema_version", "classification_status",
-        "project_match_confidence", "topic_labels_json",
-        "relationship_candidates_json", "risk_flags_json",
-        "sensitive_categories_json", "review_required", "review_reasons_json",
-        "advisory_only", "plaintext_body_persisted", "raw_prompt_persisted",
-        "raw_response_persisted", "created_utc", "updated_utc",
+        "classification_id",
+        "message_id",
+        "conversation_id",
+        "project_key",
+        "model_name",
+        "model_version",
+        "schema_version",
+        "classification_status",
+        "project_match_confidence",
+        "topic_labels_json",
+        "relationship_candidates_json",
+        "risk_flags_json",
+        "sensitive_categories_json",
+        "review_required",
+        "review_reasons_json",
+        "advisory_only",
+        "plaintext_body_persisted",
+        "raw_prompt_persisted",
+        "raw_response_persisted",
+        "created_utc",
+        "updated_utc",
     )
 
     @staticmethod
@@ -4374,8 +6058,11 @@ class ConstructionStore:
         ):
             record[out_field] = ConstructionStore._load_json(record.pop(json_field))
         for bool_field in (
-            "review_required", "advisory_only", "plaintext_body_persisted",
-            "raw_prompt_persisted", "raw_response_persisted",
+            "review_required",
+            "advisory_only",
+            "plaintext_body_persisted",
+            "raw_prompt_persisted",
+            "raw_response_persisted",
         ):
             record[bool_field] = bool(record[bool_field])
         return record
@@ -4434,10 +6121,7 @@ class ConstructionStore:
             "ORDER BY created_utc DESC, classification_id LIMIT ?",
             tuple(params),
         )
-        return [
-            self._email_model_classification_row_to_record(row)
-            for row in cur.fetchall()
-        ]
+        return [self._email_model_classification_row_to_record(row) for row in cur.fetchall()]
 
     def add_email_message_recipient(
         self,
@@ -4479,12 +6163,16 @@ class ConstructionStore:
             )
             return cur.rowcount > 0
 
-    def list_email_message_recipients(
-        self, message_id: str
-    ) -> list[dict[str, Any]]:
+    def list_email_message_recipients(self, message_id: str) -> list[dict[str, Any]]:
         keys = (
-            "id", "message_id", "recipient_role", "display_name_redacted",
-            "address_hash", "domain", "is_bobby", "known_project_participant",
+            "id",
+            "message_id",
+            "recipient_role",
+            "display_name_redacted",
+            "address_hash",
+            "domain",
+            "is_bobby",
+            "known_project_participant",
             "created_utc",
         )
         conn = get_connection(self._db_path)
@@ -4497,9 +6185,7 @@ class ConstructionStore:
         for row in cur.fetchall():
             record = dict(zip(keys, row, strict=True))
             record["is_bobby"] = bool(record["is_bobby"])
-            record["known_project_participant"] = bool(
-                record["known_project_participant"]
-            )
+            record["known_project_participant"] = bool(record["known_project_participant"])
             results.append(record)
         return results
 
@@ -4522,9 +6208,7 @@ class ConstructionStore:
         content_downloaded: bool = False,
     ) -> None:
         if metadata_only is not True:
-            raise ValueError(
-                "email_message_attachments.metadata_only must be True in Phase 06"
-            )
+            raise ValueError("email_message_attachments.metadata_only must be True in Phase 06")
         if content_downloaded is not False:
             raise ValueError(
                 "email_message_attachments.content_downloaded must be False — "
@@ -4674,9 +6358,17 @@ class ConstructionStore:
         limit: int = 1000,
     ) -> list[dict[str, Any]]:
         keys = (
-            "match_id", "message_id", "project_key", "project_number",
-            "project_name_normalized", "match_signal", "match_value_hash",
-            "confidence", "review_required", "evidence_redacted", "created_utc",
+            "match_id",
+            "message_id",
+            "project_key",
+            "project_number",
+            "project_name_normalized",
+            "match_signal",
+            "match_value_hash",
+            "confidence",
+            "review_required",
+            "evidence_redacted",
+            "created_utc",
         )
         clauses: list[str] = []
         params: list[Any] = []
@@ -4710,9 +6402,18 @@ class ConstructionStore:
         limit: int = 2000,
     ) -> list[dict[str, Any]]:
         keys = (
-            "candidate_id", "message_id", "project_key", "candidate_type",
-            "target_source_system", "target_table", "target_key", "match_signal",
-            "confidence", "evidence_redacted", "review_required", "created_utc",
+            "candidate_id",
+            "message_id",
+            "project_key",
+            "candidate_type",
+            "target_source_system",
+            "target_table",
+            "target_key",
+            "match_signal",
+            "confidence",
+            "evidence_redacted",
+            "review_required",
+            "created_utc",
         )
         clauses: list[str] = []
         params: list[Any] = []
@@ -4800,10 +6501,20 @@ class ConstructionStore:
             )
 
     _EMAIL_THREAD_SUMMARY_KEYS: tuple[str, ...] = (
-        "thread_key", "project_key", "conversation_id", "message_count",
-        "first_message_datetime", "last_message_datetime", "participants_hash_json",
-        "summary_redacted", "summary_policy", "review_required", "model_used",
-        "model_output_validated", "generated_utc", "updated_utc",
+        "thread_key",
+        "project_key",
+        "conversation_id",
+        "message_count",
+        "first_message_datetime",
+        "last_message_datetime",
+        "participants_hash_json",
+        "summary_redacted",
+        "summary_policy",
+        "review_required",
+        "model_used",
+        "model_output_validated",
+        "generated_utc",
+        "updated_utc",
     )
 
     @staticmethod
@@ -4904,8 +6615,13 @@ class ConstructionStore:
                 WHERE run_id = ?
                 """,
                 (
-                    status, completed_at_utc or _utc_now(), threads_considered,
-                    threads_summarized, review_required_count, error_redacted, run_id,
+                    status,
+                    completed_at_utc or _utc_now(),
+                    threads_considered,
+                    threads_summarized,
+                    review_required_count,
+                    error_redacted,
+                    run_id,
                 ),
             )
             return cur.rowcount > 0
@@ -4971,10 +6687,21 @@ class ConstructionStore:
         limit: int = 1000,
     ) -> list[dict[str, Any]]:
         keys = (
-            "review_id", "message_id", "project_key", "category", "sensitivity",
-            "reason", "suggested_action", "confidence", "status", "routed_utc",
-            "resolved_utc", "body_capture_eligible", "encrypted_body_capture_allowed",
-            "review_required_before_body_use", "body_capture_decision_json",
+            "review_id",
+            "message_id",
+            "project_key",
+            "category",
+            "sensitivity",
+            "reason",
+            "suggested_action",
+            "confidence",
+            "status",
+            "routed_utc",
+            "resolved_utc",
+            "body_capture_eligible",
+            "encrypted_body_capture_allowed",
+            "review_required_before_body_use",
+            "body_capture_decision_json",
         )
         bool_keys = (
             "body_capture_eligible",
@@ -5021,9 +6748,7 @@ class ConstructionStore:
             params.append(status)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         conn = get_connection(self._db_path)
-        cur = conn.execute(
-            f"SELECT COUNT(*) FROM email_review_queue {where}", tuple(params)
-        )
+        cur = conn.execute(f"SELECT COUNT(*) FROM email_review_queue {where}", tuple(params))
         row = cur.fetchone()
         return int(row[0]) if row else 0
 
@@ -5076,9 +6801,17 @@ class ConstructionStore:
         limit: int = 1000,
     ) -> list[dict[str, Any]]:
         keys = (
-            "receipt_id", "run_id", "message_id", "project_key", "operation",
-            "status", "detail_json", "mailbox_mutation_attempted",
-            "full_body_persisted", "attachment_content_downloaded", "generated_utc",
+            "receipt_id",
+            "run_id",
+            "message_id",
+            "project_key",
+            "operation",
+            "status",
+            "detail_json",
+            "mailbox_mutation_attempted",
+            "full_body_persisted",
+            "attachment_content_downloaded",
+            "generated_utc",
         )
         clauses: list[str] = []
         params: list[Any] = []
@@ -5101,7 +6834,8 @@ class ConstructionStore:
             record = dict(zip(keys, row, strict=True))
             record["detail"] = self._load_json(record.pop("detail_json"))
             for bool_field in (
-                "mailbox_mutation_attempted", "full_body_persisted",
+                "mailbox_mutation_attempted",
+                "full_body_persisted",
                 "attachment_content_downloaded",
             ):
                 record[bool_field] = bool(record[bool_field])
@@ -5199,11 +6933,24 @@ class ConstructionStore:
     def get_email_body_vault_ref(self, message_id: str) -> Optional[dict[str, Any]]:
         """Return the encrypted-body metadata for a message (never plaintext)."""
         keys = (
-            "message_id", "internet_message_id", "conversation_id", "body_content_type",
-            "body_hash", "body_length", "encrypted_full_body_ref", "encrypted_at_utc",
-            "encryption_method", "plaintext_persisted", "obsidian_body_persisted",
-            "evidence_body_persisted", "log_body_persisted", "extraction_policy",
-            "review_required", "sensitivity_classification", "created_utc", "updated_utc",
+            "message_id",
+            "internet_message_id",
+            "conversation_id",
+            "body_content_type",
+            "body_hash",
+            "body_length",
+            "encrypted_full_body_ref",
+            "encrypted_at_utc",
+            "encryption_method",
+            "plaintext_persisted",
+            "obsidian_body_persisted",
+            "evidence_body_persisted",
+            "log_body_persisted",
+            "extraction_policy",
+            "review_required",
+            "sensitivity_classification",
+            "created_utc",
+            "updated_utc",
         )
         conn = get_connection(self._db_path)
         cur = conn.execute(
@@ -5215,8 +6962,11 @@ class ConstructionStore:
             return None
         record = dict(zip(keys, row, strict=True))
         for bool_field in (
-            "plaintext_persisted", "obsidian_body_persisted", "evidence_body_persisted",
-            "log_body_persisted", "review_required",
+            "plaintext_persisted",
+            "obsidian_body_persisted",
+            "evidence_body_persisted",
+            "log_body_persisted",
+            "review_required",
         ):
             record[bool_field] = bool(record[bool_field])
         return record
@@ -5286,7 +7036,9 @@ class ConstructionStore:
         """
         for flag in ("raw_body_persisted", "full_text_persisted", "external_writeback_performed"):
             if rec.get(flag) not in (None, False, 0):
-                raise ValueError(f"{flag} must be False — Phase 07A source_system_record_map never persists raw content or performs writeback")
+                raise ValueError(
+                    f"{flag} must be False — Phase 07A source_system_record_map never persists raw content or performs writeback"
+                )
         canonical_id = rec.get("canonical_record_id")
         if not canonical_id:
             raise ValueError("canonical_record_id is required")
@@ -5344,7 +7096,9 @@ class ConstructionStore:
         """
         for flag in ("raw_body_persisted", "full_text_persisted"):
             if rel.get(flag) not in (None, False, 0):
-                raise ValueError(f"{flag} must be False — Phase 07A relationship_resolution_queue never persists raw content")
+                raise ValueError(
+                    f"{flag} must be False — Phase 07A relationship_resolution_queue never persists raw content"
+                )
         relationship_id = rel.get("relationship_id")
         if not relationship_id:
             raise ValueError("relationship_id is required")

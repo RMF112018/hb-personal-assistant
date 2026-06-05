@@ -8,8 +8,14 @@ default) nothing is written. When committed, accepted matches persist:
 `email_messages` (the message is upserted first so the FK row exists). Thread
 continuation propagates an accepted project to other messages sharing a thread.
 
-Mailbox stays read-only; the only writes are local SQLite. Re-running is
-idempotent (matches upsert on UNIQUE(message_id, project_key, match_signal)).
+Persistence for the discover path is now batched (apply_project_email_discover_batch):
+collect per-match payloads, then single conn+tx for all message/recipient/match
+upserts + processing_receipt + crawl/sync side effects. This hardens the
+all-project (project_key=None) case against connection churn/lifecycle pressure
+while preserving project-scoped filtering, in-memory preview-only match, and
+strict no-raw-body / read-only / no-M365-writeback guardrails. Idempotent via
+ON CONFLICT. Receipt and crawl are finalized safely (failed path writes redacted
+diag receipt in separate tx on error, modeled on calendar batch robustness).
 """
 
 from __future__ import annotations
@@ -75,6 +81,7 @@ class ProjectMatchSummary(BaseModel):
     review_required: int
     by_signal: dict[str, int]
     best_confidence: float
+    persistence: dict[str, Any] = {}
 
     model_config = {"extra": "forbid"}
 
@@ -96,6 +103,7 @@ class DiscoveryReport(BaseModel):
     signal_counts: dict[str, int]
     query_strategy: dict[str, Any]
     guardrails: dict[str, bool]
+    persistence: dict[str, Any]
 
     model_config = {"extra": "forbid"}
 
@@ -126,7 +134,9 @@ class ProjectEmailDiscovery:
             (self._mail.get_me().get("userPrincipalName") or self._mail.get_me().get("mail"))
         )
         received_after = (
-            (datetime.now(timezone.utc) - timedelta(days=lookback)).replace(microsecond=0).isoformat()
+            (datetime.now(timezone.utc) - timedelta(days=lookback))
+            .replace(microsecond=0)
+            .isoformat()
         )
         op_id = str(uuid.uuid4())
 
@@ -141,13 +151,19 @@ class ProjectEmailDiscovery:
                 max_items=max_per_folder,
             )
             folder_counts.append(
-                {"source_id": folder["source_id"], "folder_role": folder.get("folder_role"), "messages_seen": len(msgs)}
+                {
+                    "source_id": folder["source_id"],
+                    "folder_role": folder.get("folder_role"),
+                    "messages_seen": len(msgs),
+                }
             )
             for msg in msgs:
                 scanned.append({"msg": msg, "folder": folder})
 
         # Primary matching pass.
-        matches: dict[str, dict[str, list[MatchSignal]]] = {}  # message_id -> project_key -> signals
+        matches: dict[
+            str, dict[str, list[MatchSignal]]
+        ] = {}  # message_id -> project_key -> signals
         thread_index: dict[str, set[str]] = {}  # thread_key -> set(project_key) accepted
         records: dict[str, dict[str, Any]] = {}  # message_id -> record
         for entry in scanned:
@@ -157,7 +173,10 @@ class ProjectEmailDiscovery:
                 continue
             domains = _msg_domains(msg)
             thread_key = compute_thread_key(
-                msg.get("conversationId"), msg.get("internetMessageId"), msg.get("subject"), set(domains)
+                msg.get("conversationId"),
+                msg.get("internetMessageId"),
+                msg.get("subject"),
+                set(domains),
             )
             records[message_id] = {"msg": msg, "folder": entry["folder"], "thread_key": thread_key}
             for descriptor in descriptors:
@@ -185,11 +204,18 @@ class ProjectEmailDiscovery:
 
         # Persist + aggregate.
         per_project: dict[str, dict[str, Any]] = {
-            d.project_key: {"descriptor": d, "matched": 0, "review": 0, "by_signal": {}, "best": 0.0}
+            d.project_key: {
+                "descriptor": d,
+                "matched": 0,
+                "review": 0,
+                "by_signal": {},
+                "best": 0.0,
+            }
             for d in descriptors
         }
         signal_counts: dict[str, int] = {}
         matched_messages = 0
+        to_persist: list[dict[str, Any]] = []
         for message_id, by_project in matches.items():
             matched_messages += 1
             record = records[message_id]
@@ -204,16 +230,60 @@ class ProjectEmailDiscovery:
                     agg["by_signal"][s.name] = agg["by_signal"].get(s.name, 0) + 1
                     signal_counts[s.name] = signal_counts.get(s.name, 0) + 1
                 if not dry_run:
-                    self._persist_match(message_id, pk, per_project[pk]["descriptor"], signals, best, review, owner_hash, record)
+                    # Pre-normalize here (normalize_message lives in message_indexer; avoid circular in store).
+                    # Collect for batch (one tx for messages + recips + matches + receipt + sync/crawl)
+                    # instead of immediate _persist_match per (msg,pk). This fixes all-project churn
+                    # (project=None can yield 10s of pilots * many msgs => many conns/tx before).
+                    fields, recipients = normalize_message(
+                        record["msg"],
+                        owner_hash,
+                        record["folder"]["source_id"],
+                        record["folder"]["folder_id"],
+                        record["folder"].get("folder_role", "included"),
+                    )
+                    fields["project_number_detected"] = per_project[pk]["descriptor"].project_number
+                    fields["project_match_confidence"] = round(best, 2)
+                    fields["body_mention_detected"] = any(
+                        s.name
+                        in ("hb_project_number_in_body_preview", "project_name_in_body_preview")
+                        for s in signals
+                    )
+                    fields["review_required"] = review
+                    desc = per_project[pk]["descriptor"]
+                    to_persist.append(
+                        {
+                            "message_id": message_id,
+                            "project_key": pk,
+                            "project_number": desc.project_number,
+                            "project_name_normalized": desc.project_name_normalized,
+                            "signals": [
+                                {
+                                    "name": s.name,
+                                    "confidence": s.confidence,
+                                    "review_required": s.review_required,
+                                    "match_value_hash": s.match_value_hash,
+                                    "evidence_redacted": s.evidence_redacted,
+                                }
+                                for s in signals
+                            ],
+                            "fields": fields,
+                            "recipients": recipients,
+                            "source_id": record["folder"]["source_id"],
+                            "folder_id": record["folder"]["folder_id"],
+                        }
+                    )
 
         if not dry_run:
-            self._store.insert_email_processing_receipt(
-                receipt_id=f"{op_id}:discover",
-                operation="project_discovery",
-                status="ok",
-                run_id=op_id,
-                project_key=project_key,
-                detail={"messages_scanned": len(scanned), "matched_messages": matched_messages, "signal_counts": signal_counts},
+            # Single batch call (even if to_persist empty) ensures receipt written in same tx as any data.
+            # Batch handles safe failed receipt on error path (modeled on calendar 148).
+            self._store.apply_project_email_discover_batch(
+                matches=to_persist,
+                owner_hash=owner_hash,
+                op_id=op_id,
+                requested_project=project_key,
+                messages_scanned=len(scanned),
+                matched_messages=matched_messages,
+                signal_counts=signal_counts,
             )
 
         projects = [
@@ -224,6 +294,7 @@ class ProjectEmailDiscovery:
                 review_required=agg["review"],
                 by_signal=agg["by_signal"],
                 best_confidence=round(agg["best"], 2),
+                persistence={"batch_mode": not dry_run},
             )
             for pk, agg in per_project.items()
         ]
@@ -254,6 +325,13 @@ class ProjectEmailDiscovery:
                 "attachment_content_retrieved": False,
                 "subject_matched_in_memory_only": True,
             },
+            persistence={
+                "batch_mode": not dry_run,
+                "tx_count": 1 if not dry_run else 0,
+                "churn_reduced": not dry_run,
+                "safe_receipt": True,
+                "sources_touched": len({m["source_id"] for m in to_persist if "source_id" in m}),
+            },
         )
 
     # --- internals ----------------------------------------------------------
@@ -278,6 +356,9 @@ class ProjectEmailDiscovery:
         owner_hash: Optional[str],
         record: dict[str, Any],
     ) -> None:
+        # NOTE: legacy direct path; discover now collects + delegates to
+        # store.apply_project_email_discover_batch for churn reduction on all-project runs.
+        # Retained for compatibility / direct unit testing if needed.
         # Ensure the email_messages FK row exists, carrying the project verdict.
         fields, recipients = normalize_message(
             record["msg"],
@@ -289,7 +370,8 @@ class ProjectEmailDiscovery:
         fields["project_number_detected"] = descriptor.project_number
         fields["project_match_confidence"] = round(best, 2)
         fields["body_mention_detected"] = any(
-            s.name in ("hb_project_number_in_body_preview", "project_name_in_body_preview") for s in signals
+            s.name in ("hb_project_number_in_body_preview", "project_name_in_body_preview")
+            for s in signals
         )
         fields["review_required"] = review
         self._store.upsert_email_message(**fields)

@@ -1,5 +1,5 @@
 """Construction-agent store layer (metadata-only persistence)."""
 
-from .repositories import ConstructionStore
+from .repositories import CalendarBatchApplyError, ConstructionStore, EmailDiscoverBatchApplyError
 
-__all__ = ["ConstructionStore"]
+__all__ = ["CalendarBatchApplyError", "ConstructionStore", "EmailDiscoverBatchApplyError"]

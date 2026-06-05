@@ -55,11 +55,10 @@ body-/join-URL-free by construction.
 
 - **dry-run** (default): reads the window, tallies `events_seen/private/cancelled/review`, returns a
   safe sample (event_index_id + time window + flags — no raw values), and writes **nothing**.
-- **apply**: `upsert_calendar_source_location` (FK parent; owner resolved via `get_me()` →
-  `hash_value(upn)`) → `insert_calendar_crawl_run` → per event `upsert_calendar_event_index` + attendee
-  upserts → `complete_calendar_crawl_run` (counters) → `upsert_calendar_sync_state`. Graph/read failures
-  are caught and recorded as a sanitized `error_redacted` with `status="failed"` — the command still
-  returns `ok:true`/exit 0 (dry-run validation stays green even with an expired token).
+- **apply**: as of record 148, events are normalized first, then
+  `apply_calendar_index_batch` uses one SQLite connection/transaction for source registration, crawl
+  receipt open/finalize, event rows, attendee rows, and sync state. Write failures roll back event/attendee
+  rows and persist an explicit failed crawl/sync receipt with safe operation diagnostics.
 
 ## Guardrails proven (temp-DB apply smoke + tests)
 
@@ -71,3 +70,21 @@ body-/join-URL-free by construction.
   crawl-run receipts accumulate as an audit log.
 - Read-only external posture preserved (only `get_me`/`list_calendarView` GETs via the guarded client);
   `graph/` static no-write-verb scan (`test_mutation_lockout`) still clean. No 07D readiness claimed.
+
+## Larger-window reliability + per-event diagnostics (post-148 / Prompt 15 follow-up)
+
+Follow-up hardens the apply path for larger windows (e.g. `--max-items 100/200`) while preserving the bounded date window + max cap and all no-raw guards.
+
+- In `event_indexer.index` (post-fetch+normalize): event_records are chunked (size 100); each chunk is applied via the enhanced `apply_calendar_index_batch(..., chunked=True, is_final_chunk=..., partial_ok=True, failure_diagnostics=accum_list)`.
+- Per-event errors inside a chunk tx are caught, appended to diags (`{"event_ordinal": N, "event_index_id": "<hash>", "operation": "event_upsert", "exception_type": "..." }`), and the chunk continues (prior events in chunk commit).
+- After each chunk: crawl_run is updated (INSERT OR IGNORE + accum `events_indexed = COALESCE(...) + delta`; status 'checkpointed' for non-final, 'completed' for final chunk); `calendar_sync_state.last_attempted_sync_utc` + status updated every chunk.
+- `IndexResult.status` may be `completed_with_errors` (with non-empty `failure_diagnostics`); `persisted=True` for with_errors cases (goods landed); top-level CLI "ok" stays True unless a source hard-failed.
+- On structural failure for a chunk: diag collected; prior chunks' work remains (per-chunk tx safety); overall status failed only for unrecoverable (fetch etc).
+- No change to client `list_calendar_view` (still always fetches the full bounded window; resume/re-work safety via idempotent ON CONFLICT on `event_index_id` + checkpoint visibility in crawl rows).
+- Mail discover side (same Prompt): `project_discovery` now collects matches then single `apply_project_email_discover_batch` (1 tx for msgs+recips+matches+receipt+crawl/sync); per-project diags + `persistence` in report; `EmailDiscoverBatchApplyError` surfaced in CLI with redacted diag; failed receipt safe in sep tx.
+
+**Guardrails unchanged**: date-bounded + max_items (never full calendar); $select excludes body/desc/join; normalize + CHECKs + guards ensure 0 raw; dry default; --apply explicit; read-only client; outside MCP; no writeback.
+
+**Cites**: event_indexer:244 (chunk loop), repositories:1069 (enhanced batch with per-ev try + OR-IGNORE + COALESCE checkpoint), cli/graph:1969 (ok for partials), 04/148/00 for cross.
+
+Verification in plan (bounded + larger dry/apply; targeted pytest; construction validate). See 148 for batch precedent, 00-README for 07B ledger.

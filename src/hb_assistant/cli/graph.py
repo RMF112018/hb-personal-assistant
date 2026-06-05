@@ -84,7 +84,7 @@ from hb_assistant.construction.relationships import MeetingEmailCandidateBuilder
 from hb_assistant.construction.source_projection import (
     project_registry_to_v5_source_locations,
 )
-from hb_assistant.construction.store import ConstructionStore
+from hb_assistant.construction.store import ConstructionStore, EmailDiscoverBatchApplyError
 from hb_assistant.graph.calendar_endpoint_guard import (
     CalendarEndpointContract,
     CalendarMutationBlockedError,
@@ -322,9 +322,7 @@ def _calendar_probe(
     try:
         client = GraphHttpClient(token_getter)
         reader = ReadOnlyCalendarClient(client, contract=contract)
-        events = reader.list_calendar_view(
-            start=window_start, end=window_end, top=1, max_items=1
-        )
+        events = reader.list_calendar_view(start=window_start, end=window_end, top=1, max_items=1)
         return {
             "attempted": True,
             "path": "/me/calendarView",
@@ -468,9 +466,7 @@ def files_status_cmd(
         by_resolution[src.resolution_status] = by_resolution.get(src.resolution_status, 0) + 1
         if src.enabled:
             enabled += 1
-    resolved = sum(
-        n for s, n in by_resolution.items() if s in {"resolved", "graph_delta_ready"}
-    )
+    resolved = sum(n for s, n in by_resolution.items() if s in {"resolved", "graph_delta_ready"})
 
     # Lightweight store reads only (no heavy V5 table scans); resilient to an empty store.
     projected_v5 = 0
@@ -1836,7 +1832,9 @@ def calendar_status_cmd(
         }
         calendar_read_capability_present = any(s.lower() in read_capable for s in configured)
         write_capable_present = [
-            s for s in configured if s.lower() in {x.lower() for x in _WRITE_CAPABLE_CALENDAR_SCOPES}
+            s
+            for s in configured
+            if s.lower() in {x.lower() for x in _WRITE_CAPABLE_CALENDAR_SCOPES}
         ]
 
         auth_info = provider.status_info()  # safe: no tokens, redacted claims
@@ -1964,9 +1962,12 @@ def calendar_index_cmd(
                 )
                 results.append(result.model_dump())
 
+        # "ok" reflects partials: True unless a source had hard failure (completed_with_errors
+        # for per-event diags still yields overall ok=True with diags in sources).
+        any_hard_fail = any(r.get("status") == "failed" for r in results) if results else False
         payload: Dict[str, Any] = {
             "command": "graph calendar index",
-            "ok": True,
+            "ok": not any_hard_fail,
             "dry_run": dry_run,
             "project_label": project,
             "sources": results,
@@ -2004,7 +2005,9 @@ def calendar_project_match_cmd(
     project: Optional[str] = typer.Option(None, "--project", help="Target project key to report."),
     source: Optional[str] = typer.Option(None, "--source", help="Limit to one calendar source id."),
     dry_run: bool = typer.Option(
-        True, "--dry-run/--apply", help="Default dry-run; --apply writes match candidates to SQLite."
+        True,
+        "--dry-run/--apply",
+        help="Default dry-run; --apply writes match candidates to SQLite.",
     ),
     json_out: bool = typer.Option(False, "--json", help="Output JSON"),
 ) -> None:
@@ -2122,9 +2125,7 @@ def calendar_meeting_email_candidates_cmd(
 @calendar_app.command("obsidian")
 def calendar_obsidian_cmd(
     project: Optional[str] = typer.Option(None, "--project", help="Pilot project key"),
-    max_rows: int = typer.Option(
-        25, "--max-rows", help="Max rows per register table (bounded)."
-    ),
+    max_rows: int = typer.Option(25, "--max-rows", help="Max rows per register table (bounded)."),
     dry_run: bool = typer.Option(
         True,
         "--dry-run/--no-dry-run",
@@ -2356,6 +2357,18 @@ def discover_cmd(
         raise typer.Exit(0)
     except typer.Exit:
         raise
+    except EmailDiscoverBatchApplyError as e:
+        # surfaced batch failure (redacted diag only: op, msg hash, pk, exc; receipt written failed)
+        payload = {
+            "command": "graph mail discover",
+            "ok": False,
+            "dry_run": dry_run,
+            "status": "discover_batch_error",
+            "error": str(e)[:200],
+            "diagnostic": getattr(e, "diagnostic", None),
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
     except Exception as e:
         payload = {
             "command": "graph mail discover",
