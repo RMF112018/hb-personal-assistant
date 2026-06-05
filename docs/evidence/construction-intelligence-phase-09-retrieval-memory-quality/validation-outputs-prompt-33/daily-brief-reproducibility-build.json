@@ -1,0 +1,53 @@
+{
+  "command": "second-brain daily-brief-reproducibility build",
+  "phase": "09",
+  "generated_utc": "2026-06-05T15:11:23.881570+00:00",
+  "repo_sha": "098a7d25f2eebf5f7852162290c7471029d58c1a",
+  "schema_version": 39,
+  "status": "built",
+  "date": "2026-06-02",
+  "project_key": "P1",
+  "input_snapshot_hash": "e8e0b6982ee8a5d95a8aefd08fef0baf7b8e626f90d8c7397ad6b9f53958d624",
+  "output_hash": "7e1b4c294e66d1b24bc88e160d907dce6cfab3cf9e69767560fae3c17fda8c32",
+  "output_hash_b": "7e1b4c294e66d1b24bc88e160d907dce6cfab3cf9e69767560fae3c17fda8c32",
+  "output_hash_match": true,
+  "source_refs": [
+    {
+      "source_family": "cross_source_relationships",
+      "count": 1
+    },
+    {
+      "source_family": "project_issue_history_items",
+      "count": 1
+    }
+  ],
+  "source_ref_count": 2,
+  "source_refs_match": true,
+  "evaluation_receipt_id": "69bbe4a20a354e1aba348b3edcb5047d",
+  "evaluation_receipt_id_b": "a64edb9ae3f0482ab328c3d40553ff15",
+  "evaluation_receipt_present": true,
+  "review_tier": 2,
+  "degradation_mode": "graceful_degraded",
+  "min_source_ref_count": 1,
+  "reproducible": true,
+  "advisory_only": true,
+  "makes_determination": false,
+  "read_only": true,
+  "receipt_emitted": false,
+  "policy_version": "phase_09_daily_brief_reproducibility_v1",
+  "contract_version": "1.4.0-phase-09",
+  "guard_attestation": {
+    "all_false": true,
+    "column_count": 23
+  },
+  "guardrails": {
+    "advisory_only": true,
+    "no_determination": true,
+    "preserve_source_refs": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

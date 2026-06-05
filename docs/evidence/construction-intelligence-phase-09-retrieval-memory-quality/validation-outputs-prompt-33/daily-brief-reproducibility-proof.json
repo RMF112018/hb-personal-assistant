@@ -1,0 +1,43 @@
+{
+  "proof": "phase_09_daily_brief_reproducibility",
+  "command": "second-brain daily-brief-reproducibility proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T15:11:35.867824+00:00",
+  "repo_sha": "098a7d25f2eebf5f7852162290c7471029d58c1a",
+  "status": "built",
+  "date": "2026-06-02",
+  "input_snapshot_hash": "e8e0b6982ee8a5d95a8aefd08fef0baf7b8e626f90d8c7397ad6b9f53958d624",
+  "output_hash": "7e1b4c294e66d1b24bc88e160d907dce6cfab3cf9e69767560fae3c17fda8c32",
+  "output_hash_match": true,
+  "source_refs_preserved": true,
+  "source_ref_count": 2,
+  "source_refs": [
+    {
+      "source_family": "cross_source_relationships",
+      "count": 1
+    },
+    {
+      "source_family": "project_issue_history_items",
+      "count": 1
+    }
+  ],
+  "evaluation_receipt_present": true,
+  "makes_determination": false,
+  "guards_zero": true,
+  "no_raw_emitted": true,
+  "metadata_only": true,
+  "read_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "no_determination": true,
+    "preserve_source_refs": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  },
+  "proof_path": "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/daily-brief-reproducibility-proof.json",
+  "proof_md_path": "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/daily-brief-reproducibility-proof.md"
+}

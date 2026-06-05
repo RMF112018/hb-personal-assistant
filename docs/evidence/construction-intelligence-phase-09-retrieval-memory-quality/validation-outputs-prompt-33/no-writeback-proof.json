@@ -1,0 +1,1262 @@
+{
+  "command": "construction-agent data-quality no-writeback-proof",
+  "report": {
+    "command": "construction-agent data-quality no-writeback-proof",
+    "ok": true,
+    "proof_passed": true,
+    "phase": "Phase 07A Prompt 08 + Phase 07B Prompt 12 + Phase 07C Prompt 12 + Phase 07D Prompt 13",
+    "generated_utc": "2026-06-05T15:11:46.090887+00:00",
+    "repo_sha": "098a7d25f2eebf5f7852162290c7471029d58c1a",
+    "schema_version": 39,
+    "scanned_modules": [
+      "project_identity.py",
+      "source_record_map.py",
+      "relationships.py",
+      "marts.py",
+      "obsidian.py",
+      "gates.py"
+    ],
+    "scanned_modules_07b": [
+      "construction/calendar/event_indexer.py",
+      "construction/calendar/project_matcher.py",
+      "construction/calendar/policy.py",
+      "construction/calendar/contracts.py",
+      "construction/email/thread_summary.py",
+      "construction/relationships/meeting_email_candidates.py",
+      "construction/correspondence/correspondence_review.py",
+      "construction/calendar_email_obsidian.py",
+      "graph/calendar_endpoint_guard.py",
+      "graph/calendar_readonly_client.py"
+    ],
+    "scanned_modules_07c": [
+      "construction/document/card_materializer.py",
+      "construction/document/classifier.py",
+      "construction/document/contracts.py",
+      "construction/document/extraction_eligibility.py",
+      "construction/document/obsidian_projection.py",
+      "construction/document/preview_builder.py",
+      "construction/document/project_matcher.py",
+      "construction/document/relationship_builder.py",
+      "construction/document/source_scope.py"
+    ],
+    "scanned_modules_07d": [
+      "construction/relationships/cross_source_substrate.py",
+      "construction/relationships/contracts.py",
+      "construction/meeting_prep/brief_builder.py",
+      "construction/issue_history/issue_history_builder.py",
+      "construction/risk_digest/risk_digest_builder.py",
+      "construction/aging_exposure/aging_exposure_builder.py",
+      "construction/correspondence/correspondence_context.py",
+      "construction/obsidian/cross_source.py",
+      "construction/data_quality/phase_07d.py"
+    ],
+    "checks_detail": {
+      "static_writeback_scan_07a_modules": {
+        "passed": true,
+        "findings": []
+      },
+      "no_http_client_or_mutation_imports_07a": {
+        "passed": true,
+        "findings": []
+      },
+      "module_secret_scan_07a": {
+        "passed": true,
+        "findings": []
+      },
+      "sqlite_raw_body_guardrail_v20_v21_07a_tables": {
+        "passed": true,
+        "findings": [],
+        "tables": [
+          {
+            "table": "construction_data_quality_runs",
+            "present": true,
+            "has_check": true,
+            "distinct_values": []
+          },
+          {
+            "table": "source_system_record_map",
+            "present": true,
+            "has_check": true,
+            "distinct_values": []
+          },
+          {
+            "table": "relationship_resolution_queue",
+            "present": true,
+            "has_check": true,
+            "distinct_values": []
+          },
+          {
+            "table": "project_source_coverage_mart",
+            "present": true,
+            "has_check": true,
+            "distinct_values": []
+          },
+          {
+            "table": "data_quality_gate_results",
+            "present": true,
+            "has_check": true,
+            "distinct_values": [
+              0
+            ]
+          },
+          {
+            "table": "source_record_summary_mart",
+            "present": true,
+            "has_check": true,
+            "distinct_values": []
+          },
+          {
+            "table": "relationship_quality_mart",
+            "present": true,
+            "has_check": true,
+            "distinct_values": []
+          },
+          {
+            "table": "cross_domain_context_readiness_mart",
+            "present": true,
+            "has_check": true,
+            "distinct_values": []
+          }
+        ]
+      },
+      "evidence_output_scan_07a": {
+        "passed": true,
+        "findings": [],
+        "scanned_dir": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/construction-intelligence-phase-07a-data-quality"
+      },
+      "static_writeback_scan_07b_modules": {
+        "passed": true,
+        "findings": []
+      },
+      "no_http_client_or_mutation_imports_07b": {
+        "passed": true,
+        "findings": []
+      },
+      "module_secret_scan_07b": {
+        "passed": true,
+        "findings": []
+      },
+      "sqlite_guardrail_07b_tables": {
+        "passed": true,
+        "findings": [],
+        "tables": [
+          {
+            "table": "email_model_classifications",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "advisory_only",
+                "has_check": true,
+                "distinct_values": [
+                  1
+                ]
+              },
+              {
+                "column": "plaintext_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "email_thread_summary_materialization_runs",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "calendar_crawl_runs",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "full_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "calendar_event_index",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "full_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "calendar_project_match_candidates",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "meeting_email_relationship_candidates",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "email_thread_summaries",
+            "present": true,
+            "guard_columns": []
+          },
+          {
+            "table": "calendar_event_attendees",
+            "present": true,
+            "guard_columns": []
+          }
+        ]
+      },
+      "sqlite_content_leak_scan_07b_tables": {
+        "passed": true,
+        "findings": [],
+        "scanned_tables": [
+          "email_model_classifications",
+          "email_thread_summary_materialization_runs",
+          "calendar_crawl_runs",
+          "calendar_event_index",
+          "calendar_project_match_candidates",
+          "meeting_email_relationship_candidates",
+          "email_thread_summaries",
+          "calendar_event_attendees"
+        ]
+      },
+      "evidence_output_scan_07b": {
+        "passed": true,
+        "findings": [],
+        "scanned_dir": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/construction-intelligence-phase-07b-calendar-email"
+      },
+      "static_writeback_scan_07c_modules": {
+        "passed": true,
+        "findings": []
+      },
+      "no_http_client_or_mutation_imports_07c": {
+        "passed": true,
+        "findings": []
+      },
+      "module_secret_scan_07c": {
+        "passed": true,
+        "findings": []
+      },
+      "sqlite_guard_checks_07c_document_tables": {
+        "passed": true,
+        "findings": [],
+        "tables": [
+          {
+            "table": "construction_document_cards",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_payload_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "signed_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "download_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "source_file_copied_to_vault",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "construction_document_classification_candidates",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "construction_document_project_match_candidates",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "construction_document_relationship_candidates",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "construction_document_intelligence_previews",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "construction_document_projection_runs",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": []
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": []
+              }
+            ]
+          }
+        ]
+      },
+      "sqlite_content_leak_scan_07c_document_tables": {
+        "passed": true,
+        "findings": [],
+        "scanned_tables": [
+          "construction_document_cards",
+          "construction_document_classification_candidates",
+          "construction_document_project_match_candidates",
+          "construction_document_relationship_candidates",
+          "construction_document_intelligence_previews",
+          "construction_document_projection_runs"
+        ]
+      },
+      "evidence_output_scan_07c": {
+        "passed": true,
+        "findings": [],
+        "scanned_dir": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/construction-intelligence-phase-07c-document-intelligence"
+      },
+      "obsidian_output_scan_07c": {
+        "passed": true,
+        "findings": [],
+        "scanned_dir": "/Users/bobbyfetting/Documents/Obsidian Vault/Work/HB Personal Assistant/07C_Document_Intelligence"
+      },
+      "static_writeback_scan_07d_modules": {
+        "passed": true,
+        "findings": []
+      },
+      "no_http_client_or_mutation_imports_07d": {
+        "passed": true,
+        "findings": []
+      },
+      "module_secret_scan_07d": {
+        "passed": true,
+        "findings": []
+      },
+      "sqlite_guard_checks_07d_cross_source_tables": {
+        "passed": true,
+        "findings": [],
+        "tables": [
+          {
+            "table": "cross_source_relationship_candidates",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_email_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_calendar_payload_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "signed_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "download_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "cross_source_relationships",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_email_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_calendar_payload_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "signed_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "download_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "source_evidence_trails",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_email_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_calendar_payload_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "signed_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "download_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "meeting_prep_brief_runs",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_email_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_calendar_payload_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "signed_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "download_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "meeting_prep_brief_sections",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_email_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_calendar_payload_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "signed_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "download_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "project_issue_history_items",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_email_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_calendar_payload_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "signed_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "download_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "project_risk_digest_items",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_email_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_calendar_payload_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "signed_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "download_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "aging_exposure_report_items",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_email_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_calendar_payload_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "signed_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "download_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "cross_source_intelligence_obsidian_runs",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_email_body_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_calendar_payload_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "signed_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "download_url_persisted",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "table": "phase_07d_validation_runs",
+            "present": true,
+            "guard_columns": [
+              {
+                "column": "raw_email_body_persisted",
+                "has_check": true,
+                "distinct_values": []
+              },
+              {
+                "column": "raw_document_text_persisted",
+                "has_check": true,
+                "distinct_values": []
+              },
+              {
+                "column": "raw_calendar_payload_persisted",
+                "has_check": true,
+                "distinct_values": []
+              },
+              {
+                "column": "raw_prompt_persisted",
+                "has_check": true,
+                "distinct_values": []
+              },
+              {
+                "column": "raw_response_persisted",
+                "has_check": true,
+                "distinct_values": []
+              },
+              {
+                "column": "signed_url_persisted",
+                "has_check": true,
+                "distinct_values": []
+              },
+              {
+                "column": "download_url_persisted",
+                "has_check": true,
+                "distinct_values": []
+              },
+              {
+                "column": "external_writeback_performed",
+                "has_check": true,
+                "distinct_values": []
+              }
+            ]
+          }
+        ]
+      },
+      "sqlite_content_leak_scan_07d_cross_source_tables": {
+        "passed": true,
+        "findings": [],
+        "scanned_tables": [
+          "cross_source_relationship_candidates",
+          "cross_source_relationships",
+          "source_evidence_trails",
+          "meeting_prep_brief_runs",
+          "meeting_prep_brief_sections",
+          "project_issue_history_items",
+          "project_risk_digest_items",
+          "aging_exposure_report_items",
+          "cross_source_intelligence_obsidian_runs",
+          "phase_07d_validation_runs"
+        ]
+      },
+      "evidence_output_scan_07d": {
+        "passed": true,
+        "findings": [],
+        "scanned_dir": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/construction-intelligence-phase-07d-cross-source-meeting-prep"
+      },
+      "obsidian_output_scan_07d": {
+        "passed": true,
+        "findings": [],
+        "scanned_dir": "/Users/bobbyfetting/Documents/Obsidian Vault/Construction Intelligence/Phase 07D Cross-Source Intelligence"
+      }
+    },
+    "guardrails": {
+      "external_systems": "read_only",
+      "writeback": "none_permitted_in_07a_data_quality",
+      "raw_body_persisted": "enforced_0_in_all_v20_v21_07a_tables",
+      "document_tables_guard_columns": "enforced_0_in_all_v24_07c_document_tables",
+      "secrets_tokens_urls_in_code_or_evidence": "forbidden",
+      "no_live_calls": true,
+      "phase_assignments_preserved": true
+    },
+    "stop_conditions_checked": [
+      "no_mutation_capable_external_calls_in_07a_modules",
+      "no_raw_body_or_full_text_persisted_in_07a_tables",
+      "no_tokens_secrets_signed_urls_in_07a_code_or_evidence",
+      "safety_proof_scopes_all_07a_data_quality_surfaces"
+    ],
+    "no_live_call_performed": true,
+    "no_raw_values_persisted": true,
+    "no_raw_values_persisted_scope": "phase_07a_data_quality_and_phase_07b_calendar_email_thread_candidate_and_phase_07c_document_intelligence_and_phase_07d_cross_source_meeting_prep_surfaces",
+    "raw_staging_layers_out_of_scope": [
+      {
+        "table": "construction_drive_item_inventory",
+        "raw_columns": "name, web_url, parent_path",
+        "origin_phase": "06A",
+        "scope": "out_of_scope_for_this_proof",
+        "required_handling": "hash_or_redact_before_07c_document_card_evidence_or_obsidian"
+      }
+    ],
+    "note": "Formal no-writeback / no-secret / no-raw-body / no-raw-document-text proof for Phase 07A data-quality surfaces, Phase 07B calendar/email/thread/candidate surfaces, Phase 07C document-intelligence surfaces, AND Phase 07D cross-source / meeting-prep surfaces (nine 07D modules + the ten V25 cross-source tables' eight guard CHECK columns + persisted-content scan + the 07D evidence tree + the 07D Obsidian notes). Re-uses the shared secret scanner from the Procore no-writeback prover; findings are pattern labels and table.column / file locations only (never the value). Read-only, fail-closed. This proof does NOT cover the Phase 06A raw file-intelligence staging layer (construction_drive_item_inventory: name/web_url/parent_path), which is raw-by-design and is hashed/redacted before any Phase 07C document-card, evidence, or Obsidian output \u2014 see raw_staging_layers_out_of_scope."
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none_permitted_in_07a_data_quality",
+    "raw_body_persisted": "enforced_0_in_all_v20_v21_07a_tables",
+    "secrets_tokens_urls_in_code_or_evidence": "forbidden",
+    "no_live_calls": true,
+    "phase_assignments_preserved": true
+  }
+}

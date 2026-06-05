@@ -1,0 +1,18 @@
+# Phase 09 Prompt 33 — daily brief reproducibility (resolved values; advisory).
+# A read-only, advisory proof that the existing Phase 08A daily brief is reproducible: given the
+# identical controlled inputs below, two independent generation runs (each in its own temp DB + temp
+# vault, mock adapter) produce the same approved-output SHA256 hash, the same metadata-only source-ref
+# coverage, and a present evaluation receipt. It makes NO determination and writes nothing to the
+# operator DB. No raw record refs / titles / bodies / prompts / responses / tokens / URLs are persisted
+# or emitted — source_refs is aggregated to source-family counts only. Read-only by default; fail-closed.
+version: phase_09_daily_brief_reproducibility_v1
+
+# Controlled-input descriptor for the reproducibility experiment (deterministic synthetic ids).
+brief_date: "2026-06-02"
+project_key: P1
+# The seed families that the controlled inputs populate (for source-ref coverage assertions).
+seed_families:
+  - email
+  - procore
+# Reproducibility passes only when the run yields at least this many source refs.
+min_source_ref_count: 1

@@ -1,0 +1,85 @@
+{
+  "prompt": "Phase 09 Prompt 33 — Daily Brief Reproducibility",
+  "objective": "Prove daily brief reproducibility with controlled inputs and source refs.",
+  "repo_sha": "098a7d25f2eebf5f7852162290c7471029d58c1a",
+  "schema_version": 39,
+  "package_version": "1.4.0-phase-09",
+  "design": {
+    "persistence": "proof-only (no migration, schema stays V39, adds no table; contract count stays 190)",
+    "module": "src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py",
+    "cli": "second-brain daily-brief-reproducibility build|proof --json",
+    "contract": "src/hb_assistant/resources/json/phase_09_daily_brief_reproducibility_contract.json",
+    "seed": "resources/config/phase_09_daily_brief_reproducibility.seed.yaml",
+    "method": "run_daily_brief() executed twice over identical seeded controlled inputs (each in its own temp DB + temp vault, MockClaudeAdapter, mode=apply); operator DB opened read-only only for the fail-closed schema gate; nothing persisted to the operator DB"
+  },
+  "contract_required_fields": {
+    "date": "2026-06-02",
+    "input_snapshot_hash": "e8e0b6982ee8a5d95a8aefd08fef0baf7b8e626f90d8c7397ad6b9f53958d624",
+    "output_hash": "7e1b4c294e66d1b24bc88e160d907dce6cfab3cf9e69767560fae3c17fda8c32",
+    "source_refs": [
+      {"source_family": "cross_source_relationships", "count": 1},
+      {"source_family": "project_issue_history_items", "count": 1}
+    ],
+    "evaluation_receipt_id": "present (per-run instance id; both runs non-empty)"
+  },
+  "build_result": {
+    "status": "built",
+    "reproducible": true,
+    "output_hash_match": true,
+    "source_refs_match": true,
+    "source_ref_count": 2,
+    "evaluation_receipt_present": true,
+    "makes_determination": false,
+    "read_only": true,
+    "guard_attestation": {"all_false": true, "column_count": 23}
+  },
+  "proof_result": {
+    "proof_passed": true,
+    "output_hash_match": true,
+    "source_refs_preserved": true,
+    "evaluation_receipt_present": true,
+    "makes_determination": false,
+    "guards_zero": true,
+    "no_raw_emitted": true,
+    "artifacts": [
+      "daily-brief-reproducibility-proof.json",
+      "daily-brief-reproducibility-proof.md"
+    ]
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "2 pre-existing errors in review_burden_mart.py:165,167 (concurrent review-burden work); this module clean (303 files)",
+    "pytest_new": "tests/test_phase_09_daily_brief_reproducibility.py — 6 passed",
+    "pytest_subset": "exit 1, 11 failures — ALL pre-existing/concurrent, none introduced by Prompt 33; all 6 new Prompt-33 tests pass. Failures: 10x test_v*_table_classified_in_lifecycle_contract (v26/v28/v29/v30/v31/v32/v33/v34/v35/v37 — global lifecycle assertion failing on the 3 unmapped concurrent second_brain_review_burden_* tables); 1x test_phase_09_embedding_policy::test_normal_path (embeddable_family_count 8 != 7 — concurrent Prompt 18/19 vector-loader work; this prompt does not touch the embedding policy/seed).",
+    "construction_agent_validate": "exit 0, 4/4, schema V39",
+    "table_inventory": "190 contract / 189 live; in_db_not_in_contract = [second_brain_review_burden_clusters, _policy_evals, _runs] (concurrent review-burden; this prompt adds no table)",
+    "no_writeback_proof": "exit 0",
+    "phase_08a_gates": "exit 0",
+    "phase_08b_gates": "exit 1 — pre-existing automation_executor.py:1485 build_automation_execution_proof AssertionError (environmental)",
+    "phase_08c_gates": "SKIPPED — mutates the operator DB (append-only ledger)",
+    "phase_08d_gates": "exit 0",
+    "mcp_no_raw_access": "exit 0",
+    "mcp_no_writeback": "exit 0",
+    "second_brain_daily_brief_reproducibility_build": "exit 0 — reproducible=true, output_hash_match=true, read_only=true",
+    "second_brain_daily_brief_reproducibility_proof": "exit 0 — proof_passed=true",
+    "repo_sensitive_scan_and_no_writeback_tests": "pass"
+  },
+  "guardrails": {
+    "local_first": true,
+    "fail_closed": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "advisory_only": true,
+    "no_determination": true,
+    "preserve_source_refs": true,
+    "read_only_by_default": true
+  },
+  "pre_existing_not_ours": [
+    "mypy: review_burden_mart.py:165,167",
+    "pytest: 10x test_v*_table_classified_in_lifecycle_contract failures (3 unmapped second_brain_review_burden_* tables)",
+    "pytest: test_phase_09_embedding_policy::test_normal_path (embeddable_family_count 8 != 7 — concurrent Prompt 18/19 vector-loader work)",
+    "phase-08b-gates exit 1 (automation_executor.py:1485)"
+  ],
+  "stop_conditions_triggered": "none"
+}
