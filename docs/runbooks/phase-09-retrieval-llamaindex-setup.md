@@ -449,6 +449,25 @@ the operator DB by default, and **makes no determination**.
   read-only default persists nothing, and **no raw content is emitted**; writes
   `source-linked-retrieval-proof.{json,md}`.
 
+## No raw vector index proof (Prompt 35)
+
+`second-brain retrieval no-raw-vector-index-proof` is a read-only, **advisory** forensic scan that
+proves the operator DB, the vector-index metadata, and the Phase-09 evidence tree contain **no raw
+vector content and no prohibited payloads**. No migration (schema stays **V39**); on `--emit-receipt`
+it persists a guard-clean gate-summary row to the reserved V38 `second_brain_phase_09_validation_runs`
+table (read-only by default). Findings carry `table.column` / file locations + a pattern label —
+never the offending value.
+
+Six gates: `db_guard_clean` (every `second_brain_retrieval_*` table's 23 guard columns sum to 0,
+especially `raw_vector_content_persisted`), `no_vector_blob_columns` (no exact `embedding`/`vector`/
+`raw_vector` column in SQLite — metadata columns like `embedding_model_label` are not blobs),
+`vectors_outside_sqlite`, `db_text_no_forbidden` (the vector tables' safe text columns carry no
+secrets/PEM/bearer/JWT/signed URLs), `evidence_no_forbidden` (same scan over the evidence tree), and
+`scanner_detects_planted` (a non-vacuity arm plants a runtime-assembled synthetic signed-URL and
+confirms the scanner flags it). On the live operator DB + evidence tree the proof passes 6/6 (14
+retrieval tables, 0 violations, 0 blob columns, 383 evidence files, 0 findings); writes
+`no-raw-vector-index-proof.{json,md}`. Exit 0 on a clean proof; 3 on fail-closed or findings.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

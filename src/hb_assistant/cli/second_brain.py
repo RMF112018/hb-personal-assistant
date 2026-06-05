@@ -1238,6 +1238,66 @@ def retrieval_source_linked_proof(
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 
 
+_NO_RAW_VECTOR_INDEX_GUARDRAILS = {
+    "read_only": True,
+    "no_raw": True,
+    "no_raw_vector_content_in_sqlite": True,
+    "vectors_outside_sqlite": True,
+    "no_external_writeback": True,
+    "advisory_only": True,
+    "no_determination": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
+
+@retrieval_app.command("no-raw-vector-index-proof")
+def retrieval_no_raw_vector_index_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the no-raw-vector-index proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Scan DB / vector-index metadata / evidence for raw vector content and prohibited payloads.
+
+    Read-only forensic scan: confirms the vector-index + all retrieval tables have guard columns at 0
+    (no raw_vector_content_persisted), no embedding/vector blob column exists in SQLite (vectors live
+    outside SQLite), and the safe text columns + evidence tree carry no secrets/PEM/bearer/JWT/signed
+    URLs; a non-vacuity arm proves the scanner flags a planted value. Metadata-only; persists nothing
+    to the operator DB. Exit 0 on a clean proof; 3 on a fail-closed failure or findings.
+    """
+    from hb_assistant.construction.second_brain.retrieval.no_raw_vector_index_proof import (
+        NoRawVectorIndexProofError,
+        build_no_raw_vector_index_proof,
+    )
+
+    try:
+        result = build_no_raw_vector_index_proof(write_evidence=evidence)
+    except NoRawVectorIndexProofError as exc:
+        payload = {
+            "command": "second-brain retrieval no-raw-vector-index-proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _NO_RAW_VECTOR_INDEX_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _NO_RAW_VECTOR_INDEX_GUARDRAILS}
+    human = [
+        f"No raw vector index proof passed={result['proof_passed']}"
+        f" (gates {result['pass_count']}/{result['gate_count']}, guard_violations="
+        f"{result['guard_violations']}, blob_columns={len(result['blob_columns_found'])},"
+        f" evidence_files={result['evidence_files_scanned']}, findings={result['forbidden_findings']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
 @preference_app.command("capture")
 def preference_capture(
     preference_key: str = typer.Option(..., "--key", help="Preference key (presentation only)."),

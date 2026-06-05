@@ -1,0 +1,71 @@
+{
+  "contract_name": "phase_09_no_raw_vector_index_proof_contract",
+  "schema": "phase_09_no_raw_vector_index_proof",
+  "version": "1.4.0-phase-09",
+  "description": "Phase 09 Prompt 35 — no raw vector index proof. A read-only, advisory forensic scan that proves the operator DB, the vector-index metadata, and the committed Phase-09 evidence tree contain NO raw vector content and NO prohibited payloads. It (1) confirms the vector-index tables (second_brain_retrieval_vector_index_runs / _items) and every second_brain_retrieval_* table have all 23 guard columns summing to 0 (especially raw_vector_content_persisted), (2) confirms no embedding/vector/raw_vector blob column exists in SQLite (vectors are persisted outside SQLite under the external persist store), (3) scans the safe text columns (hashes / labels / namespaces / ids) for leaked secrets / PEM / bearer / JWT / signed-or-download URLs, and (4) scans the evidence tree for the same. A non-vacuity arm plants a synthetic forbidden value and confirms the scanner flags it. Metadata-only: persists (read-only by default; on emit_receipt) a single guard-clean gate-summary row to the reserved V38 second_brain_phase_09_validation_runs table (gate_count / pass_count / fail_count / overall_status + 23 guard columns). Findings are pattern labels + table.column / file locations only — never the offending value. Makes no determination; read-only; fail-closed on missing policy or stale schema.",
+  "required": [
+    "run_id",
+    "scanned_table_count",
+    "db_guard_clean",
+    "evidence_files_scanned",
+    "forbidden_findings",
+    "proof_passed"
+  ],
+  "guard_columns": [
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_procore_payload_persisted",
+    "raw_financial_source_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
+    "graph_api_call_performed",
+    "procore_api_call_performed",
+    "email_send_performed",
+    "calendar_update_performed",
+    "source_system_writeback_performed",
+    "arbitrary_sql_performed",
+    "raw_store_access_performed",
+    "financial_determination_performed",
+    "payment_decision_performed",
+    "claim_or_entitlement_decision_performed",
+    "unsupported_claim_performed",
+    "raw_vector_content_persisted",
+    "semantic_retrieval_bypassed_policy"
+  ],
+  "scanned_tables": [
+    "second_brain_retrieval_vector_index_runs",
+    "second_brain_retrieval_vector_index_items"
+  ],
+  "forbidden_vector_blob_columns": ["embedding", "vector", "raw_vector"],
+  "forbidden_emitted_fields": [
+    "embedding",
+    "vector",
+    "raw_vector",
+    "raw_body",
+    "raw_document_text",
+    "raw_prompt",
+    "raw_response",
+    "content",
+    "content_excerpt",
+    "text_redacted",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_raw_vector_content_in_sqlite",
+    "vectors_outside_sqlite",
+    "no_external_writeback",
+    "advisory_only",
+    "no_determination",
+    "scanner_non_vacuous"
+  ]
+}

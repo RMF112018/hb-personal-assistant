@@ -1,0 +1,39 @@
+{
+  "command": "second-brain retrieval no-raw-vector-index-proof",
+  "phase": "09",
+  "generated_utc": "2026-06-05T16:22:50.904095+00:00",
+  "repo_sha": "f98d112aa9f068b072af0ea996370edbdfbbf4f5",
+  "schema_version": 39,
+  "run_id": "nrv_713eb6cca128f76e6730aa8c0fcac4b4",
+  "proof_passed": true,
+  "overall_status": "clean",
+  "gate_count": 6,
+  "pass_count": 6,
+  "fail_count": 0,
+  "gates": {
+    "db_guard_clean": true,
+    "no_vector_blob_columns": true,
+    "vectors_outside_sqlite": true,
+    "db_text_no_forbidden": true,
+    "evidence_no_forbidden": true,
+    "scanner_detects_planted": true
+  },
+  "scanned_table_count": 2,
+  "guard_tables_checked": 14,
+  "guard_violations": 0,
+  "blob_columns_found": [],
+  "evidence_files_scanned": 383,
+  "forbidden_findings": 0,
+  "db_findings": [],
+  "evidence_findings": [],
+  "advisory_only": true,
+  "makes_determination": false,
+  "read_only": true,
+  "receipt_emitted": false,
+  "policy_version": "phase_09_no_raw_vector_index_proof_v1",
+  "contract_version": "1.4.0-phase-09",
+  "guard_attestation": {
+    "all_false": true,
+    "column_count": 23
+  }
+}

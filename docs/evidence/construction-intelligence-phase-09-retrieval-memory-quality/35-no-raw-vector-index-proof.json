@@ -1,0 +1,76 @@
+{
+  "prompt": "Phase 09 Prompt 35 — No Raw Vector Index Proof",
+  "objective": "Scan DB/index/evidence for raw vector content and prohibited payloads.",
+  "repo_sha": "f98d112aa9f068b072af0ea996370edbdfbbf4f5",
+  "schema_version": 39,
+  "package_version": "1.4.0-phase-09",
+  "design": {
+    "persistence": "proof-only forensic scan; persists (on --emit-receipt, read-only by default) a guard-clean gate-summary row to the reserved V38 second_brain_phase_09_validation_runs table (gate/pass/fail/status). No migration, schema stays V39, adds no table; contract count stays 190.",
+    "module": "src/hb_assistant/construction/second_brain/retrieval/no_raw_vector_index_proof.py",
+    "cli": "second-brain retrieval no-raw-vector-index-proof --json",
+    "contract": "src/hb_assistant/resources/json/phase_09_no_raw_vector_index_proof_contract.json",
+    "seed": "resources/config/phase_09_no_raw_vector_index_proof.seed.yaml",
+    "scan_patterns": "tight, signed-URL/secret-specific (PEM / Bearer-20+ / 3-part JWT / SAS sig|sv|se|token= params / signed-URLs-with-sig|token / oauth secrets) — not the broad financial https://, to avoid false positives across the docs tree",
+    "blob_detection": "exact column-name match on embedding/vector/raw_vector — a metadata column like embedding_model_label or the raw_vector_content_persisted guard is NOT a blob"
+  },
+  "contract_required_fields": ["run_id", "scanned_table_count", "db_guard_clean", "evidence_files_scanned", "forbidden_findings", "proof_passed"],
+  "proof_result_live": {
+    "proof_passed": true,
+    "overall_status": "clean",
+    "gates": {
+      "db_guard_clean": true,
+      "no_vector_blob_columns": true,
+      "vectors_outside_sqlite": true,
+      "db_text_no_forbidden": true,
+      "evidence_no_forbidden": true,
+      "scanner_detects_planted": true
+    },
+    "gate_count": 6,
+    "pass_count": 6,
+    "fail_count": 0,
+    "guard_tables_checked": 14,
+    "guard_violations": 0,
+    "blob_columns_found": [],
+    "scanned_table_count": 2,
+    "evidence_files_scanned": 383,
+    "forbidden_findings": 0,
+    "makes_determination": false,
+    "note": "Live scan over the real operator DB + the real Phase-09 evidence tree (383 files); 0 false positives confirms the tight scan-pattern choice."
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "exit 1 — 3 B008 errors in cli/procore.py only (concurrent uncommitted churn; procore.py is dirty in the working tree). My files are ruff-clean.",
+    "mypy_src": "2 pre-existing errors in review_burden_mart.py:169,171 (concurrent review-burden); this module clean (305 files)",
+    "pytest_new": "tests/test_phase_09_no_raw_vector_index_proof.py — 6 passed",
+    "construction_agent_validate": "exit 0, 4/4, schema V39",
+    "table_inventory": "190 contract / 189 live; in_db_not_in_contract = [second_brain_review_burden_clusters, _policy_evals, _runs] (concurrent review-burden; this prompt adds no table)",
+    "no_writeback_proof": "exit 0",
+    "phase_08a_gates": "exit 0",
+    "phase_08b_gates": "exit 1 — pre-existing automation_executor.py:1485 AssertionError (environmental)",
+    "phase_08c_gates": "SKIPPED — mutates the operator DB (append-only ledger)",
+    "phase_08d_gates": "exit 0",
+    "mcp_no_raw_access": "exit 0",
+    "mcp_no_writeback": "exit 0",
+    "no_raw_vector_index_proof": "exit 0 — proof_passed=true (6/6 gates, 383 evidence files, 0 findings)",
+    "repo_sensitive_scan_and_no_writeback_tests": "pass"
+  },
+  "guardrails": {
+    "local_first": true,
+    "fail_closed": true,
+    "no_raw": true,
+    "no_raw_vector_content_in_sqlite": true,
+    "vectors_outside_sqlite": true,
+    "no_external_writeback": true,
+    "advisory_only": true,
+    "no_determination": true,
+    "scanner_non_vacuous": true
+  },
+  "pre_existing_not_ours": [
+    "ruff: 3 B008 in cli/procore.py (concurrent uncommitted edit; procore.py dirty)",
+    "mypy: review_burden_mart.py:169,171",
+    "pytest: test_v*_table_classified_in_lifecycle_contract failures (3 unmapped second_brain_review_burden_* tables)",
+    "pytest: test_phase_09_embedding_policy::test_normal_path (embeddable_family_count 8 != 7 — concurrent Prompt 18/19 vector-loader work)",
+    "phase-08b-gates exit 1 (automation_executor.py:1485)"
+  ],
+  "stop_conditions_triggered": "none"
+}

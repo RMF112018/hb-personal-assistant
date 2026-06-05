@@ -1,0 +1,33 @@
+# Phase 09 Prompt 35 — no raw vector index proof (resolved values; advisory).
+# A read-only, advisory forensic scan proving the operator DB, the vector-index metadata, and the
+# Phase-09 evidence tree contain NO raw vector content and NO prohibited payloads (secrets, PEM,
+# bearer/JWT, signed/download URLs, raw source text). Vectors are persisted OUTSIDE SQLite (external
+# persist store); the SQLite vector-index tables are metadata-only (hashes/labels) with all 23 guard
+# columns CHECK(=0). Metadata-only: persists (read-only by default; on emit_receipt) a single
+# guard-clean gate-summary row to the reserved V38 second_brain_phase_09_validation_runs table.
+# Findings are pattern labels + table.column / file locations only — never the offending value.
+# Makes no determination; fail-closed.
+version: phase_09_no_raw_vector_index_proof_v1
+phase: "09"
+
+local_first: true
+advisory_only: true
+fail_closed: true
+raw_content_allowed: false
+external_writeback_allowed: false
+external_embedding_provider_allowed: false
+vectors_in_sqlite_allowed: false
+
+# Tables forensically scanned for guard-column violations + leaked payloads in safe text columns.
+scanned_tables:
+  - second_brain_retrieval_vector_index_runs
+  - second_brain_retrieval_vector_index_items
+# Column-name fragments that would indicate a raw vector/embedding blob persisted in SQLite (forbidden).
+forbidden_vector_blob_columns:
+  - embedding
+  - vector
+  - raw_vector
+# Evidence file extensions scanned under the Phase-09 evidence dir.
+evidence_scan_extensions:
+  - ".json"
+  - ".md"
