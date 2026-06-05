@@ -1,0 +1,16 @@
+# Phase 09 Prompt 31 — memory consolidation preview (resolved values; advisory).
+# A read-only, advisory pass over the accepted long-term memory corpus that clusters exact-duplicate
+# statements and generates REVIEW-ONLY consolidation proposals (keep one canonical member, propose
+# superseding the redundant duplicates) for human review. It NEVER auto-deletes, auto-supersedes, or
+# auto-merges any memory item — long_term_memory_items is left unchanged; only proposals are written to
+# the reserved V38 consolidation tables (read-only by default — the builder persists nothing unless
+# emit_receipt is set). Statements and memory refs are SHA256-hashed; no raw statement text is persisted
+# or emitted.
+version: phase_09_memory_consolidation_preview_v1
+
+# Only accepted memory items are consolidated; a cluster needs at least this many exact-duplicate members.
+input_review_status: accepted
+min_cluster_size: 2
+# Consolidation proposals always require human review (never auto-applied).
+proposal_review_tier: mandatory_review
+proposal_review_status: pending_review

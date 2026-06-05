@@ -1,0 +1,85 @@
+{
+  "prompt": "Phase 09 Prompt 31 — Memory Consolidation Preview",
+  "phase": "09",
+  "package_version": "1.4.0-phase-09",
+  "repo_sha_at_build": "3759a0a",
+  "schema_version": 39,
+  "objective": "Generate review-only memory consolidation proposals (cluster exact-duplicate accepted memory items; propose keep-canonical + supersede-duplicates) for human review; never auto-delete/supersede/merge memory.",
+  "summary": {
+    "new_modules": ["src/hb_assistant/construction/second_brain/memory/consolidation_preview.py"],
+    "modified_modules": [
+      "src/hb_assistant/construction/second_brain/contracts.py",
+      "src/hb_assistant/cli/second_brain.py"
+    ],
+    "new_contracts": ["src/hb_assistant/resources/json/phase_09_memory_consolidation_preview_contract.json"],
+    "new_seeds": ["resources/config/phase_09_memory_consolidation_preview.seed.yaml"],
+    "new_tests": ["tests/test_phase_09_memory_consolidation_preview.py"],
+    "migrator_change": "None — reuses the reserved V38 second_brain_memory_consolidation_candidates + _review_items tables (present at V39). This change adds NO tables.",
+    "reuse": "memory/store.write_memory_item (proof fixtures), the statement-hashing concept from memory/quality_review.py (Prompt 30), the eval_set.py persister pattern."
+  },
+  "design": {
+    "clustering": "Group accepted items (review_status='accepted') by (project_key, memory_type, sha256(statement_redacted)). A cluster is >= min_cluster_size (2) exact-duplicate items. Oldest member (created_utc, memory_id) = canonical keep; rest = proposed supersede. Statements + memory ids are SHA256-hashed (never raw).",
+    "review_only": "Proposals only — never auto-deletes/supersedes/merges. long_term_memory_items is left byte-for-byte unchanged. Proposals persist (on emit_receipt) to consolidation_candidates (per cluster) + consolidation_review_items (per member, advisory_only=1, review_status='pending_review', review_tier='mandatory_review'). makes_determination=false.",
+    "read_only": "emit_receipt defaults False (no operator-DB write); reads accepted items via mode=ro SQL."
+  },
+  "operator_db_outcome": {
+    "consolidation_preview_build_status": "empty",
+    "accepted_item_count": 0,
+    "cluster_count": 0,
+    "read_only": true,
+    "rationale": "The operator DB has 0 accepted long_term_memory_items -> no duplicate clusters -> honestly empty. emit_receipt defaulted False -> nothing persisted.",
+    "consolidation_candidates_rows": 0,
+    "consolidation_review_items_rows": 0,
+    "schema_version": 39,
+    "operator_db_mutated_by_this_change": false
+  },
+  "consolidation_preview_proof": {
+    "command": "second-brain memory consolidation-preview proof --json",
+    "proof_passed": true,
+    "cluster_count": 1,
+    "total_member_count": 2,
+    "candidates_persisted": true,
+    "review_items_persisted": true,
+    "rows_guard_clean": true,
+    "advisory_only_flag_set": true,
+    "long_term_memory_items_unchanged": true,
+    "singleton_not_proposed": true,
+    "makes_determination": false,
+    "read_only_default_no_persist": true,
+    "no_raw_statement_emitted": true
+  },
+  "validation_matrix": {
+    "compileall": "exit 0",
+    "ruff_check": "All checks passed!",
+    "mypy_src": "2 errors — BOTH PRE-EXISTING in review_burden_mart.py (concurrent commit 3759a0a); my consolidation_preview.py is CLEAN (300 source files).",
+    "pytest_not_live_integration_manual": "3234 passed / 8 failed — ALL 8 failures are PRE-EXISTING test_v{29,30,31,32,33,34,35,37}_table_classified_in_lifecycle_contract failures from the concurrent review_burden commit 3759a0a (3 unclassified tables). NONE from this change; my 7 new tests pass.",
+    "construction_agent_validate": "exit 0 (4/4 checks: schema, source_registry, review_rules, model_routing; schema 39)",
+    "data_quality_table_inventory": "exit 0 (schema 39; contract_table_count=190; in_db_not_in_contract=['second_brain_review_burden_runs','second_brain_review_burden_clusters','second_brain_review_burden_policy_evals'] -> 3 unmapped, ALL from the concurrent review_burden commit, NOT this change)",
+    "data_quality_no_writeback_proof": "exit 0 (ok=true, proof_passed=true)",
+    "phase_08a_gates": "exit 0 (ok=true)",
+    "phase_08b_gates": "exit 1 — PRE-EXISTING ENVIRONMENTAL FAILURE, NOT caused by this change",
+    "phase_08c_gates": "SKIPPED (its append-only financial ledger mutates the operator DB ~1,299 rows/call)",
+    "phase_08d_gates": "exit 0 (proof_passed=true, ok=true)",
+    "mcp_no_raw_access": "exit 0 (proof_passed=true)",
+    "mcp_no_writeback": "exit 0 (proof_passed=true)",
+    "memory_consolidation_preview_build": "exit 0 (operator DB: status=empty, 0 accepted items, read-only, no persist)",
+    "memory_consolidation_preview_proof": "exit 0 (proof_passed=true; 1 cluster -> 1 candidate + 2 review items, guard-clean + advisory_only=1, long_term_memory_items unchanged, singleton not proposed, no determination, no raw)",
+    "repo_sensitive_scan_and_no_writeback_guard_tests": "pass"
+  },
+  "guard_columns_result": {
+    "candidate_and_review_item_guard_sum_on_persisted_rows": 0,
+    "advisory_only": 1,
+    "long_term_memory_items_unchanged": true,
+    "note": "All 23 CHECK(=0) guard columns remain 0 on the proof-persisted candidate + review-item rows; advisory_only=1 enforced; long_term_memory_items left byte-for-byte unchanged (no auto-delete/supersede); no raw memory statement/decision text/memory-id persisted or emitted (only SHA256 hashes)."
+  },
+  "deferred": [
+    "Applying an approved consolidation proposal (operator review -> supersede) — a later prompt.",
+    "Near-duplicate (non-exact) clustering via embeddings.",
+    "Wiring consolidation proposals into a unified review queue."
+  ],
+  "blocker_classifications": {
+    "concurrent_review_burden_commit_regression": "The concurrent review_burden Phase-09 commit 3759a0a (which migrated the schema to V39 and added second_brain_review_burden_runs/_clusters/_policy_evals) did NOT classify its 3 new tables in the lifecycle contract. This breaks 8 pytest tests (test_v{29..37}_table_classified_in_lifecycle_contract, which assert in_db_not_in_contract==[]) and adds 2 mypy errors in review_burden_mart.py. ALL of these are pre-existing in 3759a0a and independent of this change (Prompt 31 adds no tables, touches no classification contract; the consolidation tables it reuses ARE classified). This should be fixed by the review_burden owner (classify the 3 tables + fix review_burden_mart.py typing).",
+    "phase_08b_gates_pre_existing_failure": "phase-08b-gates exits 1 (automation_executor.build_automation_execution_proof assertion, automation_executor.py:1485) — pre-existing/environmental, reproduces at clean HEAD, unrelated to this change.",
+    "concurrency_held_then_proceeded": "Per operator decision ('hold until they commit'), Prompt 31 was held until the shared-infrastructure conflict (uncommitted V39 migrator + contracts.py from the review_burden agent) was committed (3759a0a). It was then built on the clean committed base; this commit stages only the isolated consolidation-preview files. The phase-07b-calendar agent still has uncommitted work, left untouched."
+  }
+}

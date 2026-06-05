@@ -67,6 +67,13 @@ memory_quality_review_app = typer.Typer(
 )
 memory_app.add_typer(memory_quality_review_app, name="quality-review")
 
+memory_consolidation_preview_app = typer.Typer(
+    name="consolidation-preview",
+    help="Phase 09 memory consolidation preview (review-only merge proposals; never auto-delete/supersede).",
+    no_args_is_help=True,
+)
+memory_app.add_typer(memory_consolidation_preview_app, name="consolidation-preview")
+
 preference_app = typer.Typer(
     name="preference",
     help="Reviewable operator preferences (presentation-only; never override safety).",
@@ -818,6 +825,102 @@ def memory_quality_review_proof(
         f" (flagged={proof['flagged_count']}, dup={proof['duplicate_detected']},"
         f" stale={proof['stale_detected']}, conflict={proof['conflicting_detected']},"
         f" guard_clean={proof['run_row_guard_clean']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+_MEMORY_CONSOLIDATION_PREVIEW_GUARDRAILS = {
+    "advisory_only": True,
+    "no_determination": True,
+    "never_auto_delete_or_supersede": True,
+    "review_only_proposals": True,
+    "leave_long_term_memory_items_unchanged": True,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "preserve_review_tier_confidence_source_refs": True,
+    "read_only_by_default": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
+
+@memory_consolidation_preview_app.command("build")
+def memory_consolidation_preview_build(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Generate review-only consolidation proposals over the accepted memory corpus (read-only, advisory).
+
+    Clusters exact-duplicate accepted memory items and proposes keeping one canonical member + superseding
+    the duplicates — as proposals for human review only. It NEVER auto-deletes, auto-supersedes, or
+    auto-merges memory (long_term_memory_items is left unchanged) and makes no determination. Emits a
+    metadata-only summary (cluster counts + hashed proposal records; no raw statement); persists nothing to
+    the operator DB by default. Exit 0 on success; 3 on a fail-closed failure.
+    """
+    from hb_assistant.construction.second_brain.memory.consolidation_preview import (
+        MemoryConsolidationPreviewError,
+        build_memory_consolidation_preview,
+    )
+
+    try:
+        result = build_memory_consolidation_preview(project_key=project)
+    except MemoryConsolidationPreviewError as exc:
+        payload = {
+            "command": "second-brain memory consolidation-preview build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_CONSOLIDATION_PREVIEW_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _MEMORY_CONSOLIDATION_PREVIEW_GUARDRAILS}
+    payload.pop("proposals", None)  # per-cluster hashed records summarized by counts; not echoed in bulk
+    human = [
+        "Phase 09 memory consolidation preview (read-only, advisory; review-only proposals)",
+        f"  status: {result['status']} | accepted items: {result['accepted_item_count']}"
+        f" | clusters: {result['cluster_count']} | members: {result['total_member_count']}",
+        f"  proposals -> {result['proposal_review_status']} (tier {result['proposal_review_tier']});"
+        f" long_term_memory_items unchanged (never auto-delete/supersede)",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@memory_consolidation_preview_app.command("proof")
+def memory_consolidation_preview_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the consolidation-preview proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove a duplicate cluster yields review-only proposals while long_term_memory_items stays unchanged."""
+    from hb_assistant.construction.second_brain.memory.consolidation_preview import (
+        MemoryConsolidationPreviewError,
+        build_memory_consolidation_preview_proof,
+    )
+
+    try:
+        proof = build_memory_consolidation_preview_proof(write_evidence=evidence)
+    except MemoryConsolidationPreviewError as exc:
+        payload = {
+            "command": "second-brain memory consolidation-preview proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _MEMORY_CONSOLIDATION_PREVIEW_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _MEMORY_CONSOLIDATION_PREVIEW_GUARDRAILS}
+    human = [
+        f"Memory consolidation preview proof passed={proof['proof_passed']}"
+        f" (clusters={proof['cluster_count']}, members={proof['total_member_count']},"
+        f" memory_unchanged={proof['long_term_memory_items_unchanged']}, advisory_only={proof['advisory_only_flag_set']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 

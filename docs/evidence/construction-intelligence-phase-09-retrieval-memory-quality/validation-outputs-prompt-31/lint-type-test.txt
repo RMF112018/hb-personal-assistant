@@ -1,0 +1,5 @@
+compileall src tests -> exit 0
+ruff check . -> All checks passed!
+mypy src -> 2 PRE-EXISTING errors in review_burden_mart.py (concurrent commit 3759a0a); my consolidation_preview.py is CLEAN. 300 source files.
+pytest "not live and not integration and not manual" -> 3234 passed / 8 failed. ALL 8 failures are test_v{29,30,31,32,33,34,35,37}_table_classified_in_lifecycle_contract — caused by the concurrent review_burden commit 3759a0a adding 3 tables (second_brain_review_burden_runs/_clusters/_policy_evals) WITHOUT classifying them in the lifecycle contract. NONE are from this change (it adds no tables; my 7 new tests pass).
+repo_sensitive_scan + second_brain_no_writeback_proof -> pass

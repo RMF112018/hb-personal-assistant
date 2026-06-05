@@ -363,6 +363,26 @@ statement-hash matches an accepted item (or another candidate), *stale* if it ma
   guard-clean metadata-only `second_brain_memory_quality_review_runs` receipt, the read-only default
   persisting nothing, no determination, and no raw memory statement emitted.
 
+## Memory consolidation preview (Prompt 31)
+
+The `second-brain memory consolidation-preview` group (a sub-group of `second-brain memory`) generates
+**review-only consolidation proposals** over the **accepted** memory corpus: it clusters exact-duplicate
+accepted memory items and proposes keeping one canonical member while superseding the redundant duplicates
+— **as proposals for human review only**. It **never auto-deletes, auto-supersedes, or auto-merges** any
+memory item — `long_term_memory_items` is left byte-for-byte unchanged; only proposals are written (on a
+receipt) to the reserved V38 `second_brain_memory_consolidation_candidates` + `…_review_items`
+(`advisory_only=1`) tables. Statements and memory refs are SHA256-hashed (never raw).
+
+- `consolidation-preview build [--project P]` — clusters duplicate accepted items and emits a metadata-only
+  summary (`status` built/empty, accepted-item count, cluster count, member count; proposals routed to
+  `pending_review` at `mandatory_review` tier). Read-only — **persists nothing** to the operator DB by
+  default. On the operator DB (no duplicate accepted items) it is honestly `empty`. Exit 0 on success; 3
+  fail-closed.
+- `consolidation-preview proof` — demonstrates a duplicate cluster yielding one review-only proposal
+  (canonical keep + supersede members), guard-clean metadata-only candidate + review-item receipts
+  (`advisory_only=1`), **`long_term_memory_items` left byte-for-byte unchanged** (never auto-delete/
+  supersede), the singleton not proposed, no determination, and no raw memory statement emitted.
+
 ## Installing the optional embedding extra (for `--apply`)
 
 `--apply` needs the LlamaIndex SDK **and** a local embedding model. `.[retrieval]` is core-only;

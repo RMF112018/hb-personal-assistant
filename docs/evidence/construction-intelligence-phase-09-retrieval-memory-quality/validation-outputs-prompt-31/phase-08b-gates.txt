@@ -1,0 +1,1 @@
+phase-08b-gates -> exit 1 (PRE-EXISTING ENVIRONMENTAL FAILURE — NOT caused by this change; automation_executor.py:1485).
