@@ -1,4 +1,4 @@
-"""Phase 09 Prompt 38 — CLI and operator status (advisory aggregator).
+"""Phase 09 Prompt 38/40 — CLI and operator status (advisory aggregator).
 
 A read-only, advisory operator-status aggregator that exposes a **repo-consistent** view of every
 Phase-09 CLI surface (retrieval / memory / agent-performance / daily-brief-reproducibility /
@@ -6,9 +6,12 @@ data-quality), its status/eval/build/proof command shape, and the rolled-up read
 
 It enumerates the surfaces from a registry (seed) that mirrors the repo's actual CLI command set,
 reports each surface's contract presence + owning-table population (from the read-only Phase-09
-schema-status report), and rolls up the existing read-only schema-status + Phase-09 gates signals.
-Readiness is **never overstated**: a surface whose substrate ships empty is reported `advisory_ready`,
-never `operational`. Read-only: persists nothing, no migration. Makes no determination; fail-closed.
+schema-status report, V39/22 tables), and rolls up the existing read-only schema-status + Phase-09
+gates signals + review advisory + hybrid/llamaindex probes. Readiness is **never overstated**:
+production_readiness=false; surfaces with legitimately empty substrate are advisory_ready (not
+operational); semantic/vector gated on SDK+applied; explicit deferred_limitations list. Categories
+consolidated under `readiness_categories`. Read-only: persists nothing, no migration. Makes no
+determination; fail-closed.
 
 Public entry points:
   evaluate_phase_09_operator_status(*, db_path=None) -> dict
@@ -129,9 +132,10 @@ def evaluate_phase_09_operator_status(*, db_path: str | None = None) -> dict[str
     """Aggregate a repo-consistent Phase-09 operator status (read-only; advisory; no persistence).
 
     Enumerates the registry surfaces with per-surface posture (contract present, owning-table row
-    count, command kinds) and rolls up the read-only schema-status + Phase-09 gates signals into an
-    honest ``overall_status`` (never overstated — empty substrate is advisory_ready). Makes no
-    determination.
+    count, command kinds) and rolls up the read-only schema-status + Phase-09 gates + review
+    advisory + (guarded) hybrid/llamaindex probes into an honest ``overall_status`` and
+    ``readiness_categories`` (never overstated — production=false; semantic/vector gated on SDK+applied;
+    explicit deferred list; empty substrate advisory only). Makes no determination.
     """
     from .contracts import load_phase_09_contract
     from .phase_09_gates import build_phase_09_gates_proof
@@ -167,6 +171,58 @@ def evaluate_phase_09_operator_status(*, db_path: str | None = None) -> dict[str
         gates_ok = False
         gate_status_counts = {}
         gate_count = 0
+
+    # --- readiness categories (Prompt 40: consolidate truthful posture; feed from schema + gates + review + guarded probes) ---
+    # safe_advisory = structural (V39+ present+guards) + review advisory allowed
+    # semantic_retrieval = safe + hybrid semantic_ready (core+local+applied)
+    # vector_apply = schema + local embedding runtime ready (policy separate; truthful blockers)
+    # production = False (never overstated)
+    # deferred = explicit honest list (external providers, synthesis, MCP, UX, persist etc.)
+    try:
+        from .review_burden_mart import build_review_burden_proof
+
+        review_proof = build_review_burden_proof(db_path=db_path)
+        review_advisory_allowed = bool(review_proof.get("advisory_retrieval_allowed"))
+    except Exception:
+        review_advisory_allowed = False
+
+    safe_advisory_readiness = bool(schema_ready and gates_ok and review_advisory_allowed)
+
+    try:
+        from .retrieval.hybrid_broker import build_hybrid_status
+
+        hs = build_hybrid_status(db_path=db_path)
+        semantic_ready = bool(hs.get("semantic_ready"))
+    except Exception:
+        semantic_ready = False
+
+    semantic_retrieval_readiness = bool(safe_advisory_readiness and semantic_ready)
+
+    try:
+        from .retrieval.llamaindex_config import build_llamaindex_config_status
+
+        ls = build_llamaindex_config_status(db_path=db_path)
+        # embedding_runtime_ready may be None when not applicable; prefer local_embedding_available for apply readiness
+        local_embedding_ok = bool(
+            ls.get("local_embedding_available") or ls.get("embedding_runtime_ready")
+        )
+        vector_apply_readiness = bool(schema_ready and local_embedding_ok)
+    except Exception:
+        vector_apply_readiness = False
+
+    production_readiness = False
+    deferred_limitations: list[str] = [
+        "external embedding providers (policy-gated; deferred per embedding policy)",
+        "full synthesis / claim / determination flows (advisory signals and review burden only)",
+        "MCP dispatch of Phase 09 actions (08D isolation preserved; no Phase 09 in MCP surface)",
+        "richer operator UX (Obsidian commands, TUI) over review / retrieval surfaces",
+        "persist of review burden clusters (current is read-only mart + proof)",
+        "using clusters as additional corpus family for retrieval",
+    ]
+
+    # substrate status fed from schema row counts (populated when any Phase09 table has rows>0)
+    any_populated = any((rc or 0) > 0 for rc in row_counts.values()) if row_counts else False
+    phase_09_substrate_status = "populated" if any_populated else "advisory_empty"
 
     # --- per-surface posture ---
     surfaces: list[dict[str, Any]] = []
@@ -225,13 +281,20 @@ def evaluate_phase_09_operator_status(*, db_path: str | None = None) -> dict[str
         "all_contracts_present": all_contracts_present,
         "missing_contracts": missing_contracts,
         "surfaces": surfaces,
-        "phase_09_substrate_status": "advisory_empty",
+        "phase_09_substrate_status": phase_09_substrate_status,
         "advisory_only": True,
         "makes_determination": False,
         "read_only": True,
         "readiness_overstated": False,
         "policy_version": seed.get("version"),
         "contract_version": contract.get("version"),
+        "readiness_categories": {
+            "safe_advisory_readiness": safe_advisory_readiness,
+            "semantic_retrieval_readiness": semantic_retrieval_readiness,
+            "vector_apply_readiness": vector_apply_readiness,
+            "production_readiness": production_readiness,
+            "deferred_limitations": deferred_limitations,
+        },
         "guardrails": {
             "local_first": True,
             "read_only": True,
@@ -258,6 +321,14 @@ def _render_md(report: dict[str, Any]) -> str:
         f"- readiness_overstated: {report['readiness_overstated']} (must be false)",
         f"- surface_count: {report['surface_count']} | with status/build/proof/eval/gates: "
         f"{report['surfaces_with']}",
+        f"- substrate: {report.get('phase_09_substrate_status')}",
+        "",
+        "## Readiness Categories (Prompt 40; truthful, no overstatement)",
+        f"- safe_advisory_readiness: {report.get('readiness_categories', {}).get('safe_advisory_readiness')}",
+        f"- semantic_retrieval_readiness: {report.get('readiness_categories', {}).get('semantic_retrieval_readiness')}",
+        f"- vector_apply_readiness: {report.get('readiness_categories', {}).get('vector_apply_readiness')}",
+        f"- production_readiness: {report.get('readiness_categories', {}).get('production_readiness')}",
+        f"- deferred_limitations: {report.get('readiness_categories', {}).get('deferred_limitations')}",
         "",
         "## Surfaces (repo-consistent CLI command inventory)",
         "",

@@ -3876,13 +3876,16 @@ def data_quality_phase_09_schema_status(
         True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
     ),
 ) -> None:
-    """Phase 09 V38 schema + table-lifecycle status (read-only, fail-closed).
+    """Phase 09 V39 schema + table-lifecycle status (read-only, fail-closed).
 
-    Verifies the local schema is at the expected head (V38), that every one of the nineteen V38
-    retrieval/memory/agent tables exists with the full twenty-three guard columns and ships empty,
-    and that the Phase 09 lifecycle contract loads and classifies all nineteen tables. Read-only
-    over the DB; advisory only; never a determination. Exit 0 when overall_status is `ready`, 3
-    otherwise (including a missing/invalid lifecycle contract — fail-closed).
+    Verifies the local schema is at the expected head (>=V39), that every one of the Phase 09
+    retrieval/memory/agent tables (22 total; V38 base + V39 additive) exists with the full
+    twenty-three guard columns, and that the Phase 09 lifecycle contract loads and classifies
+    all tables. Row counts are reported (some tables such as approved source manifests,
+    vector index items, and review burden clusters are legitimately populated by valid
+    operations); row population does not flip overall_status. Read-only over the DB; advisory
+    only; never a determination. Exit 0 when overall_status is `ready`, 3 otherwise (including
+    a missing/invalid lifecycle contract — fail-closed).
     """
     from hb_assistant.construction.second_brain.phase_09_schema import (
         Phase09SchemaContractError,
@@ -3904,12 +3907,13 @@ def data_quality_phase_09_schema_status(
 
     payload = {**report, "guardrails": _PHASE_09_SCHEMA_GUARDRAILS}
     human = [
-        "Phase 09 V38 schema + table-lifecycle status (read-only, advisory)",
+        "Phase 09 V39 schema + table-lifecycle status (read-only, advisory)",
         f"  overall: {report['overall_status']} | schema: {report['schema_version']}"
         f" (expected {report['schema_version_expected']})",
         f"  tables present: {report['all_tables_present']} | guards present:"
         f" {report['all_guards_present']} | all rows zero: {report['all_rows_zero']}",
         f"  tables: {report['phase_09_table_count']} | guard columns: {report['guard_column_count']}",
+        "  (row counts reported; population of manifests/vector/review tables is expected and does not affect ready status)",
     ]
     _emit_08c(
         payload,
@@ -3942,9 +3946,10 @@ def data_quality_phase_09_gates(
     Aggregates the Phase 09 posture into the pass / warning / fail_blocking / deferred_not_blocking
     taxonomy: structural + safety gates (schema present, all 22 Phase-09 tables' 23 guard columns
     clean, no raw vector content, no external writeback, no semantic-retrieval policy bypass, the
-    gates + lifecycle contracts loadable) must pass; per-surface gates whose substrate ships empty are
-    honestly deferred_not_blocking. Read-only; advisory; never overstates readiness; makes no
-    determination. Exit 0 when ok (no fail_blocking); 3 on a fail-closed failure or a blocking gate.
+    gates + lifecycle contracts loadable) must pass; per-surface gates whose substrate is legitimately
+    empty (or pre-operational) are honestly deferred_not_blocking (population of manifests/vectors/review
+    yields pass for those). Read-only; advisory; never overstates readiness; makes no determination.
+    Exit 0 when ok (no fail_blocking); 3 on a fail-closed failure or a blocking gate.
     """
     from hb_assistant.construction.second_brain.phase_09_gates import (
         Phase09GatesError,
@@ -4068,10 +4073,12 @@ def data_quality_phase_09_operator_status(
 
     Read-only aggregator: enumerates every Phase-09 CLI surface (retrieval / memory / agent-performance
     / daily-brief-reproducibility / data-quality) with its command shape + per-surface posture
-    (contract present, owning-table population), and rolls up the read-only schema-status + Phase-09
-    gates signals into an honest overall_status. Readiness is never overstated (an empty-substrate
-    surface is advisory_ready, not operational). Persists nothing; advisory only; makes no
-    determination. Exit 0 when advisory_ready; 3 on a fail-closed failure or degraded/not_ready posture.
+    (contract present, owning-table population from V39/22 schema report), and rolls up the read-only
+    schema-status + Phase-09 gates + review advisory + (guarded) hybrid/llamaindex into honest
+    overall_status + explicit readiness_categories (safe_advisory, semantic_retrieval, vector_apply,
+    production=false, deferred_limitations list). Substrate status reflects populated vs advisory_empty.
+    Readiness never overstated. Persists nothing; advisory only; makes no determination. Exit 0 when
+    advisory_ready; 3 on a fail-closed failure or degraded/not_ready posture.
     """
     from hb_assistant.construction.second_brain.phase_09_operator_status import (
         Phase09OperatorStatusError,
@@ -4099,6 +4106,8 @@ def data_quality_phase_09_operator_status(
         f"  schema_ready: {report['schema_ready']} | gates_ok: {report['gates_ok']}"
         f" | all_contracts_present: {report['all_contracts_present']}"
         f" | readiness_overstated: {report['readiness_overstated']}",
+        f"  substrate: {report.get('phase_09_substrate_status')}",
+        f"  categories: safe_advisory={report.get('readiness_categories', {}).get('safe_advisory_readiness')} semantic={report.get('readiness_categories', {}).get('semantic_retrieval_readiness')} vector={report.get('readiness_categories', {}).get('vector_apply_readiness')} prod={report.get('readiness_categories', {}).get('production_readiness')}",
     ]
     _emit_08c(
         payload, json_out=json_out, human=human, exit_code=0 if report["operator_status_ok"] else 3
@@ -4127,7 +4136,7 @@ def retrieval_llamaindex_status(
 
     Reports core SDK availability (`llama-index-core` from `retrieval` extra; probed without import),
     local embedding backend readiness (`llama-index-embeddings-huggingface` from `retrieval-local`),
-    the resolved metadata-only retrieval config + its config_hash, schema readiness (V38), and
+    the resolved metadata-only retrieval config + its config_hash, schema readiness (Phase 09 V39/22), and
     `embedding_runtime_ready` (core+local for provider="local"; core for "mock"). `ready_to_index`
     is now truthful across installs. The SDK(s) absent by default (local-first) — reported, not failed.
     Read-only over the DB; builds no embeddings/index. Exit 0 when contract/seed load, config valid,
@@ -5559,7 +5568,7 @@ def retrieval_embedding_policy_status(
 
     Reports the resolved embedding provider / dimension / vector-store kind, the embeddable
     source-family allowlist (the redacted, source-linked families — never a raw EXCLUDED family),
-    the persistence rules (vectors never persisted to SQLite), and schema readiness (V38). Read-only
+    the persistence rules (vectors never persisted to SQLite), and schema readiness (Phase 09 V39/22). Read-only
     over the DB; builds no embeddings/index. Exit 0 when the contract/seed load, the config is valid,
     and the schema is ready; exit 3 on a fail-closed contract/seed failure, invalid config, or stale
     schema.

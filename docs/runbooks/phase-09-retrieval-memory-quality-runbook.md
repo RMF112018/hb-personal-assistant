@@ -50,12 +50,12 @@ If you see subject/body/title/email/URL/raw in an example, that is a bug (report
 
 ### V39 schema + 08D/MCP compatibility
 
-V39 is additive (3 new tables, full 23 guards). Phase 09 surfaces use >=38 checks (V39 satisfies). 08D/MCP must be re-validated after the bump with the explicit commands:
+V39 is additive (3 new tables for review burden; 22 tables total, full 23 guards on all). Phase 09 surfaces use >=38 checks (V39 satisfies; schema status reports >=39 as ready). 08D/MCP must be re-validated after the bump with the explicit commands:
 
 - second-brain mcp status/audit/no-raw-access/no-writeback --json
 - second-brain data-quality phase-08d-gates --json
 
-All must pass with no regression vs pre-V39.
+All must pass with no regression vs pre-V39. (See Prompt 40 readiness consolidation for explicit categories in operator-status; population of tables like manifests/vectors/review is now reflected without blocking ready status.)
 
 ### Package / install
 
@@ -89,6 +89,8 @@ See the sibling runbooks and the per-prompt architecture notes (120–150 range)
 - Persist of burden clusters from the review CLI (current is read-only compute + proof).
 - Using the clusters table as an additional corpus family.
 - Richer operator UX (Obsidian commands, TUI) over the Typer review group.
+- Full production readiness (see phase-09-operator-status / gates / schema-status for explicit categories: safe_advisory_readiness, semantic_retrieval_readiness, vector_apply_readiness, production_readiness=false, deferred_limitations list). External embedding providers, full synthesis determinations, MCP dispatch, and certain high-impact flows remain deferred.
+- (Prompt 40) Schema/gates now report V39/22 tables + row counts without forcing all_rows_zero for "ready" (legitimate population of manifests/vector/review after apply is advisory-ok). See evidence/.../validation-outputs-prompt-40/ for matrix outputs (phase-09-schema-status, corpus-balance, approved-sources, llamaindex/hybrid, review, 08D/MCP gates).
 
 ## Review burden clusters: deduplicated examples
 

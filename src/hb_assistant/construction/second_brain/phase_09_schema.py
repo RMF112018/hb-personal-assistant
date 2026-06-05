@@ -1,15 +1,19 @@
-"""Phase 09 Prompt 12 — V38 schema status + table-lifecycle probe (read-only).
+"""Phase 09 Prompt 12 — V39 schema status + table-lifecycle probe (read-only).
 
-A deterministic, **read-only** status report over the nineteen V38 Phase 09 retrieval / memory /
-agent metadata tables. It verifies that the local schema is at the expected head (V38), that every
-Phase 09 table exists and carries the full twenty-three guard columns (`CHECK(... = 0)`), that each
-ships empty (row count 0), and that the Phase 09 lifecycle contract loads and classifies all nineteen
-tables. It is the schema-foundation companion to the V38 migration — no LlamaIndex / embeddings /
-vector / semantic-retrieval runtime is involved.
+A deterministic, **read-only** status report over the Phase 09 retrieval / memory / agent metadata
+tables (V38 base + V39 additive review burden tables; 22 tables total, list name retained PHASE_09_V38_TABLES
+for compatibility). It verifies that the local schema is at the expected head (>=V39), that every
+Phase 09 table exists and carries the full twenty-three guard columns (`CHECK(... = 0)`), and that the
+Phase 09 lifecycle contract loads and classifies all tables. Row counts are reported per table (some
+tables such as approved source manifests, vector index items, and review burden clusters are legitimately
+populated by valid operations; population does not indicate failure). It is the schema-foundation
+companion to the V38/V39 substrate — no LlamaIndex / embeddings / vector / semantic-retrieval runtime
+is involved here.
 
 Strictly advisory and **fail-closed**: the lifecycle contract is required (a missing/invalid contract
-raises `Phase09SchemaContractError`), and `overall_status` is ``ready`` only when schema, tables,
-guards, row-emptiness, and the contract all check out. The probe opens the database **read-only**
+raises `Phase09SchemaContractError`), and `overall_status` is ``ready`` when schema (>=V39), tables
+present, and all guards present (row-emptiness is **not** required for ready status; all_rows_zero
+and per-table row_count are reported as diagnostics only). The probe opens the database **read-only**
 (`?mode=ro`) and never writes; outputs are names / counts / booleans only — no raw content, prompts,
 responses, tokens, URLs, or PEMs.
 
@@ -32,7 +36,7 @@ from typing import Any
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION
 
-# Single source of truth for the Phase 09 V38+ tables (tests import this; V39 additive, list name retained for compat).
+# Single source of truth for the Phase 09 V38+ tables (tests import this; V39 additive, list name retained for compat; 22 tables as of V39).
 PHASE_09_V38_TABLES: list[str] = [
     "second_brain_retrieval_llamaindex_config_snapshots",
     "second_brain_retrieval_approved_source_manifests",
@@ -183,13 +187,19 @@ def _columns(conn: sqlite3.Connection, table: str) -> set[str]:
 
 
 def build_phase_09_schema_status_report(db_path: str | None = None) -> dict[str, Any]:
-    """Build the read-only V38 schema + table-lifecycle status report (fail-closed)."""
+    """Build the read-only V39 schema + table-lifecycle status report (fail-closed).
+
+    Structural ready requires schema_version >= 39, all listed tables present, and all 23 guard
+    columns present on each. Row counts are reported (some tables are expected to be populated
+    after valid writes e.g. manifests, vector items, review burden); all_rows_zero is computed
+    and emitted for diagnostics but is **not** required for overall_status == "ready".
+    """
     contract = load_phase_09_lifecycle_contract()
     contract_tables: dict[str, Any] = contract.get("tables", {})
 
     conn = _open_ro(db_path)
     schema_version = _schema_version(conn) if conn is not None else 0
-    schema_ready = schema_version >= 38
+    schema_ready = schema_version >= 39
 
     table_reports: list[dict[str, Any]] = []
     try:
@@ -219,7 +229,11 @@ def build_phase_09_schema_status_report(db_path: str | None = None) -> dict[str,
     all_tables_present = all(t["present"] for t in table_reports)
     all_guards_present = all(t["guard_columns_present"] for t in table_reports)
     all_rows_zero = all(t["row_count"] == 0 for t in table_reports)
-    overall_ready = schema_ready and all_tables_present and all_guards_present and all_rows_zero
+    overall_ready = schema_ready and all_tables_present and all_guards_present
+    # Note: all_rows_zero is retained for reporting/diagnostics (e.g. pre-pop proofs) but is
+    # intentionally excluded from overall_ready so that legitimate population of tables such as
+    # second_brain_retrieval_approved_source_manifests, vector_index_items, review_burden_* etc.
+    # does not cause a false "not_ready" after valid apply operations.
 
     return {
         "command": "second-brain data-quality phase-09-schema-status",

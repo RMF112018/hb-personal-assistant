@@ -13,9 +13,9 @@ Phase 09 will add a semantic-retrieval plane (LlamaIndex / embeddings / a vector
 existing Retrieval Broker) plus memory-quality / consolidation and agent-performance agents. The
 package's implementation contract requires schema and table-lifecycle records to land **before** any
 runtime code (define contracts → additive schema → dry-run surfaces → proofs). Prompt 12 establishes
-that foundation: the full nineteen-table V38 substrate, guarded at the SQLite layer, plus the lifecycle
+that foundation: the Phase 09 substrate (V38 base + V39 additive = 22 tables), guarded at the SQLite layer, plus the lifecycle
 contracts and a read-only status surface — explicitly with **no LlamaIndex / embeddings / vector /
-semantic-retrieval code** (the substrate ships empty; later prompts populate it).
+semantic-retrieval code** (the substrate reports population; manifests/vector/review tables are legitimately written by valid ops; pre-V39 docs emphasized "ships empty" for the initial empty state).
 
 ## 2. Design
 
@@ -35,7 +35,7 @@ guard columns, and lifecycle classification now.
 
 ### Two lifecycle contracts
 - The canonical `table_lifecycle_status_contract.json` (single source consumed by `table-inventory`)
-  grows 171→190 with the nineteen tables classified `placeholder_deferred` / `phase_owner 09` / `V38`
+  grows 171→190 with the Phase 09 tables (22 as of V39) classified `placeholder_deferred` / `phase_owner 09` / `V38+`
   — keeping the inventory at **0 unmapped** the moment the migration lands (atomic with it).
 - A new `phase_09_table_lifecycle_contract.json` captures the richer Phase 09 lifecycle vocabulary
   (`blocked_preflight` … `deferred_future_phase`) and maps each table to its lifecycle state + owning
@@ -52,7 +52,7 @@ not-ready or contract failure).
 
 ## 3. Verification
 
-Migration smoke (temp DB): `apply() == 38`, 19 tables, 0 rows, idempotent (one v38 `schema_migrations`
+Migration smoke (temp DB): `apply() == 38`, Phase 09 tables present (22 as of V39), 0 rows for fresh, idempotent (one v38 `schema_migrations`
 row), each guard `CHECK(=0)` rejects a non-zero insert. Live: `phase-09-schema-status` ready;
 `table-inventory` 190 / 0 unmapped / schema 38. Full matrix: compileall/ruff clean, mypy 281 files,
 pytest **3069 passed** (3056 + 13 new), `construction-agent validate` 4/4 V38, 08A/08B/MCP gates +
@@ -68,7 +68,7 @@ preserved in the column design. No stop condition triggered.
 
 ## LlamaIndex readiness truthful across installs (post-Prompt 19/20 follow-up) — schema surface note
 
-The V38 substrate (and `phase-09-schema-status`) landed with the explicit preflight "no LlamaIndex /
+The Phase 09 substrate (V38/V39; 22 tables; and `phase-09-schema-status`) landed with the explicit preflight "no LlamaIndex /
 embeddings / vector / semantic-retrieval code" (see §1, §4). Later prompts (13+) added the optional
 LlamaIndex layer and its readiness surfaces.
 

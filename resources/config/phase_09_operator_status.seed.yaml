@@ -1,8 +1,9 @@
-# Phase 09 Prompt 38 — CLI and operator status (resolved surface registry; advisory).
+# Phase 09 Prompt 38/40 — CLI and operator status (resolved surface registry; advisory).
 # A read-only, advisory operator-status aggregator exposing a repo-consistent view of every Phase-09
 # CLI surface, its status/eval/build/proof command shape, and the rolled-up readiness posture.
-# Read-only: persists nothing, no migration. Readiness is never overstated (an empty-substrate surface
-# is advisory_ready, not operational). Makes no determination; fail-closed.
+# (V39/22 tables; population of manifests/vector/review ok for advisory). Read-only: persists nothing,
+# no migration. Readiness is never overstated (production_readiness=false; explicit deferred list;
+# safe_advisory vs semantic vs vector categories). Makes no determination; fail-closed.
 version: phase_09_operator_status_v1
 phase: "09"
 

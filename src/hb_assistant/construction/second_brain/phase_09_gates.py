@@ -2,10 +2,12 @@
 
 A read-only, advisory evaluator that aggregates the Phase 09 retrieval/memory/quality posture into
 the pass / warning / fail_blocking / deferred_not_blocking taxonomy, mirroring the 08A/08B/08C/08D
-gate evaluators. Structural + safety gates (schema present, all 22 Phase-09 tables' 23 guard columns
+gate evaluators. Structural + safety gates (schema present at V39+, all 22 Phase-09 tables' 23 guard columns
 clean, no raw vector content, no external writeback, no semantic-retrieval policy bypass, the gates +
-lifecycle contracts loadable) must pass; the per-surface gates whose V38/V39 substrate ships
-empty/advisory are honestly **deferred_not_blocking** (never overstated).
+lifecycle contracts loadable) must pass; the per-surface gates whose substrate is legitimately empty
+(or advisory-only pre-operational) are honestly **deferred_not_blocking** (never overstated).
+Population of tables such as manifests, vector items, and review burden is expected and treated as
+pass for those surfaces (see schema report row counts).
 
 The evaluator is read-only — no persistence, no migration, no heavy proof fixtures re-run; it checks
 schema readiness, guard-column cleanliness (read-only SUM), contract presence, and table population.
@@ -153,8 +155,10 @@ def evaluate_phase_09_data_quality_gates(*, db_path: str | None = None) -> dict[
     """Evaluate the Phase 09 data-quality gate set (read-only; advisory; no persistence).
 
     Returns a conformance report (gates + by_field_status + status_counts + required_fields_covered +
-    readiness_overstated + ok). Structural/safety gates pass; per-surface gates whose substrate ships
-    empty are deferred_not_blocking. Never overstates readiness; makes no determination.
+    readiness_overstated + ok). Structural/safety gates pass (V39+ schema + guards); per-surface gates
+    whose substrate is legitimately empty (or pre-operational) are deferred_not_blocking. Population
+    of operational tables (manifests, vectors, review) yields pass for those gates. Never overstates
+    readiness; makes no determination.
     """
     from .contracts import load_phase_09_contract
 
