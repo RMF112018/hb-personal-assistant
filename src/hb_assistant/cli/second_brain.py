@@ -7041,6 +7041,26 @@ def mcp_audit(
     raise typer.Exit(0 if report.get("proof_passed") else 3)
 
 
+@mcp_app.command("daily-brief-handoff-proof")
+def mcp_daily_brief_handoff_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the MCP daily-brief handoff proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
+) -> None:
+    """Prove the hb_daily_brief_packet MCP tool returns a contract-shaped, read-only, no-raw packet."""
+    from hb_assistant.construction.second_brain.mcp import build_mcp_daily_brief_handoff_proof
+
+    proof = build_mcp_daily_brief_handoff_proof(write_evidence=evidence)
+    if json_out:
+        typer.echo(json.dumps(proof, indent=2, default=str))
+    else:
+        typer.echo(f"MCP daily-brief handoff proof passed={proof['proof_passed']}")
+    raise typer.Exit(0 if proof.get("proof_passed") else 3)
+
+
 @mcp_app.command("no-raw-access")
 def mcp_no_raw_access(
     evidence: bool = typer.Option(

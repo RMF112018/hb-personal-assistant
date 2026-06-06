@@ -1,6 +1,6 @@
 """Phase 08D MCP allowed/denied registry loaders (Prompt 04).
 
-Loads the policy-gated registries the tool broker enforces: the nine allowed workflow
+Loads the policy-gated registries the tool broker enforces: the ten allowed workflow
 tools (name → wrapper/maps_to/risk/receipt_required), the explicit denied-action set, and
 the global requirements. Fail-closed: a missing or empty registry raises so the broker
 never dispatches against an unknown policy surface.
@@ -18,7 +18,7 @@ class RegistryUnavailable(RuntimeError):
 
 
 def load_allowed_tools() -> dict[str, dict[str, Any]]:
-    """Return ``{tool_name: spec}`` for the nine allowed workflow tools."""
+    """Return ``{tool_name: spec}`` for the ten allowed workflow tools."""
     contract = load_phase_08d_contract("allowed_tools_contract")
     tools = contract.get("tools") if isinstance(contract, dict) else None
     if not isinstance(tools, list) or not tools:

@@ -714,7 +714,7 @@ def build_mcp_allowed_tools_proof(
     evidence_dir: str | None = None,
     write_evidence: bool = True,
 ) -> dict[str, Any]:
-    """Dispatch all nine allowed tools through the real broker and attest the contract shape.
+    """Dispatch all allowed tools through the real broker and attest the contract shape.
 
     Runs against a temporary database (empty → wrappers degrade safely but stay allowed),
     proving each tool is workflow-only: returns the bounded contract envelope, leaks no raw
@@ -1037,7 +1037,7 @@ def build_no_raw_mcp_access_proof(
 # A deterministic, read-only scan proving no MCP surface can perform writeback, a direct
 # Graph/Procore/SQL API call, or external delivery. STATIC/STRUCTURAL ONLY (never dispatches
 # the workflow wrappers): the permission-policy seed has every allow_* flag false, the denied
-# registry covers the writeback / direct-API / URL action classes, the nine tool wrappers are
+# registry covers the writeback / direct-API / URL action classes, the ten tool wrappers are
 # workflow-wrapper-only, the receipt tables carry the writeback guard columns at CHECK(=0),
 # and the config preview never auto-writes the live Claude Desktop config. The server-status
 # and evidence-file surfaces are optional so the server startup check can call this without
@@ -1118,15 +1118,15 @@ def evaluate_no_writeback_mcp_access(
         }
     )
 
-    # 3. tool wrappers — nine workflow-wrapper-only tools; global requirements forbid writeback.
+    # 3. tool wrappers — ten workflow-wrapper-only tools; global requirements forbid writeback.
     wrappers = build_wrapper_registry(db_path=db_path)
     reqs = set(load_global_requirements())
-    wrappers_ok = len(wrappers) == 9 and {"workflow_wrapper_only", "no_writeback"} <= reqs
+    wrappers_ok = len(wrappers) == 10 and {"workflow_wrapper_only", "no_writeback"} <= reqs
     surfaces.append(
         {
             "surface": "tool_wrappers",
             "passed": wrappers_ok,
-            "detail": "nine workflow-wrapper-only tools; workflow-only + no-writeback required",
+            "detail": "ten workflow-wrapper-only tools; workflow-only + no-writeback required",
             "wrapper_count": len(wrappers),
         }
     )

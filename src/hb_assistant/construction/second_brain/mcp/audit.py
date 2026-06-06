@@ -155,7 +155,7 @@ def run_mcp_permission_audit(
         "no_writeback",
         "no_final_determinations",
     }
-    allowed_registry_safe = len(allowed_tools) == 9 and global_requirements >= _REQUIRED_REQS
+    allowed_registry_safe = len(allowed_tools) == 10 and global_requirements >= _REQUIRED_REQS
 
     denied_set = set(load_denied_actions())
     perm = _load_seed(_PERMISSION_POLICY_SEED)
@@ -178,7 +178,7 @@ def run_mcp_permission_audit(
         _check(
             "allowed_registry_safe",
             allowed_registry_safe,
-            "nine approved workflow tools; workflow-only/no-raw/no-writeback/no-determination required",
+            "ten approved workflow tools; workflow-only/no-raw/no-writeback/no-determination required",
         ),
         _check(
             "denied_registry_complete",

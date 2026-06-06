@@ -1,7 +1,7 @@
 """Phase 08D local MCP bridge (operational local stdio server).
 
 Stdio-only, fail-closed, metadata-only. Exposes the server status, the Claude Desktop
-config-preview surface, the deny-first tool broker + nine workflow wrappers, the safe
+config-preview surface, the deny-first tool broker + ten workflow wrappers, the safe
 resources/prompts, the metadata-only receipts, and the serve entrypoint. With the
 optional ``mcp`` SDK installed and every guard check passing, ``serve_stdio`` drives a
 real local stdio MCP session (Prompt 15, adapter in :mod:`.sdk_server`); without the SDK
@@ -13,6 +13,7 @@ from __future__ import annotations
 from .audit import run_mcp_permission_audit, snapshot_all_registries, snapshot_tool_registry
 from .broker import DENIAL_REASONS, ToolBroker
 from .config_preview import assess_config_safety, build_claude_desktop_config_preview
+from .daily_brief_handoff_proof import build_mcp_daily_brief_handoff_proof
 from .policy import build_mcp_status, evaluate_startup_checks
 from .prompts import load_prompts, render_all_prompts, render_prompt
 from .proof import (
@@ -36,7 +37,7 @@ from .wrappers import build_wrapper_registry
 
 
 def build_default_broker(*, db_path: str | None = None, persist: bool = True) -> ToolBroker:
-    """Construct a broker wired with the nine real workflow wrappers."""
+    """Construct a broker wired with the ten real workflow wrappers."""
     return ToolBroker(
         wrappers=build_wrapper_registry(db_path=db_path), db_path=db_path, persist=persist
     )
@@ -50,6 +51,7 @@ __all__ = [
     "build_claude_desktop_config_preview",
     "build_default_broker",
     "build_mcp_allowed_tools_proof",
+    "build_mcp_daily_brief_handoff_proof",
     "build_mcp_claude_desktop_runbook_proof",
     "build_mcp_denied_tools_proof",
     "build_mcp_prompts_proof",

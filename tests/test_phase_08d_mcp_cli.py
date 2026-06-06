@@ -27,11 +27,11 @@ def _invoke(*args: str) -> dict:
     return payload
 
 
-def test_mcp_tools_lists_nine_allowed_and_denied() -> None:
+def test_mcp_tools_lists_ten_allowed_and_denied() -> None:
     d = _invoke("tools")
-    assert d["allowed_tool_count"] == 9
+    assert d["allowed_tool_count"] == 10
     assert d["denied_action_count"] == 27
-    assert len(d["tools"]) == 9
+    assert len(d["tools"]) == 10
     assert {t["name"] for t in d["tools"]} >= {"hb_status", "hb_query"}
     assert all(t["wrapper"] for t in d["tools"])
     assert "workflow_wrapper_only" in d["global_requirements"]

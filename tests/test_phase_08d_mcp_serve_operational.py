@@ -55,7 +55,7 @@ def test_operational_stdio_roundtrip_is_safe_and_receipted() -> None:
 
         # Protocol surface.
         assert out["server"] == "hb-personal-assistant"
-        assert len(out["tools"]) == 9 and all(name.startswith("hb_") for name in out["tools"])
+        assert len(out["tools"]) == 10 and all(name.startswith("hb_") for name in out["tools"])
         assert out["resources"] == 5
         assert out["prompts"] == 5
 

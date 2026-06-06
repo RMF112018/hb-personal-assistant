@@ -31,6 +31,13 @@
       "receipt_required": true
     },
     {
+      "name": "hb_daily_brief_packet",
+      "wrapper": "mcp_daily_brief_packet_wrapper",
+      "maps_to": "daily-brief handoff packet (DailyBriefHandoffPacketV1) — read-only metadata-only render packet",
+      "risk": "low",
+      "receipt_required": true
+    },
+    {
       "name": "hb_open_daily_brief",
       "wrapper": "mcp_open_daily_brief_wrapper",
       "maps_to": "automation open-brief local-only policy",

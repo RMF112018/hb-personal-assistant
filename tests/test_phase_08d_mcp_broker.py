@@ -1,7 +1,7 @@
 """Phase 08D Prompt 04 — policy-gated MCP tool broker.
 
 Proves deny-first dispatch, fail-closed reason codes, bounded + no-raw output validation,
-and metadata-only receipts (hashes/counts only; all guard columns 0). The nine workflow
+and metadata-only receipts (hashes/counts only; all guard columns 0). The workflow
 wrappers land in Prompt 05; the allowed→receipt path is exercised here with an injected
 test wrapper.
 """
@@ -43,10 +43,10 @@ def _broker(db: str, wrappers: dict[str, Any] | None = None) -> ToolBroker:
     return ToolBroker(wrappers=wrappers or {}, db_path=db, persist=True)
 
 
-def test_registries_load_nine_allowed_and_denied_actions() -> None:
+def test_registries_load_ten_allowed_and_denied_actions() -> None:
     allowed = load_allowed_tools()
     denied = load_denied_actions()
-    assert len(allowed) == 9
+    assert len(allowed) == 10
     assert "hb_status" in allowed and allowed["hb_status"]["wrapper"] == "mcp_status_wrapper"
     assert "arbitrary_sql" in denied and "graph_api_call" in denied
     assert len(denied) >= 25
@@ -151,7 +151,7 @@ def test_broker_proof_passes() -> None:
         proof = build_mcp_tool_broker_proof(evidence_dir=td, write_evidence=True)
         assert proof["proof_passed"] is True
         assert proof["registries"] == {
-            "allowed_tools": 9,
+            "allowed_tools": 10,
             "denied_actions": len(load_denied_actions()),
         }
         assert proof["metadata_only"]["all_guard_columns_zero"] is True

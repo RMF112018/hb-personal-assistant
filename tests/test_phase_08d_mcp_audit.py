@@ -44,7 +44,7 @@ def test_tool_registry_snapshot_is_guard_clean() -> None:
             "FROM second_brain_mcp_tool_registry_snapshots"
         ).fetchone()
         allowed, denied, reg_hash, ext_wb, raw_prompt = row
-        assert (allowed, denied) == (9, 27)
+        assert (allowed, denied) == (10, 27)
         assert reg_hash and (ext_wb, raw_prompt) == (0, 0)
 
 

@@ -1,8 +1,8 @@
-"""Phase 08D Prompt 05 — the nine MCP allowed workflow wrappers.
+"""Phase 08D Prompt 05 — the ten MCP allowed workflow wrappers (+ Phase 09 daily-brief packet).
 
 Proves each wrapper runs offline on an empty temp DB, returns the bounded contract shape
 without raising, and never surfaces raw content; that dispatch through the real broker
-yields nine allowed, metadata-only receipts; and that hb_open_daily_brief never opens and
+yields ten allowed, metadata-only receipts; and that hb_open_daily_brief never opens and
 hb_memory_feedback records only a local feedback-log row.
 """
 
@@ -18,7 +18,11 @@ from hb_assistant.construction.second_brain.mcp import (
     build_mcp_allowed_tools_proof,
     build_wrapper_registry,
 )
-from hb_assistant.construction.second_brain.mcp.proof import _FORBIDDEN_RESULT_FIELDS
+from hb_assistant.construction.second_brain.financial_review_routing import _assert_no_raw
+from hb_assistant.construction.second_brain.mcp.proof import (
+    _collect_keys,
+    _FORBIDDEN_RESULT_FIELDS,
+)
 from hb_assistant.construction.second_brain.mcp.registry import load_allowed_tools
 from hb_assistant.construction.second_brain.mcp.wrappers import (
     mcp_memory_feedback_wrapper,
@@ -33,11 +37,11 @@ def _tmpdb(td: str) -> str:
     return str(Path(td) / "w.db")
 
 
-def test_registry_has_nine_wrappers_for_every_allowed_tool() -> None:
+def test_registry_has_ten_wrappers_for_every_allowed_tool() -> None:
     registry = build_wrapper_registry()
     allowed = load_allowed_tools()
     assert set(registry) == set(allowed)
-    assert len(registry) == 9
+    assert len(registry) == 10
 
 
 def test_every_wrapper_returns_bounded_shape_offline() -> None:
@@ -53,9 +57,13 @@ def test_every_wrapper_returns_bounded_shape_offline() -> None:
             assert set(out) >= _ENVELOPE_KEYS, f"{name} missing envelope keys"
             assert isinstance(out["results"], list)
             assert len(out["results"]) <= 50
-            blob = json.dumps(out, default=str)
-            for forbidden in _FORBIDDEN_RESULT_FIELDS:
-                assert forbidden not in blob, f"{name} leaked {forbidden}"
+            # Forbidden raw FIELD NAMES must not appear as keys (matches the broker's real gate,
+            # _collect_keys); a naive substring scan would false-positive on legitimate guardrail
+            # language such as the mandated "no_final_determinations" flag.
+            leaked = set(_FORBIDDEN_RESULT_FIELDS) & _collect_keys(out)
+            assert not leaked, f"{name} leaked forbidden field name(s): {sorted(leaked)}"
+            # Value-level raw content (tokens/URLs/emails/PEM/JWT) is caught by the no-raw gate.
+            _assert_no_raw(json.dumps(out, default=str), f"{name} output")
 
 
 def test_status_wrapper_reports_runtime_posture() -> None:
@@ -90,7 +98,7 @@ def test_memory_feedback_requires_target_and_writes_local_row() -> None:
         assert n == 1
 
 
-def test_broker_dispatch_allows_all_nine_with_metadata_receipts() -> None:
+def test_broker_dispatch_allows_all_ten_with_metadata_receipts() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = _tmpdb(td)
         broker = build_default_broker(db_path=db, persist=True)
@@ -107,15 +115,15 @@ def test_broker_dispatch_allows_all_nine_with_metadata_receipts() -> None:
         receipts = conn.execute(
             "SELECT COUNT(*) FROM second_brain_mcp_tool_call_receipts"
         ).fetchone()[0]
-        assert receipts == 9
+        assert receipts == 10
 
 
 def test_allowed_tools_contract_proof_passes() -> None:
     with tempfile.TemporaryDirectory() as td:
         proof = build_mcp_allowed_tools_proof(evidence_dir=td, write_evidence=True)
         assert proof["proof_passed"] is True
-        assert proof["tool_count"] == 9
-        assert proof["tool_call_receipts"] == 9
+        assert proof["tool_count"] == 10
+        assert proof["tool_call_receipts"] == 10
         assert proof["metadata_only"]["all_guard_columns_zero"] is True
         assert proof["metadata_only"]["no_forbidden_result_fields"] is True
         assert (Path(td) / "mcp-tool-contract-proof.json").exists()

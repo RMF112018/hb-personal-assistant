@@ -1,0 +1,402 @@
+{
+  "audit": "mcp-daily-brief-handoff-tool",
+  "phase": "09-addendum-daily-brief-mcp-handoff",
+  "prompt": "02",
+  "purpose": "Expose the approved DailyBriefHandoffPacketV1 through one narrow MCP workflow-wrapper tool for Claude scheduled rendering only.",
+  "generated_utc": "2026-06-06T10:09:12.421412+00:00",
+  "repo_sha": "8532e8268c21e481da78f36c6f914a6724c10ffd",
+  "tool_name": "hb_daily_brief_packet",
+  "wrapper": "mcp_daily_brief_packet_wrapper",
+  "suggested_names_mapped": [
+    "construction_daily_brief_packet",
+    "get_daily_brief_handoff"
+  ],
+  "name_mapping_note": "Implemented as hb_daily_brief_packet to follow the repo's hb_* MCP tool naming convention; maps to the suggested names construction_daily_brief_packet / get_daily_brief_handoff.",
+  "allowlist_spec": {
+    "wrapper": "mcp_daily_brief_packet_wrapper",
+    "maps_to": "daily-brief handoff packet (DailyBriefHandoffPacketV1) \u2014 read-only metadata-only render packet",
+    "risk": "low",
+    "receipt_required": true
+  },
+  "inputs": {
+    "date": "optional; default local today",
+    "project_scope": "optional; default 'all'",
+    "include_rendering_instructions": "optional; default true"
+  },
+  "output": "DailyBriefHandoffPacketV1 (returned at result.results[0]); guardrails + rendering_instructions carried in the packet.",
+  "mcp_policy": {
+    "workflow_wrapper_only": true,
+    "read_only": true,
+    "local_first": true,
+    "metadata_only": true,
+    "source_linked": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "no_final_determination": true,
+    "no_direct_graph_procore_db_vector": true
+  },
+  "global_requirements": [
+    "workflow_wrapper_only",
+    "metadata_receipt_required",
+    "bounded_output",
+    "policy_posture_required",
+    "no_raw_content",
+    "no_writeback",
+    "no_final_determinations"
+  ],
+  "allowed_tool_count": 10,
+  "deny_first": "Anything not in the allowlist (memory mutation, vector search, daily-brief apply) is denied as tool_not_allowed; explicit DB/Graph/Procore/writeback actions remain denied; denied tokens in arguments are denied.",
+  "representative_envelope": {
+    "tool": "hb_daily_brief_packet",
+    "decision": "allowed",
+    "denied": false,
+    "status": "ok",
+    "output_classification": "daily_brief_handoff_packet",
+    "source_count": 6,
+    "result_count": 1,
+    "provenance": "daily brief handoff packet (DailyBriefHandoffPacketV1; read-only)",
+    "policy_posture": {
+      "advisory_only": true,
+      "local_only": true,
+      "no_writeback": true,
+      "no_raw": true,
+      "no_final_determination": true
+    }
+  },
+  "representative_packet_from_controlled_inputs": {
+    "packet_id": "dbp_2d348570c8e5cdc2398de1e1bf09902e",
+    "packet_version": "DailyBriefHandoffPacketV1",
+    "generated_utc": "2026-06-06T10:09:12.405519+00:00",
+    "brief_date": "2026-06-02",
+    "project_scope": "P1",
+    "mode": "dry_run",
+    "source_coverage_summary": {
+      "source_coverage": 0.5,
+      "source_ref_count": 6,
+      "project_count": 1,
+      "review_required_count": 1,
+      "stale_unknown_count": 1,
+      "review_tier_counts": {
+        "1": 2,
+        "2": 3,
+        "3": 1
+      },
+      "context_quality_class": "sufficient",
+      "degradation_mode": "none",
+      "families_present": [
+        "accepted_long_term_memory",
+        "aging_exposure_report_items",
+        "cross_source_relationships",
+        "project_issue_history_items",
+        "project_risk_digest_items"
+      ],
+      "coverage_warnings": [
+        "empty_read_model:approved_obsidian_generated_outputs",
+        "empty_read_model:generated_outputs",
+        "empty_read_model:meeting_prep_brief_sections",
+        "empty_read_model:phase_07d_source_evidence_trails",
+        "empty_read_model:review_controlled_correspondence_context"
+      ]
+    },
+    "what_matters_today": [
+      "project:P1 items=3 (rev_exc=0, stale=1) [tier 2]"
+    ],
+    "recent_changes": [
+      {
+        "item_id": "edd1446e67b5c971e815d3f8469d68407d281c72b0d2dad3",
+        "section": "recent_changes",
+        "priority": "low",
+        "project_key": "P1",
+        "title_redacted": "email->procore references [accepted_human_promoted]",
+        "summary_redacted": "email->procore references [accepted_human_promoted]",
+        "source_family": "cross_source_relationships",
+        "source_ref_hash": "71c221cdf2e7a196e3b8d1622d1a861e5a3500f969b9f7fa",
+        "source_ref_label": "cross_source_relationships:references",
+        "review_tier": 1,
+        "review_required": false,
+        "confidence_class": "human_promoted",
+        "freshness_label": "relative",
+        "stale_warning": null,
+        "allowed_use": "advisory_render",
+        "blocked_uses": [
+          "final_determination",
+          "source_system_writeback",
+          "raw_record_request",
+          "authoritative_claim"
+        ]
+      },
+      {
+        "item_id": "955ee936c942c054927af8ba044d528c1df0fde3516fc8b6",
+        "section": "recent_changes",
+        "priority": "medium",
+        "project_key": "P1",
+        "title_redacted": "rfi status=open age=30d",
+        "summary_redacted": "rfi status=open age=30d",
+        "source_family": "project_issue_history_items",
+        "source_ref_hash": "5cda5e2e4603adcbc4c6ab9089e9e0ceb1f6e2b174cd4701",
+        "source_ref_label": "project_issue_history_items:rfi",
+        "review_tier": 2,
+        "review_required": false,
+        "confidence_class": "medium",
+        "freshness_label": "unknown",
+        "stale_warning": "stale_status",
+        "allowed_use": "advisory_render",
+        "blocked_uses": [
+          "final_determination",
+          "source_system_writeback",
+          "raw_record_request",
+          "authoritative_claim"
+        ]
+      },
+      {
+        "item_id": "66244f67f92518bb5dbdda32d03bebf921ac34088375e4c3",
+        "section": "recent_changes",
+        "priority": "high",
+        "project_key": "P1",
+        "title_redacted": "email->financial references [accepted_human_promoted]",
+        "summary_redacted": "email->financial references [accepted_human_promoted]",
+        "source_family": "cross_source_relationships",
+        "source_ref_hash": "603d549800bcba023213d3f68f66cf864e2796efe545edb0",
+        "source_ref_label": "cross_source_relationships:references",
+        "review_tier": 3,
+        "review_required": true,
+        "confidence_class": "model_proposed",
+        "freshness_label": "relative",
+        "stale_warning": null,
+        "allowed_use": "advisory_render",
+        "blocked_uses": [
+          "final_determination",
+          "source_system_writeback",
+          "raw_record_request",
+          "authoritative_claim"
+        ]
+      }
+    ],
+    "review_required_items": [
+      {
+        "item_id": "1017ce9c391237aa9ad6b064ced75fa0b272d9418b580396",
+        "section": "review_required_items",
+        "priority": "high",
+        "project_key": "P1",
+        "title_redacted": "email->financial references [accepted_human_promoted]",
+        "summary_redacted": "email->financial references [accepted_human_promoted]",
+        "source_family": "cross_source_relationships",
+        "source_ref_hash": "603d549800bcba023213d3f68f66cf864e2796efe545edb0",
+        "source_ref_label": "cross_source_relationships:references",
+        "review_tier": 3,
+        "review_required": true,
+        "confidence_class": "model_proposed",
+        "freshness_label": "relative",
+        "stale_warning": null,
+        "allowed_use": "advisory_render",
+        "blocked_uses": [
+          "final_determination",
+          "source_system_writeback",
+          "raw_record_request",
+          "authoritative_claim"
+        ]
+      }
+    ],
+    "aging_watchlist": [
+      {
+        "item_id": "1a50c0dad324dfc9fee4c461e434d0c8d085b75c51d4c797",
+        "section": "aging_watchlist",
+        "priority": "medium",
+        "project_key": "P1",
+        "title_redacted": "30_60",
+        "summary_redacted": "30_60",
+        "source_family": "aging_exposure_report_items",
+        "source_ref_hash": "979096f1c18f1bd0d2242963448704f1d19f42544b65b40f",
+        "source_ref_label": "aging_exposure_report_items:procore",
+        "review_tier": 2,
+        "review_required": false,
+        "confidence_class": "medium",
+        "freshness_label": "current",
+        "stale_warning": null,
+        "allowed_use": "advisory_render",
+        "blocked_uses": [
+          "final_determination",
+          "source_system_writeback",
+          "raw_record_request",
+          "authoritative_claim"
+        ]
+      }
+    ],
+    "meeting_prep": [],
+    "risk_watchlist": [
+      {
+        "item_id": "b01730e653753c1b3233457a6c96fabba2879c427b90ab6e",
+        "section": "risk_watchlist",
+        "priority": "medium",
+        "project_key": "P1",
+        "title_redacted": "open_rfi_count=3;aging_band=30_60",
+        "summary_redacted": "open_rfi_count=3;aging_band=30_60",
+        "source_family": "project_risk_digest_items",
+        "source_ref_hash": "a47236e57c1acc3c47c2dca835cd8cdae21964469690947c",
+        "source_ref_label": "project_risk_digest_items:schedule_slip_signal",
+        "review_tier": 2,
+        "review_required": false,
+        "confidence_class": "medium",
+        "freshness_label": "current",
+        "stale_warning": null,
+        "allowed_use": "advisory_render",
+        "blocked_uses": [
+          "final_determination",
+          "source_system_writeback",
+          "raw_record_request",
+          "authoritative_claim"
+        ]
+      }
+    ],
+    "stale_or_low_confidence_warnings": [
+      {
+        "item_id": "8f84659cbc2ccb7872bb47e86437630fd766ed68a54a5175",
+        "section": "stale_or_low_confidence_warnings",
+        "priority": "medium",
+        "project_key": "P1",
+        "title_redacted": "rfi status=open age=30d",
+        "summary_redacted": "rfi status=open age=30d",
+        "source_family": "project_issue_history_items",
+        "source_ref_hash": "5cda5e2e4603adcbc4c6ab9089e9e0ceb1f6e2b174cd4701",
+        "source_ref_label": "project_issue_history_items:rfi",
+        "review_tier": 2,
+        "review_required": false,
+        "confidence_class": "medium",
+        "freshness_label": "unknown",
+        "stale_warning": "stale_status",
+        "allowed_use": "advisory_render",
+        "blocked_uses": [
+          "final_determination",
+          "source_system_writeback",
+          "raw_record_request",
+          "authoritative_claim"
+        ]
+      },
+      {
+        "item_id": "261763432c6ce923bc1ef55aedb4bcfc3853bfc1f267b423",
+        "section": "stale_or_low_confidence_warnings",
+        "priority": "high",
+        "project_key": "P1",
+        "title_redacted": "email->financial references [accepted_human_promoted]",
+        "summary_redacted": "email->financial references [accepted_human_promoted]",
+        "source_family": "cross_source_relationships",
+        "source_ref_hash": "603d549800bcba023213d3f68f66cf864e2796efe545edb0",
+        "source_ref_label": "cross_source_relationships:references",
+        "review_tier": 3,
+        "review_required": true,
+        "confidence_class": "model_proposed",
+        "freshness_label": "relative",
+        "stale_warning": null,
+        "allowed_use": "advisory_render",
+        "blocked_uses": [
+          "final_determination",
+          "source_system_writeback",
+          "raw_record_request",
+          "authoritative_claim"
+        ]
+      }
+    ],
+    "accepted_memory_context": [
+      {
+        "item_id": "3627f4bb267357d913d36c2d27e24784a72c93a966c1e96c",
+        "section": "accepted_memory_context",
+        "priority": "low",
+        "project_key": "P1",
+        "title_redacted": "kickoff confirmed",
+        "summary_redacted": "kickoff confirmed",
+        "source_family": "accepted_long_term_memory",
+        "source_ref_hash": "816683212c892edc9d78842f3b53edcafb7ae863612f07a1",
+        "source_ref_label": "accepted_long_term_memory:fact",
+        "review_tier": 1,
+        "review_required": false,
+        "confidence_class": "high",
+        "freshness_label": "current",
+        "stale_warning": null,
+        "allowed_use": "advisory_context_only",
+        "blocked_uses": [
+          "final_determination",
+          "source_system_writeback",
+          "raw_record_request",
+          "authoritative_claim"
+        ]
+      }
+    ],
+    "suggested_follow_up_questions": [
+      "Which review-required items should I prioritize first?",
+      "Which aging items are closest to their threshold band?",
+      "What is driving the current risk signals?",
+      "Which stale or low-confidence items need a status refresh?",
+      "Should I factor the accepted memory context into the summary?",
+      "Would you like the full source coverage breakdown?"
+    ],
+    "source_refs": [
+      {
+        "source_family": "cross_source_relationships",
+        "source_ref_hash": "71c221cdf2e7a196e3b8d1622d1a861e5a3500f969b9f7fa",
+        "source_ref_label": "cross_source_relationships:references",
+        "review_tier": 1
+      },
+      {
+        "source_family": "accepted_long_term_memory",
+        "source_ref_hash": "816683212c892edc9d78842f3b53edcafb7ae863612f07a1",
+        "source_ref_label": "accepted_long_term_memory:fact",
+        "review_tier": 1
+      },
+      {
+        "source_family": "aging_exposure_report_items",
+        "source_ref_hash": "979096f1c18f1bd0d2242963448704f1d19f42544b65b40f",
+        "source_ref_label": "aging_exposure_report_items:procore",
+        "review_tier": 2
+      },
+      {
+        "source_family": "project_risk_digest_items",
+        "source_ref_hash": "a47236e57c1acc3c47c2dca835cd8cdae21964469690947c",
+        "source_ref_label": "project_risk_digest_items:schedule_slip_signal",
+        "review_tier": 2
+      },
+      {
+        "source_family": "project_issue_history_items",
+        "source_ref_hash": "5cda5e2e4603adcbc4c6ab9089e9e0ceb1f6e2b174cd4701",
+        "source_ref_label": "project_issue_history_items:rfi",
+        "review_tier": 2
+      },
+      {
+        "source_family": "cross_source_relationships",
+        "source_ref_hash": "603d549800bcba023213d3f68f66cf864e2796efe545edb0",
+        "source_ref_label": "cross_source_relationships:references",
+        "review_tier": 3
+      }
+    ],
+    "guardrails": {
+      "advisory_only": true,
+      "source_linked": true,
+      "metadata_only": true,
+      "no_raw": true,
+      "no_writeback": true,
+      "no_final_determinations": true,
+      "claude_rendering_only": true
+    },
+    "rendering_instructions": {
+      "render_as": "human_readable_executive_brief",
+      "instructions": [
+        "Render as a human-readable executive brief.",
+        "Preserve all warnings (stale, low-confidence, and review-required).",
+        "Do not infer beyond the packet contents.",
+        "Do not make final determinations (financial, legal, claim, payment, safety, schedule, contractual).",
+        "Include the source coverage note.",
+        "Include the suggested follow-up questions.",
+        "Do not ask for raw records."
+      ]
+    },
+    "status": "assembled",
+    "degradation_mode": "none",
+    "packet_receipt_emitted": false,
+    "read_only": true
+  },
+  "cli": {
+    "proof": "hb-assistant second-brain mcp daily-brief-handoff-proof --json",
+    "audit": "hb-assistant second-brain mcp audit --json",
+    "no_raw_access": "hb-assistant second-brain mcp no-raw-access --json",
+    "no_writeback": "hb-assistant second-brain mcp no-writeback --json"
+  }
+}

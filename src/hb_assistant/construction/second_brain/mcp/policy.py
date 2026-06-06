@@ -187,7 +187,7 @@ def build_mcp_status(*, db_path: str | None = None, persist: bool = True) -> dic
     startup = evaluate_startup_checks(db_path=db_path)
     mcp_sdk_available = importlib.util.find_spec("mcp") is not None
 
-    # The broker (Prompt 04) and the nine workflow wrappers (Prompt 05) are wired; the
+    # The broker (Prompt 04) and the ten workflow wrappers (Prompt 05 + Phase 09 packet) are wired; the
     # Prompt 13/14 guard proofs pass, so serving over stdio is gated only on the optional
     # MCP SDK being installed (``ready_to_serve`` below).
     from .prompts import load_prompts  # noqa: PLC0415 - avoid import cycle at module load

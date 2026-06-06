@@ -1,6 +1,6 @@
-"""Phase 08D MCP allowed workflow wrappers (Prompt 05).
+"""Phase 08D MCP allowed workflow wrappers (Prompt 05; +Phase 09 daily-brief handoff packet).
 
-The nine ``mcp_*_wrapper`` functions are thin adapters over existing, offline-safe,
+The ten ``mcp_*_wrapper`` functions are thin adapters over existing, offline-safe,
 metadata-only second-brain builders. Each returns a bounded summary dict
 ``{status, provenance, results, source_count, output_classification}``; the broker adds
 ``policy_posture`` + ``receipt_id`` and runs the no-raw / bounding gate. Wrappers extract
@@ -12,6 +12,7 @@ records a local feedback-log row (local metadata; no external writeback).
 
 from __future__ import annotations
 
+from datetime import date
 from functools import partial
 from typing import Any, Callable
 
@@ -215,6 +216,46 @@ def mcp_get_daily_brief_wrapper(
         return _degraded("daily-brief delivery", "brief_status_unavailable")
 
 
+def mcp_daily_brief_packet_wrapper(
+    arguments: dict[str, Any], *, db_path: str | None = None
+) -> dict[str, Any]:
+    """hb_daily_brief_packet — application-generated daily brief handoff packet.
+
+    Returns the metadata-only ``DailyBriefHandoffPacketV1`` (Prompt 01 builder) for the requested
+    date/project scope, for Claude scheduled rendering only. Read-only, source-linked, no raw, no
+    writeback, no final determination; reuses the existing daily-brief assembly (no retrieval logic
+    here). Fails closed to a safe degraded metadata error on any failure. The full packet rides in
+    ``results[0]``.
+    """
+    try:
+        from ..daily_brief.packet import build_daily_brief_packet
+
+        date_arg = arguments.get("date")
+        scope = arguments.get("project_scope")
+        include_rendering = arguments.get("include_rendering_instructions", True)
+        brief_date = str(date_arg) if date_arg else date.today().isoformat()
+        project_key = None if (scope is None or str(scope) == "all") else str(scope)
+
+        packet = build_daily_brief_packet(
+            brief_date=brief_date, project_key=project_key, mode="dry_run", db_path=db_path
+        )
+        if include_rendering is False:
+            packet = {k: v for k, v in packet.items() if k != "rendering_instructions"}
+
+        source_count = int(
+            packet.get("source_coverage_summary", {}).get("source_ref_count", 0) or 0
+        )
+        return _bounded(
+            "ok",
+            "daily brief handoff packet (DailyBriefHandoffPacketV1; read-only)",
+            [packet],
+            source_count=source_count,
+            classification="daily_brief_handoff_packet",
+        )
+    except Exception:  # noqa: BLE001 - fail closed to a safe metadata error
+        return _degraded("daily brief handoff packet", "packet_unavailable")
+
+
 def mcp_open_daily_brief_wrapper(
     arguments: dict[str, Any], *, db_path: str | None = None
 ) -> dict[str, Any]:
@@ -342,12 +383,13 @@ def mcp_memory_feedback_wrapper(
 
 
 def build_wrapper_registry(*, db_path: str | None = None) -> dict[str, Wrapper]:
-    """Return the nine tool-name → wrapper bindings (db_path bound for the broker seam)."""
+    """Return the ten tool-name → wrapper bindings (db_path bound for the broker seam)."""
     return {
         "hb_status": partial(mcp_status_wrapper, db_path=db_path),
         "hb_query": partial(mcp_query_wrapper, db_path=db_path),
         "hb_research_packet": partial(mcp_research_packet_wrapper, db_path=db_path),
         "hb_get_daily_brief": partial(mcp_get_daily_brief_wrapper, db_path=db_path),
+        "hb_daily_brief_packet": partial(mcp_daily_brief_packet_wrapper, db_path=db_path),
         "hb_open_daily_brief": partial(mcp_open_daily_brief_wrapper, db_path=db_path),
         "hb_review_load_status": partial(mcp_review_load_status_wrapper, db_path=db_path),
         "hb_memory_review_list": partial(mcp_memory_review_list_wrapper, db_path=db_path),

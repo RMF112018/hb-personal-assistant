@@ -1215,7 +1215,7 @@ def evaluate_phase_08d_data_quality_gates(*, db_path: str | None = None) -> dict
     # 3-6, 9. Registry counts + companion audit checks (all fast, metadata-only).
     gates.append(
         _count_match_gate(
-            "allowed_tools", len(allowed), 9, also=chk.get("allowed_registry_safe", False)
+            "allowed_tools", len(allowed), 10, also=chk.get("allowed_registry_safe", False)
         )
     )
     gates.append(
@@ -1237,7 +1237,7 @@ def evaluate_phase_08d_data_quality_gates(*, db_path: str | None = None) -> dict
     gates.append(
         _count_match_gate("prompts", len(prompts_list), 5, also=chk.get("prompts_safe", False))
     )
-    gates.append(_count_match_gate("workflow_wrappers", len(wrappers), 9))
+    gates.append(_count_match_gate("workflow_wrappers", len(wrappers), 10))
 
     # 7. Receipts: tool-call + denial receipts are metadata-only (hashes/counts/reason codes).
     gates.append(

@@ -6,7 +6,7 @@ no-raw output validation → metadata-only receipt. It fails closed on every err
 never persists or returns raw arguments, results, prompts, responses, SQL, tokens, URLs,
 or determinations.
 
-The nine workflow wrappers are implemented in Prompt 05; the broker dispatches through an
+The workflow wrappers are implemented in Prompt 05 (+ Phase 09 daily-brief packet); the broker dispatches through an
 injectable ``wrappers`` registry. With no wrapper wired an allowed tool fails closed with
 ``wrapper_unavailable`` — the broker never stubs or fabricates a result.
 """

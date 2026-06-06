@@ -55,8 +55,8 @@ def test_status_serve_readiness_tracks_sdk_presence() -> None:
 
     status = build_mcp_status(persist=False)
     assert status["foundation_ok"] is True
-    # Prompt 05: the nine workflow wrappers are registered.
-    assert status["mcp_tools_registered"] == 9
+    # Prompt 05 + Phase 09 packet: the ten workflow wrappers are registered.
+    assert status["mcp_tools_registered"] == 10
     # Prompts 13/14: both guard-proof serve blockers are gone.
     assert "no_raw_access_proof_pending_prompt_13" not in status["serve_blockers"]
     assert "no_writeback_proof_pending_prompt_14" not in status["serve_blockers"]
