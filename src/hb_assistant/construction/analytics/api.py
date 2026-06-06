@@ -124,10 +124,10 @@ def create_app(*, db_path: str | None = None) -> Any:
     require_role = role_dependency()
     app = FastAPI(
         title="HB Personal Assistant Analytics UI Shell",
-        version="0.1.0-prompt-06",
+        version="0.1.0-prompt-07",
         description=(
             "Optional read-only FastAPI shell for future analytics UI routes. "
-            "Active chat is disabled. Project keyword training (Prompt 05) and sync governance (Prompt 06) supported."
+            "Active chat is disabled. Project keyword training (Prompt 05), sync governance (Prompt 06), and dashboard read models (Prompt 07) supported."
         ),
     )
     role_dep = Depends(require_role)
@@ -351,5 +351,65 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
 
         return ConnectionSetupService(db_path=db_path).list_pending_approvals()
+
+    # Prompt 07 / UI-07 — first set of CM-first dashboard read models (composed, advisory-only).
+    # Viewer access for all (read-only metadata + badges). No top-level domain dashboards.
+    @app.get("/api/today")
+    def today(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_today()
+
+    @app.get("/api/projects/portfolio")
+    def projects_portfolio(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_projects_portfolio()
+
+    @app.get("/api/projects/all/overview")
+    def all_projects_overview(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_all_projects_overview()
+
+    @app.get("/api/projects/{project_key}/overview")
+    def project_overview(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_project_overview(project_key)
+
+    @app.get("/api/projects/{project_key}/meetings")
+    def project_meetings(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_project_meetings(project_key)
+
+    @app.get("/api/projects/{project_key}/field-operations")
+    def project_field_operations(
+        project_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_project_field_operations(project_key)
+
+    @app.get("/api/projects/{project_key}/cost-time")
+    def project_cost_time(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_project_cost_time(project_key)
+
+    @app.get("/api/my-items")
+    def my_items(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_my_items()
 
     return app

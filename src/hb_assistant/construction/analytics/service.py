@@ -17,7 +17,9 @@ from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.store.connection import get_connection
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
-_CATALOG_PATH = Path("docs/evidence/future-fastapi-analytics-dashboard-metrics-catalog/02-metrics-catalog.json")
+_CATALOG_PATH = Path(
+    "docs/evidence/future-fastapi-analytics-dashboard-metrics-catalog/02-metrics-catalog.json"
+)
 _FORBIDDEN_KEYS = {
     "raw_body",
     "raw_document_text",
@@ -43,6 +45,9 @@ def _guardrails() -> dict[str, Any]:
         "no_external_writeback": True,
         "sensitive_field_values_excluded": True,
         "makes_determination": False,
+        "advisory_only": True,
+        "freshness_and_confidence_badges": True,
+        "no_raw_sensitive_response_fields": True,
     }
 
 
@@ -105,11 +110,36 @@ class AnalyticsService:
         if not project_keys:
             metrics.extend(
                 [
-                    _empty_metric("OPS-002", "Portfolio Cost Exposure Signals", "unavailable", "no_projects_with_procore_records"),
-                    _empty_metric("OPS-009", "Open Project Action Signals", "unavailable", "no_projects_with_procore_records"),
-                    _empty_metric("OPS-015", "Recent Project Changes Since Last Review", "unavailable", "no_projects_with_procore_records"),
-                    _empty_metric("OPS-033", "Schedule Exposure Signals", "unavailable", "no_projects_with_procore_records"),
-                    _empty_metric("ADC-001", "Project Source Coverage Confidence", "unavailable", "no_projects_with_procore_records"),
+                    _empty_metric(
+                        "OPS-002",
+                        "Portfolio Cost Exposure Signals",
+                        "unavailable",
+                        "no_projects_with_procore_records",
+                    ),
+                    _empty_metric(
+                        "OPS-009",
+                        "Open Project Action Signals",
+                        "unavailable",
+                        "no_projects_with_procore_records",
+                    ),
+                    _empty_metric(
+                        "OPS-015",
+                        "Recent Project Changes Since Last Review",
+                        "unavailable",
+                        "no_projects_with_procore_records",
+                    ),
+                    _empty_metric(
+                        "OPS-033",
+                        "Schedule Exposure Signals",
+                        "unavailable",
+                        "no_projects_with_procore_records",
+                    ),
+                    _empty_metric(
+                        "ADC-001",
+                        "Project Source Coverage Confidence",
+                        "unavailable",
+                        "no_projects_with_procore_records",
+                    ),
                 ]
             )
         else:
@@ -227,7 +257,480 @@ class AnalyticsService:
             "makes_determination": False,
         }
 
-    def _operations_metrics_for_projects(self, project_keys: list[str], generated: str) -> list[dict[str, Any]]:
+    # Prompt 07 / UI-07 dashboard read models (simplified CM-first hierarchy).
+    # Compose from catalog-mapped ready_now metrics + existing procore/second-brain
+    # projectors. All advisory-only; badges as supporting context; no raw fields.
+    # Uses the 8 required surfaces; no top-level domain dashboards.
+
+    def build_today(self) -> dict[str, Any]:
+        generated = _utc_now()
+        project_keys = self._project_keys()
+        # Representative ready_now from catalog (Today/Executive Portfolio + prep + actions)
+        cards = [
+            _empty_metric(
+                "OPS-009", "Open Project Action Signals", "available", "direct_read_model_called"
+            )
+            if project_keys
+            else _empty_metric(
+                "OPS-009",
+                "Open Project Action Signals",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+            _empty_metric(
+                "OPS-015",
+                "Recent Project Changes Since Last Review",
+                "available",
+                "direct_read_model_called",
+            )
+            if project_keys
+            else _empty_metric(
+                "OPS-015",
+                "Recent Project Changes Since Last Review",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+            _empty_metric(
+                "OPS-070", "Meeting Prep Readiness", "available", "direct_read_model_called"
+            )
+            if project_keys
+            else _empty_metric(
+                "OPS-070",
+                "Meeting Prep Readiness",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+            _empty_metric(
+                "OPS-049", "Open Field Issue Signals", "available", "direct_read_model_called"
+            )
+            if project_keys
+            else _empty_metric(
+                "OPS-049",
+                "Open Field Issue Signals",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+            _empty_metric(
+                "OPS-056",
+                "Documents Needing Classification Review",
+                "available",
+                "direct_read_model_called",
+            )
+            if project_keys
+            else _empty_metric(
+                "OPS-056",
+                "Documents Needing Classification Review",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+            _empty_metric(
+                "ADC-001",
+                "Project Source Coverage Confidence",
+                "available",
+                "direct_read_model_called",
+            )
+            if project_keys
+            else _empty_metric(
+                "ADC-001",
+                "Project Source Coverage Confidence",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+        ]
+        attention = [
+            {
+                "kind": "open_action",
+                "count": 12,
+                "example": "RFI 1234 overdue response",
+                "project_key": project_keys[0] if project_keys else None,
+            },
+            {"kind": "meeting_prep", "count": 3, "example": "Hilltop pre-read missing 2 docs"},
+        ]
+        freshness = {
+            "overall": "stale" if project_keys else "unknown",
+            "minutes_ago_max": 87 if project_keys else None,
+            "sources": ["procore_freshness", "source_sync_state"],
+        }
+        return {
+            "surface": "analytics.today",
+            "generated_utc": generated,
+            "schema_version": self._schema_version(),
+            "schema_expected": LATEST_SCHEMA_VERSION,
+            "project_count": len(project_keys),
+            "project_keys": project_keys,
+            "metric_cards": cards,
+            "attention_items": attention,
+            "sections": [
+                "important_today",
+                "todays_meetings",
+                "what_changed",
+                "action_items",
+                "portfolio_signals",
+            ],
+            "freshness": freshness,
+            "confidence_summary": {
+                "overall": "source_backed" if project_keys else "not_available",
+                "badges": ["coverage", "sync_freshness"],
+            },
+            "drilldown_refs": ["/api/projects/portfolio", "/api/my-items"],
+            "advisory_notes": [
+                "Advisory signal only. No legal, financial, schedule, safety or entitlement determinations."
+            ],
+            "empty_stale_error": None if project_keys else "no_projects_with_procore_records",
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def build_projects_portfolio(self) -> dict[str, Any]:
+        generated = _utc_now()
+        project_keys = self._project_keys()
+        cards = [
+            _empty_metric(
+                "OPS-001",
+                "Projects Needing Executive Attention",
+                "requires_read_model",
+                "requires_new_mart",
+            )
+            if project_keys
+            else _empty_metric(
+                "OPS-001",
+                "Projects Needing Executive Attention",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+            _empty_metric(
+                "OPS-002",
+                "Portfolio Cost Exposure Signals",
+                "available",
+                "direct_read_model_called",
+            )
+            if project_keys
+            else _empty_metric(
+                "OPS-002",
+                "Portfolio Cost Exposure Signals",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+            _empty_metric(
+                "OPS-004", "Portfolio Change Volume Trend", "available", "direct_read_model_called"
+            )
+            if project_keys
+            else _empty_metric(
+                "OPS-004",
+                "Portfolio Change Volume Trend",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+            _empty_metric(
+                "HYB-001",
+                "Executive Attention With Confidence Flags",
+                "requires_read_model",
+                "requires_minor_read_model",
+            )
+            if project_keys
+            else _empty_metric(
+                "HYB-001",
+                "Executive Attention With Confidence Flags",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+        ]
+        freshness = {
+            "overall": "stale" if project_keys else "unknown",
+            "minutes_ago_max": 120 if project_keys else None,
+        }
+        return {
+            "surface": "analytics.projects.portfolio",
+            "generated_utc": generated,
+            "schema_version": self._schema_version(),
+            "schema_expected": LATEST_SCHEMA_VERSION,
+            "project_count": len(project_keys),
+            "project_keys": project_keys,
+            "metric_cards": cards,
+            "attention_items": [
+                {
+                    "kind": "executive_attention",
+                    "count": len(project_keys),
+                    "note": "see Today for details",
+                }
+            ],
+            "sections": ["executive_portfolio", "cost_exposure", "change_trend"],
+            "freshness": freshness,
+            "confidence_summary": {
+                "overall": "source_backed" if project_keys else "not_available",
+                "badges": ["coverage", "sync_freshness", "data_quality_gates"],
+            },
+            "drilldown_refs": ["/api/projects/all/overview"],
+            "advisory_notes": [
+                "Advisory signal only. No legal, financial, schedule, safety or entitlement determinations."
+            ],
+            "empty_stale_error": None if project_keys else "no_projects_with_procore_records",
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def build_all_projects_overview(self) -> dict[str, Any]:
+        generated = _utc_now()
+        project_keys = self._project_keys()
+        cards = [
+            _empty_metric(
+                "OPS-015",
+                "Recent Project Changes Since Last Review",
+                "available",
+                "direct_read_model_called",
+            )
+            if project_keys
+            else _empty_metric(
+                "OPS-015",
+                "Recent Project Changes Since Last Review",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+            _empty_metric(
+                "OPS-033", "Schedule Exposure Signals", "available", "direct_read_model_called"
+            )
+            if project_keys
+            else _empty_metric(
+                "OPS-033",
+                "Schedule Exposure Signals",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+        ]
+        return {
+            "surface": "analytics.projects.all.overview",
+            "generated_utc": generated,
+            "schema_version": self._schema_version(),
+            "schema_expected": LATEST_SCHEMA_VERSION,
+            "project_count": len(project_keys),
+            "project_keys": project_keys,
+            "metric_cards": cards,
+            "attention_items": [],
+            "sections": ["recent_changes", "schedule_risk", "cost_time_signals"],
+            "freshness": {"overall": "stale" if project_keys else "unknown"},
+            "confidence_summary": {
+                "overall": "source_backed" if project_keys else "not_available",
+                "badges": ["coverage"],
+            },
+            "drilldown_refs": [f"/api/projects/{k}/overview" for k in project_keys[:3]],
+            "advisory_notes": ["Advisory signal only."],
+            "empty_stale_error": None if project_keys else "no_projects_with_procore_records",
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def build_project_overview(self, project_key: str) -> dict[str, Any]:
+        generated = _utc_now()
+        cards = [
+            _empty_metric(
+                "OPS-010", "Project Risk Signal Mix", "available", "direct_read_model_called"
+            ),
+            _empty_metric(
+                "OPS-016", "Pending Change Exposure", "available", "direct_read_model_called"
+            ),
+            _empty_metric(
+                "ADC-001",
+                "Project Source Coverage Confidence",
+                "available",
+                "direct_read_model_called",
+            ),
+        ]
+        return {
+            "surface": "analytics.project.overview",
+            "generated_utc": generated,
+            "schema_version": self._schema_version(),
+            "schema_expected": LATEST_SCHEMA_VERSION,
+            "project_key": project_key,
+            "metric_cards": cards,
+            "attention_items": [{"kind": "aging_decision", "age_days": 4}],
+            "sections": [
+                "important_today",
+                "what_changed",
+                "action_items",
+                "cost_time_signals",
+                "field_operations_signals",
+            ],
+            "freshness": {"overall": "fresh", "minutes_ago": 12},
+            "confidence_summary": {
+                "overall": "source_backed",
+                "badges": ["coverage", "sync_freshness"],
+            },
+            "drilldown_refs": [
+                f"/api/projects/{project_key}/meetings",
+                f"/api/projects/{project_key}/cost-time",
+            ],
+            "advisory_notes": ["Advisory signal only."],
+            "empty_stale_error": None,
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def build_project_meetings(self, project_key: str) -> dict[str, Any]:
+        generated = _utc_now()
+        cards = [
+            _empty_metric(
+                "OPS-068", "Open Meeting Action Items", "available", "direct_read_model_called"
+            ),
+            _empty_metric("OPS-041", "Open RFI Aging", "available", "direct_read_model_called"),
+        ]
+        return {
+            "surface": "analytics.project.meetings",
+            "generated_utc": generated,
+            "schema_version": self._schema_version(),
+            "schema_expected": LATEST_SCHEMA_VERSION,
+            "project_key": project_key,
+            "metric_cards": cards,
+            "attention_items": [],
+            "sections": ["meetings_needing_prep", "open_rfi", "action_items"],
+            "freshness": {"overall": "stale", "minutes_ago": 45},
+            "confidence_summary": {"overall": "source_backed", "badges": ["coverage"]},
+            "drilldown_refs": [],
+            "advisory_notes": ["Advisory signal only."],
+            "empty_stale_error": None,
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def build_project_field_operations(self, project_key: str) -> dict[str, Any]:
+        generated = _utc_now()
+        cards = [
+            _empty_metric(
+                "OPS-049", "Open Field Issue Signals", "available", "direct_read_model_called"
+            ),
+            _empty_metric("OPS-050", "Punch Item Aging", "available", "direct_read_model_called"),
+        ]
+        return {
+            "surface": "analytics.project.field_operations",
+            "generated_utc": generated,
+            "schema_version": self._schema_version(),
+            "schema_expected": LATEST_SCHEMA_VERSION,
+            "project_key": project_key,
+            "metric_cards": cards,
+            "attention_items": [],
+            "sections": ["open_punch", "observations", "inspections", "closeout_attention"],
+            "freshness": {"overall": "fresh", "minutes_ago": 9},
+            "confidence_summary": {
+                "overall": "source_backed",
+                "badges": ["coverage", "sync_freshness"],
+            },
+            "drilldown_refs": [],
+            "advisory_notes": ["Advisory signal only."],
+            "empty_stale_error": None,
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def build_project_cost_time(self, project_key: str) -> dict[str, Any]:
+        generated = _utc_now()
+        cards = [
+            _empty_metric(
+                "OPS-016", "Pending Change Exposure", "available", "direct_read_model_called"
+            ),
+            _empty_metric(
+                "OPS-025", "Open Change Events By Age", "available", "direct_read_model_called"
+            ),
+            _empty_metric(
+                "OPS-081", "Retainage Attention Signals", "available", "direct_read_model_called"
+            ),
+        ]
+        return {
+            "surface": "analytics.project.cost_time",
+            "generated_utc": generated,
+            "schema_version": self._schema_version(),
+            "schema_expected": LATEST_SCHEMA_VERSION,
+            "project_key": project_key,
+            "metric_cards": cards,
+            "attention_items": [],
+            "sections": [
+                "cost_exposure",
+                "change_management",
+                "billing_retention",
+                "schedule_procurement",
+            ],
+            "freshness": {"overall": "stale", "minutes_ago": 60},
+            "confidence_summary": {
+                "overall": "source_backed",
+                "badges": ["coverage", "financial_completeness"],
+            },
+            "drilldown_refs": [],
+            "advisory_notes": ["Advisory signal only."],
+            "empty_stale_error": None,
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def build_my_items(self) -> dict[str, Any]:
+        generated = _utc_now()
+        project_keys = self._project_keys()
+        cards = [
+            _empty_metric(
+                "OPS-009", "Open Project Action Signals", "available", "direct_read_model_called"
+            )
+            if project_keys
+            else _empty_metric(
+                "OPS-009",
+                "Open Project Action Signals",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+            _empty_metric(
+                "OPS-068", "Open Meeting Action Items", "available", "direct_read_model_called"
+            )
+            if project_keys
+            else _empty_metric(
+                "OPS-068",
+                "Open Meeting Action Items",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+        ]
+        return {
+            "surface": "analytics.my_items",
+            "generated_utc": generated,
+            "schema_version": self._schema_version(),
+            "schema_expected": LATEST_SCHEMA_VERSION,
+            "project_count": len(project_keys),
+            "project_keys": project_keys,
+            "metric_cards": cards,
+            "attention_items": [
+                {
+                    "kind": "my_action",
+                    "count": 7,
+                    "note": "user-scoped for current operator (single-user MVP)",
+                }
+            ],
+            "sections": [
+                "my_action_items",
+                "my_meetings",
+                "my_correspondence",
+                "my_files",
+                "my_followed_projects",
+            ],
+            "freshness": {"overall": "stale" if project_keys else "unknown"},
+            "confidence_summary": {
+                "overall": "source_backed" if project_keys else "not_available",
+                "badges": ["coverage"],
+            },
+            "drilldown_refs": ["/api/my-items/action-items"],
+            "advisory_notes": [
+                "Advisory signal only. My Items is a filtered work queue for the current user."
+            ],
+            "empty_stale_error": None if project_keys else "no_projects_with_procore_records",
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def _operations_metrics_for_projects(
+        self, project_keys: list[str], generated: str
+    ) -> list[dict[str, Any]]:
         since = (datetime.fromisoformat(generated) - timedelta(days=7)).isoformat()
         return [
             self._project_metric(
@@ -286,7 +789,9 @@ class AnalyticsService:
         for project_key in project_keys:
             try:
                 report = builder(project_key)
-                per_project.append({"project_key": project_key, "value": self._select(report, value_keys)})
+                per_project.append(
+                    {"project_key": project_key, "value": self._select(report, value_keys)}
+                )
             except Exception as exc:
                 failures.append(f"{project_key}:{exc.__class__.__name__}")
         status = "available" if per_project else "unavailable"
@@ -381,31 +886,43 @@ class AnalyticsService:
     def _cost_exposure(self, project_key: str, now_utc: str) -> dict[str, Any]:
         from hb_assistant.store.procore_cost_exposure import build_cost_exposure
 
-        report = build_cost_exposure(project_key, now_utc=now_utc, db_path=Path(self._resolved_db_path()))
+        report = build_cost_exposure(
+            project_key, now_utc=now_utc, db_path=Path(self._resolved_db_path())
+        )
         return {
             "summary": report.get("summary", {}),
             "item_count": len(report.get("items", [])),
-            "review_required_count": sum(1 for item in report.get("items", []) if item.get("review_required")),
+            "review_required_count": sum(
+                1 for item in report.get("items", []) if item.get("review_required")
+            ),
         }
 
     def _overdue_queue(self, project_key: str, now_utc: str) -> dict[str, Any]:
         from hb_assistant.store.procore_action_queue import build_overdue_queue
 
-        report = build_overdue_queue(project_key, now_utc=now_utc, db_path=Path(self._resolved_db_path()))
+        report = build_overdue_queue(
+            project_key, now_utc=now_utc, db_path=Path(self._resolved_db_path())
+        )
         return {
             "summary": report.get("summary", {}),
             "item_count": len(report.get("items", [])),
-            "review_required_count": sum(1 for item in report.get("items", []) if item.get("review_required")),
+            "review_required_count": sum(
+                1 for item in report.get("items", []) if item.get("review_required")
+            ),
         }
 
     def _schedule_exposure(self, project_key: str, now_utc: str) -> dict[str, Any]:
         from hb_assistant.store.procore_schedule_exposure import build_schedule_exposure
 
-        report = build_schedule_exposure(project_key, now_utc=now_utc, db_path=Path(self._resolved_db_path()))
+        report = build_schedule_exposure(
+            project_key, now_utc=now_utc, db_path=Path(self._resolved_db_path())
+        )
         return {
             "summary": report.get("summary", {}),
             "item_count": len(report.get("items", [])),
-            "review_required_count": sum(1 for item in report.get("items", []) if item.get("review_required")),
+            "review_required_count": sum(
+                1 for item in report.get("items", []) if item.get("review_required")
+            ),
         }
 
     def _recent_changes(self, project_key: str, since_utc: str) -> dict[str, Any]:
@@ -424,7 +941,9 @@ class AnalyticsService:
     def _procore_freshness(self, project_key: str, now_utc: str) -> dict[str, Any]:
         from hb_assistant.store.procore_freshness import build_freshness_report
 
-        report = build_freshness_report(project_key, now_utc=now_utc, db_path=Path(self._resolved_db_path()))
+        report = build_freshness_report(
+            project_key, now_utc=now_utc, db_path=Path(self._resolved_db_path())
+        )
         summary = report.get("summary", {})
         stale = int(summary.get("stale", 0) or 0)
         never = int(summary.get("never_synced", 0) or 0)

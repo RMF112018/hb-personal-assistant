@@ -75,6 +75,14 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/projects/{project_key}/refresh-request",
         "/projects/{project_key}/sync-freshness",
         "/admin/sync/pending-approvals",
+        "/api/today",
+        "/api/projects/portfolio",
+        "/api/projects/all/overview",
+        "/api/projects/{project_key}/overview",
+        "/api/projects/{project_key}/meetings",
+        "/api/projects/{project_key}/field-operations",
+        "/api/projects/{project_key}/cost-time",
+        "/api/my-items",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 
