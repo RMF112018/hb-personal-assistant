@@ -10,6 +10,7 @@ Deterministic, local-first, read-only, metadata-only persistence (reuses V26
 
 from __future__ import annotations
 
+from .closeout import DailyBriefCloseoutError, build_daily_brief_v2_closeout
 from .context import build_daily_brief_context, build_daily_brief_context_builder_proof
 from .generate import (
     build_daily_brief_agent_proof,
@@ -102,6 +103,8 @@ __all__ = [
     "ReviewLoadStatus",
     "ReviewRequiredCard",
     "WarningCard",
+    "DailyBriefCloseoutError",
+    "build_daily_brief_v2_closeout",
     "build_daily_brief_context",
     "build_daily_brief_context_builder_proof",
     "build_daily_brief_agent_proof",

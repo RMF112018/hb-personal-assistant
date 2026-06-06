@@ -1,0 +1,333 @@
+{
+  "closeout": "phase_09_addendum_daily_brief_v2",
+  "package": "HB_Construction_Intelligence_Phase_09_Addendum_Daily_Brief_V2_Executive_Utility_Hardening",
+  "prompt": "06",
+  "version": "1.5.0-phase-09-addendum-v2",
+  "command": "second-brain daily-brief v2-closeout",
+  "generated_utc": "2026-06-06T20:39:19.958729+00:00",
+  "closeout_complete": true,
+  "branch": "main",
+  "commit_sha": "ff92c1ceab0ff367d1b8442d3605c4399bc85146",
+  "files_changed": [
+    "docs/architecture/178-fastapi-daily-brief-external-workflow.md",
+    "docs/architecture/178-phase-09-addendum-daily-brief-v2-packet-contract.md",
+    "docs/architecture/179-fastapi-admin-data-confidence.md",
+    "docs/architecture/179-phase-09-addendum-daily-brief-v2-record-enrichment.md",
+    "docs/architecture/180-phase-09-addendum-daily-brief-v2-rendering-template.md",
+    "docs/architecture/181-fastapi-security-validation-ui-routes.md",
+    "docs/architecture/181-phase-09-addendum-daily-brief-v2-output-path-receipt-policy.md",
+    "docs/architecture/182-fastapi-connection-setup-functional-hardening.md",
+    "docs/architecture/182-phase-09-addendum-daily-brief-v2-validation-golden-fixtures.md",
+    "docs/architecture/183-fastapi-settings-connection-management-ux.md",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-packet-v2-contract.json",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-packet-v2-contract.md",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-packet-v2-proof.json",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-packet-v2-proof.md",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-v2-golden-detail-unavailable.md",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-v2-golden-full-detail.md",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-v2-golden-rejected-internal.md",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-v2-output-path-receipt-proof.json",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-v2-output-path-receipt-proof.md",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-v2-quality-proof.json",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-v2-quality-proof.md",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-v2-rebaseline.json",
+    "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-v2-rebaseline.md",
+    "resources/templates/claude_daily_brief_manual_run.md",
+    "resources/templates/claude_daily_brief_scheduled_task.md",
+    "src/hb_assistant/cli/second_brain.py",
+    "src/hb_assistant/construction/second_brain/contracts.py",
+    "src/hb_assistant/construction/second_brain/daily_brief/__init__.py",
+    "src/hb_assistant/construction/second_brain/daily_brief/enrichment.py",
+    "src/hb_assistant/construction/second_brain/daily_brief/output_receipt.py",
+    "src/hb_assistant/construction/second_brain/daily_brief/packet.py",
+    "src/hb_assistant/construction/second_brain/daily_brief/rendered_quality.py",
+    "src/hb_assistant/construction/second_brain/mcp/daily_brief_handoff_proof.py",
+    "src/hb_assistant/construction/second_brain/mcp/render_template_proof.py",
+    "src/hb_assistant/construction/second_brain/mcp/wrappers.py",
+    "src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_v2_contract.json",
+    "tests/test_phase_09_daily_brief_packet_v2.py",
+    "tests/test_phase_09_daily_brief_v2_quality.py"
+  ],
+  "files_changed_count": 38,
+  "files_changed_note": "Files-changed is scoped to Daily Brief V2 addendum prefixes; the shared 'main' branch also carried parallel-workstream (FastAPI dashboard) commits in the same range.",
+  "schema_version": 40,
+  "schema_changed_by_addendum": false,
+  "packet_version": "DailyBriefHandoffPacketV2",
+  "output_path": "<vault>/Work/Daily Brief/2026-06-06-daily-brief.md",
+  "output_path_filename_convention": "YYYY-MM-DD-daily-brief.md",
+  "v2_render_quality": {
+    "passed": true,
+    "check_count": 21,
+    "max_brief_chars": 8000,
+    "full_detail": {
+      "passed": true,
+      "checks": {
+        "required_sections_present": true,
+        "brief_length_within_max": true,
+        "single_advisory_disclaimer": true,
+        "focus_items_within_limit": true,
+        "focus_count_in_range_or_none": true,
+        "agenda_today_or_none": true,
+        "next_7_days_deadlines_or_none": true,
+        "no_provenance_table": true,
+        "no_guardrail_matrix": true,
+        "no_source_coverage_section": true,
+        "no_source_family_lists": true,
+        "no_proof_paths": true,
+        "no_generated_utc": true,
+        "no_mode_dry_run": true,
+        "no_follow_up_questions": true,
+        "no_json_blobs": true,
+        "schedule_detail_or_unavailable": true,
+        "attention_counts_backed_or_unavailable": true,
+        "no_final_determinations": true,
+        "no_source_system_update_claims": true,
+        "no_raw_shaped_values": true
+      },
+      "failing_checks": []
+    },
+    "detail_unavailable": {
+      "passed": true,
+      "checks": {
+        "required_sections_present": true,
+        "brief_length_within_max": true,
+        "single_advisory_disclaimer": true,
+        "focus_items_within_limit": true,
+        "focus_count_in_range_or_none": true,
+        "agenda_today_or_none": true,
+        "next_7_days_deadlines_or_none": true,
+        "no_provenance_table": true,
+        "no_guardrail_matrix": true,
+        "no_source_coverage_section": true,
+        "no_source_family_lists": true,
+        "no_proof_paths": true,
+        "no_generated_utc": true,
+        "no_mode_dry_run": true,
+        "no_follow_up_questions": true,
+        "no_json_blobs": true,
+        "schedule_detail_or_unavailable": true,
+        "attention_counts_backed_or_unavailable": true,
+        "no_final_determinations": true,
+        "no_source_system_update_claims": true,
+        "no_raw_shaped_values": true
+      },
+      "failing_checks": []
+    },
+    "rejected_internal": {
+      "passed": false,
+      "checks": {
+        "required_sections_present": true,
+        "brief_length_within_max": true,
+        "single_advisory_disclaimer": false,
+        "focus_items_within_limit": true,
+        "focus_count_in_range_or_none": false,
+        "agenda_today_or_none": true,
+        "next_7_days_deadlines_or_none": true,
+        "no_provenance_table": false,
+        "no_guardrail_matrix": false,
+        "no_source_coverage_section": false,
+        "no_source_family_lists": true,
+        "no_proof_paths": true,
+        "no_generated_utc": true,
+        "no_mode_dry_run": true,
+        "no_follow_up_questions": true,
+        "no_json_blobs": true,
+        "schedule_detail_or_unavailable": true,
+        "attention_counts_backed_or_unavailable": true,
+        "no_final_determinations": false,
+        "no_source_system_update_claims": true,
+        "no_raw_shaped_values": true
+      },
+      "failing_checks": [
+        "focus_count_in_range_or_none",
+        "no_final_determinations",
+        "no_guardrail_matrix",
+        "no_provenance_table",
+        "no_source_coverage_section",
+        "single_advisory_disclaimer"
+      ]
+    }
+  },
+  "record_level_enrichment_coverage": {
+    "basis": "representative (seeded enrichment db)",
+    "packet_version": "DailyBriefHandoffPacketV2",
+    "record_section_count": 10,
+    "detail_available_true": 6,
+    "detail_unavailable": 4,
+    "records_total": 7,
+    "detail_gap_reasons": {
+      "dedicated_reader_not_available": 4
+    },
+    "sections": {
+      "yesterday": {
+        "detail_available": true,
+        "count": 1,
+        "detail_gap_reason": null
+      },
+      "today_agenda": {
+        "detail_available": true,
+        "count": 1,
+        "detail_gap_reason": null
+      },
+      "next_7_days": {
+        "detail_available": true,
+        "count": 1,
+        "detail_gap_reason": null
+      },
+      "schedule": {
+        "detail_available": true,
+        "count": 1,
+        "detail_gap_reason": null
+      },
+      "rfis": {
+        "detail_available": false,
+        "count": 0,
+        "detail_gap_reason": "dedicated_reader_not_available"
+      },
+      "submittals": {
+        "detail_available": false,
+        "count": 0,
+        "detail_gap_reason": "dedicated_reader_not_available"
+      },
+      "punch": {
+        "detail_available": false,
+        "count": 0,
+        "detail_gap_reason": "dedicated_reader_not_available"
+      },
+      "procurement": {
+        "detail_available": false,
+        "count": 0,
+        "detail_gap_reason": "dedicated_reader_not_available"
+      },
+      "email_activity": {
+        "detail_available": true,
+        "count": 1,
+        "detail_gap_reason": null
+      },
+      "calendar_activity": {
+        "detail_available": true,
+        "count": 2,
+        "detail_gap_reason": null
+      }
+    }
+  },
+  "detail_unavailable_counts": {
+    "detail_unavailable_sections": 4,
+    "detail_gap_reasons": {
+      "dedicated_reader_not_available": 4
+    }
+  },
+  "daily_brief_gates": {
+    "v2_render_quality_passed": true,
+    "full_detail_passed": true,
+    "detail_unavailable_passed": true,
+    "rejected_internal_rejected": true
+  },
+  "validation_runs": {
+    "captured": true,
+    "runs": {
+      "construction-agent-validate": {
+        "passed": null,
+        "status": "captured",
+        "file": "construction-agent-validate.json"
+      },
+      "daily-brief-mcp-handoff-status": {
+        "passed": null,
+        "status": "captured",
+        "file": "daily-brief-mcp-handoff-status.json"
+      },
+      "daily-brief-output-receipt-proof-v2": {
+        "passed": true,
+        "status": "passed",
+        "file": "daily-brief-output-receipt-proof-v2.json"
+      },
+      "daily-brief-packet-v2-proof": {
+        "passed": true,
+        "status": "passed",
+        "file": "daily-brief-packet-v2-proof.json"
+      },
+      "daily-brief-packet-v2": {
+        "passed": null,
+        "status": "captured",
+        "file": "daily-brief-packet-v2.json"
+      },
+      "daily-brief-rendered-proof-v2": {
+        "passed": true,
+        "status": "passed",
+        "file": "daily-brief-rendered-proof-v2.json"
+      },
+      "data-quality-phase-09-gates": {
+        "passed": true,
+        "status": "passed",
+        "file": "data-quality-phase-09-gates.json"
+      },
+      "data-quality-phase-09-no-writeback-proof": {
+        "passed": true,
+        "status": "passed",
+        "file": "data-quality-phase-09-no-writeback-proof.json"
+      },
+      "data-quality-phase-09-operator-status": {
+        "passed": null,
+        "status": "captured",
+        "file": "data-quality-phase-09-operator-status.json"
+      },
+      "mcp-no-raw-access": {
+        "passed": true,
+        "status": "passed",
+        "file": "mcp-no-raw-access.json"
+      },
+      "mcp-no-writeback": {
+        "passed": true,
+        "status": "passed",
+        "file": "mcp-no-writeback.json"
+      },
+      "retrieval-coverage-parity-closeout": {
+        "passed": null,
+        "status": "captured",
+        "file": "retrieval-coverage-parity-closeout.json"
+      },
+      "retrieval-llamaindex-build": {
+        "passed": null,
+        "status": "captured",
+        "file": "retrieval-llamaindex-build.json"
+      },
+      "retrieval-no-raw-vector-index-proof": {
+        "passed": true,
+        "status": "passed",
+        "file": "retrieval-no-raw-vector-index-proof.json"
+      }
+    },
+    "run_count": 14
+  },
+  "acceptance_test": {
+    "standard": "A construction executive can read the brief in under 3 minutes and understand yesterday, today's agenda, next-7-day deadlines, what needs attention, and what to focus on, without reading packet/proof/governance internals.",
+    "demonstrated_by": "daily-brief-v2-golden-full-detail.md (passes all 21 executive-quality checks)",
+    "met": true
+  },
+  "limitations": [
+    "RFIs / submittals / punch / procurement remain detail-unavailable (no dedicated readers yet); they emit explicit detail_available=false with detail_gap_reason='dedicated_reader_not_available'.",
+    "Responsible-party / vendor names and a stored days_open are not persisted; rendered as null with per-record reasons.",
+    "Semantic retrieval is advisory only and never authoritative; accepted memory never overrides source truth.",
+    "LlamaIndex local embedding is optional: real --apply / semantic fail-closed with honest reasons without the 'retrieval-local' extra.",
+    "production_readiness is false; the rendered narrative is advisory and is never imported into accepted memory / vector index / source manifest / source-linked proof."
+  ],
+  "next_improvement": {
+    "title": "Phase 10 \u2014 Operator Workflow Delivery and UX Hardening",
+    "objective": "Make the validated daily brief and retrieval intelligence easy to run, inspect, and act on.",
+    "scope": [
+      "One-command daily workflow: generate packet \u2192 render brief \u2192 save to Obsidian \u2192 emit receipt \u2192 run proof \u2192 summarize status.",
+      "Operator-friendly output: concise CLI summaries, stable output paths, easy markdown, reduced JSON inspection.",
+      "Review workflow: review-required queue, stale/unknown queue, metadata-only source-linked drilldown, accepted-memory review.",
+      "Quality dashboard: usefulness score, source-coverage trend, unsupported-claim risk trend, detail-available vs detail-unavailable trend."
+    ]
+  },
+  "guardrails": {
+    "advisory_only": true,
+    "read_only": true,
+    "metadata_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "rendered_text_not_imported_to_trusted_surfaces": true,
+    "production_readiness": false
+  }
+}

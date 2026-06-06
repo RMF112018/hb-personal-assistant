@@ -1,0 +1,295 @@
+{
+  "command": "second-brain data-quality phase-09-gates",
+  "phase": "09",
+  "generated_utc": "2026-06-06T17:11:54.732476+00:00",
+  "repo_sha": "6e5527519fbb9f14df5eb6ed51646dc9398a550f",
+  "ok": true,
+  "schema_version": 40,
+  "gates": [
+    {
+      "gate_name": "phase_09_schema_present",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "schema_version": 40,
+      "all_tables_present": true,
+      "all_guards_present": true
+    },
+    {
+      "gate_name": "phase_09_guard_columns_clean",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "violation_count": 0
+    },
+    {
+      "gate_name": "no_raw_vector_content",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "violation_count": 0
+    },
+    {
+      "gate_name": "no_external_writeback_posture",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "violation_count": 0
+    },
+    {
+      "gate_name": "no_semantic_retrieval_bypass",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "violation_count": 0
+    },
+    {
+      "gate_name": "gates_contract_loaded",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "lifecycle_contract_loaded",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "llamaindex_config",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "SUBSTRATE_EMPTY",
+      "table": "second_brain_retrieval_llamaindex_config_snapshots",
+      "row_count": 0
+    },
+    {
+      "gate_name": "embedding_vector_policy",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "kind": "static_policy"
+    },
+    {
+      "gate_name": "approved_source_manifest",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "table": "second_brain_retrieval_approved_source_manifests",
+      "row_count": 1
+    },
+    {
+      "gate_name": "vector_index",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "table": "second_brain_retrieval_vector_index_runs",
+      "row_count": 3
+    },
+    {
+      "gate_name": "hybrid_retrieval",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "SUBSTRATE_EMPTY",
+      "table": "second_brain_retrieval_hybrid_query_runs",
+      "row_count": 0
+    },
+    {
+      "gate_name": "metadata_filter",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "kind": "static_policy"
+    },
+    {
+      "gate_name": "retrieval_eval_set",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "SUBSTRATE_EMPTY",
+      "table": "second_brain_retrieval_eval_sets",
+      "row_count": 0
+    },
+    {
+      "gate_name": "retrieval_benchmark",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "SUBSTRATE_EMPTY",
+      "table": "second_brain_retrieval_benchmark_runs",
+      "row_count": 0
+    },
+    {
+      "gate_name": "context_budget_optimization",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "kind": "static_policy"
+    },
+    {
+      "gate_name": "unsupported_claim_checks",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "SUBSTRATE_EMPTY",
+      "table": "second_brain_retrieval_unsupported_claim_checks",
+      "row_count": 0
+    },
+    {
+      "gate_name": "hallucination_risk_checks",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "kind": "static_policy"
+    },
+    {
+      "gate_name": "memory_quality_review",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "SUBSTRATE_EMPTY",
+      "table": "second_brain_memory_quality_review_runs",
+      "row_count": 0
+    },
+    {
+      "gate_name": "memory_consolidation_preview",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "SUBSTRATE_EMPTY",
+      "table": "second_brain_memory_consolidation_candidates",
+      "row_count": 0
+    },
+    {
+      "gate_name": "agent_performance_feedback",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "SUBSTRATE_EMPTY",
+      "table": "second_brain_agent_performance_feedback_runs",
+      "row_count": 0
+    },
+    {
+      "gate_name": "source_linked_retrieval_proof",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "SUBSTRATE_EMPTY",
+      "table": "second_brain_retrieval_source_linked_proof_runs",
+      "row_count": 0
+    },
+    {
+      "gate_name": "no_raw_vector_index_proof",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null,
+      "kind": "proof"
+    }
+  ],
+  "by_field_status": {
+    "phase_09_schema_present": "pass",
+    "phase_09_guard_columns_clean": "pass",
+    "no_raw_vector_content": "pass",
+    "no_external_writeback_posture": "pass",
+    "no_semantic_retrieval_bypass": "pass",
+    "gates_contract_loaded": "pass",
+    "lifecycle_contract_loaded": "pass",
+    "llamaindex_config": "deferred_not_blocking",
+    "embedding_vector_policy": "pass",
+    "approved_source_manifest": "pass",
+    "vector_index": "pass",
+    "hybrid_retrieval": "deferred_not_blocking",
+    "metadata_filter": "pass",
+    "retrieval_eval_set": "deferred_not_blocking",
+    "retrieval_benchmark": "deferred_not_blocking",
+    "context_budget_optimization": "pass",
+    "unsupported_claim_checks": "deferred_not_blocking",
+    "hallucination_risk_checks": "pass",
+    "memory_quality_review": "deferred_not_blocking",
+    "memory_consolidation_preview": "deferred_not_blocking",
+    "agent_performance_feedback": "deferred_not_blocking",
+    "source_linked_retrieval_proof": "deferred_not_blocking",
+    "no_raw_vector_index_proof": "pass"
+  },
+  "status_counts": {
+    "pass": 14,
+    "warning": 0,
+    "fail_blocking": 0,
+    "deferred_not_blocking": 9
+  },
+  "gate_count": 23,
+  "gate_count_minimum": 18,
+  "required_fields_covered": true,
+  "readiness_overstated": false,
+  "phase_09_substrate_status": "advisory_empty",
+  "substrate_detail": {
+    "schema_substrate": "ready",
+    "coverage_substrate": "covered",
+    "quality_substrate": "advisory_empty",
+    "handoff_substrate": "available",
+    "production_readiness": false
+  },
+  "coverage_parity": {
+    "deterministic_allowlisted_family_count": 10,
+    "deterministic_reader_family_count": 10,
+    "deterministic_reader_families": [
+      "phase_07d_source_evidence_trails",
+      "meeting_prep_brief_sections",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "aging_exposure_report_items",
+      "review_controlled_correspondence_context",
+      "approved_obsidian_generated_outputs",
+      "generated_outputs",
+      "accepted_long_term_memory",
+      "cross_source_relationships"
+    ],
+    "missing_reader_families": [],
+    "approved_manifest_category_count": 4,
+    "approved_manifest_categories": [
+      "approved_obsidian_outputs",
+      "approved_read_models",
+      "generated_outputs",
+      "reviewed_memory"
+    ],
+    "approved_manifest_family_count": 10,
+    "approved_manifest_families": [
+      "accepted_long_term_memory",
+      "aging_exposure_report_items",
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "vector_indexed_family_count": 9,
+    "vector_indexed_families": [
+      "accepted_long_term_memory",
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "empty_approved_families": [],
+    "deferred_families": [],
+    "memory_substrate_status": "covered",
+    "coverage_parity_ok": true
+  },
+  "advisory_only": true,
+  "makes_determination": false,
+  "read_only": true,
+  "policy_version": "phase_09_data_quality_gates_v1",
+  "contract_version": "1.4.0-phase-09",
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "advisory_only": true,
+    "no_determination": true,
+    "no_readiness_overstatement": true,
+    "fail_closed": true
+  },
+  "proof": "phase_09_data_quality_gates",
+  "proof_passed": true
+}

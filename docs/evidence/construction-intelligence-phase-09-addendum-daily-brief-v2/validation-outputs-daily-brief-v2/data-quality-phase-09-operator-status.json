@@ -1,0 +1,411 @@
+{
+  "command": "second-brain data-quality phase-09-operator-status",
+  "phase": "09",
+  "generated_utc": "2026-06-06T17:11:56.007360+00:00",
+  "repo_sha": "6e5527519fbb9f14df5eb6ed51646dc9398a550f",
+  "schema_version": 40,
+  "overall_status": "advisory_ready",
+  "operator_status_ok": true,
+  "surface_count": 24,
+  "surfaces_with": {
+    "status": 7,
+    "build": 14,
+    "proof": 22,
+    "eval": 0,
+    "gates": 1
+  },
+  "schema_ready": true,
+  "gates_ok": true,
+  "gate_count": 23,
+  "gate_status_counts": {
+    "pass": 14,
+    "warning": 0,
+    "fail_blocking": 0,
+    "deferred_not_blocking": 9
+  },
+  "all_contracts_present": true,
+  "missing_contracts": [],
+  "surfaces": [
+    {
+      "name": "retrieval.llamaindex",
+      "cli_path": "second-brain retrieval llamaindex",
+      "kinds": [
+        "status",
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": "second_brain_retrieval_llamaindex_config_snapshots",
+      "row_count": 0,
+      "populated": false
+    },
+    {
+      "name": "retrieval.embedding-policy",
+      "cli_path": "second-brain retrieval embedding-policy",
+      "kinds": [
+        "status",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": null,
+      "row_count": null,
+      "populated": null
+    },
+    {
+      "name": "retrieval.approved-sources",
+      "cli_path": "second-brain retrieval approved-sources",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": "second_brain_retrieval_approved_source_manifests",
+      "row_count": 1,
+      "populated": true
+    },
+    {
+      "name": "retrieval.obsidian-loader",
+      "cli_path": "second-brain retrieval obsidian-loader",
+      "kinds": [
+        "status",
+        "proof"
+      ],
+      "contract_present": null,
+      "owning_table": null,
+      "row_count": null,
+      "populated": null
+    },
+    {
+      "name": "retrieval.memory-loader",
+      "cli_path": "second-brain retrieval memory-loader",
+      "kinds": [
+        "status",
+        "proof"
+      ],
+      "contract_present": null,
+      "owning_table": null,
+      "row_count": null,
+      "populated": null
+    },
+    {
+      "name": "retrieval.hybrid",
+      "cli_path": "second-brain retrieval hybrid",
+      "kinds": [
+        "status",
+        "search",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": "second_brain_retrieval_hybrid_query_runs",
+      "row_count": 0,
+      "populated": false
+    },
+    {
+      "name": "retrieval.metadata-filter",
+      "cli_path": "second-brain retrieval metadata-filter",
+      "kinds": [
+        "status",
+        "apply",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": null,
+      "row_count": null,
+      "populated": null
+    },
+    {
+      "name": "retrieval.research-packet",
+      "cli_path": "second-brain retrieval research-packet",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": null,
+      "row_count": null,
+      "populated": null
+    },
+    {
+      "name": "retrieval.output-eval",
+      "cli_path": "second-brain retrieval output-eval",
+      "kinds": [
+        "run",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": null,
+      "row_count": null,
+      "populated": null
+    },
+    {
+      "name": "retrieval.eval-set",
+      "cli_path": "second-brain retrieval eval-set",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": "second_brain_retrieval_eval_sets",
+      "row_count": 0,
+      "populated": false
+    },
+    {
+      "name": "retrieval.benchmark",
+      "cli_path": "second-brain retrieval benchmark",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": "second_brain_retrieval_benchmark_runs",
+      "row_count": 0,
+      "populated": false
+    },
+    {
+      "name": "retrieval.project-benchmark",
+      "cli_path": "second-brain retrieval project-benchmark",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": "second_brain_retrieval_benchmark_runs",
+      "row_count": 0,
+      "populated": false
+    },
+    {
+      "name": "retrieval.context-budget",
+      "cli_path": "second-brain retrieval context-budget",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": "second_brain_retrieval_context_budget_runs",
+      "row_count": 0,
+      "populated": false
+    },
+    {
+      "name": "retrieval.claim-checks",
+      "cli_path": "second-brain retrieval claim-checks",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": "second_brain_retrieval_unsupported_claim_checks",
+      "row_count": 0,
+      "populated": false
+    },
+    {
+      "name": "retrieval.hallucination-risk",
+      "cli_path": "second-brain retrieval hallucination-risk",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": null,
+      "row_count": null,
+      "populated": null
+    },
+    {
+      "name": "retrieval.source-linked",
+      "cli_path": "second-brain retrieval source-linked",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": "second_brain_retrieval_source_linked_proof_runs",
+      "row_count": 0,
+      "populated": false
+    },
+    {
+      "name": "retrieval.no-raw-vector-index-proof",
+      "cli_path": "second-brain retrieval no-raw-vector-index-proof",
+      "kinds": [
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": null,
+      "row_count": null,
+      "populated": null
+    },
+    {
+      "name": "memory.quality-review",
+      "cli_path": "second-brain memory quality-review",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": "second_brain_memory_quality_review_runs",
+      "row_count": 0,
+      "populated": false
+    },
+    {
+      "name": "memory.consolidation-preview",
+      "cli_path": "second-brain memory consolidation-preview",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": "second_brain_memory_consolidation_candidates",
+      "row_count": 0,
+      "populated": false
+    },
+    {
+      "name": "agent-performance",
+      "cli_path": "second-brain agent-performance",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": "second_brain_agent_performance_feedback_runs",
+      "row_count": 0,
+      "populated": false
+    },
+    {
+      "name": "daily-brief-reproducibility",
+      "cli_path": "second-brain daily-brief-reproducibility",
+      "kinds": [
+        "build",
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": null,
+      "row_count": null,
+      "populated": null
+    },
+    {
+      "name": "data-quality.phase-09-schema-status",
+      "cli_path": "second-brain data-quality phase-09-schema-status",
+      "kinds": [
+        "status"
+      ],
+      "contract_present": null,
+      "owning_table": null,
+      "row_count": null,
+      "populated": null
+    },
+    {
+      "name": "data-quality.phase-09-gates",
+      "cli_path": "second-brain data-quality phase-09-gates",
+      "kinds": [
+        "gates"
+      ],
+      "contract_present": true,
+      "owning_table": null,
+      "row_count": null,
+      "populated": null
+    },
+    {
+      "name": "data-quality.phase-09-no-writeback-proof",
+      "cli_path": "second-brain data-quality phase-09-no-writeback-proof",
+      "kinds": [
+        "proof"
+      ],
+      "contract_present": true,
+      "owning_table": null,
+      "row_count": null,
+      "populated": null
+    }
+  ],
+  "phase_09_substrate_status": "populated",
+  "substrate_detail": {
+    "schema_substrate": "ready",
+    "coverage_substrate": "covered",
+    "quality_substrate": "advisory_empty",
+    "handoff_substrate": "available",
+    "production_readiness": false
+  },
+  "coverage_parity": {
+    "deterministic_allowlisted_family_count": 10,
+    "deterministic_reader_family_count": 10,
+    "deterministic_reader_families": [
+      "phase_07d_source_evidence_trails",
+      "meeting_prep_brief_sections",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "aging_exposure_report_items",
+      "review_controlled_correspondence_context",
+      "approved_obsidian_generated_outputs",
+      "generated_outputs",
+      "accepted_long_term_memory",
+      "cross_source_relationships"
+    ],
+    "missing_reader_families": [],
+    "approved_manifest_category_count": 4,
+    "approved_manifest_categories": [
+      "approved_obsidian_outputs",
+      "approved_read_models",
+      "generated_outputs",
+      "reviewed_memory"
+    ],
+    "approved_manifest_family_count": 10,
+    "approved_manifest_families": [
+      "accepted_long_term_memory",
+      "aging_exposure_report_items",
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "vector_indexed_family_count": 9,
+    "vector_indexed_families": [
+      "accepted_long_term_memory",
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "empty_approved_families": [],
+    "deferred_families": [],
+    "memory_substrate_status": "covered",
+    "coverage_parity_ok": true
+  },
+  "advisory_only": true,
+  "makes_determination": false,
+  "read_only": true,
+  "readiness_overstated": false,
+  "policy_version": "phase_09_operator_status_v1",
+  "contract_version": "1.4.0-phase-09",
+  "readiness_categories": {
+    "safe_advisory_readiness": false,
+    "semantic_retrieval_readiness": false,
+    "vector_apply_readiness": true,
+    "production_readiness": false,
+    "deferred_limitations": [
+      "external embedding providers (policy-gated; deferred per embedding policy)",
+      "full synthesis / claim / determination flows (advisory signals and review burden only)",
+      "MCP dispatch of Phase 09 actions (08D isolation preserved; no Phase 09 in MCP surface)",
+      "richer operator UX (Obsidian commands, TUI) over review / retrieval surfaces",
+      "persist of review burden clusters (current is read-only mart + proof)",
+      "using clusters as additional corpus family for retrieval"
+    ]
+  },
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "advisory_only": true,
+    "no_determination": true,
+    "no_readiness_overstatement": true,
+    "repo_consistent_command_inventory": true,
+    "fail_closed": true
+  },
+  "status_path": "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/phase-09-operator-status.json",
+  "status_md_path": "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/phase-09-operator-status.md"
+}

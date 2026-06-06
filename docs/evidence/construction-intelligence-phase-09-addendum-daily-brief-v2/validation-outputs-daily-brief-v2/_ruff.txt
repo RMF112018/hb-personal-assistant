@@ -1,0 +1,81 @@
+B008 Do not perform function call `typer.Option` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+   --> src/hb_assistant/cli/procore.py:696:38
+    |
+694 |           help="Explicit opt-in to target a project whose mapping status is 'pending'. Default fails closed.",
+695 |       ),
+696 |       endpoints: Optional[list[str]] = typer.Option(
+    |  ______________________________________^
+697 | |         None,
+698 | |         "--endpoints",
+699 | |         "-e",
+700 | |         help="Filter to one or more endpoint IDs (repeatable). Defaults to every endpoint in the contract.",
+701 | |     ),  # noqa: B008
+    | |_____^
+702 |   ) -> None:
+703 |       """Dry-run (default) or apply (opt-in) for pilot projects.
+    |
+
+B008 Do not perform function call `typer.Option` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+    --> src/hb_assistant/cli/procore.py:1074:24
+     |
+1072 |       confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
+1073 |       confirm_raw_payload_dump: bool = typer.Option(False, "--confirm-raw-payload-dump"),
+1074 |       output_dir: Path = typer.Option(
+     |  ________________________^
+1075 | |         ..., "--output-dir", help="Explicit absolute non-repo directory for raw payload dumps."
+1076 | |     ),  # noqa: B008
+     | |_____^
+1077 |       redact_known_sensitive_fields: bool = typer.Option(False, "--redact-known-sensitive-fields"),
+1078 |       json_out: bool = typer.Option(True, "--json"),
+     |
+
+B008 Do not perform function call `typer.Option` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+    --> src/hb_assistant/cli/procore.py:1715:25
+     |
+1713 |       project: str = typer.Option(..., "--project", help="Mapped pilot project key (contextual)."),
+1714 |       endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id."),
+1715 |       raw_payload: Path = typer.Option(
+     |  _________________________^
+1716 | |         ..., "--raw-payload", help="Local JSON payload file (read-only; not persisted)."
+1717 | |     ),  # noqa: B008
+     | |_____^
+1718 |       json_out: bool = typer.Option(True, "--json"),
+1719 |   ) -> None:
+     |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_phase_08d_mcp_wrappers.py:9:1
+   |
+ 7 |   """
+ 8 |
+ 9 | / from __future__ import annotations
+10 | |
+11 | | import json
+12 | | import sqlite3
+13 | | import tempfile
+14 | | from pathlib import Path
+15 | |
+16 | | from hb_assistant.construction.second_brain.mcp import (
+17 | |     build_default_broker,
+18 | |     build_mcp_allowed_tools_proof,
+19 | |     build_wrapper_registry,
+20 | | )
+21 | | from hb_assistant.construction.second_brain.financial_review_routing import _assert_no_raw
+22 | | from hb_assistant.construction.second_brain.mcp.proof import (
+23 | |     _collect_keys,
+24 | |     _FORBIDDEN_RESULT_FIELDS,
+25 | | )
+26 | | from hb_assistant.construction.second_brain.mcp.registry import load_allowed_tools
+27 | | from hb_assistant.construction.second_brain.mcp.wrappers import (
+28 | |     mcp_memory_feedback_wrapper,
+29 | |     mcp_open_daily_brief_wrapper,
+30 | |     mcp_status_wrapper,
+31 | | )
+   | |_^
+32 |
+33 |   _ENVELOPE_KEYS = {"status", "provenance", "results", "source_count", "output_classification"}
+   |
+help: Organize imports
+
+Found 4 errors.
+[*] 1 fixable with the `--fix` option.

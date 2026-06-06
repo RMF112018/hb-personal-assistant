@@ -120,3 +120,14 @@ def test_daily_brief_rendered_proof_invalid_version_rejected(runner: CliRunner) 
         app, ["second-brain", "daily-brief", "rendered-proof", "--version", "x", "--json"]
     )
     assert result.exit_code == 2, result.output
+
+
+def test_daily_brief_v2_closeout_exit_zero(runner: CliRunner) -> None:
+    result = runner.invoke(
+        app, ["second-brain", "daily-brief", "v2-closeout", "--no-evidence", "--json"]
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["closeout_complete"] is True
+    assert payload["schema_version"] == 40
+    assert payload["packet_version"] == "DailyBriefHandoffPacketV2"

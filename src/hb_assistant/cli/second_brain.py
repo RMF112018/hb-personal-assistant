@@ -2194,6 +2194,32 @@ def daily_brief_v2_proof(
     raise typer.Exit(0 if proof["proof_passed"] else 3)
 
 
+@daily_brief_app.command("v2-closeout")
+def daily_brief_v2_closeout(
+    brief_date: str = typer.Option("2026-06-06", "--date", help="Brief date for the output path."),
+    validation_dir: str = typer.Option(
+        None, "--validation-dir", help="Dir of captured validation-command --json outputs to summarize."
+    ),
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the closeout bundle to the evidence dir."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Assemble the Daily Brief V2 closeout/handoff bundle: branch/SHA/files, schema (unchanged),
+    packet/output path, V2 render-quality + rejected-fixture result, enrichment coverage +
+    detail-unavailable counts, captured validation runs, limitations, and next improvement. Exit 0
+    when the daily-brief-owned gates pass."""
+    from hb_assistant.construction.second_brain.daily_brief import (
+        build_daily_brief_v2_closeout,
+    )
+
+    closeout = build_daily_brief_v2_closeout(
+        brief_date=brief_date, validation_dir=validation_dir, write_evidence=evidence
+    )
+    typer.echo(json.dumps(closeout, indent=2, default=str) if json_out else str(closeout))
+    raise typer.Exit(0 if closeout["closeout_complete"] else 3)
+
+
 @daily_brief_app.command("rendered-proof")
 def daily_brief_rendered_proof(
     packet_path: str = typer.Option(

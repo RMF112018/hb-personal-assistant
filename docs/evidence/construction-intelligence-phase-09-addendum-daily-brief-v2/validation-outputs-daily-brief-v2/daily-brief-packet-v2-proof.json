@@ -1,0 +1,105 @@
+{
+  "proof": "phase_09_addendum_daily_brief_packet_v2",
+  "command": "second-brain daily-brief packet-v2-proof",
+  "phase": "09-addendum-v2",
+  "proof_passed": true,
+  "generated_utc": "2026-06-06T17:12:03.195349+00:00",
+  "repo_sha": "6e5527519fbb9f14df5eb6ed51646dc9398a550f",
+  "packet_version": "DailyBriefHandoffPacketV2",
+  "packet_id": "dbp_75c6f6aae10670ca47ec133e51dd06ad",
+  "render_payload_present": true,
+  "governance_metadata_separated": true,
+  "required_sections_present": true,
+  "item_fields_present": true,
+  "source_refs_preserved": true,
+  "metadata_only": true,
+  "raw_shaped_rejected": true,
+  "review_stale_confidence_preserved": true,
+  "final_determination_rejected": true,
+  "no_external_writeback": true,
+  "count_detail_invariant_holds": true,
+  "tampered_count_without_detail_rejected": true,
+  "detail_unavailable_explicit": true,
+  "record_details_source_linked": true,
+  "no_raw_calendar_email_payload": true,
+  "no_raw_payload_probe_rejected": true,
+  "record_section_summary": {
+    "yesterday": {
+      "count": 1,
+      "detail_available": true,
+      "detail_gap_reason": null
+    },
+    "today_agenda": {
+      "count": 1,
+      "detail_available": true,
+      "detail_gap_reason": null
+    },
+    "next_7_days": {
+      "count": 1,
+      "detail_available": true,
+      "detail_gap_reason": null
+    },
+    "schedule": {
+      "count": 1,
+      "detail_available": true,
+      "detail_gap_reason": null
+    },
+    "rfis": {
+      "count": 0,
+      "detail_available": false,
+      "detail_gap_reason": "dedicated_reader_not_available"
+    },
+    "submittals": {
+      "count": 0,
+      "detail_available": false,
+      "detail_gap_reason": "dedicated_reader_not_available"
+    },
+    "punch": {
+      "count": 0,
+      "detail_available": false,
+      "detail_gap_reason": "dedicated_reader_not_available"
+    },
+    "procurement": {
+      "count": 0,
+      "detail_available": false,
+      "detail_gap_reason": "dedicated_reader_not_available"
+    },
+    "email_activity": {
+      "count": 1,
+      "detail_available": true,
+      "detail_gap_reason": null
+    },
+    "calendar_activity": {
+      "count": 2,
+      "detail_available": true,
+      "detail_gap_reason": null
+    }
+  },
+  "render_section_counts": {
+    "brief_date": 1,
+    "portfolio_scope": null,
+    "yesterday": 1,
+    "today_agenda": 1,
+    "next_7_days": 1,
+    "schedule": 1,
+    "rfis": 0,
+    "submittals": 0,
+    "punch": 0,
+    "procurement": 0,
+    "needs_attention": 4,
+    "focus_recommendations": 3,
+    "project_signals": 1,
+    "email_activity": 1,
+    "calendar_activity": 2,
+    "data_gaps": 8
+  },
+  "guardrails": {
+    "advisory_only": true,
+    "source_linked": true,
+    "metadata_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "no_final_determinations": true,
+    "claude_rendering_only": true
+  }
+}
