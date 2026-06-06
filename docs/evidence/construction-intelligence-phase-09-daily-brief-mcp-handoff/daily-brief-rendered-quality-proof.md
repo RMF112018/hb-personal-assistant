@@ -1,9 +1,9 @@
 # Phase 09 Addendum V2 — Rendered Daily Brief Quality Proof
 
 - proof_passed: True
-- generated_utc: 2026-06-06T14:27:54.620945+00:00
+- generated_utc: 2026-06-06T16:53:40.755901+00:00
 - safe_fixture_passed: True
-- check_count: 16
+- check_count: 21
 
 ## Tampered variants (each must fail its expected check)
 

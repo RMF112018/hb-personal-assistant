@@ -135,3 +135,94 @@ def test_proof_passes_and_writes_artifacts(tmp_path) -> None:
     assert not _SECRET_OR_URL.search(
         (tmp_path / "daily-brief-rendered-quality-proof.json").read_text()
     )
+
+
+# --- Prompt 05: new executive-utility checks ------------------------------------------------------
+
+_NEW_CHECKS = (
+    "brief_length_within_max",
+    "agenda_today_or_none",
+    "next_7_days_deadlines_or_none",
+    "focus_count_in_range_or_none",
+    "attention_counts_backed_or_unavailable",
+)
+
+
+def test_safe_fixture_satisfies_new_checks() -> None:
+    result = validate_rendered_brief(_packet(), _SAMPLE_RENDERED_BRIEF)
+    for key in _NEW_CHECKS:
+        assert result["checks"][key] is True, key
+
+
+def test_brief_length_over_max_fails() -> None:
+    tampered = _SAMPLE_RENDERED_BRIEF + ("\nfiller padding line." * 700)
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["brief_length_within_max"] is False
+    assert result["passed"] is False
+
+
+def _replace_section(brief: str, header: str, new_body: str, next_header: str) -> str:
+    return re.sub(
+        rf"{re.escape(header)}\n.*?\n{re.escape(next_header)}",
+        f"{header}\n{new_body}{next_header}",
+        brief,
+        flags=re.DOTALL,
+    )
+
+
+def test_empty_today_section_fails_agenda() -> None:
+    tampered = _replace_section(_SAMPLE_RENDERED_BRIEF, "## Today", "", "## Next 7 Days")
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["agenda_today_or_none"] is False
+    assert result["passed"] is False
+
+
+def test_today_states_none_passes_agenda() -> None:
+    tampered = _replace_section(
+        _SAMPLE_RENDERED_BRIEF, "## Today", "No calendar items present.\n\n", "## Next 7 Days"
+    )
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["agenda_today_or_none"] is True
+
+
+def test_empty_next_7_days_fails() -> None:
+    tampered = _replace_section(_SAMPLE_RENDERED_BRIEF, "## Next 7 Days", "", "## Needs Attention")
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["next_7_days_deadlines_or_none"] is False
+    assert result["passed"] is False
+
+
+def test_focus_below_min_fails() -> None:
+    tampered = _replace_section(
+        _SAMPLE_RENDERED_BRIEF,
+        "## Focus",
+        "1. Do the one thing.\n2. Do the other thing.\n",
+        "---",
+    )
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["focus_count_in_range_or_none"] is False
+    assert result["passed"] is False
+
+
+def test_focus_states_none_passes() -> None:
+    tampered = _replace_section(
+        _SAMPLE_RENDERED_BRIEF, "## Focus", "No focus items at this time.\n", "---"
+    )
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["focus_count_in_range_or_none"] is True
+
+
+def test_count_only_attention_line_fails() -> None:
+    tampered = _SAMPLE_RENDERED_BRIEF + "\n\n## Backlog\n\n5 RFIs are outstanding this week.\n"
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["attention_counts_backed_or_unavailable"] is False
+    assert result["passed"] is False
+
+
+def test_count_with_detail_unavailable_passes_attention() -> None:
+    tampered = (
+        _SAMPLE_RENDERED_BRIEF
+        + "\n\n## Backlog\n\n5 RFIs outstanding — detail unavailable; review the RFI log.\n"
+    )
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["attention_counts_backed_or_unavailable"] is True

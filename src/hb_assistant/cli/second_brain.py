@@ -2173,6 +2173,27 @@ def daily_brief_packet_v2_proof(
     raise typer.Exit(0 if proof["proof_passed"] else 3)
 
 
+@daily_brief_app.command("v2-proof")
+def daily_brief_v2_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the V2 executive-quality proof + golden fixtures to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Prove the V2 executive-utility standard over three golden fixtures: the full-detail and
+    detail-unavailable briefs pass every quality check and the unsafe/internal brief is rejected.
+    Exit 0 on pass; 3 on failure."""
+    from hb_assistant.construction.second_brain.daily_brief import (
+        build_daily_brief_v2_quality_proof,
+    )
+
+    proof = build_daily_brief_v2_quality_proof(write_evidence=evidence)
+    typer.echo(json.dumps(proof, indent=2, default=str) if json_out else str(proof))
+    raise typer.Exit(0 if proof["proof_passed"] else 3)
+
+
 @daily_brief_app.command("rendered-proof")
 def daily_brief_rendered_proof(
     packet_path: str = typer.Option(
@@ -2180,6 +2201,11 @@ def daily_brief_rendered_proof(
     ),
     rendered_path: str = typer.Option(
         None, "--rendered", help="Path to a rendered brief markdown file to validate (optional)."
+    ),
+    version: str = typer.Option(
+        "v1",
+        "--version",
+        help="Built-in proof: v1 (fixture + tampered variants) | v2 (executive-quality golden fixtures).",
     ),
     evidence: bool = typer.Option(
         True,
@@ -2190,15 +2216,26 @@ def daily_brief_rendered_proof(
 ) -> None:
     """Validate a Claude-rendered daily brief against its source packet (review-only).
 
-    With both --packet and --rendered, validate those files. Otherwise run the built-in fixture proof
-    (safe fixture passes; tampered variants fail their expected checks). Exit 0 on pass; 3 on fail.
+    With both --packet and --rendered, validate those files. Otherwise run the built-in proof:
+    --version v1 (safe fixture passes; tampered variants fail their checks) or --version v2 (golden
+    full-detail/detail-unavailable pass; unsafe/internal is rejected). Exit 0 on pass; 3 on fail.
     """
     from pathlib import Path
 
     from hb_assistant.construction.second_brain.daily_brief import (
         build_daily_brief_rendered_quality_proof,
+        build_daily_brief_v2_quality_proof,
         validate_rendered_brief,
     )
+
+    if version not in ("v1", "v2"):
+        err = {
+            "command": "second-brain daily-brief rendered-proof",
+            "error": "invalid_version",
+            "detail": f"{version!r} not in ['v1', 'v2']",
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(2)
 
     if packet_path and rendered_path:
         try:
@@ -2223,23 +2260,41 @@ def daily_brief_rendered_proof(
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
         raise typer.Exit(0 if result["passed"] else 3)
 
-    proof = build_daily_brief_rendered_quality_proof(write_evidence=evidence)
+    if version == "v2":
+        proof = build_daily_brief_v2_quality_proof(write_evidence=evidence)
+    else:
+        proof = build_daily_brief_rendered_quality_proof(write_evidence=evidence)
     typer.echo(json.dumps(proof, indent=2, default=str) if json_out else str(proof))
     raise typer.Exit(0 if proof["proof_passed"] else 3)
 
 
 @daily_brief_app.command("output-receipt-proof")
 def daily_brief_output_receipt_proof(
+    version: str = typer.Option(
+        "v2",
+        "--version",
+        help="Receipt contract version: v1 | v2 (the receipt is V2 by construction).",
+    ),
     evidence: bool = typer.Option(
         True, "--evidence/--no-evidence", help="Write the output-receipt proof to the evidence dir."
     ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Prove the rendered-brief output receipt is advisory/not-source-truth and excluded from trusted
-    stores (vector index, manifest, source-linked proof, accepted memory); import is deferred."""
+    stores (vector index, manifest, source-linked proof, accepted memory); import is deferred. The
+    receipt is V2 by construction; --version v1|v2 both validate it."""
     from hb_assistant.construction.second_brain.daily_brief import (
         build_daily_brief_rendered_output_receipt_proof,
     )
+
+    if version not in ("v1", "v2"):
+        err = {
+            "command": "second-brain daily-brief output-receipt-proof",
+            "error": "invalid_version",
+            "detail": f"{version!r} not in ['v1', 'v2']",
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(2)
 
     proof = build_daily_brief_rendered_output_receipt_proof(write_evidence=evidence)
     typer.echo(json.dumps(proof, indent=2, default=str) if json_out else str(proof))

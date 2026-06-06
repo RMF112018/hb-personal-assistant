@@ -71,3 +71,52 @@ def test_daily_brief_output_carries_no_raw_content(runner: CliRunner) -> None:
         "secret",
     ):
         assert forbidden not in out
+
+
+def test_daily_brief_v2_proof_exit_zero(runner: CliRunner) -> None:
+    result = runner.invoke(
+        app, ["second-brain", "daily-brief", "v2-proof", "--no-evidence", "--json"]
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["proof_passed"] is True
+
+
+def test_daily_brief_rendered_proof_version_v2_exit_zero(runner: CliRunner) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "second-brain",
+            "daily-brief",
+            "rendered-proof",
+            "--version",
+            "v2",
+            "--no-evidence",
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["proof_passed"] is True
+
+
+def test_daily_brief_output_receipt_proof_version_v2_exit_zero(runner: CliRunner) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "second-brain",
+            "daily-brief",
+            "output-receipt-proof",
+            "--version",
+            "v2",
+            "--no-evidence",
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["proof_passed"] is True
+
+
+def test_daily_brief_rendered_proof_invalid_version_rejected(runner: CliRunner) -> None:
+    result = runner.invoke(
+        app, ["second-brain", "daily-brief", "rendered-proof", "--version", "x", "--json"]
+    )
+    assert result.exit_code == 2, result.output

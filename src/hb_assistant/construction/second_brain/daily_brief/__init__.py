@@ -66,6 +66,7 @@ from .render_view import build_daily_brief_render_view
 from .rendered_quality import (
     RenderedBriefQualityError,
     build_daily_brief_rendered_quality_proof,
+    build_daily_brief_v2_quality_proof,
     validate_rendered_brief,
 )
 from .scheduling import build_daily_brief_schedule_preview, build_launchd_schedule_proof
@@ -120,6 +121,7 @@ __all__ = [
     "load_daily_brief_packet_v2_contract",
     "RenderedBriefQualityError",
     "build_daily_brief_rendered_quality_proof",
+    "build_daily_brief_v2_quality_proof",
     "validate_rendered_brief",
     "RenderedOutputReceiptError",
     "RENDERED_VAULT_SUBDIR",

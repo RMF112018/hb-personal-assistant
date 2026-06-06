@@ -3,13 +3,17 @@
   "command": "second-brain daily-brief rendered-proof",
   "phase": "09-addendum-v2",
   "proof_passed": true,
-  "generated_utc": "2026-06-06T14:27:54.620945+00:00",
-  "repo_sha": "3965ccb05aebb83bde430651a3896ddcdff77d64",
+  "generated_utc": "2026-06-06T16:53:40.755901+00:00",
+  "repo_sha": "9429d10df38fbe2d3df1ea40fb0f7b4901121f5f",
   "safe_fixture_passed": true,
   "safe_fixture_checks": {
     "required_sections_present": true,
+    "brief_length_within_max": true,
     "single_advisory_disclaimer": true,
     "focus_items_within_limit": true,
+    "focus_count_in_range_or_none": true,
+    "agenda_today_or_none": true,
+    "next_7_days_deadlines_or_none": true,
     "no_provenance_table": true,
     "no_guardrail_matrix": true,
     "no_source_coverage_section": true,
@@ -20,6 +24,7 @@
     "no_follow_up_questions": true,
     "no_json_blobs": true,
     "schedule_detail_or_unavailable": true,
+    "attention_counts_backed_or_unavailable": true,
     "no_final_determinations": true,
     "no_source_system_update_claims": true,
     "no_raw_shaped_values": true
@@ -66,7 +71,7 @@
       "overall_passed": false
     }
   },
-  "check_count": 16,
+  "check_count": 21,
   "metadata_only": true,
   "review_only": true,
   "guardrails": {
