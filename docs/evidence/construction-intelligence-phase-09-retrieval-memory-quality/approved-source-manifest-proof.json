@@ -3,8 +3,8 @@
   "command": "second-brain retrieval approved-sources proof",
   "phase": "09",
   "proof_passed": true,
-  "generated_utc": "2026-06-04T21:23:37.771631+00:00",
-  "repo_sha": "3c1004ea99e22f5dae35fa0c95503e40a73300ab",
+  "generated_utc": "2026-06-05T23:49:21.956264+00:00",
+  "repo_sha": "5a71cc5ec679d598870ff48d731288599d8d1d11",
   "policy_version": "phase_09_approved_source_manifest_v1",
   "case_count": 10,
   "cases": [

@@ -1,0 +1,135 @@
+{
+  "command": "second-brain retrieval source-linked build",
+  "phase": "09",
+  "generated_utc": "2026-06-06T07:48:30.606933+00:00",
+  "repo_sha": "98ce969407519b941daa0e02e188d40623a0e995",
+  "schema_version": 39,
+  "status": "source_linked",
+  "run_id": "slr_8c2f279fd63cf2489c6c23e0e26d463c",
+  "project_key": "P1",
+  "query_hash": "4ccc11639375879a6e6dcd027e6ebcfb3caa8cb8509fe5010f4e7dc6e5e7be67",
+  "mode": "hybrid",
+  "result_count": 6,
+  "linked_count": 6,
+  "unlinked_count": 0,
+  "proof_passed": true,
+  "per_family": {
+    "approved_obsidian_generated_outputs": {
+      "linked": 1,
+      "unlinked": 0
+    },
+    "project_issue_history_items": {
+      "linked": 5,
+      "unlinked": 0
+    }
+  },
+  "coverage_parity": {
+    "deterministic_allowlisted_family_count": 10,
+    "deterministic_reader_family_count": 10,
+    "deterministic_reader_families": [
+      "phase_07d_source_evidence_trails",
+      "meeting_prep_brief_sections",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "aging_exposure_report_items",
+      "review_controlled_correspondence_context",
+      "approved_obsidian_generated_outputs",
+      "generated_outputs",
+      "accepted_long_term_memory",
+      "cross_source_relationships"
+    ],
+    "missing_reader_families": [],
+    "approved_manifest_category_count": 4,
+    "approved_manifest_categories": [
+      "approved_obsidian_outputs",
+      "approved_read_models",
+      "generated_outputs",
+      "reviewed_memory"
+    ],
+    "approved_manifest_family_count": 10,
+    "approved_manifest_families": [
+      "accepted_long_term_memory",
+      "aging_exposure_report_items",
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "vector_indexed_family_count": 8,
+    "vector_indexed_families": [
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "empty_approved_families": [
+      "accepted_long_term_memory",
+      "aging_exposure_report_items",
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "deferred_families": [
+      "accepted_long_term_memory",
+      "aging_exposure_report_items",
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "memory_substrate_status": "deferred_empty",
+    "coverage_parity_ok": true
+  },
+  "deterministic_count": 1,
+  "semantic_count": 5,
+  "semantic_skip_reason": null,
+  "coverage_warnings": [
+    "empty_read_model:phase_07d_source_evidence_trails",
+    "empty_read_model:meeting_prep_brief_sections",
+    "empty_read_model:project_issue_history_items",
+    "empty_read_model:project_risk_digest_items",
+    "empty_read_model:aging_exposure_report_items",
+    "empty_read_model:review_controlled_correspondence_context",
+    "empty_read_model:generated_outputs",
+    "empty_read_model:accepted_long_term_memory",
+    "empty_read_model:cross_source_relationships",
+    "semantic_advisory_only"
+  ],
+  "min_result_count": 1,
+  "advisory_only": true,
+  "makes_determination": false,
+  "read_only": true,
+  "receipt_emitted": false,
+  "policy_version": "phase_09_source_linked_retrieval_proof_v1",
+  "contract_version": "1.4.0-phase-09",
+  "guard_attestation": {
+    "all_false": true,
+    "column_count": 23
+  },
+  "guardrails": {
+    "advisory_only": true,
+    "no_determination": true,
+    "preserve_source_refs": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "no_semantic_retrieval_bypass": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

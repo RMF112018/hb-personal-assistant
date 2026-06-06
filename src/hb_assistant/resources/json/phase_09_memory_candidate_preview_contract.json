@@ -1,0 +1,69 @@
+{
+  "contract_name": "phase_09_memory_candidate_preview_contract",
+  "version": "1.8.0-phase-09-addendum",
+  "description": "Phase 09 Addendum Prompt 01 — memory candidate preview. A read-only, advisory surface that identifies possible long-term memory candidates from already-redacted, already-source-linked, guard-clean local records (system/config facts, repeated operator preferences, stable redacted project read models). It NEVER accepts or persists accepted memory: every surfaced candidate is review_status='pending_review' and never auto-accepted. Inputs are rejected when unsourced, raw-content-shaped, or implying a final determination; review tier 3 inputs are surfaced only as non-acceptance preview (a future acceptance-mode caller rejects tier 3). Deterministic: candidate identity/content is hash-derived. Evidence is metadata-only (statement hashes + source_ref hashes; no statement text, no source_ref).",
+  "required_candidate_fields": [
+    "candidate_id",
+    "memory_type",
+    "statement_redacted",
+    "source_family",
+    "source_ref",
+    "source_ref_hash",
+    "project_key",
+    "confidence_class",
+    "review_tier",
+    "review_status",
+    "reason_code",
+    "durability_class",
+    "freshness_label",
+    "created_utc",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "retrieved_context_persisted"
+  ],
+  "allowed_memory_types": [
+    "system_config_fact",
+    "operator_preference",
+    "project_context",
+    "team_context",
+    "workflow_preference",
+    "retrieval_preference"
+  ],
+  "allowed_durability_classes": ["stable", "durable", "volatile"],
+  "fixed_review_status": "pending_review",
+  "rejection_reason_codes": [
+    "REJECTED_UNSOURCED",
+    "REJECTED_EMPTY_STATEMENT",
+    "REJECTED_RAW_SHAPED",
+    "REJECTED_DETERMINATION",
+    "REJECTED_REVIEW_TIER_3"
+  ],
+  "evidence_forbidden_fields": [
+    "statement",
+    "statement_redacted",
+    "content",
+    "text",
+    "text_redacted",
+    "source_ref",
+    "raw_prompt",
+    "raw_response",
+    "retrieved_context",
+    "embedding",
+    "vector",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "read_only_by_default",
+    "no_acceptance",
+    "source_linked_only",
+    "bounded_statements",
+    "deterministic"
+  ]
+}

@@ -155,4 +155,6 @@ def test_empty_db_degrades_gracefully(db_path: str) -> None:
     env = RetrievalBroker(db_path=db_path).retrieve(project_key="P1")
     assert env.items == []
     assert env.degradation_mode == "blocked"
-    assert any(w.startswith("no_read_model:") for w in env.coverage_warnings)
+    # All allowlisted families are now reader-backed (Phase 09 coverage expansion); an empty DB
+    # degrades to empty results rather than no_read_model coverage warnings.
+    assert not any(w.startswith("no_read_model:") for w in env.coverage_warnings)

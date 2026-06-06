@@ -8,6 +8,10 @@ enabled_categories:
   - generated_outputs
   - approved_obsidian_outputs
   - reviewed_memory
+  # Eligible (redacted, source-linked, non-review-required, review_tier <= 2) deterministic read-model
+  # items from the other embeddable allowlisted families (evidence trails, issue history, risk digest,
+  # aging exposure, cross-source relationships, meeting-prep sections, review-controlled correspondence).
+  - approved_read_models
 
 # Bounded enumeration per category (defensive cap on how many candidate rows are read).
 max_refs_per_category: 2000

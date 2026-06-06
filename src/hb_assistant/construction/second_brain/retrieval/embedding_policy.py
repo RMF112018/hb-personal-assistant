@@ -263,7 +263,9 @@ def _proof_cases(contract: dict[str, Any], seed: dict[str, Any]) -> list[dict[st
     }
     planted: list[tuple[str, dict[str, Any]]] = [
         ("excluded_family", {**safe, "source_family": "raw_email_body"}),
-        ("non_embeddable_family", {**safe, "source_family": "meeting_prep_brief_sections"}),
+        # A family that is neither EXCLUDED (raw_*) nor on the embeddable allowlist is rejected
+        # (source_family_not_embeddable). All current allowlisted families are embeddable.
+        ("non_embeddable_family", {**safe, "source_family": "deferred_unlisted_read_model_family"}),
         ("raw_body_field", {**safe, "raw_body": "some text"}),
         ("signed_url_field", {**safe, "signed_url": "ref"}),
         ("vector_blob_field", {**safe, "embedding": [0.1, 0.2, 0.3]}),

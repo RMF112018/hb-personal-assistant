@@ -1,0 +1,59 @@
+{
+  "command": "second-brain retrieval approved-sources build",
+  "phase": "09",
+  "generated_utc": "2026-06-06T07:48:18.858616+00:00",
+  "repo_sha": "98ce969407519b941daa0e02e188d40623a0e995",
+  "policy_loaded": true,
+  "policy_version": "phase_09_approved_source_manifest_v1",
+  "contract_version": "1.4.0-phase-09",
+  "manifest_id": "asm_4f9f631a98c79144c2a78686dd9b4f69",
+  "manifest_hash": "4f9f631a98c79144c2a78686dd9b4f6931a72b8eb92b5018bb7f32865ede1925",
+  "schema_version": 39,
+  "schema_version_expected": 39,
+  "approved_family_count": 3,
+  "approved_ref_count": 1696,
+  "review_tier_summary": "max=2;tiers=1,2",
+  "status": "approved",
+  "families": {
+    "generated_outputs": {
+      "candidate_count": 7,
+      "approved_count": 7,
+      "excluded_count": 0,
+      "exclude_reasons": {}
+    },
+    "approved_obsidian_outputs": {
+      "candidate_count": 1,
+      "approved_count": 1,
+      "excluded_count": 0,
+      "exclude_reasons": {}
+    },
+    "reviewed_memory": {
+      "candidate_count": 0,
+      "approved_count": 0,
+      "excluded_count": 0,
+      "exclude_reasons": {}
+    },
+    "approved_read_models": {
+      "candidate_count": 1688,
+      "approved_count": 1688,
+      "excluded_count": 0,
+      "exclude_reasons": {}
+    }
+  },
+  "warnings": [
+    "empty_family:reviewed_memory"
+  ],
+  "read_only": true,
+  "applied": false,
+  "persisted_manifest_id": null,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "metadata_only": true,
+    "exclude_unresolved_high_impact": true,
+    "only_approved_obsidian_apply_manifests": true,
+    "source_linked_only": true,
+    "local_first": true
+  }
+}

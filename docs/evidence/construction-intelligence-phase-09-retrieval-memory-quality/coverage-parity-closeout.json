@@ -1,0 +1,124 @@
+{
+  "proof": "phase_09_coverage_parity_closeout",
+  "command": "second-brain retrieval coverage-parity-closeout",
+  "phase": "09",
+  "closeout_ok": true,
+  "generated_utc": "2026-06-05T23:50:19.509558+00:00",
+  "repo_sha": "5a71cc5ec679d598870ff48d731288599d8d1d11",
+  "coverage_parity": {
+    "deterministic_allowlisted_family_count": 10,
+    "deterministic_reader_family_count": 10,
+    "deterministic_reader_families": [
+      "phase_07d_source_evidence_trails",
+      "meeting_prep_brief_sections",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "aging_exposure_report_items",
+      "review_controlled_correspondence_context",
+      "approved_obsidian_generated_outputs",
+      "generated_outputs",
+      "accepted_long_term_memory",
+      "cross_source_relationships"
+    ],
+    "missing_reader_families": [],
+    "approved_manifest_category_count": 4,
+    "approved_manifest_categories": [
+      "approved_obsidian_outputs",
+      "approved_read_models",
+      "generated_outputs",
+      "reviewed_memory"
+    ],
+    "approved_manifest_family_count": 10,
+    "approved_manifest_families": [
+      "accepted_long_term_memory",
+      "aging_exposure_report_items",
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "vector_indexed_family_count": 8,
+    "vector_indexed_families": [
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "empty_approved_families": [
+      "accepted_long_term_memory"
+    ],
+    "deferred_families": [
+      "accepted_long_term_memory"
+    ],
+    "memory_substrate_status": "deferred_empty",
+    "coverage_parity_ok": true
+  },
+  "sub_proofs_passed": {
+    "reader_registry_parity": true,
+    "approved_read_model_manifest": true,
+    "read_model_vector_loader": true
+  },
+  "planes": {
+    "deterministic_reader_families": [
+      "phase_07d_source_evidence_trails",
+      "meeting_prep_brief_sections",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "aging_exposure_report_items",
+      "review_controlled_correspondence_context",
+      "approved_obsidian_generated_outputs",
+      "generated_outputs",
+      "accepted_long_term_memory",
+      "cross_source_relationships"
+    ],
+    "approved_manifest_families": [
+      "accepted_long_term_memory",
+      "aging_exposure_report_items",
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "vector_indexed_families": [
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "empty_approved_families": [
+      "accepted_long_term_memory"
+    ],
+    "deferred_families": [
+      "accepted_long_term_memory"
+    ],
+    "memory_substrate_status": "deferred_empty"
+  },
+  "advisory_only": true,
+  "makes_determination": false,
+  "metadata_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "advisory_only": true,
+    "no_determination": true,
+    "no_readiness_overstatement": true,
+    "fail_closed": true
+  }
+}

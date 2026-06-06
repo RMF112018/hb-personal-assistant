@@ -1,0 +1,60 @@
+{
+  "contract_name": "phase_09_memory_acceptance_contract",
+  "version": "1.8.0-phase-09-addendum",
+  "description": "Phase 09 Addendum Prompt 02 — explicit memory acceptance workflow. Converts a vetted candidate from the durable safe candidate store (memory_update_candidates) into an accepted long_term_memory_items row. Acceptance requires explicit operator action (--confirm); there is NO automatic acceptance. A strict, fail-closed acceptance gate runs before promotion; rejected/deferred/superseded items never load into retrieval or the vector index (the reviewed memory loader gates strictly on review_status='accepted'). Uses the existing long_term_memory_items table — schema is sufficient (no migration); guard columns stay 0.",
+  "requires_explicit_confirmation": true,
+  "no_auto_acceptance": true,
+  "schema_sufficient": true,
+  "migration_required": false,
+  "acceptance_rules": [
+    "candidate_exists_in_safe_candidate_store",
+    "candidate_has_source_ref",
+    "candidate_has_redacted_statement",
+    "candidate_has_memory_type",
+    "candidate_has_confidence_class",
+    "candidate_has_review_tier",
+    "candidate_has_no_raw_content_findings",
+    "candidate_is_not_unresolved_high_impact",
+    "candidate_is_not_final_determination",
+    "operator_confirmation_provided"
+  ],
+  "block_codes": [
+    "NO_SOURCE_REF",
+    "NO_STATEMENT",
+    "NO_MEMORY_TYPE",
+    "NO_CONFIDENCE_CLASS",
+    "INVALID_REVIEW_TIER",
+    "RAW_CONTENT_FINDING",
+    "UNRESOLVED_HIGH_IMPACT",
+    "FINAL_DETERMINATION",
+    "DUPLICATE_ACCEPTED"
+  ],
+  "accepted_item_required_fields": [
+    "memory_id",
+    "memory_type",
+    "statement_redacted",
+    "confidence_class",
+    "review_status",
+    "source_family",
+    "source_ref",
+    "project_key"
+  ],
+  "fixed_accepted_review_status": "accepted",
+  "decisions": ["accepted", "rejected", "deferred", "superseded"],
+  "non_loading_statuses": ["rejected", "deferred", "superseded"],
+  "guard_columns_must_be_false": [
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "retrieved_context_persisted"
+  ],
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "no_auto_acceptance",
+    "explicit_operator_confirmation",
+    "guard_columns_false",
+    "non_accepted_never_loads_into_retrieval"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "contract_name": "phase_09_memory_quality_controls_contract",
+  "version": "1.8.0-phase-09-addendum",
+  "description": "Phase 09 Addendum Prompt 04 — memory quality and supersession controls. Minimum-viable controls so accepted long-term memory does not become stale, duplicative, or unsafe: deterministic duplicate detection (suppressed at acceptance), metadata-only supersession, freshness labeling, source retention, and review-status transition validation. Uses the existing schema only (supersedes_memory_id, review_status CHECK incl. superseded, long_term_memory_quality_signals.freshness_class + signal_type='freshness'); no migration. Time-based auto-expiration is a documented future enhancement (no unnecessary schema).",
+  "duplicate_detection": {
+    "normalization": "whitespace_collapse_and_casefold",
+    "duplicate_key_fields": [
+      "project_key",
+      "memory_type",
+      "source_family",
+      "normalized_statement_redacted"
+    ],
+    "suppressed_at_acceptance": true,
+    "acceptance_block_code": "DUPLICATE_ACCEPTED"
+  },
+  "supersession": {
+    "metadata_only": true,
+    "old_status_after": "superseded",
+    "new_link_field": "supersedes_memory_id",
+    "superseded_excluded_from_retrieval": true,
+    "requires_explicit_confirmation": true
+  },
+  "freshness": {
+    "label_source": "created_utc",
+    "label_values": ["current", "unknown"],
+    "stale_flag": "long_term_memory_quality_signals.freshness_class",
+    "future_enhancement": "time_based_expiration_column_on_long_term_memory_items"
+  },
+  "source_retention_fields": [
+    "source_family",
+    "source_ref",
+    "source_ref_hash",
+    "evidence_trail_id"
+  ],
+  "allowed_status_transitions": {
+    "pending_review": ["accepted", "rejected"],
+    "accepted": ["superseded"],
+    "rejected": [],
+    "superseded": []
+  },
+  "transition_policy_note": "accepted -> rejected is disallowed; accepted memory is removed by supersession (revocation == supersede). No 'revoked' status is added.",
+  "global_requirements": [
+    "local_first",
+    "fail_closed",
+    "no_raw",
+    "no_external_writeback",
+    "deterministic_duplicate_detection",
+    "metadata_only_supersession",
+    "non_accepted_never_loads_into_retrieval",
+    "no_unnecessary_schema"
+  ]
+}

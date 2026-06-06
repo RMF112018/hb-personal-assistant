@@ -225,7 +225,10 @@ def _gather_pre_budget_items(
         if reader is None:
             coverage_warnings.append(f"no_read_model:{family}")
             continue
-        items.extend(reader(store, db_path, project_key))
+        fam_items = reader(store, db_path, project_key)
+        if not fam_items:
+            coverage_warnings.append(f"empty_read_model:{family}")
+        items.extend(fam_items)
     return items, coverage_warnings
 
 

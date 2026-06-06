@@ -13,8 +13,10 @@ vector_store_kind: simple
 max_nodes_per_run: 5000
 
 # Embeddable source families (policy maximum) — the redacted, source-linked read models the broker
-# serves. Excludes the deferred meeting-prep / correspondence families (no reader). EXCLUDED_FAMILIES
-# (raw_*) are hard-forbidden by the guard regardless of this list.
+# serves. Meeting-prep sections and review-controlled correspondence context are now reader-backed and
+# embeddable (only eligible, non-review-required, review_tier <= 2 items are indexed; review-required /
+# tier-3 items are filtered out by the read-model loader). EXCLUDED_FAMILIES (raw_*) are hard-forbidden
+# by the guard regardless of this list.
 embeddable_source_families:
   - phase_07d_source_evidence_trails
   - project_issue_history_items
@@ -24,5 +26,7 @@ embeddable_source_families:
   - approved_obsidian_generated_outputs
   - generated_outputs
   - cross_source_relationships
+  - meeting_prep_brief_sections
+  - review_controlled_correspondence_context
 
 persist_dir_label: app_support_retrieval_index

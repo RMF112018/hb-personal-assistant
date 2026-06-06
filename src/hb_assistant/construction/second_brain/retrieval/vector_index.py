@@ -69,6 +69,7 @@ from .llamaindex_config import (
 )
 from .memory_loader import load_reviewed_memory_nodes
 from .obsidian_loader import load_approved_obsidian_nodes
+from .read_model_loader import load_approved_read_model_nodes
 from .source_manifest import build_approved_source_manifest
 
 EVIDENCE_DIR = "docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality"
@@ -190,16 +191,30 @@ def _apply_build_rule(
 def _gather_approved_nodes(
     db_path: str | None, project_key: str | None
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Gather approved nodes from all manifest-eligible categories (Obsidian + reviewed memory + generated outputs),
-    with the approved source manifest as authorization and provenance. Generated outputs are included only when
-    they are manifest-eligible (accepted research packets or apply-mode source-linked daily briefs).
+    """Gather approved nodes from all manifest-eligible categories, with the approved source manifest as
+    authorization and provenance.
+
+    Categories: approved Obsidian outputs, reviewed memory, generated outputs (accepted research packets
+    or apply-mode source-linked daily briefs), and the new ``approved_read_models`` bridge — eligible
+    (redacted, source-linked, non-review-required, tier <= 2) deterministic read-model items from the
+    other embeddable allowlisted families. Nodes are de-duplicated by ``node_id``.
     """
     manifest = build_approved_source_manifest(db_path, project_key=project_key)
     nodes: list[dict[str, Any]] = []
     nodes.extend(load_approved_obsidian_nodes(db_path, project_key=project_key))
     nodes.extend(load_reviewed_memory_nodes(db_path, project_key=project_key))
     nodes.extend(load_approved_generated_output_nodes(db_path, project_key=project_key))
-    return nodes, manifest
+    nodes.extend(load_approved_read_model_nodes(db_path, project_key=project_key))
+
+    deduped: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for node in nodes:
+        node_id = str(node.get("node_id"))
+        if node_id in seen:
+            continue
+        seen.add(node_id)
+        deduped.append(node)
+    return deduped, manifest
 
 
 def _build_plan(
@@ -253,12 +268,18 @@ def _build_plan(
             )
         )
     )
+    from .read_model_loader import read_model_loader_families
+
     gen_count = per_family.get("generated_outputs", 0)
+    read_model_families = set(read_model_loader_families(seed))
+    read_model_family_count = sum(1 for fam in per_family if fam in read_model_families)
     warnings: list[str] = []
     if not indexable:
         warnings.append("no_approved_nodes")
     if gen_count == 0:
         warnings.append("generated_outputs_loader_deferred")
+    if read_model_family_count == 0:
+        warnings.append("read_model_loader_deferred")
 
     plan = {
         "command": "second-brain retrieval llamaindex build",
@@ -276,6 +297,8 @@ def _build_plan(
         "index_plan_hash": index_plan_hash,
         "total_nodes": len(indexable),
         "per_family_node_count": per_family,
+        "indexed_family_count": len(per_family),
+        "read_model_family_count": read_model_family_count,
         "rejected_node_count": rejected,
         "rejected_reasons": reasons,
         "planned_chunk_count": planned_chunks,

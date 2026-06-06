@@ -1,0 +1,41 @@
+{
+  "proof": "phase_09_accepted_memory_vector_coverage",
+  "command": "second-brain retrieval accepted-memory-vector-coverage-proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-06T07:18:12.715550+00:00",
+  "repo_sha": "6c752d1d7f7bc1740305155724a5f8a3ffa57d4e",
+  "memory_in_dry_run_after": true,
+  "memory_not_in_dry_run_before": true,
+  "vector_apply_status": "applied",
+  "vector_apply_includes_memory": true,
+  "vectors_persisted_to_sqlite": false,
+  "no_raw_vector_proof_passed": true,
+  "vector_indexed_family_count_before": 1,
+  "vector_indexed_family_count_after": 2,
+  "vector_indexed_families_after": [
+    "accepted_long_term_memory",
+    "approved_obsidian_generated_outputs"
+  ],
+  "accepted_long_term_memory_absent_before": true,
+  "accepted_long_term_memory_present_after": true,
+  "vector_family_delta_plus_one": true,
+  "memory_substrate_status_before": "deferred_empty",
+  "memory_substrate_status_after": "covered",
+  "coverage_parity_ok": true,
+  "closeout_ok": true,
+  "live_baseline_note": "In the live pipeline the 8 other eligible families are already applied, so this same +1 takes the vector-indexed family count from 8 to 9.",
+  "live_baseline_vector_family_count": 8,
+  "live_expected_after": 9,
+  "readiness_not_overstated": true,
+  "metadata_only": true,
+  "guardrails": {
+    "reviewed_only_accepted": true,
+    "no_vectors_or_node_text_in_sqlite": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "no_readiness_overstatement": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

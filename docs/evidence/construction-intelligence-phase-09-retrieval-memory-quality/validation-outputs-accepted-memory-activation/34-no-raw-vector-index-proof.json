@@ -1,0 +1,50 @@
+{
+  "command": "second-brain retrieval no-raw-vector-index-proof",
+  "phase": "09",
+  "generated_utc": "2026-06-06T07:48:55.369773+00:00",
+  "repo_sha": "98ce969407519b941daa0e02e188d40623a0e995",
+  "schema_version": 39,
+  "run_id": "nrv_7b7eb9b27a9ca15aadd769f786300512",
+  "proof_passed": true,
+  "overall_status": "clean",
+  "gate_count": 6,
+  "pass_count": 6,
+  "fail_count": 0,
+  "gates": {
+    "db_guard_clean": true,
+    "no_vector_blob_columns": true,
+    "vectors_outside_sqlite": true,
+    "db_text_no_forbidden": true,
+    "evidence_no_forbidden": true,
+    "scanner_detects_planted": true
+  },
+  "scanned_table_count": 2,
+  "guard_tables_checked": 14,
+  "guard_violations": 0,
+  "blob_columns_found": [],
+  "evidence_files_scanned": 509,
+  "forbidden_findings": 0,
+  "db_findings": [],
+  "evidence_findings": [],
+  "advisory_only": true,
+  "makes_determination": false,
+  "read_only": true,
+  "receipt_emitted": false,
+  "policy_version": "phase_09_no_raw_vector_index_proof_v1",
+  "contract_version": "1.4.0-phase-09",
+  "guard_attestation": {
+    "all_false": true,
+    "column_count": 23
+  },
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_raw_vector_content_in_sqlite": true,
+    "vectors_outside_sqlite": true,
+    "no_external_writeback": true,
+    "advisory_only": true,
+    "no_determination": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

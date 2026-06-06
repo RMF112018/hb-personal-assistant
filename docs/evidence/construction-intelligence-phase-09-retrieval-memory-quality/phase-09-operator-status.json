@@ -1,8 +1,8 @@
 {
   "command": "second-brain data-quality phase-09-operator-status",
   "phase": "09",
-  "generated_utc": "2026-06-05T20:17:48.233885+00:00",
-  "repo_sha": "d518db951218fa2e0d407b739089188a5c894b1d",
+  "generated_utc": "2026-06-05T23:50:21.142352+00:00",
+  "repo_sha": "5a71cc5ec679d598870ff48d731288599d8d1d11",
   "schema_version": 39,
   "overall_status": "advisory_ready",
   "operator_status_ok": true,
@@ -18,10 +18,10 @@
   "gates_ok": true,
   "gate_count": 23,
   "gate_status_counts": {
-    "pass": 13,
+    "pass": 14,
     "warning": 0,
     "fail_blocking": 0,
-    "deferred_not_blocking": 10
+    "deferred_not_blocking": 9
   },
   "all_contracts_present": true,
   "missing_contracts": [],
@@ -314,13 +314,83 @@
       "populated": null
     }
   ],
-  "phase_09_substrate_status": "advisory_empty",
+  "phase_09_substrate_status": "populated",
+  "coverage_parity": {
+    "deterministic_allowlisted_family_count": 10,
+    "deterministic_reader_family_count": 10,
+    "deterministic_reader_families": [
+      "phase_07d_source_evidence_trails",
+      "meeting_prep_brief_sections",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "aging_exposure_report_items",
+      "review_controlled_correspondence_context",
+      "approved_obsidian_generated_outputs",
+      "generated_outputs",
+      "accepted_long_term_memory",
+      "cross_source_relationships"
+    ],
+    "missing_reader_families": [],
+    "approved_manifest_category_count": 4,
+    "approved_manifest_categories": [
+      "approved_obsidian_outputs",
+      "approved_read_models",
+      "generated_outputs",
+      "reviewed_memory"
+    ],
+    "approved_manifest_family_count": 10,
+    "approved_manifest_families": [
+      "accepted_long_term_memory",
+      "aging_exposure_report_items",
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "vector_indexed_family_count": 8,
+    "vector_indexed_families": [
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "empty_approved_families": [
+      "accepted_long_term_memory"
+    ],
+    "deferred_families": [
+      "accepted_long_term_memory"
+    ],
+    "memory_substrate_status": "deferred_empty",
+    "coverage_parity_ok": true
+  },
   "advisory_only": true,
   "makes_determination": false,
   "read_only": true,
   "readiness_overstated": false,
   "policy_version": "phase_09_operator_status_v1",
   "contract_version": "1.4.0-phase-09",
+  "readiness_categories": {
+    "safe_advisory_readiness": false,
+    "semantic_retrieval_readiness": false,
+    "vector_apply_readiness": true,
+    "production_readiness": false,
+    "deferred_limitations": [
+      "external embedding providers (policy-gated; deferred per embedding policy)",
+      "full synthesis / claim / determination flows (advisory signals and review burden only)",
+      "MCP dispatch of Phase 09 actions (08D isolation preserved; no Phase 09 in MCP surface)",
+      "richer operator UX (Obsidian commands, TUI) over review / retrieval surfaces",
+      "persist of review burden clusters (current is read-only mart + proof)",
+      "using clusters as additional corpus family for retrieval"
+    ]
+  },
   "guardrails": {
     "local_first": true,
     "read_only": true,

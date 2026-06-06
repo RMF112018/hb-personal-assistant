@@ -1,0 +1,32 @@
+{
+  "proof": "phase_09_memory_acceptance",
+  "command": "second-brain memory proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-06T07:00:43.743168+00:00",
+  "repo_sha": "9cfea4a8a31eec4a235492a9b9717432208e8c67",
+  "accepted_persisted_as_accepted": true,
+  "dry_run_persists_nothing": true,
+  "raw_shaped_blocked": true,
+  "unsourced_blocked": true,
+  "high_impact_blocked": true,
+  "determination_blocked": true,
+  "no_unsafe_persisted": true,
+  "rejected_creates_no_item": true,
+  "non_accepted_excluded_from_retrieval": true,
+  "guard_columns_all_false": true,
+  "no_external_writeback": true,
+  "requires_explicit_confirmation": true,
+  "no_auto_acceptance": true,
+  "metadata_only": true,
+  "guardrails": {
+    "explicit_confirmation_required": true,
+    "no_auto_acceptance": true,
+    "no_external_writeback": true,
+    "no_raw": true,
+    "guard_columns_false": true,
+    "non_accepted_never_loads": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

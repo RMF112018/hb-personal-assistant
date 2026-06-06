@@ -74,6 +74,13 @@ memory_consolidation_preview_app = typer.Typer(
 )
 memory_app.add_typer(memory_consolidation_preview_app, name="consolidation-preview")
 
+memory_candidates_app = typer.Typer(
+    name="candidates",
+    help="Phase 09 memory candidate preview (advisory, read-only; never accepts memory).",
+    no_args_is_help=True,
+)
+memory_app.add_typer(memory_candidates_app, name="candidates")
+
 preference_app = typer.Typer(
     name="preference",
     help="Reviewable operator preferences (presentation-only; never override safety).",
@@ -756,6 +763,187 @@ def memory_review(
     raise typer.Exit(0)
 
 
+_MEMORY_ACCEPTANCE_GUARDRAILS = {
+    "explicit_confirmation_required": True,
+    "no_auto_acceptance": True,
+    "no_external_writeback": True,
+    "no_raw": True,
+    "guard_columns_false": True,
+    "non_accepted_never_loads": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
+
+@memory_app.command("accept")
+def memory_accept(
+    candidate_id: str = typer.Option(..., "--candidate-id", help="Candidate to accept."),
+    confirm: bool = typer.Option(
+        False,
+        "--confirm/--no-confirm",
+        help="Explicit operator confirmation (required to persist).",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Explicitly accept a vetted candidate into long_term_memory_items (no auto-acceptance).
+
+    Without --confirm this is a dry-run that persists nothing. With --confirm a passing candidate is
+    promoted to an accepted memory item; a candidate that fails the acceptance gate is refused. Exit 0
+    on a clean evaluation; 3 on a fail-closed failure (candidate not found / schema not ready).
+    """
+    from hb_assistant.construction.second_brain.memory.acceptance import (
+        MemoryAcceptanceError,
+        accept_memory_candidate,
+    )
+
+    try:
+        result = accept_memory_candidate(candidate_id, confirm=confirm)
+    except MemoryAcceptanceError as exc:
+        payload = {
+            "command": "second-brain memory accept",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS}
+    human = [
+        "Phase 09 explicit memory acceptance (no auto-acceptance)",
+        f"  candidate: {candidate_id} | acceptable: {result['acceptable']}"
+        f" | blocks: {result['blocks']}",
+        f"  confirm: {confirm} | accepted: {result['accepted']}"
+        f" | memory_id: {result.get('memory_id')}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@memory_app.command("reject")
+def memory_reject(
+    candidate_id: str = typer.Option(
+        ..., "--candidate-id", help="Candidate to reject/defer/supersede."
+    ),
+    reason: str | None = typer.Option(None, "--reason", help="Redacted decision reason."),
+    decision: str = typer.Option(
+        "rejected", "--decision", help="rejected|deferred|superseded (default rejected)."
+    ),
+    confirm: bool = typer.Option(
+        False,
+        "--confirm/--no-confirm",
+        help="Explicit operator confirmation (required to persist).",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Reject / defer / supersede a candidate (never creates an accepted memory item)."""
+    from hb_assistant.construction.second_brain.memory.acceptance import (
+        MemoryAcceptanceError,
+        decide_memory_candidate,
+    )
+
+    try:
+        result = decide_memory_candidate(
+            candidate_id, decision=decision, reason=reason, confirm=confirm
+        )
+    except MemoryAcceptanceError as exc:
+        payload = {
+            "command": "second-brain memory reject",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS}
+    human = [
+        f"Memory decision '{result['decision']}' for {candidate_id}"
+        f" | confirm: {confirm} | persisted: {result.get('persisted')}"
+        f" | creates_accepted_memory: {result['creates_accepted_memory']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@memory_app.command("list")
+def memory_list(
+    status: str = typer.Option(
+        "accepted", "--status", help="accepted|pending_review|rejected|superseded."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """List long-term memory items by review status (metadata-only; no statement text)."""
+    from hb_assistant.construction.second_brain.memory.acceptance import (
+        MemoryAcceptanceError,
+        list_accepted_memory,
+    )
+
+    try:
+        result = list_accepted_memory(status=status)
+    except MemoryAcceptanceError as exc:
+        payload = {
+            "command": "second-brain memory list",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS}
+    human = [
+        f"Long-term memory (status={result['status']}): {result['count']} item(s)"
+        f" | loadable_into_retrieval: {result['loadable_into_retrieval']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@memory_app.command("proof")
+def memory_acceptance_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the acceptance proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove explicit acceptance persists accepted memory while refusing unsafe candidates."""
+    from hb_assistant.construction.second_brain.memory.acceptance import (
+        MemoryAcceptanceError,
+        build_memory_acceptance_proof,
+    )
+
+    try:
+        proof = build_memory_acceptance_proof(write_evidence=evidence)
+    except MemoryAcceptanceError as exc:
+        payload = {
+            "command": "second-brain memory proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS}
+    human = [
+        f"Memory acceptance proof passed={proof['proof_passed']}"
+        f" (accepted_persisted={proof['accepted_persisted_as_accepted']},"
+        f" unsafe_blocked={proof['raw_shaped_blocked'] and proof['unsourced_blocked'] and proof['high_impact_blocked'] and proof['determination_blocked']},"
+        f" non_accepted_excluded={proof['non_accepted_excluded_from_retrieval']},"
+        f" guards_false={proof['guard_columns_all_false']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
 _MEMORY_QUALITY_REVIEW_GUARDRAILS = {
     "advisory_only": True,
     "no_determination": True,
@@ -850,6 +1038,189 @@ def memory_quality_review_proof(
         f" guard_clean={proof['run_row_guard_clean']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+_MEMORY_CANDIDATE_PREVIEW_GUARDRAILS = {
+    "advisory_only": True,
+    "read_only_by_default": True,
+    "no_acceptance": True,
+    "writes_accepted_memory": False,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "source_linked_only": True,
+    "bounded_statements": True,
+    "deterministic": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
+
+@memory_candidates_app.command("build")
+def memory_candidates_build(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    evidence: bool = typer.Option(
+        False, "--evidence/--no-evidence", help="Write the preview to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Preview possible long-term memory candidates from safe, redacted, source-linked records.
+
+    Read-only and advisory: every candidate is review_status='pending_review' and is NEVER accepted or
+    persisted as accepted memory. Unsourced, raw-content-shaped, and determination-implying inputs are
+    rejected; review tier 3 candidates surface as non-acceptance preview only. Exit 0 on success; 3 on a
+    fail-closed failure.
+    """
+    from hb_assistant.construction.second_brain.memory.candidate_preview import (
+        MemoryCandidatePreviewError,
+        build_memory_candidate_preview,
+    )
+
+    try:
+        result = build_memory_candidate_preview(project_key=project, write_evidence=evidence)
+    except MemoryCandidatePreviewError as exc:
+        payload = {
+            "command": "second-brain memory candidates build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_CANDIDATE_PREVIEW_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _MEMORY_CANDIDATE_PREVIEW_GUARDRAILS}
+    human = [
+        "Phase 09 memory candidate preview (read-only, advisory; never accepts memory)",
+        f"  status: {result['status']} | candidates: {result['candidate_count']}"
+        f" | rejected: {result['rejected_count']}",
+        f"  by type: {result['per_type']} | by durability: {result['per_durability']}",
+        f"  writes_accepted_memory: {result['writes_accepted_memory']}"
+        f" | review_status: pending_review (never auto-accepted)",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@memory_candidates_app.command("proof")
+def memory_candidates_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the candidate-preview proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove safe candidates surface, unsafe inputs are rejected, and no accepted memory is written."""
+    from hb_assistant.construction.second_brain.memory.candidate_preview import (
+        MemoryCandidatePreviewError,
+        build_memory_candidate_preview_proof,
+    )
+
+    try:
+        proof = build_memory_candidate_preview_proof(write_evidence=evidence)
+    except MemoryCandidatePreviewError as exc:
+        payload = {
+            "command": "second-brain memory candidates proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _MEMORY_CANDIDATE_PREVIEW_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _MEMORY_CANDIDATE_PREVIEW_GUARDRAILS}
+    human = [
+        f"Memory candidate preview proof passed={proof['proof_passed']}"
+        f" (candidates={proof['candidate_count']}, raw_rejected={proof['raw_shaped_rejected']},"
+        f" unsourced_rejected={proof['unsourced_rejected']},"
+        f" determination_rejected={proof['determination_rejected']},"
+        f" accepted_memory_unchanged={proof['accepted_memory_unchanged']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+@memory_app.command("supersede")
+def memory_supersede(
+    old_id: str = typer.Option(..., "--old-id", help="Accepted memory item to supersede."),
+    new_id: str = typer.Option(
+        ..., "--new-id", help="Newer accepted memory item that supersedes it."
+    ),
+    confirm: bool = typer.Option(
+        False,
+        "--confirm/--no-confirm",
+        help="Explicit operator confirmation (required to persist).",
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Supersede an accepted memory item with a newer accepted one (metadata-only; superseded then
+    excluded from retrieval). Without --confirm this is a dry-run. Exit 0/3."""
+    from hb_assistant.construction.second_brain.memory.quality_controls import (
+        MemoryQualityControlsError,
+        supersede_accepted_memory,
+    )
+
+    try:
+        result = supersede_accepted_memory(
+            old_memory_id=old_id, new_memory_id=new_id, confirm=confirm
+        )
+    except MemoryQualityControlsError as exc:
+        payload = {
+            "command": "second-brain memory supersede",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    human = [
+        f"Supersede {old_id} -> {new_id} | confirm: {confirm} | superseded: {result['superseded']}"
+        f" | blocks: {result['blocks']}"
+    ]
+    exit_code = 0 if (not result["blocks"]) else 3
+    _emit_08c(result, json_out=json_out, human=human, exit_code=exit_code)
+
+
+@memory_app.command("quality-controls-proof")
+def memory_quality_controls_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the quality-controls proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Prove duplicate suppression, supersession exclusion, freshness labeling, source retention, and
+    review-status transition validation (metadata-only, no writeback). Exit 0/3."""
+    from hb_assistant.construction.second_brain.memory.quality_controls import (
+        MemoryQualityControlsError,
+        build_memory_quality_controls_proof,
+    )
+
+    try:
+        proof = build_memory_quality_controls_proof(write_evidence=evidence)
+    except MemoryQualityControlsError as exc:
+        payload = {
+            "command": "second-brain memory quality-controls-proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    human = [
+        f"Memory quality controls proof passed={proof['proof_passed']} "
+        f"(dup_suppressed={proof['duplicate_detected_and_suppressed']}, "
+        f"supersession_excludes={proof['supersession_excludes_from_retrieval']}, "
+        f"transitions_valid={proof['transitions_valid']}, "
+        f"guards_false={proof['guard_columns_all_false']})"
+    ]
+    _emit_08c(proof, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 
 
 _MEMORY_CONSOLIDATION_PREVIEW_GUARDRAILS = {
@@ -1296,6 +1667,155 @@ def retrieval_no_raw_vector_index_proof(
         f" evidence_files={result['evidence_files_scanned']}, findings={result['forbidden_findings']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
+@retrieval_app.command("reader-registry-parity-proof")
+def retrieval_reader_registry_parity_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the reader-registry-parity proof to evidence."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Prove the deterministic retrieval allowlist and the reader registry are in parity.
+
+    Passes iff every allowlisted family has a registered reader (or a documented deferral) and no
+    reader is registered for a non-allowlisted family. Static, read-only, metadata-only. Exit 0/3.
+    """
+    from hb_assistant.construction.second_brain.retrieval.coverage_parity import (
+        build_reader_registry_parity_proof,
+    )
+
+    result = build_reader_registry_parity_proof(write_evidence=evidence)
+    human = [
+        f"Reader registry parity passed={result['proof_passed']} "
+        f"(reader {result['deterministic_reader_family_count']}/"
+        f"{result['deterministic_allowlisted_family_count']}, "
+        f"missing={result['missing_reader_families']})"
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
+@retrieval_app.command("approved-read-model-manifest-proof")
+def retrieval_approved_read_model_manifest_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the approved-read-model-manifest proof."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Prove the ``approved_read_models`` manifest category admits eligible, metadata-only, guard-clean
+    entries while rejecting high-impact / review-required / excluded / raw-shape candidates. Exit 0/3."""
+    from hb_assistant.construction.second_brain.retrieval.source_manifest import (
+        build_approved_read_model_manifest_proof,
+    )
+
+    result = build_approved_read_model_manifest_proof(write_evidence=evidence)
+    human = [
+        f"Approved read-model manifest proof passed={result['proof_passed']} "
+        f"(approved_read_models={result['approved_read_models_approved_count']}, "
+        f"metadata_only_row={result['manifest_row_metadata_only']})"
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
+@retrieval_app.command("read-model-vector-loader-proof")
+def retrieval_read_model_vector_loader_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the read-model-vector-loader proof."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Prove the read-model loader bridges eligible deterministic items into safe, in-memory-only vector
+    nodes (no-raw, nothing persisted to SQLite), excludes review-required / high-impact items, and
+    rejects raw/excluded candidates. Exit 0/3."""
+    from hb_assistant.construction.second_brain.retrieval.read_model_loader import (
+        build_read_model_vector_loader_proof,
+    )
+
+    result = build_read_model_vector_loader_proof(write_evidence=evidence)
+    human = [
+        f"Read-model vector loader proof passed={result['proof_passed']} "
+        f"(families={result['indexed_family_count']}, nodes={result['node_count']}, "
+        f"persists_nothing={result['loader_persists_nothing_to_sqlite']})"
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
+@retrieval_app.command("coverage-parity-closeout")
+def retrieval_coverage_parity_closeout(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the coverage-parity closeout to evidence."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Aggregate the coverage-parity report (deterministic / approved-manifest / vector-indexed /
+    memory / deferred planes) with the three approved-read-model proofs into one closeout. Read-only;
+    reports empties as deferred (no readiness overstatement). Exit 0/3."""
+    from hb_assistant.construction.second_brain.retrieval.coverage_parity import (
+        build_coverage_parity_closeout,
+    )
+
+    result = build_coverage_parity_closeout(write_evidence=evidence)
+    rep = result.get("coverage_parity", {})
+    human = [
+        f"Coverage parity closeout ok={result['closeout_ok']} "
+        f"(parity_ok={rep.get('coverage_parity_ok')}, "
+        f"reader={rep.get('deterministic_reader_family_count')}/"
+        f"{rep.get('deterministic_allowlisted_family_count')}, "
+        f"manifest={rep.get('approved_manifest_family_count')}, "
+        f"vector={rep.get('vector_indexed_family_count')})"
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["closeout_ok"] else 3)
+
+
+@retrieval_app.command("accepted-memory-loader-proof")
+def retrieval_accepted_memory_loader_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the accepted-memory loader/manifest proof."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Prove one accepted memory item appears in the deterministic reader, the reviewed-memory loader,
+    and the approved-source manifest, while pending/rejected/superseded memory is excluded (redacted,
+    bounded, source-linked, no raw). Exit 0/3."""
+    from hb_assistant.construction.second_brain.retrieval.accepted_memory_inclusion import (
+        build_accepted_memory_loader_proof,
+    )
+
+    result = build_accepted_memory_loader_proof(write_evidence=evidence)
+    human = [
+        f"Accepted memory loader/manifest proof passed={result['proof_passed']} "
+        f"(loader_loaded={result['loader_loaded_count']}, "
+        f"manifest_reviewed_memory={result['manifest_reviewed_memory_approved_count']}, "
+        f"non_accepted_excluded={result['non_accepted_excluded']})"
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
+@retrieval_app.command("accepted-memory-vector-coverage-proof")
+def retrieval_accepted_memory_vector_coverage_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the accepted-memory vector/coverage proof."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Prove accepted memory enters the vector dry-run plan + applied index, the no-raw vector proof
+    still passes, and the coverage-parity closeout flips memory to covered (+1 vector family, parity
+    stays true, readiness not overstated). Exit 0/3."""
+    from hb_assistant.construction.second_brain.retrieval.accepted_memory_inclusion import (
+        build_accepted_memory_vector_coverage_proof,
+    )
+
+    result = build_accepted_memory_vector_coverage_proof(write_evidence=evidence)
+    human = [
+        f"Accepted memory vector/coverage proof passed={result['proof_passed']} "
+        f"(apply={result['vector_apply_status']}, "
+        f"vector_family {result['vector_indexed_family_count_before']}->"
+        f"{result['vector_indexed_family_count_after']}, "
+        f"substrate {result['memory_substrate_status_before']}->"
+        f"{result['memory_substrate_status_after']}, "
+        f"no_raw={result['no_raw_vector_proof_passed']})"
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
 
 
 @preference_app.command("capture")

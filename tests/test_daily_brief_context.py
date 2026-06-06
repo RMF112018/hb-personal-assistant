@@ -94,9 +94,14 @@ def test_context_builds_all_card_kinds(db_path: str) -> None:
     assert isinstance(ctx.what_matters_today, list)
     # project_cards may be re-ranked by composite (review_exc + stale + exposure + recency)
     assert isinstance(ctx.project_cards, list)
-    # No meeting read model -> meeting cards degrade gracefully with a coverage warning.
+    # meeting_prep_brief_sections is reader-backed but not project-scoped, so a project-scoped brief
+    # surfaces no meeting cards (graceful empty) with an empty-read-model coverage warning (no longer
+    # a no_read_model warning).
     assert ctx.meeting_cards == []
-    assert any(w.startswith("no_read_model:meeting_prep_brief_sections") for w in ctx.warnings)
+    assert not any(w.startswith("no_read_model:meeting_prep_brief_sections") for w in ctx.warnings)
+    assert any(
+        w.startswith("empty_read_model:meeting_prep_brief_sections") for w in ctx.warnings
+    )
 
 
 def test_delivery_handoff_structured_and_source_linked(db_path: str) -> None:

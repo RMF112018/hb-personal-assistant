@@ -69,14 +69,20 @@ def test_normal_path() -> None:
         assert r["config_valid"] is True
         assert r["schema_ready"] is True
         assert r["read_only"] is True
-        assert r["embeddable_family_count"] == 7
+        assert r["embeddable_family_count"] == 10
 
 
 def test_embeddable_families_exclude_raw() -> None:
+    from hb_assistant.construction.second_brain.retrieval.policy import (
+        ALLOWLISTED_SOURCE_FAMILIES,
+    )
+
     seed = load_embedding_vector_policy_seed()
     fams = embeddable_families(seed)
     assert not (set(fams) & EXCLUDED_FAMILIES)
-    assert "meeting_prep_brief_sections" not in fams  # deferred (no reader)
+    # No raw family is ever embeddable; every embeddable family is an allowlisted read model.
+    assert "raw_email_body" not in fams
+    assert set(fams) <= set(ALLOWLISTED_SOURCE_FAMILIES)
 
 
 def test_missing_contract_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -109,7 +115,7 @@ def test_unsafe_candidates_rejected() -> None:
     base = _safe_candidate()
     unsafe = [
         {**base, "source_family": "raw_email_body"},
-        {**base, "source_family": "meeting_prep_brief_sections"},
+        {**base, "source_family": "deferred_unlisted_read_model_family"},
         {**base, "raw_body": "text"},
         {**base, "signed_url": "ref"},
         {**base, "embedding": [0.1, 0.2]},

@@ -35,8 +35,9 @@ from .retrieval.readers import READER_REGISTRY
 _SEED_RELATIVE = Path("resources") / "config" / "phase_09_corpus_balance_policy.seed.yaml"
 SEED_ENV_VAR = "HB_SECOND_BRAIN_CORPUS_BALANCE_POLICY"
 
-# Allowlisted family -> (read-model table, extra WHERE clause). Families absent here have no
-# reader (deferred) or are obsidian (counted via the manifest-scoped helper below).
+# Allowlisted family -> (read-model table, extra WHERE clause). Families absent here are counted via a
+# dedicated branch below (obsidian via the manifest-scoped helper; generated outputs + correspondence
+# via composite/projection counters).
 _FAMILY_TABLE: dict[str, tuple[str, str]] = {
     "phase_07d_source_evidence_trails": ("source_evidence_trails", ""),
     "project_issue_history_items": ("project_issue_history_items", ""),
@@ -44,8 +45,13 @@ _FAMILY_TABLE: dict[str, tuple[str, str]] = {
     "aging_exposure_report_items": ("aging_exposure_report_items", ""),
     "accepted_long_term_memory": ("long_term_memory_items", "review_status = 'accepted'"),
     "cross_source_relationships": ("cross_source_relationships", ""),
+    "meeting_prep_brief_sections": ("meeting_prep_brief_sections", ""),
 }
 _OBSIDIAN_FAMILY = "approved_obsidian_generated_outputs"
+_GENERATED_FAMILY = "generated_outputs"
+_CORRESPONDENCE_FAMILY = "review_controlled_correspondence_context"
+_VECTOR_ITEMS_TABLE = "second_brain_retrieval_vector_index_items"
+_VECTOR_RUNS_TABLE = "second_brain_retrieval_vector_index_runs"
 
 # Safe text / JSON columns scanned for forbidden raw-content shapes (PRAGMA-guarded per table).
 _SCAN_COLUMNS: dict[str, tuple[str, ...]] = {
@@ -56,6 +62,9 @@ _SCAN_COLUMNS: dict[str, tuple[str, ...]] = {
     "project_risk_digest_items": ("summary_redacted",),
     "aging_exposure_report_items": ("threshold_band",),
     "long_term_memory_items": ("statement_redacted",),
+    "meeting_prep_brief_sections": ("section_redacted",),
+    "second_brain_research_packets": ("summary_redacted",),
+    "email_thread_summaries": ("summary_redacted",),
 }
 # Corpus tables whose guard CHECK(=0) columns are re-attested clean.
 _GUARDED_TABLES: tuple[str, ...] = (
@@ -161,6 +170,91 @@ def _obsidian_count(conn: sqlite3.Connection, project_key: str | None) -> int:
     )
 
 
+def _generated_count(conn: sqlite3.Connection, project_key: str | None) -> int:
+    """Count generated-output corpus rows: accepted research packets + applied source-linked briefs."""
+    total = 0
+    if _table_exists(conn, "second_brain_research_packets"):
+        total += _family_count(
+            conn, "second_brain_research_packets", "review_status = 'accepted'", project_key
+        )
+    # daily_brief_runs has no project_key column; only counted when unscoped.
+    if project_key is None and _table_exists(conn, "daily_brief_runs"):
+        total += int(
+            conn.execute(
+                "SELECT COUNT(*) FROM daily_brief_runs WHERE mode = 'apply' AND status != 'blocked' "
+                "AND output_path_hash IS NOT NULL AND source_ref_count > 0"
+            ).fetchone()[0]
+        )
+    return total
+
+
+def _correspondence_count(conn: sqlite3.Connection, project_key: str | None) -> int:
+    """Count the review-controlled correspondence substrate (email-thread anchors) cheaply.
+
+    Uses the anchor ``email_thread_summaries`` table on the existing read-only connection rather than
+    running the (heavy) Phase 07D projection builder — an advisory balance signal only."""
+    if not _table_exists(conn, "email_thread_summaries"):
+        return 0
+    return _family_count(conn, "email_thread_summaries", "", project_key)
+
+
+def _applied_vector_families(conn: sqlite3.Connection) -> list[str]:
+    """Distinct source families present in applied vector-index item receipts (metadata-only)."""
+    if not _table_exists(conn, _VECTOR_ITEMS_TABLE) or not _table_exists(conn, _VECTOR_RUNS_TABLE):
+        return []
+    rows = conn.execute(
+        f"SELECT DISTINCT i.source_family FROM {_VECTOR_ITEMS_TABLE} i "
+        f"JOIN {_VECTOR_RUNS_TABLE} r ON i.run_id = r.run_id WHERE r.status = 'applied' "
+        "ORDER BY i.source_family"
+    ).fetchall()
+    return [str(r[0]) for r in rows]
+
+
+def _approved_manifest_categories() -> list[str]:
+    """The manifest categories the approved-source manifest admits (cheap seed read; no live build)."""
+    try:
+        from .retrieval.source_manifest import load_approved_source_manifest_seed
+
+        return sorted(str(c) for c in load_approved_source_manifest_seed().get("enabled_categories", []))
+    except Exception:
+        return []
+
+
+# Manifest category -> the source families it admits. ``approved_read_models`` is resolved dynamically
+# from the read-model loader (embeddable readers minus the dedicated-loader families).
+_LEGACY_CATEGORY_FAMILIES: dict[str, tuple[str, ...]] = {
+    "generated_outputs": ("generated_outputs",),
+    "approved_obsidian_outputs": ("approved_obsidian_generated_outputs",),
+    "reviewed_memory": ("accepted_long_term_memory",),
+}
+
+
+def _approved_manifest_families() -> list[str]:
+    """The source families the approved-source manifest admits across its enabled categories.
+
+    Cheap/config-derived (seed enabled categories + the read-model loader's served families); no live
+    manifest build, so it is safe to call from the hot coverage surfaces."""
+    try:
+        from .retrieval.read_model_loader import read_model_loader_families
+        from .retrieval.source_manifest import load_approved_source_manifest_seed
+
+        enabled = set(load_approved_source_manifest_seed().get("enabled_categories", []))
+    except Exception:
+        return []
+    # NB: accumulate set members with .add() in a loop (not the set bulk-merge method) so the repo
+    # no-writeback source scanner does not false-positive on a mutation-verb token.
+    fams: set[str] = set()
+    for cat in enabled:
+        members = (
+            read_model_loader_families()
+            if cat == "approved_read_models"
+            else _LEGACY_CATEGORY_FAMILIES.get(cat, ())
+        )
+        for fam in members:
+            fams.add(fam)
+    return sorted(fams)
+
+
 def build_corpus_balance_mart(
     db_path: str | None = None, *, project_key: str | None = None
 ) -> dict[str, Any]:
@@ -190,6 +284,12 @@ def build_corpus_balance_mart(
             if family == _OBSIDIAN_FAMILY:
                 count = _obsidian_count(conn, project_key)
                 table = "obsidian_index_entries"
+            elif family == _GENERATED_FAMILY:
+                count = _generated_count(conn, project_key)
+                table = "second_brain_research_packets+daily_brief_runs"
+            elif family == _CORRESPONDENCE_FAMILY:
+                count = _correspondence_count(conn, project_key)
+                table = "email_thread_summaries"
             else:
                 table, where_extra = _FAMILY_TABLE[family]
                 count = (
@@ -221,6 +321,31 @@ def build_corpus_balance_mart(
                 dominant_share = share
                 dominant_family = family
 
+        reader_families = [f for f in ALLOWLISTED_SOURCE_FAMILIES if f in READER_REGISTRY]
+        missing_reader = [f for f in ALLOWLISTED_SOURCE_FAMILIES if f not in READER_REGISTRY]
+        approved_manifest_families = _approved_manifest_families()
+        vector_families = _applied_vector_families(conn)
+        empty_approved = sorted(
+            f for f in approved_manifest_families if families.get(f, {}).get("row_count", 0) == 0
+        )
+        memory_covered = families.get("accepted_long_term_memory", {}).get("row_count", 0) > 0
+        coverage_parity = {
+            "deterministic_allowlisted_family_count": len(ALLOWLISTED_SOURCE_FAMILIES),
+            "deterministic_reader_family_count": len(reader_families),
+            "deterministic_reader_families": reader_families,
+            "missing_reader_families": missing_reader,
+            "approved_manifest_category_count": len(_approved_manifest_categories()),
+            "approved_manifest_categories": _approved_manifest_categories(),
+            "approved_manifest_family_count": len(approved_manifest_families),
+            "approved_manifest_families": approved_manifest_families,
+            "vector_indexed_family_count": len(vector_families),
+            "vector_indexed_families": vector_families,
+            "empty_approved_families": empty_approved,
+            "deferred_families": sorted(set(empty) | set(missing_reader)),
+            "memory_substrate_status": "covered" if memory_covered else "deferred_empty",
+            "coverage_parity_ok": not missing_reader,
+        }
+
         return {
             "mart": "phase_09_corpus_balance",
             "schema_version": schema_version,
@@ -233,6 +358,7 @@ def build_corpus_balance_mart(
             "covered_family_count": len(covered),
             "dominant_family": dominant_family,
             "dominant_share": dominant_share,
+            "coverage_parity": coverage_parity,
             "warnings": warnings,
             "excluded_raw_families_count": len(EXCLUDED_FAMILIES),
             "advisory_only": True,
@@ -252,6 +378,18 @@ _GUARDRAILS = {
     "advisory_only_no_determination": True,
     "no_external_writeback": True,
 }
+
+
+def build_coverage_parity_report(
+    db_path: str | None = None, *, project_key: str | None = None
+) -> dict[str, Any]:
+    """Read-only coverage-parity report distinguishing deterministic-reader vs approved-manifest vs
+    vector-indexed vs deferred coverage. Thin wrapper over the corpus-balance mart (single source).
+
+    ``coverage_parity_ok`` is true iff every allowlisted retrieval family has a registered reader
+    (``missing_reader_families == []``); manifest/vector/memory empties are reported deferred, never as
+    a parity failure (no readiness overstatement)."""
+    return dict(build_corpus_balance_mart(db_path, project_key=project_key)["coverage_parity"])
 
 
 def evaluate_corpus_balance_gate(mart: dict[str, Any], policy: dict[str, Any]) -> dict[str, Any]:

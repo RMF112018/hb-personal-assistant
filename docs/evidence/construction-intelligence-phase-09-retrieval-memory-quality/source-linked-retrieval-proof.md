@@ -1,7 +1,7 @@
 # Phase 09 — Source-Linked Retrieval Proof
 
 - proof_passed: True
-- generated_utc: 2026-06-05T15:44:09.446212+00:00
+- generated_utc: 2026-06-05T23:49:30.840154+00:00
 - status: source_linked
 - result_count: 3
 - linked_count: 3

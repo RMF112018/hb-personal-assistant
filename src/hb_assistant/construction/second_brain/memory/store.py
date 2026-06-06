@@ -78,6 +78,39 @@ def set_candidate_status(candidate_id: str, status: str, *, db_path: str | None 
         )
 
 
+def set_memory_item_status(
+    memory_id: str,
+    *,
+    review_status: str | None = None,
+    supersedes_memory_id: str | None = None,
+    db_path: str | None = None,
+) -> None:
+    """Metadata-only update of an accepted memory item's status / supersession linkage.
+
+    Only the provided fields are changed (``updated_utc`` is always refreshed). Never touches raw /
+    guard columns; the ``review_status`` CHECK enforces the valid enum. Transition policy is enforced
+    by the caller (``quality_controls.supersede_accepted_memory``)."""
+    sets: list[str] = []
+    params: list[Any] = []
+    if review_status is not None:
+        sets.append("review_status = ?")
+        params.append(review_status)
+    if supersedes_memory_id is not None:
+        sets.append("supersedes_memory_id = ?")
+        params.append(supersedes_memory_id)
+    if not sets:
+        return
+    sets.append("updated_utc = ?")
+    params.append(_utc())
+    params.append(memory_id)
+    conn = _conn(db_path)
+    with transaction(conn):
+        conn.execute(
+            f"UPDATE long_term_memory_items SET {', '.join(sets)} WHERE memory_id = ?",
+            tuple(params),
+        )
+
+
 def write_memory_review(review: MemoryReview, *, db_path: str | None = None) -> str:
     conn = _conn(db_path)
     with transaction(conn):

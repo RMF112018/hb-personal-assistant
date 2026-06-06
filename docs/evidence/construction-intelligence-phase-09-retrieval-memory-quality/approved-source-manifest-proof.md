@@ -1,7 +1,7 @@
 # Phase 09 — Approved Source Manifest Proof
 
 - proof_passed: True
-- generated_utc: 2026-06-04T21:23:37.771631+00:00
+- generated_utc: 2026-06-05T23:49:21.956264+00:00
 - policy_version: phase_09_approved_source_manifest_v1
 
 ## Approval / no-raw guardrail cases

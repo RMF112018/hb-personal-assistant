@@ -112,13 +112,24 @@ def test_relationship_split_candidates_vs_accepted(db_path: str) -> None:
     assert candidates.status == "empty"
 
 
-@pytest.mark.parametrize("tool", ["project_context", "source_coverage", "meeting_prep_briefs"])
+@pytest.mark.parametrize("tool", ["project_context", "source_coverage"])
 def test_unbacked_tool_degrades_gracefully(tool: str, db_path: str) -> None:
     _seed(db_path)
     result = run_query_tool(tool, project_key="P1", db_path=db_path, emit_receipt=False)
     assert result.status == "no_read_model"
     assert result.items == []
     assert any(w.startswith("no_read_model:") for w in result.warnings)
+
+
+def test_meeting_prep_now_reader_backed(db_path: str) -> None:
+    # Phase 09 coverage expansion: meeting_prep_briefs is reader-backed. The table is not
+    # project-scoped, so a project-scoped query degrades to ``empty`` (not ``no_read_model``).
+    _seed(db_path)
+    result = run_query_tool(
+        "meeting_prep_briefs", project_key="P1", db_path=db_path, emit_receipt=False
+    )
+    assert result.status == "empty"
+    assert not any(w.startswith("no_read_model:") for w in result.warnings)
 
 
 def test_read_only_connection_blocks_writes(db_path: str) -> None:

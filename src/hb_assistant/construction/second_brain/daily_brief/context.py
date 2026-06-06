@@ -546,7 +546,12 @@ def build_daily_brief_context_builder_proof() -> dict[str, Any]:
         and set(context.delivery_handoff.sections) == set(HANDOFF_SECTIONS)
     )
     cards_present = bool(context.review_required_cards) and bool(context.project_cards)
-    meeting_degraded = any(
+    # meeting_prep_brief_sections is now reader-backed (Phase 09 coverage expansion) and no longer
+    # degrades to no_read_model. The table is not project-scoped, so this project-scoped brief surfaces
+    # no meeting cards (graceful empty) without emitting a meeting no_read_model warning.
+    from ..retrieval.readers import READER_REGISTRY
+
+    meeting_backed = _MEETING_FAMILY in READER_REGISTRY and not any(
         w.startswith("no_read_model:meeting_prep_brief_sections") for w in context.warnings
     )
 
@@ -556,7 +561,7 @@ def build_daily_brief_context_builder_proof() -> dict[str, Any]:
         and handoff_source_linked
         and handoff_structured
         and cards_present
-        and meeting_degraded
+        and meeting_backed
         and no_raw_content
         and guards_zero
         and ref_count == context.source_ref_count
@@ -598,7 +603,7 @@ def build_daily_brief_context_builder_proof() -> dict[str, Any]:
         "source_refs_persisted": ref_count,
         "guard_columns_zero": guards_zero,
         "no_raw_content": no_raw_content,
-        "meeting_source_degrades_gracefully": meeting_degraded,
+        "meeting_source_reader_backed": meeting_backed,
         "guardrails": {
             "local_first": True,
             "no_external_writeback": True,

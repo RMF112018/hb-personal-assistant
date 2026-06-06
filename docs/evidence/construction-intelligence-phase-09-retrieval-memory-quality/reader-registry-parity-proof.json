@@ -1,0 +1,47 @@
+{
+  "proof": "phase_09_reader_registry_parity",
+  "command": "second-brain retrieval reader-registry-parity-proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-05T23:50:22.338810+00:00",
+  "repo_sha": "5a71cc5ec679d598870ff48d731288599d8d1d11",
+  "deterministic_allowlisted_family_count": 10,
+  "deterministic_reader_family_count": 10,
+  "allowlisted_families": [
+    "accepted_long_term_memory",
+    "aging_exposure_report_items",
+    "approved_obsidian_generated_outputs",
+    "cross_source_relationships",
+    "generated_outputs",
+    "meeting_prep_brief_sections",
+    "phase_07d_source_evidence_trails",
+    "project_issue_history_items",
+    "project_risk_digest_items",
+    "review_controlled_correspondence_context"
+  ],
+  "reader_backed_families": [
+    "accepted_long_term_memory",
+    "aging_exposure_report_items",
+    "approved_obsidian_generated_outputs",
+    "cross_source_relationships",
+    "generated_outputs",
+    "meeting_prep_brief_sections",
+    "phase_07d_source_evidence_trails",
+    "project_issue_history_items",
+    "project_risk_digest_items",
+    "review_controlled_correspondence_context"
+  ],
+  "missing_reader_families": [],
+  "deferred_reader_families": {},
+  "non_allowlisted_reader_families": [],
+  "parity_ok": true,
+  "metadata_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "advisory_only": true,
+    "no_determination": true,
+    "fail_closed": true
+  }
+}

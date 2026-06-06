@@ -76,6 +76,38 @@ Run the full matrix listed in the implementation plan / architecture 151 (compil
 
 See the sibling runbooks and the per-prompt architecture notes (120–150 range) for their specific commands and proofs.
 
+## Accepted memory activation (addendum, Prompts 00–05)
+
+The accepted-memory-activation addendum turns the long-term memory substrate into an operator-driven
+flow. **No migration** (schema V39); all surfaces are local-first, metadata-only, fail-closed.
+
+Operator flow:
+
+1. **Preview** safe candidates (read-only; never accepts):
+   `second-brain memory candidates build --json`
+2. **Persist** a chosen candidate to the safe candidate store:
+   `second-brain memory candidate --statement "…" --origin-id … --source-refs "family:ref" --emit --json`
+3. **Accept** it explicitly (dry-run without `--confirm`; duplicates are suppressed with block
+   `DUPLICATE_ACCEPTED`): `second-brain memory accept --candidate-id <id> --confirm --json`
+4. **Reject / defer / supersede a candidate**:
+   `second-brain memory reject --candidate-id <id> --reason "…" [--decision rejected|deferred|superseded] --confirm --json`
+5. **Supersede an accepted item** with a newer accepted one (metadata-only; the old item becomes
+   `superseded` and stops loading into retrieval):
+   `second-brain memory supersede --old-id <a> --new-id <b> --confirm --json`
+6. **List** by status: `second-brain memory list --status accepted --json`
+
+Proofs (all `--no-evidence --json` to avoid evidence churn):
+`memory candidates proof`, `memory proof` (acceptance), `memory quality-controls-proof`,
+`retrieval accepted-memory-loader-proof`, `retrieval accepted-memory-vector-coverage-proof`.
+
+After an accepted item exists, re-run `retrieval llamaindex build --apply` then
+`retrieval coverage-parity-closeout`: the vector-indexed family count rises **8 → 9**
+(`accepted_long_term_memory`) and `memory_substrate_status` flips `deferred_empty → covered`.
+
+**Deferred:** the live memory corpus is empty until an operator accepts an item (the substrate is
+validated by fixtures only); time-based memory expiration is a documented future enhancement (no schema
+added). See `accepted-memory-activation-closeout.md` — **not a production-readiness claim**.
+
 ## Evidence location
 
 `docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/`

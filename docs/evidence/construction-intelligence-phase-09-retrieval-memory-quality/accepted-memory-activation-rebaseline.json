@@ -1,0 +1,111 @@
+{
+  "audit": "accepted-memory-activation-rebaseline",
+  "phase": "09-addendum-accepted-memory-activation",
+  "prompt": "00",
+  "purpose": "Repo-truth rebaseline and memory-substrate audit prior to any accepted-memory activation work.",
+  "baseline_commit": "f87c9cb53bb0dc6cb17802632557a64ea03bc54e",
+  "baseline_short": "f87c9cb5",
+  "baseline_is_required_baseline": true,
+  "branch": "phase-09-approved-family-coverage-expansion",
+  "working_tree_note": "27 pre-existing dirty files at audit start are regenerated evidence JSON/MD unrelated to this audit; left untouched and not staged.",
+  "schema": {
+    "latest_schema_version": 39,
+    "latest_schema_version_ref": "src/hb_assistant/store/migrator.py:17",
+    "memory_tables_version": 26,
+    "quality_consolidation_tables_version": 38,
+    "memory_tables": [
+      "long_term_memory_items",
+      "long_term_memory_source_refs",
+      "long_term_memory_quality_signals",
+      "memory_update_candidates",
+      "memory_update_reviews"
+    ],
+    "long_term_memory_items": {
+      "definition_ref": "src/hb_assistant/store/migrator.py:3080-3097",
+      "columns": [
+        "memory_id",
+        "memory_type",
+        "statement_redacted",
+        "project_key",
+        "entity_key",
+        "origin_id",
+        "provenance_class",
+        "confidence_class",
+        "review_status",
+        "sensitivity_class",
+        "supersedes_memory_id",
+        "created_utc",
+        "updated_utc",
+        "raw_prompt_persisted",
+        "raw_response_persisted",
+        "retrieved_context_persisted"
+      ],
+      "review_status_column": "review_status",
+      "review_status_values": ["accepted", "pending_review", "rejected", "superseded"],
+      "review_status_enforced_by": "CHECK constraint on review_status",
+      "guard_columns": [
+        "raw_prompt_persisted (NOT NULL DEFAULT 0 CHECK = 0)",
+        "raw_response_persisted (NOT NULL DEFAULT 0 CHECK = 0)",
+        "retrieved_context_persisted (NOT NULL DEFAULT 0 CHECK = 0)"
+      ],
+      "project_key_support": true,
+      "project_key_column": "project_key",
+      "confidence_field": "confidence_class",
+      "provenance_fields": ["origin_id", "provenance_class"],
+      "source_ref_linkage": "long_term_memory_source_refs (source_family, source_ref, evidence_trail_id)",
+      "supersession_field": "supersedes_memory_id",
+      "index": "ix_long_term_memory_items_project (project_key, review_status)"
+    }
+  },
+  "loader": {
+    "path": "src/hb_assistant/construction/second_brain/retrieval/memory_loader.py",
+    "entrypoint": "load_reviewed_memory_nodes",
+    "entrypoint_ref": "src/hb_assistant/construction/second_brain/retrieval/memory_loader.py:102",
+    "activation_gate": "WHERE review_status = 'accepted'",
+    "schema_floor": ">= 38 and long_term_memory_items present (fail-closed otherwise)",
+    "read_only": true,
+    "open_mode": "?mode=ro",
+    "metadata_only": true,
+    "emitted_source_family": "accepted_long_term_memory",
+    "embedding_no_raw_guard": "validate_embedding_candidate applied per node",
+    "project_key_filter": true
+  },
+  "coverage": {
+    "deterministic_reader": {
+      "family": "accepted_long_term_memory",
+      "reader": "read_accepted_memory",
+      "reader_ref": "src/hb_assistant/construction/second_brain/retrieval/readers.py:278",
+      "allowlisted": true,
+      "allowlist_ref": "src/hb_assistant/construction/second_brain/retrieval/policy.py:34"
+    },
+    "approved_manifest": {
+      "category": "reviewed_memory",
+      "enabled": true,
+      "reader_ref": "src/hb_assistant/construction/second_brain/retrieval/source_manifest.py"
+    },
+    "vector_index": {
+      "loader": "load_reviewed_memory_nodes",
+      "gathered_by": "_gather_approved_nodes",
+      "gather_ref": "src/hb_assistant/construction/second_brain/retrieval/vector_index.py"
+    },
+    "memory_substrate_status_semantics": "covered when accepted_long_term_memory row_count > 0, else deferred_empty (corpus_balance_mart.py / coverage_parity.py)"
+  },
+  "decision": {
+    "schema_sufficient": true,
+    "migration_required": false,
+    "rationale": "The existing long_term_memory_items table (V26) already provides the full accepted-memory activation substrate: a CHECK-enforced review_status gate including 'accepted', fail-closed no-raw guard columns, project_key, confidence_class, origin/provenance fields, source-ref linkage, and supersession. The reviewed-memory loader already activates only review_status='accepted' rows read-only and metadata-only, and accepted memory is already a first-class coverage family across deterministic readers, the approved manifest (reviewed_memory), and the vector index. An additive migration would be redundant and is therefore not introduced."
+  },
+  "guardrails": [
+    "read_only",
+    "no_raw",
+    "no_writeback",
+    "reviewed_only_accepted",
+    "local_first",
+    "no_fabricated_memory",
+    "no_schema_change"
+  ],
+  "code_changes": false,
+  "architecture_doc_update_required": false,
+  "no_fabricated_memory": true,
+  "no_raw_content": true
+}

@@ -1,0 +1,41 @@
+{
+  "proof": "phase_09_memory_quality_controls",
+  "command": "second-brain memory quality-controls-proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-06T07:31:52.474351+00:00",
+  "repo_sha": "7685df5667c4a5c4669b327a946981910cfb5b27",
+  "contract_version": "1.8.0-phase-09-addendum",
+  "duplicate_detected_and_suppressed": true,
+  "duplicate_detected": true,
+  "duplicate_suppressed_at_acceptance": true,
+  "supersession_excludes_from_retrieval": true,
+  "supersedes_link_recorded": true,
+  "freshness_label_present": true,
+  "freshness_signal_recorded": true,
+  "expiration_status": "future_enhancement_no_schema_added",
+  "source_refs_preserved": true,
+  "transition_matrix": {
+    "pending_review->accepted": true,
+    "pending_review->rejected": true,
+    "accepted->superseded": true,
+    "accepted->rejected": false,
+    "accepted->pending_review": false,
+    "rejected->accepted": false
+  },
+  "transitions_valid": true,
+  "guard_columns_all_false": true,
+  "no_external_writeback": true,
+  "metadata_only": true,
+  "guardrails": {
+    "deterministic_duplicate_detection": true,
+    "metadata_only_supersession": true,
+    "non_accepted_never_loads": true,
+    "source_linked_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "no_unnecessary_schema": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

@@ -20,12 +20,16 @@ from .policy import derive_relationship_state, relationship_state_tier
 
 
 def _tier(review_required: bool, confidence_class: str | None) -> tuple[int, str]:
+    # Recognize both the generic (high/medium/low) and the construction-substrate
+    # (deterministic / strong_heuristic / weak_heuristic / model_proposed / stale_or_unresolved)
+    # confidence vocabularies. Deterministic is the highest-trust class (tier 1); strong_heuristic is
+    # review-recommended (tier 2); everything weaker / unknown stays review-required (tier 3).
     if review_required:
         return 3, "review_required"
     c = (confidence_class or "").lower()
-    if c == "high":
+    if c in ("high", "deterministic"):
         return 1, "auto_advisory"
-    if c == "medium":
+    if c in ("medium", "strong_heuristic"):
         return 2, "review_recommended"
     return 3, "review_required"
 
@@ -296,6 +300,149 @@ def read_accepted_memory(
     )
 
 
+def _table_exists(conn: Any, table: str) -> bool:
+    return (
+        conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone()
+        is not None
+    )
+
+
+def read_generated_outputs(
+    store: ConstructionStore, db_path: str | None, project_key: str | None
+) -> list[RetrievalItem]:
+    """Accepted research packets + applied, source-linked daily briefs (redacted, source-linked).
+
+    Mirrors the manifest's generated-outputs candidate logic (``source_manifest._read_generated``) but
+    yields ``RetrievalItem``s for the deterministic broker. No raw content: packet excerpts come from
+    ``summary_redacted`` and brief excerpts are a bounded label only.
+    """
+    conn = _conn(db_path)
+    items: list[RetrievalItem] = []
+    if _table_exists(conn, "second_brain_research_packets"):
+        clause = " AND project_key = ?" if project_key is not None else ""
+        params: list[Any] = ["accepted"]
+        if project_key is not None:
+            params.append(project_key)
+        rows = conn.execute(
+            "SELECT packet_id, project_key, confidence_class, review_tier, review_status, "
+            "summary_redacted, created_utc FROM second_brain_research_packets "
+            "WHERE review_status = ?" + clause + " ORDER BY packet_id LIMIT 500",
+            tuple(params),
+        ).fetchall()
+        for rec in (dict(r) for r in rows):
+            tier = int(rec.get("review_tier") or 1)
+            review_required = tier >= 3
+            items.append(
+                RetrievalItem(
+                    source_family="generated_outputs",
+                    source_ref=str(rec.get("packet_id")),
+                    record_type="research_packet",
+                    record_ref=str(rec.get("packet_id")),
+                    project_key=rec.get("project_key"),
+                    confidence_class=str(rec.get("confidence_class") or "unknown"),
+                    review_tier=tier,
+                    review_status=str(rec.get("review_status") or "accepted"),
+                    review_required=review_required,
+                    content_excerpt_redacted=str(rec.get("summary_redacted") or "research_packet"),
+                    recency=str(rec.get("created_utc") or ""),
+                )
+            )
+    # daily_brief_runs has no project_key column; only enumerate when unscoped.
+    if project_key is None and _table_exists(conn, "daily_brief_runs"):
+        rows = conn.execute(
+            "SELECT brief_run_id, brief_date, review_tier, status FROM daily_brief_runs "
+            "WHERE mode = 'apply' AND status != 'blocked' AND output_path_hash IS NOT NULL "
+            "AND source_ref_count > 0 ORDER BY generated_utc DESC, brief_run_id DESC LIMIT 500"
+        ).fetchall()
+        for rec in (dict(r) for r in rows):
+            tier = int(rec.get("review_tier") or 1)
+            items.append(
+                RetrievalItem(
+                    source_family="generated_outputs",
+                    source_ref=str(rec.get("brief_run_id")),
+                    record_type="daily_brief",
+                    record_ref=str(rec.get("brief_run_id")),
+                    confidence_class="high",
+                    review_tier=tier,
+                    review_status="auto_advisory",
+                    review_required=tier >= 3,
+                    content_excerpt_redacted=f"daily brief {rec.get('brief_date') or ''}".strip(),
+                    recency=str(rec.get("brief_date") or ""),
+                )
+            )
+    return items
+
+
+def read_meeting_prep_brief_sections(
+    store: ConstructionStore, db_path: str | None, project_key: str | None
+) -> list[RetrievalItem]:
+    """Meeting-prep brief sections (V25). Redacted, source-linked; ``section_redacted`` excerpt only.
+
+    The table has no ``project_key`` column, so the (rare) project-scoped path returns no items rather
+    than leaking cross-project rows.
+    """
+    if project_key is not None:
+        return []
+    items: list[RetrievalItem] = []
+    for rec in store.list_meeting_prep_brief_sections(limit=500):
+        review_required = bool(rec.get("review_required"))
+        tier, status = _tier(review_required, rec.get("confidence_class"))
+        items.append(
+            RetrievalItem(
+                source_family="meeting_prep_brief_sections",
+                source_ref=str(rec.get("section_id")),
+                record_type=str(rec.get("section_kind") or "section"),
+                record_ref=str(rec.get("section_id")),
+                confidence_class=str(rec.get("confidence_class") or "unknown"),
+                review_tier=tier,
+                review_status=status,
+                review_required=review_required,
+                evidence_ref=rec.get("evidence_trail_id"),
+                stale_unknown_flags=_flags(rec.get("stale_unknown_flags_json")),
+                content_excerpt_redacted=str(rec.get("section_redacted") or "section"),
+                recency=str(rec.get("generated_utc") or ""),
+            )
+        )
+    return items
+
+
+def read_review_controlled_correspondence_context(
+    store: ConstructionStore, db_path: str | None, project_key: str | None
+) -> list[RetrievalItem]:
+    """Review-controlled correspondence context — bounded, redacted email-thread summaries.
+
+    Reads the redacted ``email_thread_summaries`` read model directly (one bounded query, the same
+    single-connection pattern as the other deterministic readers) rather than the heavy Phase 07D
+    relationship-join projection — keeping the broker hot path light. Each thread becomes one item:
+    ``source_ref`` is the thread key, the excerpt is the bounded ``summary_redacted`` (never a raw
+    body / subject / link), and the tier is floored at 2 (advisory, never auto-tier-1) — review-required
+    threads stay tier 3 and are dropped by the read-model loader's eligibility filter, so they are never
+    vector-indexed.
+    """
+    items: list[RetrievalItem] = []
+    for rec in store.list_email_thread_summaries(project_key=project_key, limit=500):
+        review_required = bool(rec.get("review_required"))
+        tier = 3 if review_required else 2
+        items.append(
+            RetrievalItem(
+                source_family="review_controlled_correspondence_context",
+                source_ref=str(rec.get("thread_key")),
+                record_type="correspondence_thread",
+                record_ref=str(rec.get("thread_key")),
+                project_key=rec.get("project_key"),
+                confidence_class="unknown",
+                review_tier=tier,
+                review_status="review_required" if review_required else "review_recommended",
+                review_required=review_required,
+                content_excerpt_redacted=str(rec.get("summary_redacted") or "correspondence"),
+                recency=str(rec.get("last_message_datetime") or ""),
+            )
+        )
+    return items
+
+
 # Families with a registered reader. Allowlisted families NOT here yield no items;
 # the broker records a coverage warning (graceful degradation, never fabricate).
 READER_REGISTRY: dict[
@@ -308,4 +455,7 @@ READER_REGISTRY: dict[
     "aging_exposure_report_items": read_aging_exposure,
     "accepted_long_term_memory": read_accepted_memory,
     "approved_obsidian_generated_outputs": read_approved_obsidian,
+    "generated_outputs": read_generated_outputs,
+    "meeting_prep_brief_sections": read_meeting_prep_brief_sections,
+    "review_controlled_correspondence_context": read_review_controlled_correspondence_context,
 }

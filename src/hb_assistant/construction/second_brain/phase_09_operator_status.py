@@ -128,6 +128,16 @@ def load_phase_09_operator_status_seed() -> dict[str, Any]:
     return data
 
 
+def _coverage_parity(db_path: str | None) -> dict[str, Any]:
+    """Best-effort coverage-parity distinction (deterministic / manifest / vector-indexed / deferred)."""
+    try:
+        from .corpus_balance_mart import build_coverage_parity_report
+
+        return build_coverage_parity_report(db_path)
+    except Exception:
+        return {}
+
+
 def evaluate_phase_09_operator_status(*, db_path: str | None = None) -> dict[str, Any]:
     """Aggregate a repo-consistent Phase-09 operator status (read-only; advisory; no persistence).
 
@@ -282,6 +292,7 @@ def evaluate_phase_09_operator_status(*, db_path: str | None = None) -> dict[str
         "missing_contracts": missing_contracts,
         "surfaces": surfaces,
         "phase_09_substrate_status": phase_09_substrate_status,
+        "coverage_parity": _coverage_parity(db_path),
         "advisory_only": True,
         "makes_determination": False,
         "read_only": True,
