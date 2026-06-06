@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* HB Analytics - primary dark, system-aware via .dark class on <html> (see ThemeProvider) */
+:root {
+  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, Consolas, monospace;
+
+  /* Light (rarely primary but supported) */
+  --hb-bg: #f8f9fc;
+  --hb-surface: #ffffff;
+  --hb-border: #e5e4e7;
+  --hb-text: #1f2937;
+  --hb-muted: #6b7280;
+  --hb-accent: #4f46e5;
+  --hb-accent-weak: #6366f1;
+
+  color-scheme: light dark;
+}
+
+.dark {
+  --hb-bg: #0f1117;
+  --hb-surface: #16171d;
+  --hb-border: #2e303a;
+  --hb-text: #e5e7eb;
+  --hb-muted: #9ca3af;
+  --hb-accent: #a5b4fc;
+  --hb-accent-weak: #6366f1;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--hb-bg);
+  color: var(--hb-text);
+  margin: 0;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+/* Compact, construction-native badges */
+.badge {
+  @apply inline-flex items-center rounded px-2 py-0.5 text-xs font-medium border;
+  border-color: var(--hb-border);
+  background: var(--hb-surface);
+  color: var(--hb-muted);
+}
+
+.badge-fresh,
+.badge-freshness {
+  @apply bg-emerald-950/60 text-emerald-300 border-emerald-900;
+}
+
+.badge-stale {
+  @apply bg-amber-950/60 text-amber-300 border-amber-900;
+}
+
+.badge-confidence {
+  @apply bg-sky-950/60 text-sky-300 border-sky-900;
+}
+
+.badge-muted {
+  @apply bg-zinc-900 text-zinc-400 border-zinc-800;
+}
+
+/* Cards and sections - calm, low-friction */
+.card {
+  @apply rounded-lg border p-4;
+  background: var(--hb-surface);
+  border-color: var(--hb-border);
+}
+
+.section-title {
+  @apply text-sm font-semibold tracking-wide text-[var(--hb-muted)] uppercase mb-2;
+}
+
+.nav-item {
+  @apply flex items-center gap-2 px-3 py-2 rounded-md text-sm;
+  color: var(--hb-text);
+}
+
+.nav-item.active {
+  @apply bg-[var(--hb-accent)]/10 text-[var(--hb-accent)] font-medium;
+}
+
+.nav-item:disabled,
+.nav-item.disabled {
+  @apply opacity-50 cursor-not-allowed pointer-events-none;
+}
+
+.support-nav {
+  @apply text-xs;
+}
+
+/* Advisory / guardrail notes */
+.advisory {
+  @apply text-[10px] text-[var(--hb-muted)] italic;
+}
+
+/* Simple table for drilldowns (lightweight, no full TanStack Table in UI-08) */
+table.data-table {
+  @apply w-full text-sm;
+  border-collapse: collapse;
+}
+
+table.data-table th,
+table.data-table td {
+  @apply px-2 py-1.5 text-left border-b;
+  border-color: var(--hb-border);
+}
+
+table.data-table th {
+  @apply text-[var(--hb-muted)] font-medium;
+}
+
+/* Project sub navigation (contextual tabs only, not top level) */
+.subnav {
+  @apply flex gap-1 border-b pb-1 mb-3;
+  border-color: var(--hb-border);
+}
+
+.subnav a {
+  @apply px-3 py-1 text-sm rounded;
+}
+
+.subnav a.active {
+  @apply bg-[var(--hb-accent)]/10 text-[var(--hb-accent)];
+}
+
+/* Focus styles for a11y */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--hb-accent);
+  outline-offset: 2px;
+}
