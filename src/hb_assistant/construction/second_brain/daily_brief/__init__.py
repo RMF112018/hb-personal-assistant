@@ -38,11 +38,15 @@ from .models import (
 )
 from .output import render_brief_markdown, resolve_brief_path, write_brief_output
 from .output_receipt import (
+    RENDERED_VAULT_SUBDIR,
     RenderedOutputReceiptError,
     build_daily_brief_rendered_output_receipt_proof,
     build_rendered_brief_receipt,
     build_trusted_packet_receipt,
     import_rendered_brief,
+    rendered_brief_filename,
+    resolve_rendered_brief_path,
+    write_rendered_brief,
 )
 from .packet import (
     DailyBriefPacketError,
@@ -118,10 +122,14 @@ __all__ = [
     "build_daily_brief_rendered_quality_proof",
     "validate_rendered_brief",
     "RenderedOutputReceiptError",
+    "RENDERED_VAULT_SUBDIR",
     "build_daily_brief_rendered_output_receipt_proof",
     "build_rendered_brief_receipt",
     "build_trusted_packet_receipt",
     "import_rendered_brief",
+    "rendered_brief_filename",
+    "resolve_rendered_brief_path",
+    "write_rendered_brief",
     "build_daily_brief_mcp_handoff_status",
     "handoff_present",
     "DailyBriefPolicyError",

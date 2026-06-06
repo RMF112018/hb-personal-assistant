@@ -28,8 +28,13 @@ Claude scheduled-task output (Prompt 03 templates → Prompt 02 MCP tool → Pro
 - **not** approved memory · **not** vector-index input
 - **not** source-linked-proof input unless validated separately
 
-**Location:** `<vault>/Construction Intelligence/Phase 09 Rendered Daily Briefs/` (a clearly marked local
-advisory output directory).
+**Location (Prompt 04 — corrected):** `/Users/bobbyfetting/Documents/Obsidian Vault/Work/Daily Brief/`
+(`<vault>/Work/Daily Brief/`), a clearly marked local advisory output directory, with the date-stable
+filename `YYYY-MM-DD-daily-brief.md` (e.g. `2026-06-06-daily-brief.md`). The directory is created if
+missing on a local write; the rendered body is never persisted to SQLite. `resolve_rendered_brief_path`
+/ `write_rendered_brief` (`daily_brief/output_receipt.py`) resolve and apply-only write this path. This
+is **not** the deterministic Phase 08A brief root (`daily_brief/output.py`), which remains an approved,
+indexed, manifest-referenced generated output and is intentionally unchanged.
 
 ## Rendered-brief output receipt (metadata-only)
 
@@ -47,6 +52,9 @@ Each rendered brief carries a metadata receipt with:
 | `not_source_truth` | `true` |
 | `imported_to_memory` | `false` |
 | `imported_to_vector_index` | `false` |
+| `imported_to_source_manifest` | `false` |
+| `imported_to_source_linked_proof` | `false` |
+| `persisted_to_sqlite` | `false` |
 | `external_writeback` | `false` |
 | `import_enabled` | `false` |
 

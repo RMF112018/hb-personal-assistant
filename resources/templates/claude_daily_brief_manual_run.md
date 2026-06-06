@@ -80,8 +80,15 @@ record-level detail, write "detail unavailable" rather than a count. Do not inve
 
 ## Storage Policy
 
-Claude-rendered output is **not source truth**. If persisted, it must go only to an output/handoff
-location marked rendered / narrative / advisory. It must **not** be imported into:
+Claude-rendered output is **not source truth**. This is a manual test run — persisting is optional. If
+persisted, write it only to the canonical advisory location, creating the directory if missing:
+
+`/Users/bobbyfetting/Documents/Obsidian Vault/Work/Daily Brief/`
+
+using the date-stable filename `YYYY-MM-DD-daily-brief.md`
+(e.g. `/Users/bobbyfetting/Documents/Obsidian Vault/Work/Daily Brief/2026-06-06-daily-brief.md`).
+
+It is advisory only. Do not persist the rendered body to SQLite. It must **not** be imported into:
 
 - accepted memory
 - vector index

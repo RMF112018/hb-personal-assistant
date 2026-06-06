@@ -19,7 +19,7 @@ retrieval/memory stores.
   `docs/evidence/.../retrieval-memory-quality/daily-brief-packets/` (or existing daily-brief path).
 - **Rendered narrative** (`rendered_daily_brief_narrative`) — Claude scheduled-task output:
   human-readable, advisory, **not source truth**; not approved-memory / vector-index / source-linked-proof
-  input. Location: `<vault>/Construction Intelligence/Phase 09 Rendered Daily Briefs/`.
+  input. Location (corrected in Prompt 04 — see record 181): `<vault>/Work/Daily Brief/`.
 
 ## 3. Receipts
 
