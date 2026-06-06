@@ -1142,6 +1142,91 @@ def memory_candidates_proof(
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 
 
+@memory_candidates_app.command("stage")
+def memory_candidates_stage(
+    candidate_id: str = typer.Option(
+        ...,
+        "--candidate-id",
+        help="Preview candidate id (mcp_…) to stage into the candidate store.",
+    ),
+    confirm: bool = typer.Option(
+        False, "--confirm/--no-confirm", help="Explicit confirmation (required to persist)."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Stage a previewed candidate into the durable safe candidate store so `memory accept` can find it.
+
+    Rebuilds the preview deterministically, re-runs the source-linked / no-raw / no-determination /
+    review-tier checks, converts the candidate to the MemoryCandidate shape (preserving its id), and
+    persists it — never creating accepted memory. Dry-run without --confirm. Exit 0/3 (fail-closed when
+    the id is not in the current preview)."""
+    from hb_assistant.construction.second_brain.memory.candidate_preview import (
+        MemoryCandidatePreviewError,
+        stage_memory_candidate,
+    )
+
+    try:
+        result = stage_memory_candidate(candidate_id, confirm=confirm)
+    except MemoryCandidatePreviewError as exc:
+        payload = {
+            "command": "second-brain memory candidates stage",
+            "status": "not_found",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_CANDIDATE_PREVIEW_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _MEMORY_CANDIDATE_PREVIEW_GUARDRAILS}
+    human = [
+        f"Stage {candidate_id} | confirm: {confirm} | staged: {result['staged']}"
+        f" | persisted: {result['persisted']} | creates_accepted_memory: False",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@memory_candidates_app.command("stage-proof")
+def memory_candidates_stage_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the candidate staging-bridge proof."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove a previewed candidate stages into the durable store (id preserved) and then accepts, while
+    staging itself creates no accepted memory and a missing id fails closed. Exit 0/3."""
+    from hb_assistant.construction.second_brain.memory.candidate_preview import (
+        MemoryCandidatePreviewError,
+        build_memory_candidate_stage_proof,
+    )
+
+    try:
+        proof = build_memory_candidate_stage_proof(write_evidence=evidence)
+    except MemoryCandidatePreviewError as exc:
+        payload = {
+            "command": "second-brain memory candidates stage-proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _MEMORY_CANDIDATE_PREVIEW_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _MEMORY_CANDIDATE_PREVIEW_GUARDRAILS}
+    human = [
+        f"Candidate staging proof passed={proof['proof_passed']}"
+        f" (id_preserved={proof['candidate_id_preserved']},"
+        f" accept_after_staging={proof['accept_succeeds_after_staging']},"
+        f" staging_creates_no_accepted={proof['staging_creates_no_accepted_memory']},"
+        f" guards_false={proof['guard_columns_all_false']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
 @memory_app.command("supersede")
 def memory_supersede(
     old_id: str = typer.Option(..., "--old-id", help="Accepted memory item to supersede."),

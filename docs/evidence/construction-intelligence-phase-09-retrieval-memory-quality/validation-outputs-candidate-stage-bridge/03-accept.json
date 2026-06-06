@@ -1,0 +1,51 @@
+{
+  "command": "second-brain memory accept",
+  "phase": "09",
+  "generated_utc": "2026-06-06T08:31:30.744274+00:00",
+  "repo_sha": "f56740678304c101c62a801c81ed5ae6f8b56a85",
+  "candidate_id": "mcp_562433b32e4190a63db894907846e1e0",
+  "memory_type": "system_config_fact",
+  "confidence_class": "high",
+  "review_tier": 1,
+  "project_key": null,
+  "source_family": "system_config_facts",
+  "source_ref_hash": "a684f13b8e4bf40e33f64cc0d7e54e72166ea782d473a49c",
+  "source_ref_count": 1,
+  "acceptable": true,
+  "blocks": [],
+  "checks": {
+    "has_source_ref": true,
+    "has_statement": true,
+    "has_memory_type": true,
+    "has_confidence_class": true,
+    "review_tier": 1,
+    "no_raw_finding": true,
+    "not_unresolved_high_impact": true,
+    "not_final_determination": true
+  },
+  "duplicate_of_memory_id": null,
+  "confirm": true,
+  "requires_confirm": true,
+  "writes_external": false,
+  "guard_columns_false": true,
+  "contract_version": "1.8.0-phase-09-addendum",
+  "accepted": true,
+  "would_accept": true,
+  "persisted": true,
+  "memory_id": "7b7bf01758b14565b8bf34d118121c8e",
+  "review_status": "accepted",
+  "quality_signal_types": [
+    "origin",
+    "quality"
+  ],
+  "guardrails": {
+    "explicit_confirmation_required": true,
+    "no_auto_acceptance": true,
+    "no_external_writeback": true,
+    "no_raw": true,
+    "guard_columns_false": true,
+    "non_accepted_never_loads": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

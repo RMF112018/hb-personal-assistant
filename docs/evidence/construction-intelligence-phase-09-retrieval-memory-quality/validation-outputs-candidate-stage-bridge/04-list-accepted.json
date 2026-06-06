@@ -1,0 +1,32 @@
+{
+  "command": "second-brain memory list",
+  "phase": "09",
+  "generated_utc": "2026-06-06T08:31:31.281354+00:00",
+  "repo_sha": "f56740678304c101c62a801c81ed5ae6f8b56a85",
+  "status": "accepted",
+  "count": 1,
+  "items": [
+    {
+      "memory_id": "7b7bf01758b14565b8bf34d118121c8e",
+      "memory_type": "system_config_fact",
+      "confidence_class": "high",
+      "review_status": "accepted",
+      "project_key": null,
+      "freshness_label": "current",
+      "source_ref_count": 1
+    }
+  ],
+  "metadata_only": true,
+  "loadable_into_retrieval": true,
+  "contract_version": "1.8.0-phase-09-addendum",
+  "guardrails": {
+    "explicit_confirmation_required": true,
+    "no_auto_acceptance": true,
+    "no_external_writeback": true,
+    "no_raw": true,
+    "guard_columns_false": true,
+    "non_accepted_never_loads": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

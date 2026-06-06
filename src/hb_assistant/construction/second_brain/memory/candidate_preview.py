@@ -800,3 +800,280 @@ def build_memory_candidate_preview_proof(
         proof["proof_md_path"] = str(out_dir / _PROOF_MD)
 
     return proof
+
+
+# --- Staging bridge: preview candidate -> durable safe candidate store ---------------------------
+
+_STAGE_PROOF_JSON = "accepted-memory-candidate-stage-proof.json"
+_STAGE_PROOF_MD = "accepted-memory-candidate-stage-proof.md"
+_TIER_REASON_CODE = {
+    1: "T1_DETERMINISTIC_SOURCE_BACKED",
+    2: "T2_STRONG_HEURISTIC",
+    3: "T3_MODEL_ONLY",
+}
+
+
+def stage_memory_candidate(
+    candidate_id: str, *, db_path: str | None = None, confirm: bool = False
+) -> dict[str, Any]:
+    """Stage a previewed candidate into the durable safe candidate store (memory_update_candidates).
+
+    The candidate preview is read-only and does not persist; ``accept_memory_candidate`` reads from the
+    durable store via ``read_memory_candidate``. This bridge rebuilds the preview deterministically,
+    finds the requested candidate (fail-closed if absent), re-runs the source-linked / no-raw /
+    no-determination / review-tier checks, converts it to the existing ``MemoryCandidate`` shape
+    (preserving the ``mcp_`` id), and persists it — without creating accepted memory. Requires
+    ``confirm`` to persist; guard columns stay 0; metadata-only output.
+    """
+    from .models import MemoryCandidate
+    from .store import read_memory_candidate, write_memory_candidate
+
+    contract = load_memory_candidate_preview_contract()
+    seed = load_memory_candidate_preview_seed()
+    _schema_ready(db_path)
+
+    preview = build_memory_candidate_preview(db_path=db_path, write_evidence=False)
+    match = next((c for c in preview["candidates"] if c["candidate_id"] == candidate_id), None)
+    if match is None:
+        raise MemoryCandidatePreviewError(f"preview candidate not found: {candidate_id}")
+
+    # Defense-in-depth: re-run the preview safety checks on the found candidate.
+    determination_terms = [str(t).lower() for t in seed.get("determination_terms", [])]
+    max_chars = int(seed.get("statement_max_chars", 280))
+    recheck = _evaluate_input(
+        {
+            "memory_type": match["memory_type"],
+            "source_family": match["source_family"],
+            "source_ref": match["source_ref"],
+            "statement_redacted": match["statement_redacted"],
+            "project_key": match.get("project_key"),
+            "confidence_class": match["confidence_class"],
+            "review_tier": match["review_tier"],
+            "durability_class": match["durability_class"],
+            "created_utc": match["created_utc"],
+            "reason_code": match["reason_code"],
+        },
+        determination_terms=determination_terms,
+        max_chars=max_chars,
+        preview_only=True,
+    )
+
+    review_tier = int(match["review_tier"])
+    result: dict[str, Any] = {
+        "command": "second-brain memory candidates stage",
+        "phase": "09",
+        "generated_utc": _now(),
+        "repo_sha": _repo_sha(),
+        "candidate_id": candidate_id,
+        "memory_type": match["memory_type"],
+        "source_family": match["source_family"],
+        "source_ref_hash": match["source_ref_hash"],
+        "project_key": match.get("project_key"),
+        "confidence_class": match["confidence_class"],
+        "review_tier": review_tier,
+        "target_candidate_status": "proposed",
+        "revalidated": bool(recheck["surfaced"]),
+        "confirm": confirm,
+        "requires_confirm": True,
+        "writes_external": False,
+        "guard_columns_false": True,
+        "creates_accepted_memory": False,
+        "contract_version": contract.get("version"),
+    }
+
+    if not recheck["surfaced"]:
+        result["staged"] = False
+        result["persisted"] = False
+        result["blocks"] = [recheck["reason_code"]]
+        return result
+
+    if not confirm:
+        result["staged"] = False
+        result["persisted"] = False
+        result["would_stage"] = True
+        return result
+
+    existing = read_memory_candidate(candidate_id, db_path=db_path)
+    if existing is None:
+        candidate = MemoryCandidate(
+            candidate_id=candidate_id,
+            proposed_memory_type=str(match["memory_type"]),
+            statement_redacted=str(match["statement_redacted"]),
+            project_key=match.get("project_key"),
+            origin_id=str(match["source_ref"]),
+            provenance_class="candidate_preview",
+            confidence_class=str(match["confidence_class"]),
+            review_required=review_tier != 1,
+            review_tier=review_tier,
+            review_tier_reason_code=_TIER_REASON_CODE.get(review_tier, "T3_MODEL_ONLY"),
+            sensitivity_class="normal",
+            source_refs=[
+                {
+                    "source_family": str(match["source_family"]),
+                    "source_ref": str(match["source_ref"]),
+                }
+            ],
+            status="proposed",
+        )
+        write_memory_candidate(candidate, db_path=db_path)
+
+    result["staged"] = True
+    result["persisted"] = existing is None
+    result["already_staged"] = existing is not None
+    return result
+
+
+def _render_stage_proof_md(p: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# Phase 09 Addendum — Memory Candidate Staging Bridge Proof",
+            "",
+            f"- proof_passed: {p['proof_passed']}",
+            f"- generated_utc: {p['generated_utc']}",
+            f"- candidate_id_preserved: {p['candidate_id_preserved']}",
+            f"- dry_run_persists_nothing: {p['dry_run_persists_nothing']}",
+            f"- staged_into_candidate_store: {p['staged_into_candidate_store']}",
+            f"- readable_by_read_memory_candidate: {p['readable_by_read_memory_candidate']}",
+            f"- accept_succeeds_after_staging: {p['accept_succeeds_after_staging']}",
+            f"- accepted_memory_count_after: {p['accepted_memory_count_after']}",
+            f"- not_found_fails_closed: {p['not_found_fails_closed']}",
+            f"- guard_columns_all_false: {p['guard_columns_all_false']}",
+            f"- staging_creates_no_accepted_memory: {p['staging_creates_no_accepted_memory']}",
+            "",
+        ]
+    )
+
+
+def build_memory_candidate_stage_proof(
+    *, evidence_dir: str | None = None, write_evidence: bool = True
+) -> dict[str, Any]:
+    """Fail-closed proof: a previewed candidate stages into the durable store (id preserved) and then
+    accepts; staging itself creates no accepted memory; a missing id fails closed."""
+    import sqlite3
+    import tempfile
+
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    from .acceptance import accept_memory_candidate
+    from .store import read_memory_candidate
+
+    def _accepted_count(db: str) -> int:
+        conn = sqlite3.connect(db)
+        try:
+            return int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM long_term_memory_items WHERE review_status='accepted'"
+                ).fetchone()[0]
+            )
+        finally:
+            conn.close()
+
+    def _guard_sum(db: str) -> int:
+        conn = sqlite3.connect(db)
+        try:
+            cols = [str(r[1]) for r in conn.execute("PRAGMA table_info(memory_update_candidates)")]
+            guards = [c for c in cols if c.endswith("_persisted")]
+            if not guards:
+                return 0
+            return int(
+                conn.execute(
+                    f"SELECT COALESCE(SUM({'+'.join(guards)}), 0) FROM memory_update_candidates"
+                ).fetchone()[0]
+                or 0
+            )
+        finally:
+            conn.close()
+
+    with tempfile.TemporaryDirectory() as tmp:
+        db = str(Path(tmp) / "stage.sqlite")
+        SQLiteMigrator(db_path=db).apply()
+
+        preview = build_memory_candidate_preview(db, write_evidence=False)
+        tier1 = next((c for c in preview["candidates"] if int(c["review_tier"]) == 1), None)
+        target_id = tier1["candidate_id"] if tier1 else ""
+
+        before = _accepted_count(db)
+        dry = stage_memory_candidate(target_id, db_path=db, confirm=False)
+        dry_run_persists_nothing = (
+            dry["staged"] is False
+            and dry["persisted"] is False
+            and read_memory_candidate(target_id, db_path=db) is None
+        )
+
+        staged = stage_memory_candidate(target_id, db_path=db, confirm=True)
+        row = read_memory_candidate(target_id, db_path=db)
+        staged_ok = staged["staged"] is True and staged["persisted"] is True
+        readable = row is not None and row["candidate_id"] == target_id
+        candidate_id_preserved = (
+            staged["candidate_id"] == target_id == (row or {}).get("candidate_id")
+        )
+        staging_creates_no_accepted = _accepted_count(db) == before
+
+        acc = accept_memory_candidate(target_id, db_path=db, confirm=True)
+        accept_ok = acc["accepted"] is True
+        accepted_after = _accepted_count(db)
+
+        guard_clean = _guard_sum(db) == 0
+
+        try:
+            stage_memory_candidate("mcp_does_not_exist", db_path=db, confirm=True)
+            not_found_fails_closed = False
+        except MemoryCandidatePreviewError:
+            not_found_fails_closed = True
+
+    proof_passed = (
+        bool(target_id)
+        and dry_run_persists_nothing
+        and staged_ok
+        and readable
+        and candidate_id_preserved
+        and staging_creates_no_accepted
+        and accept_ok
+        and accepted_after == before + 1
+        and not_found_fails_closed
+        and guard_clean
+    )
+
+    proof: dict[str, Any] = {
+        "proof": "phase_09_memory_candidate_stage",
+        "command": "second-brain memory candidates stage-proof",
+        "phase": "09",
+        "proof_passed": proof_passed,
+        "generated_utc": _now(),
+        "repo_sha": _repo_sha(),
+        "candidate_id_preserved": candidate_id_preserved,
+        "dry_run_persists_nothing": dry_run_persists_nothing,
+        "staged_into_candidate_store": staged_ok,
+        "readable_by_read_memory_candidate": readable,
+        "accept_succeeds_after_staging": accept_ok,
+        "accepted_memory_count_after": accepted_after,
+        "staging_creates_no_accepted_memory": staging_creates_no_accepted,
+        "not_found_fails_closed": not_found_fails_closed,
+        "guard_columns_all_false": guard_clean,
+        "metadata_only": True,
+        "guardrails": {
+            "rebuilds_preview_deterministically": True,
+            "preserves_candidate_id": True,
+            "revalidates_source_linked_no_raw_no_determination_tier": True,
+            "requires_confirm": True,
+            "creates_no_accepted_memory": True,
+            "no_external_writeback": True,
+            "guard_columns_false": True,
+            "local_first": True,
+            "fail_closed": True,
+        },
+    }
+
+    if write_evidence:
+        out_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out = json.dumps(proof, indent=2, default=str)
+        _assert_no_raw(out, "memory candidate stage proof json")
+        (out_dir / _STAGE_PROOF_JSON).write_text(out + "\n", encoding="utf-8")
+        markdown = _render_stage_proof_md(proof)
+        _assert_no_raw(markdown, "memory candidate stage proof markdown")
+        (out_dir / _STAGE_PROOF_MD).write_text(markdown, encoding="utf-8")
+        proof["proof_path"] = str(out_dir / _STAGE_PROOF_JSON)
+        proof["proof_md_path"] = str(out_dir / _STAGE_PROOF_MD)
+
+    return proof
