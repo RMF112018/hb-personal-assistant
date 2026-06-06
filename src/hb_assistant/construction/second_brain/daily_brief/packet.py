@@ -11,8 +11,16 @@ persists nothing (no packet receipt table is added); fail-closed on missing cont
 Public entry points:
   build_daily_brief_packet(*, brief_date, project_key=None, mode="dry_run", db_path=None) -> dict
   build_daily_brief_packet_proof(*, evidence_dir=None, write_evidence=True) -> dict
-CLI: hb-assistant second-brain daily-brief packet --date YYYY-MM-DD --json
+  build_daily_brief_packet_v2(*, brief_date, project_key=None, mode="dry_run", db_path=None) -> dict
+  build_daily_brief_packet_v2_proof(*, evidence_dir=None, write_evidence=True) -> dict
+CLI: hb-assistant second-brain daily-brief packet --date YYYY-MM-DD [--version v2] --json
      hb-assistant second-brain daily-brief packet-proof --json
+     hb-assistant second-brain daily-brief packet-v2-proof --json
+
+V2 (Phase 09 Addendum, Prompt 01) is a *projection* over the V1 packet: it splits user-facing
+``render_payload`` from internal ``governance_metadata`` so governance never renders into the brief
+body. It adds no new retrieval; sections without a current data source (calendar, email, deadlines,
+yesterday) are emitted empty with honest ``data_gaps`` entries deferred to Prompt 02 (enrichment).
 """
 
 from __future__ import annotations
@@ -35,6 +43,12 @@ _CONTRACT_JSON = "daily-brief-packet-contract.json"
 _CONTRACT_MD = "daily-brief-packet-contract.md"
 _PROOF_JSON = "daily-brief-packet-proof.json"
 _PROOF_MD = "daily-brief-packet-proof.md"
+
+# Phase 09 Addendum V2 — Executive Utility Hardening (Prompt 01: packet contract).
+PACKET_VERSION_V2 = "DailyBriefHandoffPacketV2"
+EVIDENCE_DIR_V2 = "docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2"
+_V2_PROOF_JSON = "daily-brief-packet-v2-proof.json"
+_V2_PROOF_MD = "daily-brief-packet-v2-proof.md"
 
 # The exact guardrails block required by the packet contract (carried inside every packet).
 PACKET_GUARDRAILS: dict[str, bool] = {
@@ -89,6 +103,101 @@ _FINAL_DETERMINATION_LEXICON: tuple[str, ...] = (
     "we will pay",
 )
 
+# --- V2 contract constants (single source of truth for builder, proof, and emitted contract) ------
+
+# The 11 user-facing keys carried by ``render_payload`` (brief-ready data only).
+RENDER_PAYLOAD_SECTIONS: list[str] = [
+    "brief_date",
+    "portfolio_scope",
+    "yesterday",
+    "today_agenda",
+    "next_7_days",
+    "needs_attention",
+    "focus_recommendations",
+    "project_signals",
+    "email_activity",
+    "calendar_activity",
+    "data_gaps",
+]
+
+# Fields carried by every renderable item (e.g. ``needs_attention`` entries). Fields not yet
+# sourced from the V1 retrieval path are emitted as null and flagged via ``detail_availability``.
+RENDER_ITEM_FIELDS: list[str] = [
+    "project_key",
+    "project_name",
+    "record_type",
+    "record_id",
+    "title",
+    "status",
+    "responsible_party",
+    "due_date",
+    "start_date",
+    "finish_date",
+    "source_family",
+    "source_ref_hash",
+    "confidence_class",
+    "review_tier",
+    "review_required",
+    "freshness_label",
+    "stale_warning",
+    "why_it_matters",
+    "recommended_focus",
+    "detail_availability",
+]
+
+# Internal keys carried by ``governance_metadata`` — never rendered into the brief body.
+GOVERNANCE_METADATA_FIELDS: list[str] = [
+    "packet_id",
+    "packet_version",
+    "generated_utc",
+    "brief_date",
+    "mode",
+    "source_coverage_summary",
+    "source_refs",
+    "guardrails",
+    "rendering_instructions",
+    "proof_metadata",
+    "receipt_metadata",
+    "status",
+    "degradation_mode",
+]
+
+# Governance keys that must NOT leak into ``render_payload`` (separation invariant).
+FORBIDDEN_IN_RENDER_PAYLOAD: list[str] = [
+    "packet_id",
+    "packet_version",
+    "source_coverage_summary",
+    "source_refs",
+    "guardrails",
+    "proof_metadata",
+    "receipt_metadata",
+]
+
+# Sections declared by the V2 contract but not yet sourced; populated in Prompt 02 (enrichment).
+_V2_DEFERRED_SECTIONS: dict[str, str] = {
+    "yesterday": "No retrieval date window yet; 'what happened yesterday' is deferred to Prompt 02.",
+    "today_agenda": "Calendar events are stored but not exposed via a retrieval reader; deferred to Prompt 02.",
+    "next_7_days": "Procore record due/start/finish dates are not exposed via retrieval; deferred to Prompt 02.",
+    "calendar_activity": "Calendar reader not wired into the daily-brief retrieval path; deferred to Prompt 02.",
+    "email_activity": "Only thread summaries are exposed today (no per-day activity); deferred to Prompt 02.",
+}
+
+# Concise instructions for Claude when consuming a V2 packet (render only ``render_payload``).
+RENDERING_INSTRUCTIONS_V2: dict[str, Any] = {
+    "render_as": "human_readable_executive_brief",
+    "render_source": "render_payload",
+    "instructions": [
+        "Render only the render_payload. Never render governance_metadata into the brief body.",
+        "Lead with yesterday, today's agenda, deadlines in the next 7 days, what needs attention, "
+        "and what to focus on.",
+        "Preserve all review-required, stale, and low-confidence warnings carried on items.",
+        "When a section is empty, state its data_gaps reason plainly; do not invent content.",
+        "Do not infer beyond the packet contents.",
+        "Do not make final determinations (financial, legal, claim, payment, safety, schedule, contractual).",
+        "Do not ask for raw records.",
+    ],
+}
+
 
 class DailyBriefPacketError(RuntimeError):
     """Raised when the packet builder cannot resolve its contract or detects a leak (fail-closed)."""
@@ -121,6 +230,18 @@ def load_daily_brief_packet_contract() -> dict[str, Any]:
     if not isinstance(contract, dict) or "required_packet_fields" not in contract:
         raise DailyBriefPacketError(
             "phase 09 daily-brief packet contract not found or missing required fields"
+        )
+    return contract
+
+
+def load_daily_brief_packet_v2_contract() -> dict[str, Any]:
+    """Load the daily-brief V2 packet contract (fail-closed if missing/invalid)."""
+    from ..contracts import load_phase_09_contract
+
+    contract = load_phase_09_contract("daily_brief_handoff_packet_v2_contract")
+    if not isinstance(contract, dict) or "render_payload_sections" not in contract:
+        raise DailyBriefPacketError(
+            "phase 09 daily-brief packet V2 contract not found or missing required fields"
         )
     return contract
 
@@ -590,5 +711,427 @@ def build_daily_brief_packet_proof(
         (out_dir / _PROOF_MD).write_text(markdown, encoding="utf-8")
         proof["proof_path"] = str(out_dir / _PROOF_JSON)
         proof["proof_md_path"] = str(out_dir / _PROOF_MD)
+
+    return proof
+
+
+# --- V2 packet (Prompt 01: render_payload / governance_metadata split) ---------------------------
+
+_WHY_BY_SECTION: dict[str, str] = {
+    "review_required_items": "Flagged for mandatory review before any reliance.",
+    "risk_watchlist": "Surfaced as a project risk signal.",
+    "recent_changes": "Recent cross-source change relevant to the project.",
+}
+_FOCUS_BY_PRIORITY: dict[str, str] = {
+    "high": "Triage first; confirm against the source system before acting.",
+    "medium": "Review when time allows; not yet confirmed.",
+    "low": "Awareness only.",
+}
+
+
+def _record_type_from_label(label: str | None, source_family: str) -> str | None:
+    """Recover a safe record type from the family-scoped label (never the raw ref)."""
+    if not label:
+        return None
+    _, _, tail = label.partition(":")
+    return tail or None
+
+
+def _build_render_item(v1_item: dict[str, Any]) -> dict[str, Any]:
+    """Project one V1 packet item into the V2 renderable-item shape (metadata-only).
+
+    Fields not yet sourced from the V1 retrieval path (project_name, record_id, status,
+    responsible_party, due/start/finish dates) are emitted as ``None`` and flagged in
+    ``detail_availability``. Carries no raw ref (hash only).
+    """
+    section = str(v1_item.get("section") or "")
+    priority = str(v1_item.get("priority") or "low")
+    record_type = _record_type_from_label(
+        v1_item.get("source_ref_label"), str(v1_item.get("source_family") or "")
+    )
+    present = {
+        "project_key": v1_item.get("project_key") is not None,
+        "record_type": record_type is not None,
+        "title": bool(v1_item.get("title_redacted")),
+        "source_ref_hash": bool(v1_item.get("source_ref_hash")),
+        "confidence_class": True,
+        "review_tier": True,
+        "freshness_label": True,
+    }
+    deferred = [
+        "project_name",
+        "record_id",
+        "status",
+        "responsible_party",
+        "due_date",
+        "start_date",
+        "finish_date",
+    ]
+    return {
+        "project_key": v1_item.get("project_key"),
+        "project_name": None,
+        "record_type": record_type,
+        "record_id": None,
+        "title": v1_item.get("title_redacted"),
+        "status": None,
+        "responsible_party": None,
+        "due_date": None,
+        "start_date": None,
+        "finish_date": None,
+        "source_family": v1_item.get("source_family"),
+        "source_ref_hash": v1_item.get("source_ref_hash"),
+        "confidence_class": v1_item.get("confidence_class"),
+        "review_tier": v1_item.get("review_tier"),
+        "review_required": v1_item.get("review_required"),
+        "freshness_label": v1_item.get("freshness_label"),
+        "stale_warning": v1_item.get("stale_warning"),
+        "why_it_matters": _WHY_BY_SECTION.get(section, "Source-linked signal for this project."),
+        "recommended_focus": _FOCUS_BY_PRIORITY.get(priority, _FOCUS_BY_PRIORITY["low"]),
+        "detail_availability": {
+            "present": sorted(k for k, v in present.items() if v),
+            "deferred_to_prompt_02": deferred,
+        },
+    }
+
+
+def _build_needs_attention(v1: dict[str, Any]) -> list[dict[str, Any]]:
+    """Review-required items first, then high/medium-priority risk + recent-change items (deduped)."""
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def _add(items: list[dict[str, Any]], *, only_priorities: set[str] | None = None) -> None:
+        for it in items:
+            if only_priorities is not None and it.get("priority") not in only_priorities:
+                continue
+            key = str(it.get("item_id") or "")
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(_build_render_item(it))
+
+    _add(v1["review_required_items"])
+    _add(v1["risk_watchlist"], only_priorities={"high", "medium"})
+    _add(v1["recent_changes"], only_priorities={"high", "medium"})
+    return out
+
+
+def _build_project_signals(v1: dict[str, Any]) -> list[dict[str, Any]]:
+    """Aggregate per-project signal objects from the V1 sections (descriptive enrichment lands in
+    Prompt 02; this carries safe counts + families and flags deferred detail)."""
+    section_names = [
+        "recent_changes",
+        "review_required_items",
+        "aging_watchlist",
+        "meeting_prep",
+        "risk_watchlist",
+    ]
+    by_project: dict[str, dict[str, Any]] = {}
+    for name in section_names:
+        for it in v1[name]:
+            pk = str(it.get("project_key") or "unknown")
+            agg = by_project.setdefault(
+                pk,
+                {
+                    "project_key": pk,
+                    "project_name": None,
+                    "item_count": 0,
+                    "review_required_count": 0,
+                    "max_review_tier": 0,
+                    "families_present": set(),
+                    "why_it_matters": "Aggregated project activity across source-linked signals.",
+                    "detail_availability": {
+                        "present": ["item_count", "review_required_count", "max_review_tier"],
+                        "deferred_to_prompt_02": ["project_name", "descriptive_activity"],
+                    },
+                },
+            )
+            agg["item_count"] += 1
+            if it.get("review_required"):
+                agg["review_required_count"] += 1
+            agg["max_review_tier"] = max(agg["max_review_tier"], int(it.get("review_tier") or 0))
+            agg["families_present"].add(str(it.get("source_family") or ""))
+    signals: list[dict[str, Any]] = []
+    for agg in by_project.values():
+        agg["families_present"] = sorted(f for f in agg["families_present"] if f)
+        signals.append(agg)
+    signals.sort(key=lambda s: (-s["max_review_tier"], -s["item_count"], s["project_key"]))
+    return signals
+
+
+def _build_focus_recommendations(needs_attention: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Derive advisory focus items from the top needs-attention items (never count-only strings)."""
+    focus: list[dict[str, Any]] = []
+    for it in needs_attention[:3]:
+        focus.append(
+            {
+                "focus": it.get("title"),
+                "project_key": it.get("project_key"),
+                "why_it_matters": it.get("why_it_matters"),
+                "recommended_focus": it.get("recommended_focus"),
+                "source_family": it.get("source_family"),
+                "review_tier": it.get("review_tier"),
+                "detail_availability": {
+                    "present": ["focus", "why_it_matters"],
+                    "advisory_only": True,
+                },
+            }
+        )
+    return focus
+
+
+def _build_data_gaps(v1: dict[str, Any]) -> list[dict[str, Any]]:
+    """Explicit, honest gaps: deferred sections + any V1 coverage warnings."""
+    gaps: list[dict[str, Any]] = [
+        {"section": section, "reason": reason, "status": "deferred_to_prompt_02"}
+        for section, reason in _V2_DEFERRED_SECTIONS.items()
+    ]
+    for warning in v1["source_coverage_summary"].get("coverage_warnings", []):
+        gaps.append(
+            {"section": "source_coverage", "reason": str(warning), "status": "coverage_warning"}
+        )
+    return gaps
+
+
+def _project_v2_from_v1(v1: dict[str, Any]) -> dict[str, Any]:
+    """Re-project an approved V1 packet into the V2 render_payload / governance_metadata split.
+
+    Pure projection: adds no new retrieval and invents no content. Sections without a current
+    data source are emitted empty with matching ``data_gaps`` entries.
+    """
+    coverage = v1["source_coverage_summary"]
+    needs_attention = _build_needs_attention(v1)
+    project_signals = _build_project_signals(v1)
+
+    project_keys = sorted({str(s["project_key"]) for s in project_signals})
+    render_payload: dict[str, Any] = {
+        "brief_date": v1["brief_date"],
+        "portfolio_scope": {
+            "scope": v1["project_scope"],
+            "project_count": coverage.get("project_count", 0),
+            "projects": project_keys,
+        },
+        "yesterday": [],
+        "today_agenda": [],
+        "next_7_days": [],
+        "needs_attention": needs_attention,
+        "focus_recommendations": _build_focus_recommendations(needs_attention),
+        "project_signals": project_signals,
+        "email_activity": [],
+        "calendar_activity": [],
+        "data_gaps": _build_data_gaps(v1),
+    }
+
+    governance_metadata: dict[str, Any] = {
+        "packet_id": v1["packet_id"],
+        "packet_version": PACKET_VERSION_V2,
+        "generated_utc": v1["generated_utc"],
+        "brief_date": v1["brief_date"],
+        "mode": v1["mode"],
+        "source_coverage_summary": coverage,
+        "source_refs": v1["source_refs"],
+        "guardrails": dict(PACKET_GUARDRAILS),
+        "rendering_instructions": dict(RENDERING_INSTRUCTIONS_V2),
+        "proof_metadata": {
+            "contract_name": "daily_brief_handoff_packet_v2_contract",
+            "packet_version": PACKET_VERSION_V2,
+            "projected_from": v1["packet_version"],
+        },
+        "receipt_metadata": {"packet_receipt_emitted": False, "read_only": True},
+        "status": v1["status"],
+        "degradation_mode": v1["degradation_mode"],
+    }
+
+    return {"render_payload": render_payload, "governance_metadata": governance_metadata}
+
+
+def build_daily_brief_packet_v2(
+    *,
+    brief_date: str,
+    project_key: str | None = None,
+    mode: str = "dry_run",
+    db_path: str | None = None,
+) -> dict[str, Any]:
+    """Build a ``DailyBriefHandoffPacketV2`` (read-only, fail-closed).
+
+    V2 is a projection over the canonical V1 packet: it splits user-facing ``render_payload`` from
+    internal ``governance_metadata`` so governance never renders into the brief body. Adds no new
+    retrieval; sections without a data source are emitted empty with ``data_gaps`` entries.
+    """
+    load_daily_brief_packet_v2_contract()
+    v1 = build_daily_brief_packet(
+        brief_date=brief_date, project_key=project_key, mode=mode, db_path=db_path
+    )
+    packet = _project_v2_from_v1(v1)
+    _assert_no_raw(json.dumps(packet, default=str), "daily brief packet v2")
+    return packet
+
+
+def _render_v2_proof_md(proof: dict[str, Any]) -> str:
+    lines = [
+        "# Phase 09 Addendum V2 — Daily Brief Packet V2 Proof",
+        "",
+        f"- proof_passed: {proof['proof_passed']}",
+        f"- generated_utc: {proof['generated_utc']}",
+        f"- packet_version: {proof['packet_version']}",
+        f"- render_payload_present: {proof['render_payload_present']}",
+        f"- governance_metadata_separated: {proof['governance_metadata_separated']}",
+        f"- required_sections_present: {proof['required_sections_present']}",
+        f"- source_refs_preserved: {proof['source_refs_preserved']}",
+        f"- raw_shaped_rejected: {proof['raw_shaped_rejected']}",
+        f"- review_stale_confidence_preserved: {proof['review_stale_confidence_preserved']}",
+        f"- final_determination_rejected: {proof['final_determination_rejected']}",
+        f"- metadata_only: {proof['metadata_only']}",
+        f"- no_external_writeback: {proof['no_external_writeback']}",
+        "",
+        "## Render payload section counts",
+        "",
+    ]
+    for name, count in proof["render_section_counts"].items():
+        lines.append(f"- {name}: {count}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def build_daily_brief_packet_v2_proof(
+    *, evidence_dir: str | None = None, write_evidence: bool = True
+) -> dict[str, Any]:
+    """Fail-closed proof for the V2 packet: render_payload exists, governance_metadata is separated
+    (and no governance keys leak into the render body), required sections exist, source refs are
+    preserved, raw-shaped values are rejected, review/stale/confidence flags are preserved, and
+    final-determination language is rejected. Performs no external writeback."""
+    import sqlite3
+    import tempfile
+
+    contract = load_daily_brief_packet_v2_contract()
+    render_sections = list(contract.get("render_payload_sections", []))
+    render_item_fields = list(contract.get("render_item_fields", []))
+    governance_fields = list(contract.get("governance_metadata_fields", []))
+    forbidden_in_render = list(contract.get("forbidden_in_render_payload", []))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        seeded = f"{tmp}/seeded.sqlite3"
+        _seed_proof_db(seeded)
+        packet = build_daily_brief_packet_v2(
+            brief_date="2026-06-02", project_key="P1", db_path=seeded
+        )
+        conn = sqlite3.connect(seeded)
+        try:
+            brief_run_rows = conn.execute("SELECT COUNT(*) FROM daily_brief_runs").fetchone()[0]
+        finally:
+            conn.close()
+
+    render = packet.get("render_payload", {})
+    governance = packet.get("governance_metadata", {})
+    needs_attention = render.get("needs_attention", [])
+
+    render_payload_present = isinstance(render, dict) and bool(render)
+    governance_metadata_separated = (
+        isinstance(governance, dict)
+        and all(f in governance for f in governance_fields)
+        and not any(k in render for k in forbidden_in_render)
+    )
+    required_sections_present = bool(render_sections) and all(s in render for s in render_sections)
+    item_fields_present = bool(render_item_fields) and all(
+        all(f in item for f in render_item_fields) for item in needs_attention
+    )
+
+    source_refs_preserved = (
+        bool(governance.get("source_refs"))
+        and isinstance(governance.get("source_coverage_summary"), dict)
+        and bool(needs_attention)
+        and all(i.get("source_family") and i.get("source_ref_hash") for i in needs_attention)
+    )
+
+    blob = json.dumps(packet, default=str)
+    try:
+        _assert_no_raw(blob, "daily brief packet v2 proof")
+        metadata_only = True
+    except ValueError:
+        metadata_only = False
+
+    try:
+        _assert_no_raw(json.dumps({"x": "Bearer abc123XYZ"}), "raw probe")
+        raw_shaped_rejected = False
+    except ValueError:
+        raw_shaped_rejected = True
+
+    review_stale_confidence_preserved = (
+        bool(needs_attention)
+        and all(
+            ("review_tier" in i and "confidence_class" in i and "freshness_label" in i)
+            for i in needs_attention
+        )
+        and any(i.get("review_required") is True for i in needs_attention)
+        and any(i.get("stale_warning") for i in needs_attention)
+    )
+
+    planted_flagged = _reject_final_determination(
+        "Approve payment of the claim as a final determination"
+    )
+    render_text_fields = (
+        [str(i.get("title") or "") for i in needs_attention]
+        + [
+            str(i.get(k) or "")
+            for i in needs_attention
+            for k in ("why_it_matters", "recommended_focus")
+        ]
+        + [str(g.get("reason") or "") for g in render.get("data_gaps", [])]
+    )
+    real_unflagged = not any(_reject_final_determination(t) for t in render_text_fields)
+    final_determination_rejected = planted_flagged and real_unflagged
+
+    no_external_writeback = brief_run_rows == 0
+
+    proof_passed = (
+        render_payload_present
+        and governance_metadata_separated
+        and required_sections_present
+        and item_fields_present
+        and source_refs_preserved
+        and metadata_only
+        and raw_shaped_rejected
+        and review_stale_confidence_preserved
+        and final_determination_rejected
+        and no_external_writeback
+    )
+
+    proof: dict[str, Any] = {
+        "proof": "phase_09_addendum_daily_brief_packet_v2",
+        "command": "second-brain daily-brief packet-v2-proof",
+        "phase": "09-addendum-v2",
+        "proof_passed": proof_passed,
+        "generated_utc": _now(),
+        "repo_sha": _repo_sha(),
+        "packet_version": PACKET_VERSION_V2,
+        "packet_id": governance.get("packet_id"),
+        "render_payload_present": render_payload_present,
+        "governance_metadata_separated": governance_metadata_separated,
+        "required_sections_present": required_sections_present,
+        "item_fields_present": item_fields_present,
+        "source_refs_preserved": source_refs_preserved,
+        "metadata_only": metadata_only,
+        "raw_shaped_rejected": raw_shaped_rejected,
+        "review_stale_confidence_preserved": review_stale_confidence_preserved,
+        "final_determination_rejected": final_determination_rejected,
+        "no_external_writeback": no_external_writeback,
+        "render_section_counts": {
+            name: (len(render[name]) if isinstance(render.get(name), list) else 1)
+            for name in render_sections
+            if name in render
+        },
+        "guardrails": dict(PACKET_GUARDRAILS),
+    }
+
+    if write_evidence:
+        out_dir = Path(evidence_dir) if evidence_dir is not None else Path(EVIDENCE_DIR_V2)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out = json.dumps(proof, indent=2, default=str)
+        _assert_no_raw(out, "daily brief packet v2 proof json")
+        (out_dir / _V2_PROOF_JSON).write_text(out + "\n", encoding="utf-8")
+        markdown = _render_v2_proof_md(proof)
+        _assert_no_raw(markdown, "daily brief packet v2 proof markdown")
+        (out_dir / _V2_PROOF_MD).write_text(markdown, encoding="utf-8")
+        proof["proof_path"] = str(out_dir / _V2_PROOF_JSON)
+        proof["proof_md_path"] = str(out_dir / _V2_PROOF_MD)
 
     return proof

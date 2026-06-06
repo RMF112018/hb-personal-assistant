@@ -2040,14 +2040,18 @@ def daily_brief_packet(
     brief_date: str = typer.Option(..., "--date", help="Brief date (YYYY-MM-DD)."),
     project_key: str = typer.Option(None, "--project-key", help="Optional project filter."),
     mode: str = typer.Option("dry_run", "--mode", help="dry_run|apply (no external writeback)."),
+    version: str = typer.Option(
+        "v1", "--version", help="Packet contract version: v1 (flat) | v2 (render/governance split)."
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
-    """Build a metadata-only DailyBriefHandoffPacketV1 for safe MCP/Claude consumption (read-only).
+    """Build a metadata-only daily-brief handoff packet for safe MCP/Claude consumption (read-only).
 
     Projects the existing daily-brief context into the stable handoff packet contract: hashed source
     refs, redacted titles, preserved review/stale/low-confidence flags, source coverage, advisory-only
-    accepted-memory context, guardrails + rendering instructions. Persists nothing. Exit 0 on success;
-    2 on invalid mode; 3 on a fail-closed failure.
+    accepted-memory context, guardrails + rendering instructions. Persists nothing. ``--version v2``
+    emits ``DailyBriefHandoffPacketV2`` (user-facing ``render_payload`` split from internal
+    ``governance_metadata``). Exit 0 on success; 2 on invalid mode/version; 3 on a fail-closed failure.
     """
     if mode not in ("dry_run", "apply"):
         err_payload: dict[str, object] = {
@@ -2058,15 +2062,30 @@ def daily_brief_packet(
         typer.echo(json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload))
         raise typer.Exit(2)
 
+    if version not in ("v1", "v2"):
+        err_payload = {
+            "command": "second-brain daily-brief packet",
+            "error": "invalid_version",
+            "detail": f"{version!r} not in ['v1', 'v2']",
+        }
+        typer.echo(json.dumps(err_payload, indent=2, default=str) if json_out else str(err_payload))
+        raise typer.Exit(2)
+
     from hb_assistant.construction.second_brain.daily_brief import (
         DailyBriefPacketError,
         build_daily_brief_packet,
+        build_daily_brief_packet_v2,
     )
 
     try:
-        packet = build_daily_brief_packet(
-            brief_date=brief_date, project_key=project_key, mode=mode
-        )
+        if version == "v2":
+            packet = build_daily_brief_packet_v2(
+                brief_date=brief_date, project_key=project_key, mode=mode
+            )
+        else:
+            packet = build_daily_brief_packet(
+                brief_date=brief_date, project_key=project_key, mode=mode
+            )
     except DailyBriefPacketError as exc:
         err = {
             "command": "second-brain daily-brief packet",
@@ -2093,7 +2112,9 @@ def daily_brief_packet(
 @daily_brief_app.command("packet-proof")
 def daily_brief_packet_proof(
     evidence: bool = typer.Option(
-        True, "--evidence/--no-evidence", help="Write the daily-brief packet proof to the evidence dir."
+        True,
+        "--evidence/--no-evidence",
+        help="Write the daily-brief packet proof to the evidence dir.",
     ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
@@ -2108,6 +2129,39 @@ def daily_brief_packet_proof(
     except DailyBriefPacketError as exc:
         err = {
             "command": "second-brain daily-brief packet-proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "detail": str(exc),
+        }
+        typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+        raise typer.Exit(3) from exc
+
+    typer.echo(json.dumps(proof, indent=2, default=str) if json_out else str(proof))
+    raise typer.Exit(0 if proof["proof_passed"] else 3)
+
+
+@daily_brief_app.command("packet-v2-proof")
+def daily_brief_packet_v2_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the daily-brief V2 packet proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Prove the V2 daily-brief packet splits render_payload from governance_metadata, preserves
+    source refs + review/stale/confidence flags, rejects raw-shaped and final-determination
+    content, and writes nothing externally (read-only). Exit 0 on pass; 3 on failure."""
+    from hb_assistant.construction.second_brain.daily_brief import (
+        DailyBriefPacketError,
+        build_daily_brief_packet_v2_proof,
+    )
+
+    try:
+        proof = build_daily_brief_packet_v2_proof(write_evidence=evidence)
+    except DailyBriefPacketError as exc:
+        err = {
+            "command": "second-brain daily-brief packet-v2-proof",
             "proof_passed": False,
             "error": type(exc).__name__,
             "detail": str(exc),
@@ -2195,7 +2249,9 @@ def daily_brief_output_receipt_proof(
 @daily_brief_app.command("mcp-handoff-status")
 def daily_brief_mcp_handoff_status(
     evidence: bool = typer.Option(
-        True, "--evidence/--no-evidence", help="Write the handoff operator-status to the evidence dir."
+        True,
+        "--evidence/--no-evidence",
+        help="Write the handoff operator-status to the evidence dir.",
     ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:

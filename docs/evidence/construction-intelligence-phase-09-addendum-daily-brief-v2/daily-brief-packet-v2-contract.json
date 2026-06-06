@@ -1,0 +1,104 @@
+{
+  "contract_name": "daily_brief_handoff_packet_v2_contract",
+  "version": "1.0.0-phase-09-addendum-v2",
+  "packet_version": "DailyBriefHandoffPacketV2",
+  "description": "Daily Brief V2 handoff packet. Splits user-facing render_payload from internal governance_metadata so governance never renders into the brief body. V2 is a projection over the V1 packet (no new retrieval); sections without a current data source are emitted empty with honest data_gaps entries deferred to Prompt 02 (record-level enrichment).",
+  "top_level_keys": [
+    "render_payload",
+    "governance_metadata"
+  ],
+  "render_payload_sections": [
+    "brief_date",
+    "portfolio_scope",
+    "yesterday",
+    "today_agenda",
+    "next_7_days",
+    "needs_attention",
+    "focus_recommendations",
+    "project_signals",
+    "email_activity",
+    "calendar_activity",
+    "data_gaps"
+  ],
+  "render_item_fields": [
+    "project_key",
+    "project_name",
+    "record_type",
+    "record_id",
+    "title",
+    "status",
+    "responsible_party",
+    "due_date",
+    "start_date",
+    "finish_date",
+    "source_family",
+    "source_ref_hash",
+    "confidence_class",
+    "review_tier",
+    "review_required",
+    "freshness_label",
+    "stale_warning",
+    "why_it_matters",
+    "recommended_focus",
+    "detail_availability"
+  ],
+  "governance_metadata_fields": [
+    "packet_id",
+    "packet_version",
+    "generated_utc",
+    "brief_date",
+    "mode",
+    "source_coverage_summary",
+    "source_refs",
+    "guardrails",
+    "rendering_instructions",
+    "proof_metadata",
+    "receipt_metadata",
+    "status",
+    "degradation_mode"
+  ],
+  "forbidden_in_render_payload": [
+    "packet_id",
+    "packet_version",
+    "source_coverage_summary",
+    "source_refs",
+    "guardrails",
+    "proof_metadata",
+    "receipt_metadata"
+  ],
+  "data_gap_sections_deferred_to_prompt_02": [
+    "yesterday",
+    "today_agenda",
+    "next_7_days",
+    "calendar_activity",
+    "email_activity"
+  ],
+  "source_ref_policy": {
+    "emit_raw": false,
+    "emit_hash": true,
+    "safe_labels_only": true
+  },
+  "guardrails": {
+    "advisory_only": true,
+    "source_linked": true,
+    "metadata_only": true,
+    "no_raw": true,
+    "no_writeback": true,
+    "no_final_determinations": true,
+    "claude_rendering_only": true
+  },
+  "global_requirements": [
+    "render_payload carries user-facing, brief-ready data only.",
+    "governance_metadata is never rendered into the brief body.",
+    "no governance key (packet_id/hash, source coverage, guardrails, proof/receipt metadata) appears inside render_payload.",
+    "source refs are emitted as hashes + safe labels only (no raw refs, bodies, tokens, or URLs).",
+    "review-required, stale, and low-confidence flags are preserved on renderable items.",
+    "final-determination language is rejected.",
+    "read-only; metadata-only; persists nothing; fail-closed on missing contract or raw leakage.",
+    "empty sections are honest data_gaps, not fabricated content; enrichment lands in Prompt 02."
+  ],
+  "cli": {
+    "build": "hb-assistant second-brain daily-brief packet --date YYYY-MM-DD --version v2 --json",
+    "proof": "hb-assistant second-brain daily-brief packet-v2-proof --json"
+  }
+}
