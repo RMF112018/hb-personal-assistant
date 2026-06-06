@@ -58,6 +58,10 @@ class KeywordExplainRequest(BaseModel):
     candidate: str | dict[str, Any] | None = None
 
 
+class RefreshRequest(BaseModel):
+    note_redacted: str | None = None
+
+
 def _schema_version(db_path: str | None) -> int:
     try:
         return int(SQLiteMigrator(db_path=db_path).current_version())
@@ -120,10 +124,10 @@ def create_app(*, db_path: str | None = None) -> Any:
     require_role = role_dependency()
     app = FastAPI(
         title="HB Personal Assistant Analytics UI Shell",
-        version="0.1.0-prompt-05",
+        version="0.1.0-prompt-06",
         description=(
             "Optional read-only FastAPI shell for future analytics UI routes. "
-            "Active chat is disabled. Project keyword training (Prompt 05) supported."
+            "Active chat is disabled. Project keyword training (Prompt 05) and sync governance (Prompt 06) supported."
         ),
     )
     role_dep = Depends(require_role)
@@ -320,5 +324,32 @@ def create_app(*, db_path: str | None = None) -> Any:
         return ProjectKeywordsService(db_path=db_path).explain_match(
             project_key, candidate=request.candidate
         )
+
+    # Prompt 06 / UI-06 — sync governance (admin-only first live sync approval/schedule with cadence/priority,
+    # automatic freshness status from local state, low-friction user refresh request)
+    @app.post("/projects/{project_key}/refresh-request")
+    def user_request_project_refresh(
+        project_key: str,
+        request: RefreshRequest | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
+
+        return ConnectionSetupService(db_path=db_path).request_user_refresh(project_key)
+
+    @app.get("/projects/{project_key}/sync-freshness")
+    def project_sync_freshness(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
+
+        return ConnectionSetupService(db_path=db_path).get_project_sync_freshness(project_key)
+
+    @app.get("/admin/sync/pending-approvals")
+    def admin_list_pending_sync_approvals(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
+
+        return ConnectionSetupService(db_path=db_path).list_pending_approvals()
 
     return app
