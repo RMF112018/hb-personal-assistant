@@ -763,6 +763,187 @@ def memory_review(
     raise typer.Exit(0)
 
 
+_MEMORY_ACCEPTANCE_GUARDRAILS = {
+    "explicit_confirmation_required": True,
+    "no_auto_acceptance": True,
+    "no_external_writeback": True,
+    "no_raw": True,
+    "guard_columns_false": True,
+    "non_accepted_never_loads": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
+
+@memory_app.command("accept")
+def memory_accept(
+    candidate_id: str = typer.Option(..., "--candidate-id", help="Candidate to accept."),
+    confirm: bool = typer.Option(
+        False,
+        "--confirm/--no-confirm",
+        help="Explicit operator confirmation (required to persist).",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Explicitly accept a vetted candidate into long_term_memory_items (no auto-acceptance).
+
+    Without --confirm this is a dry-run that persists nothing. With --confirm a passing candidate is
+    promoted to an accepted memory item; a candidate that fails the acceptance gate is refused. Exit 0
+    on a clean evaluation; 3 on a fail-closed failure (candidate not found / schema not ready).
+    """
+    from hb_assistant.construction.second_brain.memory.acceptance import (
+        MemoryAcceptanceError,
+        accept_memory_candidate,
+    )
+
+    try:
+        result = accept_memory_candidate(candidate_id, confirm=confirm)
+    except MemoryAcceptanceError as exc:
+        payload = {
+            "command": "second-brain memory accept",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS}
+    human = [
+        "Phase 09 explicit memory acceptance (no auto-acceptance)",
+        f"  candidate: {candidate_id} | acceptable: {result['acceptable']}"
+        f" | blocks: {result['blocks']}",
+        f"  confirm: {confirm} | accepted: {result['accepted']}"
+        f" | memory_id: {result.get('memory_id')}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@memory_app.command("reject")
+def memory_reject(
+    candidate_id: str = typer.Option(
+        ..., "--candidate-id", help="Candidate to reject/defer/supersede."
+    ),
+    reason: str | None = typer.Option(None, "--reason", help="Redacted decision reason."),
+    decision: str = typer.Option(
+        "rejected", "--decision", help="rejected|deferred|superseded (default rejected)."
+    ),
+    confirm: bool = typer.Option(
+        False,
+        "--confirm/--no-confirm",
+        help="Explicit operator confirmation (required to persist).",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Reject / defer / supersede a candidate (never creates an accepted memory item)."""
+    from hb_assistant.construction.second_brain.memory.acceptance import (
+        MemoryAcceptanceError,
+        decide_memory_candidate,
+    )
+
+    try:
+        result = decide_memory_candidate(
+            candidate_id, decision=decision, reason=reason, confirm=confirm
+        )
+    except MemoryAcceptanceError as exc:
+        payload = {
+            "command": "second-brain memory reject",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS}
+    human = [
+        f"Memory decision '{result['decision']}' for {candidate_id}"
+        f" | confirm: {confirm} | persisted: {result.get('persisted')}"
+        f" | creates_accepted_memory: {result['creates_accepted_memory']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@memory_app.command("list")
+def memory_list(
+    status: str = typer.Option(
+        "accepted", "--status", help="accepted|pending_review|rejected|superseded."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """List long-term memory items by review status (metadata-only; no statement text)."""
+    from hb_assistant.construction.second_brain.memory.acceptance import (
+        MemoryAcceptanceError,
+        list_accepted_memory,
+    )
+
+    try:
+        result = list_accepted_memory(status=status)
+    except MemoryAcceptanceError as exc:
+        payload = {
+            "command": "second-brain memory list",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS}
+    human = [
+        f"Long-term memory (status={result['status']}): {result['count']} item(s)"
+        f" | loadable_into_retrieval: {result['loadable_into_retrieval']}",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@memory_app.command("proof")
+def memory_acceptance_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the acceptance proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove explicit acceptance persists accepted memory while refusing unsafe candidates."""
+    from hb_assistant.construction.second_brain.memory.acceptance import (
+        MemoryAcceptanceError,
+        build_memory_acceptance_proof,
+    )
+
+    try:
+        proof = build_memory_acceptance_proof(write_evidence=evidence)
+    except MemoryAcceptanceError as exc:
+        payload = {
+            "command": "second-brain memory proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS}
+    human = [
+        f"Memory acceptance proof passed={proof['proof_passed']}"
+        f" (accepted_persisted={proof['accepted_persisted_as_accepted']},"
+        f" unsafe_blocked={proof['raw_shaped_blocked'] and proof['unsourced_blocked'] and proof['high_impact_blocked'] and proof['determination_blocked']},"
+        f" non_accepted_excluded={proof['non_accepted_excluded_from_retrieval']},"
+        f" guards_false={proof['guard_columns_all_false']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
 _MEMORY_QUALITY_REVIEW_GUARDRAILS = {
     "advisory_only": True,
     "no_determination": True,
