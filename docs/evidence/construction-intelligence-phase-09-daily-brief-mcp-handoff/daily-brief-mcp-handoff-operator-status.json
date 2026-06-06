@@ -1,0 +1,93 @@
+{
+  "command": "second-brain daily-brief mcp-handoff-status",
+  "phase": "09",
+  "generated_utc": "2026-06-06T11:14:20.194088+00:00",
+  "repo_sha": "2047e3e670581e229c0b47fdeb72877db105e791",
+  "daily_brief_packet_status": "validated",
+  "daily_brief_mcp_handoff_status": "proof_passed",
+  "claude_rendering_template_status": "validated",
+  "rendered_brief_quality_status": "proof_passed",
+  "rendered_output_import_status": "deferred",
+  "gates": [
+    {
+      "gate_name": "packet_contract",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "mcp_handoff_proof",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "no_raw_no_writeback",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "rendered_quality",
+      "gate_status": "pass",
+      "blocking": 0,
+      "reason": null
+    },
+    {
+      "gate_name": "rendered_output_import",
+      "gate_status": "deferred_not_blocking",
+      "blocking": 0,
+      "reason": "IMPORT_DEFERRED_EXPECTED"
+    }
+  ],
+  "status_counts": {
+    "pass": 4,
+    "warning": 0,
+    "fail_blocking": 0,
+    "deferred_not_blocking": 1
+  },
+  "handoff_closeout_ok": true,
+  "substrate_detail": {
+    "schema_substrate": "ready",
+    "coverage_substrate": "covered",
+    "quality_substrate": "advisory_empty",
+    "handoff_substrate": "proof_passed",
+    "production_readiness": false
+  },
+  "status_label_reconciliation": {
+    "phase_09_gates_substrate_status": "advisory_empty",
+    "phase_09_operator_status_substrate_status": "populated",
+    "explanation": "The two core commands historically used the same field name for different substrates: phase-09-gates reports quality-surface emptiness (advisory_empty until quality tables populate), while phase-09-operator-status reports any-table population. The distinguished substrate_detail block is the reconciled canonical view; both core commands now also emit it.",
+    "reconciled_substrate_detail": {
+      "schema_substrate": "ready",
+      "coverage_substrate": "covered",
+      "quality_substrate": "advisory_empty",
+      "handoff_substrate": "proof_passed",
+      "production_readiness": false
+    }
+  },
+  "advisory_only": true,
+  "makes_determination": false,
+  "read_only": true,
+  "readiness_overstated": false,
+  "readiness_categories": {
+    "handoff_substrate_ready": true,
+    "production_readiness": false,
+    "deferred_limitations": [
+      "rendered narrative is advisory/not source truth; excluded from trusted stores",
+      "rendered-output import deferred (reviewed-import workflow not implemented)",
+      "phase is not production-ready (advisory-only)"
+    ]
+  },
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "advisory_only": true,
+    "no_determination": true,
+    "no_readiness_overstatement": true,
+    "no_raw_no_writeback_blocking": true,
+    "fail_closed": true
+  }
+}

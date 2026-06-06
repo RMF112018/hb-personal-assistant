@@ -1,8 +1,8 @@
 {
   "command": "second-brain data-quality phase-09-operator-status",
   "phase": "09",
-  "generated_utc": "2026-06-06T08:43:44.469098+00:00",
-  "repo_sha": "db029a0f954b26294bc3c423214ce143ac8ea1b3",
+  "generated_utc": "2026-06-06T11:14:21.679324+00:00",
+  "repo_sha": "2047e3e670581e229c0b47fdeb72877db105e791",
   "schema_version": 39,
   "overall_status": "advisory_ready",
   "operator_status_ok": true,
@@ -315,6 +315,13 @@
     }
   ],
   "phase_09_substrate_status": "populated",
+  "substrate_detail": {
+    "schema_substrate": "ready",
+    "coverage_substrate": "covered",
+    "quality_substrate": "advisory_empty",
+    "handoff_substrate": "available",
+    "production_readiness": false
+  },
   "coverage_parity": {
     "deterministic_allowlisted_family_count": 10,
     "deterministic_reader_family_count": 10,

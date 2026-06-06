@@ -1,8 +1,8 @@
 {
   "command": "second-brain data-quality phase-09-gates",
   "phase": "09",
-  "generated_utc": "2026-06-05T16:47:02.264055+00:00",
-  "repo_sha": "0462cac89c1465d92b8496f1bf5fea51ff22fda7",
+  "generated_utc": "2026-06-06T11:22:23.352261+00:00",
+  "repo_sha": "26cab8f57ee1ab7abb0dd9b51366d95a5e5b9991",
   "ok": true,
   "schema_version": 39,
   "gates": [
@@ -72,19 +72,19 @@
     },
     {
       "gate_name": "approved_source_manifest",
-      "gate_status": "deferred_not_blocking",
+      "gate_status": "pass",
       "blocking": 0,
-      "reason": "SUBSTRATE_EMPTY",
+      "reason": null,
       "table": "second_brain_retrieval_approved_source_manifests",
-      "row_count": 0
+      "row_count": 1
     },
     {
       "gate_name": "vector_index",
-      "gate_status": "deferred_not_blocking",
+      "gate_status": "pass",
       "blocking": 0,
-      "reason": "SUBSTRATE_EMPTY",
+      "reason": null,
       "table": "second_brain_retrieval_vector_index_runs",
-      "row_count": 0
+      "row_count": 3
     },
     {
       "gate_name": "hybrid_retrieval",
@@ -189,8 +189,8 @@
     "lifecycle_contract_loaded": "pass",
     "llamaindex_config": "deferred_not_blocking",
     "embedding_vector_policy": "pass",
-    "approved_source_manifest": "deferred_not_blocking",
-    "vector_index": "deferred_not_blocking",
+    "approved_source_manifest": "pass",
+    "vector_index": "pass",
     "hybrid_retrieval": "deferred_not_blocking",
     "metadata_filter": "pass",
     "retrieval_eval_set": "deferred_not_blocking",
@@ -205,16 +205,76 @@
     "no_raw_vector_index_proof": "pass"
   },
   "status_counts": {
-    "pass": 12,
+    "pass": 14,
     "warning": 0,
     "fail_blocking": 0,
-    "deferred_not_blocking": 11
+    "deferred_not_blocking": 9
   },
   "gate_count": 23,
   "gate_count_minimum": 18,
   "required_fields_covered": true,
   "readiness_overstated": false,
   "phase_09_substrate_status": "advisory_empty",
+  "substrate_detail": {
+    "schema_substrate": "ready",
+    "coverage_substrate": "covered",
+    "quality_substrate": "advisory_empty",
+    "handoff_substrate": "available",
+    "production_readiness": false
+  },
+  "coverage_parity": {
+    "deterministic_allowlisted_family_count": 10,
+    "deterministic_reader_family_count": 10,
+    "deterministic_reader_families": [
+      "phase_07d_source_evidence_trails",
+      "meeting_prep_brief_sections",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "aging_exposure_report_items",
+      "review_controlled_correspondence_context",
+      "approved_obsidian_generated_outputs",
+      "generated_outputs",
+      "accepted_long_term_memory",
+      "cross_source_relationships"
+    ],
+    "missing_reader_families": [],
+    "approved_manifest_category_count": 4,
+    "approved_manifest_categories": [
+      "approved_obsidian_outputs",
+      "approved_read_models",
+      "generated_outputs",
+      "reviewed_memory"
+    ],
+    "approved_manifest_family_count": 10,
+    "approved_manifest_families": [
+      "accepted_long_term_memory",
+      "aging_exposure_report_items",
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "vector_indexed_family_count": 9,
+    "vector_indexed_families": [
+      "accepted_long_term_memory",
+      "approved_obsidian_generated_outputs",
+      "cross_source_relationships",
+      "generated_outputs",
+      "meeting_prep_brief_sections",
+      "phase_07d_source_evidence_trails",
+      "project_issue_history_items",
+      "project_risk_digest_items",
+      "review_controlled_correspondence_context"
+    ],
+    "empty_approved_families": [],
+    "deferred_families": [],
+    "memory_substrate_status": "covered",
+    "coverage_parity_ok": true
+  },
   "advisory_only": true,
   "makes_determination": false,
   "read_only": true,

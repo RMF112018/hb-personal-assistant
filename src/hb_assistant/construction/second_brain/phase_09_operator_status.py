@@ -234,6 +234,27 @@ def evaluate_phase_09_operator_status(*, db_path: str | None = None) -> dict[str
     any_populated = any((rc or 0) > 0 for rc in row_counts.values()) if row_counts else False
     phase_09_substrate_status = "populated" if any_populated else "advisory_empty"
 
+    # Distinguished, reconciled substrate view (shared with phase-09-gates to resolve the historical
+    # phase_09_substrate_status drift). Additive; the legacy field above is retained for back-compat.
+    from .phase_09_schema import QUALITY_SUBSTRATE_TABLES, compute_substrate_detail
+
+    try:
+        _coverage_ok = bool((_coverage_parity(db_path) or {}).get("coverage_parity_ok"))
+    except Exception:
+        _coverage_ok = False
+    try:
+        from .daily_brief.mcp_handoff_status import handoff_present as _handoff_present
+
+        _handoff_present_flag = _handoff_present(db_path)
+    except Exception:
+        _handoff_present_flag = False
+    substrate_detail = compute_substrate_detail(
+        schema_ready=schema_ready,
+        coverage_ok=_coverage_ok,
+        quality_row_counts={t: row_counts.get(t) for t in QUALITY_SUBSTRATE_TABLES},
+        handoff_present=_handoff_present_flag,
+    )
+
     # --- per-surface posture ---
     surfaces: list[dict[str, Any]] = []
     missing_contracts: list[str] = []
@@ -292,6 +313,7 @@ def evaluate_phase_09_operator_status(*, db_path: str | None = None) -> dict[str
         "missing_contracts": missing_contracts,
         "surfaces": surfaces,
         "phase_09_substrate_status": phase_09_substrate_status,
+        "substrate_detail": substrate_detail,
         "coverage_parity": _coverage_parity(db_path),
         "advisory_only": True,
         "makes_determination": False,

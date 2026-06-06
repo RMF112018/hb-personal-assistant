@@ -344,6 +344,24 @@ def evaluate_phase_09_data_quality_gates(*, db_path: str | None = None) -> dict[
         "advisory_empty" if status_counts["deferred_not_blocking"] > 0 else "populated"
     )
 
+    # Distinguished, reconciled substrate view (shared with phase-09-operator-status to resolve the
+    # historical phase_09_substrate_status drift). Additive; the legacy field above is retained.
+    from .phase_09_schema import QUALITY_SUBSTRATE_TABLES, compute_substrate_detail
+
+    _coverage = _coverage_parity(db_path)
+    try:
+        from .daily_brief.mcp_handoff_status import handoff_present as _handoff_present
+
+        _handoff_present_flag = _handoff_present(db_path)
+    except Exception:
+        _handoff_present_flag = False
+    substrate_detail = compute_substrate_detail(
+        schema_ready=(by_field_status.get("phase_09_schema_present") == "pass"),
+        coverage_ok=bool((_coverage or {}).get("coverage_parity_ok")),
+        quality_row_counts={t: row_counts.get(t) for t in QUALITY_SUBSTRATE_TABLES},
+        handoff_present=_handoff_present_flag,
+    )
+
     return {
         "command": "second-brain data-quality phase-09-gates",
         "phase": "09",
@@ -359,7 +377,8 @@ def evaluate_phase_09_data_quality_gates(*, db_path: str | None = None) -> dict[
         "required_fields_covered": required_fields_covered,
         "readiness_overstated": False,
         "phase_09_substrate_status": substrate_status,
-        "coverage_parity": _coverage_parity(db_path),
+        "substrate_detail": substrate_detail,
+        "coverage_parity": _coverage,
         "advisory_only": True,
         "makes_determination": False,
         "read_only": True,

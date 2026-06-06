@@ -91,6 +91,44 @@ PHASE_09_GUARD_COLUMNS: list[str] = [
     "semantic_retrieval_bypassed_policy",
 ]
 
+# The Phase 09 "quality substrate" tables — the eval/benchmark/source-linked/claim/context-budget/
+# memory-quality/agent-feedback surfaces that are populated only once quality hardening runs. Used by
+# both phase-09-gates and phase-09-operator-status to compute a consistent distinguished substrate view
+# (resolving the historical phase_09_substrate_status drift between those two commands).
+QUALITY_SUBSTRATE_TABLES: list[str] = [
+    "second_brain_retrieval_eval_sets",
+    "second_brain_retrieval_benchmark_runs",
+    "second_brain_retrieval_source_linked_proof_runs",
+    "second_brain_retrieval_unsupported_claim_checks",
+    "second_brain_retrieval_context_budget_runs",
+    "second_brain_memory_quality_review_runs",
+    "second_brain_agent_performance_feedback_runs",
+]
+
+
+def compute_substrate_detail(
+    *,
+    schema_ready: bool,
+    coverage_ok: bool,
+    quality_row_counts: dict[str, int | None],
+    handoff_present: bool,
+) -> dict[str, Any]:
+    """Distinguished, consistent Phase 09 substrate view shared by gates + operator-status.
+
+    Pure: callers supply the inputs they already have. ``production_readiness`` is always False (the
+    phase is never production-ready). ``quality_substrate`` is "advisory_empty" until any quality
+    surface has rows — matching the gates' deferred-when-empty semantics — so both commands agree.
+    """
+    quality_populated = any((rc or 0) > 0 for rc in quality_row_counts.values())
+    return {
+        "schema_substrate": "ready" if schema_ready else "incomplete",
+        "coverage_substrate": "covered" if coverage_ok else "incomplete",
+        "quality_substrate": "populated" if quality_populated else "advisory_empty",
+        "handoff_substrate": "available" if handoff_present else "missing",
+        "production_readiness": False,
+    }
+
+
 _CONTRACT_PKG = "hb_assistant.resources.json"
 _CONTRACT_FILENAME = "phase_09_table_lifecycle_contract.json"
 

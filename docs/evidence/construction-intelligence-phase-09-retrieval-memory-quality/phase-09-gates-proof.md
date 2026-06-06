@@ -1,10 +1,10 @@
 # Phase 09 — Data Quality Gates Proof
 
 - proof_passed: True
-- generated_utc: 2026-06-05T16:47:02.264055+00:00
+- generated_utc: 2026-06-06T11:22:23.352261+00:00
 - ok: True (no fail_blocking)
 - gate_count: 23 (minimum 18)
-- status_counts: pass=12 warning=0 fail_blocking=0 deferred_not_blocking=11
+- status_counts: pass=14 warning=0 fail_blocking=0 deferred_not_blocking=9
 - required_fields_covered: True
 - readiness_overstated: False (must be false)
 - phase_09_substrate_status: advisory_empty
@@ -20,8 +20,8 @@
 - lifecycle_contract_loaded: pass
 - llamaindex_config: deferred_not_blocking (SUBSTRATE_EMPTY)
 - embedding_vector_policy: pass
-- approved_source_manifest: deferred_not_blocking (SUBSTRATE_EMPTY)
-- vector_index: deferred_not_blocking (SUBSTRATE_EMPTY)
+- approved_source_manifest: pass
+- vector_index: pass
 - hybrid_retrieval: deferred_not_blocking (SUBSTRATE_EMPTY)
 - metadata_filter: pass
 - retrieval_eval_set: deferred_not_blocking (SUBSTRATE_EMPTY)

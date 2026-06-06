@@ -2192,6 +2192,27 @@ def daily_brief_output_receipt_proof(
     raise typer.Exit(0 if proof["proof_passed"] else 3)
 
 
+@daily_brief_app.command("mcp-handoff-status")
+def daily_brief_mcp_handoff_status(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the handoff operator-status to the evidence dir."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Report daily-brief MCP handoff operator status (5 fields + gates + reconciled substrate detail).
+
+    Advisory-only; never production-ready. Exit 0 iff handoff_closeout_ok (no fail_blocking gate —
+    MCP no-raw/no-writeback and the handoff proof are the only closeout blockers).
+    """
+    from hb_assistant.construction.second_brain.daily_brief import (
+        build_daily_brief_mcp_handoff_status,
+    )
+
+    report = build_daily_brief_mcp_handoff_status(write_evidence=evidence)
+    typer.echo(json.dumps(report, indent=2, default=str) if json_out else str(report))
+    raise typer.Exit(0 if report["handoff_closeout_ok"] else 3)
+
+
 @daily_brief_app.command("triage")
 def daily_brief_triage(
     project_key: str = typer.Option(None, "--project-key", help="Optional project filter."),

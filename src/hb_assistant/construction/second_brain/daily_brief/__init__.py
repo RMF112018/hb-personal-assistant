@@ -16,6 +16,7 @@ from .generate import (
     build_daily_brief_delivery_handoff_proof,
     run_daily_brief,
 )
+from .mcp_handoff_status import build_daily_brief_mcp_handoff_status, handoff_present
 from .models import (
     AttentionItemCard,
     DailyBriefContext,
@@ -115,6 +116,8 @@ __all__ = [
     "build_rendered_brief_receipt",
     "build_trusted_packet_receipt",
     "import_rendered_brief",
+    "build_daily_brief_mcp_handoff_status",
+    "handoff_present",
     "DailyBriefPolicyError",
     "load_daily_brief_policy_seed",
     "reason_code_for_tier",
