@@ -1,7 +1,7 @@
 # Phase 09 Addendum — Memory Candidate Preview Proof
 
 - proof_passed: True
-- generated_utc: 2026-06-06T06:33:38.209558+00:00
+- generated_utc: 2026-06-06T08:17:26.266036+00:00
 - candidate_count: 7
 - per_type: {'workflow_preference': 2, 'team_context': 1, 'system_config_fact': 3, 'retrieval_preference': 1}
 - safe_candidates_surfaced: True

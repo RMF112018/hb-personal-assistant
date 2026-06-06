@@ -1,8 +1,8 @@
 {
   "command": "second-brain data-quality phase-09-operator-status",
   "phase": "09",
-  "generated_utc": "2026-06-05T23:50:21.142352+00:00",
-  "repo_sha": "5a71cc5ec679d598870ff48d731288599d8d1d11",
+  "generated_utc": "2026-06-06T08:43:44.469098+00:00",
+  "repo_sha": "db029a0f954b26294bc3c423214ce143ac8ea1b3",
   "schema_version": 39,
   "overall_status": "advisory_ready",
   "operator_status_ok": true,
@@ -351,8 +351,9 @@
       "project_risk_digest_items",
       "review_controlled_correspondence_context"
     ],
-    "vector_indexed_family_count": 8,
+    "vector_indexed_family_count": 9,
     "vector_indexed_families": [
+      "accepted_long_term_memory",
       "approved_obsidian_generated_outputs",
       "cross_source_relationships",
       "generated_outputs",
@@ -362,13 +363,9 @@
       "project_risk_digest_items",
       "review_controlled_correspondence_context"
     ],
-    "empty_approved_families": [
-      "accepted_long_term_memory"
-    ],
-    "deferred_families": [
-      "accepted_long_term_memory"
-    ],
-    "memory_substrate_status": "deferred_empty",
+    "empty_approved_families": [],
+    "deferred_families": [],
+    "memory_substrate_status": "covered",
     "coverage_parity_ok": true
   },
   "advisory_only": true,

@@ -1,7 +1,7 @@
 # Phase 09 Addendum — Memory Candidate Staging Bridge Proof
 
 - proof_passed: True
-- generated_utc: 2026-06-06T08:30:50.524012+00:00
+- generated_utc: 2026-06-06T08:40:12.109172+00:00
 - candidate_id_preserved: True
 - dry_run_persists_nothing: True
 - staged_into_candidate_store: True

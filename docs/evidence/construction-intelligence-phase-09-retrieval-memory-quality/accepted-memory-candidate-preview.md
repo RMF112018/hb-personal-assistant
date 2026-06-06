@@ -1,7 +1,7 @@
 # Phase 09 Addendum — Memory Candidate Preview
 
-- generated_utc: 2026-06-06T06:33:38.193810+00:00
-- repo_sha: 0ea3ca42fceded769951f6b7353123cf6c86ad4e
+- generated_utc: 2026-06-06T08:17:26.250338+00:00
+- repo_sha: f56740678304c101c62a801c81ed5ae6f8b56a85
 - status: built
 - schema_version: 39
 - candidate_count: 7
