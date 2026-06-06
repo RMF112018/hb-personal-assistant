@@ -62,6 +62,25 @@ class RefreshRequest(BaseModel):
     note_redacted: str | None = None
 
 
+class DailyBriefConfigureRequest(BaseModel):
+    enabled: bool | None = None
+    platform: str | None = None
+    output_folder: str | None = None
+    file_pattern: str | None = None
+    stale_threshold_minutes: int | None = None
+    show_on_today: bool | None = None
+
+
+class DailyBriefInstructionsRequest(BaseModel):
+    platform: str | None = None
+    output_folder: str | None = None
+    file_pattern: str | None = None
+
+
+class DailyBriefValidateFolderRequest(BaseModel):
+    folder: str | None = None
+
+
 def _schema_version(db_path: str | None) -> int:
     try:
         return int(SQLiteMigrator(db_path=db_path).current_version())
@@ -124,10 +143,12 @@ def create_app(*, db_path: str | None = None) -> Any:
     require_role = role_dependency()
     app = FastAPI(
         title="HB Personal Assistant Analytics UI Shell",
-        version="0.1.0-prompt-07",
+        version="0.1.0-prompt-10",
         description=(
             "Optional read-only FastAPI shell for future analytics UI routes. "
-            "Active chat is disabled. Project keyword training (Prompt 05), sync governance (Prompt 06), and dashboard read models (Prompt 07) supported."
+            "Active chat is disabled. Project keyword training (Prompt 05), sync governance (Prompt 06), "
+            "dashboard read models (Prompt 07), UI kit and screens (Prompts 08-09), and external Daily Brief "
+            "workflow (Prompt 10: setup wizard, platform instructions, scheduled prompt generation, 7-state file detector, polished presenter-only renderer) supported."
         ),
     )
     role_dep = Depends(require_role)
@@ -411,5 +432,72 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.construction.analytics.service import AnalyticsService
 
         return AnalyticsService(db_path=db_path).build_my_items()
+
+    # Prompt 10 / UI-10 — Daily Brief external-agent Markdown workflow.
+    # Setup wizard surfaces (configure, validate, instructions, detect), 7-state file detector,
+    # scheduled prompt generation helper, and polished presentation (present/polish only).
+    # Viewer read access for status/latest/today sub-resource; operator/admin for configuration actions.
+    # Guardrails: external generation owner, app detects and presents only, never generates/rewrites,
+    # no raw sensitive, advisory only.
+    @app.get("/api/daily-brief/status")
+    def daily_brief_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.daily_brief import DailyBriefService
+
+        return DailyBriefService().get_status()
+
+    @app.get("/api/daily-brief/latest")
+    def daily_brief_latest(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.daily_brief import DailyBriefService
+
+        return DailyBriefService().get_latest()
+
+    @app.post("/api/daily-brief/configure")
+    def daily_brief_configure(
+        request: DailyBriefConfigureRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.daily_brief import DailyBriefService
+
+        return DailyBriefService().configure(request.model_dump(exclude_none=True))
+
+    @app.post("/api/daily-brief/generate-setup-instructions")
+    def daily_brief_generate_instructions(
+        request: DailyBriefInstructionsRequest | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.daily_brief import DailyBriefService
+
+        data = request.model_dump(exclude_none=True) if request else {}
+        return DailyBriefService().generate_setup_instructions(
+            platform=data.get("platform"), overrides=data
+        )
+
+    @app.post("/api/daily-brief/validate-output-folder")
+    def daily_brief_validate_folder(
+        request: DailyBriefValidateFolderRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.daily_brief import DailyBriefService
+
+        return DailyBriefService().validate_output_folder(request.folder)
+
+    @app.post("/api/daily-brief/detect-latest")
+    def daily_brief_detect_latest(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.daily_brief import DailyBriefService
+
+        return DailyBriefService().detect_latest()
+
+    @app.get("/api/today/daily-brief")
+    def today_daily_brief(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_today_daily_brief()
 
     return app

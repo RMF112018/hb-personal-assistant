@@ -83,6 +83,14 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/projects/{project_key}/field-operations",
         "/api/projects/{project_key}/cost-time",
         "/api/my-items",
+        # Prompt 10 / UI-10 Daily Brief external workflow surfaces
+        "/api/daily-brief/status",
+        "/api/daily-brief/latest",
+        "/api/daily-brief/configure",
+        "/api/daily-brief/generate-setup-instructions",
+        "/api/daily-brief/validate-output-folder",
+        "/api/daily-brief/detect-latest",
+        "/api/today/daily-brief",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 

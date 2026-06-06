@@ -382,6 +382,17 @@ class AnalyticsService:
             "makes_determination": False,
         }
 
+    def build_today_daily_brief(self) -> dict[str, Any]:
+        """Daily Brief status + polished presentation for the Today family (Prompt 10).
+
+        Delegates to the external-file detector/presenter. The app never generates or rewrites
+        the brief; it only detects a user-configured local Markdown file written by an external
+        desktop AI platform and returns structured metadata + sections for the renderer.
+        """
+        from .daily_brief import DailyBriefService
+
+        return DailyBriefService().build_today_presentation()
+
     def build_projects_portfolio(self) -> dict[str, Any]:
         generated = _utc_now()
         project_keys = self._project_keys()

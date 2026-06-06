@@ -84,13 +84,21 @@ export function TodayPage() {
         )}
       </section>
 
-      {/* Daily Brief — external Markdown only (present/polish contract) */}
+      {/* Daily Brief — external Markdown only (present/polish contract, Prompt 10) */}
       <section>
         <div className="section-title">Daily Brief</div>
-        <DailyBriefRenderer content={fb.content || fb.markdown} status={fb.status || d.daily_brief?.status} />
+        <DailyBriefRenderer
+          content={fb.content || fb.markdown}
+          status={fb.status || d.daily_brief?.status}
+          generatedAt={fb.generated_at || fb.generatedAt}
+          path={fb.path}
+          warnings={fb.warnings}
+          sections={fb.sections}
+        />
         <div className="advisory mt-2">
           Source: externally generated Markdown file. The app presents/polishes only and does not generate or materially rewrite content.
           States: Not configured • External AI setup required • Configured (waiting) • Brief available • Brief stale • Brief generation failed • Markdown parse warning.
+          <span className="ml-2"><a className="underline" href="#/settings">Configure folder / platform in Settings →</a></span>
         </div>
         {fb.path && (
           <div className="text-[10px] text-[var(--hb-muted)] mt-1">File: {fb.path} {fb.generated_at ? `• ${fb.generated_at}` : ''}</div>
