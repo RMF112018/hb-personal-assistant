@@ -36,6 +36,13 @@ from .models import (
     WarningCard,
 )
 from .output import render_brief_markdown, resolve_brief_path, write_brief_output
+from .output_receipt import (
+    RenderedOutputReceiptError,
+    build_daily_brief_rendered_output_receipt_proof,
+    build_rendered_brief_receipt,
+    build_trusted_packet_receipt,
+    import_rendered_brief,
+)
 from .packet import (
     DailyBriefPacketError,
     build_daily_brief_packet,
@@ -103,6 +110,11 @@ __all__ = [
     "RenderedBriefQualityError",
     "build_daily_brief_rendered_quality_proof",
     "validate_rendered_brief",
+    "RenderedOutputReceiptError",
+    "build_daily_brief_rendered_output_receipt_proof",
+    "build_rendered_brief_receipt",
+    "build_trusted_packet_receipt",
+    "import_rendered_brief",
     "DailyBriefPolicyError",
     "load_daily_brief_policy_seed",
     "reason_code_for_tier",

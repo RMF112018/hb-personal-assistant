@@ -2174,6 +2174,24 @@ def daily_brief_rendered_proof(
     raise typer.Exit(0 if proof["proof_passed"] else 3)
 
 
+@daily_brief_app.command("output-receipt-proof")
+def daily_brief_output_receipt_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the output-receipt proof to the evidence dir."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Prove the rendered-brief output receipt is advisory/not-source-truth and excluded from trusted
+    stores (vector index, manifest, source-linked proof, accepted memory); import is deferred."""
+    from hb_assistant.construction.second_brain.daily_brief import (
+        build_daily_brief_rendered_output_receipt_proof,
+    )
+
+    proof = build_daily_brief_rendered_output_receipt_proof(write_evidence=evidence)
+    typer.echo(json.dumps(proof, indent=2, default=str) if json_out else str(proof))
+    raise typer.Exit(0 if proof["proof_passed"] else 3)
+
+
 @daily_brief_app.command("triage")
 def daily_brief_triage(
     project_key: str = typer.Option(None, "--project-key", help="Optional project filter."),
