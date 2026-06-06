@@ -36,18 +36,23 @@ from .models import (
     WarningCard,
 )
 from .output import render_brief_markdown, resolve_brief_path, write_brief_output
+from .packet import (
+    DailyBriefPacketError,
+    build_daily_brief_packet,
+    build_daily_brief_packet_proof,
+)
 from .policy import (
     DailyBriefPolicyError,
     load_daily_brief_policy_seed,
     reason_code_for_tier,
     validate_daily_brief_policy,
 )
-from .packet import (
-    DailyBriefPacketError,
-    build_daily_brief_packet,
-    build_daily_brief_packet_proof,
-)
 from .render_view import build_daily_brief_render_view
+from .rendered_quality import (
+    RenderedBriefQualityError,
+    build_daily_brief_rendered_quality_proof,
+    validate_rendered_brief,
+)
 from .scheduling import build_daily_brief_schedule_preview, build_launchd_schedule_proof
 from .store import (
     read_daily_brief_handoff,
@@ -95,6 +100,9 @@ __all__ = [
     "DailyBriefPacketError",
     "build_daily_brief_packet",
     "build_daily_brief_packet_proof",
+    "RenderedBriefQualityError",
+    "build_daily_brief_rendered_quality_proof",
+    "validate_rendered_brief",
     "DailyBriefPolicyError",
     "load_daily_brief_policy_seed",
     "reason_code_for_tier",

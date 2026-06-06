@@ -2119,6 +2119,61 @@ def daily_brief_packet_proof(
     raise typer.Exit(0 if proof["proof_passed"] else 3)
 
 
+@daily_brief_app.command("rendered-proof")
+def daily_brief_rendered_proof(
+    packet_path: str = typer.Option(
+        None, "--packet", help="Path to a source packet JSON to validate against (optional)."
+    ),
+    rendered_path: str = typer.Option(
+        None, "--rendered", help="Path to a rendered brief markdown file to validate (optional)."
+    ),
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="When running the built-in fixture proof, write evidence to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Validate a Claude-rendered daily brief against its source packet (review-only).
+
+    With both --packet and --rendered, validate those files. Otherwise run the built-in fixture proof
+    (safe fixture passes; tampered variants fail their expected checks). Exit 0 on pass; 3 on fail.
+    """
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.daily_brief import (
+        build_daily_brief_rendered_quality_proof,
+        validate_rendered_brief,
+    )
+
+    if packet_path and rendered_path:
+        try:
+            packet = json.loads(Path(packet_path).read_text(encoding="utf-8"))
+            rendered_md = Path(rendered_path).read_text(encoding="utf-8")
+        except Exception as exc:
+            err = {
+                "command": "second-brain daily-brief rendered-proof",
+                "error": type(exc).__name__,
+                "detail": str(exc),
+            }
+            typer.echo(json.dumps(err, indent=2, default=str) if json_out else str(err))
+            raise typer.Exit(3) from exc
+        result = validate_rendered_brief(packet, rendered_md)
+        payload = {
+            "command": "second-brain daily-brief rendered-proof",
+            "mode": "validate_files",
+            "packet_path": packet_path,
+            "rendered_path": rendered_path,
+            **result,
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0 if result["passed"] else 3)
+
+    proof = build_daily_brief_rendered_quality_proof(write_evidence=evidence)
+    typer.echo(json.dumps(proof, indent=2, default=str) if json_out else str(proof))
+    raise typer.Exit(0 if proof["proof_passed"] else 3)
+
+
 @daily_brief_app.command("triage")
 def daily_brief_triage(
     project_key: str = typer.Option(None, "--project-key", help="Optional project filter."),
