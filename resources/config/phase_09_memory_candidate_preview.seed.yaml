@@ -1,0 +1,25 @@
+version: phase_09_memory_candidate_preview_v1
+# Read-only, advisory memory candidate preview policy (never accepts/persists memory).
+preview_only: true
+# Only "repeated" operator preferences (>= this many independent signals) are eligible.
+min_signal_count: 2
+# Candidate statements are bounded to this many characters.
+statement_max_chars: 280
+# Conservative starting candidate-type vocabulary.
+candidate_types:
+  - system_config_fact
+  - operator_preference
+  - project_context
+  - team_context
+  - workflow_preference
+  - retrieval_preference
+# Statements containing any of these terms imply a final determination and are rejected.
+determination_terms:
+  - approved
+  - final
+  - authorized
+  - guaranteed
+  - liable
+  - must pay
+  - binding
+  - adjudicated

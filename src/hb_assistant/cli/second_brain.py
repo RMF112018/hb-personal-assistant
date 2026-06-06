@@ -74,6 +74,13 @@ memory_consolidation_preview_app = typer.Typer(
 )
 memory_app.add_typer(memory_consolidation_preview_app, name="consolidation-preview")
 
+memory_candidates_app = typer.Typer(
+    name="candidates",
+    help="Phase 09 memory candidate preview (advisory, read-only; never accepts memory).",
+    no_args_is_help=True,
+)
+memory_app.add_typer(memory_candidates_app, name="candidates")
+
 preference_app = typer.Typer(
     name="preference",
     help="Reviewable operator preferences (presentation-only; never override safety).",
@@ -848,6 +855,108 @@ def memory_quality_review_proof(
         f" (flagged={proof['flagged_count']}, dup={proof['duplicate_detected']},"
         f" stale={proof['stale_detected']}, conflict={proof['conflicting_detected']},"
         f" guard_clean={proof['run_row_guard_clean']})",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
+_MEMORY_CANDIDATE_PREVIEW_GUARDRAILS = {
+    "advisory_only": True,
+    "read_only_by_default": True,
+    "no_acceptance": True,
+    "writes_accepted_memory": False,
+    "no_raw": True,
+    "no_external_writeback": True,
+    "source_linked_only": True,
+    "bounded_statements": True,
+    "deterministic": True,
+    "local_first": True,
+    "fail_closed": True,
+}
+
+
+@memory_candidates_app.command("build")
+def memory_candidates_build(
+    project: str | None = typer.Option(None, "--project", help="Optional project key filter."),
+    evidence: bool = typer.Option(
+        False, "--evidence/--no-evidence", help="Write the preview to the evidence dir."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Preview possible long-term memory candidates from safe, redacted, source-linked records.
+
+    Read-only and advisory: every candidate is review_status='pending_review' and is NEVER accepted or
+    persisted as accepted memory. Unsourced, raw-content-shaped, and determination-implying inputs are
+    rejected; review tier 3 candidates surface as non-acceptance preview only. Exit 0 on success; 3 on a
+    fail-closed failure.
+    """
+    from hb_assistant.construction.second_brain.memory.candidate_preview import (
+        MemoryCandidatePreviewError,
+        build_memory_candidate_preview,
+    )
+
+    try:
+        result = build_memory_candidate_preview(project_key=project, write_evidence=evidence)
+    except MemoryCandidatePreviewError as exc:
+        payload = {
+            "command": "second-brain memory candidates build",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_CANDIDATE_PREVIEW_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**result, "guardrails": _MEMORY_CANDIDATE_PREVIEW_GUARDRAILS}
+    human = [
+        "Phase 09 memory candidate preview (read-only, advisory; never accepts memory)",
+        f"  status: {result['status']} | candidates: {result['candidate_count']}"
+        f" | rejected: {result['rejected_count']}",
+        f"  by type: {result['per_type']} | by durability: {result['per_durability']}",
+        f"  writes_accepted_memory: {result['writes_accepted_memory']}"
+        f" | review_status: pending_review (never auto-accepted)",
+    ]
+    _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+@memory_candidates_app.command("proof")
+def memory_candidates_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the candidate-preview proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Prove safe candidates surface, unsafe inputs are rejected, and no accepted memory is written."""
+    from hb_assistant.construction.second_brain.memory.candidate_preview import (
+        MemoryCandidatePreviewError,
+        build_memory_candidate_preview_proof,
+    )
+
+    try:
+        proof = build_memory_candidate_preview_proof(write_evidence=evidence)
+    except MemoryCandidatePreviewError as exc:
+        payload = {
+            "command": "second-brain memory candidates proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _MEMORY_CANDIDATE_PREVIEW_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    payload = {**proof, "guardrails": _MEMORY_CANDIDATE_PREVIEW_GUARDRAILS}
+    human = [
+        f"Memory candidate preview proof passed={proof['proof_passed']}"
+        f" (candidates={proof['candidate_count']}, raw_rejected={proof['raw_shaped_rejected']},"
+        f" unsourced_rejected={proof['unsourced_rejected']},"
+        f" determination_rejected={proof['determination_rejected']},"
+        f" accepted_memory_unchanged={proof['accepted_memory_unchanged']})",
     ]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 
