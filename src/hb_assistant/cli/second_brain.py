@@ -7061,6 +7061,40 @@ def mcp_daily_brief_handoff_proof(
     raise typer.Exit(0 if proof.get("proof_passed") else 3)
 
 
+@mcp_app.command("daily-brief-render-template-proof")
+def mcp_daily_brief_render_template_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the Claude render-template proof + template copies to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON envelope (default)."),
+) -> None:
+    """Prove the Claude scheduled-task render templates carry the required guardrail instructions."""
+    from hb_assistant.construction.second_brain.mcp import build_claude_render_template_proof
+    from hb_assistant.construction.second_brain.mcp.render_template_proof import (
+        ClaudeRenderTemplateError,
+    )
+
+    try:
+        proof = build_claude_render_template_proof(write_evidence=evidence)
+    except ClaudeRenderTemplateError as exc:
+        payload = {
+            "command": "second-brain mcp daily-brief-render-template-proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "detail": str(exc),
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(3) from exc
+
+    if json_out:
+        typer.echo(json.dumps(proof, indent=2, default=str))
+    else:
+        typer.echo(f"Claude render-template proof passed={proof['proof_passed']}")
+    raise typer.Exit(0 if proof.get("proof_passed") else 3)
+
+
 @mcp_app.command("no-raw-access")
 def mcp_no_raw_access(
     evidence: bool = typer.Option(

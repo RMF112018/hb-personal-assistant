@@ -31,6 +31,7 @@ from .proof import (
     evaluate_phase_08d_validation_matrix,
 )
 from .registry import load_allowed_tools, load_denied_actions, load_global_requirements
+from .render_template_proof import build_claude_render_template_proof
 from .resources import load_resources, read_all_resources, read_resource
 from .server import MCPUnavailable, serve_stdio
 from .wrappers import build_wrapper_registry
@@ -49,6 +50,7 @@ __all__ = [
     "ToolBroker",
     "assess_config_safety",
     "build_claude_desktop_config_preview",
+    "build_claude_render_template_proof",
     "build_default_broker",
     "build_mcp_allowed_tools_proof",
     "build_mcp_daily_brief_handoff_proof",
