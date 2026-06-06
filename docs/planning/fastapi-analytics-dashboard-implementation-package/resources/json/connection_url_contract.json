@@ -1,0 +1,14 @@
+{
+  "procore_project_home_regex": "https://app\\.procore\\.com/(?P<project_id>\\d+)/project/home",
+  "sharepoint_url_types": [
+    "site_url",
+    "folder_share_link"
+  ],
+  "onedrive_scope_options": [
+    "all_folders",
+    "selected_folders",
+    "excluded_folders"
+  ],
+  "outlook_project_matching_only_default": false,
+  "calendar_project_matching_only_default": false
+}

@@ -1,0 +1,16 @@
+{
+  "generation_owner": "external_desktop_ai_platform",
+  "input_interface": "MCP where supported, manual prompt otherwise",
+  "output_format": "markdown_file",
+  "app_role": "detect_parse_polish_present",
+  "ui_states": [
+    "not_configured",
+    "external_ai_setup_required",
+    "configured_waiting",
+    "brief_available",
+    "brief_stale",
+    "brief_generation_failed",
+    "markdown_parse_warning"
+  ],
+  "chat_in_app_active": false
+}

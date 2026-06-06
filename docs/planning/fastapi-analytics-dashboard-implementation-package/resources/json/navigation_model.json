@@ -1,0 +1,118 @@
+{
+  "primary_landing": {
+    "label": "Today",
+    "route": "/today",
+    "root_redirect": "/today",
+    "purpose": "All-project command center showing what matters today across projects, meetings, action items, source-linked changes, and the optional Daily Brief."
+  },
+  "top_level_navigation": [
+    {
+      "label": "Today",
+      "route": "/today",
+      "purpose": "Primary landing dashboard for important today, what changed, meetings, action items, portfolio signals, and optional executive Daily Brief.",
+      "sections": [
+        "Important Today",
+        "Daily Brief",
+        "Today's Meetings",
+        "What Changed",
+        "Action Items",
+        "Portfolio Signals"
+      ]
+    },
+    {
+      "label": "Projects",
+      "route": "/projects",
+      "purpose": "Portfolio and project-specific analytics dashboards.",
+      "default_view": "Portfolio",
+      "project_selector": {
+        "includes_all_projects": true,
+        "includes_individual_projects": true,
+        "all_projects_route": "/projects/all",
+        "individual_project_route_pattern": "/projects/:projectKey"
+      },
+      "secondary_navigation": [
+        {
+          "label": "Overview",
+          "route_pattern": "/projects/:projectKey",
+          "all_projects_route": "/projects/all",
+          "purpose": "High-level project or all-project dashboard with important today, what changed, action items, cost/time, field, document/correspondence, and closeout/billing signals."
+        },
+        {
+          "label": "Meetings",
+          "route_pattern": "/projects/:projectKey/meetings",
+          "all_projects_route": "/projects/all/meetings",
+          "purpose": "Meeting analytics and prep context using calendar, correspondence, files, Procore context, and action items."
+        },
+        {
+          "label": "Field Operations",
+          "route_pattern": "/projects/:projectKey/field-operations",
+          "all_projects_route": "/projects/all/field-operations",
+          "purpose": "Startup, closeout, daily log, observations, punch-list, inspection, quality/safety, and field attention data."
+        },
+        {
+          "label": "Cost & Time",
+          "route_pattern": "/projects/:projectKey/cost-time",
+          "all_projects_route": "/projects/all/cost-time",
+          "purpose": "Cost exposure, change management, billing/cash/retention, schedule, procurement, and cost/time-impacting RFI/submittal/design-decision signals."
+        }
+      ]
+    },
+    {
+      "label": "My Items",
+      "route": "/my-items",
+      "purpose": "User-specific dashboard for action items, meetings, correspondence, OneDrive files, followed projects, and review-required items.",
+      "sections": [
+        "My Action Items",
+        "My Meetings",
+        "My Correspondence",
+        "My Files",
+        "My Followed Projects"
+      ]
+    }
+  ],
+  "support_navigation": [
+    {
+      "label": "Admin / Data Confidence",
+      "route": "/admin",
+      "purpose": "Supporting trust/governance layer for source health, workflow health, evidence, guardrails, retrieval quality, permissions, and data completeness.",
+      "sections": [
+        "Source / Sync Health",
+        "Workflow / Job Health",
+        "Evidence / Guardrail Health",
+        "Retrieval / AI Quality",
+        "Permissions / Governance",
+        "Data Completeness / Coverage"
+      ]
+    },
+    {
+      "label": "Settings",
+      "route": "/settings",
+      "purpose": "User preferences, followed projects, Daily Brief setup, auth reconnect/revoke, project keyword preferences, and admin-only configuration."
+    }
+  ],
+  "contextual_domains_not_top_level": [
+    "Meetings",
+    "Field Operations",
+    "Startup",
+    "Closeout",
+    "Daily Log",
+    "Observations",
+    "Punch List",
+    "Cost / Change",
+    "Billing / Cash",
+    "Schedule",
+    "Documents",
+    "Correspondence",
+    "Vendors",
+    "RFIs",
+    "Submittals",
+    "Design Decisions",
+    "Procurement"
+  ],
+  "disabled_navigation": [
+    {
+      "label": "Chat",
+      "reason": "Future feature only. No active chat page, chat widget, streaming endpoint, or user-accessible chat route in this implementation."
+    }
+  ]
+}

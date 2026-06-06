@@ -1,0 +1,22 @@
+{
+  "roles": {
+    "construction_management_user": {
+      "can_view_operations": true,
+      "can_add_connection_urls": true,
+      "can_edit_keywords": true,
+      "can_request_refresh": true,
+      "can_trigger_first_live_sync": false,
+      "can_manage_rate_limits": false,
+      "can_access_admin_confidence": false
+    },
+    "admin_user": {
+      "can_view_operations": true,
+      "can_add_connection_urls": true,
+      "can_edit_keywords": true,
+      "can_request_refresh": true,
+      "can_trigger_first_live_sync": true,
+      "can_manage_rate_limits": true,
+      "can_access_admin_confidence": true
+    }
+  }
+}

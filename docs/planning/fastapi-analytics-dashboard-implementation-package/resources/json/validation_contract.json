@@ -1,0 +1,12 @@
+{
+  "assertions": [
+    "no_active_chat_ui",
+    "admin_only_first_live_sync",
+    "no_folder_names_as_keywords",
+    "outlook_project_matching_only_not_default",
+    "calendar_project_matching_only_not_default",
+    "daily_brief_markdown_presenter_only",
+    "no_raw_sensitive_response_fields",
+    "cm_first_navigation"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "user_settings": [
+    "theme",
+    "default_landing_page",
+    "pinned_projects",
+    "preferred_date_range",
+    "daily_brief_display",
+    "daily_brief_output_folder",
+    "project_keywords"
+  ],
+  "admin_settings": [
+    "first_sync_approval_queue",
+    "sync_cadence_per_project",
+    "sync_priority_per_project",
+    "initial_sync_window",
+    "max_concurrent_syncs",
+    "rate_limit_policy",
+    "retention_policy",
+    "chat_stub_locked_disabled"
+  ]
+}
