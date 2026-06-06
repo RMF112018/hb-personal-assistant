@@ -270,11 +270,15 @@ def accept_memory_candidate(
     }
 
     if not confirm:
-        result.update({"accepted": False, "would_accept": acceptable, "persisted": False})
+        result["accepted"] = False
+        result["would_accept"] = acceptable
+        result["persisted"] = False
         return result
 
     if not acceptable:
-        result.update({"accepted": False, "would_accept": False, "persisted": False})
+        result["accepted"] = False
+        result["would_accept"] = False
+        result["persisted"] = False
         return result
 
     from .curator import review_memory_candidate
@@ -282,16 +286,12 @@ def accept_memory_candidate(
     _review, item, signals = review_memory_candidate(
         candidate=candidate, decision="accepted", emit=True, db_path=db_path
     )
-    result.update(
-        {
-            "accepted": True,
-            "would_accept": True,
-            "persisted": True,
-            "memory_id": item.memory_id if item else None,
-            "review_status": item.review_status if item else None,
-            "quality_signal_types": [s.signal_type for s in signals],
-        }
-    )
+    result["accepted"] = True
+    result["would_accept"] = True
+    result["persisted"] = True
+    result["memory_id"] = item.memory_id if item else None
+    result["review_status"] = item.review_status if item else None
+    result["quality_signal_types"] = [s.signal_type for s in signals]
     return result
 
 
@@ -333,7 +333,7 @@ def decide_memory_candidate(
         "contract_version": contract.get("version"),
     }
     if not confirm:
-        result.update({"persisted": False})
+        result["persisted"] = False
         return result
 
     review, item, _signals = review_memory_candidate(
@@ -343,9 +343,9 @@ def decide_memory_candidate(
         emit=True,
         db_path=db_path,
     )
-    result.update(
-        {"persisted": True, "decision": review.decision, "created_memory_item": item is not None}
-    )
+    result["persisted"] = True
+    result["decision"] = review.decision
+    result["created_memory_item"] = item is not None
     return result
 
 

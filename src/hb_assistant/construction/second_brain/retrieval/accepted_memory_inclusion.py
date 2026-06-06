@@ -25,7 +25,7 @@ import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from ..financial_review_routing import _assert_no_raw
 
@@ -127,7 +127,7 @@ def build_accepted_memory_loader_proof(
         ):
             write_memory_item(_non_accepted_item(mid, status), db_path=db)
 
-        reader_items = read_accepted_memory(None, db, None)
+        reader_items = read_accepted_memory(cast(Any, None), db, None)  # store unused on this path
         nodes = load_reviewed_memory_nodes(db)
         report = build_reviewed_memory_loader_report(db)
         manifest = build_approved_source_manifest(db)

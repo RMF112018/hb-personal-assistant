@@ -1,0 +1,33 @@
+{
+  "proof": "phase_09_read_model_vector_loader",
+  "command": "second-brain retrieval read-model-vector-loader-proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-06T07:48:20.736415+00:00",
+  "repo_sha": "98ce969407519b941daa0e02e188d40623a0e995",
+  "node_count": 5,
+  "indexed_family_count": 5,
+  "indexed_families": [
+    "aging_exposure_report_items",
+    "cross_source_relationships",
+    "phase_07d_source_evidence_trails",
+    "project_issue_history_items",
+    "project_risk_digest_items"
+  ],
+  "all_nodes_no_raw_valid": true,
+  "all_nodes_eligible_tier_le_2_not_review_required": true,
+  "review_required_high_impact_excluded": true,
+  "loader_persists_nothing_to_sqlite": true,
+  "rejects_raw_shape_candidate": true,
+  "rejects_excluded_family_candidate": true,
+  "metadata_only": true,
+  "guardrails": {
+    "read_only": true,
+    "no_raw": true,
+    "no_raw_vector_content_in_sqlite": true,
+    "in_memory_nodes_only": true,
+    "no_external_writeback": true,
+    "review_control_preserved": true,
+    "fail_closed": true
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "proof": "phase_09_source_linked_retrieval_proof",
+  "command": "second-brain retrieval source-linked proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-06T07:48:32.562115+00:00",
+  "repo_sha": "98ce969407519b941daa0e02e188d40623a0e995",
+  "status": "source_linked",
+  "result_count": 3,
+  "linked_count": 3,
+  "unlinked_count": 0,
+  "deterministic_count": 0,
+  "semantic_count": 3,
+  "every_result_source_linked": true,
+  "makes_determination": false,
+  "rows_persisted_guard_clean": true,
+  "read_only_default_no_persist": true,
+  "no_raw_emitted": true,
+  "per_family": {
+    "accepted_long_term_memory": {
+      "linked": 1,
+      "unlinked": 0
+    },
+    "approved_obsidian_generated_outputs": {
+      "linked": 2,
+      "unlinked": 0
+    }
+  },
+  "metadata_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "no_determination": true,
+    "preserve_source_refs": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "no_semantic_retrieval_bypass": true,
+    "read_only_by_default": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

@@ -1,0 +1,33 @@
+ M docs/evidence/construction-intelligence-phase-06-email/13-operational-workflow-pilot-dry-run.json
+ M docs/evidence/construction-intelligence-phase-06-email/13-operational-workflow-pilot-index-proof.md
+ M docs/evidence/construction-intelligence-phase-07a-data-quality/07-obsidian-output-preview.md
+ M docs/evidence/construction-intelligence-phase-07a-data-quality/obsidian-data-quality-dry-run.json
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/daily-brief-job-health-executor-proof.json
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/last-good-run-proof.json
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/safe-replay-execution-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/currency-completeness-report.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/exposure-mart-preview.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-gates.md
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.md
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/wbs-cost-code-coverage-report.json
+ M docs/evidence/construction-intelligence-phase-08d-mcp-bridge/no-mcp-writeback-proof.json
+ M docs/evidence/construction-intelligence-phase-08d-mcp-bridge/no-mcp-writeback-proof.md
+ M docs/evidence/construction-intelligence-phase-08d-mcp-bridge/no-raw-mcp-access-proof.json
+ M docs/evidence/construction-intelligence-phase-08d-mcp-bridge/no-raw-mcp-access-proof.md
+ M docs/evidence/construction-intelligence-phase-08d-mcp-bridge/phase-08d-gates-proof.json
+ M docs/evidence/construction-intelligence-phase-08d-mcp-bridge/phase-08d-gates-proof.md
+ M docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/daily-brief-reproducibility-proof.json
+ M docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/daily-brief-reproducibility-proof.md
+ M docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/no-raw-vector-index-proof.json
+ M docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/no-raw-vector-index-proof.md
+ M docs/evidence/mvp-local-runtime/outputs/06-harness-success.marker
+ M docs/evidence/remediation/prompt-05-delegated-graph-proof/summary.json
+?? .claude/
+?? .code-graph/
+?? docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/validation-outputs-accepted-memory-activation/
+?? docs/evidence/future-fastapi-analytics-dashboard-metrics-catalog/
+?? scripts/hb-claude-mcp-launcher.sh

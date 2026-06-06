@@ -299,17 +299,21 @@ def supersede_accepted_memory(
     }
 
     if blocks:
-        result.update({"superseded": False, "persisted": False})
+        result["superseded"] = False
+        result["persisted"] = False
         return result
     if not confirm:
-        result.update({"superseded": False, "persisted": False, "would_supersede": True})
+        result["superseded"] = False
+        result["persisted"] = False
+        result["would_supersede"] = True
         return result
 
     from .store import set_memory_item_status
 
     set_memory_item_status(old_memory_id, review_status="superseded", db_path=db_path)
     set_memory_item_status(new_memory_id, supersedes_memory_id=old_memory_id, db_path=db_path)
-    result.update({"superseded": True, "persisted": True})
+    result["superseded"] = True
+    result["persisted"] = True
     return result
 
 

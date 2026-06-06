@@ -1,0 +1,309 @@
+........................................................................ [  2%]
+......................F..FF..FFF...F..FF................................ [  4%]
+........................................................................ [  6%]
+........................................................................ [  8%]
+........................................................................ [ 10%]
+........................................................................ [ 12%]
+........................................................................ [ 15%]
+........................................................................ [ 17%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+........................................................................ [ 23%]
+........................................................................ [ 25%]
+........................................................................ [ 27%]
+........................................................................ [ 30%]
+........................................................................ [ 32%]
+........................................................................ [ 34%]
+........................................................................ [ 36%]
+........................................................................ [ 38%]
+........................................................................ [ 40%]
+........................................................................ [ 42%]
+........................................................................ [ 45%]
+........................................................................ [ 47%]
+.........................F...................FFFFFFF..FF....F....F....F. [ 49%]
+.....F......F......F......F................................F............ [ 51%]
+........................................................................ [ 53%]
+...................................F.................................... [ 55%]
+........................................................................ [ 57%]
+........................................................................ [ 60%]
+........................................................................ [ 62%]
+........................................................................ [ 64%]
+........................................................................ [ 66%]
+........................................................................ [ 68%]
+........................................................................ [ 70%]
+........................................................................ [ 72%]
+........................................................................ [ 75%]
+........................................................................ [ 77%]
+........................................................................ [ 79%]
+........................................................................ [ 81%]
+........................................................................ [ 83%]
+........................................................................ [ 85%]
+........................................................................ [ 87%]
+........................................................................ [ 90%]
+........................................................................ [ 92%]
+........................................................................ [ 94%]
+........................................................................ [ 96%]
+........................................................................ [ 98%]
+.............................................                            [100%]
+=================================== FAILURES ===================================
+__________ test_lock_acquired_before_registry_and_released_on_success __________
+tests/test_automation_executor_service.py:113: in test_lock_acquired_before_registry_and_released_on_success
+    assert res.overall_status in ("succeeded", "failed")  # may degrade but lock path exercised
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: assert 'skipped' in ('succeeded', 'failed')
+E    +  where 'skipped' = ExecutionResult(request=ExecutionRequest(run_kind='daily_brief', mode='manual', brief_date=None, day_offset=0, force=F...schema_version=34, last_failed_stage=None, failure_class=None, retry_exhausted=False, catch_up=False, replay_run=False).overall_status
+__________________ test_failed_stage_marks_downstream_skipped __________________
+tests/test_automation_executor_service.py:195: in test_failed_stage_marks_downstream_skipped
+    assert len(failed) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+____________ test_recovery_recommendation_is_human_safe_no_secrets _____________
+tests/test_automation_executor_service.py:222: in test_recovery_recommendation_is_human_safe_no_secrets
+    assert "suggested_next" in rec
+E   AssertionError: assert 'suggested_next' in {'reason_code': 'WEEKEND_GATE_SKIPPED'}
+____________ test_proof_builder_passes_and_produces_evidence_shapes ____________
+tests/test_automation_executor_service.py:275: in test_proof_builder_passes_and_produces_evidence_shapes
+    proof = build_automation_execution_proof()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/automation_executor.py:1485: in build_automation_execution_proof
+    assert failed_count >= 1
+           ^^^^^^^^^^^^^^^^^
+E   AssertionError
+_______ test_reason_codes_and_versions_from_p01_substrate_still_present ________
+tests/test_automation_executor_service.py:291: in test_reason_codes_and_versions_from_p01_substrate_still_present
+    proof = build_automation_execution_proof()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/automation_executor.py:1485: in build_automation_execution_proof
+    assert failed_count >= 1
+           ^^^^^^^^^^^^^^^^^
+E   AssertionError
+____________________ test_p04_retry_backoff_execution_proof ____________________
+tests/test_automation_executor_service.py:307: in test_p04_retry_backoff_execution_proof
+    proof = build_retry_backoff_execution_proof()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/automation_executor.py:1660: in build_retry_backoff_execution_proof
+    assert res.overall_status == "succeeded"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError
+_____________________ test_p05_safe_replay_execution_proof _____________________
+tests/test_automation_executor_service.py:368: in test_p05_safe_replay_execution_proof
+    proof = build_safe_replay_execution_proof()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/automation_executor.py:2061: in build_safe_replay_execution_proof
+    assert res.overall_status in ("succeeded", "failed")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError
+_______________ test_p07_job_health_executor_proof_and_surfaces ________________
+tests/test_automation_executor_service.py:444: in test_p07_job_health_executor_proof_and_surfaces
+    assert p.get("job_health_called_for_success_and_fail_outcomes") is True
+E   AssertionError: assert False is True
+E    +  where False = <built-in method get of dict object at 0x10e6f81c0>('job_health_called_for_success_and_fail_outcomes')
+E    +    where <built-in method get of dict object at 0x10e6f81c0> = {'fail_last_failed_present': False, 'fakes_used': True, 'guardrails': {'automation_execution_ready_via_proof': True, '...eferred': False, 'job_health_after_all_outcomes': True}, 'job_health_called_for_success_and_fail_outcomes': False, ...}.get
+_______ test_p08_automation_execution_proof_covers_all_11_and_writes_md ________
+tests/test_automation_executor_service.py:463: in test_p08_automation_execution_proof_covers_all_11_and_writes_md
+    p = build_automation_execution_proof()
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/automation_executor.py:1485: in build_automation_execution_proof
+    assert failed_count >= 1
+           ^^^^^^^^^^^^^^^^^
+E   AssertionError
+_______________ test_v26_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08a_schema_v26.py:291: in test_v26_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+____________________ test_report_covers_all_contract_gates _____________________
+tests/test_phase_08b_data_quality_gates.py:24: in test_report_covers_all_contract_gates
+    report = evaluate_phase_08b_data_quality_gates()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/data_quality.py:547: in evaluate_phase_08b_data_quality_gates
+    gates.append(_proof_gate("automation_execution", build_automation_execution_proof()))
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/automation_executor.py:1485: in build_automation_execution_proof
+    assert failed_count >= 1
+           ^^^^^^^^^^^^^^^^^
+E   AssertionError
+_____________________ test_statuses_pass_and_defer_no_fail _____________________
+tests/test_phase_08b_data_quality_gates.py:30: in test_statuses_pass_and_defer_no_fail
+    counts = evaluate_phase_08b_data_quality_gates()["status_counts"]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/data_quality.py:547: in evaluate_phase_08b_data_quality_gates
+    gates.append(_proof_gate("automation_execution", build_automation_execution_proof()))
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/automation_executor.py:1485: in build_automation_execution_proof
+    assert failed_count >= 1
+           ^^^^^^^^^^^^^^^^^
+E   AssertionError
+_______________________ test_no_readiness_overstatement ________________________
+tests/test_phase_08b_data_quality_gates.py:37: in test_no_readiness_overstatement
+    report = evaluate_phase_08b_data_quality_gates()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/data_quality.py:547: in evaluate_phase_08b_data_quality_gates
+    gates.append(_proof_gate("automation_execution", build_automation_execution_proof()))
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/automation_executor.py:1485: in build_automation_execution_proof
+    assert failed_count >= 1
+           ^^^^^^^^^^^^^^^^^
+E   AssertionError
+___________________ test_gates_carry_structured_reason_codes ___________________
+tests/test_phase_08b_data_quality_gates.py:68: in test_gates_carry_structured_reason_codes
+    gates = {g["gate_name"]: g for g in evaluate_phase_08b_data_quality_gates()["gates"]}
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/data_quality.py:547: in evaluate_phase_08b_data_quality_gates
+    gates.append(_proof_gate("automation_execution", build_automation_execution_proof()))
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/automation_executor.py:1485: in build_automation_execution_proof
+    assert failed_count >= 1
+           ^^^^^^^^^^^^^^^^^
+E   AssertionError
+______________________ test_report_carries_no_raw_content ______________________
+tests/test_phase_08b_data_quality_gates.py:79: in test_report_carries_no_raw_content
+    blob = json.dumps(evaluate_phase_08b_data_quality_gates(), default=str)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/data_quality.py:547: in evaluate_phase_08b_data_quality_gates
+    gates.append(_proof_gate("automation_execution", build_automation_execution_proof()))
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/automation_executor.py:1485: in build_automation_execution_proof
+    assert failed_count >= 1
+           ^^^^^^^^^^^^^^^^^
+E   AssertionError
+______________________________ test_proof_passes _______________________________
+tests/test_phase_08b_data_quality_gates.py:92: in test_proof_passes
+    proof = build_phase_08b_gates_proof()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/data_quality.py:588: in build_phase_08b_gates_proof
+    report = evaluate_phase_08b_data_quality_gates(db_path=db_path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/data_quality.py:547: in evaluate_phase_08b_data_quality_gates
+    gates.append(_proof_gate("automation_execution", build_automation_execution_proof()))
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/automation_executor.py:1485: in build_automation_execution_proof
+    assert failed_count >= 1
+           ^^^^^^^^^^^^^^^^^
+E   AssertionError
+______________________ test_cli_phase_08b_gates_exit_zero ______________________
+tests/test_phase_08b_data_quality_gates.py:100: in test_cli_phase_08b_gates_exit_zero
+    assert result.exit_code == 0, result.output
+E   AssertionError: 
+E   assert 1 == 0
+E    +  where 1 = <Result AssertionError()>.exit_code
+________ test_fresh_db_gate_evaluation_is_fail_free_and_not_overstated _________
+tests/test_phase_08b_gate_coverage.py:78: in test_fresh_db_gate_evaluation_is_fail_free_and_not_overstated
+    report = evaluate_phase_08b_data_quality_gates(db_path=db)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/data_quality.py:547: in evaluate_phase_08b_data_quality_gates
+    gates.append(_proof_gate("automation_execution", build_automation_execution_proof()))
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/second_brain/automation_executor.py:1485: in build_automation_execution_proof
+    assert failed_count >= 1
+           ^^^^^^^^^^^^^^^^^
+E   AssertionError
+_______________ test_no_writeback_proof_passes_at_latest_schema ________________
+tests/test_phase_08b_gate_coverage.py:91: in test_no_writeback_proof_passes_at_latest_schema
+    assert proof["proof_passed"] is True
+E   assert False is True
+_______________ test_v28_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08b_schema_v28.py:119: in test_v28_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v29_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08b_schema_v29.py:125: in test_v29_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v30_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v30.py:124: in test_v30_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v31_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v31.py:163: in test_v31_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v32_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v32.py:165: in test_v32_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v33_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v33.py:165: in test_v33_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v34_table_classified_in_lifecycle_contract ________________
+tests/test_phase_08b_schema_v34.py:164: in test_v34_table_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v35_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08c_schema_v35.py:143: in test_v35_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+_______________ test_v37_tables_classified_in_lifecycle_contract _______________
+tests/test_phase_08d_schema_v37.py:178: in test_v37_tables_classified_in_lifecycle_contract
+    assert report["reconciliation"]["in_db_not_in_contract"] == []
+E   AssertionError: assert ['second_brai..._burden_runs'] == []
+E     
+E     Left contains 3 more items, first extra item: 'second_brain_review_burden_clusters'
+E     Use -v to get more diff
+=============================== warnings summary ===============================
+tests/test_phase_08c_financial_completeness.py: 6 warnings
+tests/test_phase_08c_financial_no_writeback.py: 2 warnings
+tests/test_phase_08c_gates.py: 2 warnings
+tests/test_phase_08c_review_required_routing.py: 1 warning
+tests/test_phase_08d_mcp_gates.py: 2 warnings
+  /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/construction/second_brain/financial_completeness.py:135: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return datetime.datetime.utcnow().isoformat() + "Z"
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_automation_executor_service.py::test_lock_acquired_before_registry_and_released_on_success
+FAILED tests/test_automation_executor_service.py::test_failed_stage_marks_downstream_skipped
+FAILED tests/test_automation_executor_service.py::test_recovery_recommendation_is_human_safe_no_secrets
+FAILED tests/test_automation_executor_service.py::test_proof_builder_passes_and_produces_evidence_shapes
+FAILED tests/test_automation_executor_service.py::test_reason_codes_and_versions_from_p01_substrate_still_present
+FAILED tests/test_automation_executor_service.py::test_p04_retry_backoff_execution_proof
+FAILED tests/test_automation_executor_service.py::test_p05_safe_replay_execution_proof
+FAILED tests/test_automation_executor_service.py::test_p07_job_health_executor_proof_and_surfaces
+FAILED tests/test_automation_executor_service.py::test_p08_automation_execution_proof_covers_all_11_and_writes_md
+FAILED tests/test_phase_08a_schema_v26.py::test_v26_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_data_quality_gates.py::test_report_covers_all_contract_gates
+FAILED tests/test_phase_08b_data_quality_gates.py::test_statuses_pass_and_defer_no_fail
+FAILED tests/test_phase_08b_data_quality_gates.py::test_no_readiness_overstatement
+FAILED tests/test_phase_08b_data_quality_gates.py::test_gates_carry_structured_reason_codes
+FAILED tests/test_phase_08b_data_quality_gates.py::test_report_carries_no_raw_content
+FAILED tests/test_phase_08b_data_quality_gates.py::test_proof_passes - Assert...
+FAILED tests/test_phase_08b_data_quality_gates.py::test_cli_phase_08b_gates_exit_zero
+FAILED tests/test_phase_08b_gate_coverage.py::test_fresh_db_gate_evaluation_is_fail_free_and_not_overstated
+FAILED tests/test_phase_08b_gate_coverage.py::test_no_writeback_proof_passes_at_latest_schema
+FAILED tests/test_phase_08b_schema_v28.py::test_v28_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v29.py::test_v29_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v30.py::test_v30_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v31.py::test_v31_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v32.py::test_v32_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v33.py::test_v33_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08b_schema_v34.py::test_v34_table_classified_in_lifecycle_contract
+FAILED tests/test_phase_08c_schema_v35.py::test_v35_tables_classified_in_lifecycle_contract
+FAILED tests/test_phase_08d_schema_v37.py::test_v37_tables_classified_in_lifecycle_contract
+pytest exit: 1

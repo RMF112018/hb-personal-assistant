@@ -1,0 +1,22 @@
+{
+  "command": "second-brain memory list",
+  "phase": "09",
+  "generated_utc": "2026-06-06T07:48:58.699585+00:00",
+  "repo_sha": "98ce969407519b941daa0e02e188d40623a0e995",
+  "status": "superseded",
+  "count": 0,
+  "items": [],
+  "metadata_only": true,
+  "loadable_into_retrieval": false,
+  "contract_version": "1.8.0-phase-09-addendum",
+  "guardrails": {
+    "explicit_confirmation_required": true,
+    "no_auto_acceptance": true,
+    "no_external_writeback": true,
+    "no_raw": true,
+    "guard_columns_false": true,
+    "non_accepted_never_loads": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

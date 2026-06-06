@@ -1,0 +1,46 @@
+{
+  "proof": "phase_09_memory_candidate_preview",
+  "command": "second-brain memory candidates proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-06T07:48:56.605220+00:00",
+  "repo_sha": "98ce969407519b941daa0e02e188d40623a0e995",
+  "status": "built",
+  "candidate_count": 7,
+  "per_type": {
+    "workflow_preference": 2,
+    "team_context": 1,
+    "system_config_fact": 3,
+    "retrieval_preference": 1
+  },
+  "rejected_reason_codes": [
+    "REJECTED_DETERMINATION",
+    "REJECTED_RAW_SHAPED"
+  ],
+  "safe_candidates_surfaced": true,
+  "raw_shaped_rejected": true,
+  "unsourced_rejected": true,
+  "determination_rejected": true,
+  "tier3_surfaced_preview_only": true,
+  "tier3_not_accepted": true,
+  "not_repeated_excluded": true,
+  "accepted_memory_unchanged": true,
+  "ltm_before": 0,
+  "ltm_after": 0,
+  "evidence_metadata_only": true,
+  "no_raw_emitted": true,
+  "metadata_only": true,
+  "guardrails": {
+    "advisory_only": true,
+    "read_only_by_default": true,
+    "no_acceptance": true,
+    "writes_accepted_memory": false,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "source_linked_only": true,
+    "bounded_statements": true,
+    "deterministic": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}

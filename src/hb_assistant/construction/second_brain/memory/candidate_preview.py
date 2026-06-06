@@ -37,7 +37,7 @@ import subprocess
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from hb_assistant.config.path_policy import PathPolicy
 
@@ -361,7 +361,7 @@ def _project_context_inputs(
     from ..retrieval.readers import read_risk_digest
 
     try:
-        items = read_risk_digest(None, None, project_key, conn=conn)
+        items = read_risk_digest(cast(Any, None), None, project_key, conn=conn)  # store unused
     except Exception:
         return []
     inputs: list[dict[str, Any]] = []
