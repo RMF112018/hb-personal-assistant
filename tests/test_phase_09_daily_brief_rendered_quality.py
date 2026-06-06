@@ -1,4 +1,10 @@
-"""Phase 09 Addendum — rendered daily-brief quality + guardrail proof tests."""
+"""Phase 09 Addendum V2 — rendered daily-brief quality + guardrail proof tests (Prompt 03).
+
+The rendered-output proof must FAIL when the executive brief carries internal proof/governance
+commentary: packet provenance table, guardrail matrix, source-coverage wall, more than one advisory
+disclaimer, a count-only schedule table without rows or a detail-unavailable notice, JSON blobs, final
+determination language, or a source-system writeback claim.
+"""
 
 from __future__ import annotations
 
@@ -25,21 +31,68 @@ def test_safe_rendered_brief_passes() -> None:
     assert result["passed"] is True, [k for k, v in result["checks"].items() if not v]
 
 
-def test_missing_advisory_notice_fails() -> None:
-    tampered = _SAMPLE_RENDERED_BRIEF.replace(rq._ADVISORY_HEADER, "## Closing Notes")
+def test_required_sections_present() -> None:
+    result = validate_rendered_brief(_packet(), _SAMPLE_RENDERED_BRIEF)
+    assert result["checks"]["required_sections_present"] is True
+    # Missing a required section fails.
+    tampered = _SAMPLE_RENDERED_BRIEF.replace("## Focus", "## Wrap-Up")
+    bad = validate_rendered_brief(_packet(), tampered)
+    assert bad["checks"]["required_sections_present"] is False
+    assert bad["passed"] is False
+
+
+def test_packet_provenance_table_fails() -> None:
+    tampered = (
+        _SAMPLE_RENDERED_BRIEF
+        + "\n\n## Provenance\n\n| packet_id | source_ref_hash |\n|---|---|\n| dbp_x | a1b2 |\n"
+    )
     result = validate_rendered_brief(_packet(), tampered)
-    assert result["checks"]["advisory_notice_present"] is False
+    assert result["checks"]["no_provenance_table"] is False
     assert result["passed"] is False
 
 
-def test_missing_stale_warning_fails_when_packet_has_stale() -> None:
-    packet = _packet()
-    assert packet["stale_or_low_confidence_warnings"]  # precondition
-    tampered = _SAMPLE_RENDERED_BRIEF.replace(
-        rq._STALE_LINE, "All aging items are current."
-    ).replace(rq._CONFIDENCE_LINE, "Confidence is adequate across the available items.")
-    result = validate_rendered_brief(packet, tampered)
-    assert result["checks"]["stale_low_confidence_warnings_present"] is False
+def test_guardrail_matrix_fails() -> None:
+    tampered = (
+        _SAMPLE_RENDERED_BRIEF
+        + "\n\n| guardrail | value |\n|---|---|\n| advisory_only | true |\n| no_writeback | true |\n"
+    )
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["no_guardrail_matrix"] is False
+    assert result["passed"] is False
+
+
+def test_source_coverage_wall_fails() -> None:
+    tampered = (
+        _SAMPLE_RENDERED_BRIEF
+        + "\n\n## Source Coverage and Confidence Notes\n\nsource_coverage_summary: families_present.\n"
+    )
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["no_source_coverage_section"] is False
+    assert result["passed"] is False
+
+
+def test_more_than_one_disclaimer_fails() -> None:
+    tampered = (
+        _SAMPLE_RENDERED_BRIEF + "\n\n_This is an advisory brief and makes no determinations._\n"
+    )
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["single_advisory_disclaimer"] is False
+    assert result["passed"] is False
+
+
+def test_count_only_schedule_table_fails() -> None:
+    tampered = (
+        _SAMPLE_RENDERED_BRIEF + "\n\n## Schedule\n\n257 critical-path activities are flagged.\n"
+    )
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["schedule_detail_or_unavailable"] is False
+    assert result["passed"] is False
+
+
+def test_json_blob_fails() -> None:
+    tampered = _SAMPLE_RENDERED_BRIEF + '\n\n```json\n{"packet_version": "V2"}\n```\n'
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["no_json_blobs"] is False
     assert result["passed"] is False
 
 
@@ -50,38 +103,17 @@ def test_final_determination_language_fails() -> None:
     assert result["passed"] is False
 
 
-def test_raw_shaped_value_fails() -> None:
-    tampered = _SAMPLE_RENDERED_BRIEF + "\n\nExport: https://example.com/raw\n"
-    result = validate_rendered_brief(_packet(), tampered)
-    assert result["checks"]["no_raw_shaped_values"] is False
-    assert result["passed"] is False
-
-
-def test_unsupported_claim_fails() -> None:
+def test_source_system_writeback_claim_fails() -> None:
     tampered = _SAMPLE_RENDERED_BRIEF + "\n\nI updated Procore and the email was sent.\n"
     result = validate_rendered_brief(_packet(), tampered)
     assert result["checks"]["no_source_system_update_claims"] is False
     assert result["passed"] is False
 
 
-def test_source_coverage_omission_fails_when_coverage_weak() -> None:
-    packet = _packet()
-    assert rq._is_weak_coverage(packet)  # precondition
-    tampered = _SAMPLE_RENDERED_BRIEF.replace(
-        rq._COVERAGE_LIMITATION_LINE, "Source coverage is complete and consistent."
-    )
-    result = validate_rendered_brief(packet, tampered)
-    assert result["checks"]["coverage_limitations_not_omitted"] is False
-    assert result["passed"] is False
-
-
-def test_unsupported_source_family_fails() -> None:
-    packet = _packet()
-    # generated_outputs has no seeded data → not in families_present → unsupported if cited raw.
-    assert "generated_outputs" not in packet["source_coverage_summary"]["families_present"]
-    tampered = _SAMPLE_RENDERED_BRIEF + "\n\nDerived from generated_outputs.\n"
-    result = validate_rendered_brief(packet, tampered)
-    assert result["checks"]["no_unsupported_source_families"] is False
+def test_raw_shaped_value_fails() -> None:
+    tampered = _SAMPLE_RENDERED_BRIEF + "\n\nExport: https://example.com/raw\n"
+    result = validate_rendered_brief(_packet(), tampered)
+    assert result["checks"]["no_raw_shaped_values"] is False
     assert result["passed"] is False
 
 

@@ -1,12 +1,17 @@
-"""Phase 09 Addendum — rendered daily-brief quality + guardrail validation (review-only).
+"""Phase 09 Addendum V2 — rendered daily-brief quality + guardrail validation (review-only).
 
-A deterministic, local validation surface for Claude-*rendered* daily-brief markdown that an operator
-copies/exports back into the repo for review. Given a rendered brief and its source
-``DailyBriefHandoffPacketV1``, it verifies the rendered text preserved the required sections/warnings
-and did not overclaim: no final determinations, no raw-shaped values, no fabricated source families, no
-source-system update claims, and no omission of packet-level coverage limitations. Conditional checks
-only fail when they apply to the packet (e.g. a review-required warning is required only when the packet
-carries review-required items).
+A deterministic, local validation surface for Claude-*rendered* daily-brief markdown (Daily Brief V2)
+that an operator copies/exports back into the repo for review. The V2 executive brief is concise and
+free of internal proof/governance commentary, so validation is **structural + forbidden-content**:
+
+- it must carry the five executive sections (Yesterday / Today / Next 7 Days / Needs Attention /
+  Focus) and a single one-line advisory footer;
+- it must NOT render any internal proof/governance content (packet provenance/hash table, guardrail
+  matrix, source-coverage wall, source-family lists / relationship counts, proof paths, generated
+  utc, mode/dry-run commentary, suggested follow-up questions, raw JSON), must not repeat the
+  advisory disclaimer, must not present a count-only schedule table without activity rows or a
+  "detail unavailable" notice, must make no final determination, and must claim no source-system
+  writeback.
 
 IMPORTANT: this is for output-quality review only. Claude-rendered text is never imported into trusted
 retrieval / memory / source-of-truth surfaces.
@@ -20,6 +25,7 @@ CLI: hb-assistant second-brain daily-brief rendered-proof --packet <path> --rend
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import tempfile
 from datetime import datetime, timezone
@@ -27,27 +33,23 @@ from pathlib import Path
 from typing import Any
 
 from ..financial_review_routing import _assert_no_raw
-from ..retrieval import ALLOWLISTED_SOURCE_FAMILIES
 
 EVIDENCE_DIR = "docs/evidence/construction-intelligence-phase-09-daily-brief-mcp-handoff"
 _PROOF_JSON = "daily-brief-rendered-quality-proof.json"
 _PROOF_MD = "daily-brief-rendered-quality-proof.md"
 _FIXTURE_MD = "daily-brief-rendered-quality-fixture.md"
 
-# The 7 required executive-brief section headers (lower-cased for matching).
-_SECTION_HEADERS: tuple[str, ...] = (
-    "what matters today",
-    "review-required items",
-    "aging / stale items",
-    "meeting prep",
-    "risk watchlist",
-    "source coverage and confidence notes",
-    "suggested follow-up questions",
+# The five required executive-brief sections + title (lower-cased for matching).
+_REQUIRED_SECTIONS: tuple[str, ...] = (
+    "# daily brief",
+    "## yesterday",
+    "## today",
+    "## next 7 days",
+    "## needs attention",
+    "## focus",
 )
 
-# Affirmative final-determination language. Deliberately NOT the packet's
-# `_reject_final_determination` lexicon: a faithful brief's Advisory Notice legitimately says
-# "makes no ... determinations", so only affirmative determination phrasing is flagged here.
+# Affirmative final-determination language (only affirmative phrasing is flagged).
 _DETERMINATION_PHRASES: tuple[str, ...] = (
     "approve payment",
     "approved for payment",
@@ -86,73 +88,46 @@ _SOURCE_UPDATE_PHRASES: tuple[str, ...] = (
     "updated the source system",
 )
 
-_LIMITATION_KEYWORDS: tuple[str, ...] = (
-    "limit",
-    "no data",
-    "weak",
-    "insufficient",
-    "partial",
-    "not available",
-    "coverage gap",
-    "empty",
-    "missing",
-    "unknown",
+# Internal proof/governance content that must NEVER appear in the executive brief body.
+_PROVENANCE_MARKERS: tuple[str, ...] = (
+    "packet_id",
+    "source_ref_hash",
+    "source ref hash",
+    "packet hash",
+    "correlation id",
+    "provenance",
 )
-
-# --- Safe fixture (passes every check against the seeded sample packet) ---------------------------
-
-_FIXTURE_DATE = "2026-06-02"
-_STALE_LINE = (
-    "One aging RFI is flagged stale and low-confidence; confirm the current status before acting."
+_COVERAGE_MARKERS: tuple[str, ...] = (
+    "## source coverage",
+    "source_coverage_summary",
+    "families_present",
+    "coverage_warnings",
+    "source coverage and confidence",
 )
-_CONFIDENCE_LINE = "Confidence is mixed; some items are low-confidence and are called out above."
-_COVERAGE_LIMITATION_LINE = (
-    "Note: source coverage is partial — some source families have no data available in today's "
-    "packet, so treat gaps as unknown rather than resolved."
+_SOURCE_FAMILY_MARKERS: tuple[str, ...] = (
+    "source_family",
+    "cross_source_relationships",
+    "review_controlled_correspondence_context",
+    "procore_action_signals",
+    "calendar_event_index",
+    "accepted_long_term_memory",
+    "meeting_prep_brief_sections",
 )
-_ADVISORY_HEADER = "## Advisory Notice"
-
-_SAMPLE_RENDERED_BRIEF = f"""# Daily Construction Executive Brief — {_FIXTURE_DATE}
-
-## What Matters Today
-
-- Project P1 has open exposure that warrants attention; treat the items below as advisory signals only.
-- One item requires review before any action is taken.
-
-## Review-Required Items
-
-- There is one review-required item in today's packet. It is flagged review-required and must be
-  confirmed against the source system before acting.
-
-## Aging / Stale Items
-
-- {_STALE_LINE}
-
-## Meeting Prep
-
-- No meeting prep items are present in today's packet.
-
-## Risk Watchlist
-
-- One schedule-slip risk signal is noted for project P1 as an advisory indicator only.
-
-## Source Coverage and Confidence Notes
-
-- {_COVERAGE_LIMITATION_LINE}
-- {_CONFIDENCE_LINE}
-
-## Suggested Follow-Up Questions
-
-- Which review-required item should be prioritized first?
-- Which aging item is closest to its threshold?
-
-{_ADVISORY_HEADER}
-
-This brief is advisory and source-linked. It was rendered from the approved metadata-only packet only
-and makes no legal, financial, safety, claim, payment, entitlement, schedule-certification, or
-contractual determinations. This brief made no changes to any source system. Confirm all flagged items
-against the source systems before acting.
-"""
+_PROOF_PATH_MARKERS: tuple[str, ...] = (
+    "docs/evidence",
+    "proof_path",
+    "proof_md_path",
+    "-proof.json",
+)
+_GUARDRAIL_TOKENS: tuple[str, ...] = (
+    "advisory_only",
+    "no_writeback",
+    "metadata_only",
+    "claude_rendering_only",
+    "no_final_determinations",
+    "source_linked",
+    "no_raw",
+)
 
 
 class RenderedBriefQualityError(RuntimeError):
@@ -174,29 +149,46 @@ def _repo_sha() -> str:
         return "unknown"
 
 
-def _is_weak_coverage(packet: dict[str, Any]) -> bool:
-    cov = packet.get("source_coverage_summary", {}) or {}
-    if cov.get("coverage_warnings"):
+def _section_text(low: str, header: str) -> str:
+    """Return a section's text from its ``## header`` to the next ``## `` (lower-cased input)."""
+    idx = low.find(header)
+    if idx == -1:
+        return ""
+    rest = low[idx + len(header) :]
+    nxt = rest.find("\n## ")
+    return rest if nxt == -1 else rest[:nxt]
+
+
+def _has_guardrail_matrix(low: str) -> bool:
+    if "| guardrail" in low or "guardrail matrix" in low:
         return True
-    if str(cov.get("degradation_mode") or "") in ("blocked", "degraded", "partial"):
+    return sum(1 for t in _GUARDRAIL_TOKENS if t in low) >= 2
+
+
+def _has_json_blob(md: str) -> bool:
+    if "```json" in md.lower():
         return True
-    return str(cov.get("context_quality_class") or "") in ("insufficient", "partial")
+    return bool(re.search(r'[\{\[]\s*"[\w_]+"\s*:', md))
+
+
+def _focus_item_count(low: str) -> int:
+    focus = _section_text(low, "## focus")
+    return len(re.findall(r"(?m)^\s*\d+\.\s", focus))
+
+
+def _schedule_detail_or_unavailable(low: str) -> bool:
+    """A schedule section, if present, must carry table rows or a 'detail unavailable' notice —
+    never a count-only schedule table."""
+    sched = _section_text(low, "## schedule")
+    if not sched.strip():
+        return True
+    return ("|" in sched) or ("detail unavailable" in sched)
 
 
 def validate_rendered_brief(packet: dict[str, Any], rendered_md: str) -> dict[str, Any]:
-    """Validate a rendered brief against its source packet. Pure; returns per-check results."""
+    """Validate a rendered V2 brief. Structural + forbidden-content; ``packet`` is accepted for
+    signature stability but the V2 brief is validated on its own (governance is not rendered)."""
     low = rendered_md.lower()
-    # Body with the section headers stripped, so a header word (e.g. "Stale") in the section title is
-    # not mistaken for an actual preserved warning.
-    body = low
-    for header in _SECTION_HEADERS:
-        body = body.replace(header, " ")
-
-    cov = packet.get("source_coverage_summary", {}) or {}
-    families_present = set(cov.get("families_present", []) or [])
-    has_review_required = bool(packet.get("review_required_items"))
-    has_stale = bool(packet.get("stale_or_low_confidence_warnings"))
-    weak = _is_weak_coverage(packet)
 
     try:
         _assert_no_raw(rendered_md, "rendered brief")
@@ -204,45 +196,81 @@ def validate_rendered_brief(packet: dict[str, Any], rendered_md: str) -> dict[st
     except ValueError:
         no_raw = False
 
-    unsupported_families = [
-        fam for fam in ALLOWLISTED_SOURCE_FAMILIES if fam in low and fam not in families_present
-    ]
-    source_update_hits = [p for p in _SOURCE_UPDATE_PHRASES if p in low]
     determination_hits = [p for p in _DETERMINATION_PHRASES if p in low]
+    source_update_hits = [p for p in _SOURCE_UPDATE_PHRASES if p in low]
 
     checks: dict[str, bool] = {
-        "sections_present": all(h in low for h in _SECTION_HEADERS),
-        "advisory_notice_present": "advisory notice" in low,
-        "source_coverage_section_present": "source coverage" in low,
-        "review_required_warnings_present": (not has_review_required)
-        or ("review-required" in body or "review required" in body),
-        "stale_low_confidence_warnings_present": (not has_stale)
-        or ("stale" in body or "low-confidence" in body or "low confidence" in body),
+        "required_sections_present": all(h in low for h in _REQUIRED_SECTIONS),
+        "single_advisory_disclaimer": low.count("advisory") <= 1,
+        "focus_items_within_limit": _focus_item_count(low) <= 5,
+        "no_provenance_table": not any(m in low for m in _PROVENANCE_MARKERS),
+        "no_guardrail_matrix": not _has_guardrail_matrix(low),
+        "no_source_coverage_section": not any(m in low for m in _COVERAGE_MARKERS),
+        "no_source_family_lists": not any(m in low for m in _SOURCE_FAMILY_MARKERS),
+        "no_proof_paths": not any(m in low for m in _PROOF_PATH_MARKERS),
+        "no_generated_utc": "generated_utc" not in low and "generated utc" not in low,
+        "no_mode_dry_run": "dry_run" not in low and "dry-run" not in low,
+        "no_follow_up_questions": "follow-up question" not in low
+        and "suggested follow-up" not in low,
+        "no_json_blobs": not _has_json_blob(rendered_md),
+        "schedule_detail_or_unavailable": _schedule_detail_or_unavailable(low),
         "no_final_determinations": not determination_hits,
-        "no_raw_shaped_values": no_raw,
-        "no_unsupported_source_families": not unsupported_families,
         "no_source_system_update_claims": not source_update_hits,
-        "coverage_limitations_not_omitted": (not weak)
-        or any(k in low for k in _LIMITATION_KEYWORDS),
+        "no_raw_shaped_values": no_raw,
     }
 
     return {
         "passed": all(checks.values()),
         "checks": checks,
-        "packet_weak_coverage": weak,
-        "packet_has_review_required": has_review_required,
-        "packet_has_stale": has_stale,
-        "unsupported_families": unsupported_families,
-        "source_update_hits": source_update_hits,
+        "focus_item_count": _focus_item_count(low),
+        "advisory_disclaimer_count": low.count("advisory"),
         "determination_hits": determination_hits,
+        "source_update_hits": source_update_hits,
     }
 
 
-# --- Proof ---------------------------------------------------------------------------------------
+# --- Safe fixture (passes every check) ------------------------------------------------------------
+
+_FIXTURE_DATE = "2026-06-02"
+
+_SAMPLE_RENDERED_BRIEF = f"""# Daily Brief — {_FIXTURE_DATE}
+
+## Yesterday
+- Owner review meeting was held for Tropical; coordination items were discussed.
+- Several email threads on Tropical saw activity, including submittal coordination.
+
+## Today
+| Time | Meeting | Project | Prep / Related Items |
+|---|---|---|---|
+| 09:00–10:00 | Project coordination sync | Tropical | Review open coordination items before the call |
+
+## Next 7 Days
+| Date | Project | Item | Type | Responsible | Why It Matters |
+|---|---|---|---|---|---|
+| 2026-06-05 | Tropical | RFI response | rfis | Detail unavailable | Response is due this week; confirm status |
+
+## Needs Attention
+| Priority | Project | Item | Reason | Recommended Focus |
+|---|---|---|---|---|
+| High | Tropical | Activity at or below zero float | Critical-path schedule signal | Confirm float against the schedule of record |
+| Medium | Tropical | Open RFIs | Detail unavailable for individual RFIs | Review the RFI log directly |
+
+## Focus
+1. Confirm the zero-float activity on Tropical before its deadline.
+2. Prepare for today's coordination sync.
+3. Check the RFI due on 2026-06-05.
+
+---
+_Source-linked advisory brief. Verify in source systems before final action._
+"""
 
 
 def _sample_packet() -> dict[str, Any]:
-    """Build a realistic sample packet over controlled, metadata-only seed inputs (temp DB)."""
+    """Build a realistic sample packet over controlled, metadata-only seed inputs (temp DB).
+
+    Retained for callers that pass a packet to ``validate_rendered_brief`` (e.g. the output-receipt
+    proof). The V2 validator does not depend on packet shape.
+    """
     from .packet import _seed_proof_db, build_daily_brief_packet
 
     tmp = tempfile.mkdtemp()
@@ -255,45 +283,54 @@ def _tampered_variants() -> dict[str, tuple[str, str]]:
     """name -> (tampered rendered text, the check expected to fail)."""
     safe = _SAMPLE_RENDERED_BRIEF
     return {
-        "missing_advisory_notice": (
-            safe.replace(_ADVISORY_HEADER, "## Closing Notes"),
-            "advisory_notice_present",
+        "packet_provenance_table": (
+            safe
+            + "\n\n## Provenance\n\n| packet_id | source_ref_hash |\n|---|---|\n| dbp_x | a1b2 |\n",
+            "no_provenance_table",
         ),
-        "missing_stale_warning": (
-            safe.replace(_STALE_LINE, "All aging items are current.").replace(
-                _CONFIDENCE_LINE, "Confidence is adequate across the available items."
-            ),
-            "stale_low_confidence_warnings_present",
+        "guardrail_matrix": (
+            safe
+            + "\n\n## Guardrails\n\n| guardrail | value |\n|---|---|\n"
+            + "| advisory_only | true |\n| no_writeback | true |\n| metadata_only | true |\n",
+            "no_guardrail_matrix",
+        ),
+        "source_coverage_wall": (
+            safe
+            + "\n\n## Source Coverage and Confidence Notes\n\nsource_coverage_summary: "
+            + "families_present across 6 families; coverage_warnings none.\n",
+            "no_source_coverage_section",
+        ),
+        "multiple_disclaimers": (
+            safe + "\n\n_This is an advisory brief and makes no determinations._\n",
+            "single_advisory_disclaimer",
+        ),
+        "count_only_schedule": (
+            safe + "\n\n## Schedule\n\n257 critical-path activities are flagged this period.\n",
+            "schedule_detail_or_unavailable",
+        ),
+        "json_blob": (
+            safe + '\n\n```json\n{"packet_version": "DailyBriefHandoffPacketV2"}\n```\n',
+            "no_json_blobs",
         ),
         "final_determination_language": (
             safe + "\n\nDecision: we approve payment of the pending claim.\n",
             "no_final_determinations",
         ),
-        "raw_shaped_value": (
-            safe + "\n\nFull export available at https://example.com/raw.\n",
-            "no_raw_shaped_values",
-        ),
         "source_system_update_claim": (
             safe + "\n\nI updated Procore and the email was sent to the team.\n",
             "no_source_system_update_claims",
-        ),
-        "coverage_omitted_when_weak": (
-            safe.replace(_COVERAGE_LIMITATION_LINE, "Source coverage is complete and consistent."),
-            "coverage_limitations_not_omitted",
         ),
     }
 
 
 def _render_proof_md(proof: dict[str, Any]) -> str:
     lines = [
-        "# Phase 09 — Rendered Daily Brief Quality Proof",
+        "# Phase 09 Addendum V2 — Rendered Daily Brief Quality Proof",
         "",
         f"- proof_passed: {proof['proof_passed']}",
         f"- generated_utc: {proof['generated_utc']}",
         f"- safe_fixture_passed: {proof['safe_fixture_passed']}",
-        f"- packet_weak_coverage: {proof['packet_weak_coverage']}",
-        f"- packet_has_review_required: {proof['packet_has_review_required']}",
-        f"- packet_has_stale: {proof['packet_has_stale']}",
+        f"- check_count: {proof['check_count']}",
         "",
         "## Tampered variants (each must fail its expected check)",
         "",
@@ -311,7 +348,7 @@ def build_daily_brief_rendered_quality_proof(
     *, evidence_dir: str | None = None, write_evidence: bool = True
 ) -> dict[str, Any]:
     """Fail-closed proof: the safe fixture passes every check, and each tampered variant fails exactly
-    its expected check (read-only; uses controlled seed inputs)."""
+    its expected forbidden-content check (read-only; the brief is validated on its own)."""
     packet = _sample_packet()
     safe_result = validate_rendered_brief(packet, _SAMPLE_RENDERED_BRIEF)
 
@@ -329,27 +366,17 @@ def build_daily_brief_rendered_quality_proof(
             "overall_passed": result["passed"],
         }
 
-    packet_weak = bool(safe_result["packet_weak_coverage"])
-    proof_passed = bool(
-        safe_result["passed"]
-        and all_variants_fail_expected
-        and packet_weak
-        and safe_result["packet_has_review_required"]
-        and safe_result["packet_has_stale"]
-    )
+    proof_passed = bool(safe_result["passed"] and all_variants_fail_expected)
 
     proof: dict[str, Any] = {
-        "proof": "phase_09_daily_brief_rendered_quality",
+        "proof": "phase_09_addendum_daily_brief_rendered_quality",
         "command": "second-brain daily-brief rendered-proof",
-        "phase": "09",
+        "phase": "09-addendum-v2",
         "proof_passed": proof_passed,
         "generated_utc": _now(),
         "repo_sha": _repo_sha(),
         "safe_fixture_passed": safe_result["passed"],
         "safe_fixture_checks": safe_result["checks"],
-        "packet_weak_coverage": packet_weak,
-        "packet_has_review_required": safe_result["packet_has_review_required"],
-        "packet_has_stale": safe_result["packet_has_stale"],
         "tampered_variants": variant_reports,
         "check_count": len(safe_result["checks"]),
         "metadata_only": True,

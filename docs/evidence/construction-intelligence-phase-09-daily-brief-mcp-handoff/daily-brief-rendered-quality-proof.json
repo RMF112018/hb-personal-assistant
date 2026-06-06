@@ -1,34 +1,57 @@
 {
-  "proof": "phase_09_daily_brief_rendered_quality",
+  "proof": "phase_09_addendum_daily_brief_rendered_quality",
   "command": "second-brain daily-brief rendered-proof",
-  "phase": "09",
+  "phase": "09-addendum-v2",
   "proof_passed": true,
-  "generated_utc": "2026-06-06T10:38:53.037851+00:00",
-  "repo_sha": "fa7dfb412ea967823d863e59e61b169ba2fc0dda",
+  "generated_utc": "2026-06-06T14:27:54.620945+00:00",
+  "repo_sha": "3965ccb05aebb83bde430651a3896ddcdff77d64",
   "safe_fixture_passed": true,
   "safe_fixture_checks": {
-    "sections_present": true,
-    "advisory_notice_present": true,
-    "source_coverage_section_present": true,
-    "review_required_warnings_present": true,
-    "stale_low_confidence_warnings_present": true,
+    "required_sections_present": true,
+    "single_advisory_disclaimer": true,
+    "focus_items_within_limit": true,
+    "no_provenance_table": true,
+    "no_guardrail_matrix": true,
+    "no_source_coverage_section": true,
+    "no_source_family_lists": true,
+    "no_proof_paths": true,
+    "no_generated_utc": true,
+    "no_mode_dry_run": true,
+    "no_follow_up_questions": true,
+    "no_json_blobs": true,
+    "schedule_detail_or_unavailable": true,
     "no_final_determinations": true,
-    "no_raw_shaped_values": true,
-    "no_unsupported_source_families": true,
     "no_source_system_update_claims": true,
-    "coverage_limitations_not_omitted": true
+    "no_raw_shaped_values": true
   },
-  "packet_weak_coverage": true,
-  "packet_has_review_required": true,
-  "packet_has_stale": true,
   "tampered_variants": {
-    "missing_advisory_notice": {
-      "expected_failed_check": "advisory_notice_present",
+    "packet_provenance_table": {
+      "expected_failed_check": "no_provenance_table",
       "expected_check_failed": true,
       "overall_passed": false
     },
-    "missing_stale_warning": {
-      "expected_failed_check": "stale_low_confidence_warnings_present",
+    "guardrail_matrix": {
+      "expected_failed_check": "no_guardrail_matrix",
+      "expected_check_failed": true,
+      "overall_passed": false
+    },
+    "source_coverage_wall": {
+      "expected_failed_check": "no_source_coverage_section",
+      "expected_check_failed": true,
+      "overall_passed": false
+    },
+    "multiple_disclaimers": {
+      "expected_failed_check": "single_advisory_disclaimer",
+      "expected_check_failed": true,
+      "overall_passed": false
+    },
+    "count_only_schedule": {
+      "expected_failed_check": "schedule_detail_or_unavailable",
+      "expected_check_failed": true,
+      "overall_passed": false
+    },
+    "json_blob": {
+      "expected_failed_check": "no_json_blobs",
       "expected_check_failed": true,
       "overall_passed": false
     },
@@ -37,23 +60,13 @@
       "expected_check_failed": true,
       "overall_passed": false
     },
-    "raw_shaped_value": {
-      "expected_failed_check": "no_raw_shaped_values",
-      "expected_check_failed": true,
-      "overall_passed": false
-    },
     "source_system_update_claim": {
       "expected_failed_check": "no_source_system_update_claims",
       "expected_check_failed": true,
       "overall_passed": false
-    },
-    "coverage_omitted_when_weak": {
-      "expected_failed_check": "coverage_limitations_not_omitted",
-      "expected_check_failed": true,
-      "overall_passed": false
     }
   },
-  "check_count": 10,
+  "check_count": 16,
   "metadata_only": true,
   "review_only": true,
   "guardrails": {

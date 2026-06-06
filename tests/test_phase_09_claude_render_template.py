@@ -45,14 +45,29 @@ def test_templates_forbid_direct_tools_and_determinations() -> None:
         assert c["no_determinations"]
 
 
-def test_templates_preserve_warnings_and_coverage() -> None:
+def test_templates_render_payload_only_and_detail_unavailable() -> None:
     proof = build_claude_render_template_proof(write_evidence=False)
     for report in proof["templates"].values():
         c = report["checks"]
-        assert c["preserve_review_required"]
-        assert c["preserve_stale"] and c["preserve_low_confidence"]
-        assert c["include_source_coverage"]
-        assert c["include_follow_up_questions"]
+        assert c["renders_render_payload"]
+        assert c["never_governance_metadata"]
+        assert c["detail_unavailable"]
+        assert c["use_project_names"]
+        assert c["one_line_footer"]
+        assert c["focus_limit"]
+
+
+def test_templates_forbid_governance_rendering() -> None:
+    proof = build_claude_render_template_proof(write_evidence=False)
+    for report in proof["templates"].values():
+        c = report["checks"]
+        assert c["forbid_provenance"]
+        assert c["forbid_guardrail_matrix"]
+        assert c["forbid_source_coverage_body"]
+        assert c["forbid_follow_up"]
+        assert c["forbid_generated_utc"]
+        assert c["forbid_dry_run"]
+        assert c["forbid_raw_json"]
 
 
 def test_templates_state_storage_policy() -> None:
@@ -66,21 +81,18 @@ def test_templates_state_storage_policy() -> None:
         assert c["storage_no_source_linked_proof"]
 
 
-def test_templates_have_seven_sections_and_advisory_notice() -> None:
+def test_templates_have_five_executive_sections() -> None:
     proof = build_claude_render_template_proof(write_evidence=False)
     section_keys = [
-        "section_what_matters_today",
-        "section_review_required_items",
-        "section_aging_stale_items",
-        "section_meeting_prep",
-        "section_risk_watchlist",
-        "section_source_coverage_notes",
-        "section_follow_up_questions",
+        "section_yesterday",
+        "section_today",
+        "section_next_7_days",
+        "section_needs_attention",
+        "section_focus",
     ]
     for report in proof["templates"].values():
         for k in section_keys:
             assert report["checks"][k], k
-        assert report["checks"]["advisory_notice"]
 
 
 def test_templates_are_no_raw_clean() -> None:

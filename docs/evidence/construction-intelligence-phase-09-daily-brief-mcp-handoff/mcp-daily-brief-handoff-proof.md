@@ -1,7 +1,7 @@
 # Phase 09 — MCP Daily Brief Handoff Tool Proof
 
 - proof_passed: True
-- generated_utc: 2026-06-06T10:07:53.148989+00:00
+- generated_utc: 2026-06-06T14:27:56.719794+00:00
 - tool: hb_daily_brief_packet
 - tool_registered: True
 - dispatch_allowed: True

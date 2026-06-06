@@ -1,12 +1,15 @@
 """Phase 09 Addendum — Claude scheduled-task rendering template proof.
 
 Statically validates the two operator-facing Claude prompt templates that drive daily-brief rendering
-through the MCP packet tool: each must instruct Claude to call only ``hb_daily_brief_packet``, use only
-the returned packet, request no raw records, call no direct database/Graph/Procore/vector/memory tools,
-make no final determinations, preserve review-required + stale/low-confidence warnings, include source
-coverage + suggested follow-up questions, carry the 7-section output format + Advisory Notice, and state
-the storage policy (rendered output is narrative/advisory, never imported into source-of-truth surfaces).
-Read-only; the templates and proof are scanned for raw-shaped values (fail-closed).
+through the MCP packet tool (Daily Brief V2): each must instruct Claude to call only
+``hb_daily_brief_packet``, render only the ``render_payload`` (never ``governance_metadata``), request
+no raw records, call no direct database/Graph/Procore/vector/memory tools, make no final
+determinations, produce the concise 5-section executive structure (Yesterday / Today / Next 7 Days /
+Needs Attention / Focus) with a one-line advisory footer, write "detail unavailable" instead of bare
+counts, explicitly NOT render provenance/guardrail/source-coverage/follow-up/generated-utc/dry-run/raw
+json, and state the storage policy (rendered output is narrative/advisory, never imported into
+source-of-truth surfaces). Read-only; the templates and proof are scanned for raw-shaped values
+(fail-closed).
 
 Public entry point:
   build_claude_render_template_proof(*, evidence_dir=None, write_evidence=True) -> dict
@@ -38,9 +41,11 @@ _TEMPLATES: dict[str, str] = {
 }
 
 # (check label, required case-insensitive substring) — every template must satisfy all of these.
+# Daily Brief V2 (Prompt 03): concise executive structure rendered from render_payload only.
 _REQUIRED_SUBSTRINGS: tuple[tuple[str, str], ...] = (
     ("calls_packet_tool", "hb_daily_brief_packet"),
-    ("use_only_packet", "use only that packet"),
+    ("renders_render_payload", "render_payload"),
+    ("never_governance_metadata", "governance_metadata"),
     ("no_raw_records", "do not request raw records"),
     ("forbid_database", "database"),
     ("forbid_graph", "graph"),
@@ -48,22 +53,27 @@ _REQUIRED_SUBSTRINGS: tuple[tuple[str, str], ...] = (
     ("forbid_vector", "vector"),
     ("forbid_memory_mutation", "memory mutation"),
     ("no_determinations", "determinations"),
-    ("preserve_review_required", "review-required"),
-    ("preserve_stale", "stale"),
-    ("preserve_low_confidence", "low-confidence"),
-    ("include_source_coverage", "source coverage"),
-    ("include_follow_up_questions", "suggested follow-up questions"),
-    ("concise", "concise"),
+    ("brief", "brief"),
+    ("descriptive", "descriptive"),
     ("executive", "executive"),
-    ("advisory_notice", "advisory notice"),
-    # 7 output sections
-    ("section_what_matters_today", "what matters today"),
-    ("section_review_required_items", "review-required items"),
-    ("section_aging_stale_items", "aging / stale items"),
-    ("section_meeting_prep", "meeting prep"),
-    ("section_risk_watchlist", "risk watchlist"),
-    ("section_source_coverage_notes", "source coverage and confidence notes"),
-    ("section_follow_up_questions", "suggested follow-up questions"),
+    ("use_project_names", "project names/keys"),
+    ("detail_unavailable", "detail unavailable"),
+    ("focus_limit", "no more than 3"),
+    ("one_line_footer", "verify in source systems before final action"),
+    # 5 output sections
+    ("section_yesterday", "## yesterday"),
+    ("section_today", "## today"),
+    ("section_next_7_days", "## next 7 days"),
+    ("section_needs_attention", "## needs attention"),
+    ("section_focus", "## focus"),
+    # explicit "do not render" prohibitions
+    ("forbid_provenance", "provenance"),
+    ("forbid_guardrail_matrix", "guardrail matrix"),
+    ("forbid_source_coverage_body", "source coverage"),
+    ("forbid_follow_up", "follow-up"),
+    ("forbid_generated_utc", "generated utc"),
+    ("forbid_dry_run", "dry-run"),
+    ("forbid_raw_json", "raw json"),
     # storage policy
     ("storage_not_source_truth", "not source truth"),
     ("storage_no_accepted_memory", "accepted memory"),

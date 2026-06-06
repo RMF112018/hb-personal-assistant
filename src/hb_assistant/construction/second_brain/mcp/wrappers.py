@@ -221,14 +221,15 @@ def mcp_daily_brief_packet_wrapper(
 ) -> dict[str, Any]:
     """hb_daily_brief_packet — application-generated daily brief handoff packet.
 
-    Returns the metadata-only ``DailyBriefHandoffPacketV1`` (Prompt 01 builder) for the requested
-    date/project scope, for Claude scheduled rendering only. Read-only, source-linked, no raw, no
-    writeback, no final determination; reuses the existing daily-brief assembly (no retrieval logic
-    here). Fails closed to a safe degraded metadata error on any failure. The full packet rides in
-    ``results[0]``.
+    Returns the metadata-only ``DailyBriefHandoffPacketV2`` (render_payload / governance_metadata
+    split) for the requested date/project scope, for Claude scheduled rendering only. Claude renders
+    only ``render_payload``; ``governance_metadata`` is never rendered. Read-only, source-linked, no
+    raw, no writeback, no final determination; reuses the existing daily-brief assembly (no retrieval
+    logic here). Fails closed to a safe degraded metadata error on any failure. The full packet rides
+    in ``results[0]``.
     """
     try:
-        from ..daily_brief.packet import build_daily_brief_packet
+        from ..daily_brief.packet import build_daily_brief_packet_v2
 
         date_arg = arguments.get("date")
         scope = arguments.get("project_scope")
@@ -236,18 +237,26 @@ def mcp_daily_brief_packet_wrapper(
         brief_date = str(date_arg) if date_arg else date.today().isoformat()
         project_key = None if (scope is None or str(scope) == "all") else str(scope)
 
-        packet = build_daily_brief_packet(
+        packet = build_daily_brief_packet_v2(
             brief_date=brief_date, project_key=project_key, mode="dry_run", db_path=db_path
         )
         if include_rendering is False:
-            packet = {k: v for k, v in packet.items() if k != "rendering_instructions"}
+            governance = {
+                k: v
+                for k, v in packet.get("governance_metadata", {}).items()
+                if k != "rendering_instructions"
+            }
+            packet = {**packet, "governance_metadata": governance}
 
         source_count = int(
-            packet.get("source_coverage_summary", {}).get("source_ref_count", 0) or 0
+            packet.get("governance_metadata", {})
+            .get("source_coverage_summary", {})
+            .get("source_ref_count", 0)
+            or 0
         )
         return _bounded(
             "ok",
-            "daily brief handoff packet (DailyBriefHandoffPacketV1; read-only)",
+            "daily brief handoff packet (DailyBriefHandoffPacketV2; render_payload only; read-only)",
             [packet],
             source_count=source_count,
             classification="daily_brief_handoff_packet",

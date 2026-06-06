@@ -2,59 +2,77 @@
 
 > Operator prompt template for a Claude scheduled task. Paste as the task instruction.
 > The MCP tool is `hb_daily_brief_packet` (also known as `construction_daily_brief_packet` /
-> `get_daily_brief_handoff`). It returns the approved, metadata-only `DailyBriefHandoffPacketV1`.
+> `get_daily_brief_handoff`). It returns the approved, metadata-only `DailyBriefHandoffPacketV2`,
+> which splits a user-facing `render_payload` from internal `governance_metadata`.
 
 ## Prompt
 
-You are producing a human-readable construction executive daily brief.
+You are producing a concise, executive-facing construction daily brief.
 
 Call the MCP tool `hb_daily_brief_packet` for today's approved daily brief handoff packet.
 
-Use only that packet. Do not request raw records. Do not call direct database, Graph, Procore, vector,
-calendar, email, memory mutation, or filesystem tools. Do not make legal, financial, safety, claim,
-payment, entitlement, schedule-certification, or contractual determinations.
+Render **only** the `render_payload`. Never render anything from `governance_metadata`. Use only that
+packet. Do not request raw records. Do not call direct database, Graph, Procore, vector, calendar,
+email, memory mutation, or filesystem tools. Do not make legal, financial, safety, claim, payment,
+entitlement, schedule-certification, or contractual determinations.
 
-Write a concise, executive-facing brief with these sections:
+Write a brief, descriptive, executive-facing brief. Use project names/keys. Surface record-level
+detail where the packet provides it. Where a section's `detail_available` is false, write
+"detail unavailable" with the section's reason instead of a bare count. Keep focus recommendations
+practical and include no more than 3–5 focus items.
 
-1. What matters today
-2. Review-required items
-3. Aging / stale items
-4. Meeting prep
-5. Risk watchlist
-6. Source coverage and confidence notes
-7. Suggested follow-up questions
+Produce exactly these sections, in this order:
 
-Preserve all review-required, stale, low-confidence, advisory-only, and no-determination warnings
-exactly as carried in the packet. Include the source coverage note. Include the suggested follow-up
-questions from the packet. Keep the brief concise and executive-facing.
+1. Yesterday — short bullets on what happened (meetings held, notable activity).
+2. Today — a table of today's agenda.
+3. Next 7 Days — a table of upcoming deadlines.
+4. Needs Attention — a table of what needs attention (schedule, RFIs, submittals, punch, procurement).
+5. Focus — 3–5 practical, numbered focus items.
 
-If the packet is empty or source coverage is weak, say so plainly and do not invent content.
+End with a single one-line advisory footer (one line only):
+`Source-linked advisory brief. Verify in source systems before final action.`
+
+### Do not render
+
+Do not render any of the following in the brief: the packet provenance table, any packet hash /
+correlation table, source coverage as a body section, the guardrail matrix, long advisory blocks or
+repeated no-final-determination disclaimers, source-family lists, internal relationship-count
+summaries, proof paths, the generated utc timestamp, mode / dry-run commentary, suggested follow-up
+questions, or raw json. Keep it to the five sections plus the one-line footer.
 
 ## Output Format
 
 ```markdown
-# Daily Construction Executive Brief — {{date}}
+# Daily Brief — {{date}}
 
-## What Matters Today
+## Yesterday
+- Bullet
+- Bullet
+- Bullet
 
-## Review-Required Items
+## Today
+| Time | Meeting | Project | Prep / Related Items |
+|---|---|---|---|
 
-## Aging / Stale Items
+## Next 7 Days
+| Date | Project | Item | Type | Responsible | Why It Matters |
+|---|---|---|---|---|---|
 
-## Meeting Prep
+## Needs Attention
+| Priority | Project | Item | Reason | Recommended Focus |
+|---|---|---|---|---|
 
-## Risk Watchlist
+## Focus
+1. Focus item
+2. Focus item
+3. Focus item
 
-## Source Coverage and Confidence Notes
-
-## Suggested Follow-Up Questions
-
-## Advisory Notice
+---
+_Source-linked advisory brief. Verify in source systems before final action._
 ```
 
-The **Advisory Notice** must state that this brief is advisory and source-linked, was rendered from the
-approved metadata-only packet only, makes no final determinations, and that all review-required and
-stale/low-confidence warnings must be confirmed against the source systems before acting.
+If a section is empty, say so in one short line (e.g. "No meetings today."). If a domain has no
+record-level detail, write "detail unavailable" rather than a count. Do not invent content.
 
 ## Storage Policy
 

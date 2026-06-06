@@ -1,40 +1,29 @@
-# Daily Construction Executive Brief — 2026-06-02
+# Daily Brief — 2026-06-02
 
-## What Matters Today
+## Yesterday
+- Owner review meeting was held for Tropical; coordination items were discussed.
+- Several email threads on Tropical saw activity, including submittal coordination.
 
-- Project P1 has open exposure that warrants attention; treat the items below as advisory signals only.
-- One item requires review before any action is taken.
+## Today
+| Time | Meeting | Project | Prep / Related Items |
+|---|---|---|---|
+| 09:00–10:00 | Project coordination sync | Tropical | Review open coordination items before the call |
 
-## Review-Required Items
+## Next 7 Days
+| Date | Project | Item | Type | Responsible | Why It Matters |
+|---|---|---|---|---|---|
+| 2026-06-05 | Tropical | RFI response | rfis | Detail unavailable | Response is due this week; confirm status |
 
-- There is one review-required item in today's packet. It is flagged review-required and must be
-  confirmed against the source system before acting.
+## Needs Attention
+| Priority | Project | Item | Reason | Recommended Focus |
+|---|---|---|---|---|
+| High | Tropical | Activity at or below zero float | Critical-path schedule signal | Confirm float against the schedule of record |
+| Medium | Tropical | Open RFIs | Detail unavailable for individual RFIs | Review the RFI log directly |
 
-## Aging / Stale Items
+## Focus
+1. Confirm the zero-float activity on Tropical before its deadline.
+2. Prepare for today's coordination sync.
+3. Check the RFI due on 2026-06-05.
 
-- One aging RFI is flagged stale and low-confidence; confirm the current status before acting.
-
-## Meeting Prep
-
-- No meeting prep items are present in today's packet.
-
-## Risk Watchlist
-
-- One schedule-slip risk signal is noted for project P1 as an advisory indicator only.
-
-## Source Coverage and Confidence Notes
-
-- Note: source coverage is partial — some source families have no data available in today's packet, so treat gaps as unknown rather than resolved.
-- Confidence is mixed; some items are low-confidence and are called out above.
-
-## Suggested Follow-Up Questions
-
-- Which review-required item should be prioritized first?
-- Which aging item is closest to its threshold?
-
-## Advisory Notice
-
-This brief is advisory and source-linked. It was rendered from the approved metadata-only packet only
-and makes no legal, financial, safety, claim, payment, entitlement, schedule-certification, or
-contractual determinations. This brief made no changes to any source system. Confirm all flagged items
-against the source systems before acting.
+---
+_Source-linked advisory brief. Verify in source systems before final action._

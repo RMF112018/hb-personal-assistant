@@ -10,7 +10,7 @@ from pathlib import Path
 
 from hb_assistant.construction.second_brain.daily_brief import packet as pkt
 from hb_assistant.construction.second_brain.daily_brief.packet import (
-    load_daily_brief_packet_contract,
+    load_daily_brief_packet_v2_contract,
 )
 from hb_assistant.construction.second_brain.mcp import (
     build_default_broker,
@@ -44,20 +44,22 @@ def test_tool_is_registered() -> None:
 
 
 def test_tool_output_matches_packet_contract() -> None:
-    contract = load_daily_brief_packet_contract()
+    contract = load_daily_brief_packet_v2_contract()
     with tempfile.TemporaryDirectory() as td:
         broker, _db = _seeded_broker(td)
         env = broker.dispatch(_TOOL, {"date": "2026-06-02", "project_scope": "P1"})
         assert env["decision"] == "allowed"
         packet = env["result"]["results"][0]
-        assert packet["packet_version"] == "DailyBriefHandoffPacketV1"
-        for field in contract["required_packet_fields"]:
-            assert field in packet
-        items = [i for s in contract["item_sections"] for i in packet[s]]
-        assert items
-        for item in items:
-            for f in contract["item_fields"]:
-                assert f in item
+        render = packet["render_payload"]
+        governance = packet["governance_metadata"]
+        assert governance["packet_version"] == "DailyBriefHandoffPacketV2"
+        for section in contract["render_payload_sections"]:
+            assert section in render, section
+        for field in contract["governance_metadata_fields"]:
+            assert field in governance, field
+        # No governance key leaks into the render body.
+        for forbidden in contract["forbidden_in_render_payload"]:
+            assert forbidden not in render, forbidden
 
 
 def test_tool_is_read_only_no_writeback() -> None:
@@ -82,8 +84,9 @@ def test_tool_emits_no_raw_shaped_fields() -> None:
         assert not _SECRET_OR_URL.search(blob)
         # Forbidden raw FIELD NAMES must not appear as keys.
         assert not (set(_FORBIDDEN_RESULT_FIELDS) & _collect_keys(env))
-        # Source refs are hashed only.
-        for ref in env["result"]["results"][0]["source_refs"]:
+        # Source refs (under governance_metadata) are hashed only.
+        governance = env["result"]["results"][0]["governance_metadata"]
+        for ref in governance["source_refs"]:
             assert "source_ref" not in ref
             assert ref["source_ref_hash"]
 
@@ -128,10 +131,12 @@ def test_include_rendering_instructions_toggle() -> None:
         off = broker.dispatch(
             _TOOL, {"project_scope": "P1", "include_rendering_instructions": False}
         )
-        assert "rendering_instructions" in on["result"]["results"][0]
-        assert "rendering_instructions" not in off["result"]["results"][0]
-        # Guardrails are always present.
-        assert off["result"]["results"][0]["guardrails"]["no_writeback"] is True
+        on_gov = on["result"]["results"][0]["governance_metadata"]
+        off_gov = off["result"]["results"][0]["governance_metadata"]
+        assert "rendering_instructions" in on_gov
+        assert "rendering_instructions" not in off_gov
+        # Guardrails (under governance_metadata) are always present.
+        assert off_gov["guardrails"]["no_writeback"] is True
 
 
 def test_mcp_no_raw_and_no_writeback_proofs_remain_green() -> None:

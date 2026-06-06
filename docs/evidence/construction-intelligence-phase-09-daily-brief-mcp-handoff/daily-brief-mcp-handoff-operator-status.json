@@ -1,8 +1,8 @@
 {
   "command": "second-brain daily-brief mcp-handoff-status",
   "phase": "09",
-  "generated_utc": "2026-06-06T11:14:20.194088+00:00",
-  "repo_sha": "2047e3e670581e229c0b47fdeb72877db105e791",
+  "generated_utc": "2026-06-06T14:31:19.523010+00:00",
+  "repo_sha": "3965ccb05aebb83bde430651a3896ddcdff77d64",
   "daily_brief_packet_status": "validated",
   "daily_brief_mcp_handoff_status": "proof_passed",
   "claude_rendering_template_status": "validated",

@@ -1,10 +1,10 @@
 {
   "audit": "mcp-daily-brief-handoff-tool",
-  "phase": "09-addendum-daily-brief-mcp-handoff",
-  "prompt": "02",
-  "purpose": "Expose the approved DailyBriefHandoffPacketV1 through one narrow MCP workflow-wrapper tool for Claude scheduled rendering only.",
-  "generated_utc": "2026-06-06T10:09:12.421412+00:00",
-  "repo_sha": "8532e8268c21e481da78f36c6f914a6724c10ffd",
+  "phase": "09-addendum-daily-brief-v2",
+  "prompt": "03",
+  "purpose": "Expose the approved DailyBriefHandoffPacketV2 (render_payload / governance_metadata split) through one narrow MCP workflow-wrapper tool for Claude scheduled rendering only. Claude renders only render_payload; governance_metadata is never rendered.",
+  "generated_utc": "2026-06-06T14:29:57.167575+00:00",
+  "repo_sha": "3965ccb05aebb83bde430651a3896ddcdff77d64",
   "tool_name": "hb_daily_brief_packet",
   "wrapper": "mcp_daily_brief_packet_wrapper",
   "suggested_names_mapped": [
@@ -14,16 +14,16 @@
   "name_mapping_note": "Implemented as hb_daily_brief_packet to follow the repo's hb_* MCP tool naming convention; maps to the suggested names construction_daily_brief_packet / get_daily_brief_handoff.",
   "allowlist_spec": {
     "wrapper": "mcp_daily_brief_packet_wrapper",
-    "maps_to": "daily-brief handoff packet (DailyBriefHandoffPacketV1) \u2014 read-only metadata-only render packet",
+    "maps_to": "daily-brief handoff packet (DailyBriefHandoffPacketV2; render_payload only) \u2014 read-only metadata-only render packet",
     "risk": "low",
     "receipt_required": true
   },
   "inputs": {
     "date": "optional; default local today",
     "project_scope": "optional; default 'all'",
-    "include_rendering_instructions": "optional; default true"
+    "include_rendering_instructions": "optional; default true (drops governance_metadata.rendering_instructions when false)"
   },
-  "output": "DailyBriefHandoffPacketV1 (returned at result.results[0]); guardrails + rendering_instructions carried in the packet.",
+  "output": "DailyBriefHandoffPacketV2 (returned at result.results[0]); user-facing render_payload + internal governance_metadata (guardrails + rendering_instructions live under governance_metadata).",
   "mcp_policy": {
     "workflow_wrapper_only": true,
     "read_only": true,
@@ -54,7 +54,7 @@
     "output_classification": "daily_brief_handoff_packet",
     "source_count": 6,
     "result_count": 1,
-    "provenance": "daily brief handoff packet (DailyBriefHandoffPacketV1; read-only)",
+    "provenance": "daily brief handoff packet (DailyBriefHandoffPacketV2; render_payload only; read-only)",
     "policy_posture": {
       "advisory_only": true,
       "local_only": true,
@@ -64,334 +64,513 @@
     }
   },
   "representative_packet_from_controlled_inputs": {
-    "packet_id": "dbp_2d348570c8e5cdc2398de1e1bf09902e",
-    "packet_version": "DailyBriefHandoffPacketV1",
-    "generated_utc": "2026-06-06T10:09:12.405519+00:00",
-    "brief_date": "2026-06-02",
-    "project_scope": "P1",
-    "mode": "dry_run",
-    "source_coverage_summary": {
-      "source_coverage": 0.5,
-      "source_ref_count": 6,
-      "project_count": 1,
-      "review_required_count": 1,
-      "stale_unknown_count": 1,
-      "review_tier_counts": {
-        "1": 2,
-        "2": 3,
-        "3": 1
+    "render_payload": {
+      "brief_date": "2026-06-02",
+      "portfolio_scope": {
+        "scope": "P1",
+        "project_count": 1,
+        "projects": [
+          "P1"
+        ]
       },
-      "context_quality_class": "sufficient",
-      "degradation_mode": "none",
-      "families_present": [
-        "accepted_long_term_memory",
-        "aging_exposure_report_items",
-        "cross_source_relationships",
-        "project_issue_history_items",
-        "project_risk_digest_items"
+      "yesterday": {
+        "count": 0,
+        "records": [],
+        "detail_available": false,
+        "detail_gap_reason": "no_source_data",
+        "source_family": "calendar_event_index",
+        "why_it_matters": "No calendar events are available in the local store."
+      },
+      "today_agenda": {
+        "count": 0,
+        "records": [],
+        "detail_available": false,
+        "detail_gap_reason": "no_source_data",
+        "source_family": "calendar_event_index",
+        "why_it_matters": "No calendar events are available in the local store."
+      },
+      "next_7_days": {
+        "count": 0,
+        "records": [],
+        "detail_available": true,
+        "detail_gap_reason": null,
+        "source_family": "procore_action_signals",
+        "why_it_matters": "Deadlines coming up in the next 7 days.",
+        "truncated": false,
+        "total_count": 0
+      },
+      "schedule": {
+        "count": 0,
+        "records": [],
+        "detail_available": true,
+        "detail_gap_reason": null,
+        "source_family": "procore_action_signals",
+        "why_it_matters": "Critical path, zero-float, and constrained activities.",
+        "truncated": false,
+        "total_count": 0
+      },
+      "rfis": {
+        "count": 0,
+        "records": [],
+        "detail_available": false,
+        "detail_gap_reason": "dedicated_reader_not_available",
+        "source_family": "procore_live_records",
+        "why_it_matters": "Open RFIs needing a response or routing."
+      },
+      "submittals": {
+        "count": 0,
+        "records": [],
+        "detail_available": false,
+        "detail_gap_reason": "dedicated_reader_not_available",
+        "source_family": "procore_live_records",
+        "why_it_matters": "Submittals in review or approaching their due date."
+      },
+      "punch": {
+        "count": 0,
+        "records": [],
+        "detail_available": false,
+        "detail_gap_reason": "dedicated_reader_not_available",
+        "source_family": "procore_live_records",
+        "why_it_matters": "Open punch / observation items by responsible party."
+      },
+      "procurement": {
+        "count": 0,
+        "records": [],
+        "detail_available": false,
+        "detail_gap_reason": "dedicated_reader_not_available",
+        "source_family": "procore_live_records",
+        "why_it_matters": "Commitments, RFQs, and change orders in progress."
+      },
+      "needs_attention": [
+        {
+          "project_key": "P1",
+          "project_name": null,
+          "record_type": "references",
+          "record_id": null,
+          "title": "email->financial references [accepted_human_promoted]",
+          "status": null,
+          "responsible_party": null,
+          "due_date": null,
+          "start_date": null,
+          "finish_date": null,
+          "source_family": "cross_source_relationships",
+          "source_ref_hash": "603d549800bcba023213d3f68f66cf864e2796efe545edb0",
+          "confidence_class": "model_proposed",
+          "review_tier": 3,
+          "review_required": true,
+          "freshness_label": "relative",
+          "stale_warning": null,
+          "why_it_matters": "Flagged for mandatory review before any reliance.",
+          "recommended_focus": "Triage first; confirm against the source system before acting.",
+          "detail_availability": {
+            "present": [
+              "confidence_class",
+              "freshness_label",
+              "project_key",
+              "record_type",
+              "review_tier",
+              "source_ref_hash",
+              "title"
+            ],
+            "deferred_to_prompt_02": [
+              "project_name",
+              "record_id",
+              "status",
+              "responsible_party",
+              "due_date",
+              "start_date",
+              "finish_date"
+            ]
+          }
+        },
+        {
+          "project_key": "P1",
+          "project_name": null,
+          "record_type": "schedule_slip_signal",
+          "record_id": null,
+          "title": "open_rfi_count=3;aging_band=30_60",
+          "status": null,
+          "responsible_party": null,
+          "due_date": null,
+          "start_date": null,
+          "finish_date": null,
+          "source_family": "project_risk_digest_items",
+          "source_ref_hash": "a47236e57c1acc3c47c2dca835cd8cdae21964469690947c",
+          "confidence_class": "medium",
+          "review_tier": 2,
+          "review_required": false,
+          "freshness_label": "current",
+          "stale_warning": null,
+          "why_it_matters": "Surfaced as a project risk signal.",
+          "recommended_focus": "Review when time allows; not yet confirmed.",
+          "detail_availability": {
+            "present": [
+              "confidence_class",
+              "freshness_label",
+              "project_key",
+              "record_type",
+              "review_tier",
+              "source_ref_hash",
+              "title"
+            ],
+            "deferred_to_prompt_02": [
+              "project_name",
+              "record_id",
+              "status",
+              "responsible_party",
+              "due_date",
+              "start_date",
+              "finish_date"
+            ]
+          }
+        },
+        {
+          "project_key": "P1",
+          "project_name": null,
+          "record_type": "rfi",
+          "record_id": null,
+          "title": "rfi status=open age=30d",
+          "status": null,
+          "responsible_party": null,
+          "due_date": null,
+          "start_date": null,
+          "finish_date": null,
+          "source_family": "project_issue_history_items",
+          "source_ref_hash": "5cda5e2e4603adcbc4c6ab9089e9e0ceb1f6e2b174cd4701",
+          "confidence_class": "medium",
+          "review_tier": 2,
+          "review_required": false,
+          "freshness_label": "unknown",
+          "stale_warning": "stale_status",
+          "why_it_matters": "Recent cross-source change relevant to the project.",
+          "recommended_focus": "Review when time allows; not yet confirmed.",
+          "detail_availability": {
+            "present": [
+              "confidence_class",
+              "freshness_label",
+              "project_key",
+              "record_type",
+              "review_tier",
+              "source_ref_hash",
+              "title"
+            ],
+            "deferred_to_prompt_02": [
+              "project_name",
+              "record_id",
+              "status",
+              "responsible_party",
+              "due_date",
+              "start_date",
+              "finish_date"
+            ]
+          }
+        },
+        {
+          "project_key": "P1",
+          "project_name": null,
+          "record_type": "references",
+          "record_id": null,
+          "title": "email->financial references [accepted_human_promoted]",
+          "status": null,
+          "responsible_party": null,
+          "due_date": null,
+          "start_date": null,
+          "finish_date": null,
+          "source_family": "cross_source_relationships",
+          "source_ref_hash": "603d549800bcba023213d3f68f66cf864e2796efe545edb0",
+          "confidence_class": "model_proposed",
+          "review_tier": 3,
+          "review_required": true,
+          "freshness_label": "relative",
+          "stale_warning": null,
+          "why_it_matters": "Recent cross-source change relevant to the project.",
+          "recommended_focus": "Triage first; confirm against the source system before acting.",
+          "detail_availability": {
+            "present": [
+              "confidence_class",
+              "freshness_label",
+              "project_key",
+              "record_type",
+              "review_tier",
+              "source_ref_hash",
+              "title"
+            ],
+            "deferred_to_prompt_02": [
+              "project_name",
+              "record_id",
+              "status",
+              "responsible_party",
+              "due_date",
+              "start_date",
+              "finish_date"
+            ]
+          }
+        }
       ],
-      "coverage_warnings": [
-        "empty_read_model:approved_obsidian_generated_outputs",
-        "empty_read_model:generated_outputs",
-        "empty_read_model:meeting_prep_brief_sections",
-        "empty_read_model:phase_07d_source_evidence_trails",
-        "empty_read_model:review_controlled_correspondence_context"
+      "focus_recommendations": [
+        {
+          "focus": "email->financial references [accepted_human_promoted]",
+          "project_key": "P1",
+          "why_it_matters": "Flagged for mandatory review before any reliance.",
+          "recommended_focus": "Triage first; confirm against the source system before acting.",
+          "source_family": "cross_source_relationships",
+          "review_tier": 3,
+          "detail_availability": {
+            "present": [
+              "focus",
+              "why_it_matters"
+            ],
+            "advisory_only": true
+          }
+        },
+        {
+          "focus": "open_rfi_count=3;aging_band=30_60",
+          "project_key": "P1",
+          "why_it_matters": "Surfaced as a project risk signal.",
+          "recommended_focus": "Review when time allows; not yet confirmed.",
+          "source_family": "project_risk_digest_items",
+          "review_tier": 2,
+          "detail_availability": {
+            "present": [
+              "focus",
+              "why_it_matters"
+            ],
+            "advisory_only": true
+          }
+        },
+        {
+          "focus": "rfi status=open age=30d",
+          "project_key": "P1",
+          "why_it_matters": "Recent cross-source change relevant to the project.",
+          "recommended_focus": "Review when time allows; not yet confirmed.",
+          "source_family": "project_issue_history_items",
+          "review_tier": 2,
+          "detail_availability": {
+            "present": [
+              "focus",
+              "why_it_matters"
+            ],
+            "advisory_only": true
+          }
+        }
+      ],
+      "project_signals": [
+        {
+          "project_key": "P1",
+          "project_name": null,
+          "item_count": 6,
+          "review_required_count": 2,
+          "max_review_tier": 3,
+          "families_present": [
+            "aging_exposure_report_items",
+            "cross_source_relationships",
+            "project_issue_history_items",
+            "project_risk_digest_items"
+          ],
+          "why_it_matters": "Aggregated project activity across source-linked signals.",
+          "detail_availability": {
+            "present": [
+              "item_count",
+              "review_required_count",
+              "max_review_tier"
+            ],
+            "deferred_to_prompt_02": [
+              "project_name",
+              "descriptive_activity"
+            ]
+          }
+        }
+      ],
+      "email_activity": {
+        "count": 0,
+        "records": [],
+        "detail_available": false,
+        "detail_gap_reason": "no_source_data",
+        "source_family": "review_controlled_correspondence_context",
+        "why_it_matters": "No email thread summaries are available in the local store."
+      },
+      "calendar_activity": {
+        "count": 0,
+        "records": [],
+        "detail_available": false,
+        "detail_gap_reason": "no_source_data",
+        "source_family": "calendar_event_index",
+        "why_it_matters": "No calendar events are available in the local store."
+      },
+      "data_gaps": [
+        {
+          "section": "today_agenda",
+          "reason": "no_source_data",
+          "status": "detail_unavailable"
+        },
+        {
+          "section": "yesterday",
+          "reason": "no_source_data",
+          "status": "detail_unavailable"
+        },
+        {
+          "section": "calendar_activity",
+          "reason": "no_source_data",
+          "status": "detail_unavailable"
+        },
+        {
+          "section": "email_activity",
+          "reason": "no_source_data",
+          "status": "detail_unavailable"
+        },
+        {
+          "section": "rfis",
+          "reason": "dedicated_reader_not_available",
+          "status": "detail_unavailable"
+        },
+        {
+          "section": "submittals",
+          "reason": "dedicated_reader_not_available",
+          "status": "detail_unavailable"
+        },
+        {
+          "section": "punch",
+          "reason": "dedicated_reader_not_available",
+          "status": "detail_unavailable"
+        },
+        {
+          "section": "procurement",
+          "reason": "dedicated_reader_not_available",
+          "status": "detail_unavailable"
+        },
+        {
+          "section": "source_coverage",
+          "reason": "empty_read_model:approved_obsidian_generated_outputs",
+          "status": "coverage_warning"
+        },
+        {
+          "section": "source_coverage",
+          "reason": "empty_read_model:generated_outputs",
+          "status": "coverage_warning"
+        },
+        {
+          "section": "source_coverage",
+          "reason": "empty_read_model:meeting_prep_brief_sections",
+          "status": "coverage_warning"
+        },
+        {
+          "section": "source_coverage",
+          "reason": "empty_read_model:phase_07d_source_evidence_trails",
+          "status": "coverage_warning"
+        },
+        {
+          "section": "source_coverage",
+          "reason": "empty_read_model:review_controlled_correspondence_context",
+          "status": "coverage_warning"
+        }
       ]
     },
-    "what_matters_today": [
-      "project:P1 items=3 (rev_exc=0, stale=1) [tier 2]"
-    ],
-    "recent_changes": [
-      {
-        "item_id": "edd1446e67b5c971e815d3f8469d68407d281c72b0d2dad3",
-        "section": "recent_changes",
-        "priority": "low",
-        "project_key": "P1",
-        "title_redacted": "email->procore references [accepted_human_promoted]",
-        "summary_redacted": "email->procore references [accepted_human_promoted]",
-        "source_family": "cross_source_relationships",
-        "source_ref_hash": "71c221cdf2e7a196e3b8d1622d1a861e5a3500f969b9f7fa",
-        "source_ref_label": "cross_source_relationships:references",
-        "review_tier": 1,
-        "review_required": false,
-        "confidence_class": "human_promoted",
-        "freshness_label": "relative",
-        "stale_warning": null,
-        "allowed_use": "advisory_render",
-        "blocked_uses": [
-          "final_determination",
-          "source_system_writeback",
-          "raw_record_request",
-          "authoritative_claim"
+    "governance_metadata": {
+      "packet_id": "dbp_2d348570c8e5cdc2398de1e1bf09902e",
+      "packet_version": "DailyBriefHandoffPacketV2",
+      "generated_utc": "2026-06-06T14:29:57.067980+00:00",
+      "brief_date": "2026-06-02",
+      "mode": "dry_run",
+      "source_coverage_summary": {
+        "source_coverage": 0.5,
+        "source_ref_count": 6,
+        "project_count": 1,
+        "review_required_count": 1,
+        "stale_unknown_count": 1,
+        "review_tier_counts": {
+          "1": 2,
+          "2": 3,
+          "3": 1
+        },
+        "context_quality_class": "sufficient",
+        "degradation_mode": "none",
+        "families_present": [
+          "accepted_long_term_memory",
+          "aging_exposure_report_items",
+          "cross_source_relationships",
+          "project_issue_history_items",
+          "project_risk_digest_items"
+        ],
+        "coverage_warnings": [
+          "empty_read_model:approved_obsidian_generated_outputs",
+          "empty_read_model:generated_outputs",
+          "empty_read_model:meeting_prep_brief_sections",
+          "empty_read_model:phase_07d_source_evidence_trails",
+          "empty_read_model:review_controlled_correspondence_context"
         ]
       },
-      {
-        "item_id": "955ee936c942c054927af8ba044d528c1df0fde3516fc8b6",
-        "section": "recent_changes",
-        "priority": "medium",
-        "project_key": "P1",
-        "title_redacted": "rfi status=open age=30d",
-        "summary_redacted": "rfi status=open age=30d",
-        "source_family": "project_issue_history_items",
-        "source_ref_hash": "5cda5e2e4603adcbc4c6ab9089e9e0ceb1f6e2b174cd4701",
-        "source_ref_label": "project_issue_history_items:rfi",
-        "review_tier": 2,
-        "review_required": false,
-        "confidence_class": "medium",
-        "freshness_label": "unknown",
-        "stale_warning": "stale_status",
-        "allowed_use": "advisory_render",
-        "blocked_uses": [
-          "final_determination",
-          "source_system_writeback",
-          "raw_record_request",
-          "authoritative_claim"
+      "source_refs": [
+        {
+          "source_family": "cross_source_relationships",
+          "source_ref_hash": "71c221cdf2e7a196e3b8d1622d1a861e5a3500f969b9f7fa",
+          "source_ref_label": "cross_source_relationships:references",
+          "review_tier": 1
+        },
+        {
+          "source_family": "accepted_long_term_memory",
+          "source_ref_hash": "816683212c892edc9d78842f3b53edcafb7ae863612f07a1",
+          "source_ref_label": "accepted_long_term_memory:fact",
+          "review_tier": 1
+        },
+        {
+          "source_family": "aging_exposure_report_items",
+          "source_ref_hash": "979096f1c18f1bd0d2242963448704f1d19f42544b65b40f",
+          "source_ref_label": "aging_exposure_report_items:procore",
+          "review_tier": 2
+        },
+        {
+          "source_family": "project_risk_digest_items",
+          "source_ref_hash": "a47236e57c1acc3c47c2dca835cd8cdae21964469690947c",
+          "source_ref_label": "project_risk_digest_items:schedule_slip_signal",
+          "review_tier": 2
+        },
+        {
+          "source_family": "project_issue_history_items",
+          "source_ref_hash": "5cda5e2e4603adcbc4c6ab9089e9e0ceb1f6e2b174cd4701",
+          "source_ref_label": "project_issue_history_items:rfi",
+          "review_tier": 2
+        },
+        {
+          "source_family": "cross_source_relationships",
+          "source_ref_hash": "603d549800bcba023213d3f68f66cf864e2796efe545edb0",
+          "source_ref_label": "cross_source_relationships:references",
+          "review_tier": 3
+        }
+      ],
+      "guardrails": {
+        "advisory_only": true,
+        "source_linked": true,
+        "metadata_only": true,
+        "no_raw": true,
+        "no_writeback": true,
+        "no_final_determinations": true,
+        "claude_rendering_only": true
+      },
+      "rendering_instructions": {
+        "render_as": "human_readable_executive_brief",
+        "render_source": "render_payload",
+        "instructions": [
+          "Render only the render_payload. Never render governance_metadata into the brief body.",
+          "Lead with yesterday, today's agenda, deadlines in the next 7 days, what needs attention, and what to focus on.",
+          "Each record-bearing section is a RecordSection: render its listed records, never a bare count. When detail_available is false, state the detail_gap_reason plainly.",
+          "Preserve all review-required, stale, and low-confidence warnings carried on items.",
+          "Do not infer beyond the packet contents.",
+          "Do not make final determinations (financial, legal, claim, payment, safety, schedule, contractual).",
+          "Do not ask for raw records."
         ]
       },
-      {
-        "item_id": "66244f67f92518bb5dbdda32d03bebf921ac34088375e4c3",
-        "section": "recent_changes",
-        "priority": "high",
-        "project_key": "P1",
-        "title_redacted": "email->financial references [accepted_human_promoted]",
-        "summary_redacted": "email->financial references [accepted_human_promoted]",
-        "source_family": "cross_source_relationships",
-        "source_ref_hash": "603d549800bcba023213d3f68f66cf864e2796efe545edb0",
-        "source_ref_label": "cross_source_relationships:references",
-        "review_tier": 3,
-        "review_required": true,
-        "confidence_class": "model_proposed",
-        "freshness_label": "relative",
-        "stale_warning": null,
-        "allowed_use": "advisory_render",
-        "blocked_uses": [
-          "final_determination",
-          "source_system_writeback",
-          "raw_record_request",
-          "authoritative_claim"
-        ]
-      }
-    ],
-    "review_required_items": [
-      {
-        "item_id": "1017ce9c391237aa9ad6b064ced75fa0b272d9418b580396",
-        "section": "review_required_items",
-        "priority": "high",
-        "project_key": "P1",
-        "title_redacted": "email->financial references [accepted_human_promoted]",
-        "summary_redacted": "email->financial references [accepted_human_promoted]",
-        "source_family": "cross_source_relationships",
-        "source_ref_hash": "603d549800bcba023213d3f68f66cf864e2796efe545edb0",
-        "source_ref_label": "cross_source_relationships:references",
-        "review_tier": 3,
-        "review_required": true,
-        "confidence_class": "model_proposed",
-        "freshness_label": "relative",
-        "stale_warning": null,
-        "allowed_use": "advisory_render",
-        "blocked_uses": [
-          "final_determination",
-          "source_system_writeback",
-          "raw_record_request",
-          "authoritative_claim"
-        ]
-      }
-    ],
-    "aging_watchlist": [
-      {
-        "item_id": "1a50c0dad324dfc9fee4c461e434d0c8d085b75c51d4c797",
-        "section": "aging_watchlist",
-        "priority": "medium",
-        "project_key": "P1",
-        "title_redacted": "30_60",
-        "summary_redacted": "30_60",
-        "source_family": "aging_exposure_report_items",
-        "source_ref_hash": "979096f1c18f1bd0d2242963448704f1d19f42544b65b40f",
-        "source_ref_label": "aging_exposure_report_items:procore",
-        "review_tier": 2,
-        "review_required": false,
-        "confidence_class": "medium",
-        "freshness_label": "current",
-        "stale_warning": null,
-        "allowed_use": "advisory_render",
-        "blocked_uses": [
-          "final_determination",
-          "source_system_writeback",
-          "raw_record_request",
-          "authoritative_claim"
-        ]
-      }
-    ],
-    "meeting_prep": [],
-    "risk_watchlist": [
-      {
-        "item_id": "b01730e653753c1b3233457a6c96fabba2879c427b90ab6e",
-        "section": "risk_watchlist",
-        "priority": "medium",
-        "project_key": "P1",
-        "title_redacted": "open_rfi_count=3;aging_band=30_60",
-        "summary_redacted": "open_rfi_count=3;aging_band=30_60",
-        "source_family": "project_risk_digest_items",
-        "source_ref_hash": "a47236e57c1acc3c47c2dca835cd8cdae21964469690947c",
-        "source_ref_label": "project_risk_digest_items:schedule_slip_signal",
-        "review_tier": 2,
-        "review_required": false,
-        "confidence_class": "medium",
-        "freshness_label": "current",
-        "stale_warning": null,
-        "allowed_use": "advisory_render",
-        "blocked_uses": [
-          "final_determination",
-          "source_system_writeback",
-          "raw_record_request",
-          "authoritative_claim"
-        ]
-      }
-    ],
-    "stale_or_low_confidence_warnings": [
-      {
-        "item_id": "8f84659cbc2ccb7872bb47e86437630fd766ed68a54a5175",
-        "section": "stale_or_low_confidence_warnings",
-        "priority": "medium",
-        "project_key": "P1",
-        "title_redacted": "rfi status=open age=30d",
-        "summary_redacted": "rfi status=open age=30d",
-        "source_family": "project_issue_history_items",
-        "source_ref_hash": "5cda5e2e4603adcbc4c6ab9089e9e0ceb1f6e2b174cd4701",
-        "source_ref_label": "project_issue_history_items:rfi",
-        "review_tier": 2,
-        "review_required": false,
-        "confidence_class": "medium",
-        "freshness_label": "unknown",
-        "stale_warning": "stale_status",
-        "allowed_use": "advisory_render",
-        "blocked_uses": [
-          "final_determination",
-          "source_system_writeback",
-          "raw_record_request",
-          "authoritative_claim"
-        ]
+      "proof_metadata": {
+        "contract_name": "daily_brief_handoff_packet_v2_contract",
+        "packet_version": "DailyBriefHandoffPacketV2",
+        "projected_from": "DailyBriefHandoffPacketV1"
       },
-      {
-        "item_id": "261763432c6ce923bc1ef55aedb4bcfc3853bfc1f267b423",
-        "section": "stale_or_low_confidence_warnings",
-        "priority": "high",
-        "project_key": "P1",
-        "title_redacted": "email->financial references [accepted_human_promoted]",
-        "summary_redacted": "email->financial references [accepted_human_promoted]",
-        "source_family": "cross_source_relationships",
-        "source_ref_hash": "603d549800bcba023213d3f68f66cf864e2796efe545edb0",
-        "source_ref_label": "cross_source_relationships:references",
-        "review_tier": 3,
-        "review_required": true,
-        "confidence_class": "model_proposed",
-        "freshness_label": "relative",
-        "stale_warning": null,
-        "allowed_use": "advisory_render",
-        "blocked_uses": [
-          "final_determination",
-          "source_system_writeback",
-          "raw_record_request",
-          "authoritative_claim"
-        ]
-      }
-    ],
-    "accepted_memory_context": [
-      {
-        "item_id": "3627f4bb267357d913d36c2d27e24784a72c93a966c1e96c",
-        "section": "accepted_memory_context",
-        "priority": "low",
-        "project_key": "P1",
-        "title_redacted": "kickoff confirmed",
-        "summary_redacted": "kickoff confirmed",
-        "source_family": "accepted_long_term_memory",
-        "source_ref_hash": "816683212c892edc9d78842f3b53edcafb7ae863612f07a1",
-        "source_ref_label": "accepted_long_term_memory:fact",
-        "review_tier": 1,
-        "review_required": false,
-        "confidence_class": "high",
-        "freshness_label": "current",
-        "stale_warning": null,
-        "allowed_use": "advisory_context_only",
-        "blocked_uses": [
-          "final_determination",
-          "source_system_writeback",
-          "raw_record_request",
-          "authoritative_claim"
-        ]
-      }
-    ],
-    "suggested_follow_up_questions": [
-      "Which review-required items should I prioritize first?",
-      "Which aging items are closest to their threshold band?",
-      "What is driving the current risk signals?",
-      "Which stale or low-confidence items need a status refresh?",
-      "Should I factor the accepted memory context into the summary?",
-      "Would you like the full source coverage breakdown?"
-    ],
-    "source_refs": [
-      {
-        "source_family": "cross_source_relationships",
-        "source_ref_hash": "71c221cdf2e7a196e3b8d1622d1a861e5a3500f969b9f7fa",
-        "source_ref_label": "cross_source_relationships:references",
-        "review_tier": 1
+      "receipt_metadata": {
+        "packet_receipt_emitted": false,
+        "read_only": true
       },
-      {
-        "source_family": "accepted_long_term_memory",
-        "source_ref_hash": "816683212c892edc9d78842f3b53edcafb7ae863612f07a1",
-        "source_ref_label": "accepted_long_term_memory:fact",
-        "review_tier": 1
-      },
-      {
-        "source_family": "aging_exposure_report_items",
-        "source_ref_hash": "979096f1c18f1bd0d2242963448704f1d19f42544b65b40f",
-        "source_ref_label": "aging_exposure_report_items:procore",
-        "review_tier": 2
-      },
-      {
-        "source_family": "project_risk_digest_items",
-        "source_ref_hash": "a47236e57c1acc3c47c2dca835cd8cdae21964469690947c",
-        "source_ref_label": "project_risk_digest_items:schedule_slip_signal",
-        "review_tier": 2
-      },
-      {
-        "source_family": "project_issue_history_items",
-        "source_ref_hash": "5cda5e2e4603adcbc4c6ab9089e9e0ceb1f6e2b174cd4701",
-        "source_ref_label": "project_issue_history_items:rfi",
-        "review_tier": 2
-      },
-      {
-        "source_family": "cross_source_relationships",
-        "source_ref_hash": "603d549800bcba023213d3f68f66cf864e2796efe545edb0",
-        "source_ref_label": "cross_source_relationships:references",
-        "review_tier": 3
-      }
-    ],
-    "guardrails": {
-      "advisory_only": true,
-      "source_linked": true,
-      "metadata_only": true,
-      "no_raw": true,
-      "no_writeback": true,
-      "no_final_determinations": true,
-      "claude_rendering_only": true
-    },
-    "rendering_instructions": {
-      "render_as": "human_readable_executive_brief",
-      "instructions": [
-        "Render as a human-readable executive brief.",
-        "Preserve all warnings (stale, low-confidence, and review-required).",
-        "Do not infer beyond the packet contents.",
-        "Do not make final determinations (financial, legal, claim, payment, safety, schedule, contractual).",
-        "Include the source coverage note.",
-        "Include the suggested follow-up questions.",
-        "Do not ask for raw records."
-      ]
-    },
-    "status": "assembled",
-    "degradation_mode": "none",
-    "packet_receipt_emitted": false,
-    "read_only": true
+      "status": "assembled",
+      "degradation_mode": "none"
+    }
   },
   "cli": {
     "proof": "hb-assistant second-brain mcp daily-brief-handoff-proof --json",

@@ -1,11 +1,13 @@
 """Phase 09 Addendum — MCP daily-brief handoff tool proof.
 
 Proves the narrow ``hb_daily_brief_packet`` MCP workflow-wrapper tool: it is registered in the allowed
-registry, dispatches through the real broker to return a ``DailyBriefHandoffPacketV1`` that matches the
-packet contract, is read-only / metadata-only / no-raw, exposes no direct DB/vector/Graph/Procore/
-memory-mutation/writeback path (deny-first preserved), fails safe on missing inputs, and leaves the MCP
-no-raw / no-writeback proofs green. Read-only; runs against a temporary seeded DB; persists nothing to
-the operator DB.
+registry, dispatches through the real broker to return a ``DailyBriefHandoffPacketV2`` (render_payload
+/ governance_metadata split) that matches the V2 packet contract — render carries the required
+sections, governance carries the required metadata, and no governance key leaks into render_payload —
+is read-only / metadata-only / no-raw, exposes no direct DB/vector/Graph/Procore/memory-mutation/
+writeback path (deny-first preserved), fails safe on missing inputs, and leaves the MCP no-raw /
+no-writeback proofs green. Read-only; runs against a temporary seeded DB; persists nothing to the
+operator DB.
 
 Public entry point:
   build_mcp_daily_brief_handoff_proof(*, evidence_dir=None, write_evidence=True) -> dict
@@ -96,7 +98,7 @@ def build_mcp_daily_brief_handoff_proof(
     *, evidence_dir: str | None = None, write_evidence: bool = True
 ) -> dict[str, Any]:
     """Fail-closed proof for the ``hb_daily_brief_packet`` MCP tool (read-only)."""
-    from ..daily_brief.packet import _seed_proof_db, load_daily_brief_packet_contract
+    from ..daily_brief.packet import _seed_proof_db, load_daily_brief_packet_v2_contract
     from . import build_default_broker
     from .proof import (
         _FORBIDDEN_RESULT_FIELDS,
@@ -109,10 +111,10 @@ def build_mcp_daily_brief_handoff_proof(
     allowed = load_allowed_tools()
     tool_registered = TOOL_NAME in allowed and allowed[TOOL_NAME].get("wrapper") == WRAPPER_NAME
 
-    contract = load_daily_brief_packet_contract()
-    required_fields = list(contract.get("required_packet_fields", []))
-    item_fields = list(contract.get("item_fields", []))
-    item_sections = list(contract.get("item_sections", []))
+    contract = load_daily_brief_packet_v2_contract()
+    render_sections = list(contract.get("render_payload_sections", []))
+    governance_fields = list(contract.get("governance_metadata_fields", []))
+    forbidden_in_render = list(contract.get("forbidden_in_render_payload", []))
 
     with tempfile.TemporaryDirectory() as td:
         db = str(Path(td) / "seeded.sqlite3")
@@ -125,10 +127,23 @@ def build_mcp_daily_brief_handoff_proof(
         results_list = (result or {}).get("results") or []
         packet = results_list[0] if results_list else {}
 
-        output_matches_contract = bool(packet) and all(f in packet for f in required_fields)
-        items = [item for sec in item_sections for item in packet.get(sec, [])]
-        items_match = bool(items) and all(all(f in it for f in item_fields) for it in items)
-        packet_version_ok = packet.get("packet_version") == "DailyBriefHandoffPacketV1"
+        render = packet.get("render_payload", {}) if isinstance(packet, dict) else {}
+        governance = packet.get("governance_metadata", {}) if isinstance(packet, dict) else {}
+        # V2 contract: render carries the required sections, governance carries the required
+        # metadata, and no governance key leaks into the render body.
+        output_matches_contract = (
+            isinstance(render, dict)
+            and isinstance(governance, dict)
+            and all(s in render for s in render_sections)
+            and all(f in governance for f in governance_fields)
+            and not any(k in render for k in forbidden_in_render)
+        )
+        # Renderable items remain source-linked (hashed refs only).
+        items = render.get("needs_attention", []) if isinstance(render, dict) else []
+        items_match = bool(items) and all(
+            bool(it.get("source_family")) and bool(it.get("source_ref_hash")) for it in items
+        )
+        packet_version_ok = governance.get("packet_version") == "DailyBriefHandoffPacketV2"
 
         try:
             _assert_no_raw(json.dumps(env, default=str), "mcp daily brief handoff tool output")
@@ -195,7 +210,7 @@ def build_mcp_daily_brief_handoff_proof(
         "repo_sha": _repo_sha(),
         "tool": TOOL_NAME,
         "wrapper": WRAPPER_NAME,
-        "packet_version": "DailyBriefHandoffPacketV1",
+        "packet_version": "DailyBriefHandoffPacketV2",
         "tool_registered": tool_registered,
         "dispatch_allowed": dispatch_allowed,
         "output_matches_contract": output_matches_contract,
