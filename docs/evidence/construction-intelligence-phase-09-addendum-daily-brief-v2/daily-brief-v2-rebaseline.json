@@ -1,0 +1,115 @@
+{
+  "proof": "phase_09_addendum_daily_brief_v2_rebaseline",
+  "prompt": "Prompt 00 — Repo-Truth Audit and Baseline",
+  "package": "HB_Construction_Intelligence_Phase_09_Addendum_Daily_Brief_V2_Executive_Utility_Hardening",
+  "generated_utc": "2026-06-06T11:55:00+00:00",
+  "read_only": true,
+  "no_code_changes_in_this_prompt": true,
+  "git_baseline": {
+    "branch": "main",
+    "head_sha": "76f515121478ce53a65699295d5c458aa9523979",
+    "upstream": "origin/main (up to date; --ff-only no-op)",
+    "recent_commits": [
+      "76f51512 HB_Construction_Intelligence_Phase_09_Addendum_Daily_Brief_MCP_Handoff_Rendering v1.5.0-phase-09-addendum — Prompt 06: Operator status and gate integration",
+      "26cab8f5 feat(analytics): dashboard read models (Prompt 07 / UI-07)",
+      "2047e3e6 feat(analytics): sync governance surfaces (Prompt 06 / UI-06)",
+      "044495d6 HB_FastAPI_Analytics_Dashboard_CM_First_Implementation_Package v1.0.0-2026-06-06 — Prompt 04: Connection setup surfaces",
+      "fb1413b4 HB_FastAPI_Analytics_Dashboard_CM_First_Implementation_Package v1.0.0-2026-06-06 — Prompt 03: Auth onboarding surfaces"
+    ],
+    "working_tree_note": "Pre-existing modifications to many docs/evidence/** JSON/MD files (timestamp/sha churn from prior runs) plus untracked .claude/, .code-graph/, frontend/, package-lock.json, scripts/hb-claude-mcp-launcher.sh, docs/architecture/176-*.md. None are Daily Brief V2 changes; this prompt makes no code edits."
+  },
+  "implementation_surface": {
+    "packet_builder": {
+      "file": "src/hb_assistant/construction/second_brain/daily_brief/packet.py",
+      "entry": "build_daily_brief_packet() (~L265-339)",
+      "notes": "Assembles metadata-only DailyBriefHandoffPacketV1. Sections via _build_sections() (~L189-222): recent_changes, review_required_items, aging_watchlist, meeting_prep, risk_watchlist, stale_or_low_confidence_warnings, accepted_memory_context. source_coverage_summary computed ~L290-301. RENDERING_INSTRUCTIONS ~L40-62. _build_item() ~L164-186 (item_id hash, priority, review_tier, confidence_class, freshness_label, stale_warning, blocked_uses)."
+    },
+    "mcp_handoff_status": {
+      "file": "src/hb_assistant/construction/second_brain/daily_brief/mcp_handoff_status.py",
+      "entry": "build_daily_brief_mcp_handoff_status() (~L120-367)",
+      "notes": "5 status fields + gates + reconciled substrate_detail."
+    },
+    "claude_rendering_template": {
+      "templates_dir": "resources/templates/",
+      "files": ["claude_daily_brief_scheduled_task.md", "claude_daily_brief_manual_run.md"],
+      "proof_file": "src/hb_assistant/construction/second_brain/mcp/render_template_proof.py",
+      "required_sections": ["What Matters Today", "Review-Required Items", "Aging / Stale Items", "Meeting Prep", "Risk Watchlist", "Source Coverage and Confidence Notes", "Suggested Follow-Up Questions", "Advisory Notice"]
+    },
+    "deterministic_render": {
+      "file": "src/hb_assistant/construction/second_brain/daily_brief/output.py",
+      "entry": "render_brief_markdown() (~L92-168)",
+      "notes": "Deterministic, redacted inner-brief render (no model text). Emits status banner with degradation/review_tier/source_coverage; Priority Actions, Waiting On/Warnings, Meeting Prep, Review exceptions (cap 10) + 'Batched/suppressed' governance block (~L146-150), Project Signals (count-only), Coverage Notes."
+    },
+    "rendered_brief_proof": {
+      "file": "src/hb_assistant/construction/second_brain/daily_brief/rendered_quality.py",
+      "entry": "build_daily_brief_rendered_quality_proof() (~L310-383); validate_rendered_brief() (~L186-238)"
+    },
+    "output_receipt_proof": {
+      "file": "src/hb_assistant/construction/second_brain/daily_brief/output_receipt.py",
+      "entry": "build_daily_brief_rendered_output_receipt_proof() (~L177-281)"
+    },
+    "cli_commands": {
+      "file": "src/hb_assistant/cli/second_brain.py",
+      "group": "second-brain daily-brief (daily_brief_app ~L91-96)",
+      "subcommands": ["build", "packet", "packet-proof", "rendered-proof", "output-receipt-proof", "mcp-handoff-status", "triage", "generate", "render-view", "schedule-preview"]
+    },
+    "output_path_logic": {
+      "file": "src/hb_assistant/construction/second_brain/daily_brief/output.py",
+      "entry": "resolve_brief_path() (~L76-83)",
+      "vault_subdir_constant": "_VAULT_SUBDIR = 'Construction Intelligence/Phase 08A Daily Briefs' (L39)",
+      "rendered_narrative_location_constant": "output_receipt.py L56-57 RENDERED_NARRATIVE_LOCATION = '<vault>/Construction Intelligence/Phase 09 Rendered Daily Briefs/'"
+    },
+    "phase_09_handoff_evidence_dir": "docs/evidence/construction-intelligence-phase-09-daily-brief-mcp-handoff/"
+  },
+  "reproduced_behavior": {
+    "packet": {
+      "command": "hb-assistant second-brain daily-brief packet --date 2026-06-06 --json",
+      "packet_id": "dbp_be8e64164977f6f6d2b33741bb79907f",
+      "source_coverage": 0.6,
+      "source_ref_count": 363,
+      "project_count": 1,
+      "review_required_count": 0,
+      "stale_unknown_count": 0,
+      "families_present": ["accepted_long_term_memory", "approved_obsidian_generated_outputs", "cross_source_relationships", "generated_outputs", "meeting_prep_brief_sections", "project_risk_digest_items"],
+      "what_matters_today_sample": ["project:tropical items=12 (rev_exc=0, stale=0) [tier 1]"],
+      "recent_changes_sample_titles": [
+        "procore->procore_entity created_by [accepted_human_promoted]",
+        "procore->procore billed_in_period [accepted_human_promoted]",
+        "procore->procore_entity category [accepted_human_promoted]"
+      ]
+    },
+    "packet_proof": {
+      "command": "hb-assistant second-brain daily-brief packet-proof --json",
+      "proof_passed": true,
+      "section_counts": {"recent_changes": 3, "review_required_items": 1, "aging_watchlist": 1, "meeting_prep": 0, "risk_watchlist": 1, "stale_or_low_confidence_warnings": 2, "accepted_memory_context": 1}
+    },
+    "mcp_handoff_status": {
+      "command": "hb-assistant second-brain daily-brief mcp-handoff-status --json",
+      "handoff_closeout_ok": true,
+      "status_counts": {"pass": 4, "warning": 0, "fail_blocking": 0, "deferred_not_blocking": 1},
+      "production_readiness": false
+    },
+    "rendered_proof": {
+      "command": "hb-assistant second-brain daily-brief rendered-proof --json",
+      "check_count": 10,
+      "safe_fixture_and_tampered_variants": "pass (each tampered variant fails its expected check)"
+    },
+    "output_receipt_proof": {
+      "command": "hb-assistant second-brain daily-brief output-receipt-proof --json",
+      "import_enabled": false,
+      "rendered_validation_passed": true
+    }
+  },
+  "documented_defects": [
+    {"id": "D1", "title": "Packet provenance / metadata leaks into rendered body", "evidence": "Packet items expose item_id hashes, source_ref_hash, source_ref_label, blocked_uses, confidence_class, review_tier per item; deterministic render (output.py) surfaces source-ref labels and tier codes inline. Executive body should carry plain activity, not provenance tables."},
+    {"id": "D2", "title": "Guardrail / proof / internal commentary appears in rendered body", "evidence": "output.py render_brief_markdown L103-109 status banner ('degradation=...; review_tier=...; source_coverage=...; Tier-3 items are routed to mandatory review'), and L146-150 'Batched/suppressed' governance/CLI-recommendation block ('run hb-assistant second-brain review burden') belong in proofs, not the executive brief."},
+    {"id": "D3", "title": "Source coverage dominates the brief", "evidence": "source_coverage_summary is the largest packet block; render leads with coverage/degradation banner and includes Coverage Notes; coverage should be a short confidence footnote, not a dominant section."},
+    {"id": "D4", "title": "Count-only tables without useful record detail", "evidence": "Project Signals render as 'project X: N item(s), M review-required' (output.py L155-159); what_matters_today is 'project:tropical items=12 (rev_exc=0, stale=0) [tier 1]' — counts, no descriptive content."},
+    {"id": "D5", "title": "Relationship metadata counts instead of descriptive project activity", "evidence": "recent_changes items are cross_source_relationships edges ('procore->procore_entity created_by [accepted_human_promoted]') — edge/relationship labels, not human-readable descriptions of what happened on the project."},
+    {"id": "D6", "title": "User-facing agenda / deadline / focus sections are weak or missing", "evidence": "Packet has no explicit 'what happened yesterday', 'today's agenda', 'deadlines next 7 days', or 'what to focus on' sections; meeting_prep count was 0; no calendar agenda or deadline horizon surfaced. Template sections are governance-oriented (review-required, aging/stale, source coverage)."},
+    {"id": "D7", "title": "Output path is wrong", "evidence": "resolve_brief_path() resolves to '/Users/bobbyfetting/Documents/Obsidian Vault/Construction Intelligence/Phase 08A Daily Briefs/<date>_daily_brief.md' and RENDERED_NARRATIVE_LOCATION is '<vault>/Construction Intelligence/Phase 09 Rendered Daily Briefs/'. Correct V2 path is '/Users/bobbyfetting/Documents/Obsidian Vault/Work/Daily Brief/'."}
+  ],
+  "correct_output_path_target": "/Users/bobbyfetting/Documents/Obsidian Vault/Work/Daily Brief/",
+  "current_resolved_output_path": "/Users/bobbyfetting/Documents/Obsidian Vault/Construction Intelligence/Phase 08A Daily Briefs/2026-06-06_daily_brief.md",
+  "current_rendered_narrative_location": "<vault>/Construction Intelligence/Phase 09 Rendered Daily Briefs/"
+}
