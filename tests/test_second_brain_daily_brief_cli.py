@@ -73,6 +73,27 @@ def test_daily_brief_output_carries_no_raw_content(runner: CliRunner) -> None:
         assert forbidden not in out
 
 
+def test_daily_brief_packet_v2_top_level_self_identifying(runner: CliRunner) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "second-brain",
+            "daily-brief",
+            "packet",
+            "--date",
+            "2026-06-06",
+            "--version",
+            "v2",
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["packet_version"] == "DailyBriefHandoffPacketV2"
+    assert "render_payload" in payload
+    assert "governance_metadata" in payload
+
+
 def test_daily_brief_v2_proof_exit_zero(runner: CliRunner) -> None:
     result = runner.invoke(
         app, ["second-brain", "daily-brief", "v2-proof", "--no-evidence", "--json"]

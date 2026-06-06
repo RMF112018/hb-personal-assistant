@@ -1,9 +1,10 @@
 {
   "contract_name": "daily_brief_handoff_packet_v2_contract",
-  "version": "1.1.0-phase-09-addendum-v2",
+  "version": "1.2.0-phase-09-addendum-v2",
   "packet_version": "DailyBriefHandoffPacketV2",
   "description": "Daily Brief V2 handoff packet. Splits user-facing render_payload from internal governance_metadata so governance never renders into the brief body. Prompt 02 enriches the record-bearing sections with real, source-linked record detail where a working reader exists (calendar, email threads, Procore action signals) and enforces the count-vs-detail rule: a count is only actionable if backed by listed records, otherwise the section must declare detail_available=false + a detail_gap_reason. Procore record domains without a dedicated reader emit the explicit detail-unavailable shape (never a bare count).",
   "top_level_keys": [
+    "packet_version",
     "render_payload",
     "governance_metadata"
   ],

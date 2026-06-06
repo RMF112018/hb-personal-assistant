@@ -143,7 +143,14 @@ def build_mcp_daily_brief_handoff_proof(
         items_match = bool(items) and all(
             bool(it.get("source_family")) and bool(it.get("source_ref_hash")) for it in items
         )
-        packet_version_ok = governance.get("packet_version") == "DailyBriefHandoffPacketV2"
+        # The handoff packet must self-identify as V2 at the TOP level (not only in governance); a
+        # V1-only packet is rejected by ``is_daily_brief_packet_v2``.
+        from ..daily_brief.packet import is_daily_brief_packet_v2
+
+        packet_version_ok = (
+            is_daily_brief_packet_v2(packet)
+            and governance.get("packet_version") == "DailyBriefHandoffPacketV2"
+        )
 
         try:
             _assert_no_raw(json.dumps(env, default=str), "mcp daily brief handoff tool output")

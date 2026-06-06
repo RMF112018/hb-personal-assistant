@@ -52,6 +52,8 @@ def test_tool_output_matches_packet_contract() -> None:
         packet = env["result"]["results"][0]
         render = packet["render_payload"]
         governance = packet["governance_metadata"]
+        # Top-level self-identification (not only inside governance_metadata).
+        assert packet["packet_version"] == "DailyBriefHandoffPacketV2"
         assert governance["packet_version"] == "DailyBriefHandoffPacketV2"
         for section in contract["render_payload_sections"]:
             assert section in render, section
@@ -60,6 +62,22 @@ def test_tool_output_matches_packet_contract() -> None:
         # No governance key leaks into the render body.
         for forbidden in contract["forbidden_in_render_payload"]:
             assert forbidden not in render, forbidden
+
+
+def test_v2_handoff_predicate_accepts_v2_rejects_v1() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "seeded.sqlite3")
+        pkt._seed_v2_enrichment_db(db)
+        v2 = pkt.build_daily_brief_packet_v2(brief_date="2026-06-02", project_key="P1", db_path=db)
+        v1 = pkt.build_daily_brief_packet(brief_date="2026-06-02", project_key="P1", db_path=db)
+        # V2 self-identifies at the top level; a V1-only packet fails the V2 handoff predicate.
+        assert pkt.is_daily_brief_packet_v2(v2) is True
+        assert pkt.is_daily_brief_packet_v2(v1) is False
+        # Stripping the top-level version also fails the predicate.
+        assert (
+            pkt.is_daily_brief_packet_v2({k: v for k, v in v2.items() if k != "packet_version"})
+            is False
+        )
 
 
 def test_tool_is_read_only_no_writeback() -> None:

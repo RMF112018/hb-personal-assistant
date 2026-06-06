@@ -56,6 +56,19 @@ def test_render_payload_exists() -> None:
         assert section in render, f"render_payload missing section {section}"
 
 
+def test_packet_is_top_level_self_identifying() -> None:
+    packet, _db = _seeded_v2_packet()
+    # Top-level version (impossible to confuse with V1) + retained in governance for provenance.
+    assert packet["packet_version"] == "DailyBriefHandoffPacketV2"
+    assert packet["governance_metadata"]["packet_version"] == "DailyBriefHandoffPacketV2"
+    assert pkt.is_daily_brief_packet_v2(packet) is True
+    # A packet without the top-level version is rejected by the validator.
+    assert (
+        pkt.is_daily_brief_packet_v2({k: v for k, v in packet.items() if k != "packet_version"})
+        is False
+    )
+
+
 def test_governance_metadata_is_separated() -> None:
     packet, _db = _seeded_v2_packet()
     assert "governance_metadata" in packet
@@ -258,6 +271,8 @@ def test_proof_passes_and_writes_artifacts(tmp_path) -> None:
     for key in (
         "render_payload_present",
         "governance_metadata_separated",
+        "top_level_packet_version_present",
+        "missing_top_level_version_rejected",
         "required_sections_present",
         "item_fields_present",
         "source_refs_preserved",

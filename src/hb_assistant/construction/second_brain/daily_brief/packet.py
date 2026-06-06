@@ -1110,7 +1110,25 @@ def _project_v2_from_v1(
         "degradation_mode": v1["degradation_mode"],
     }
 
-    return {"render_payload": render_payload, "governance_metadata": governance_metadata}
+    return {
+        # Top-level self-identification so the V2 packet is impossible to confuse with V1. The
+        # version is also retained in governance_metadata (and proof_metadata) for provenance.
+        "packet_version": PACKET_VERSION_V2,
+        "render_payload": render_payload,
+        "governance_metadata": governance_metadata,
+    }
+
+
+def is_daily_brief_packet_v2(packet: dict[str, Any]) -> bool:
+    """Validator: a packet self-identifies as ``DailyBriefHandoffPacketV2`` only when it carries the
+    top-level ``packet_version`` plus the render/governance split. A V1 packet (or a V2 packet with the
+    top-level version stripped) is rejected."""
+    return (
+        isinstance(packet, dict)
+        and packet.get("packet_version") == PACKET_VERSION_V2
+        and "render_payload" in packet
+        and "governance_metadata" in packet
+    )
 
 
 def build_daily_brief_packet_v2(
@@ -1238,6 +1256,12 @@ def build_daily_brief_packet_v2_proof(
         and all(f in governance for f in governance_fields)
         and not any(k in render for k in forbidden_in_render)
     )
+    # Top-level self-identification: the packet must carry the V2 version at the top level, and a
+    # packet without it (e.g. a V1 packet) must be rejected by the validator.
+    top_level_packet_version_present = is_daily_brief_packet_v2(packet)
+    missing_top_level_version_rejected = not is_daily_brief_packet_v2(
+        {k: v for k, v in packet.items() if k != "packet_version"}
+    )
     required_sections_present = bool(render_sections) and all(s in render for s in render_sections)
     item_fields_present = bool(render_item_fields) and all(
         all(f in item for f in render_item_fields) for item in needs_attention
@@ -1340,6 +1364,8 @@ def build_daily_brief_packet_v2_proof(
     proof_passed = (
         render_payload_present
         and governance_metadata_separated
+        and top_level_packet_version_present
+        and missing_top_level_version_rejected
         and required_sections_present
         and item_fields_present
         and source_refs_preserved
@@ -1367,6 +1393,8 @@ def build_daily_brief_packet_v2_proof(
         "packet_id": governance.get("packet_id"),
         "render_payload_present": render_payload_present,
         "governance_metadata_separated": governance_metadata_separated,
+        "top_level_packet_version_present": top_level_packet_version_present,
+        "missing_top_level_version_rejected": missing_top_level_version_rejected,
         "required_sections_present": required_sections_present,
         "item_fields_present": item_fields_present,
         "source_refs_preserved": source_refs_preserved,

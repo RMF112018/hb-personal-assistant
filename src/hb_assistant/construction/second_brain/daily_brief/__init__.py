@@ -55,6 +55,7 @@ from .packet import (
     build_daily_brief_packet_proof,
     build_daily_brief_packet_v2,
     build_daily_brief_packet_v2_proof,
+    is_daily_brief_packet_v2,
     load_daily_brief_packet_v2_contract,
 )
 from .policy import (
@@ -121,6 +122,7 @@ __all__ = [
     "build_daily_brief_packet_proof",
     "build_daily_brief_packet_v2",
     "build_daily_brief_packet_v2_proof",
+    "is_daily_brief_packet_v2",
     "load_daily_brief_packet_v2_contract",
     "RenderedBriefQualityError",
     "build_daily_brief_rendered_quality_proof",

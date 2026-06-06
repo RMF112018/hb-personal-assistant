@@ -63,3 +63,15 @@ never invents content.
 Same as V1: advisory-only, source-linked, metadata-only, no raw, no external writeback, no
 final-determinations, Claude-rendering-only. Read-only; persists nothing; fail-closed on missing
 contract or raw leakage. V1 builder, proof, CLI default, and contract are untouched (additive).
+
+## Addendum (v1.5.1-phase-09-addendum-v2) — top-level self-identification
+
+The V2 packet now carries `packet_version = "DailyBriefHandoffPacketV2"` at the **top level** (it was
+previously only inside `governance_metadata`, so the packet did not self-identify and could be confused
+with V1). It is retained in `governance_metadata` (and `proof_metadata`) for provenance. The contract
+adds `packet_version` to `top_level_keys` (contract version 1.2.0); it remains forbidden inside
+`render_payload`. A reusable validator `is_daily_brief_packet_v2(packet)` (in `daily_brief/packet.py`,
+exported from `daily_brief/__init__.py`) requires the top-level version plus the render/governance split
+and rejects a V1 packet (or a V2 packet with the top-level version stripped). The V2 packet proof gains
+`top_level_packet_version_present` + `missing_top_level_version_rejected`; the MCP handoff proof's
+`packet_version_ok` now requires the top-level version; the MCP wrapper propagates it unchanged.
