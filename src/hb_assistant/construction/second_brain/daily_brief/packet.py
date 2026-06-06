@@ -105,19 +105,49 @@ _FINAL_DETERMINATION_LEXICON: tuple[str, ...] = (
 
 # --- V2 contract constants (single source of truth for builder, proof, and emitted contract) ------
 
-# The 11 user-facing keys carried by ``render_payload`` (brief-ready data only).
+# The user-facing keys carried by ``render_payload`` (brief-ready data only).
 RENDER_PAYLOAD_SECTIONS: list[str] = [
     "brief_date",
     "portfolio_scope",
     "yesterday",
     "today_agenda",
     "next_7_days",
+    "schedule",
+    "rfis",
+    "submittals",
+    "punch",
+    "procurement",
     "needs_attention",
     "focus_recommendations",
     "project_signals",
     "email_activity",
     "calendar_activity",
     "data_gaps",
+]
+
+# Record-bearing sections held to the count-vs-detail rule (each is a ``RecordSection``).
+RECORD_SECTION_NAMES: list[str] = [
+    "yesterday",
+    "today_agenda",
+    "next_7_days",
+    "schedule",
+    "rfis",
+    "submittals",
+    "punch",
+    "procurement",
+    "email_activity",
+    "calendar_activity",
+]
+
+# The uniform RecordSection envelope (Prompt 02): a count is only actionable if it is backed by
+# listed records, otherwise the section must declare detail_available=False + a detail_gap_reason.
+RECORD_SECTION_FIELDS: list[str] = [
+    "count",
+    "records",
+    "detail_available",
+    "detail_gap_reason",
+    "source_family",
+    "why_it_matters",
 ]
 
 # Fields carried by every renderable item (e.g. ``needs_attention`` entries). Fields not yet
@@ -173,15 +203,6 @@ FORBIDDEN_IN_RENDER_PAYLOAD: list[str] = [
     "receipt_metadata",
 ]
 
-# Sections declared by the V2 contract but not yet sourced; populated in Prompt 02 (enrichment).
-_V2_DEFERRED_SECTIONS: dict[str, str] = {
-    "yesterday": "No retrieval date window yet; 'what happened yesterday' is deferred to Prompt 02.",
-    "today_agenda": "Calendar events are stored but not exposed via a retrieval reader; deferred to Prompt 02.",
-    "next_7_days": "Procore record due/start/finish dates are not exposed via retrieval; deferred to Prompt 02.",
-    "calendar_activity": "Calendar reader not wired into the daily-brief retrieval path; deferred to Prompt 02.",
-    "email_activity": "Only thread summaries are exposed today (no per-day activity); deferred to Prompt 02.",
-}
-
 # Concise instructions for Claude when consuming a V2 packet (render only ``render_payload``).
 RENDERING_INSTRUCTIONS_V2: dict[str, Any] = {
     "render_as": "human_readable_executive_brief",
@@ -190,8 +211,9 @@ RENDERING_INSTRUCTIONS_V2: dict[str, Any] = {
         "Render only the render_payload. Never render governance_metadata into the brief body.",
         "Lead with yesterday, today's agenda, deadlines in the next 7 days, what needs attention, "
         "and what to focus on.",
+        "Each record-bearing section is a RecordSection: render its listed records, never a bare "
+        "count. When detail_available is false, state the detail_gap_reason plainly.",
         "Preserve all review-required, stale, and low-confidence warnings carried on items.",
-        "When a section is empty, state its data_gaps reason plainly; do not invent content.",
         "Do not infer beyond the packet contents.",
         "Do not make final determinations (financial, legal, claim, payment, safety, schedule, contractual).",
         "Do not ask for raw records.",
@@ -542,6 +564,116 @@ def _seed_proof_db(path: str) -> None:
     conn.close()
 
 
+def _seed_v2_enrichment_db(path: str) -> None:
+    """Extend the V1 seed with record-level enrichment sources (calendar, email threads, Procore
+    action signals) so the V2 proof exercises real, source-linked record sections (metadata-only,
+    no raw). Brief date under proof is 2026-06-02; deadline falls inside the 7-day window."""
+    import sqlite3
+
+    _seed_proof_db(path)
+    store = ConstructionStore(path)
+    # Calendar source registry (FK target for calendar_event_index).
+    store.upsert_calendar_source_location(
+        source_id="cal-src-1", mailbox_owner_hash="owner-hash-1", calendar_role="primary"
+    )
+    # Calendar: one event today, one yesterday (relative to the 2026-06-02 proof brief date).
+    store.upsert_calendar_event_index(
+        event_index_id="cal-today",
+        source_id="cal-src-1",
+        graph_event_id_hash="hash-today",
+        start_datetime_utc="2026-06-02T09:00:00+00:00",
+        end_datetime_utc="2026-06-02T10:00:00+00:00",
+        subject_redacted="Project coordination sync (redacted)",
+        project_key="P1",
+        is_online_meeting=True,
+        review_required=False,
+    )
+    store.upsert_calendar_event_index(
+        event_index_id="cal-yday",
+        source_id="cal-src-1",
+        graph_event_id_hash="hash-yday",
+        start_datetime_utc="2026-06-01T14:00:00+00:00",
+        end_datetime_utc="2026-06-01T15:00:00+00:00",
+        subject_redacted="Owner review meeting (redacted)",
+        project_key="P1",
+        review_required=False,
+    )
+    store.upsert_calendar_event_attendee(
+        event_index_id="cal-today", attendee_hash="att-1", attendee_role="required"
+    )
+    store.upsert_calendar_event_attendee(
+        event_index_id="cal-today", attendee_hash="att-2", attendee_role="optional"
+    )
+    # Email thread summary (redacted topic only).
+    store.upsert_email_thread_summary(
+        thread_key="thr-1",
+        project_key="P1",
+        message_count=3,
+        last_message_datetime="2026-06-01T16:00:00+00:00",
+        participants_hash=["p-hash-1", "p-hash-2"],
+        summary_redacted="Submittal coordination (redacted)",
+        review_required=False,
+    )
+    # Procore action signals: a zero-float schedule signal and a deadline inside the 7-day window.
+    conn = sqlite3.connect(path)
+    conn.execute(
+        "INSERT INTO procore_action_signals (action_signal_id, project_key, record_key,"
+        " endpoint_id, signal_type, signal_status, importance, due_at_utc, title_redacted,"
+        " summary_redacted, reason_codes_json, first_detected_at_utc, last_seen_at_utc,"
+        " metadata_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (
+            "sig-sched-1",
+            "P1",
+            "P1|schedule_activities|sch1|act1",
+            "schedule_activities",
+            "activity_zero_float",
+            "open",
+            "high",
+            None,
+            "Activity at or below zero float",
+            None,
+            "[]",
+            "2026-06-02T00:00:00+00:00",
+            "2026-06-02T00:00:00+00:00",
+            json.dumps(
+                {
+                    "total_float": 0.0,
+                    "float_band": "zero_or_negative",
+                    "is_critical": True,
+                    "constraint_type": "must_finish_on",
+                    "constraint_date": "2026-06-10",
+                    "deadline_variance": -2,
+                    "percent_complete": 40,
+                }
+            ),
+        ),
+    )
+    conn.execute(
+        "INSERT INTO procore_action_signals (action_signal_id, project_key, record_key,"
+        " endpoint_id, signal_type, signal_status, importance, due_at_utc, title_redacted,"
+        " summary_redacted, reason_codes_json, first_detected_at_utc, last_seen_at_utc,"
+        " metadata_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (
+            "sig-due-1",
+            "P1",
+            "P1|rfis|rfi1",
+            "rfis",
+            "rfi_response_due",
+            "open",
+            "high",
+            "2026-06-05T00:00:00+00:00",
+            "RFI response due",
+            None,
+            "[]",
+            "2026-06-02T00:00:00+00:00",
+            "2026-06-02T00:00:00+00:00",
+            "{}",
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
 def _render_proof_md(proof: dict[str, Any]) -> str:
     lines = [
         "# Phase 09 — Daily Brief Handoff Packet Proof",
@@ -879,11 +1011,16 @@ def _build_focus_recommendations(needs_attention: list[dict[str, Any]]) -> list[
     return focus
 
 
-def _build_data_gaps(v1: dict[str, Any]) -> list[dict[str, Any]]:
-    """Explicit, honest gaps: deferred sections + any V1 coverage warnings."""
+def _build_data_gaps(
+    v1: dict[str, Any], record_sections: dict[str, dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Explicit, honest gaps derived from the actual record sections (any that declare
+    detail-unavailable) plus any V1 coverage warnings — never a stale claim about a populated section.
+    """
     gaps: list[dict[str, Any]] = [
-        {"section": section, "reason": reason, "status": "deferred_to_prompt_02"}
-        for section, reason in _V2_DEFERRED_SECTIONS.items()
+        {"section": name, "reason": sec.get("detail_gap_reason"), "status": "detail_unavailable"}
+        for name, sec in record_sections.items()
+        if sec.get("detail_available") is False and sec.get("detail_gap_reason")
     ]
     for warning in v1["source_coverage_summary"].get("coverage_warnings", []):
         gaps.append(
@@ -892,11 +1029,38 @@ def _build_data_gaps(v1: dict[str, Any]) -> list[dict[str, Any]]:
     return gaps
 
 
-def _project_v2_from_v1(v1: dict[str, Any]) -> dict[str, Any]:
+def _count_detail_ok(section: dict[str, Any]) -> bool:
+    """The count-vs-detail invariant: a count is only actionable if backed by listed records,
+    otherwise the section must explicitly declare detail_available=False + a detail_gap_reason.
+
+    Valid iff: count == 0 (nothing to report is not a bare count);
+    OR records present AND detail_available AND count == len(records);
+    OR a positive count with no records AND detail_available is False AND a non-empty
+    detail_gap_reason (explicit detail-unavailable).
+    """
+    if not isinstance(section, dict):
+        return False
+    records = section.get("records")
+    if not isinstance(records, list):
+        return False
+    count = section.get("count")
+    if not isinstance(count, int):
+        return False
+    if count == 0 and not records:
+        return True
+    if records:
+        return section.get("detail_available") is True and count == len(records)
+    return section.get("detail_available") is False and bool(section.get("detail_gap_reason"))
+
+
+def _project_v2_from_v1(
+    v1: dict[str, Any], *, record_sections: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
     """Re-project an approved V1 packet into the V2 render_payload / governance_metadata split.
 
-    Pure projection: adds no new retrieval and invents no content. Sections without a current
-    data source are emitted empty with matching ``data_gaps`` entries.
+    V1-derived parts (needs_attention, focus, project_signals, data_gaps) are projected here; the
+    record-bearing sections come from the read-only enrichment layer (``record_sections``). Invents
+    no content; sections without a data source carry an explicit detail-unavailable reason.
     """
     coverage = v1["source_coverage_summary"]
     needs_attention = _build_needs_attention(v1)
@@ -910,15 +1074,20 @@ def _project_v2_from_v1(v1: dict[str, Any]) -> dict[str, Any]:
             "project_count": coverage.get("project_count", 0),
             "projects": project_keys,
         },
-        "yesterday": [],
-        "today_agenda": [],
-        "next_7_days": [],
+        "yesterday": record_sections["yesterday"],
+        "today_agenda": record_sections["today_agenda"],
+        "next_7_days": record_sections["next_7_days"],
+        "schedule": record_sections["schedule"],
+        "rfis": record_sections["rfis"],
+        "submittals": record_sections["submittals"],
+        "punch": record_sections["punch"],
+        "procurement": record_sections["procurement"],
         "needs_attention": needs_attention,
         "focus_recommendations": _build_focus_recommendations(needs_attention),
         "project_signals": project_signals,
-        "email_activity": [],
-        "calendar_activity": [],
-        "data_gaps": _build_data_gaps(v1),
+        "email_activity": record_sections["email_activity"],
+        "calendar_activity": record_sections["calendar_activity"],
+        "data_gaps": _build_data_gaps(v1, record_sections),
     }
 
     governance_metadata: dict[str, Any] = {
@@ -953,15 +1122,40 @@ def build_daily_brief_packet_v2(
 ) -> dict[str, Any]:
     """Build a ``DailyBriefHandoffPacketV2`` (read-only, fail-closed).
 
-    V2 is a projection over the canonical V1 packet: it splits user-facing ``render_payload`` from
-    internal ``governance_metadata`` so governance never renders into the brief body. Adds no new
-    retrieval; sections without a data source are emitted empty with ``data_gaps`` entries.
+    V2 splits user-facing ``render_payload`` from internal ``governance_metadata`` so governance
+    never renders into the brief body. The V1 packet remains the canonical source-assembly path;
+    the record-bearing sections come from the read-only enrichment layer. Every count-bearing
+    section is held to the count-vs-detail rule (records or an explicit detail-unavailable reason).
     """
+    from .enrichment import build_record_enrichment
+
     load_daily_brief_packet_v2_contract()
     v1 = build_daily_brief_packet(
         brief_date=brief_date, project_key=project_key, mode=mode, db_path=db_path
     )
-    packet = _project_v2_from_v1(v1)
+    project_keys = sorted(
+        {
+            str(it.get("project_key"))
+            for name in (
+                "recent_changes",
+                "review_required_items",
+                "aging_watchlist",
+                "meeting_prep",
+                "risk_watchlist",
+                "stale_or_low_confidence_warnings",
+                "accepted_memory_context",
+            )
+            for it in v1[name]
+            if it.get("project_key")
+        }
+    )
+    record_sections = build_record_enrichment(
+        brief_date=brief_date,
+        project_key=project_key,
+        db_path=db_path,
+        project_keys=project_keys,
+    )
+    packet = _project_v2_from_v1(v1, record_sections=record_sections)
     _assert_no_raw(json.dumps(packet, default=str), "daily brief packet v2")
     return packet
 
@@ -982,10 +1176,24 @@ def _render_v2_proof_md(proof: dict[str, Any]) -> str:
         f"- final_determination_rejected: {proof['final_determination_rejected']}",
         f"- metadata_only: {proof['metadata_only']}",
         f"- no_external_writeback: {proof['no_external_writeback']}",
+        f"- count_detail_invariant_holds: {proof['count_detail_invariant_holds']}",
+        f"- tampered_count_without_detail_rejected: {proof['tampered_count_without_detail_rejected']}",
+        f"- detail_unavailable_explicit: {proof['detail_unavailable_explicit']}",
+        f"- record_details_source_linked: {proof['record_details_source_linked']}",
+        f"- no_raw_calendar_email_payload: {proof['no_raw_calendar_email_payload']}",
+        f"- no_raw_payload_probe_rejected: {proof['no_raw_payload_probe_rejected']}",
         "",
-        "## Render payload section counts",
+        "## Record sections (count-vs-detail)",
         "",
     ]
+    for name, info in proof["record_section_summary"].items():
+        lines.append(
+            f"- {name}: count={info['count']} detail_available={info['detail_available']}"
+            f" reason={info['detail_gap_reason']}"
+        )
+    lines.append("")
+    lines.append("## Render payload section counts")
+    lines.append("")
     for name, count in proof["render_section_counts"].items():
         lines.append(f"- {name}: {count}")
     lines.append("")
@@ -1010,7 +1218,7 @@ def build_daily_brief_packet_v2_proof(
 
     with tempfile.TemporaryDirectory() as tmp:
         seeded = f"{tmp}/seeded.sqlite3"
-        _seed_proof_db(seeded)
+        _seed_v2_enrichment_db(seeded)
         packet = build_daily_brief_packet_v2(
             brief_date="2026-06-02", project_key="P1", db_path=seeded
         )
@@ -1065,9 +1273,55 @@ def build_daily_brief_packet_v2_proof(
         and any(i.get("stale_warning") for i in needs_attention)
     )
 
+    # --- Prompt 02: count-vs-detail invariant + record-level enrichment proofs ---
+    record_sections = {name: render.get(name, {}) for name in RECORD_SECTION_NAMES}
+    all_records = [r for sec in record_sections.values() for r in sec.get("records", [])]
+
+    count_detail_invariant_holds = bool(record_sections) and all(
+        _count_detail_ok(sec) for sec in record_sections.values()
+    )
+    # Non-vacuous: a positive count with no records and no explicit gap reason must be rejected.
+    tampered_section = {
+        "count": 3,
+        "records": [],
+        "detail_available": True,
+        "detail_gap_reason": None,
+        "source_family": "x",
+        "why_it_matters": "y",
+    }
+    tampered_count_without_detail_rejected = _count_detail_ok(tampered_section) is False
+    # At least one domain that has no dedicated reader is explicitly detail-unavailable (not a count).
+    detail_unavailable_explicit = all(
+        _count_detail_ok(render.get(name, {}))
+        and render.get(name, {}).get("detail_available") is False
+        and bool(render.get(name, {}).get("detail_gap_reason"))
+        for name in ("rfis", "submittals", "punch", "procurement")
+    )
+    record_details_source_linked = bool(all_records) and all(
+        r.get("source_family") and r.get("source_ref_hash") for r in all_records
+    )
+    # No raw calendar/email/source payload: whole-packet no-raw gate + non-vacuous join-URL probe.
+    no_raw_calendar_email_payload = metadata_only and "web_link" not in blob
+    try:
+        _assert_no_raw('{"join":"https://teams.microsoft.com/meet/x"}', "raw calendar probe")
+        no_raw_payload_probe_rejected = False
+    except ValueError:
+        no_raw_payload_probe_rejected = True
+
     planted_flagged = _reject_final_determination(
         "Approve payment of the claim as a final determination"
     )
+    record_text_fields = [
+        str(r.get(k) or "")
+        for r in all_records
+        for k in (
+            "title",
+            "meeting_title_redacted",
+            "topic_redacted",
+            "why_it_matters",
+            "recommended_focus",
+        )
+    ] + [str(sec.get("why_it_matters") or "") for sec in record_sections.values()]
     render_text_fields = (
         [str(i.get("title") or "") for i in needs_attention]
         + [
@@ -1076,6 +1330,7 @@ def build_daily_brief_packet_v2_proof(
             for k in ("why_it_matters", "recommended_focus")
         ]
         + [str(g.get("reason") or "") for g in render.get("data_gaps", [])]
+        + record_text_fields
     )
     real_unflagged = not any(_reject_final_determination(t) for t in render_text_fields)
     final_determination_rejected = planted_flagged and real_unflagged
@@ -1093,6 +1348,12 @@ def build_daily_brief_packet_v2_proof(
         and review_stale_confidence_preserved
         and final_determination_rejected
         and no_external_writeback
+        and count_detail_invariant_holds
+        and tampered_count_without_detail_rejected
+        and detail_unavailable_explicit
+        and record_details_source_linked
+        and no_raw_calendar_email_payload
+        and no_raw_payload_probe_rejected
     )
 
     proof: dict[str, Any] = {
@@ -1114,8 +1375,26 @@ def build_daily_brief_packet_v2_proof(
         "review_stale_confidence_preserved": review_stale_confidence_preserved,
         "final_determination_rejected": final_determination_rejected,
         "no_external_writeback": no_external_writeback,
+        "count_detail_invariant_holds": count_detail_invariant_holds,
+        "tampered_count_without_detail_rejected": tampered_count_without_detail_rejected,
+        "detail_unavailable_explicit": detail_unavailable_explicit,
+        "record_details_source_linked": record_details_source_linked,
+        "no_raw_calendar_email_payload": no_raw_calendar_email_payload,
+        "no_raw_payload_probe_rejected": no_raw_payload_probe_rejected,
+        "record_section_summary": {
+            name: {
+                "count": render.get(name, {}).get("count"),
+                "detail_available": render.get(name, {}).get("detail_available"),
+                "detail_gap_reason": render.get(name, {}).get("detail_gap_reason"),
+            }
+            for name in RECORD_SECTION_NAMES
+        },
         "render_section_counts": {
-            name: (len(render[name]) if isinstance(render.get(name), list) else 1)
+            name: (
+                render[name].get("count")
+                if isinstance(render.get(name), dict)
+                else (len(render[name]) if isinstance(render.get(name), list) else 1)
+            )
             for name in render_sections
             if name in render
         },

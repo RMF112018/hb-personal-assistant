@@ -1,8 +1,8 @@
 {
   "contract_name": "daily_brief_handoff_packet_v2_contract",
-  "version": "1.0.0-phase-09-addendum-v2",
+  "version": "1.1.0-phase-09-addendum-v2",
   "packet_version": "DailyBriefHandoffPacketV2",
-  "description": "Daily Brief V2 handoff packet. Splits user-facing render_payload from internal governance_metadata so governance never renders into the brief body. V2 is a projection over the V1 packet (no new retrieval); sections without a current data source are emitted empty with honest data_gaps entries deferred to Prompt 02 (record-level enrichment).",
+  "description": "Daily Brief V2 handoff packet. Splits user-facing render_payload from internal governance_metadata so governance never renders into the brief body. Prompt 02 enriches the record-bearing sections with real, source-linked record detail where a working reader exists (calendar, email threads, Procore action signals) and enforces the count-vs-detail rule: a count is only actionable if backed by listed records, otherwise the section must declare detail_available=false + a detail_gap_reason. Procore record domains without a dedicated reader emit the explicit detail-unavailable shape (never a bare count).",
   "top_level_keys": [
     "render_payload",
     "governance_metadata"
@@ -13,6 +13,11 @@
     "yesterday",
     "today_agenda",
     "next_7_days",
+    "schedule",
+    "rfis",
+    "submittals",
+    "punch",
+    "procurement",
     "needs_attention",
     "focus_recommendations",
     "project_signals",
@@ -42,6 +47,60 @@
     "recommended_focus",
     "detail_availability"
   ],
+  "count_vs_detail_rule": "If the brief reports a count it must either list the underlying records with useful detail or explicitly say record-level detail is unavailable. A bare count is never actionable content. A count of 0 needs no records (nothing to report).",
+  "record_section_names": [
+    "yesterday",
+    "today_agenda",
+    "next_7_days",
+    "schedule",
+    "rfis",
+    "submittals",
+    "punch",
+    "procurement",
+    "email_activity",
+    "calendar_activity"
+  ],
+  "record_section_fields": [
+    "count",
+    "records",
+    "detail_available",
+    "detail_gap_reason",
+    "source_family",
+    "why_it_matters"
+  ],
+  "record_section_optional_fields": [
+    "truncated",
+    "total_count"
+  ],
+  "detail_policy": {
+    "valid_section": "count==0 (nothing to report); OR records present AND detail_available=true AND count==len(records); OR positive count with no records AND detail_available=false AND a non-empty detail_gap_reason.",
+    "truncation": "When more records exist than are listed, set truncated=true and total_count to the full count (no silent caps).",
+    "missing_field_policy": "Fields not persisted by repo truth (e.g. responsible-party/vendor NAMES) are emitted null with a per-record detail_availability reason; opaque ids are carried separately where available; days_open/age derives only from a real start timestamp else null + reason. Never fabricate.",
+    "detail_gap_reasons": [
+      "dedicated_reader_not_available",
+      "no_project_scope",
+      "no_source_data",
+      "names_not_persisted_opaque_ids_only",
+      "activity_attributes_in_canonical_not_signal",
+      "thread_level_summary_only"
+    ]
+  },
+  "record_field_specs": {
+    "schedule": ["project_key", "activity_id", "activity_name", "wbs", "status", "start_date", "finish_date", "total_float", "free_float", "constraint_type", "constraint_date", "why_it_matters", "recommended_focus"],
+    "rfis": ["project_key", "rfi_number", "subject", "status", "ball_in_court", "responsible_party", "due_date", "days_open", "linked_schedule_item", "why_it_matters", "recommended_focus"],
+    "submittals": ["project_key", "submittal_number", "title", "spec_section", "status", "responsible_party", "due_date", "days_open", "returned_date", "why_it_matters", "recommended_focus"],
+    "punch": ["project_key", "item_number", "title", "location", "status", "responsible_party", "due_date", "days_open", "priority", "why_it_matters", "recommended_focus"],
+    "procurement": ["project_key", "record_number", "title", "vendor", "status", "responsible_party", "due_date", "age", "related_ref", "why_it_matters", "recommended_focus"],
+    "email_activity": ["project_key", "topic_redacted", "last_activity_date", "sender_company", "participant_count", "related_record", "review_required", "why_it_matters", "recommended_focus"],
+    "calendar": ["start_time", "end_time", "meeting_title_redacted", "project_key", "attendee_count", "related_records", "prep_needed", "open_items", "why_it_matters"],
+    "next_7_days": ["date", "project_key", "item", "type", "responsible_party", "source", "why_it_matters"]
+  },
+  "wired_sections_prompt_02": {
+    "calendar_event_index": ["today_agenda", "yesterday", "calendar_activity"],
+    "email_thread_summaries": ["email_activity"],
+    "procore_action_signals": ["next_7_days", "schedule"]
+  },
+  "detail_unavailable_domains_prompt_02": ["rfis", "submittals", "punch", "procurement"],
   "governance_metadata_fields": [
     "packet_id",
     "packet_version",
@@ -66,13 +125,6 @@
     "proof_metadata",
     "receipt_metadata"
   ],
-  "data_gap_sections_deferred_to_prompt_02": [
-    "yesterday",
-    "today_agenda",
-    "next_7_days",
-    "calendar_activity",
-    "email_activity"
-  ],
   "source_ref_policy": {
     "emit_raw": false,
     "emit_hash": true,
@@ -92,10 +144,12 @@
     "governance_metadata is never rendered into the brief body.",
     "no governance key (packet_id/hash, source coverage, guardrails, proof/receipt metadata) appears inside render_payload.",
     "source refs are emitted as hashes + safe labels only (no raw refs, bodies, tokens, or URLs).",
+    "every count-bearing section obeys the count-vs-detail rule: listed records or an explicit detail-unavailable reason.",
+    "record details remain source-linked (every record carries source_family + source_ref_hash).",
+    "no raw calendar/email/source payload (no body, raw subject, email address, Graph/join/signed URL, token, or header).",
     "review-required, stale, and low-confidence flags are preserved on renderable items.",
     "final-determination language is rejected.",
-    "read-only; metadata-only; persists nothing; fail-closed on missing contract or raw leakage.",
-    "empty sections are honest data_gaps, not fabricated content; enrichment lands in Prompt 02."
+    "read-only; metadata-only; persists nothing; fail-closed on missing contract or raw leakage."
   ],
   "cli": {
     "build": "hb-assistant second-brain daily-brief packet --date YYYY-MM-DD --version v2 --json",

@@ -1,66 +1,60 @@
 # Daily Brief V2 Handoff Packet Contract (`DailyBriefHandoffPacketV2`)
 
 **Package:** HB_Construction_Intelligence_Phase_09_Addendum_Daily_Brief_V2_Executive_Utility_Hardening
-**Prompt:** 01 — Daily Brief V2 Packet Contract · **Version:** 1.0.0-phase-09-addendum-v2
+**Contract version:** 1.1.0-phase-09-addendum-v2 (Prompt 01 split + Prompt 02 record-level enrichment)
 
 The authoritative machine contract is `daily-brief-packet-v2-contract.json` (a copy of the registered
 resource `phase_09_daily_brief_handoff_packet_v2_contract.json`).
 
-## Why V2
-
-The V1 packet (`DailyBriefHandoffPacketV1`) is a single flat structure that mixes internal governance
-metadata (source-coverage metrics, guardrails, proof/receipt internals, per-item provenance) with the
-data that gets rendered into the brief body. V2 **splits the packet in two**:
+## Two halves
 
 - `render_payload` — user-facing, brief-ready data only.
-- `governance_metadata` — packet id/hash, source-coverage metrics, source refs, guardrails, rendering
-  instructions, proof/receipt metadata. **Never rendered into the brief body.**
+- `governance_metadata` — packet id/hash, source coverage, source refs, guardrails, rendering
+  instructions, proof/receipt metadata. **Never rendered into the brief body** (separation invariant
+  `forbidden_in_render_payload`).
 
-## Shape
+## Count-vs-detail rule (Prompt 02)
+
+> If the brief reports a count, it must either list the underlying records with useful detail or
+> explicitly say record-level detail is unavailable. A bare count is never actionable content.
+
+Every record-bearing section is a uniform **RecordSection**:
 
 ```
-{
-  "render_payload": {
-    "brief_date", "portfolio_scope",
-    "yesterday", "today_agenda", "next_7_days",
-    "needs_attention", "focus_recommendations", "project_signals",
-    "email_activity", "calendar_activity", "data_gaps"
-  },
-  "governance_metadata": {
-    "packet_id", "packet_version", "generated_utc", "brief_date", "mode",
-    "source_coverage_summary", "source_refs", "guardrails",
-    "rendering_instructions", "proof_metadata", "receipt_metadata",
-    "status", "degradation_mode"
-  }
-}
+{ "count", "records", "detail_available", "detail_gap_reason", "source_family", "why_it_matters",
+  "truncated"?, "total_count"? }
 ```
 
-### Renderable item fields
-`project_key`, `project_name`, `record_type`, `record_id`, `title`, `status`, `responsible_party`,
-`due_date`, `start_date`, `finish_date`, `source_family`, `source_ref_hash`, `confidence_class`,
-`review_tier`, `review_required`, `freshness_label`, `stale_warning`, `why_it_matters`,
-`recommended_focus`, `detail_availability`.
+`_count_detail_ok` validity: `count == 0` (nothing to report); OR records present AND
+`detail_available=true` AND `count == len(records)`; OR a positive count with no records AND
+`detail_available=false` AND a non-empty `detail_gap_reason`. Truncation is explicit
+(`truncated` + `total_count`) — no silent caps.
 
-Fields not yet sourced from the current retrieval path (`project_name`, `record_id`, `status`,
-`responsible_party`, dates) are emitted as `null` and flagged in `detail_availability` — never
-fabricated.
+## Sections wired with real records (Prompt 02)
 
-## Projection, not new retrieval
-
-V2 is a **pure projection** over the canonical V1 packet (`_project_v2_from_v1`). It adds no new
-retrieval. Sections without a current data source are emitted **empty** with an explicit `data_gaps`
-entry, and are deferred to **Prompt 02 — Record-Level Enrichment**:
-
-| Section | Status (Prompt 01) |
+| Source reader | Sections |
 | --- | --- |
-| `needs_attention`, `project_signals`, `focus_recommendations`, `data_gaps` | populated from V1 |
-| `yesterday`, `today_agenda`, `next_7_days`, `calendar_activity`, `email_activity` | empty + data_gap |
+| `calendar_event_index` (+ `calendar_event_attendees`) | `today_agenda`, `yesterday`, `calendar_activity` |
+| `email_thread_summaries` | `email_activity` |
+| `procore_action_signals` (`build_overdue_queue`, `get_procore_action_signals`) | `next_7_days`, `schedule` |
 
-## Guardrails (unchanged from V1)
+## Detail-unavailable domains (Prompt 02)
 
-`advisory_only`, `source_linked`, `metadata_only`, `no_raw`, `no_writeback`,
-`no_final_determinations`, `claude_rendering_only`. Read-only; persists nothing; fail-closed on
-missing contract or raw leakage.
+`rfis`, `submittals`, `punch`, `procurement` have no dedicated reader yet → emitted with
+`detail_available=false`, `detail_gap_reason="dedicated_reader_not_available"` and the typed
+`record_field_specs` target shape (so Prompt 03+ can populate without a contract change).
+
+## Missing-field policy (repo truth)
+
+Fields not persisted (responsible-party / vendor **names**) are emitted `null` with a per-record
+`detail_availability` reason; opaque ids are carried separately where available; `days_open`/`age`
+derives only from a real start timestamp, else `null` + reason. Never fabricated.
+
+## No raw payload
+
+No calendar/email body, raw subject, email address, Graph/join/signed URL, token, or header is ever
+emitted; the builder runs an `_assert_no_raw` backstop over the whole packet and the proof asserts no
+`web_link`/URL/email patterns (plus a non-vacuous join-URL probe).
 
 ## CLI
 
@@ -69,7 +63,6 @@ hb-assistant second-brain daily-brief packet --date YYYY-MM-DD --version v2 --js
 hb-assistant second-brain daily-brief packet-v2-proof --json
 ```
 
-The proof (`daily-brief-packet-v2-proof.json`) certifies: render_payload exists, governance_metadata
-is separated (no governance key leaks into render), required sections exist, source refs preserved,
-raw-shaped values rejected, review/stale/confidence flags preserved, final-determination language
-rejected, metadata-only, no external writeback.
+The proof (`daily-brief-packet-v2-proof.json`) certifies the split, source-linking, the count-vs-detail
+invariant (with a non-vacuous tampered-rejection), explicit detail-unavailable domains, no raw
+calendar/email payload, no final determinations, and no external writeback.
