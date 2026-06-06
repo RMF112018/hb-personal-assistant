@@ -1686,6 +1686,57 @@ def retrieval_coverage_parity_closeout(
     _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["closeout_ok"] else 3)
 
 
+@retrieval_app.command("accepted-memory-loader-proof")
+def retrieval_accepted_memory_loader_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the accepted-memory loader/manifest proof."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Prove one accepted memory item appears in the deterministic reader, the reviewed-memory loader,
+    and the approved-source manifest, while pending/rejected/superseded memory is excluded (redacted,
+    bounded, source-linked, no raw). Exit 0/3."""
+    from hb_assistant.construction.second_brain.retrieval.accepted_memory_inclusion import (
+        build_accepted_memory_loader_proof,
+    )
+
+    result = build_accepted_memory_loader_proof(write_evidence=evidence)
+    human = [
+        f"Accepted memory loader/manifest proof passed={result['proof_passed']} "
+        f"(loader_loaded={result['loader_loaded_count']}, "
+        f"manifest_reviewed_memory={result['manifest_reviewed_memory_approved_count']}, "
+        f"non_accepted_excluded={result['non_accepted_excluded']})"
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
+@retrieval_app.command("accepted-memory-vector-coverage-proof")
+def retrieval_accepted_memory_vector_coverage_proof(
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence", help="Write the accepted-memory vector/coverage proof."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Prove accepted memory enters the vector dry-run plan + applied index, the no-raw vector proof
+    still passes, and the coverage-parity closeout flips memory to covered (+1 vector family, parity
+    stays true, readiness not overstated). Exit 0/3."""
+    from hb_assistant.construction.second_brain.retrieval.accepted_memory_inclusion import (
+        build_accepted_memory_vector_coverage_proof,
+    )
+
+    result = build_accepted_memory_vector_coverage_proof(write_evidence=evidence)
+    human = [
+        f"Accepted memory vector/coverage proof passed={result['proof_passed']} "
+        f"(apply={result['vector_apply_status']}, "
+        f"vector_family {result['vector_indexed_family_count_before']}->"
+        f"{result['vector_indexed_family_count_after']}, "
+        f"substrate {result['memory_substrate_status_before']}->"
+        f"{result['memory_substrate_status_after']}, "
+        f"no_raw={result['no_raw_vector_proof_passed']})"
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
 @preference_app.command("capture")
 def preference_capture(
     preference_key: str = typer.Option(..., "--key", help="Preference key (presentation only)."),

@@ -1,0 +1,39 @@
+{
+  "proof": "phase_09_accepted_memory_loader",
+  "command": "second-brain retrieval accepted-memory-loader-proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-06T07:18:10.922319+00:00",
+  "repo_sha": "6c752d1d7f7bc1740305155724a5f8a3ffa57d4e",
+  "reader_returns_only_accepted": true,
+  "loader_loaded_count": 1,
+  "loader_status": "loaded",
+  "manifest_reviewed_memory_approved_count": 1,
+  "non_accepted_excluded": true,
+  "statement_redacted_and_bounded": true,
+  "source_linked": true,
+  "carries_confidence_class": true,
+  "carries_freshness_label": true,
+  "accepted_node_summary": {
+    "node_id": "c098f295a60073bb6a3599e7c08066c7",
+    "source_family": "accepted_long_term_memory",
+    "source_ref_hash": "c098f295a60073bb6a3599e7c08066c787aac99ae40aea0b",
+    "confidence_class": "high",
+    "freshness_label": "current",
+    "review_tier": 1,
+    "review_status": "accepted",
+    "source_ref_count": 1,
+    "statement_len": 48
+  },
+  "metadata_only": true,
+  "guardrails": {
+    "reviewed_only_accepted": true,
+    "read_only": true,
+    "no_raw": true,
+    "no_external_writeback": true,
+    "source_linked_only": true,
+    "bounded_statements": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}
