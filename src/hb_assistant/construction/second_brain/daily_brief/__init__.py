@@ -42,6 +42,11 @@ from .policy import (
     reason_code_for_tier,
     validate_daily_brief_policy,
 )
+from .packet import (
+    DailyBriefPacketError,
+    build_daily_brief_packet,
+    build_daily_brief_packet_proof,
+)
 from .render_view import build_daily_brief_render_view
 from .scheduling import build_daily_brief_schedule_preview, build_launchd_schedule_proof
 from .store import (
@@ -87,6 +92,9 @@ __all__ = [
     "render_brief_markdown",
     "resolve_brief_path",
     "write_brief_output",
+    "DailyBriefPacketError",
+    "build_daily_brief_packet",
+    "build_daily_brief_packet_proof",
     "DailyBriefPolicyError",
     "load_daily_brief_policy_seed",
     "reason_code_for_tier",
