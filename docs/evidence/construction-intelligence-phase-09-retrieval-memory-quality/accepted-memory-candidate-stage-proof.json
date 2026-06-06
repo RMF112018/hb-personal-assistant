@@ -1,0 +1,29 @@
+{
+  "proof": "phase_09_memory_candidate_stage",
+  "command": "second-brain memory candidates stage-proof",
+  "phase": "09",
+  "proof_passed": true,
+  "generated_utc": "2026-06-06T08:30:50.524012+00:00",
+  "repo_sha": "f56740678304c101c62a801c81ed5ae6f8b56a85",
+  "candidate_id_preserved": true,
+  "dry_run_persists_nothing": true,
+  "staged_into_candidate_store": true,
+  "readable_by_read_memory_candidate": true,
+  "accept_succeeds_after_staging": true,
+  "accepted_memory_count_after": 1,
+  "staging_creates_no_accepted_memory": true,
+  "not_found_fails_closed": true,
+  "guard_columns_all_false": true,
+  "metadata_only": true,
+  "guardrails": {
+    "rebuilds_preview_deterministically": true,
+    "preserves_candidate_id": true,
+    "revalidates_source_linked_no_raw_no_determination_tier": true,
+    "requires_confirm": true,
+    "creates_no_accepted_memory": true,
+    "no_external_writeback": true,
+    "guard_columns_false": true,
+    "local_first": true,
+    "fail_closed": true
+  }
+}
