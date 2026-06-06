@@ -214,6 +214,75 @@ export async function getAdminDataCompleteness() {
   return res.json()
 }
 
+// Prompt 14B / UI-14B Settings / Connection Management UX (accounts, projects, sources, keywords, daily-brief, preferences, admin-sync)
+export async function getSettings() {
+  const res = await fetch(`${API_BASE}/settings`)
+  if (!res.ok) throw new Error(`Failed settings: ${res.status}`)
+  return res.json()
+}
+
+export async function getSettingsAccounts() {
+  const res = await fetch(`${API_BASE}/settings/accounts`)
+  if (!res.ok) throw new Error(`Failed settings/accounts: ${res.status}`)
+  return res.json()
+}
+
+export async function getSettingsProjects() {
+  const res = await fetch(`${API_BASE}/settings/projects`)
+  if (!res.ok) throw new Error(`Failed settings/projects: ${res.status}`)
+  return res.json()
+}
+
+export async function getSettingsSources() {
+  const res = await fetch(`${API_BASE}/settings/sources`)
+  if (!res.ok) throw new Error(`Failed settings/sources: ${res.status}`)
+  return res.json()
+}
+
+export async function getSettingsKeywords() {
+  const res = await fetch(`${API_BASE}/settings/keywords`)
+  if (!res.ok) throw new Error(`Failed settings/keywords: ${res.status}`)
+  return res.json()
+}
+
+export async function getSettingsDailyBrief() {
+  const res = await fetch(`${API_BASE}/settings/daily-brief`)
+  if (!res.ok) throw new Error(`Failed settings/daily-brief: ${res.status}`)
+  return res.json()
+}
+
+export async function getSettingsPreferences() {
+  const res = await fetch(`${API_BASE}/settings/preferences`)
+  if (!res.ok) throw new Error(`Failed settings/preferences: ${res.status}`)
+  return res.json()
+}
+
+export async function getSettingsAdminSync() {
+  const res = await fetch(`${API_BASE}/settings/admin-sync`)
+  if (!res.ok) throw new Error(`Failed settings/admin-sync: ${res.status}`)
+  return res.json()
+}
+
+export async function patchSettingsPreferences(payload: any) {
+  const res = await fetch(`${API_BASE}/settings/preferences`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+  })
+  if (!res.ok) throw new Error(`Failed settings/preferences patch: ${res.status}`)
+  return res.json()
+}
+
+export async function patchSettingsAdmin(payload: any) {
+  const res = await fetch(`${API_BASE}/settings/admin`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+  })
+  if (!res.ok) throw new Error(`Failed settings/admin patch: ${res.status}`)
+  return res.json()
+}
+
 // For UI-08/09 the pages progressively move from local illustrative data to useQuery + these fns.
 // All responses are advisory; never duplicate backend logic.
 export const api = {
@@ -250,4 +319,15 @@ export const api = {
   getAdminRetrievalAiQuality,
   getAdminPermissionsGovernance,
   getAdminDataCompleteness,
+  // Prompt 14B Settings / Connection Management UX
+  getSettings,
+  getSettingsAccounts,
+  getSettingsProjects,
+  getSettingsSources,
+  getSettingsKeywords,
+  getSettingsDailyBrief,
+  getSettingsPreferences,
+  getSettingsAdminSync,
+  patchSettingsPreferences,
+  patchSettingsAdmin,
 }

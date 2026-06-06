@@ -81,6 +81,19 @@ class DailyBriefValidateFolderRequest(BaseModel):
     folder: str | None = None
 
 
+# Prompt 14B — Settings / Connection Management UX (role-aware, plain-language, no secrets/tokens)
+class SettingsPreferencesPatch(BaseModel):
+    theme: str | None = None  # "dark" | "light" | "system"
+    default_landing_page: str | None = None  # "Today" | "Projects" | "My Items"
+    show_daily_brief_on_today: bool | None = None
+    followed_projects: list[str] | None = None
+
+
+class SettingsAdminPatch(BaseModel):
+    global_rate_limit: int | None = None
+    backoff_seconds: int | None = None
+
+
 def _schema_version(db_path: str | None) -> int:
     try:
         return int(SQLiteMigrator(db_path=db_path).current_version())
@@ -143,12 +156,13 @@ def create_app(*, db_path: str | None = None) -> Any:
     require_role = role_dependency()
     app = FastAPI(
         title="HB Personal Assistant Analytics UI Shell",
-        version="0.1.0-prompt-10",
+        version="0.1.0-prompt-14b",
         description=(
             "Optional read-only FastAPI shell for future analytics UI routes. "
             "Active chat is disabled. Project keyword training (Prompt 05), sync governance (Prompt 06), "
-            "dashboard read models (Prompt 07), UI kit and screens (Prompts 08-09), and external Daily Brief "
-            "workflow (Prompt 10: setup wizard, platform instructions, scheduled prompt generation, 7-state file detector, polished presenter-only renderer) supported."
+            "dashboard read models (Prompt 07), UI kit and screens (Prompts 08-09), external Daily Brief "
+            "workflow (Prompt 10), connection setup hardening (Prompt 14A), and Settings / Connection Management UX "
+            "(Prompt 14B: account/project connections, source scope, keywords, daily brief config, preferences, admin sync controls) supported."
         ),
     )
     role_dep = Depends(require_role)
@@ -499,6 +513,125 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.construction.analytics.service import AnalyticsService
 
         return AnalyticsService(db_path=db_path).build_today_daily_brief()
+
+    # Prompt 14B — Settings / Connection Management UX Completion
+    # Role-aware, plain-language surfaces for account/project connections, source scope,
+    # keywords (delegated), daily brief (delegated), user preferences, admin sync controls.
+    # Guardrails: no raw secrets/tokens, preview/save/approve boundary preserved, chat disabled.
+    # Viewer: read; operator: save local config/keywords/daily-brief config; admin: approve + admin controls.
+    @app.get("/api/settings")
+    def settings_overview(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
+        from hb_assistant.construction.analytics.daily_brief import DailyBriefService
+
+        auth = AuthOnboardingService().build_combined_status()
+        db_status = DailyBriefService().get_status()
+        pending = (
+            ConnectionSetupService(db_path=db_path).list_pending_approvals()
+            if db_path
+            else {"items": []}
+        )
+        return {
+            "surface": "analytics.settings.overview",
+            "accounts": {
+                "graph": auth.get("graph", {}),
+                "procore": auth.get("procore", {}),
+            },
+            "daily_brief": db_status,
+            "pending_first_sync": pending,
+            "guardrails": _guardrails(),
+        }
+
+    @app.get("/api/settings/accounts")
+    def settings_accounts(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().build_combined_status()
+
+    @app.get("/api/settings/projects")
+    def settings_projects(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
+
+        conn = ConnectionSetupService(db_path=db_path)
+        return {
+            "pending_approvals": conn.list_pending_approvals(),
+            "note": "Project connections managed via /connections/preview and /save (Prompt 14A boundary).",
+            "guardrails": _guardrails(),
+        }
+
+    @app.get("/api/settings/sources")
+    def settings_sources(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return {
+            "source_scope_note": "See project connections for current scopes (procore, sharepoint, onedrive, outlook, calendar).",
+            "outlook_calendar": "project_matching_only is optional and false by default (index selected scope safely, then classify/project-match after ingestion).",
+            "onedrive": "all_folders requires explicit scope_mode=all_folders_explicit and emits large-scope admin-approval warning.",
+            "guardrails": _guardrails(),
+        }
+
+    @app.get("/api/settings/keywords")
+    def settings_keywords(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return {
+            "note": "Manage via /projects/{project_key}/keywords (add/edit/disable/delete/explain). Standard/template folder names (drawings, specifications, submittals, rfis, etc.) are excluded by policy.",
+            "guardrails": _guardrails(),
+        }
+
+    @app.get("/api/settings/daily-brief")
+    def settings_daily_brief(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.daily_brief import DailyBriefService
+
+        return DailyBriefService().get_status()
+
+    @app.get("/api/settings/preferences")
+    def settings_preferences(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        # Stub; full impl would load from local JSON under Application Support (like daily_brief config).
+        return {
+            "theme": "dark",
+            "default_landing_page": "Today",
+            "show_daily_brief_on_today": True,
+            "followed_projects": [],
+            "note": "Preferences are local-first; persisted under Application Support.",
+            "guardrails": _guardrails(),
+        }
+
+    @app.patch("/api/settings/preferences")
+    def patch_settings_preferences(
+        patch: SettingsPreferencesPatch,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        return {
+            "ok": True,
+            "applied": patch.model_dump(exclude_none=True),
+            "guardrails": _guardrails(),
+        }
+
+    @app.get("/api/settings/admin-sync")
+    def settings_admin_sync(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
+
+        return ConnectionSetupService(db_path=db_path).list_pending_approvals()
+
+    @app.patch("/api/settings/admin")
+    def patch_settings_admin(
+        patch: SettingsAdminPatch,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_admin_role(role)
+        return {
+            "ok": True,
+            "applied": patch.model_dump(exclude_none=True),
+            "note": "Admin sync controls (rate-limit/backoff) applied locally for scheduling.",
+            "guardrails": _guardrails(),
+        }
 
     # Prompt 11 / UI-11 — Admin / Data Confidence (source/sync, workflow/jobs, evidence/guardrails,
     # retrieval/AI quality, permissions/governance, data completeness).

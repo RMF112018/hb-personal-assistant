@@ -8,6 +8,17 @@ import {
   generateDailyBriefSetupInstructions,
   validateDailyBriefOutputFolder,
   detectDailyBriefLatest,
+  // Prompt 14B
+  getSettings,
+  getSettingsAccounts,
+  getSettingsProjects,
+  getSettingsSources,
+  getSettingsKeywords,
+  getSettingsDailyBrief,
+  getSettingsPreferences,
+  getSettingsAdminSync,
+  patchSettingsPreferences,
+  patchSettingsAdmin,
 } from '../lib/api'
 
 // Settings (Prompt 10 / UI-12 partial for Daily Brief): external-agent Markdown setup wizard.
@@ -312,16 +323,61 @@ export function SettingsPage() {
       </div>
 
       <div className="card">
-        <div className="font-medium mb-2">Connections &amp; Onboarding</div>
-        <div className="text-xs">Graph / Procore / SharePoint / OneDrive status and first-run flows live behind the FastAPI surfaces (future UI-03/04). Current surfaces are read-only status in Admin.</div>
+        <div className="font-medium mb-2">Account Connections (Prompt 14B)</div>
+        <button className="text-xs underline mb-2" onClick={async () => { const a = await getSettingsAccounts(); alert(JSON.stringify(a, null, 2).slice(0,800)); }}>Load Accounts Status</button>
+        <div className="text-xs">Graph/Procore status (Connected/Needs sign-in/Expired). No tokens/secrets exposed. Reconnect/revoke actions (local cache clear) for operator+.</div>
       </div>
 
       <div className="card">
-        <div className="font-medium mb-2">Project Keywords</div>
-        <div className="text-xs">Training, exclusions (standard folder names rejected), strength, provenance. CRUD behind /api (Prompt 05). Edit/disable/delete supported for operators/admins.</div>
+        <div className="font-medium mb-2">Project Connections (Prompt 14B)</div>
+        <button className="text-xs underline mb-2" onClick={async () => { const p = await getSettingsProjects(); alert(JSON.stringify(p, null, 2).slice(0,600)); }}>Load Projects</button>
+        <div className="text-xs">Procore (homepage URL), SharePoint (site/folder/share-link), OneDrive (explicit scopes + all-folders warning), Outlook/Calendar. Uses preview→save (14A). First sync pending admin for most.</div>
       </div>
 
-      <div className="advisory">All settings respect local-first, read-only, advisory-only guardrails. No secrets or tokens are stored or displayed here. Daily Brief configuration is stored locally under Application Support.</div>
+      <div className="card">
+        <div className="font-medium mb-2">Source Scope (Prompt 14B)</div>
+        <button className="text-xs underline mb-2" onClick={async () => { const s = await getSettingsSources(); alert(JSON.stringify(s, null, 2).slice(0,600)); }}>Load Source Scope</button>
+        <div className="text-xs">Business descriptions. Outlook/Calendar: project_matching_only optional, false by default (match after ingestion). OneDrive all-folders: explicit + warning.</div>
+      </div>
+
+      <div className="card">
+        <div className="font-medium mb-2">Project Matching Keywords (Prompt 14B)</div>
+        <button className="text-xs underline mb-2" onClick={async () => { const k = await getSettingsKeywords(); alert(JSON.stringify(k, null, 2).slice(0,400)); }}>Load Keywords Info</button>
+        <div className="text-xs">Candidates/active/disabled/excluded. Add/edit/disable/delete/explain. Standard/template folder names (Drawings, RFIs, Submittals, etc.) rejected by policy. Use per-project /keywords for edits.</div>
+      </div>
+
+      <div className="card">
+        <div className="font-medium mb-2">Daily Brief (Prompt 14B)</div>
+        <button className="text-xs underline mb-2" onClick={async () => { const d = await getSettingsDailyBrief(); alert(JSON.stringify(d, null, 2).slice(0,500)); }}>Load Daily Brief Status</button>
+        <div className="text-xs">External Markdown only. 7 states, platform instructions (Claude/ChatGPT/Perplexity/Other), copy scheduled prompt, detect/validate. Presenter-only; no rewrite.</div>
+      </div>
+
+      <div className="card">
+        <div className="font-medium mb-2">Preferences (Prompt 14B)</div>
+        <div className="text-xs mb-1">Theme: dark/light/system (current: {theme})</div>
+        <div className="flex gap-2 mb-2">
+          <button className="text-xs px-2 py-1 border rounded" onClick={() => setTheme('dark')}>Dark</button>
+          <button className="text-xs px-2 py-1 border rounded" onClick={() => setTheme('light')}>Light</button>
+          <button className="text-xs px-2 py-1 border rounded" onClick={() => setTheme('system')}>System</button>
+        </div>
+        <button className="text-xs underline mb-2" onClick={async () => { const pr = await getSettingsPreferences(); alert(JSON.stringify(pr, null, 2).slice(0,500)); }}>Load Preferences</button>
+        <button className="text-xs underline" onClick={async () => { await patchSettingsPreferences({ theme, default_landing_page: 'Today' }); alert('Preferences patch sent (stub)'); }}>Save simple prefs</button>
+        <div className="text-xs mt-1">Default landing, followed projects, Daily Brief display. Local persistence.</div>
+      </div>
+
+      <div className="card">
+        <div className="font-medium mb-2">Admin Sync Controls (Prompt 14B, admin only)</div>
+        <button className="text-xs underline mb-2" onClick={async () => { try { const ad = await getSettingsAdminSync(); alert(JSON.stringify(ad, null, 2).slice(0,600)); } catch(e:any){ alert('Admin only or error: ' + (e?.message||e)); } }}>Load Admin Sync (admin role)</button>
+        <button className="text-xs underline" onClick={async () => { try { await patchSettingsAdmin({ global_rate_limit: 60 }); alert('Admin patch sent (stub)'); } catch(e:any){ alert('Admin only: '+(e?.message||e)); } }}>Apply sample admin rate limit (admin)</button>
+        <div className="text-xs">Pending approvals, cadence/priority, rate-limit/backoff. CM User/operator cannot approve first sync.</div>
+      </div>
+
+      <div className="card">
+        <div className="font-medium mb-2">Local Storage / Retention (Prompt 14B)</div>
+        <div className="text-xs">Usage, evidence/Daily Brief retention, cleanup (stub if backend not present). Local-first under Application Support.</div>
+      </div>
+
+      <div className="advisory">All settings respect local-first, read-only, advisory-only guardrails. No secrets or tokens are stored or displayed here. Daily Brief configuration is stored locally under Application Support. Chat is disabled and future-only.</div>
     </div>
   )
 }

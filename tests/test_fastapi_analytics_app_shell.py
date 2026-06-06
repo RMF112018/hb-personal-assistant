@@ -102,6 +102,16 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/admin/retrieval-ai-quality",
         "/api/admin/permissions-governance",
         "/api/admin/data-completeness",
+        # Prompt 14B / UI-14B Settings / Connection Management UX (overview + 8 areas + patches)
+        "/api/settings",
+        "/api/settings/accounts",
+        "/api/settings/projects",
+        "/api/settings/sources",
+        "/api/settings/keywords",
+        "/api/settings/daily-brief",
+        "/api/settings/preferences",
+        "/api/settings/admin-sync",
+        "/api/settings/admin",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 
