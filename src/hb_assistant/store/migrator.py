@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 39
+LATEST_SCHEMA_VERSION = 40
 
 
 class SQLiteMigrator:
@@ -5177,6 +5177,56 @@ class SQLiteMigrator:
         "CREATE INDEX IF NOT EXISTS ix_second_brain_review_burden_runs_project_key ON second_brain_review_burden_runs(project_key);",
     ]
 
+    # v40 FastAPI Analytics Prompt 05 / UI-05 — project keyword training registry (additive only;
+    # V1–V39 untouched). Per-project operator-managed keywords for project matching explainability
+    # in the CM-first analytics UI. Supports add/edit/disable/delete/excluded + strength
+    # (strong/normal/weak). Standard/template folder names (Drawings, RFIs, etc.) are rejected
+    # at the service layer and never stored. 8 guard CHECK columns (construction family, not
+    # full Phase-09 23-guard set). Provenance tracked; notes_redacted only. Ships empty;
+    # populated via /projects/{key}/keywords surfaces. FK to construction_project_identity.
+    V40_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS construction_project_keyword_registry (
+          keyword_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL
+            REFERENCES construction_project_identity(project_key),
+          keyword_hash TEXT NOT NULL,
+          keyword_normalized TEXT NOT NULL
+            CHECK(length(keyword_normalized) BETWEEN 1 AND 128),
+          keyword_class TEXT NOT NULL DEFAULT 'phrase'
+            CHECK(keyword_class IN (
+              'project_number','project_name','domain','alias','phrase','exclusion_pattern'
+            )),
+          strength TEXT NOT NULL DEFAULT 'normal'
+            CHECK(strength IN ('strong','normal','weak')),
+          registry_status TEXT NOT NULL DEFAULT 'enabled'
+            CHECK(registry_status IN ('enabled','disabled','excluded')),
+          provenance TEXT NOT NULL
+            CHECK(provenance IN (
+              'user_manual','seed_registry','confirmed_match',
+              'import_procore','import_sharepoint','system_suggested'
+            )),
+          provenance_ref_hash TEXT,
+          notes_redacted TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          last_applied_utc TEXT,
+          -- construction-family guards (no raw content, no writeback)
+          raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+          raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+          raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+          raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+          raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+          signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+          download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          UNIQUE(project_key, keyword_hash)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_project_keyword_registry_project_status ON construction_project_keyword_registry(project_key, registry_status);",
+        "CREATE INDEX IF NOT EXISTS ix_project_keyword_registry_project_strength ON construction_project_keyword_registry(project_key, strength) WHERE registry_status = 'enabled';",
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -5675,6 +5725,16 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (39, 'v39_phase_09_review_burden_reduction', ?)",
+                    (now,),
+                )
+
+            # v40 Phase UI-05 / Prompt 05 — project keyword training registry (additive only).
+            for stmt in self.V40_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 40")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (40, 'v40_construction_project_keyword_registry', ?)",
                     (now,),
                 )
 

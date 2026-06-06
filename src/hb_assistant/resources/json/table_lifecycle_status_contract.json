@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 190,
+  "table_count": 191,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -307,6 +307,15 @@
       "blocking_for_phase": "07A",
       "v": "V5",
       "notes": "explicit empty; source-record map foundation"
+    },
+    "construction_project_keyword_registry": {
+      "table_family": "construction_canonical_v5",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "UI-05",
+      "blocking_for_phase": "none",
+      "v": "V40",
+      "notes": "user-managed project keyword training registry (add/edit/disable/exclude + strength); standard/template folder names excluded at service (never stored); supports explain-match with provenance; additive V40 for FastAPI analytics Prompt 05 / UI-05"
     },
     "construction_document_cards": {
       "table_family": "construction_canonical_v5",

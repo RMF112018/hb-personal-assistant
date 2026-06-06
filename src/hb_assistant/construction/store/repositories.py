@@ -2824,6 +2824,192 @@ class ConstructionStore:
             r["review_required"] = bool(r["review_required"])
         return rows
 
+    # --- project keyword registry (V40 / Prompt 05 UI-05) -------------------
+    # User-managed training config for project matching explain. Never stores
+    # raw content, subjects, paths, or tokens. Folder-name exclusions enforced
+    # at the analytics service layer (construction_project_keyword_registry is
+    # additive; V1-V39 untouched).
+
+    def upsert_project_keyword_registry_entry(
+        self,
+        *,
+        keyword_id: str,
+        project_key: str,
+        keyword_normalized: str,
+        keyword_class: str = "phrase",
+        strength: str = "normal",
+        registry_status: str = "enabled",
+        provenance: str,
+        provenance_ref_hash: Optional[str] = None,
+        notes_redacted: Optional[str] = None,
+    ) -> None:
+        """Upsert a project keyword training entry.
+
+        keyword_id is a stable opaque id (hash-derived by caller).
+        keyword_hash for (project, hash) uniqueness is derived here from the
+        normalized term. Guard columns default via schema CHECK=0.
+        """
+        if not keyword_id or not project_key or not keyword_normalized:
+            raise ValueError("keyword_id, project_key, and keyword_normalized are required")
+        kw_hash = hash_value(keyword_normalized) or ""
+        now = _utc_now()
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO construction_project_keyword_registry
+                    (keyword_id, project_key, keyword_hash, keyword_normalized,
+                     keyword_class, strength, registry_status, provenance,
+                     provenance_ref_hash, notes_redacted, created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(keyword_id) DO UPDATE SET
+                    project_key = excluded.project_key,
+                    keyword_hash = excluded.keyword_hash,
+                    keyword_normalized = excluded.keyword_normalized,
+                    keyword_class = excluded.keyword_class,
+                    strength = excluded.strength,
+                    registry_status = excluded.registry_status,
+                    provenance = excluded.provenance,
+                    provenance_ref_hash = excluded.provenance_ref_hash,
+                    notes_redacted = excluded.notes_redacted,
+                    updated_utc = ?
+                """,
+                (
+                    keyword_id,
+                    project_key,
+                    kw_hash,
+                    keyword_normalized,
+                    keyword_class,
+                    strength,
+                    registry_status,
+                    provenance,
+                    provenance_ref_hash,
+                    notes_redacted,
+                    now,
+                    now,
+                    now,
+                ),
+            )
+
+    def get_project_keyword_registry_entry(self, keyword_id: str) -> Optional[dict[str, Any]]:
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT keyword_id, project_key, keyword_hash, keyword_normalized,
+                   keyword_class, strength, registry_status, provenance,
+                   provenance_ref_hash, notes_redacted, created_utc, updated_utc,
+                   last_applied_utc
+            FROM construction_project_keyword_registry
+            WHERE keyword_id = ?
+            """,
+            (keyword_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        keys = (
+            "keyword_id",
+            "project_key",
+            "keyword_hash",
+            "keyword_normalized",
+            "keyword_class",
+            "strength",
+            "registry_status",
+            "provenance",
+            "provenance_ref_hash",
+            "notes_redacted",
+            "created_utc",
+            "updated_utc",
+            "last_applied_utc",
+        )
+        return dict(zip(keys, row, strict=True))
+
+    def list_project_keyword_registry(
+        self,
+        *,
+        project_key: str,
+        registry_status: Optional[str] = None,
+        strength: Optional[str] = None,
+        provenance: Optional[str] = None,
+        include_excluded: bool = False,
+        limit: int = 500,
+    ) -> list[dict[str, Any]]:
+        """List keywords for a project.
+
+        When registry_status is None and include_excluded=False, returns
+        enabled + disabled (excludes 'excluded' rows). Primary loader for
+        matchers should pass registry_status='enabled'.
+        """
+        conn = get_connection(self._db_path)
+        sql = """
+            SELECT keyword_id, project_key, keyword_hash, keyword_normalized,
+                   keyword_class, strength, registry_status, provenance,
+                   provenance_ref_hash, notes_redacted, created_utc, updated_utc,
+                   last_applied_utc
+            FROM construction_project_keyword_registry
+            WHERE project_key = ?
+        """
+        params: list[Any] = [project_key]
+        if registry_status is not None:
+            sql += " AND registry_status = ?"
+            params.append(registry_status)
+        elif not include_excluded:
+            sql += " AND registry_status != 'excluded'"
+        if strength is not None:
+            sql += " AND strength = ?"
+            params.append(strength)
+        if provenance is not None:
+            sql += " AND provenance = ?"
+            params.append(provenance)
+        sql += " ORDER BY strength DESC, keyword_normalized ASC LIMIT ?"
+        params.append(limit)
+        cur = conn.execute(sql, tuple(params))
+        keys = (
+            "keyword_id",
+            "project_key",
+            "keyword_hash",
+            "keyword_normalized",
+            "keyword_class",
+            "strength",
+            "registry_status",
+            "provenance",
+            "provenance_ref_hash",
+            "notes_redacted",
+            "created_utc",
+            "updated_utc",
+            "last_applied_utc",
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    def set_project_keyword_registry_status(
+        self,
+        *,
+        keyword_id: str,
+        registry_status: str,
+    ) -> None:
+        """Update status (enabled | disabled | excluded) for an existing entry."""
+        if registry_status not in {"enabled", "disabled", "excluded"}:
+            raise ValueError("invalid registry_status")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                UPDATE construction_project_keyword_registry
+                SET registry_status = ?, updated_utc = ?
+                WHERE keyword_id = ?
+                """,
+                (registry_status, _utc_now(), keyword_id),
+            )
+
+    def delete_project_keyword_registry_entry(self, keyword_id: str) -> None:
+        """Hard delete a keyword entry (prefer status=disabled/excluded for audit)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                "DELETE FROM construction_project_keyword_registry WHERE keyword_id = ?",
+                (keyword_id,),
+            )
+
     # --- canonical document cards (V5) --------------------------------------
 
     def upsert_document_card(
