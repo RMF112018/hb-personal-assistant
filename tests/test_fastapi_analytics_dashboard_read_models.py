@@ -60,6 +60,28 @@ def test_today_viewer_ok_and_contract(tmp_path: Path) -> None:
     _assert_safe(p)
 
 
+def test_today_compatibility_sections_are_metadata_only(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path)
+    for path, surface in (
+        ("/api/today/changes", "analytics.today.changes"),
+        ("/api/today/meetings", "analytics.today.meetings"),
+        ("/api/today/action-items", "analytics.today.action_items"),
+        ("/api/today/portfolio-signals", "analytics.today.portfolio_signals"),
+    ):
+        r = client.get(path)
+        assert r.status_code == 200
+        p = r.json()
+        assert p["surface"] == surface
+        assert isinstance(p["items"], list)
+        assert p["source"] == "analytics.today"
+        assert "freshness" in p
+        assert "confidence_summary" in p
+        assert p["guardrails"]["advisory_only"] is True
+        assert "advisory_notes" in p
+        assert "empty_state_reason_code" in p
+        _assert_safe(p)
+
+
 def test_projects_portfolio_and_all_overview_viewer_ok(tmp_path: Path) -> None:
     client, _ = _client(tmp_path)
     for path in ("/api/projects/portfolio", "/api/projects/all/overview"):

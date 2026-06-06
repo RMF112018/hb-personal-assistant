@@ -4,9 +4,12 @@ import { SupportNavigation } from './SupportNavigation'
 import { PageHeader } from './PageHeader'
 import { useTheme } from '../app/providers'
 import { Moon, Sun, Monitor } from 'lucide-react'
+import { useState } from 'react'
+import { getLocalUiRole, setLocalUiRole, type LocalUiRole } from '../lib/api'
 
 export function AppShell({ children }: { children?: React.ReactNode }) {
   const { resolvedTheme, theme: prefTheme, toggle } = useTheme()
+  const [localRole, setLocalRole] = useState<LocalUiRole>(() => getLocalUiRole())
   const location = useLocation()
 
   // Simple construction-facing header title (advisory posture)
@@ -28,6 +31,23 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
         <header className="h-12 border-b border-[var(--hb-border)] px-4 flex items-center justify-between bg-[var(--hb-surface)]">
           <div className="font-medium">{headerTitle}</div>
           <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1 text-[10px] text-[var(--hb-muted)]">
+              Local dev role — not production auth
+              <select
+                className="badge bg-[var(--hb-surface)]"
+                value={localRole}
+                onChange={(event) => {
+                  const next = event.target.value as LocalUiRole
+                  setLocalUiRole(next)
+                  setLocalRole(next)
+                }}
+                aria-label="Local dev role"
+              >
+                <option value="viewer">Viewer</option>
+                <option value="operator">Operator</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
             <button
               onClick={toggle}
               className="badge"

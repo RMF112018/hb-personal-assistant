@@ -100,10 +100,10 @@ const router = createBrowserRouter([
   },
 ])
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function AppRouter() {
   return <RouterProvider router={router} />
 }
 
 // Also export the router if needed for tests or future
+// eslint-disable-next-line react-refresh/only-export-components
 export { router }

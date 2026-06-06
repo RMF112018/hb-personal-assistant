@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -50,7 +51,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applyTheme(theme)
     try {
       window.localStorage.setItem('hb-theme', theme)
-    } catch {}
+    } catch {
+      // Local storage can be unavailable in restricted browser contexts.
+    }
   }, [theme])
 
   // React to OS changes when in system mode

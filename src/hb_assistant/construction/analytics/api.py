@@ -396,6 +396,34 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return AnalyticsService(db_path=db_path).build_today()
 
+    @app.get("/api/today/changes")
+    def today_changes(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_today_section("changes")
+
+    @app.get("/api/today/meetings")
+    def today_meetings(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_today_section("meetings")
+
+    @app.get("/api/today/action-items")
+    def today_action_items(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_today_section("action-items")
+
+    @app.get("/api/today/portfolio-signals")
+    def today_portfolio_signals(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_today_section("portfolio-signals")
+
     @app.get("/api/projects/portfolio")
     def projects_portfolio(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role

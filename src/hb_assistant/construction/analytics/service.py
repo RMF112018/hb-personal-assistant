@@ -530,6 +530,90 @@ class AnalyticsService:
 
         return DailyBriefService().build_today_presentation()
 
+    def build_today_section(self, section: str) -> dict[str, Any]:
+        """Compatibility section envelope derived from the canonical Today model.
+
+        This keeps the frontend's granular Today calls aligned with
+        ``build_today`` instead of creating independent business logic.
+        """
+        today = self.build_today()
+        project_keys = today.get("project_keys") if isinstance(today.get("project_keys"), list) else []
+        items: list[dict[str, Any]] = []
+        empty_reason = today.get("empty_stale_error") or "section_empty"
+
+        if section == "changes":
+            items = [
+                {
+                    "id": card.get("metric_id"),
+                    "title": card.get("name"),
+                    "status": card.get("status"),
+                    "reason_code": card.get("reason_code"),
+                    "confidence": card.get("confidence"),
+                }
+                for card in today.get("metric_cards", [])
+                if card.get("metric_id") == "OPS-015"
+            ]
+            empty_reason = "no_recent_changes_available"
+        elif section == "meetings":
+            items = [
+                {
+                    "id": card.get("metric_id"),
+                    "title": card.get("name"),
+                    "status": card.get("status"),
+                    "reason_code": card.get("reason_code"),
+                    "confidence": card.get("confidence"),
+                }
+                for card in today.get("metric_cards", [])
+                if card.get("metric_id") == "OPS-070"
+            ]
+            empty_reason = "no_meeting_readiness_available"
+        elif section == "action-items":
+            items = [
+                {
+                    "id": str(idx),
+                    "title": item.get("example") or item.get("kind"),
+                    "kind": item.get("kind"),
+                    "count": item.get("count"),
+                    "project": item.get("project_key"),
+                }
+                for idx, item in enumerate(today.get("attention_items", []), start=1)
+                if item.get("kind") == "open_action"
+            ]
+            empty_reason = "no_action_items_available"
+        elif section == "portfolio-signals":
+            items = [
+                {
+                    "id": key,
+                    "title": f"{key} portfolio signal",
+                    "project": key,
+                    "status": "available",
+                }
+                for key in project_keys[:4]
+            ]
+            empty_reason = "no_portfolio_signals_available"
+        else:
+            return {
+                "surface": f"analytics.today.{section}",
+                "items": [],
+                "freshness": today.get("freshness"),
+                "confidence_summary": today.get("confidence_summary"),
+                "guardrails": _guardrails(),
+                "source": "analytics.today",
+                "advisory_notes": today.get("advisory_notes", []),
+                "empty_state_reason_code": "unsupported_today_section",
+            }
+
+        return {
+            "surface": f"analytics.today.{section.replace('-', '_')}",
+            "items": items,
+            "freshness": today.get("freshness"),
+            "confidence_summary": today.get("confidence_summary"),
+            "guardrails": _guardrails(),
+            "source": "analytics.today",
+            "advisory_notes": today.get("advisory_notes", []),
+            "empty_state_reason_code": None if items else empty_reason,
+        }
+
     def build_projects_portfolio(self) -> dict[str, Any]:
         generated = _utc_now()
         project_keys = self._project_keys()
