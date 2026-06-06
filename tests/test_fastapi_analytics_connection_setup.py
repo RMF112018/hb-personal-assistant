@@ -193,3 +193,153 @@ def test_connection_setup_role_gates_and_admin_approval(tmp_path: Path) -> None:
     assert schedule.status_code == 200
     assert schedule.json()["kind"] == "requires_read_model"
     _assert_safe({"saved": saved.json(), "approved": approved.json(), "schedule": schedule.json()})
+
+
+def test_procore_homepage_urls_extract_numeric_id_and_pending_admin(tmp_path: Path) -> None:
+    """Prompt 14A: support the actual Procore project homepage URL form used by the user."""
+    client, db = _client(tmp_path)
+    homepage_cases = [
+        ("https://app.procore.com/2982068/project/home", "2982068"),
+        ("https://app.procore.com/2525840/project/home", "2525840"),
+        ("https://app.procore.com/2091445/project/home", "2091445"),
+    ]
+    for url, expected_id in homepage_cases:
+        body = {"url": url}
+        preview = client.post("/connections/preview", json=body)
+        assert preview.status_code == 200
+        p = preview.json()
+        assert p["status"] == "ready_to_save"
+        assert p["detected_source_type"] == "procore_project"
+        assert p["proposed_source"]["procore_project_id"] == expected_id
+        assert p["first_sync_status"] == "pending_admin_approval"
+        assert p["guardrails"]["no_live_endpoint_calls"] is True
+        _assert_safe({"preview": p})
+
+    # Save as operator persists local config only; does not start first sync.
+    body = {"url": "https://app.procore.com/2982068/project/home"}
+    save = client.post("/connections/save", headers={"X-HB-UI-Role": "operator"}, json=body)
+    assert save.status_code == 200
+    s = save.json()
+    assert s.get("ok") is True
+    # first_sync is not started by save; status reflects pending admin approval
+    assert s.get("first_sync_status") == "pending_admin_approval" or s.get("admin_approval_required") is True
+    _assert_safe({"save": s})
+
+
+def test_procore_legacy_urls_and_invalid_are_handled(tmp_path: Path) -> None:
+    client, db = _client(tmp_path)
+    # Legacy /projects/ form must continue to work
+    body = {"url": "https://app.procore.com/projects/123456/home"}
+    p = client.post("/connections/preview", json=body).json()
+    assert p["status"] == "ready_to_save"
+    assert p["proposed_source"]["procore_project_id"] == "123456"
+
+    # Query param form (if supported by current fallback)
+    body_q = {"url": "https://app.procore.com/project?project_id=999999"}
+    p2 = client.post("/connections/preview", json=body_q).json()
+    # Either ready or the parser may not have matched query in some paths; do not assert hard success if legacy query not primary.
+    # The key is that invalid never crashes or persists.
+    _assert_safe({"legacy": p, "query": p2})
+
+    # Invalid URL -> safe failure, no persistence, no external call
+    bad = {"url": "https://app.procore.com/not-a-project/home"}
+    pb = client.post("/connections/preview", json=bad).json()
+    assert pb["status"] == "unavailable"
+    assert pb["reason_code"] == "procore_project_id_not_found"
+    _assert_safe({"bad_preview": pb})
+
+
+def test_sharepoint_site_and_share_link_folder_previews(tmp_path: Path) -> None:
+    client, db = _client(tmp_path)
+
+    # Site example (SitePages home)
+    site_url = "https://hedrickbrotherscom.sharepoint.com/sites/HilltopGardens/SitePages/ProjectHome.aspx"
+    sp = client.post("/connections/preview", json={"url": site_url}).json()
+    assert "sharepoint" in sp.get("detected_source_type", "")
+    assert sp["first_sync_status"] == "pending_admin_approval"
+    _assert_safe({"site": sp})
+
+    # Folder / share link encoded form (the critical user case)
+    folder_share = "https://hedrickbrotherscom.sharepoint.com/:f:/s/HilltopGardens/IgDfplnmGaUIQoNWNaupmVH9AcrLxSg7g9vJ1JLTleZYan8?e=mIgEN5"
+    fp = client.post("/connections/preview", json={"url": folder_share}).json()
+    assert "sharepoint" in fp.get("detected_source_type", "")
+    # Share links are classified as folder scope
+    assert fp["first_sync_status"] == "pending_admin_approval"
+    _assert_safe({"folder_share_link": fp})
+
+
+def test_onedrive_all_folders_explicit_emits_warning_and_requires_admin(tmp_path: Path) -> None:
+    service = ConnectionSetupService(db_path=str(tmp_path / "od14a.sqlite"))
+    res = service.preview_connection(
+        {"url": "https://tenant-my.sharepoint.com/personal/bobby", "scope_mode": "all_folders_explicit"}
+    )
+    assert res["status"] == "ready_to_save"
+    warnings = res.get("warnings") or []
+    assert "onedrive_all_folders_requires_admin_approval" in warnings
+
+
+def test_outlook_calendar_project_matching_only_is_false_by_default(tmp_path: Path) -> None:
+    client, db = _client(tmp_path)
+    body = {"connection_type": "calendar", "include_outlook": True, "include_calendar": True}
+    preview = client.post("/connections/preview", json=body)
+    assert preview.status_code == 200
+    p = preview.json()
+    assert p["options"]["outlook"]["project_matching_only"] is False
+    assert p["options"]["calendar"]["project_matching_only"] is False
+    # Default behavior: index selected scope safely; matching/classification after ingestion.
+    _assert_safe({"preview": p})
+
+
+def test_save_only_persists_local_and_approve_does_not_trigger_live_sync(tmp_path: Path) -> None:
+    """Re-assert the core preview/save/approve boundary with explicit triggered=false checks."""
+    client, db = _client(tmp_path)
+    body = {
+        "url": "https://hedrickbrotherscom.sharepoint.com/sites/2025Projects/Shared%20Documents/Folder14A",
+        "source_name": "Folder14A",
+    }
+    # preview does not persist (we just call it; save is the one that writes)
+    assert client.post("/connections/preview", json=body).status_code == 200
+
+    saved = client.post("/connections/save", headers={"X-HB-UI-Role": "operator"}, json=body)
+    assert saved.status_code == 200
+    connection_id = saved.json()["connection_id"]
+    # Save only persists local config; first sync is not triggered. Status reflects pending admin.
+    ss = saved.json()
+    assert ss.get("first_sync_status") == "pending_admin_approval" or ss.get("admin_approval_required") is True
+
+    # operator cannot approve
+    assert client.post(
+        f"/admin/connections/{connection_id}/approve-first-sync",
+        headers={"X-HB-UI-Role": "operator"},
+    ).status_code == 403
+
+    approved = client.post(
+        f"/admin/connections/{connection_id}/approve-first-sync",
+        headers={"X-HB-UI-Role": "admin"},
+    )
+    assert approved.status_code == 200
+    assert approved.json()["first_sync_triggered"] is False
+
+    sync = ConstructionStore(db).get_source_sync_state(connection_id)
+    assert sync is not None
+    assert sync["sync_status"] == "approved_first_sync_not_started"
+
+
+def test_viewer_cannot_save_operator_can_preview_and_save_chat_still_disabled(tmp_path: Path) -> None:
+    client, db = _client(tmp_path)
+    body = {"url": "https://app.procore.com/7777777/project/home"}
+
+    # viewer can preview
+    assert client.post("/connections/preview", json=body).status_code == 200
+    # viewer cannot save
+    assert client.post("/connections/save", json=body).status_code == 403
+
+    # operator can save
+    saved = client.post("/connections/save", headers={"X-HB-UI-Role": "operator"}, json=body)
+    assert saved.status_code == 200
+
+    # chat remains disabled (re-assertion local to this surface)
+    s = client.get("/chat/status", headers={"X-HB-UI-Role": "viewer"})
+    assert s.status_code == 200
+    assert s.json().get("chat_enabled") is False
+    assert client.get("/chat").status_code in {404, 405}

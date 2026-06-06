@@ -1,0 +1,1 @@
+Ruff + mypy re-run after SIM102 fix. All targeted + scoped clean for Prompt 14A delta.

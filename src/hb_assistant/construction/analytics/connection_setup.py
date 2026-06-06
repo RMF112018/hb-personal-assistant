@@ -381,6 +381,10 @@ class ConnectionSetupService:
             if (query.get("project_id") or query.get("project"))
             else None
         )
+        # Support homepage form https://app.procore.com/<id>/project/home (and similar)
+        # where the first path segment is the numeric Procore project ID.
+        if not project_id and segments and segments[0].isdigit():
+            project_id = segments[0]
         if not project_id or not project_id.isdigit():
             return self._unavailable(
                 "procore_project_id_not_found", "No Procore project ID was found."
@@ -410,16 +414,43 @@ class ConnectionSetupService:
         segments: list[str],
         request: dict[str, Any],
     ) -> dict[str, Any]:
+        # Detect encoded SharePoint folder/share-link forms (e.g. /:f:/s/SiteName/...)
+        # These must classify as folder/share-link scope (not fail site lookup) and
+        # indicate first-sync admin approval. Fully offline, no Graph resolution.
+        lower_path = (url or "").lower()
+        is_share_link = (
+            "/:f:/" in lower_path
+            or "/:u:/" in lower_path
+            or (segments and segments[0].startswith(":"))
+        )
+
         site = _site_url(url, segments)
         if site is None:
-            return self._unavailable(
-                "sharepoint_site_not_found", "SharePoint site path was not recognized."
-            )
+            if not is_share_link:
+                return self._unavailable(
+                    "sharepoint_site_not_found", "SharePoint site path was not recognized."
+                )
+            # Derive a best-effort site base for naming from /s/<name> or /teams/<name>
+            site_name = None
+            for i, seg in enumerate(segments):
+                if seg.lower() in {"s", "teams"} and i + 1 < len(segments):
+                    site_name = segments[i + 1]
+                    break
+            if site_name:
+                p = urlparse(url.strip())
+                site = urlunparse((p.scheme, p.netloc, f"/sites/{site_name}", "", "", ""))
+            # else keep site=None; we will treat as folder/share using the raw link url
+
         lower_segments = [s.lower() for s in segments]
-        is_page = any(s == "sitepages" for s in lower_segments) or urlparse(
-            url
-        ).path.lower().endswith(".aspx")
-        is_folder = len(segments) > 2 and not is_page
+        if is_share_link:
+            # Share links are treated as explicit folder/share scope
+            is_page = False
+            is_folder = True
+        else:
+            is_page = any(s == "sitepages" for s in lower_segments) or urlparse(
+                url
+            ).path.lower().endswith(".aspx")
+            is_folder = len(segments) > 2 and not is_page
         source_scope = (
             "sharepoint_site_page"
             if is_page
@@ -526,6 +557,9 @@ class ConnectionSetupService:
                     "exclude_defaults": ["Deleted Items", "Junk Email", "Drafts"],
                     "mailbox_mutation_allowed": False,
                     "full_body_persisted": False,
+                    # project_matching_only false by default: index selected mailbox scope safely,
+                    # then classify / project-match relevant items after ingestion (not at setup time).
+                    "project_matching_only": False,
                 },
                 "calendar": {
                     "scope": "primary_calendar_readonly",
@@ -533,6 +567,9 @@ class ConnectionSetupService:
                     "lookahead_days": calendar.defaults.lookahead_days,
                     "persist_event_body": calendar.defaults.persist_event_body,
                     "persist_join_url": calendar.defaults.persist_join_url,
+                    # project_matching_only false by default: index selected calendar window safely,
+                    # then classify / project-match relevant events after ingestion (not at setup time).
+                    "project_matching_only": False,
                 },
             },
         )
