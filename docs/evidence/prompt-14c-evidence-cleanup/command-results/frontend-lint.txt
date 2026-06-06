@@ -1,0 +1,17 @@
+
+> frontend@0.0.0 lint
+> eslint .
+
+
+/Users/bobbyfetting/hb-personal-assistant/frontend/src/app/providers.tsx
+  53:13  error  Empty block statement                                                                                                           no-empty
+  84:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/bobbyfetting/hb-personal-assistant/frontend/src/app/routes.tsx
+  103:1   warning  Unused eslint-disable directive (no problems were reported from 'react-refresh/only-export-components')
+  109:10  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+✖ 4 problems (3 errors, 1 warning)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+
+npm warn exec The following package was not found and will be installed: eslint@10.4.1

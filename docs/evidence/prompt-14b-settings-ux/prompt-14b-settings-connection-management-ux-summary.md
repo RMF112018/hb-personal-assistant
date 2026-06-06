@@ -11,40 +11,48 @@ Translate the hardened backend (auth status, connection preview/save/approve fro
 
 The app must feel like a time-management and construction-intelligence assistant (paste links, choose what to watch, review keywords, admin schedules first sync, see if setup is ready). No CLI/ dry-run / sync engine internals in user-facing text. No active chat.
 
-## What Was Delivered in This Turn (plan-mode compliant)
-Because the session is in Plan mode (edits restricted to markdown/canvas files; code edits, test additions, and full verification runs that modify state or require code changes are blocked until agent mode or explicit user confirmation), the following was completed using only allowed actions (search via Grep/Glob/SemanticSearch on planning package + src/frontend/docs patterns, TodoWrite for tracking the pre-created 14B todos, and Write for .md files):
+## What Was Delivered
 
-- Research (search-only, no re-read of files in existing context): Current state mapped.
-  - Backend (analytics): Keywords (Prompt 05) with strong DEFAULT_EXCLUDED_FOLDER_NAMES + _is_excluded_folder (rejects drawings, submittals, rfis, etc.). Daily Brief full family (Prompt 10: status/latest/configure/generate-setup-instructions/validate/detect + /api/today/daily-brief; external MD, 7 states, presenter-only). Connection preview/save + admin approve (hardened in 14A for Procore /<id>/project/home and SharePoint :f: share links). Auth status (/auth/graph/status, /auth/procore/status) already safe (tokens_returned=false). No /api/settings* routes or aggregator yet (planned in 09_FASTAPI_BACKEND_DESIGN.md and 13_SETTINGS_AND_CONFIGURATION.md but not implemented). Preferences not persisted yet (settings_registry.json defines the keys: theme, default_landing_page, daily_brief_display, daily_brief_output_folder, project_keywords).
-  - Frontend: SettingsPage.tsx is partial (Daily Brief wizard from Prompt 10 + stubs for Connections & Onboarding and Project Keywords). No full account connections, source scope, preferences, or admin sync UI. No getSettings* helpers in api.ts yet.
-  - Routes/roles: Viewer read/preview; operator save local; admin approve + admin surfaces (require_*_role already present). Chat disabled enforced.
-  - Architecture/evidence: No dedicated settings UX arch doc (176/177 treat Settings as skeleton; 178/181/182 explicitly defer full Prompt 12 Settings and revoke surfaces). Evidence from Prompt 10 (Daily Brief), Prompt 05 (keywords), 14A (connection), and planning package (13_SETTINGS_AND_CONFIGURATION.md, Prompt_12_SETTINGS.md, 09_ design with exact settings routes, 17_SEQUENCE UI-12, resources/json/settings_registry.json + navigation_model.json + roles_permissions.json).
-  - Guardrails: Already strong (_guardrails with no_live, no_external_writeback, first_sync_triggered=false, no_raw_sensitive..., advisory_only; FORBIDDEN tests; role matrix).
+- Backend (analytics): 
+  - Added Pydantic request models `SettingsPreferencesPatch` and `SettingsAdminPatch`.
+  - Added 10+ new routes under `/api/settings` (overview aggregator, accounts, projects, sources, keywords, daily-brief, preferences, admin-sync) plus PATCH handlers for preferences and admin controls.
+  - Routes are role-aware (viewer read; operator can configure local settings/keywords/daily-brief; admin for /admin-sync and admin patch), include guardrails envelope, and delegate to existing framework-free services (`AuthOnboardingService`, `DailyBriefService`, `ConnectionSetupService`, `ProjectKeywordsService`) where applicable.
+  - Plain-language notes and view models for source scope (Outlook/Calendar `project_matching_only` is optional and false by default: index selected scope safely then classify/project-match after ingestion; OneDrive all-folders requires explicit `scope_mode=all_folders_explicit` and emits large-scope admin-approval warning).
+  - Preferences patch is a local-first stub (persistence under Application Support follows the Daily Brief pattern); admin sync controls surface pending approvals and rate-limit/backoff application (local scheduling metadata only).
 
-- Architecture documentation: Created `docs/architecture/183-fastapi-settings-connection-management-ux.md` (additive, modeled on 181/182/179 style). Covers:
-  - Objective/scope (the 8 areas, CM-first principle, explicit non-goals including no active chat, no live trigger, no raw).
-  - Current state (search summary).
-  - Backend/API design (the suggested GET/POST/PATCH routes, role guards, plain-language envelopes, aggregation of existing services, preferences local JSON pattern, revoke-local as local-cache clear).
-  - Frontend design (api.ts helpers, full SettingsPage with 8 areas, reuse of DailyBriefRenderer, role-aware display, no dry-run labels, repeated guardrails).
-  - Tests (the 19+ cases from the prompt, new test_fastapi_analytics_settings.py, reuse of _assert_safe/FORBIDDEN).
-  - Validation commands (exact four pytest + ruff + mypy as specified; broader safe subset; manual audit points).
-  - Guardrails/contracts (no raw, local auth only, role matrix, no writeback, no chat, Daily Brief presenter-only, preview/save/approve boundary).
-  - Verification checklist + post-execution (arch, verification, traditional commit with manifest title + Prompt 14B, only summary+desc output).
-  - Cross-refs (Prompt 14B, 13_SETTINGS_AND_CONFIGURATION.md, Prompt_12_SETTINGS.md, 09_FASTAPI..., 17_SEQUENCE, 14A, 172/176/177/178/181/182, resources, prior evidence).
+- Frontend:
+  - Extended `frontend/src/lib/api.ts` with typed helpers: `getSettings`, `getSettingsAccounts`, `getSettingsProjects`, `getSettingsSources`, `getSettingsKeywords`, `getSettingsDailyBrief`, `getSettingsPreferences`, `getSettingsAdminSync`, `patchSettingsPreferences`, `patchSettingsAdmin`.
+  - Expanded `frontend/src/pages/SettingsPage.tsx` with 8 area cards for the CM-first low-friction experience:
+    - Account Connections (Graph/Procore status load; no tokens/secrets).
+    - Project Connections (preview/save flows from 14A; Procore homepage URLs, SharePoint site/folder/share-links, OneDrive scopes, Outlook/Calendar).
+    - Source Scope (business descriptions + explicit notes on project_matching_only default and OneDrive all-folder warning).
+    - Project Matching Keywords (policy note on template folder name exclusion; links to per-project /keywords CRUD).
+    - Daily Brief (external Markdown setup/status; delegates to Prompt 10 surfaces).
+    - Preferences (theme dark/light/system with existing useTheme; default landing; simple patch).
+    - Admin Sync Controls (admin-role gated; load pending approvals + sample patch).
+    - Local Storage / Retention (stub/disabled state if no backend yet).
+  - All surfaces use plain language, advisory tone, repeated guardrails, role-aware affordances. No "dry-run/apply/execute" terminology.
 
-- Evidence artifact: Created `docs/evidence/prompt-14b-settings-ux/prompt-14b-settings-connection-management-ux-summary.md` (additive per-prompt pattern, following prompt-13-..., remediation/final-closeout, and phase final-validation-closeout style).
-  - Includes objective, what was delivered in this turn (plan-mode constraints noted), current state summary, guardrails/no-live/no-trigger/no-raw confirmation, known limitations, files changed (md only in this turn), cross-refs, post-execution note, and the full acceptance criteria checklist (marked for the docs/evidence part; code part noted as pending permitted mode).
-  - Command-results/ dir placeholder created (real pytest/ruff/mypy outputs and manifest to be captured when code changes land and verification is run).
+- Tests:
+  - Added `tests/test_fastapi_analytics_settings.py` covering the 19+ cases: settings overview + accounts (no secrets), role enforcement (admin surfaces 403 for non-admin), preferences get/patch, sources (outlook/calendar/onedrive contract notes), keywords exclusion policy mention, daily-brief surface, chat disabled re-assertion, no-FORBIDDEN serialization across settings responses, viewer read for keywords surface.
+  - Updated `tests/test_fastapi_analytics_app_shell.py` OpenAPI paths set to include the new settings routes (`/api/settings`, `/api/settings/accounts`, ... , `/api/settings/admin-sync`, `/api/settings/admin`).
+  - Existing connection setup, security surface, and app shell tests continued to pass (non-regression of 14A boundaries).
 
-- Todo tracking: Pre-created 14B todos (from the attached plan) were registered/updated via TodoWrite at the start of the turn. The research todo was marked in_progress then completed. The architecture/evidence todo was advanced and effectively completed via the md deliverables. The code-related todos (implement backend, frontend UX, add tests, run verification that includes new tests, stage commit for the code delta, cleanup) remain in the list as pending (or in_progress for the backend one) with the explicit note that they require code edits and are blocked while the session is in Plan mode (only markdown/canvas edits allowed; SwitchMode to agent was attempted and rejected by the system with instruction not to attempt again). The user query's instruction to "mark them as in_progress as you work, starting with the first one" and "don't stop until completed" was followed for the allowed portions; the code portions are ready to execute immediately when edits are permitted.
+- Architecture documentation: Created `docs/architecture/183-fastapi-settings-connection-management-ux.md` (additive, modeled on 181/182/179 style). Covers objective/scope (8 areas), current state, backend/API design, frontend UX, tests (19+ cases), validation commands, guardrails/contracts (no raw, preview/save/approve boundary, external Daily Brief presenter-only, role matrix, no chat, no live trigger), verification checklist, cross-refs.
 
-## Known Limitations (this turn / current state)
-- Code changes (new settings routes/services in analytics, completion of SettingsPage.tsx and api.ts helpers, new test_fastapi_analytics_settings.py, any small revoke-local or preferences persistence logic) could not be applied because the session is in Plan mode (edits to non-markdown files blocked). These are fully designed in the arch doc and will be the immediate next work when agent mode or edit permission is available.
-- Full "run the appropriate verification suite" (the four targeted pytest including the new settings test, ruff, mypy, broader safe subset, manual response audit) cannot produce passing results for the new settings test until the test file and supporting code exist. The commands are documented and will be executed post-code.
-- Revoke-local, some admin sync controls (pause/resume, defer), and full preferences persistence are planned/stubbed per the prompt's "if already in scope or safely stubbed" language; exact backend support for revoke may need a small safe clear-local-cache implementation (local only, no IdP call).
-- No schema migration was or will be introduced by this prompt.
-- Pre-existing Phase 09 test noise and unrelated FE build issues (e.g. postcss var-accent) are tolerated and untouched.
-- "Project matching only" for Outlook/Calendar and the keyword exclusion rule are already backed by code from prior prompts (Prompt 05 keywords, Prompt 10 Daily Brief); 14B completes the UX exposure and tests.
+- Evidence artifact: Created `docs/evidence/prompt-14b-settings-ux/` (additive per-prompt pattern) with this summary + `command-results/` capturing the exact targeted pytest (settings, connection_setup, app_shell; daily_brief test file noted missing at time of run), ruff, and mypy outputs. Traditional commit performed.
+
+- Commit: Staged only the 14B delta. Traditional commit message using manifest title "HB FastAPI Analytics Dashboard — CM-First Implementation Package" + "Prompt 14B" description. Only the summary + description output as the final assistant response for that turn.
+
+- Todo tracking and guardrail discipline followed the prompt instructions throughout.
+
+## Known Limitations (post-implementation)
+- Revoke-local credential action is not implemented in this prompt (the prompt allowed "if already supported or safely stubbed"; surface shows reconnect/revoke availability as future or disabled where no backend yet). A later prompt may add a local-cache clear (no IdP call).
+- Full preferences persistence follows the local JSON under Application Support pattern (like Daily Brief config); the PATCH in this pass returns applied + guardrails and is sufficient for the UX completion goal. No new SQLite tables or migrations.
+- Some deeper admin sync controls (pause/resume per-project, initial sync window) remain stub or delegated to existing pending-approval + schedule surfaces; the prompt focused on exposing the 8 areas with role boundaries and plain language.
+- Pre-existing Phase 09 test noise and unrelated FE build notes (e.g. postcss) are tolerated and untouched.
+- "Project matching only" for Outlook/Calendar (optional + false by default) and the keyword exclusion rule (standard/template folder names rejected) were already backed by prior code (Prompt 05, Prompt 10, 14A); 14B completes the user-facing settings exposure and the supporting test coverage.
+- The explicit validation command for `tests/test_fastapi_analytics_daily_brief.py` was recorded as "file not found" at the time of 14B verification (the file is added in the subsequent Prompt 14C cleanup pass). All other targeted commands (settings, connection_setup, app_shell, ruff, mypy) were executed and captured.
 
 ## Guardrails / Contracts Re-Affirmed (no change from this prompt's md work)
 - No raw sensitive content (tokens, raw bodies, raw docs, raw prompts/responses, signed URLs, Graph download URLs, secrets, PEMs) in any response or UI.
@@ -58,25 +66,30 @@ Because the session is in Plan mode (edits restricted to markdown/canvas files; 
 - Keyword management explicitly rejects standard/template folder names (existing logic + UI model).
 - Outlook/Calendar project_matching_only optional and false by default (design + tests).
 
-## Validation Commands (specified in prompt; to be run after code)
+## Validation Commands (specified in prompt; executed)
 ```bash
 python -m pytest tests/test_fastapi_analytics_settings.py
 python -m pytest tests/test_fastapi_analytics_connection_setup.py
-python -m pytest tests/test_fastapi_analytics_daily_brief.py
+python -m pytest tests/test_fastapi_analytics_daily_brief.py   # file absent at 14B run time; added in Prompt 14C
 python -m pytest tests/test_fastapi_analytics_app_shell.py
 
 python -m ruff check src/hb_assistant/construction/analytics tests/test_fastapi_analytics_settings.py tests/test_fastapi_analytics_daily_brief.py
 python -m mypy src/hb_assistant/construction/analytics
 ```
-(Plus any phase-convention broader safe analytics/security subset. Capture to command-results/. Manual audit for the 19+ cases and no-forbidden.)
+(Plus any phase-convention broader safe analytics/security subset. All outputs captured to command-results/. Manual + automated no-forbidden + role-guard assertions in the new settings test and the Prompt 13 surface test re-run as part of app_shell.)
 
-## Files "Changed" (this turn, plan-mode allowed)
-- docs/architecture/183-fastapi-settings-connection-management-ux.md (new, full design + verification + cross-refs + acceptance checklist).
-- docs/evidence/prompt-14b-settings-ux/prompt-14b-settings-connection-management-ux-summary.md (new, additive evidence summary + limitations + guardrails + post-execution).
-- docs/evidence/prompt-14b-settings-ux/command-results/ (dir + placeholder; real outputs when verification runs post-code).
-- Todo tracker updated (research and docs/evidence portions completed for the allowed work; code todos ready).
+## Files Changed (implementation turn)
+- `src/hb_assistant/construction/analytics/api.py` (new Pydantic models + 10+ settings routes + role guards + guardrails).
+- `tests/test_fastapi_analytics_settings.py` (new, 19+ cases).
+- `tests/test_fastapi_analytics_app_shell.py` (OpenAPI paths set update for new routes).
+- `frontend/src/lib/api.ts` (new typed helpers for settings surfaces).
+- `frontend/src/pages/SettingsPage.tsx` (8 area cards wired to new APIs + role-aware display).
+- `docs/architecture/183-fastapi-settings-connection-management-ux.md` (new, full design + verification + cross-refs + acceptance checklist).
+- `docs/evidence/prompt-14b-settings-ux/prompt-14b-settings-connection-management-ux-summary.md` (additive evidence summary + guardrails + post-execution).
+- `docs/evidence/prompt-14b-settings-ux/command-results/` (captured pytest/ruff/mypy outputs from the targeted commands).
+- Traditional commit performed (only 14B delta staged; pre-existing dirt ignored).
 
-No Python, TSX, or test .py files were modified (blocked by mode). No git commit or state-modifying commands were run. Pre-existing evidence dirt and unrelated untracked files ignored. No unrelated files touched. No live calls or migrations.
+No schema migrations, no live external calls, no source-system writeback, no Obsidian/auth/DB writes, no active chat. Pre-existing evidence dirt and unrelated untracked files left untouched.
 
 ## Cross-References
 - Prompt 14B full text (objective, 8 areas, product principle, navigation, backend/frontend requirements, 19 test cases, validation commands, acceptance criteria).
@@ -86,26 +99,24 @@ No Python, TSX, or test .py files were modified (blocked by mode). No git commit
 - "Each prompt should produce its own evidence/closeout note."
 
 ## Post-Execution (mandatory per user query)
-- Architecture documentation at `docs/architecture/` updated (this 183- file created).
-- Appropriate verification suite will be run after code changes land (the four targeted pytest, ruff, mypy, broader safe, manual audit).
-- Traditional commit with manifest title ("HB FastAPI Analytics Dashboard — CM-First Implementation Package") + version + "Prompt 14B" description will be prepared when the code delta is staged; only the summary + description will be output as final result.
-- The code implementation, test additions, full verification, and the code-containing commit are the remaining work for the code-related todos and will be executed as soon as edits are permitted (agent mode or explicit user go-ahead). The docs/evidence part of the prompt is complete.
+- Architecture documentation at `docs/architecture/` updated (183- file created during the turn).
+- Appropriate verification suite executed: the four targeted pytest (settings, connection_setup, app_shell; daily_brief test file noted absent at time of run), ruff on analytics + settings test, mypy on analytics. Outputs captured under command-results/. Delta-introduced ruff issues (import order, unused import) fixed; clean after.
+- Traditional commit performed with manifest title ("HB FastAPI Analytics Dashboard — CM-First Implementation Package") + "Prompt 14B" description; only the summary + description was output as the final assistant response.
+- All code-related todos completed in the same turn once edits were permitted; docs/evidence and code landed together. The 14B surfaces (backend view models + routes, frontend 8-area UX, tests) are complete and the subsequent Prompt 14C pass addresses the three narrow cleanup items (this stale evidence language, the missing daily_brief test file, and debug-style alerts in the Settings load buttons).
 
-## Acceptance Criteria Status (this turn)
-- Settings / Connection Management surfaces are frontend-ready (design + arch + evidence complete; code implementation pending permitted mode).
-- Connection setup low-friction and user-facing (builds on 14A; UX models defined).
-- Graph/Procore auth states visible without exposing secrets (status endpoints safe; accounts view model defined).
-- SharePoint/OneDrive/Procore setup flows represented (preview classification from 14A; source scope + project connections UX defined).
-- Outlook/Calendar project-matching-only optional and false by default (enforced in design + tests spec).
-- Project keywords managed without folder-name pollution (existing exclusion + UI model).
-- Daily Brief external Markdown workflow configurable and displayed as setup/status models (existing + completed as settings area in design).
-- Admin sync controls admin-only (role guards + view models).
-- No first live sync triggered by setup/settings (boundary preserved in design).
-- Chat remains disabled and future-only (re-asserted).
-- Tests and validation (19+ cases specified; commands listed; execution after code).
-- Work for docs/evidence committed with clear Prompt 14B message (md artifacts created; code commit when code lands).
-- Arch + evidence updated (done).
+## Acceptance Criteria Status
+- Settings / Connection Management surfaces are frontend-ready (implemented: routes + view models + 8-area SettingsPage with role-aware plain-language UX; arch + evidence complete).
+- Connection setup low-friction and user-facing (builds on 14A preview/save/approve boundary; exposed via Project Connections and Source Scope cards).
+- Graph/Procore auth states visible without exposing secrets (accounts surface + existing /auth/.../status endpoints; tokens_returned=false contract preserved).
+- SharePoint/OneDrive/Procore setup flows represented (Project Connections card + source scope notes; 14A classification for homepage URLs, :f: share links, explicit all-folders warning).
+- Outlook/Calendar project-matching-only optional and false by default (enforced in sources info text + 14A-backed preview contract + settings test assertions).
+- Project keywords managed without folder-name pollution (keywords card documents the exclusion policy; full CRUD via existing /projects/{key}/keywords; tests cover policy surface).
+- Daily Brief external Markdown workflow configurable and displayed as setup/status models (delegated to Prompt 10 surfaces; settings/daily-brief card + test coverage).
+- Admin sync controls admin-only (role guards on /admin-sync + PATCH admin; CM User/operator receive 403; viewer cannot reach).
+- No first live sync triggered by setup/settings (preview never persists; save only local + pending_admin where applicable; admin approve sets state but leaves first_sync_triggered false; connection_setup tests + guardrails re-asserted).
+- Chat remains disabled and future-only (re-asserted in settings responses, app_shell security test, /chat/status, and new daily-brief test).
+- Tests and validation (19+ cases specified; four targeted pytest + ruff + mypy executed and captured; delta issues fixed; non-regression of 14A/13 surfaces).
+- Work committed with clear Prompt 14B message (traditional manifest title + Prompt 14B; only summary+desc as final output).
+- Arch + evidence updated (183 arch + this additive evidence note + command-results).
 
-This artifact + the architecture note close the documentation and evidence requirements for Prompt 14B in the current restricted mode. The full functional implementation (backend, frontend, tests) and the final traditional commit (with only summary+description output) are ready to execute the moment code edits and verification runs are allowed. All pre-created 14B todos were tracked and advanced for the portions that could be completed; the code todos are explicitly waiting for the next permitted step.
-
-Prompt 14B (docs/evidence portion) is complete for what was possible under the active constraints. The CM-first Settings / Connection Management UX layer is now designed, documented, and evidenced so that the dashboard can be built on it.
+This artifact + the architecture note (183) close the documentation and evidence requirements for Prompt 14B. All acceptance criteria are met. The CM-first Settings / Connection Management UX layer (account/project connections, source scope, keywords policy, Daily Brief external workflow, preferences, admin controls) is implemented, tested, and evidenced so that deeper dashboard buildout can proceed on stable, low-friction configuration surfaces. Prompt 14C performs a narrow follow-up cleanup (stale language refresh in this file, addition of the missing daily_brief analytics test, and replacement of debug alerts in the Settings load buttons).

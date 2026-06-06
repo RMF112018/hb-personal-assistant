@@ -8,8 +8,7 @@ import {
   generateDailyBriefSetupInstructions,
   validateDailyBriefOutputFolder,
   detectDailyBriefLatest,
-  // Prompt 14B
-  getSettings,
+  // Prompt 14B / 14C
   getSettingsAccounts,
   getSettingsProjects,
   getSettingsSources,
@@ -44,6 +43,24 @@ export function SettingsPage() {
   const [validateResult, setValidateResult] = useState<any>(null)
   const [detectResult, setDetectResult] = useState<any>(null)
   const [busy, setBusy] = useState<string | null>(null)
+
+  // Prompt 14C: low-friction inline results for the 14B "Load" debug buttons (no more alert(JSON...))
+  const [accountsResult, setAccountsResult] = useState<any>(null)
+  const [accountsError, setAccountsError] = useState<string | null>(null)
+  const [projectsResult, setProjectsResult] = useState<any>(null)
+  const [projectsError, setProjectsError] = useState<string | null>(null)
+  const [sourcesResult, setSourcesResult] = useState<any>(null)
+  const [sourcesError, setSourcesError] = useState<string | null>(null)
+  const [keywordsResult, setKeywordsResult] = useState<any>(null)
+  const [keywordsError, setKeywordsError] = useState<string | null>(null)
+  const [dailyBriefResult, setDailyBriefResult] = useState<any>(null)
+  const [dailyBriefError, setDailyBriefError] = useState<string | null>(null)
+  const [prefsResult, setPrefsResult] = useState<any>(null)
+  const [prefsError, setPrefsError] = useState<string | null>(null)
+  const [adminSyncResult, setAdminSyncResult] = useState<any>(null)
+  const [adminSyncError, setAdminSyncError] = useState<string | null>(null)
+  const [adminPatchMsg, setAdminPatchMsg] = useState<string | null>(null)
+  const [prefsPatchMsg, setPrefsPatchMsg] = useState<string | null>(null)
 
   async function refreshStatus() {
     setLoadingStatus(true)
@@ -324,31 +341,136 @@ export function SettingsPage() {
 
       <div className="card">
         <div className="font-medium mb-2">Account Connections (Prompt 14B)</div>
-        <button className="text-xs underline mb-2" onClick={async () => { const a = await getSettingsAccounts(); alert(JSON.stringify(a, null, 2).slice(0,800)); }}>Load Accounts Status</button>
+        <button
+          className="text-xs underline mb-2"
+          onClick={async () => {
+            setAccountsError(null)
+            try {
+              const a = await getSettingsAccounts()
+              setAccountsResult(a)
+            } catch (e: any) {
+              setAccountsError(e?.message || String(e))
+              setAccountsResult(null)
+            }
+          }}
+        >
+          Load Accounts Status
+        </button>
+        {accountsError && <div className="text-xs text-red-500">{accountsError}</div>}
+        {accountsResult && (
+          <div className="text-xs mt-1">
+            Loaded. Graph: {accountsResult?.graph?.status || accountsResult?.graph?.connected ? 'connected' : 'n/a'} | Procore: {accountsResult?.procore?.status || 'n/a'}
+            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(accountsResult, null, 2)}</pre></details>
+          </div>
+        )}
         <div className="text-xs">Graph/Procore status (Connected/Needs sign-in/Expired). No tokens/secrets exposed. Reconnect/revoke actions (local cache clear) for operator+.</div>
       </div>
 
       <div className="card">
         <div className="font-medium mb-2">Project Connections (Prompt 14B)</div>
-        <button className="text-xs underline mb-2" onClick={async () => { const p = await getSettingsProjects(); alert(JSON.stringify(p, null, 2).slice(0,600)); }}>Load Projects</button>
+        <button
+          className="text-xs underline mb-2"
+          onClick={async () => {
+            setProjectsError(null)
+            try {
+              const p = await getSettingsProjects()
+              setProjectsResult(p)
+            } catch (e: any) {
+              setProjectsError(e?.message || String(e))
+              setProjectsResult(null)
+            }
+          }}
+        >
+          Load Projects
+        </button>
+        {projectsError && <div className="text-xs text-red-500">{projectsError}</div>}
+        {projectsResult && (
+          <div className="text-xs mt-1">
+            Loaded project connections status.
+            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(projectsResult, null, 2)}</pre></details>
+          </div>
+        )}
         <div className="text-xs">Procore (homepage URL), SharePoint (site/folder/share-link), OneDrive (explicit scopes + all-folders warning), Outlook/Calendar. Uses preview→save (14A). First sync pending admin for most.</div>
       </div>
 
       <div className="card">
         <div className="font-medium mb-2">Source Scope (Prompt 14B)</div>
-        <button className="text-xs underline mb-2" onClick={async () => { const s = await getSettingsSources(); alert(JSON.stringify(s, null, 2).slice(0,600)); }}>Load Source Scope</button>
+        <button
+          className="text-xs underline mb-2"
+          onClick={async () => {
+            setSourcesError(null)
+            try {
+              const s = await getSettingsSources()
+              setSourcesResult(s)
+            } catch (e: any) {
+              setSourcesError(e?.message || String(e))
+              setSourcesResult(null)
+            }
+          }}
+        >
+          Load Source Scope
+        </button>
+        {sourcesError && <div className="text-xs text-red-500">{sourcesError}</div>}
+        {sourcesResult && (
+          <div className="text-xs mt-1">
+            Loaded source scope info.
+            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(sourcesResult, null, 2)}</pre></details>
+          </div>
+        )}
         <div className="text-xs">Business descriptions. Outlook/Calendar: project_matching_only optional, false by default (match after ingestion). OneDrive all-folders: explicit + warning.</div>
       </div>
 
       <div className="card">
         <div className="font-medium mb-2">Project Matching Keywords (Prompt 14B)</div>
-        <button className="text-xs underline mb-2" onClick={async () => { const k = await getSettingsKeywords(); alert(JSON.stringify(k, null, 2).slice(0,400)); }}>Load Keywords Info</button>
+        <button
+          className="text-xs underline mb-2"
+          onClick={async () => {
+            setKeywordsError(null)
+            try {
+              const k = await getSettingsKeywords()
+              setKeywordsResult(k)
+            } catch (e: any) {
+              setKeywordsError(e?.message || String(e))
+              setKeywordsResult(null)
+            }
+          }}
+        >
+          Load Keywords Info
+        </button>
+        {keywordsError && <div className="text-xs text-red-500">{keywordsError}</div>}
+        {keywordsResult && (
+          <div className="text-xs mt-1">
+            Loaded keywords policy/surface info.
+            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(keywordsResult, null, 2)}</pre></details>
+          </div>
+        )}
         <div className="text-xs">Candidates/active/disabled/excluded. Add/edit/disable/delete/explain. Standard/template folder names (Drawings, RFIs, Submittals, etc.) rejected by policy. Use per-project /keywords for edits.</div>
       </div>
 
       <div className="card">
         <div className="font-medium mb-2">Daily Brief (Prompt 14B)</div>
-        <button className="text-xs underline mb-2" onClick={async () => { const d = await getSettingsDailyBrief(); alert(JSON.stringify(d, null, 2).slice(0,500)); }}>Load Daily Brief Status</button>
+        <button
+          className="text-xs underline mb-2"
+          onClick={async () => {
+            setDailyBriefError(null)
+            try {
+              const d = await getSettingsDailyBrief()
+              setDailyBriefResult(d)
+            } catch (e: any) {
+              setDailyBriefError(e?.message || String(e))
+              setDailyBriefResult(null)
+            }
+          }}
+        >
+          Load Daily Brief Status
+        </button>
+        {dailyBriefError && <div className="text-xs text-red-500">{dailyBriefError}</div>}
+        {dailyBriefResult && (
+          <div className="text-xs mt-1">
+            Loaded Daily Brief status.
+            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(dailyBriefResult, null, 2)}</pre></details>
+          </div>
+        )}
         <div className="text-xs">External Markdown only. 7 states, platform instructions (Claude/ChatGPT/Perplexity/Other), copy scheduled prompt, detect/validate. Presenter-only; no rewrite.</div>
       </div>
 
@@ -360,15 +482,87 @@ export function SettingsPage() {
           <button className="text-xs px-2 py-1 border rounded" onClick={() => setTheme('light')}>Light</button>
           <button className="text-xs px-2 py-1 border rounded" onClick={() => setTheme('system')}>System</button>
         </div>
-        <button className="text-xs underline mb-2" onClick={async () => { const pr = await getSettingsPreferences(); alert(JSON.stringify(pr, null, 2).slice(0,500)); }}>Load Preferences</button>
-        <button className="text-xs underline" onClick={async () => { await patchSettingsPreferences({ theme, default_landing_page: 'Today' }); alert('Preferences patch sent (stub)'); }}>Save simple prefs</button>
+        <button
+          className="text-xs underline mb-2"
+          onClick={async () => {
+            setPrefsError(null)
+            try {
+              const pr = await getSettingsPreferences()
+              setPrefsResult(pr)
+            } catch (e: any) {
+              setPrefsError(e?.message || String(e))
+              setPrefsResult(null)
+            }
+          }}
+        >
+          Load Preferences
+        </button>
+        {prefsError && <div className="text-xs text-red-500">{prefsError}</div>}
+        {prefsResult && (
+          <div className="text-xs mt-1">
+            Loaded preferences.
+            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(prefsResult, null, 2)}</pre></details>
+          </div>
+        )}
+        <button
+          className="text-xs underline"
+          onClick={async () => {
+            setPrefsPatchMsg(null)
+            try {
+              await patchSettingsPreferences({ theme, default_landing_page: 'Today' })
+              setPrefsPatchMsg('Preferences patch sent (stub)')
+            } catch (e: any) {
+              setPrefsError(e?.message || String(e))
+            }
+          }}
+        >
+          Save simple prefs
+        </button>
+        {prefsPatchMsg && <div className="text-xs mt-1 text-green-600">{prefsPatchMsg}</div>}
         <div className="text-xs mt-1">Default landing, followed projects, Daily Brief display. Local persistence.</div>
       </div>
 
       <div className="card">
         <div className="font-medium mb-2">Admin Sync Controls (Prompt 14B, admin only)</div>
-        <button className="text-xs underline mb-2" onClick={async () => { try { const ad = await getSettingsAdminSync(); alert(JSON.stringify(ad, null, 2).slice(0,600)); } catch(e:any){ alert('Admin only or error: ' + (e?.message||e)); } }}>Load Admin Sync (admin role)</button>
-        <button className="text-xs underline" onClick={async () => { try { await patchSettingsAdmin({ global_rate_limit: 60 }); alert('Admin patch sent (stub)'); } catch(e:any){ alert('Admin only: '+(e?.message||e)); } }}>Apply sample admin rate limit (admin)</button>
+        <button
+          className="text-xs underline mb-2"
+          onClick={async () => {
+            setAdminSyncError(null)
+            setAdminPatchMsg(null)
+            try {
+              const ad = await getSettingsAdminSync()
+              setAdminSyncResult(ad)
+            } catch (e: any) {
+              setAdminSyncError(e?.message || String(e))
+              setAdminSyncResult(null)
+            }
+          }}
+        >
+          Load Admin Sync (admin role)
+        </button>
+        {adminSyncError && <div className="text-xs text-red-500">{adminSyncError}</div>}
+        {adminSyncResult && (
+          <div className="text-xs mt-1">
+            Loaded admin sync info (admin only).
+            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(adminSyncResult, null, 2)}</pre></details>
+          </div>
+        )}
+        <button
+          className="text-xs underline"
+          onClick={async () => {
+            setAdminPatchMsg(null)
+            setAdminSyncError(null)
+            try {
+              await patchSettingsAdmin({ global_rate_limit: 60 })
+              setAdminPatchMsg('Admin patch sent (stub)')
+            } catch (e: any) {
+              setAdminSyncError('Admin only: ' + (e?.message || e))
+            }
+          }}
+        >
+          Apply sample admin rate limit (admin)
+        </button>
+        {adminPatchMsg && <div className="text-xs mt-1 text-green-600">{adminPatchMsg}</div>}
         <div className="text-xs">Pending approvals, cadence/priority, rate-limit/backoff. CM User/operator cannot approve first sync.</div>
       </div>
 
