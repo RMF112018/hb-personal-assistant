@@ -229,6 +229,22 @@ def accept_memory_candidate(
     gate = evaluate_candidate_acceptance(candidate)
     refs = _source_ref_summary(candidate)
 
+    # Duplicate suppression (db-aware, read-only): refuse an item equivalent to an existing accepted
+    # one by (project_key, memory_type, source_family, normalized statement).
+    from .quality_controls import detect_duplicate_accepted
+
+    blocks = list(gate["blocks"])
+    dup = detect_duplicate_accepted(
+        statement_redacted=candidate.statement_redacted,
+        project_key=candidate.project_key,
+        memory_type=candidate.proposed_memory_type,
+        source_family=refs["source_family"],
+        db_path=db_path,
+    )
+    if dup["is_duplicate"]:
+        blocks.append("DUPLICATE_ACCEPTED")
+    acceptable = not blocks
+
     result: dict[str, Any] = {
         "command": "second-brain memory accept",
         "phase": "09",
@@ -242,9 +258,10 @@ def accept_memory_candidate(
         "source_family": refs["source_family"],
         "source_ref_hash": refs["source_ref_hash"],
         "source_ref_count": refs["source_ref_count"],
-        "acceptable": gate["acceptable"],
-        "blocks": gate["blocks"],
+        "acceptable": acceptable,
+        "blocks": blocks,
         "checks": gate["checks"],
+        "duplicate_of_memory_id": dup["existing_memory_id"],
         "confirm": confirm,
         "requires_confirm": True,
         "writes_external": False,
@@ -253,10 +270,10 @@ def accept_memory_candidate(
     }
 
     if not confirm:
-        result.update({"accepted": False, "would_accept": gate["acceptable"], "persisted": False})
+        result.update({"accepted": False, "would_accept": acceptable, "persisted": False})
         return result
 
-    if not gate["acceptable"]:
+    if not acceptable:
         result.update({"accepted": False, "would_accept": False, "persisted": False})
         return result
 

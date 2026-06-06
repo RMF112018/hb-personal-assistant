@@ -1142,6 +1142,87 @@ def memory_candidates_proof(
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
 
 
+@memory_app.command("supersede")
+def memory_supersede(
+    old_id: str = typer.Option(..., "--old-id", help="Accepted memory item to supersede."),
+    new_id: str = typer.Option(
+        ..., "--new-id", help="Newer accepted memory item that supersedes it."
+    ),
+    confirm: bool = typer.Option(
+        False,
+        "--confirm/--no-confirm",
+        help="Explicit operator confirmation (required to persist).",
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Supersede an accepted memory item with a newer accepted one (metadata-only; superseded then
+    excluded from retrieval). Without --confirm this is a dry-run. Exit 0/3."""
+    from hb_assistant.construction.second_brain.memory.quality_controls import (
+        MemoryQualityControlsError,
+        supersede_accepted_memory,
+    )
+
+    try:
+        result = supersede_accepted_memory(
+            old_memory_id=old_id, new_memory_id=new_id, confirm=confirm
+        )
+    except MemoryQualityControlsError as exc:
+        payload = {
+            "command": "second-brain memory supersede",
+            "status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+            "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    human = [
+        f"Supersede {old_id} -> {new_id} | confirm: {confirm} | superseded: {result['superseded']}"
+        f" | blocks: {result['blocks']}"
+    ]
+    exit_code = 0 if (not result["blocks"]) else 3
+    _emit_08c(result, json_out=json_out, human=human, exit_code=exit_code)
+
+
+@memory_app.command("quality-controls-proof")
+def memory_quality_controls_proof(
+    evidence: bool = typer.Option(
+        True,
+        "--evidence/--no-evidence",
+        help="Write the quality-controls proof to the evidence dir.",
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Prove duplicate suppression, supersession exclusion, freshness labeling, source retention, and
+    review-status transition validation (metadata-only, no writeback). Exit 0/3."""
+    from hb_assistant.construction.second_brain.memory.quality_controls import (
+        MemoryQualityControlsError,
+        build_memory_quality_controls_proof,
+    )
+
+    try:
+        proof = build_memory_quality_controls_proof(write_evidence=evidence)
+    except MemoryQualityControlsError as exc:
+        payload = {
+            "command": "second-brain memory quality-controls-proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "guardrails": _MEMORY_ACCEPTANCE_GUARDRAILS,
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    human = [
+        f"Memory quality controls proof passed={proof['proof_passed']} "
+        f"(dup_suppressed={proof['duplicate_detected_and_suppressed']}, "
+        f"supersession_excludes={proof['supersession_excludes_from_retrieval']}, "
+        f"transitions_valid={proof['transitions_valid']}, "
+        f"guards_false={proof['guard_columns_all_false']})"
+    ]
+    _emit_08c(proof, json_out=json_out, human=human, exit_code=0 if proof["proof_passed"] else 3)
+
+
 _MEMORY_CONSOLIDATION_PREVIEW_GUARDRAILS = {
     "advisory_only": True,
     "no_determination": True,

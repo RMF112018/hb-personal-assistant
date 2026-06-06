@@ -26,7 +26,8 @@
     "INVALID_REVIEW_TIER",
     "RAW_CONTENT_FINDING",
     "UNRESOLVED_HIGH_IMPACT",
-    "FINAL_DETERMINATION"
+    "FINAL_DETERMINATION",
+    "DUPLICATE_ACCEPTED"
   ],
   "accepted_item_required_fields": [
     "memory_id",
