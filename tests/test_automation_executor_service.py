@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,10 @@ from hb_assistant.construction.second_brain.automation_executor import (
     build_automation_execution_proof,
 )
 from hb_assistant.construction.store import ConstructionStore
+
+# Fixed weekday clock (2026-06-08 is a Monday) so apply-path runs are not skipped by the policy
+# weekend-gate when these tests run on a Sat/Sun.
+_WEEKDAY_CLOCK = datetime(2026, 6, 8, 9, 0, tzinfo=timezone.utc)
 
 
 class _FakeSuccess:
@@ -102,6 +107,7 @@ def test_lock_acquired_before_registry_and_released_on_success() -> None:
         confirm=True,
         db_path=db,
         locks_dir=locks,
+        clock=lambda: _WEEKDAY_CLOCK,
         brief_gen=fake,
         html_render=_FakeSuccess(),
         macos_notify=_FakeSuccess(),
@@ -182,6 +188,7 @@ def test_failed_stage_marks_downstream_skipped() -> None:
         confirm=True,
         db_path=db,
         locks_dir=locks,
+        clock=lambda: _WEEKDAY_CLOCK,
         brief_gen=fakes["daily_brief_generate"],
         html_render=fakes["local_html_deliver"],
         macos_notify=fakes["macos_notification_emit"],
@@ -207,6 +214,7 @@ def test_recovery_recommendation_is_human_safe_no_secrets() -> None:
         confirm=True,
         db_path=db,
         locks_dir=locks,
+        clock=lambda: _WEEKDAY_CLOCK,
         brief_gen=_FakeFail(),
         html_render=_FakeSuccess(),
         macos_notify=_FakeSuccess(),

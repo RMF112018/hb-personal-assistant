@@ -1,6 +1,6 @@
 {
   "schema": "table_lifecycle_status_contract/v1",
-  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 — schema + contracts + table lifecycle; ships empty/placeholder_deferred).",
+  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 — schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred).",
   "statuses": [
     "operational_populated",
     "operational_empty_expected",
@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 191,
+  "table_count": 194,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1738,6 +1738,33 @@
       "blocking_for_phase": "none",
       "v": "V38",
       "notes": "Phase 09 validation-matrix run ledger (metadata-only; full 23 guards); populated by later Phase 09 prompts (13-39)"
+    },
+    "second_brain_review_burden_runs": {
+      "table_family": "review_burden_v39",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V39",
+      "notes": "Phase 09 review-burden run receipts (Prompt 37, review burden reduction; advisory promotion policy; metadata-only). Additive V39."
+    },
+    "second_brain_review_burden_clusters": {
+      "table_family": "review_burden_v39",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V39",
+      "notes": "Phase 09 review-burden clusters (two-step impact classification; hash-only examples; financial tracked separately). Additive V39."
+    },
+    "second_brain_review_burden_policy_evals": {
+      "table_family": "review_burden_v39",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "09",
+      "blocking_for_phase": "none",
+      "v": "V39",
+      "notes": "Phase 09 review-burden policy evaluation snapshots (advisory promotion policy; metadata-only). Additive V39."
     }
   }
 }

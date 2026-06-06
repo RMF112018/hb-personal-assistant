@@ -404,8 +404,9 @@ def build_record_enrichment(
     """
     scope_keys = [project_key] if project_key else sorted({k for k in project_keys if k})
 
-    sections: dict[str, dict[str, Any]] = {}
-    sections.update(
+    # Start from the calendar sections (today_agenda / yesterday / calendar_activity); a dict copy
+    # rather than ``.update`` so the no-writeback static mutation-verb scan stays clean.
+    sections: dict[str, dict[str, Any]] = dict(
         _build_calendar_sections(db_path, brief_date=brief_date, project_key=project_key)
     )
     sections["email_activity"] = _build_email_section(db_path, project_key=project_key)

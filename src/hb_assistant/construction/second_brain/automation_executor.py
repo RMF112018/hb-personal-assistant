@@ -1395,6 +1395,12 @@ def run_automation_execution(
     return ex.execute(request)
 
 
+# Fixed weekday clock for the execution self-test proofs so they are deterministic regardless of the
+# day they run (the policy weekend-gate skips apply runs on Sat/Sun; ``_now()`` uses ``_clock()``).
+# 2026-06-08 is a Monday. Mirrors ``build_weekend_catchup_proof`` which pins its own date.
+_PROOF_WEEKDAY_NOW = datetime(2026, 6, 8, 9, 0, tzinfo=timezone.utc)
+
+
 def build_automation_execution_proof() -> dict[str, Any]:
     """Proof for P03 (temp DB/locks/html/vault; fakes for 5 domains; dry + apply success + fail+downstream cases)."""
     import tempfile
@@ -1444,6 +1450,7 @@ def build_automation_execution_proof() -> dict[str, Any]:
             confirm=True,
             db_path=db,
             locks_dir=locks,
+            clock=lambda: _PROOF_WEEKDAY_NOW,
             brief_gen=fake_gen,
             html_render=fake_html,
             macos_notify=fake_notify,
@@ -1460,6 +1467,7 @@ def build_automation_execution_proof() -> dict[str, Any]:
             confirm=True,
             db_path=db,
             locks_dir=locks,
+            clock=lambda: _PROOF_WEEKDAY_NOW,
             brief_gen=fake_gen_fail,
             html_render=_Fake(),
             macos_notify=_Fake(),
@@ -1471,7 +1479,13 @@ def build_automation_execution_proof() -> dict[str, Any]:
         res_fail = ex_fail.execute(req_fail)
 
         # dry
-        ex_dry = AutomationExecutor(dry_run=True, confirm=False, db_path=db, locks_dir=locks)
+        ex_dry = AutomationExecutor(
+            dry_run=True,
+            confirm=False,
+            db_path=db,
+            locks_dir=locks,
+            clock=lambda: _PROOF_WEEKDAY_NOW,
+        )
         res_dry = ex_dry.execute(req)
 
         # asserts (fail-closed)
@@ -1652,7 +1666,7 @@ def build_retry_backoff_execution_proof() -> dict[str, Any]:
             deliver=fake_deliver,
             job_health=fake_job,
             sleep_fn=fake_sleep,
-            # clock default ok for this
+            clock=lambda: _PROOF_WEEKDAY_NOW,
         )
         res = ex.execute(ExecutionRequest(run_kind="daily_brief", mode="manual"))
 
@@ -2041,6 +2055,7 @@ def build_safe_replay_execution_proof() -> dict[str, Any]:
             confirm=True,
             db_path=db,
             locks_dir=locks,
+            clock=lambda: _PROOF_WEEKDAY_NOW,
             brief_gen=fake_gen,
             html_render=fake_html,
             macos_notify=fake_notify,
@@ -2087,6 +2102,7 @@ def build_safe_replay_execution_proof() -> dict[str, Any]:
             confirm=True,
             db_path=db,
             locks_dir=locks,
+            clock=lambda: _PROOF_WEEKDAY_NOW,
             brief_gen=_Fake("g2"),
             html_render=_Fake("h2"),
             macos_notify=_Fake("n2"),
@@ -2638,6 +2654,7 @@ def build_daily_brief_job_health_executor_proof() -> dict[str, Any]:
             deliver=_J(),
             job_health=_J(),
             now=fixed,
+            clock=lambda: fixed,
         )
         ress = exs.execute(ExecutionRequest(brief_date="2026-06-03"))
 
@@ -2653,6 +2670,7 @@ def build_daily_brief_job_health_executor_proof() -> dict[str, Any]:
             deliver=_J(),
             job_health=_J(),
             now=fixed,
+            clock=lambda: fixed,
         )
         resf = exf.execute(ExecutionRequest(brief_date="2026-06-03"))
 
