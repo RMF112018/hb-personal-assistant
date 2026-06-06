@@ -1,0 +1,192 @@
+{
+  "audit": "retrieval-quality-rebaseline",
+  "phase": "09-addendum-retrieval-quality-daily-brief-hardening",
+  "prompt": "00",
+  "purpose": "Focused repo-truth rebaseline after accepted-memory activation and before retrieval/memory quality hardening. Captures a golden baseline for later comparison.",
+  "generated_utc": "2026-06-06T08:50:36Z",
+  "baseline_commit": "c435e4a29f87228a46173d0b6971bbc922d9d36a",
+  "baseline_short": "c435e4a2",
+  "branch": "main",
+  "branch_tracking": "up to date with origin/main (pull --ff-only: Already up to date)",
+  "working_tree_note": "Pre-existing dirty/untracked entries at audit start are regenerated evidence JSON/MD and local-only scaffolding (.claude/, .code-graph/, scripts/hb-claude-mcp-launcher.sh, future-fastapi-analytics-dashboard-metrics-catalog/) unrelated to this audit; left untouched and not staged.",
+  "recent_commits": [
+    "c435e4a2 Add Phase 09 memory activation golden baseline evidence",
+    "db029a0f Merge pull request #2 from RMF112018/phase-09-approved-family-coverage-expansion",
+    "06776070 v1.8.0-phase-09-addendum — Bugfix: explicit candidate staging bridge (preview -> durable candidate store)",
+    "e673d8b4 Merge pull request #1 from RMF112018/phase-09-approved-family-coverage-expansion",
+    "f5674067 v1.8.0-phase-09-addendum — Prompt 05: Accepted-memory addendum closeout & handoff"
+  ],
+  "schema_version": 39,
+  "operator_db": "~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "substrate": {
+    "phase_09_gates": {
+      "command": "second-brain data-quality phase-09-gates",
+      "ok": true,
+      "proof_passed": true,
+      "gate_count": 23,
+      "gate_count_minimum": 18,
+      "status_counts": {
+        "pass": 14,
+        "warning": 0,
+        "fail_blocking": 0,
+        "deferred_not_blocking": 9
+      },
+      "required_fields_covered": true,
+      "readiness_overstated": false,
+      "phase_09_substrate_status": "advisory_empty",
+      "advisory_only": true,
+      "makes_determination": false,
+      "deferred_not_blocking_gates": [
+        "llamaindex_config",
+        "hybrid_retrieval",
+        "retrieval_eval_set",
+        "retrieval_benchmark",
+        "unsupported_claim_checks",
+        "memory_quality_review",
+        "memory_consolidation_preview",
+        "agent_performance_feedback",
+        "source_linked_retrieval_proof"
+      ]
+    },
+    "phase_09_operator_status": {
+      "command": "second-brain data-quality phase-09-operator-status",
+      "operator_status_ok": true,
+      "overall_status": "advisory_ready",
+      "surface_count": 24,
+      "gate_count": 23,
+      "all_contracts_present": true,
+      "missing_contracts": [],
+      "phase_09_substrate_status": "populated",
+      "readiness_categories": {
+        "safe_advisory_readiness": false,
+        "semantic_retrieval_readiness": false,
+        "vector_apply_readiness": true,
+        "production_readiness": false
+      }
+    }
+  },
+  "coverage_parity": {
+    "command": "second-brain retrieval coverage-parity-closeout",
+    "closeout_ok": true,
+    "coverage_parity_ok": true,
+    "memory_substrate_status": "covered",
+    "deterministic_reader_family_count": 10,
+    "approved_manifest_family_count": 10,
+    "vector_indexed_family_count": 9,
+    "missing_reader_families": [],
+    "empty_approved_families": [],
+    "deferred_families": [],
+    "sub_proofs_passed": {
+      "reader_registry_parity": true,
+      "approved_read_model_manifest": true,
+      "read_model_vector_loader": true
+    }
+  },
+  "llamaindex_build_dry_run": {
+    "command": "second-brain retrieval llamaindex build",
+    "status": "dry_run",
+    "manifest_id": "asm_daf074f35717d5fa71747fc653ffff5c",
+    "manifest_hash": "daf074f35717d5fa71747fc653ffff5cfa4f29af4f4917b4e12be7b5708d9e02",
+    "config_hash": "c1aac21b856a8156307b7093772eab34a9bdc03c47e08073c204fad52e6662d3",
+    "index_plan_hash": "b57b0c8185b507f0dfe30be0f29a3ceb9c66fb39f20a62f26bdfc69449d071e3",
+    "embedding_model_label": "BAAI/bge-small-en-v1.5",
+    "index_kind": "vector_store",
+    "vector_store_kind": "simple",
+    "total_nodes": 1697,
+    "indexed_family_count": 9,
+    "rejected_node_count": 0,
+    "sdk_available": true,
+    "local_embedding_available": true,
+    "ready_to_apply": true,
+    "no_raw_attested": true,
+    "vectors_persisted_to_sqlite": false,
+    "per_family_node_count": {
+      "approved_obsidian_generated_outputs": 1,
+      "accepted_long_term_memory": 1,
+      "generated_outputs": 7,
+      "phase_07d_source_evidence_trails": 455,
+      "project_issue_history_items": 468,
+      "project_risk_digest_items": 14,
+      "cross_source_relationships": 500,
+      "meeting_prep_brief_sections": 3,
+      "review_controlled_correspondence_context": 248
+    }
+  },
+  "accepted_memory": {
+    "command": "second-brain memory list --status accepted",
+    "count": 1,
+    "items": [
+      {
+        "memory_id": "7b7bf01758b14565b8bf34d118121c8e",
+        "memory_type": "system_config_fact",
+        "confidence_class": "high",
+        "review_status": "accepted",
+        "freshness_label": "current",
+        "source_ref_count": 1
+      }
+    ],
+    "loadable_into_retrieval": true,
+    "contract_version": "1.8.0-phase-09-addendum"
+  },
+  "guardrails": {
+    "phase_09_no_writeback_proof": {
+      "command": "second-brain data-quality phase-09-no-writeback-proof",
+      "proof_passed": true,
+      "overall_status": "clean",
+      "modules_scanned": 56,
+      "evidence_files_scanned": 534,
+      "writeback_findings": [],
+      "bad_import_findings": [],
+      "gates_all_true": true
+    },
+    "no_raw_vector_index_proof": {
+      "command": "second-brain retrieval no-raw-vector-index-proof",
+      "proof_passed": true,
+      "overall_status": "clean",
+      "gate_count": 6,
+      "pass_count": 6,
+      "fail_count": 0,
+      "blob_columns_found": [],
+      "guard_violations": 0
+    },
+    "mcp_no_raw_access": {
+      "command": "second-brain mcp no-raw-access",
+      "proof_passed": true,
+      "scanned_surface_count": 7,
+      "phase": "08D"
+    },
+    "mcp_no_writeback": {
+      "command": "second-brain mcp no-writeback",
+      "proof_passed": true,
+      "scanned_surface_count": 7,
+      "phase": "08D"
+    }
+  },
+  "quality_surface_population": {
+    "source": "direct count against operator SQLite",
+    "all_empty": true,
+    "tables": {
+      "second_brain_retrieval_eval_sets": 0,
+      "second_brain_retrieval_benchmark_runs": 0,
+      "second_brain_retrieval_source_linked_proof_runs": 0,
+      "second_brain_retrieval_unsupported_claim_checks": 0,
+      "second_brain_retrieval_context_budget_runs": 0,
+      "second_brain_memory_quality_review_runs": 0,
+      "second_brain_agent_performance_feedback_runs": 0
+    }
+  },
+  "known_issue_status_label_drift": {
+    "description": "phase-09-gates reports phase_09_substrate_status = advisory_empty while phase-09-operator-status reports populated for the same DB/commit.",
+    "phase_09_gates_substrate_status": "advisory_empty",
+    "phase_09_operator_status_substrate_status": "populated",
+    "underlying_truth": "Coverage parity is complete (coverage_parity_ok = true, memory_substrate_status = covered, 10 reader families, 9 vector-indexed). Quality-surface tables are empty by design at this point in the package.",
+    "disposition": "Status-label drift only; not a functional defect. To be resolved later in this package."
+  },
+  "acceptance": {
+    "golden_baseline_generated": true,
+    "code_changes": "none",
+    "no_raw_content_emitted": true,
+    "no_source_system_writeback": true,
+    "no_readiness_overstatement": true
+  }
+}
