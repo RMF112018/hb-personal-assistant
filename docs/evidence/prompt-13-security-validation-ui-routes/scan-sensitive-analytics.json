@@ -1,0 +1,172 @@
+{
+  "implemented": true,
+  "phase": 12,
+  "repo": "src/hb_assistant/construction/analytics",
+  "scanned_paths": [
+    "~/hb-personal-assistant/src/hb_assistant/construction/analytics",
+    "~/Library/Application Support/HB Personal Assistant",
+    "~/Library/Application Support/HB Personal Assistant/evidence"
+  ],
+  "findings": [
+    {
+      "category": "msal_cache_content",
+      "path": "service.py",
+      "line": 29,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "env_secret_assignment",
+      "path": "daily_brief.py",
+      "line": 464,
+      "severity": "high",
+      "rule_id": "SEC-ENV-001",
+      "hint": ".env-style secret assignment"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "auth_onboarding.py",
+      "line": 63,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "auth_onboarding.py",
+      "line": 118,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "auth_onboarding.py",
+      "line": 120,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "auth_onboarding.py",
+      "line": 129,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "auth_onboarding.py",
+      "line": 156,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "auth_onboarding.py",
+      "line": 157,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "auth_onboarding.py",
+      "line": 161,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "auth_onboarding.py",
+      "line": 162,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "env_secret_assignment",
+      "path": "auth_onboarding.py",
+      "line": 186,
+      "severity": "high",
+      "rule_id": "SEC-ENV-001",
+      "hint": ".env-style secret assignment"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "auth_onboarding.py",
+      "line": 207,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "jwt_like",
+      "path": "~/Library/Application Support/HB Personal Assistant/auth/procore_token.json",
+      "line": 2,
+      "severity": "high",
+      "rule_id": "SEC-TOK-001",
+      "hint": "JWT-like token structure"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "~/Library/Application Support/HB Personal Assistant/auth/procore_token.json",
+      "line": 2,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "~/Library/Application Support/HB Personal Assistant/auth/procore_token.json",
+      "line": 5,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "jwt_like",
+      "path": "~/Library/Application Support/HB Personal Assistant/auth/msal-token-cache.bin",
+      "line": 5,
+      "severity": "high",
+      "rule_id": "SEC-TOK-001",
+      "hint": "JWT-like token structure"
+    },
+    {
+      "category": "jwt_like",
+      "path": "~/Library/Application Support/HB Personal Assistant/auth/msal-token-cache.bin",
+      "line": 31,
+      "severity": "high",
+      "rule_id": "SEC-TOK-001",
+      "hint": "JWT-like token structure"
+    }
+  ],
+  "findings_by_category": {
+    "msal_cache_content": [
+      "service.py",
+      "auth_onboarding.py",
+      "~/Library/Application Support/HB Personal Assistant/auth/procore_token.json"
+    ],
+    "env_secret_assignment": [
+      "daily_brief.py",
+      "auth_onboarding.py"
+    ],
+    "jwt_like": [
+      "~/Library/Application Support/HB Personal Assistant/auth/procore_token.json",
+      "~/Library/Application Support/HB Personal Assistant/auth/msal-token-cache.bin"
+    ]
+  },
+  "stats": {
+    "files_considered": 2470,
+    "files_scanned": 2454,
+    "files_binary_skipped": 2,
+    "files_oversize_skipped": 1,
+    "files_read_errors": 0,
+    "files_excluded": 13
+  },
+  "note": "Bounded content scan with redacted output fields only; no matched secret values emitted."
+}

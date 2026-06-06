@@ -1,0 +1,70 @@
+{
+  "implemented": true,
+  "phase": 12,
+  "repo": "frontend/src",
+  "scanned_paths": [
+    "~/hb-personal-assistant/frontend/src",
+    "~/Library/Application Support/HB Personal Assistant",
+    "~/Library/Application Support/HB Personal Assistant/evidence"
+  ],
+  "findings": [
+    {
+      "category": "jwt_like",
+      "path": "~/Library/Application Support/HB Personal Assistant/auth/procore_token.json",
+      "line": 2,
+      "severity": "high",
+      "rule_id": "SEC-TOK-001",
+      "hint": "JWT-like token structure"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "~/Library/Application Support/HB Personal Assistant/auth/procore_token.json",
+      "line": 2,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "msal_cache_content",
+      "path": "~/Library/Application Support/HB Personal Assistant/auth/procore_token.json",
+      "line": 5,
+      "severity": "medium",
+      "rule_id": "SEC-MSAL-001",
+      "hint": "MSAL/token cache indicator"
+    },
+    {
+      "category": "jwt_like",
+      "path": "~/Library/Application Support/HB Personal Assistant/auth/msal-token-cache.bin",
+      "line": 5,
+      "severity": "high",
+      "rule_id": "SEC-TOK-001",
+      "hint": "JWT-like token structure"
+    },
+    {
+      "category": "jwt_like",
+      "path": "~/Library/Application Support/HB Personal Assistant/auth/msal-token-cache.bin",
+      "line": 31,
+      "severity": "high",
+      "rule_id": "SEC-TOK-001",
+      "hint": "JWT-like token structure"
+    }
+  ],
+  "findings_by_category": {
+    "jwt_like": [
+      "~/Library/Application Support/HB Personal Assistant/auth/procore_token.json",
+      "~/Library/Application Support/HB Personal Assistant/auth/msal-token-cache.bin"
+    ],
+    "msal_cache_content": [
+      "~/Library/Application Support/HB Personal Assistant/auth/procore_token.json"
+    ]
+  },
+  "stats": {
+    "files_considered": 2483,
+    "files_scanned": 2479,
+    "files_binary_skipped": 3,
+    "files_oversize_skipped": 1,
+    "files_read_errors": 0,
+    "files_excluded": 0
+  },
+  "note": "Bounded content scan with redacted output fields only; no matched secret values emitted."
+}

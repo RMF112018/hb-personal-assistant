@@ -1,0 +1,1711 @@
+{
+  "command": "second-brain data-quality no-writeback-proof",
+  "ok": false,
+  "proof_passed": false,
+  "phase": "Phase 08B Prompt 09 (final no-writeback over executor)",
+  "generated_utc": "2026-06-06T16:15:24.873605+00:00",
+  "repo_sha": "4aeeace77650db5e8802081d5cdeacbed041e4e9",
+  "schema_version": 40,
+  "scanned_modules": [
+    "construction/second_brain/__init__.py",
+    "construction/second_brain/agent_performance_feedback.py",
+    "construction/second_brain/agents/__init__.py",
+    "construction/second_brain/agents/loader.py",
+    "construction/second_brain/agents/models.py",
+    "construction/second_brain/agents/policy.py",
+    "construction/second_brain/automation_delivery_proof.py",
+    "construction/second_brain/automation_executor.py",
+    "construction/second_brain/automation_health.py",
+    "construction/second_brain/automation_policy.py",
+    "construction/second_brain/config.py",
+    "construction/second_brain/contracts.py",
+    "construction/second_brain/corpus_balance_mart.py",
+    "construction/second_brain/daily_brief/__init__.py",
+    "construction/second_brain/daily_brief/context.py",
+    "construction/second_brain/daily_brief/enrichment.py",
+    "construction/second_brain/daily_brief/generate.py",
+    "construction/second_brain/daily_brief/mcp_handoff_status.py",
+    "construction/second_brain/daily_brief/models.py",
+    "construction/second_brain/daily_brief/output.py",
+    "construction/second_brain/daily_brief/output_receipt.py",
+    "construction/second_brain/daily_brief/packet.py",
+    "construction/second_brain/daily_brief/policy.py",
+    "construction/second_brain/daily_brief/render_view.py",
+    "construction/second_brain/daily_brief/rendered_quality.py",
+    "construction/second_brain/daily_brief/scheduling.py",
+    "construction/second_brain/daily_brief/store.py",
+    "construction/second_brain/daily_brief/triage.py",
+    "construction/second_brain/daily_brief_delivery.py",
+    "construction/second_brain/daily_brief_health.py",
+    "construction/second_brain/daily_brief_html.py",
+    "construction/second_brain/daily_brief_notify.py",
+    "construction/second_brain/daily_brief_open.py",
+    "construction/second_brain/daily_brief_reproducibility.py",
+    "construction/second_brain/data_quality.py",
+    "construction/second_brain/financial_amount_normalization.py",
+    "construction/second_brain/financial_completeness.py",
+    "construction/second_brain/financial_completeness_advisory.py",
+    "construction/second_brain/financial_no_writeback.py",
+    "construction/second_brain/financial_review_routing.py",
+    "construction/second_brain/freshness.py",
+    "construction/second_brain/generated_output_proof.py",
+    "construction/second_brain/launchd_scheduler.py",
+    "construction/second_brain/mcp/__init__.py",
+    "construction/second_brain/mcp/audit.py",
+    "construction/second_brain/mcp/broker.py",
+    "construction/second_brain/mcp/config_preview.py",
+    "construction/second_brain/mcp/daily_brief_handoff_proof.py",
+    "construction/second_brain/mcp/policy.py",
+    "construction/second_brain/mcp/prompts.py",
+    "construction/second_brain/mcp/proof.py",
+    "construction/second_brain/mcp/receipt_smoke_proof.py",
+    "construction/second_brain/mcp/registry.py",
+    "construction/second_brain/mcp/render_template_proof.py",
+    "construction/second_brain/mcp/resources.py",
+    "construction/second_brain/mcp/sdk_server.py",
+    "construction/second_brain/mcp/server.py",
+    "construction/second_brain/mcp/store.py",
+    "construction/second_brain/mcp/wrappers.py",
+    "construction/second_brain/memory/__init__.py",
+    "construction/second_brain/memory/acceptance.py",
+    "construction/second_brain/memory/candidate_preview.py",
+    "construction/second_brain/memory/consolidation_preview.py",
+    "construction/second_brain/memory/curator.py",
+    "construction/second_brain/memory/models.py",
+    "construction/second_brain/memory/policy.py",
+    "construction/second_brain/memory/preference.py",
+    "construction/second_brain/memory/quality_controls.py",
+    "construction/second_brain/memory/quality_review.py",
+    "construction/second_brain/memory/store.py",
+    "construction/second_brain/obsidian_index/__init__.py",
+    "construction/second_brain/obsidian_index/indexer.py",
+    "construction/second_brain/obsidian_index/models.py",
+    "construction/second_brain/obsidian_index/policy.py",
+    "construction/second_brain/obsidian_linkage_proof.py",
+    "construction/second_brain/phase_09_gates.py",
+    "construction/second_brain/phase_09_no_writeback_proof.py",
+    "construction/second_brain/phase_09_operator_status.py",
+    "construction/second_brain/phase_09_schema.py",
+    "construction/second_brain/query_tools/__init__.py",
+    "construction/second_brain/query_tools/models.py",
+    "construction/second_brain/query_tools/policy.py",
+    "construction/second_brain/query_tools/store.py",
+    "construction/second_brain/query_tools/tools.py",
+    "construction/second_brain/reasoning.py",
+    "construction/second_brain/relationship_quality_mart.py",
+    "construction/second_brain/research/__init__.py",
+    "construction/second_brain/research/models.py",
+    "construction/second_brain/research/orchestrator.py",
+    "construction/second_brain/research/packet.py",
+    "construction/second_brain/research/policy.py",
+    "construction/second_brain/research/semantic_packet.py",
+    "construction/second_brain/research/store.py",
+    "construction/second_brain/retrieval/__init__.py",
+    "construction/second_brain/retrieval/accepted_memory_inclusion.py",
+    "construction/second_brain/retrieval/benchmark.py",
+    "construction/second_brain/retrieval/broker.py",
+    "construction/second_brain/retrieval/context_budget.py",
+    "construction/second_brain/retrieval/coverage_parity.py",
+    "construction/second_brain/retrieval/embedding_policy.py",
+    "construction/second_brain/retrieval/eval_set.py",
+    "construction/second_brain/retrieval/generated_outputs_loader.py",
+    "construction/second_brain/retrieval/hallucination_risk.py",
+    "construction/second_brain/retrieval/hybrid_broker.py",
+    "construction/second_brain/retrieval/llamaindex_config.py",
+    "construction/second_brain/retrieval/memory_loader.py",
+    "construction/second_brain/retrieval/metadata_filter.py",
+    "construction/second_brain/retrieval/models.py",
+    "construction/second_brain/retrieval/no_raw_vector_index_proof.py",
+    "construction/second_brain/retrieval/obsidian_loader.py",
+    "construction/second_brain/retrieval/policy.py",
+    "construction/second_brain/retrieval/project_benchmark.py",
+    "construction/second_brain/retrieval/read_model_loader.py",
+    "construction/second_brain/retrieval/readers.py",
+    "construction/second_brain/retrieval/source_linked_proof.py",
+    "construction/second_brain/retrieval/source_manifest.py",
+    "construction/second_brain/retrieval/unsupported_claim_checks.py",
+    "construction/second_brain/retrieval/vector_index.py",
+    "construction/second_brain/retry_recovery.py",
+    "construction/second_brain/review_burden_mart.py",
+    "construction/second_brain/review_load_mart.py",
+    "construction/second_brain/run_registry.py",
+    "construction/second_brain/safety.py",
+    "construction/second_brain/store.py",
+    "construction/second_brain/synthesis/__init__.py",
+    "construction/second_brain/synthesis/agent.py",
+    "construction/second_brain/synthesis/evaluation.py",
+    "construction/second_brain/synthesis/models.py",
+    "construction/second_brain/synthesis/semantic_output_evaluation.py",
+    "construction/second_brain/synthesis/store.py"
+  ],
+  "model_boundary": {
+    "module": "construction/second_brain/reasoning.py",
+    "sanctioned_external_call": "anthropic.messages.create (live model boundary)",
+    "writeback_findings_excluded": [
+      "construction/second_brain/reasoning.py: .create() call"
+    ],
+    "bad_imports": [],
+    "secrets": []
+  },
+  "checks_detail": {
+    "static_writeback_scan_08a_modules": {
+      "passed": false,
+      "findings": [
+        "construction/second_brain/daily_brief/enrichment.py: .update() call"
+      ]
+    },
+    "no_http_client_or_mutation_imports_08a": {
+      "passed": true,
+      "findings": []
+    },
+    "module_secret_scan_08a": {
+      "passed": true,
+      "findings": []
+    },
+    "model_boundary_disclosure": {
+      "passed": true,
+      "model_boundary": {
+        "module": "construction/second_brain/reasoning.py",
+        "sanctioned_external_call": "anthropic.messages.create (live model boundary)",
+        "writeback_findings_excluded": [
+          "construction/second_brain/reasoning.py: .create() call"
+        ],
+        "bad_imports": [],
+        "secrets": []
+      }
+    },
+    "sqlite_guard_checks_v26_second_brain_tables": {
+      "passed": true,
+      "findings": [],
+      "tables": [
+        {
+          "table": "second_brain_runtime_config_receipts",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "arbitrary_sql_allowed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "obsidian_index_manifests",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "arbitrary_sql_allowed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "obsidian_index_entries",
+          "present": true,
+          "guard_columns": []
+        },
+        {
+          "table": "retrieval_query_receipts",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "arbitrary_sql_allowed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "retrieval_context_refs",
+          "present": true,
+          "guard_columns": []
+        },
+        {
+          "table": "query_tool_receipts",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "arbitrary_sql_allowed",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": []
+            }
+          ]
+        },
+        {
+          "table": "long_term_memory_items",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "long_term_memory_source_refs",
+          "present": true,
+          "guard_columns": []
+        },
+        {
+          "table": "long_term_memory_quality_signals",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "memory_update_candidates",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "memory_update_reviews",
+          "present": true,
+          "guard_columns": []
+        },
+        {
+          "table": "second_brain_research_packets",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "arbitrary_sql_allowed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "second_brain_evaluation_runs",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "second_brain_operator_feedback",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": []
+            }
+          ]
+        },
+        {
+          "table": "second_brain_operator_preference_profiles",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": []
+            }
+          ]
+        },
+        {
+          "table": "daily_brief_runs",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "daily_brief_source_refs",
+          "present": true,
+          "guard_columns": []
+        },
+        {
+          "table": "daily_brief_handoff_lines",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "launchd_schedule_previews",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": []
+            }
+          ]
+        },
+        {
+          "table": "second_brain_agent_run_receipts",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "second_brain_agent_model_receipts",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "second_brain_run_registry",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": []
+            }
+          ]
+        },
+        {
+          "table": "second_brain_run_steps",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": []
+            }
+          ]
+        },
+        {
+          "table": "second_brain_retry_receipts",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": []
+            }
+          ]
+        },
+        {
+          "table": "daily_brief_delivery_receipts",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": []
+            }
+          ]
+        },
+        {
+          "table": "daily_brief_html_render_receipts",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": []
+            }
+          ]
+        },
+        {
+          "table": "daily_brief_notification_receipts",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": []
+            }
+          ]
+        },
+        {
+          "table": "daily_brief_open_receipts",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "retrieved_context_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": []
+            }
+          ]
+        },
+        {
+          "table": "second_brain_mcp_tool_call_receipts",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_procore_payload_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_financial_source_payload_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "graph_api_call_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "procore_api_call_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "email_send_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "calendar_update_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "source_system_writeback_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "arbitrary_sql_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "raw_store_access_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "financial_determination_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "payment_decision_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            },
+            {
+              "column": "claim_or_entitlement_decision_performed",
+              "has_check": true,
+              "distinct_values": [
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "table": "second_brain_mcp_denial_receipts",
+          "present": true,
+          "guard_columns": [
+            {
+              "column": "raw_email_body_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_document_text_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_calendar_payload_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_procore_payload_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_financial_source_payload_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_prompt_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_response_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "signed_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "download_url_persisted",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "external_writeback_performed",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "graph_api_call_performed",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "procore_api_call_performed",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "email_send_performed",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "calendar_update_performed",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "source_system_writeback_performed",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "arbitrary_sql_performed",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "raw_store_access_performed",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "financial_determination_performed",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "payment_decision_performed",
+              "has_check": true,
+              "distinct_values": []
+            },
+            {
+              "column": "claim_or_entitlement_decision_performed",
+              "has_check": true,
+              "distinct_values": []
+            }
+          ]
+        }
+      ]
+    },
+    "sqlite_content_leak_scan_08a_tables": {
+      "passed": true,
+      "findings": [],
+      "scanned_tables": [
+        "second_brain_runtime_config_receipts",
+        "obsidian_index_manifests",
+        "obsidian_index_entries",
+        "retrieval_query_receipts",
+        "retrieval_context_refs",
+        "query_tool_receipts",
+        "long_term_memory_items",
+        "long_term_memory_source_refs",
+        "long_term_memory_quality_signals",
+        "memory_update_candidates",
+        "memory_update_reviews",
+        "second_brain_research_packets",
+        "second_brain_evaluation_runs",
+        "second_brain_operator_feedback",
+        "second_brain_operator_preference_profiles",
+        "daily_brief_runs",
+        "daily_brief_source_refs",
+        "daily_brief_handoff_lines",
+        "launchd_schedule_previews",
+        "second_brain_agent_run_receipts",
+        "second_brain_agent_model_receipts",
+        "second_brain_run_registry",
+        "second_brain_run_steps",
+        "second_brain_retry_receipts",
+        "daily_brief_delivery_receipts",
+        "daily_brief_html_render_receipts",
+        "daily_brief_notification_receipts",
+        "daily_brief_open_receipts",
+        "second_brain_mcp_tool_call_receipts",
+        "second_brain_mcp_denial_receipts"
+      ]
+    },
+    "evidence_output_scan_08a": {
+      "passed": true,
+      "findings": [],
+      "scanned_dir": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/construction-intelligence-phase-08a-second-brain-runtime"
+    },
+    "executor_08b_automation_hardening_evidence_scan": {
+      "passed": true,
+      "findings": [],
+      "scanned_dir": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/construction-intelligence-phase-08b-automation-hardening"
+    },
+    "executor_modules_static_mutation_scan": {
+      "passed": true,
+      "rels": [
+        "construction/second_brain/automation_executor.py"
+      ],
+      "findings_by_rel": {
+        "construction/second_brain/automation_executor.py": {
+          "writeback": [],
+          "bad_imports": []
+        }
+      }
+    },
+    "obsidian_brief_output_scan": {
+      "passed": true,
+      "findings": [],
+      "scanned_dir": "/Users/bobbyfetting/Documents/Obsidian Vault/Work/HB Personal Assistant/12_Daily_Brief"
+    },
+    "generated_brief_handoff_scan": {
+      "passed": true,
+      "findings": []
+    },
+    "sqlite_html_markup_scan_08b_tables": {
+      "passed": true,
+      "findings": [],
+      "scanned_tables": [
+        "second_brain_runtime_config_receipts",
+        "obsidian_index_manifests",
+        "obsidian_index_entries",
+        "retrieval_query_receipts",
+        "retrieval_context_refs",
+        "query_tool_receipts",
+        "long_term_memory_items",
+        "long_term_memory_source_refs",
+        "long_term_memory_quality_signals",
+        "memory_update_candidates",
+        "memory_update_reviews",
+        "second_brain_research_packets",
+        "second_brain_evaluation_runs",
+        "second_brain_operator_feedback",
+        "second_brain_operator_preference_profiles",
+        "daily_brief_runs",
+        "daily_brief_source_refs",
+        "daily_brief_handoff_lines",
+        "launchd_schedule_previews",
+        "second_brain_agent_run_receipts",
+        "second_brain_agent_model_receipts",
+        "second_brain_run_registry",
+        "second_brain_run_steps",
+        "second_brain_retry_receipts",
+        "daily_brief_delivery_receipts",
+        "daily_brief_html_render_receipts",
+        "daily_brief_notification_receipts",
+        "daily_brief_open_receipts",
+        "second_brain_mcp_tool_call_receipts",
+        "second_brain_mcp_denial_receipts"
+      ]
+    },
+    "generated_brief_handoff_html_scan": {
+      "passed": true,
+      "findings": []
+    },
+    "model_receipt_metadata_only": {
+      "passed": true,
+      "metadata_only": true,
+      "raw_markers_absent": true,
+      "hashes_present": true,
+      "receipt_tables_present": []
+    }
+  },
+  "guardrails": {
+    "external_systems": "read_only",
+    "writeback": "none_permitted_in_08a_runtime",
+    "model_boundary": "anthropic_messages_create_only_metadata_only_receipts",
+    "raw_content_persisted": false,
+    "raw_html_persisted": false,
+    "secrets_tokens_urls_in_code_or_evidence": "forbidden",
+    "no_live_calls": true,
+    "fail_closed": true
+  },
+  "stop_conditions_checked": [
+    "no_source_system_writeback_calls_in_08a_modules",
+    "no_bad_http_or_sdk_imports_in_08a_modules",
+    "all_v26_guard_columns_zero_and_present",
+    "no_secrets_or_raw_in_tables_evidence_or_generated_outputs",
+    "model_receipts_metadata_only_and_receipt_tables_guarded",
+    "fail_closed_on_absent_expected_table_or_unsafe_pattern"
+  ],
+  "no_live_call_performed": true,
+  "no_external_writeback": false,
+  "no_raw_values_persisted": true,
+  "no_raw_values_persisted_scope": "phase_08a_second_brain_runtime_modules_tables_evidence_outputs_receipts + P09 executor (run tables + 08b hardening evidence)",
+  "no_raw_html_persisted": true,
+  "no_raw_html_persisted_scope": "phase_08b_second_brain_receipt_tables_and_generated_outputs",
+  "phase_08b_executor_no_writeback_extension": {
+    "passed": true,
+    "executor_modules_ok": true,
+    "executor_08b_evidence_ok": true,
+    "md_written": "docs/evidence/construction-intelligence-phase-08b-automation-hardening/phase-08b-final-no-writeback-proof.md",
+    "covers_required": [
+      "executor_modules_static_mutation_scan",
+      "executor_receipts_guard_scan",
+      "executor_evidence_raw_secret_scan",
+      "no_external_delivery",
+      "no_raw_in_executor_evidence_receipts",
+      "logs_locks_outside_repo",
+      "no_mcp_llama_in_executor"
+    ]
+  }
+}
