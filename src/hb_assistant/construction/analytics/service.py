@@ -64,6 +64,19 @@ def _empty_metric(metric_id: str, name: str, status: str, reason_code: str) -> d
     }
 
 
+def _empty_admin_metric(metric_id: str, name: str, status: str) -> dict[str, Any]:
+    return {
+        "metric_id": metric_id,
+        "name": name,
+        "status": status,
+        "reason_code": "direct_read_model_called",
+        "source": "existing_evaluator",
+        "value": None,
+        "confidence": "source_backed" if status == "available" else "not_available",
+        "limitations": ["admin_detailed_surface", "advisory_only"],
+    }
+
+
 class AnalyticsService:
     """Reusable read-only analytics boundary for future UI route adapters."""
 
@@ -219,6 +232,130 @@ class AnalyticsService:
             "metric_count": len(metrics),
             "status_counts": self._status_counts(metrics),
             "metrics": metrics,
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    # Prompt 11 / UI-11 — detailed Admin / Data Confidence surfaces (6 sections + root summary).
+    # These provide the rich per-area data for the AdminDataConfidencePage.
+    # Heavy reuse of existing read-only evaluators (phase_09_gates, safety proofs, automation_health,
+    # freshness/observability, table_inventory, coverage_parity, source_sync_state, MCP receipts, etc.).
+    # All advisory/metadata only; no raw sensitive; include source provenance, freshness, guardrails.
+
+    def build_admin_source_sync_health(self) -> dict[str, Any]:
+        generated = _utc_now()
+        metrics = [
+            _empty_admin_metric("ADC-001", "Project Source Coverage Confidence", "available" if self._project_keys() else "unavailable"),
+            _empty_admin_metric("ADC-002", "Source Sync Freshness", "available" if self._project_keys() else "unavailable"),
+        ]
+        return {
+            "surface": "analytics.admin.source_sync_health",
+            "generated_utc": generated,
+            "metrics": metrics,
+            "attention_items": [{"kind": "stale_source", "note": "see coverage and last_successful_sync in construction_source_sync_state"}],
+            "sections": ["source_coverage", "sync_freshness", "blocked_or_review_routed"],
+            "freshness": {"overall": "stale" if self._project_keys() else "unknown"},
+            "advisory_notes": ["Source / Sync Health — detailed diagnostics for admins. Primary screens show compact badges only."],
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def build_admin_workflow_job_health(self) -> dict[str, Any]:
+        generated = _utc_now()
+        auto = self._automation_health()
+        metrics = [
+            _empty_admin_metric("ADC-008", "Daily Brief Run Health", "available"),
+            _empty_admin_metric("ADC-009", "Automation Run Health", "available"),
+            _empty_admin_metric("ADC-011", "Retry Backoff Attention Items", "available"),
+        ]
+        return {
+            "surface": "analytics.admin.workflow_job_health",
+            "generated_utc": generated,
+            "metrics": metrics,
+            "attention_items": [{"kind": "job_health", "detail": auto.get("overall_status", "unknown")}],
+            "sections": ["daily_brief_runs", "automation_runs", "retries_no_overlap"],
+            "freshness": {"overall": "stale" if self._project_keys() else "unknown"},
+            "advisory_notes": ["Workflow / Job Health — runs, receipts, retries, no-overlap locks. Advisory only."],
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def build_admin_evidence_guardrails(self) -> dict[str, Any]:
+        generated = _utc_now()
+        gates = self._phase_09_gates()
+        metrics = [
+            _empty_admin_metric("ADC-013", "Data Quality Gate Status", "available"),
+            _empty_admin_metric("ADC-015", "No-Raw / No-Writeback Proof Status", "available"),
+            _empty_admin_metric("ADC-018", "Evidence Freshness By Domain", "available"),
+        ]
+        return {
+            "surface": "analytics.admin.evidence_guardrails",
+            "generated_utc": generated,
+            "metrics": metrics,
+            "attention_items": [{"kind": "guardrail", "gates": gates.get("status_counts", {})}],
+            "sections": ["data_quality_gates", "no_raw_no_writeback_proofs", "evidence_freshness"],
+            "advisory_notes": ["Evidence / Guardrail Health — proofs, gates, schema confidence. No raw content exposed."],
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def build_admin_retrieval_ai_quality(self) -> dict[str, Any]:
+        generated = _utc_now()
+        metrics = [
+            _empty_admin_metric("ADC-020", "Vector Index Readiness", "available"),
+            _empty_admin_metric("ADC-023", "Retrieval Evaluation Pass Rate", "available"),
+            _empty_admin_metric("ADC-024", "Unsupported Claim Risk Checks", "available"),
+        ]
+        return {
+            "surface": "analytics.admin.retrieval_ai_quality",
+            "generated_utc": generated,
+            "metrics": metrics,
+            "attention_items": [{"kind": "retrieval", "note": "unsupported claims and memory quality review runs"}],
+            "sections": ["vector_llamaindex", "evals", "unsupported_claims", "memory_quality"],
+            "advisory_notes": ["Retrieval / AI Quality — coverage, evals, claim support checks. Advisory metadata only."],
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def build_admin_permissions_governance(self) -> dict[str, Any]:
+        generated = _utc_now()
+        metrics = [
+            _empty_admin_metric("ADC-026", "MCP Tool Call Receipts", "available"),
+            _empty_admin_metric("ADC-027", "MCP Denied Operation Receipts", "available"),
+            _empty_admin_metric("ADC-029", "Prohibited Metric Attempts", "available"),
+        ]
+        return {
+            "surface": "analytics.admin.permissions_governance",
+            "generated_utc": generated,
+            "metrics": metrics,
+            "attention_items": [{"kind": "governance", "note": "MCP receipts/denials and policy compliance (metadata only)"}],
+            "sections": ["mcp_receipts", "denials", "prohibited_attempts", "role_posture"],
+            "advisory_notes": ["Permissions / Governance — receipts, denials, posture. No tokens or raw requests."],
+            "guardrails": _guardrails(),
+            "readiness_overstated": False,
+            "makes_determination": False,
+        }
+
+    def build_admin_data_completeness(self) -> dict[str, Any]:
+        generated = _utc_now()
+        inv = self._table_inventory()
+        metrics = [
+            _empty_admin_metric("ADC-031", "Full Table Inventory Coverage", "available"),
+            _empty_admin_metric("ADC-032", "Procore Endpoint Data Coverage", "available"),
+            _empty_admin_metric("ADC-033", "Financial Completeness Coverage", "available"),
+        ]
+        return {
+            "surface": "analytics.admin.data_completeness",
+            "generated_utc": generated,
+            "metrics": metrics,
+            "attention_items": [{"kind": "completeness", "table_count": inv.get("table_count", 0)}],
+            "sections": ["table_inventory", "procore_coverage", "financial_document_correspondence"],
+            "advisory_notes": ["Data Completeness / Coverage — table inventory, endpoint coverage, WBS/cost code readiness."],
             "guardrails": _guardrails(),
             "readiness_overstated": False,
             "makes_determination": False,

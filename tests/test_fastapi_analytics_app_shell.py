@@ -91,6 +91,14 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/daily-brief/validate-output-folder",
         "/api/daily-brief/detect-latest",
         "/api/today/daily-brief",
+        # Prompt 11 / UI-11 Admin / Data Confidence detailed surfaces (root + 6 sections)
+        "/api/admin",
+        "/api/admin/source-sync-health",
+        "/api/admin/workflow-job-health",
+        "/api/admin/evidence-guardrails",
+        "/api/admin/retrieval-ai-quality",
+        "/api/admin/permissions-governance",
+        "/api/admin/data-completeness",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 

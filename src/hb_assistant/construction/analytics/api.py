@@ -500,4 +500,59 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return AnalyticsService(db_path=db_path).build_today_daily_brief()
 
+    # Prompt 11 / UI-11 — Admin / Data Confidence (source/sync, workflow/jobs, evidence/guardrails,
+    # retrieval/AI quality, permissions/governance, data completeness).
+    # These are support surfaces. Detailed diagnostics here; primary screens (Today/Projects/My Items)
+    # show only compact badges and links to /admin. Admin role required for the detailed views.
+    # All responses follow the read-model contract: metric cards with IDs/names/values/freshness/confidence/
+    # sources/drilldowns + guardrails + advisory (no raw sensitive fields, no determinations).
+    @app.get("/api/admin")
+    def admin_root(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_admin_confidence_summary()
+
+    @app.get("/api/admin/source-sync-health")
+    def admin_source_sync_health(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_admin_source_sync_health()
+
+    @app.get("/api/admin/workflow-job-health")
+    def admin_workflow_job_health(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_admin_workflow_job_health()
+
+    @app.get("/api/admin/evidence-guardrails")
+    def admin_evidence_guardrails(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_admin_evidence_guardrails()
+
+    @app.get("/api/admin/retrieval-ai-quality")
+    def admin_retrieval_ai_quality(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_admin_retrieval_ai_quality()
+
+    @app.get("/api/admin/permissions-governance")
+    def admin_permissions_governance(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_admin_permissions_governance()
+
+    @app.get("/api/admin/data-completeness")
+    def admin_data_completeness(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        return AnalyticsService(db_path=db_path).build_admin_data_completeness()
+
     return app

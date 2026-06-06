@@ -171,6 +171,49 @@ export async function getMyItemsFollowedProjects() {
   return res.json()
 }
 
+// Prompt 11 / UI-11 Admin / Data Confidence (detailed support surfaces)
+export async function getAdmin() {
+  const res = await fetch(`${API_BASE}/admin`)
+  if (!res.ok) throw new Error(`Failed admin: ${res.status}`)
+  return res.json()
+}
+
+export async function getAdminSourceSyncHealth() {
+  const res = await fetch(`${API_BASE}/admin/source-sync-health`)
+  if (!res.ok) throw new Error(`Failed admin/source-sync-health: ${res.status}`)
+  return res.json()
+}
+
+export async function getAdminWorkflowJobHealth() {
+  const res = await fetch(`${API_BASE}/admin/workflow-job-health`)
+  if (!res.ok) throw new Error(`Failed admin/workflow-job-health: ${res.status}`)
+  return res.json()
+}
+
+export async function getAdminEvidenceGuardrails() {
+  const res = await fetch(`${API_BASE}/admin/evidence-guardrails`)
+  if (!res.ok) throw new Error(`Failed admin/evidence-guardrails: ${res.status}`)
+  return res.json()
+}
+
+export async function getAdminRetrievalAiQuality() {
+  const res = await fetch(`${API_BASE}/admin/retrieval-ai-quality`)
+  if (!res.ok) throw new Error(`Failed admin/retrieval-ai-quality: ${res.status}`)
+  return res.json()
+}
+
+export async function getAdminPermissionsGovernance() {
+  const res = await fetch(`${API_BASE}/admin/permissions-governance`)
+  if (!res.ok) throw new Error(`Failed admin/permissions-governance: ${res.status}`)
+  return res.json()
+}
+
+export async function getAdminDataCompleteness() {
+  const res = await fetch(`${API_BASE}/admin/data-completeness`)
+  if (!res.ok) throw new Error(`Failed admin/data-completeness: ${res.status}`)
+  return res.json()
+}
+
 // For UI-08/09 the pages progressively move from local illustrative data to useQuery + these fns.
 // All responses are advisory; never duplicate backend logic.
 export const api = {
@@ -199,4 +242,12 @@ export const api = {
   generateDailyBriefSetupInstructions,
   validateDailyBriefOutputFolder,
   detectDailyBriefLatest,
+  // Prompt 11 / UI-11 Admin / Data Confidence detailed surfaces
+  getAdmin,
+  getAdminSourceSyncHealth,
+  getAdminWorkflowJobHealth,
+  getAdminEvidenceGuardrails,
+  getAdminRetrievalAiQuality,
+  getAdminPermissionsGovernance,
+  getAdminDataCompleteness,
 }
