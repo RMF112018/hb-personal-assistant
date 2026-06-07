@@ -98,7 +98,7 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/daily-brief/validate-output-folder",
         "/api/daily-brief/detect-latest",
         "/api/today/daily-brief",
-        # Prompt 11 / UI-11 Admin / Data Confidence detailed surfaces (root + 6 sections)
+        # Prompt 11 / UI-11 Admin / Data Confidence detailed surfaces (root + 6 sections) — Prompt 21 confirmed (paths unchanged)
         "/api/admin",
         "/api/admin/source-sync-health",
         "/api/admin/workflow-job-health",
@@ -225,7 +225,7 @@ def test_all_ui_analytics_routes_no_forbidden_sensitive_fields_and_role_guards(
             if "read_only" in g:
                 assert g.get("read_only") is True
 
-    # Role enforcement spot checks (admin surfaces require admin; viewer gets 403)
+    # Role enforcement spot checks (admin surfaces require admin; viewer gets 403) — Prompt 21: 6 /api/admin/* 403s for non-admin preserved (FPR-007)
     r = client.get("/api/admin", headers={"X-HB-UI-Role": "viewer"})
     assert r.status_code == 403
     r = client.get("/api/admin/evidence-guardrails", headers={"X-HB-UI-Role": "operator"})

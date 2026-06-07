@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { FreshnessBadge, ConfidenceBadge } from '../components/ui/Badge'
 import { api } from '../lib/api'
 
-// Admin / Data Confidence (Prompt 11 / UI-11): secondary support surface.
+// Admin / Data Confidence (Prompt 11 / UI-11): secondary support surface. Role-denied state (Prompt 16 baseline, confirmed Prompt 21).
 // Detailed diagnostics for source/sync, jobs, evidence/guardrails, retrieval/AI, permissions, completeness.
 // Primary screens link here; they only show compact badges + "View in Admin".
 // All data advisory/metadata-only. No raw sensitive fields. Admin role required for these views.
@@ -53,7 +53,7 @@ export function AdminDataConfidencePage() {
               <div className="text-[var(--hb-muted)]">
                 {isRoleDenied(anyAdminError)
                   ? 'Admin role required for detailed Data Confidence. Use the "Local dev role" selector in the header (switch to Admin). Backend guards remain enforced and fail-closed.'
-                  : 'Loading… (or start the analytics shell for live data)'}
+                  : 'Loading… (or access restricted — check "Local dev role" selector)'}
               </div>
             ) : (
               <>

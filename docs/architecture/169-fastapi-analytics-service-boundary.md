@@ -23,7 +23,7 @@ Typer remains a CLI adapter only. UI code must not call `hb-assistant ...`, impo
   that need new marts or minor read models are reported as `requires_read_model`.
 - `build_admin_confidence_summary()` — data-confidence metrics backed by existing
   table inventory, gate, no-writeback, freshness, automation-health, and coverage
-  evaluators.
+  evaluators. (6 detailed `build_admin_*_health` surfaces + per-category advisory_notes exist and are metadata-only; role gates in api; Prompt 21 confirmed FPR-007 already closed via UI denied state + cross-ref closeout + 177.)
 - `build_metric_catalog_status()` — local planning-catalog metadata only. It does
   not expose the full catalog row set.
 

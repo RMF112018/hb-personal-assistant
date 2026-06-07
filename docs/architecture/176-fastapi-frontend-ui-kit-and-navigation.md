@@ -18,7 +18,7 @@ This change is purely additive client-side. The Python package, FastAPI analytic
 Source of truth: `frontend/src/navigation/navigationModel.ts` (PRIMARY_NAV, SUPPORT_NAV, DISABLED_NAV, CONTEXTUAL_ONLY list).
 
 - Primary: Today (`/today`), Projects (`/projects`), My Items (`/my-items`).
-- Support: Admin / Data Confidence (`/admin`), Settings (`/settings`).
+- Support: Admin / Data Confidence (`/admin`), Settings (`/settings`). (Admin entry + local dev role selector noted as dev sim only; see 177 + Prompt 21 closeout for FPR-007 confirmation that denied state is clear for non-admins.)
 - Disabled (no nav item, no route, no widget): Chat.
 - Domain tabs (Meetings, Field Operations, Cost & Time, etc.) are rendered via `ProjectSubNav` only inside project or all-projects views.
 
