@@ -44,6 +44,19 @@ def _migrate(db: Path) -> None:
     SQLiteMigrator(db).apply()
 
 
+@pytest.fixture(autouse=True)
+def _stub_process_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hermetic default: no OS process/port scanning (also protects the host machine).
+
+    Individual tests override these via monkeypatch to inject fake processes/ports.
+    """
+    import hb_assistant.launcher.process_scan as ps
+
+    monkeypatch.setattr(ps, "list_system_processes", lambda: [])
+    monkeypatch.setattr(ps, "port_in_use", lambda port, host="127.0.0.1": False)
+    monkeypatch.setattr(ps, "port_listener_pids", lambda port: [])
+
+
 def _canned_summary(**over: Any) -> dict[str, Any]:
     base = {
         "status": "ok",
@@ -384,6 +397,212 @@ def test_open_result_includes_display_name(monkeypatch: pytest.MonkeyPatch) -> N
     assert d["frontend_display_name"] == "HB Assistant (Dev)"
     assert d["alias_resolution_status"] == "not_configured"
     assert d["opened_url"] == d["frontend_url"]
+
+
+# --- preflight / ports / cleanup / output isolation ------------------------------
+
+
+def _patch_scan(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    processes: list[Any] | None = None,
+    ports_in_use: tuple[int, ...] = (),
+    listeners: dict[int, list[int]] | None = None,
+) -> None:
+    import hb_assistant.launcher.process_scan as ps
+
+    procs = list(processes or [])
+    in_use = set(ports_in_use)
+    lis = listeners or {}
+    monkeypatch.setattr(ps, "list_system_processes", lambda: list(procs))
+    monkeypatch.setattr(ps, "port_in_use", lambda port, host="127.0.0.1": port in in_use)
+    monkeypatch.setattr(ps, "port_listener_pids", lambda port: list(lis.get(port, [])))
+
+
+def _fake_spawn_factory(calls: list[str]) -> Any:
+    def _spawn(self: Any, spec: Any) -> ProcessRecord:
+        calls.append(spec.name)
+        return ProcessRecord(
+            name=spec.name,
+            pid=4242,
+            started_at="2026-06-07T00:00:00+00:00",
+            argv=spec.argv,
+            status="running",
+            keep_in_background=spec.keep_in_background,
+            port=spec.port,
+            log_path="/tmp/log",
+        )
+
+    return _spawn
+
+
+def test_preflight_frees_launcher_owned_stale_backend_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.launcher.process_scan import ProcInfo
+    from hb_assistant.launcher.service import LauncherService
+
+    stale = ProcInfo(
+        999, "python -m uvicorn hb_assistant.construction.analytics.api:create_app --port 8000"
+    )
+    _patch_scan(monkeypatch, processes=[stale], ports_in_use=(8000,), listeners={8000: [999]})
+    freed: list[int] = []
+    monkeypatch.setattr(ProcessManager, "is_alive", lambda self, pid: False)
+    monkeypatch.setattr(
+        ProcessManager, "terminate_pid", lambda self, pid, **k: (freed.append(pid) or "exited")
+    )
+    calls: list[str] = []
+    monkeypatch.setattr(ProcessManager, "spawn", _fake_spawn_factory(calls))
+
+    result = LauncherService(resolve_profile("dev")).start()
+    assert result["status"] == "ok"
+    assert 999 in freed
+    pf = result["preflight"]
+    assert any(f["port"] == 8000 and f["pid"] == 999 for f in pf["freed_ports"])
+    assert "backend" in calls and "frontend" in calls  # session actually started
+
+
+def test_preflight_unknown_port_conflict_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.launcher.process_scan import ProcInfo
+
+    unknown = ProcInfo(777, "/some/random/server --port 5173")
+    _patch_scan(monkeypatch, processes=[unknown], ports_in_use=(5173,), listeners={5173: [777]})
+    monkeypatch.setattr(ProcessManager, "is_alive", lambda self, pid: False)
+
+    def _boom_spawn(self: Any, spec: Any) -> Any:
+        raise AssertionError("spawn must not run on an unknown port conflict")
+
+    monkeypatch.setattr(ProcessManager, "spawn", _boom_spawn)
+    result = runner.invoke(app, ["launcher", "dev", "--json"])
+    assert result.exit_code == 2
+    d = json.loads(result.stdout)
+    assert d["status"] == "port_conflict"
+    assert any(c["port"] == 5173 and c["pid"] == 777 for c in d["port_conflicts"])
+
+
+def test_preflight_reuses_healthy_session_unless_force_restart(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from hb_assistant.launcher.service import LauncherService
+
+    _seed_session("dev", [_rec("backend", keep=True), _rec("frontend", keep=False)])
+    monkeypatch.setattr(ProcessManager, "is_alive", lambda self, pid: True)
+    calls: list[str] = []
+    monkeypatch.setattr(ProcessManager, "spawn", _fake_spawn_factory(calls))
+
+    reused = LauncherService(resolve_profile("dev")).start()
+    assert reused.get("reused") is True
+    assert calls == []  # no respawn
+
+    monkeypatch.setattr(ProcessManager, "terminate", lambda self, rec, **k: "exited")
+    restarted = LauncherService(resolve_profile("dev")).start(force_restart=True)
+    assert restarted["preflight"]["stopped_prior"]
+    assert "backend" in calls  # respawned
+
+
+def test_dev_frontend_spec_uses_strict_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    import hb_assistant.launcher.service as svc_mod
+    from hb_assistant.launcher.service import LauncherService
+
+    monkeypatch.setattr(svc_mod.shutil, "which", lambda name: "/usr/bin/npm")
+    profile = resolve_profile("dev")
+    specs = {s.name: s for s in LauncherService(profile).build_specs()}
+    fe = specs["frontend"]
+    assert "--strictPort" in fe.argv
+    assert "--port" in fe.argv and str(profile.frontend_port) in fe.argv
+    assert fe.port == profile.frontend_port == 5173
+    assert profile.frontend_url.endswith(":5173")  # opened URL matches the bound port
+
+
+def test_spawn_redirects_child_output_to_logfile(monkeypatch: pytest.MonkeyPatch) -> None:
+    import subprocess
+
+    import hb_assistant.launcher.process_manager as pm_mod
+    from hb_assistant.launcher.models import ManagedProcessSpec
+
+    captured: dict[str, Any] = {}
+
+    class _FakeProc:
+        pid = 5151
+
+    def _fake_popen(argv: Any, **kwargs: Any) -> Any:
+        captured.update(kwargs)
+        return _FakeProc()
+
+    monkeypatch.setattr(pm_mod.subprocess, "Popen", _fake_popen)
+    pm = ProcessManager(resolve_profile("dev"))
+    spec = ManagedProcessSpec(name="backend", argv=["x"], cwd=".", port=8000)
+    rec = pm.spawn(spec)
+    assert captured["stdin"] == subprocess.DEVNULL
+    assert captured["stderr"] == subprocess.STDOUT
+    assert captured["stdout"] is not None  # a real file handle, not the terminal
+    assert rec.log_path and rec.log_path.endswith("dev-backend.log")
+    assert rec.port == 8000
+
+
+def test_json_output_is_clean(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Plan mode: no real spawn; stdout must be valid JSON only (Automator-safe).
+    result = runner.invoke(app, ["launcher", "dev", "--plan", "--json"])
+    assert result.exit_code == 0
+    parsed = json.loads(result.stdout)  # raises if any child log were appended
+    assert parsed["command"] == "launcher status"
+
+
+def test_quit_sweeps_stale_launcher_processes(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.launcher.close_policy import ClosePolicy
+    from hb_assistant.launcher.process_scan import ProcInfo
+
+    stale_sched = ProcInfo(
+        888, "hb-assistant scheduler run daily-source-refresh --environment production --loop"
+    )
+    _patch_scan(monkeypatch, processes=[stale_sched])
+    monkeypatch.setattr(ProcessManager, "is_alive", lambda self, pid: True)
+    monkeypatch.setattr(ProcessManager, "terminate", lambda self, rec, **k: "exited")
+    killed: list[int] = []
+    monkeypatch.setattr(
+        ProcessManager, "terminate_pid", lambda self, pid, **k: (killed.append(pid) or "exited")
+    )
+    _seed_session("production", [_rec("frontend", keep=False), _rec("mcp", keep=True)])
+    profile = resolve_profile("production")
+    receipt = ClosePolicy(profile, ProcessManager(profile)).apply("quit")
+    assert set(receipt["terminated_current_session"]) == {"frontend", "mcp"}
+    assert any(s["pid"] == 888 and s["role"] == "scheduler" for s in receipt["terminated_stale"])
+    assert 888 in killed
+
+
+def test_cleanup_dry_run_skips_foreign_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.launcher.process_scan import ProcInfo
+
+    foreign_mcp = ProcInfo(555, "hb-assistant second-brain mcp serve --stdio")
+    stale_sched = ProcInfo(
+        666, "hb-assistant scheduler run daily-source-refresh --environment dev --loop"
+    )
+    _patch_scan(monkeypatch, processes=[foreign_mcp, stale_sched])
+    killed: list[int] = []
+    monkeypatch.setattr(
+        ProcessManager, "terminate_pid", lambda self, pid, **k: (killed.append(pid) or "exited")
+    )
+    result = runner.invoke(app, ["launcher", "cleanup", "--environment", "dev", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    pids = {c["pid"] for c in d["candidates"]}
+    assert 666 in pids  # stale scheduler identified
+    assert 555 not in pids  # foreign MCP NOT a candidate
+    assert killed == []  # dry-run terminates nothing
+
+
+def test_cleanup_apply_terminates_candidates_including_tracked_mcp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(ProcessManager, "is_alive", lambda self, pid: True)
+    killed: list[int] = []
+    monkeypatch.setattr(
+        ProcessManager, "terminate_pid", lambda self, pid, **k: (killed.append(pid) or "exited")
+    )
+    mcp_rec = _rec("mcp", keep=True)  # tracked → launcher-owned even though MCP
+    _seed_session("dev", [mcp_rec])
+    result = runner.invoke(app, ["launcher", "cleanup", "--environment", "dev", "--apply", "--json"])
+    d = json.loads(result.stdout)
+    assert d["applied"] is True
+    assert mcp_rec.pid in killed  # a TRACKED mcp is swept (it is launcher-owned)
 
 
 def test_shortcut_helpers_invoke_launcher_open() -> None:

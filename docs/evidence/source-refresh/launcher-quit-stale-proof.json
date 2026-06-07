@@ -1,0 +1,17 @@
+{
+  "action": "quit",
+  "skipped_unknown": [],
+  "status": "ok",
+  "still_running": [],
+  "terminated_current_session": [
+    "frontend",
+    "mcp"
+  ],
+  "terminated_stale": [
+    {
+      "pid": 888,
+      "role": "scheduler",
+      "source": "signature"
+    }
+  ]
+}

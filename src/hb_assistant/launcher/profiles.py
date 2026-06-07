@@ -53,6 +53,8 @@ class Profile:
     frontend_open_timeout_seconds: int = 30
     frontend_display_name: str = "HB Assistant"
     frontend_alias_url: str | None = None
+    frontend_port: int = 5173
+    backend_port: int = 8000
 
     @property
     def mock_data(self) -> bool:
@@ -78,6 +80,8 @@ class Profile:
             "frontend_open_timeout_seconds": self.frontend_open_timeout_seconds,
             "frontend_display_name": self.frontend_display_name,
             "frontend_alias_url": self.frontend_alias_url,
+            "frontend_port": self.frontend_port,
+            "backend_port": self.backend_port,
         }
 
 
@@ -89,6 +93,17 @@ def _redact(p: Path) -> str:
 
 def _dev_root(prod_root: Path) -> Path:
     return prod_root.parent / f"{prod_root.name} (Dev)"
+
+
+def _port_from_url(url: str, default: int) -> int:
+    """Best-effort port from a URL, falling back to ``default``."""
+    from urllib.parse import urlparse
+
+    try:
+        port = urlparse(url).port
+    except ValueError:
+        port = None
+    return int(port) if port else default
 
 
 def _resolve_frontend_url(launcher_env: LauncherEnvConfig) -> tuple[str, str]:
@@ -135,6 +150,8 @@ def _build_profile(
         frontend_open_timeout_seconds=launcher_env.frontend_open_timeout_seconds,
         frontend_display_name=display_name,
         frontend_alias_url=launcher_env.frontend_alias_url,
+        frontend_port=_port_from_url(frontend_url, 5173),
+        backend_port=launcher_env.backend_port,
     )
 
 

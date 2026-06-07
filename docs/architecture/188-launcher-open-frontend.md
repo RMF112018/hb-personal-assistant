@@ -135,3 +135,10 @@ warning, non-blocking/non-fatal browser open, browser-mode intercept flags, pywe
 lazy/optional + fallback, Dev/Prod URLs differing via config, fallback default, DB
 isolation, and the shortcut helpers pointing at `launcher <env> --open`. New modules
 are in strict ruff + mypy scope (`hb_assistant.launcher.*`).
+
+## Follow-up
+
+Preflight port handling, `--strictPort` determinism, subprocess output
+redirection, the `launcher cleanup` command, and stale-sweep quit semantics are
+documented in [191 — Launcher Hardening: Preflight, Port Determinism & Stale
+Cleanup](191-launcher-hardening-preflight-cleanup.md).

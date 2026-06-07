@@ -13,7 +13,6 @@ import shutil
 import sys
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 from hb_assistant import __version__
 from hb_assistant.launcher.models import ManagedProcessSpec
@@ -29,15 +28,6 @@ def _hb_executable() -> str:
         return exe
     sibling = Path(sys.executable).parent / "hb-assistant"
     return str(sibling) if sibling.exists() else "hb-assistant"
-
-
-def _frontend_port(url: str) -> str:
-    """Best-effort port from a frontend URL, defaulting to 5173 (Vite/static)."""
-    try:
-        port = urlparse(url).port
-    except ValueError:
-        port = None
-    return str(port) if port else "5173"
 
 
 class LauncherService:
@@ -74,6 +64,9 @@ class LauncherService:
         hb = _hb_executable()
         specs: list[ManagedProcessSpec] = []
 
+        backend_port = self.profile.backend_port
+        frontend_port = self.profile.frontend_port
+
         # Backend API (optional; analytics-ui extra). UI-independent service.
         specs.append(
             ManagedProcessSpec(
@@ -87,42 +80,62 @@ class LauncherService:
                     "--host",
                     "127.0.0.1",
                     "--port",
-                    "8000",
+                    str(backend_port),
                 ],
                 cwd=repo_root,
                 env=env,
                 enabled=True,
                 keep_in_background=True,
                 optional=True,
+                port=backend_port,
             )
         )
 
-        # Frontend (UI surface; terminated on Run-in-Background).
+        # Frontend (UI surface; terminated on Run-in-Background). Dev pins the Vite
+        # port with --strictPort so it binds exactly frontend_port or exits (no drift).
         frontend_dir = Path(repo_root) / "frontend"
         if self.profile.environment == "dev" and shutil.which("npm"):
             specs.append(
                 ManagedProcessSpec(
                     name="frontend",
-                    argv=["npm", "run", "dev"],
+                    argv=[
+                        "npm",
+                        "run",
+                        "dev",
+                        "--",
+                        "--port",
+                        str(frontend_port),
+                        "--strictPort",
+                        "--host",
+                        "127.0.0.1",
+                    ],
                     cwd=str(frontend_dir),
                     env=env,
                     enabled=frontend_dir.exists(),
                     keep_in_background=False,
                     optional=True,
+                    port=frontend_port,
                 )
             )
         else:
             dist = frontend_dir / "dist"
-            port = _frontend_port(self.profile.frontend_url)
             specs.append(
                 ManagedProcessSpec(
                     name="frontend",
-                    argv=[sys.executable, "-m", "http.server", port, "--directory", str(dist)],
+                    argv=[
+                        sys.executable,
+                        "-m",
+                        "http.server",
+                        str(frontend_port),
+                        "--directory",
+                        str(dist),
+                    ],
                     cwd=repo_root,
                     env=env,
                     enabled=dist.exists(),
                     keep_in_background=False,
                     optional=True,
+                    port=frontend_port,
                 )
             )
 
@@ -163,7 +176,34 @@ class LauncherService:
 
     # -- lifecycle ----------------------------------------------------------------
 
-    def start(self, *, plan_only: bool = False) -> dict[str, Any]:
+    def start(self, *, plan_only: bool = False, force_restart: bool = False) -> dict[str, Any]:
+        preflight_block: dict[str, Any] | None = None
+        if not plan_only:
+            from hb_assistant.launcher.preflight import run_preflight
+
+            pf = run_preflight(
+                self.profile,
+                self.manager,
+                force_restart=force_restart,
+                required_ports=[
+                    ("backend", self.profile.backend_port),
+                    ("frontend", self.profile.frontend_port),
+                ],
+            )
+            preflight_block = pf.to_dict()
+            if not pf.ok:
+                result = self.status(reconcile=True)
+                result["command"] = "launcher start"
+                result["status"] = "port_conflict"
+                result["port_conflicts"] = pf.conflicts
+                result["preflight"] = preflight_block
+                return result
+            if pf.reused:
+                result = self.status(reconcile=True)
+                result["reused"] = True
+                result["preflight"] = preflight_block
+                return result
+
         state = self.manager.load_session()
         records = []
         for spec in self.build_specs():
@@ -180,7 +220,10 @@ class LauncherService:
         state.background_active = False
         state.frontend_url = self.profile.frontend_url
         self.manager.save_session(state)
-        return self.status(reconcile=not plan_only)
+        result = self.status(reconcile=not plan_only)
+        if preflight_block is not None:
+            result["preflight"] = preflight_block
+        return result
 
     def open_session(
         self,
@@ -189,6 +232,7 @@ class LauncherService:
         open_timeout_seconds: int | None = None,
         frontend_url: str | None = None,
         plan_only: bool = False,
+        force_restart: bool = False,
     ) -> dict[str, Any]:
         """Start the session, wait for the frontend, then open it (browser/pywebview).
 
@@ -209,7 +253,12 @@ class LauncherService:
             else self.profile.frontend_open_timeout_seconds
         )
 
-        result = self.start(plan_only=plan_only)
+        result = self.start(plan_only=plan_only, force_restart=force_restart)
+
+        # Preflight refused to start (unknown process on a required port): do not
+        # open a browser onto a conflicting/duplicate session — surface and stop.
+        if result.get("status") == "port_conflict":
+            return result
 
         warnings: list[str] = []
         # 1. Health-check the routable URL (this is what readiness always tracks).
@@ -331,6 +380,8 @@ class LauncherService:
             "frontend_display_name": self.profile.frontend_display_name,
             "frontend_url": state.frontend_url or self.profile.frontend_url,
             "frontend_alias_url": self.profile.frontend_alias_url,
+            "frontend_port": self.profile.frontend_port,
+            "backend_port": self.profile.backend_port,
             "opened_url": state.opened_url,
             "frontend_url_source": self.profile.frontend_url_source,
             "alias_resolution_status": state.alias_resolution_status,

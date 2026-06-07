@@ -68,11 +68,13 @@ launcher:
     # WITHOUT hosts-file edits and WITHOUT port 80 (e.g. a *.localhost name + port).
     frontend_display_name: "HB Assistant (Dev)"
     # frontend_alias_url: "http://hb-dev.localhost:5173"
+    backend_port: 8000
   production:
     frontend_url: "http://127.0.0.1:5173"
     frontend_open_timeout_seconds: 30
     frontend_display_name: "HB Assistant"
     # frontend_alias_url: "http://hb.localhost:5173"
+    backend_port: 8000
 security:
   microsoft_365_writeback_enabled: false
   external_llm_enabled: false

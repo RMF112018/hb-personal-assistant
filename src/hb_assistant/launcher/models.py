@@ -29,6 +29,7 @@ class ManagedProcessSpec:
     enabled: bool = True
     keep_in_background: bool = False
     optional: bool = True
+    port: int | None = None
 
 
 class ProcessRecord(BaseModel):
@@ -41,3 +42,5 @@ class ProcessRecord(BaseModel):
     status: ProcessStatus
     keep_in_background: bool = False
     reason: str | None = None
+    port: int | None = None
+    log_path: str | None = None

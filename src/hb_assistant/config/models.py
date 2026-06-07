@@ -121,6 +121,9 @@ class LauncherEnvConfig(BaseModel):
     # resolves. `frontend_url` stays the routable URL used for readiness checks.
     frontend_display_name: str | None = None
     frontend_alias_url: str | None = None
+    # Backend (analytics API) port. Resolved deterministically per environment so
+    # the launcher does not silently drift; preflight frees/conflicts on this port.
+    backend_port: int = 8000
 
 
 class LauncherConfig(BaseModel):

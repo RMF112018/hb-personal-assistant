@@ -24,21 +24,24 @@ def _start_or_open(
     open_timeout_seconds: int | None,
     shell: str,
     frontend_url: str | None,
+    force_restart: bool,
     json_out: bool,
 ) -> None:
     if shell not in ("browser", "pywebview"):
         _emit({"status": "invalid_shell", "requested": shell}, json_out=json_out, exit_code=2)
     if open_ui:
-        _emit(
-            service.open_session(
-                shell=shell,
-                open_timeout_seconds=open_timeout_seconds,
-                frontend_url=frontend_url,
-                plan_only=plan,
-            ),
-            json_out=json_out,
+        result = service.open_session(
+            shell=shell,
+            open_timeout_seconds=open_timeout_seconds,
+            frontend_url=frontend_url,
+            plan_only=plan,
+            force_restart=force_restart,
         )
-    _emit(service.start(plan_only=plan), json_out=json_out)
+    else:
+        result = service.start(plan_only=plan, force_restart=force_restart)
+    # Fail closed when a required port is held by an unknown process.
+    exit_code = 2 if result.get("status") == "port_conflict" else 0
+    _emit(result, json_out=json_out, exit_code=exit_code)
 
 
 @app.command("dev")
@@ -56,6 +59,11 @@ def dev_cmd(
     frontend_url: str = typer.Option(
         None, "--frontend-url", help="Override the resolved frontend URL."
     ),
+    force_restart: bool = typer.Option(
+        False,
+        "--force-restart/--no-force-restart",
+        help="Stop any prior session and free launcher-owned ports before starting.",
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Start HB Assistant Dev (current repo checkout, isolated dev DB, mock/local data)."""
@@ -68,6 +76,7 @@ def dev_cmd(
         open_timeout_seconds=open_timeout_seconds,
         shell=shell,
         frontend_url=frontend_url,
+        force_restart=force_restart,
         json_out=json_out,
     )
 
@@ -87,6 +96,11 @@ def production_cmd(
     frontend_url: str = typer.Option(
         None, "--frontend-url", help="Override the resolved frontend URL."
     ),
+    force_restart: bool = typer.Option(
+        False,
+        "--force-restart/--no-force-restart",
+        help="Stop any prior session and free launcher-owned ports before starting.",
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Start HB Assistant (current production build + production DB/config)."""
@@ -99,6 +113,7 @@ def production_cmd(
         open_timeout_seconds=open_timeout_seconds,
         shell=shell,
         frontend_url=frontend_url,
+        force_restart=force_restart,
         json_out=json_out,
     )
 
@@ -161,6 +176,29 @@ def close_cmd(
     profile = resolve_profile(environment)  # type: ignore[arg-type]
     policy = ClosePolicy(profile, ProcessManager(profile))
     _emit(policy.apply(action), json_out=json_out)  # type: ignore[arg-type]
+
+
+@app.command("cleanup")
+def cleanup_cmd(
+    environment: str = typer.Option(..., "--environment", help="dev | production"),
+    apply: bool = typer.Option(
+        False, "--apply", help="Terminate the stale launcher-owned processes (default: dry-run)."
+    ),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Identify (and with --apply terminate) stale launcher-owned processes for an env."""
+    from hb_assistant.launcher.preflight import cleanup
+    from hb_assistant.launcher.process_manager import ProcessManager
+    from hb_assistant.launcher.profiles import resolve_profile
+
+    if environment not in ("dev", "production"):
+        _emit(
+            {"status": "invalid_environment", "requested": environment},
+            json_out=json_out,
+            exit_code=2,
+        )
+    profile = resolve_profile(environment)  # type: ignore[arg-type]
+    _emit(cleanup(profile, ProcessManager(profile), apply=apply), json_out=json_out)
 
 
 @app.command("snapshot-dev-db")

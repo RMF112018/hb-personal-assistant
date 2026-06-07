@@ -41,16 +41,35 @@ class ProcessManager:
 
     # -- spawn --------------------------------------------------------------------
 
+    def _log_path_for(self, name: str) -> str:
+        log_dir = self.profile.log_path / "launcher"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        return str(log_dir / f"{self.profile.environment}-{name}.log")
+
     def spawn(self, spec: ManagedProcessSpec) -> ProcessRecord:
-        """Start a managed process. Returns a ProcessRecord (status running/unavailable)."""
+        """Start a managed process. Returns a ProcessRecord (status running/unavailable).
+
+        Child stdout/stderr are redirected to a per-environment log file and stdin to
+        DEVNULL, so managed-process output never bleeds into the caller's terminal /
+        Automator stdout after the JSON is emitted.
+        """
         now = datetime.now(timezone.utc).isoformat()
         env = {**os.environ, **spec.env}
+        log_path = self._log_path_for(spec.name)
         kwargs: dict[str, object] = {"cwd": spec.cwd, "env": env}
         if _IS_WINDOWS:
             kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         else:
             kwargs["start_new_session"] = True
         try:
+            log_fh = open(log_path, "ab")  # noqa: SIM115 — closed after Popen dups the fd
+        except OSError:
+            log_fh = None
+        try:
+            kwargs["stdin"] = subprocess.DEVNULL
+            if log_fh is not None:
+                kwargs["stdout"] = log_fh
+                kwargs["stderr"] = subprocess.STDOUT
             proc = subprocess.Popen(spec.argv, **kwargs)  # type: ignore[call-overload]  # noqa: S603
         except (FileNotFoundError, OSError) as exc:
             return ProcessRecord(
@@ -61,7 +80,12 @@ class ProcessManager:
                 status="unavailable",
                 keep_in_background=spec.keep_in_background,
                 reason=f"{type(exc).__name__}: {str(exc)[:120]}",
+                port=spec.port,
+                log_path=log_path,
             )
+        finally:
+            if log_fh is not None:
+                log_fh.close()  # the child keeps its own dup'd fd
         return ProcessRecord(
             name=spec.name,
             pid=proc.pid,
@@ -69,6 +93,8 @@ class ProcessManager:
             argv=spec.argv,
             status="running",
             keep_in_background=spec.keep_in_background,
+            port=spec.port,
+            log_path=log_path,
         )
 
     @staticmethod
@@ -81,6 +107,7 @@ class ProcessManager:
             status="planned",
             keep_in_background=spec.keep_in_background,
             reason=reason,
+            port=spec.port,
         )
 
     # -- liveness / termination ---------------------------------------------------
@@ -109,7 +136,10 @@ class ProcessManager:
 
     def terminate(self, record: ProcessRecord, *, timeout: float = 8.0) -> ProcessStatus:
         """Terminate a managed process. Returns the resulting status."""
-        pid = record.pid
+        return self.terminate_pid(record.pid, timeout=timeout)
+
+    def terminate_pid(self, pid: int | None, *, timeout: float = 8.0) -> ProcessStatus:
+        """Terminate a process group by PID (SIGTERM→SIGKILL). Returns the status."""
         if not pid or not self.is_alive(pid):
             return "exited"
         try:
