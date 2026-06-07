@@ -16,11 +16,13 @@ from pathlib import Path
 from typing import Any, Optional
 
 from hb_assistant.config.loader import load_config
-from hb_assistant.config.models import AppConfig, SchedulerConfig
+from hb_assistant.config.models import AppConfig, LauncherEnvConfig, SchedulerConfig
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.launcher.models import Environment
 from hb_assistant.source_refresh.orchestrator import _safe_git_sha
 from hb_assistant.store.migrator import SQLiteMigrator
+
+DEFAULT_FRONTEND_URL = "http://127.0.0.1:5173"
 
 
 class ProfileCollisionError(ValueError):
@@ -46,6 +48,9 @@ class Profile:
     scheduler_enabled: bool
     scheduler: SchedulerConfig
     path_policy: PathPolicy
+    frontend_url: str = "http://127.0.0.1:5173"
+    frontend_url_source: str = "fallback"
+    frontend_open_timeout_seconds: int = 30
 
     @property
     def mock_data(self) -> bool:
@@ -66,6 +71,9 @@ class Profile:
             "source_refresh_mode": self.source_refresh_mode,
             "mcp_mode": self.mcp_mode,
             "scheduler_enabled": self.scheduler_enabled,
+            "frontend_url": self.frontend_url,
+            "frontend_url_source": self.frontend_url_source,
+            "frontend_open_timeout_seconds": self.frontend_open_timeout_seconds,
         }
 
 
@@ -79,8 +87,26 @@ def _dev_root(prod_root: Path) -> Path:
     return prod_root.parent / f"{prod_root.name} (Dev)"
 
 
-def _build_profile(environment: Environment, pp: PathPolicy, scheduler: SchedulerConfig) -> Profile:
+def _resolve_frontend_url(launcher_env: LauncherEnvConfig) -> tuple[str, str]:
+    """Resolve (frontend_url, source) for an environment from launcher config.
+
+    Returns the configured URL with source ``"config"`` when set, else the
+    Vite/static default with source ``"fallback"``. A CLI ``--frontend-url`` override
+    (source ``"cli"``) is applied later in the launcher service, not here.
+    """
+    if launcher_env.frontend_url:
+        return launcher_env.frontend_url, "config"
+    return DEFAULT_FRONTEND_URL, "fallback"
+
+
+def _build_profile(
+    environment: Environment,
+    pp: PathPolicy,
+    scheduler: SchedulerConfig,
+    launcher_env: LauncherEnvConfig,
+) -> Profile:
     root = pp.get_app_support()
+    frontend_url, frontend_url_source = _resolve_frontend_url(launcher_env)
     return Profile(
         environment=environment,
         app_support_root=root,
@@ -97,6 +123,9 @@ def _build_profile(environment: Environment, pp: PathPolicy, scheduler: Schedule
         scheduler_enabled=scheduler.enabled,
         scheduler=scheduler,
         path_policy=pp,
+        frontend_url=frontend_url,
+        frontend_url_source=frontend_url_source,
+        frontend_open_timeout_seconds=launcher_env.frontend_open_timeout_seconds,
     )
 
 
@@ -120,7 +149,8 @@ def resolve_profile(environment: Environment, *, config: Optional[AppConfig] = N
         if pp.get_db_path() == prod_pp.get_db_path():
             raise ProfileCollisionError("dev/production DB path collision")
 
-    return _build_profile(environment, pp, cfg.automation.scheduler)
+    launcher_env = cfg.launcher.dev if environment == "dev" else cfg.launcher.production
+    return _build_profile(environment, pp, cfg.automation.scheduler, launcher_env)
 
 
 def _open_ro_count(conn: sqlite3.Connection, table: str) -> int:

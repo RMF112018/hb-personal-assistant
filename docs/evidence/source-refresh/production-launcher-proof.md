@@ -1,7 +1,7 @@
 # Production Launcher Proof (plan-only)
 
 - **command:** `hb-assistant launcher production --plan --json`
-- **generated_utc:** 2026-06-07T09:22:31.204799+00:00
+- **generated_utc:** 2026-06-07T10:48:58.193549+00:00
 - **status:** `ok`
 
 ## Result
@@ -11,7 +11,7 @@
   "app_version": "1.3.0",
   "backend_status": "planned",
   "background_mode_active": false,
-  "build_sha": "a6324e96",
+  "build_sha": "b2a02f94",
   "command": "launcher status",
   "config_profile": "production",
   "db_path": "<LOCAL_APP_SUPPORT>/app-support/db/hb-personal-assistant.sqlite",
@@ -20,6 +20,7 @@
   "executable_path": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
   "frontend_status": "planned",
   "frontend_url": "http://127.0.0.1:5173",
+  "frontend_url_source": "fallback",
   "log_path": "<LOCAL_APP_SUPPORT>/app-support/logs",
   "mcp_status": "planned",
   "processes": [
@@ -39,7 +40,7 @@
       "name": "backend",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T09:22:31.189195+00:00",
+      "started_at": "2026-06-07T10:48:58.177079+00:00",
       "status": "planned"
     },
     {
@@ -55,7 +56,7 @@
       "name": "frontend",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T09:22:31.189206+00:00",
+      "started_at": "2026-06-07T10:48:58.177086+00:00",
       "status": "planned"
     },
     {
@@ -70,7 +71,7 @@
       "name": "mcp",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T09:22:31.189209+00:00",
+      "started_at": "2026-06-07T10:48:58.177089+00:00",
       "status": "planned"
     },
     {
@@ -87,7 +88,7 @@
       "name": "scheduler",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T09:22:31.189211+00:00",
+      "started_at": "2026-06-07T10:48:58.177091+00:00",
       "status": "planned"
     }
   ],
@@ -98,6 +99,9 @@
     "environment": "production",
     "evidence_path": "<LOCAL_APP_SUPPORT>/app-support/evidence",
     "frontend_mode": "static_dist",
+    "frontend_open_timeout_seconds": 30,
+    "frontend_url": "http://127.0.0.1:5173",
+    "frontend_url_source": "fallback",
     "launcher_session_path": "<LOCAL_APP_SUPPORT>/app-support/launcher-state/session-production.json",
     "log_path": "<LOCAL_APP_SUPPORT>/app-support/logs",
     "mcp_mode": "stdio",

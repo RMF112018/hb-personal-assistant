@@ -1,7 +1,7 @@
 # Dev Launcher Proof (plan-only)
 
 - **command:** `hb-assistant launcher dev --plan --json`
-- **generated_utc:** 2026-06-07T09:22:31.188916+00:00
+- **generated_utc:** 2026-06-07T10:48:58.176765+00:00
 - **status:** `ok`
 
 ## Result
@@ -11,7 +11,7 @@
   "app_version": "1.3.0",
   "backend_status": "planned",
   "background_mode_active": false,
-  "build_sha": "a6324e96",
+  "build_sha": "b2a02f94",
   "command": "launcher status",
   "config_profile": "dev",
   "db_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/db/hb-personal-assistant.sqlite",
@@ -20,6 +20,7 @@
   "executable_path": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
   "frontend_status": "planned",
   "frontend_url": "http://127.0.0.1:5173",
+  "frontend_url_source": "fallback",
   "log_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/logs",
   "mcp_status": "planned",
   "processes": [
@@ -39,7 +40,7 @@
       "name": "backend",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T09:22:31.169686+00:00",
+      "started_at": "2026-06-07T10:48:58.152273+00:00",
       "status": "planned"
     },
     {
@@ -52,7 +53,7 @@
       "name": "frontend",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T09:22:31.169694+00:00",
+      "started_at": "2026-06-07T10:48:58.152289+00:00",
       "status": "planned"
     },
     {
@@ -67,7 +68,7 @@
       "name": "mcp",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T09:22:31.169697+00:00",
+      "started_at": "2026-06-07T10:48:58.152295+00:00",
       "status": "planned"
     },
     {
@@ -84,7 +85,7 @@
       "name": "scheduler",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T09:22:31.169701+00:00",
+      "started_at": "2026-06-07T10:48:58.152297+00:00",
       "status": "planned"
     }
   ],
@@ -95,6 +96,9 @@
     "environment": "dev",
     "evidence_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/evidence",
     "frontend_mode": "npm_dev",
+    "frontend_open_timeout_seconds": 30,
+    "frontend_url": "http://127.0.0.1:5173",
+    "frontend_url_source": "fallback",
     "launcher_session_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/launcher-state/session-dev.json",
     "log_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/logs",
     "mcp_mode": "stdio",

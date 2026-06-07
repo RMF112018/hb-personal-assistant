@@ -16,17 +16,60 @@ def _emit(payload: dict[str, Any], *, json_out: bool, exit_code: int = 0) -> Non
     raise typer.Exit(exit_code)
 
 
+def _start_or_open(
+    service: Any,
+    *,
+    plan: bool,
+    open_ui: bool,
+    open_timeout_seconds: int | None,
+    shell: str,
+    frontend_url: str | None,
+    json_out: bool,
+) -> None:
+    if shell not in ("browser", "pywebview"):
+        _emit({"status": "invalid_shell", "requested": shell}, json_out=json_out, exit_code=2)
+    if open_ui:
+        _emit(
+            service.open_session(
+                shell=shell,
+                open_timeout_seconds=open_timeout_seconds,
+                frontend_url=frontend_url,
+                plan_only=plan,
+            ),
+            json_out=json_out,
+        )
+    _emit(service.start(plan_only=plan), json_out=json_out)
+
+
 @app.command("dev")
 def dev_cmd(
     plan: bool = typer.Option(
         False, "--plan", help="Plan only: resolve process specs without spawning."
+    ),
+    open_ui: bool = typer.Option(
+        False, "--open/--no-open", help="Start the session and open the frontend UI."
+    ),
+    open_timeout_seconds: int = typer.Option(
+        None, "--open-timeout-seconds", help="Frontend readiness wait (default: profile/config)."
+    ),
+    shell: str = typer.Option("browser", "--shell", help="browser | pywebview"),
+    frontend_url: str = typer.Option(
+        None, "--frontend-url", help="Override the resolved frontend URL."
     ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Start HB Assistant Dev (current repo checkout, isolated dev DB, mock/local data)."""
     from hb_assistant.launcher.dev import build_dev_service
 
-    _emit(build_dev_service().start(plan_only=plan), json_out=json_out)
+    _start_or_open(
+        build_dev_service(),
+        plan=plan,
+        open_ui=open_ui,
+        open_timeout_seconds=open_timeout_seconds,
+        shell=shell,
+        frontend_url=frontend_url,
+        json_out=json_out,
+    )
 
 
 @app.command("production")
@@ -34,12 +77,30 @@ def production_cmd(
     plan: bool = typer.Option(
         False, "--plan", help="Plan only: resolve process specs without spawning."
     ),
+    open_ui: bool = typer.Option(
+        False, "--open/--no-open", help="Start the session and open the frontend UI."
+    ),
+    open_timeout_seconds: int = typer.Option(
+        None, "--open-timeout-seconds", help="Frontend readiness wait (default: profile/config)."
+    ),
+    shell: str = typer.Option("browser", "--shell", help="browser | pywebview"),
+    frontend_url: str = typer.Option(
+        None, "--frontend-url", help="Override the resolved frontend URL."
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Start HB Assistant (current production build + production DB/config)."""
     from hb_assistant.launcher.production import build_production_service
 
-    _emit(build_production_service().start(plan_only=plan), json_out=json_out)
+    _start_or_open(
+        build_production_service(),
+        plan=plan,
+        open_ui=open_ui,
+        open_timeout_seconds=open_timeout_seconds,
+        shell=shell,
+        frontend_url=frontend_url,
+        json_out=json_out,
+    )
 
 
 @app.command("status")

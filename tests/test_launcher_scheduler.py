@@ -22,8 +22,12 @@ from hb_assistant.cli.main import app
 from hb_assistant.config.loader import load_config
 from hb_assistant.launcher.models import ProcessRecord
 from hb_assistant.launcher.process_manager import ProcessManager
-from hb_assistant.launcher.profiles import ProfileCollisionError, resolve_profile, snapshot_source_db
-from hb_assistant.launcher.service import LauncherService, _hb_executable
+from hb_assistant.launcher.profiles import (
+    ProfileCollisionError,
+    resolve_profile,
+    snapshot_source_db,
+)
+from hb_assistant.launcher.service import _hb_executable
 from hb_assistant.launcher.session_state import SessionState
 from hb_assistant.scheduler.daily_source_refresh import DailySourceRefreshJob
 from hb_assistant.scheduler.due import compute_next_run, decide_catch_up
@@ -108,6 +112,191 @@ def test_launcher_dev_plan_does_not_spawn(monkeypatch: pytest.MonkeyPatch) -> No
     d = json.loads(result.stdout)
     statuses = {p["name"]: p["status"] for p in d["processes"]}
     assert all(s in ("planned", "skipped") for s in statuses.values())
+
+
+# --- launcher --open (frontend auto-open) ----------------------------------------
+
+
+def _patch_open(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """Patch the readiness wait + browser open so no network/browser is touched.
+
+    Returns a dict that records the (url, timeout) the wait was called with and the
+    url the browser open was called with.
+    """
+    import hb_assistant.launcher.frontend_open as fo_mod
+
+    captured: dict[str, Any] = {}
+
+    def _wait(url: str, *, timeout_seconds: int = 30, interval_seconds: float = 1.0) -> Any:
+        captured["wait_url"] = url
+        captured["wait_timeout"] = timeout_seconds
+        return True, []
+
+    def _open(url: str) -> Any:
+        captured["open_url"] = url
+        return True, "browser", []
+
+    monkeypatch.setattr(fo_mod, "wait_for_frontend", _wait)
+    monkeypatch.setattr(fo_mod, "open_browser", _open)
+    return captured
+
+
+def test_launcher_dev_open_opens_resolved_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured = _patch_open(monkeypatch)
+    result = runner.invoke(app, ["launcher", "dev", "--open", "--plan", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    assert d["command"] == "launcher open"
+    assert d["frontend_opened"] is True
+    assert d["frontend_reachable"] is True
+    assert d["open_method"] == "browser"
+    assert d["frontend_url"] == captured["open_url"] == "http://127.0.0.1:5173"
+
+
+def test_launcher_production_open_opens_resolved_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured = _patch_open(monkeypatch)
+    result = runner.invoke(app, ["launcher", "production", "--open", "--plan", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    assert d["command"] == "launcher open"
+    assert d["frontend_opened"] is True
+    assert captured["open_url"] == d["frontend_url"]
+
+
+def test_launcher_status_reports_frontend_url() -> None:
+    for env in ("dev", "production"):
+        result = runner.invoke(app, ["launcher", "status", "--environment", env, "--json"])
+        assert result.exit_code == 0
+        d = json.loads(result.stdout)
+        assert d["frontend_url"] == "http://127.0.0.1:5173"
+        assert d["frontend_url_source"] == "fallback"
+
+
+def test_launcher_open_waits_for_readiness(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured = _patch_open(monkeypatch)
+    result = runner.invoke(
+        app,
+        ["launcher", "dev", "--open", "--open-timeout-seconds", "7", "--plan", "--json"],
+    )
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    assert captured["wait_url"] == "http://127.0.0.1:5173"
+    assert captured["wait_timeout"] == 7
+    assert d["timeout_seconds"] == 7
+
+
+def test_launcher_open_timeout_warns_but_does_not_crash(monkeypatch: pytest.MonkeyPatch) -> None:
+    import hb_assistant.launcher.frontend_open as fo_mod
+
+    monkeypatch.setattr(
+        fo_mod, "wait_for_frontend", lambda url, **k: (False, ["frontend not reachable"])
+    )
+    monkeypatch.setattr(fo_mod, "open_browser", lambda url: (True, "browser", []))
+    result = runner.invoke(app, ["launcher", "dev", "--open", "--plan", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    assert d["frontend_reachable"] is False
+    assert d["frontend_url"] == "http://127.0.0.1:5173"
+    assert any("not reachable" in w for w in d["warnings"])
+
+
+def test_launcher_open_browser_mode_no_close_intercept(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_open(monkeypatch)
+    result = runner.invoke(app, ["launcher", "dev", "--open", "--plan", "--json"])
+    d = json.loads(result.stdout)
+    assert d["window_close_intercept_supported"] is False
+    assert d["lifecycle_control"] == "cli_or_ui_action_required"
+    assert d["requested_shell"] == "browser"
+    assert d["actual_shell"] == "browser"
+
+
+def test_browser_open_is_non_blocking_and_non_fatal(monkeypatch: pytest.MonkeyPatch) -> None:
+    import hb_assistant.launcher.frontend_open as fo_mod
+
+    def _boom(url: str, new: int = 0) -> bool:
+        raise RuntimeError("no browser")
+
+    monkeypatch.setattr(fo_mod.webbrowser, "open", _boom)
+    opened, method, warnings = fo_mod.open_browser("http://127.0.0.1:5173")
+    assert opened is False
+    assert method == "browser"
+    assert warnings and "failed to open browser" in warnings[0]
+
+
+def test_wait_for_frontend_timeout_returns_warning() -> None:
+    import hb_assistant.launcher.frontend_open as fo_mod
+
+    # Port 1 is never listening; timeout 0 means the deadline is already past.
+    reachable, warnings = fo_mod.wait_for_frontend(
+        "http://127.0.0.1:1", timeout_seconds=0, interval_seconds=0.01
+    )
+    assert reachable is False
+    assert warnings and "not reachable" in warnings[0]
+
+
+def test_pywebview_lazy_optional_falls_back_to_browser(monkeypatch: pytest.MonkeyPatch) -> None:
+    import hb_assistant.launcher.webview_shell as webview_shell
+
+    _patch_open(monkeypatch)
+    monkeypatch.setattr(webview_shell, "pywebview_available", lambda: False)
+    result = runner.invoke(
+        app, ["launcher", "dev", "--open", "--shell", "pywebview", "--plan", "--json"]
+    )
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    assert d["open_method"] == "browser_fallback"
+    assert d["requested_shell"] == "pywebview"
+    assert d["actual_shell"] == "browser"
+    assert d["window_close_intercept_supported"] is False
+    assert any("pywebview requested but not installed" in w for w in d["warnings"])
+
+
+def test_pywebview_module_has_no_top_level_webview_import() -> None:
+    import sys
+
+    import hb_assistant.launcher.webview_shell  # noqa: F401
+
+    # Importing the shell module must not import the optional `webview` package.
+    assert "webview" not in sys.modules
+
+
+def test_dev_prod_frontend_urls_can_differ_via_config() -> None:
+    from hb_assistant.config.models import AppConfig, LauncherConfig, LauncherEnvConfig
+
+    cfg = AppConfig(
+        launcher=LauncherConfig(
+            dev=LauncherEnvConfig(frontend_url="http://127.0.0.1:5173"),
+            production=LauncherEnvConfig(frontend_url="http://127.0.0.1:4173"),
+        )
+    )
+    dev = resolve_profile("dev", config=cfg)
+    prod = resolve_profile("production", config=cfg)
+    assert dev.frontend_url == "http://127.0.0.1:5173"
+    assert prod.frontend_url == "http://127.0.0.1:4173"
+    assert dev.frontend_url != prod.frontend_url
+    assert dev.frontend_url_source == "config"
+    assert prod.frontend_url_source == "config"
+
+
+def test_frontend_url_falls_back_when_unset() -> None:
+    for env in ("dev", "production"):
+        profile = resolve_profile(env)  # type: ignore[arg-type]
+        assert profile.frontend_url == "http://127.0.0.1:5173"
+        assert profile.frontend_url_source == "fallback"
+
+
+def test_shortcut_helpers_invoke_launcher_open() -> None:
+    repo = resolve_profile("dev").path_policy.resolve_repo_root()
+    shortcuts = repo / "scripts" / "shortcuts"
+    dev = (shortcuts / "hb-launcher-dev.command").read_text()
+    prod = (shortcuts / "hb-launcher-production.command").read_text()
+    assert "launcher dev --open" in dev
+    assert "launcher production --open" in prod
+    for text in (dev, prod):
+        assert "vite" not in text
+        assert "npm run dev" not in text
+        assert "uvicorn" not in text
+        assert "open http" not in text
 
 
 # --- close policy ----------------------------------------------------------------

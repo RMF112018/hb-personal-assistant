@@ -13,6 +13,7 @@ import shutil
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from hb_assistant import __version__
 from hb_assistant.launcher.models import ManagedProcessSpec
@@ -28,6 +29,15 @@ def _hb_executable() -> str:
         return exe
     sibling = Path(sys.executable).parent / "hb-assistant"
     return str(sibling) if sibling.exists() else "hb-assistant"
+
+
+def _frontend_port(url: str) -> str:
+    """Best-effort port from a frontend URL, defaulting to 5173 (Vite/static)."""
+    try:
+        port = urlparse(url).port
+    except ValueError:
+        port = None
+    return str(port) if port else "5173"
 
 
 class LauncherService:
@@ -103,10 +113,11 @@ class LauncherService:
             )
         else:
             dist = frontend_dir / "dist"
+            port = _frontend_port(self.profile.frontend_url)
             specs.append(
                 ManagedProcessSpec(
                     name="frontend",
-                    argv=[sys.executable, "-m", "http.server", "5173", "--directory", str(dist)],
+                    argv=[sys.executable, "-m", "http.server", port, "--directory", str(dist)],
                     cwd=repo_root,
                     env=env,
                     enabled=dist.exists(),
@@ -167,9 +178,95 @@ class LauncherService:
                 records.append(self.manager.spawn(spec))
         state.processes = records
         state.background_active = False
-        state.frontend_url = "http://127.0.0.1:5173"
+        state.frontend_url = self.profile.frontend_url
         self.manager.save_session(state)
         return self.status(reconcile=not plan_only)
+
+    def open_session(
+        self,
+        *,
+        shell: str = "browser",
+        open_timeout_seconds: int | None = None,
+        frontend_url: str | None = None,
+        plan_only: bool = False,
+    ) -> dict[str, Any]:
+        """Start the session, wait for the frontend, then open it (browser/pywebview).
+
+        Resolution order for the URL: explicit ``frontend_url`` (CLI override) →
+        the profile's resolved ``frontend_url`` (config/fallback). Browser mode cannot
+        intercept window-close, so it reports ``window_close_intercept_supported=false``
+        and defers Quit / Run-in-Background to the ``launcher close`` commands.
+        """
+        from hb_assistant.launcher.frontend_open import open_browser, wait_for_frontend
+
+        if frontend_url:
+            url, url_source = frontend_url, "cli"
+        else:
+            url, url_source = self.profile.frontend_url, self.profile.frontend_url_source
+        timeout = (
+            open_timeout_seconds
+            if open_timeout_seconds is not None
+            else self.profile.frontend_open_timeout_seconds
+        )
+
+        # Keep the resolved (possibly CLI-overridden) URL on the persisted session.
+        result = self.start(plan_only=plan_only)
+        state = self.manager.load_session()
+        state.frontend_url = url
+        self.manager.save_session(state)
+
+        warnings: list[str] = []
+        reachable, wait_warnings = wait_for_frontend(url, timeout_seconds=timeout)
+        warnings.extend(wait_warnings)
+
+        requested_shell = shell
+        actual_shell = shell
+        open_method = shell
+        intercept_supported = False
+        opened = False
+
+        if shell == "pywebview":
+            from hb_assistant.launcher.webview_shell import pywebview_available
+
+            if pywebview_available():
+                # pywebview manages its own window + close interception; surface that
+                # without blocking here (the interactive shell is launched separately).
+                intercept_supported = True
+                open_method = "pywebview"
+                actual_shell = "pywebview"
+                opened = True
+            else:
+                actual_shell = "browser"
+                open_method = "browser_fallback"
+                warnings.append(
+                    "pywebview requested but not installed; falling back to default browser. "
+                    "Window-close interception is unavailable in browser mode."
+                )
+                opened, _method, open_warnings = open_browser(url)
+                warnings.extend(open_warnings)
+        else:
+            opened, open_method, open_warnings = open_browser(url)
+            warnings.extend(open_warnings)
+
+        result.update(
+            {
+                "command": "launcher open",
+                "frontend_url": url,
+                "frontend_url_source": url_source,
+                "frontend_reachable": reachable,
+                "frontend_opened": opened,
+                "open_method": open_method,
+                "requested_shell": requested_shell,
+                "actual_shell": actual_shell,
+                "timeout_seconds": timeout,
+                "window_close_intercept_supported": intercept_supported,
+                "lifecycle_control": (
+                    "pywebview_window" if intercept_supported else "cli_or_ui_action_required"
+                ),
+                "warnings": warnings,
+            }
+        )
+        return result
 
     def stop(self) -> dict[str, Any]:
         state = self.manager.load_session()
@@ -204,7 +301,8 @@ class LauncherService:
             "db_path": self.profile.summary()["db_path"],
             "log_path": self.profile.summary()["log_path"],
             "background_mode_active": state.background_active,
-            "frontend_url": state.frontend_url,
+            "frontend_url": state.frontend_url or self.profile.frontend_url,
+            "frontend_url_source": self.profile.frontend_url_source,
             "processes": [r.model_dump() for r in state.processes],
             "backend_status": _proc_status(state, "backend"),
             "frontend_status": _proc_status(state, "frontend"),

@@ -54,6 +54,17 @@ automation:
     enable_live_reads: false
     enable_procore_live_reads: false
     enable_graph_live_reads: false
+launcher:
+  # Per-environment launcher UI settings. `frontend_url` is resolved when
+  # `hb-assistant launcher <env> --open` opens the UI; leave unset to fall back
+  # to the Vite/static default (http://127.0.0.1:5173). Dev and Production may
+  # point at different URLs.
+  dev:
+    frontend_url: "http://127.0.0.1:5173"
+    frontend_open_timeout_seconds: 30
+  production:
+    frontend_url: "http://127.0.0.1:5173"
+    frontend_open_timeout_seconds: 30
 security:
   microsoft_365_writeback_enabled: false
   external_llm_enabled: false

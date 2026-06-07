@@ -169,6 +169,69 @@ def main() -> None:
         note_safe + " Run-in-Background keeps MCP + scheduler alive; UI is closed.",
     )
 
+    # 7 & 8. dev / production launcher --open (browser mode, mocked open — no browser/spawn)
+    import hb_assistant.launcher.frontend_open as fo_mod
+
+    fo_mod.wait_for_frontend = lambda url, **k: (True, [])  # type: ignore[assignment]
+    fo_mod.open_browser = lambda url: (True, "browser", [])  # type: ignore[assignment]
+
+    dev_open = LauncherService(resolve_profile("dev")).open_session(plan_only=True)
+    _write(
+        "dev-launcher-open-proof",
+        "Dev Launcher --open Proof (browser mode, mocked open)",
+        "hb-assistant launcher dev --open --json",
+        _sanitize(dev_open, tmp),  # type: ignore[arg-type]
+        note_safe
+        + " Browser open + readiness wait are mocked (no browser/server). Dev frontend URL "
+        "resolved from config/fallback; window-close interception is unavailable in browser mode.",
+    )
+    prod_open = LauncherService(prod).open_session(plan_only=True)
+    _write(
+        "production-launcher-open-proof",
+        "Production Launcher --open Proof (browser mode, mocked open)",
+        "hb-assistant launcher production --open --json",
+        _sanitize(prod_open, tmp),  # type: ignore[arg-type]
+        note_safe
+        + " Browser open + readiness wait are mocked (no browser/server). Production frontend URL "
+        "resolved from config/build metadata; lifecycle stays CLI/UI-driven.",
+    )
+
+    # 9. browser-mode close-policy proof (open fields + explicit background/quit receipts)
+    SessionState(
+        environment="production",
+        processes=[
+            ProcessRecord(name="frontend", pid=None, started_at=now.isoformat(), argv=["x"],
+                          status="planned", keep_in_background=False),
+            ProcessRecord(name="mcp", pid=None, started_at=now.isoformat(), argv=["x"],
+                          status="planned", keep_in_background=True),
+            ProcessRecord(name="scheduler", pid=None, started_at=now.isoformat(), argv=["x"],
+                          status="planned", keep_in_background=True),
+        ],
+    ).save(prod.launcher_session_path)
+    close_bg = ClosePolicy(prod, ProcessManager(prod)).apply("background")
+    close_quit = ClosePolicy(prod, ProcessManager(prod)).apply("quit")
+    browser_close = {
+        "command": "launcher open (browser) → launcher close",
+        "status": "ok",
+        "open_lifecycle": {
+            "open_method": prod_open["open_method"],
+            "window_close_intercept_supported": prod_open["window_close_intercept_supported"],
+            "lifecycle_control": prod_open["lifecycle_control"],
+        },
+        "close_background": {k: close_bg[k] for k in ("action", "terminated", "kept_alive",
+                                                       "background_active", "scheduler_active")},
+        "close_quit": {k: close_quit[k] for k in ("action", "terminated", "background_active")},
+    }
+    _write(
+        "browser-mode-close-policy-proof",
+        "Browser-Mode Close Policy Proof",
+        "hb-assistant launcher production --open --json  (then launcher close --action ...)",
+        _sanitize(browser_close, tmp),  # type: ignore[arg-type]
+        note_safe
+        + " Browser mode does not intercept window-close; Quit vs Run-in-Background remain explicit "
+        "CLI/UI actions via `launcher close`.",
+    )
+
     # 6. scheduled source refresh closeout (production local-only run)
     SchedulerState(environment="production").save(prod.scheduler_state_path)
     receipt = SchedulerRunner(prod).run_once(schedule_date=date(2026, 6, 7), trigger="evidence")

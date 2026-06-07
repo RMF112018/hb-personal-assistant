@@ -1,19 +1,24 @@
 {
+  "actual_shell": "browser",
   "app_version": "1.3.0",
   "backend_status": "planned",
   "background_mode_active": false,
   "build_sha": "b2a02f94",
-  "command": "launcher status",
+  "command": "launcher open",
   "config_profile": "dev",
   "db_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/db/hb-personal-assistant.sqlite",
   "environment": "dev",
   "environment_mode": "dev",
   "executable_path": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+  "frontend_opened": true,
+  "frontend_reachable": true,
   "frontend_status": "planned",
   "frontend_url": "http://127.0.0.1:5173",
   "frontend_url_source": "fallback",
+  "lifecycle_control": "cli_or_ui_action_required",
   "log_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/logs",
   "mcp_status": "planned",
+  "open_method": "browser",
   "processes": [
     {
       "argv": [
@@ -31,7 +36,7 @@
       "name": "backend",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T10:48:58.152273+00:00",
+      "started_at": "2026-06-07T10:48:58.212613+00:00",
       "status": "planned"
     },
     {
@@ -44,7 +49,7 @@
       "name": "frontend",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T10:48:58.152289+00:00",
+      "started_at": "2026-06-07T10:48:58.212627+00:00",
       "status": "planned"
     },
     {
@@ -59,7 +64,7 @@
       "name": "mcp",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T10:48:58.152295+00:00",
+      "started_at": "2026-06-07T10:48:58.212630+00:00",
       "status": "planned"
     },
     {
@@ -76,7 +81,7 @@
       "name": "scheduler",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T10:48:58.152297+00:00",
+      "started_at": "2026-06-07T10:48:58.212633+00:00",
       "status": "planned"
     }
   ],
@@ -98,6 +103,10 @@
     "source_refresh_mode": "mock_data"
   },
   "python_path": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python3.12",
+  "requested_shell": "browser",
   "scheduler_status": "planned",
-  "status": "ok"
+  "status": "ok",
+  "timeout_seconds": 30,
+  "warnings": [],
+  "window_close_intercept_supported": false
 }
