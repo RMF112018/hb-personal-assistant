@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke:frontend": "vitest run --passWithNoTests"
+    "smoke:frontend": "vitest run --passWithNoTests",
+    "copycheck": "python3 ../scripts/proofs/frontend_display_copy_check.py"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.45.0",

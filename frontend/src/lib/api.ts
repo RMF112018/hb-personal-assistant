@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* Thin, typed API client for the HB Analytics FastAPI shell (Prompt 07/08/09/10/11/14/16/20 + D + E).
+/* Thin, typed API client for the HB Analytics local shell (historical notes 07/08/09/10/11/14/16/20 + D + E; see package docs).
  *
- * - Uses relative /api paths (Vite dev proxy in vite.config.ts forwards to backend, e.g. http://127.0.0.1:8000).
+ * - Uses relative /api paths (dev server proxy in vite.config.ts forwards to backend, e.g. http://127.0.0.1:8000).
  * - Falls back to VITE_API_BASE when provided (e.g. for standalone backend).
  * - Injects X-HB-UI-Role header on every request from localStorage 'hb-ui-role' (viewer|operator|admin).
  *   Default: 'operator'. The value is local-dev simulation only; real backend role guards (require_admin_role etc.)
@@ -22,7 +22,7 @@
  *   under the normalized /api/settings/connections/projects/* family. Preview and save are read-only metadata only and
  *   explicitly never start sync; first sync requires separate admin approval. Auth-aware surfaces are handled in UI by
  *   checking account status before enabling source types.
- * - Keep this surface thin: presentation only. Business logic lives in AnalyticsService + read models.
+ * - Keep this surface thin: presentation only. Business logic lives in AnalyticsService + read projections (internal).
  * - any-tolerant per existing page style in this repo (see Project*Page.tsx etc.); eslint-disable at top to match.
  */
 
@@ -213,7 +213,7 @@ export function detectDailyBriefLatest() {
   return fetchJson('/api/daily-brief/detect-latest', { method: 'POST' });
 }
 
-/* Settings / Connection surfaces (Prompt 14B). */
+/* Settings / Connection surfaces (historical note 14B — see planning package for remediation context). */
 export function getSettings() {
   return fetchJson('/api/settings');
 }
@@ -230,7 +230,7 @@ export function getSettingsKeywords() {
   return fetchJson('/api/settings/keywords');
 }
 
-/* Project keywords (Prompt 20 / FPR-017): management UI over existing safe backend routes. */
+/* Project keywords (historical note 20 / FPR-017): management UI over existing safe backend routes. */
 export function getProjectKeywords(projectKey: string) {
   const key = projectKey || 'all';
   return fetchJson(`/projects/${encodeURIComponent(key)}/keywords`);

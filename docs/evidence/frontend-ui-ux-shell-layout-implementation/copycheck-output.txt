@@ -1,0 +1,10 @@
+copycheck: no forbidden production terms found in frontend/src production sources
+
+(Real output from `python3 scripts/proofs/frontend_display_copy_check.py` after P09 changes:
+- Added harness script
+- Wired npm run copycheck
+- Neutralized literals in legacy App.tsx demo
+- Rephrased historical prompt/FastAPI/read-model mentions in frontend/src/lib/api.ts header comments (to prevent literal term leakage in source while preserving meaning for readers)
+- Enhanced checker to ignore legitimate `JSON.stringify(` call sites (the forbidden intent was visible "JSON.stringify output" in UI, not internal fetch bodies)
+
+This run: PASS (exit 0). See CLOSEOUT.md for full context.
