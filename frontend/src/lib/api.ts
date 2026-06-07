@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* Thin, typed API client for the HB Analytics FastAPI shell (Prompt 07/08/09/10/11/14/16/20 + D).
+/* Thin, typed API client for the HB Analytics FastAPI shell (Prompt 07/08/09/10/11/14/16/20 + D + E).
  *
  * - Uses relative /api paths (Vite dev proxy in vite.config.ts forwards to backend, e.g. http://127.0.0.1:8000).
  * - Falls back to VITE_API_BASE when provided (e.g. for standalone backend).
@@ -18,6 +18,10 @@
  *     subroutes are implemented; calling them produces 404s). Sections are derived from the aggregate shape.
  * - Prompt D (Get Started / Account Connections): adds readiness + normalized auth flow helpers under /api/settings/connections/*.
  *   Responses are safe (no tokens, secrets, codes beyond one-time device user_code, cache paths, or raw payloads).
+ * - Prompt E (Project Connections): adds preview/save/list for project sources (Procore, SharePoint, OneDrive, Outlook/Calendar)
+ *   under the normalized /api/settings/connections/projects/* family. Preview and save are read-only metadata only and
+ *   explicitly never start sync; first sync requires separate admin approval. Auth-aware surfaces are handled in UI by
+ *   checking account status before enabling source types.
  * - Keep this surface thin: presentation only. Business logic lives in AnalyticsService + read models.
  * - any-tolerant per existing page style in this repo (see Project*Page.tsx etc.); eslint-disable at top to match.
  */
@@ -306,6 +310,71 @@ export function disconnectProcoreLocal() {
   return fetchJson('/api/settings/connections/procore/disconnect-local', { method: 'POST' });
 }
 
+/* Project Connections auth-aware setup (Prompt E).
+ * Uses the normalized contract family added in Prompt A:
+ *   POST /api/settings/connections/projects/preview
+ *   POST /api/settings/connections/projects/save   (operator)
+ *   GET  /api/settings/connections/projects
+ * Request shape mirrors backend ConnectionSetupRequest (url + optional connection_type/scope/project_key/include_* etc.).
+ * Responses are safe metadata only. Preview/save never start sync; first_sync_status is pending_admin_approval.
+ * Auth gating (Procore vs Graph required) is enforced in the UI layer using account status.
+ */
+export interface ProjectConnectionPreviewRequest {
+  url?: string;
+  connection_type?: string;
+  project_key?: string;
+  source_name?: string;
+  scope_mode?: string;
+  selected_folder_item_ids?: string[];
+  include_outlook?: boolean;
+  include_calendar?: boolean;
+  connection_id?: string;
+}
+
+export interface ProjectConnectionPreviewResponse {
+  status: 'ready_to_save' | 'unavailable' | string;
+  connection_id?: string;
+  detected_source_type?: string;
+  proposed_source?: any;
+  warnings?: string[];
+  admin_approval_required?: boolean;
+  first_sync_status?: string;
+  guardrails?: any;
+  options?: any;
+  reason_code?: string;
+  message?: string;
+}
+
+export interface ProjectConnectionSaveResponse {
+  ok: boolean;
+  kind?: string;
+  connection_id?: string;
+  detected_source_type?: string;
+  first_sync_status?: string;
+  admin_approval_required?: boolean;
+  guardrails?: any;
+  preview?: any;
+  reason_code?: string;
+}
+
+export function previewProjectConnection(body: ProjectConnectionPreviewRequest | any) {
+  return fetchJson<ProjectConnectionPreviewResponse>('/api/settings/connections/projects/preview', {
+    method: 'POST',
+    body: JSON.stringify(body || {}),
+  });
+}
+
+export function saveProjectConnection(body: ProjectConnectionPreviewRequest | any) {
+  return fetchJson<ProjectConnectionSaveResponse>('/api/settings/connections/projects/save', {
+    method: 'POST',
+    body: JSON.stringify(body || {}),
+  });
+}
+
+export function getProjectConnections() {
+  return fetchJson('/api/settings/connections/projects');
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
   getToday,
@@ -357,6 +426,10 @@ export const api = {
   getProcoreAuthStatus,
   exchangeProcoreCode,
   disconnectProcoreLocal,
+  // Prompt E — project connection preview/save/list (normalized, no-sync, admin approval explicit)
+  previewProjectConnection,
+  saveProjectConnection,
+  getProjectConnections,
 };
 
 export default api;

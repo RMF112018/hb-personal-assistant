@@ -264,3 +264,9 @@ def test_prompt_b_graph_auth_contract_paths_reachable(tmp_path: Path) -> None:
     assert rp.status_code in (200, 400, 422, 403)
     if rp.status_code < 500 and rp.headers.get("content-type", "").startswith("application/json"):
         _assert_safe(rp.json())
+
+    # Prompt E light reachability (projects preview under normalized path; viewer can call preview)
+    rp2 = client.post("/api/settings/connections/projects/preview", json={"url": "https://app.procore.com/123/project/home"})
+    assert rp2.status_code in (200, 400, 422, 403)
+    if rp2.status_code < 500 and rp2.headers.get("content-type", "").startswith("application/json"):
+        _assert_safe(rp2.json())

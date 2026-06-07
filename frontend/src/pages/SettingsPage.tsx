@@ -10,8 +10,7 @@ import {
   generateDailyBriefSetupInstructions,
   validateDailyBriefOutputFolder,
   detectDailyBriefLatest,
-  // Prompt 14B / 14C (accounts surface now via reusable panel; see Prompt D)
-  getSettingsProjects,
+  // Prompt 14B / 14C / E (accounts + project connections now via reusable panels; see Prompt D/E)
   getSettingsSources,
   getSettingsKeywords,
   getProjectKeywords,
@@ -24,6 +23,7 @@ import {
   patchSettingsAdmin,
 } from '../lib/api'
 import { AccountConnectionsPanel } from '../components/settings/AccountConnectionsPanel'
+import { ProjectConnectionsPanel } from '../components/settings/ProjectConnectionsPanel'
 
 // Settings (Prompt 20 polish): guided local-first onboarding and preferences.
 // Sections: Account Connections, Project Connections, Daily Brief (external AI writes the .md; this app only detects/presents),
@@ -48,10 +48,8 @@ export function SettingsPage() {
   const [detectResult, setDetectResult] = useState<any>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
-  // Prompt 14C/20: debug "Load" panels and alerts removed (FPR-004); use status + guided actions only.
-  // Account connections now rendered via AccountConnectionsPanel (Prompt D) — no per-section raw result state.
-  const [projectsResult, setProjectsResult] = useState<any>(null)
-  const [projectsError, setProjectsError] = useState<string | null>(null)
+  // Prompt 14C/20/E: debug "Load" panels and alerts removed (FPR-004); use status + guided actions only.
+  // Account connections (Prompt D) and Project Connections (Prompt E) now rendered via reusable panels — no per-section raw result state for these.
   const [sourcesResult, setSourcesResult] = useState<any>(null)
   const [sourcesError, setSourcesError] = useState<string | null>(null)
   const [keywordsResult, setKeywordsResult] = useState<any>(null)
@@ -363,46 +361,10 @@ export function SettingsPage() {
           Panel handles its own fetches, polling, and success refresh. No raw JSON for normal users. */}
       <AccountConnectionsPanel variant="settings" />
 
-      <div className="card">
-        <div className="font-medium mb-2">Project Connections (Prompt 14B)</div>
-        <button
-          className="text-xs underline mb-2"
-          onClick={async () => {
-            setProjectsError(null)
-            try {
-              const p = await getSettingsProjects()
-              setProjectsResult(p)
-            } catch (e: any) {
-              setProjectsError(e?.message || String(e))
-              setProjectsResult(null)
-            }
-          }}
-        >
-          Load Projects
-        </button>
-        <ErrorState
-          message={projectsError}
-          onRetry={() => {
-            setProjectsError(null)
-            ;(async () => {
-              try {
-                const p = await getSettingsProjects()
-                setProjectsResult(p)
-              } catch (e: any) {
-                setProjectsError(e?.message || String(e))
-                setProjectsResult(null)
-              }
-            })()
-          }}
-        />
-        {projectsResult && (
-          <div className="text-xs mt-1">
-            Loaded project connections status.
-            (status shown above; raw panels removed per FPR-004)
-          </div>
-        )}
-        <div className="text-xs">Procore (homepage URL), SharePoint (site/folder/share-link), OneDrive (explicit scopes + all-folders warning), Outlook/Calendar. Uses preview→save (14A). First sync pending admin for most.</div>
-      </div>
+      {/* Prompt E: interactive auth-aware project connection preview/save (Procore/SharePoint/OneDrive/Outlook-Calendar).
+          Replaces the old Load/raw stub. Panel handles preview (viewer), save (operator), list with first_sync_status,
+          and auth gating based on current account connections from Prompt D surfaces. */}
+      <ProjectConnectionsPanel />
 
       <div className="card">
         <div className="font-medium mb-2">Source Scope (Prompt 14B)</div>

@@ -126,6 +126,10 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/settings/connections/procore/auth/status",
         "/api/settings/connections/procore/auth/exchange-code",
         "/api/settings/connections/procore/disconnect-local",
+        # Prompt A/E project connections normalized contract (preview/save/list; additive; legacy /connections/* preserved)
+        "/api/settings/connections/projects/preview",
+        "/api/settings/connections/projects/save",
+        "/api/settings/connections/projects",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 
@@ -216,6 +220,10 @@ def test_all_ui_analytics_routes_no_forbidden_sensitive_fields_and_role_guards(
         ("GET", "operator", "/api/settings/connections/procore/auth/status?flow_id=missing", None),
         ("POST", "operator", "/api/settings/connections/procore/auth/exchange-code", {"code": "x"}),
         ("POST", "operator", "/api/settings/connections/procore/disconnect-local", None),
+        # Prompt A/E project connections (preview viewer-ok, save operator; list viewer)
+        ("POST", "viewer", "/api/settings/connections/projects/preview", {"url": "https://example.com"}),
+        ("POST", "operator", "/api/settings/connections/projects/save", {"url": "https://example.com"}),
+        ("GET", "viewer", "/api/settings/connections/projects", None),
     ]
 
     for method, _min_role, path, body in surfaces:
