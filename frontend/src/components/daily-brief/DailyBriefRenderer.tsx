@@ -4,6 +4,8 @@
 // It MUST NOT generate, rewrite, or execute any of the brief content. "Present/polish only".
 // Recommended sections (when present in the external MD) are rendered as titled blocks for executive scanning.
 
+import { Link } from 'react-router-dom'
+
 const STATE_LABELS: Record<string, string> = {
   not_configured: 'Not configured',
   external_ai_setup_required: 'External AI setup required',
@@ -58,7 +60,7 @@ export function DailyBriefRenderer({
       <div className="card text-sm">
         Daily Brief: {label} (external file). Configure via external agent + settings.
         <div className="advisory mt-1">Source: externally generated Markdown. The app presents/polishes only and does not generate or materially rewrite content.</div>
-        <div className="mt-2 text-xs"><a className="underline" href="#/settings">Open Settings → Daily Brief setup</a></div>
+        <div className="mt-2 text-xs"><Link to="/settings" className="underline">Open Settings → Daily Brief setup</Link></div>
       </div>
     )
   }
@@ -105,7 +107,7 @@ export function DailyBriefRenderer({
 
       <div className="advisory mt-2">
         Source: externally generated Markdown file. The app presents/polishes only and does not generate or materially rewrite content.
-        <span className="ml-2"><a className="underline" href="#/settings">Configure in Settings</a></span>
+        <span className="ml-2"><Link to="/settings" className="underline">Configure in Settings</Link></span>
       </div>
     </div>
   )

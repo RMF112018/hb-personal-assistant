@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useTheme } from '../app/providers'
 import { DailyBriefRenderer } from '../components/daily-brief/DailyBriefRenderer'
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -305,7 +306,7 @@ export function SettingsPage() {
             warnings={previewWarnings}
           />
           <div className="text-[10px] text-[var(--hb-muted)] mt-1">
-            Link from Today → Settings for configuration. <a className="underline" href="#/today">Open Today</a>
+            Link from Today → Settings for configuration. <Link to="/today" className="underline">Open Today</Link>
           </div>
         </div>
 

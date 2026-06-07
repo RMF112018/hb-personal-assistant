@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { FreshnessBadge, ConfidenceBadge } from '../components/ui/Badge'
 import { ProjectSubNav } from '../components/projects/ProjectSubNav'
 import { EmptyState } from '../components/ui/EmptyState'
+import { MetricCard } from '../components/dashboard/MetricCard'
+import { AttentionItemCard } from '../components/dashboard/AttentionItemCard'
 import { api } from '../lib/api'
 
 export function ProjectFieldOperationsPage() {
@@ -19,7 +21,9 @@ export function ProjectFieldOperationsPage() {
     return <div className="p-6 text-sm text-[var(--hb-muted)]">Loading field operations…</div>
   }
 
-  const items = (fieldData?.items || fieldData || []) as any[]
+  const f = fieldData || {}
+  const metricCards = Array.isArray(f.metric_cards) ? f.metric_cards : []
+  const attention = Array.isArray(f.attention_items) ? f.attention_items : []
 
   return (
     <div>
@@ -31,12 +35,25 @@ export function ProjectFieldOperationsPage() {
       <div className="card">
         <div className="section-title">Field Operations</div>
         <p className="text-sm">Field Operations is the location for startup, closeout, daily log, observations, punch-list, inspections, quality/safety, and superintendent-facing data (advisory). No raw Procore bodies.</p>
-        {items.length === 0 ? (
+        {metricCards.length === 0 && attention.length === 0 ? (
           <EmptyState title="No field signals" hint="Daily logs, observations, punch, inspections, and closeout readiness appear here." />
         ) : (
-          <ul className="text-sm list-disc pl-4 mt-2 space-y-1">
-            {items.slice(0, 8).map((f: any, i: number) => <li key={i}>{f.title || f.description || JSON.stringify(f).slice(0, 100)}</li>)}
-          </ul>
+          <>
+            {metricCards.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                {metricCards.slice(0, 6).map((c: any, idx: number) => (
+                  <MetricCard key={c.id || c.metric_id || idx} label={c.label || c.name} value={c.value} unit={c.unit} status={c.status} />
+                ))}
+              </div>
+            )}
+            {attention.length > 0 && (
+              <div className="space-y-2">
+                {attention.slice(0, 6).map((a: any, idx: number) => (
+                  <AttentionItemCard key={a.id || idx} title={a.title} when={a.when || a.age} project={a.project} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
       <div className="text-xs mt-2"><Link to="/admin" className="underline">Field data quality and coverage → Admin</Link></div>

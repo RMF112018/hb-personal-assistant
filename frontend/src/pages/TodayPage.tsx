@@ -98,7 +98,7 @@ export function TodayPage() {
         <div className="advisory mt-2">
           Source: externally generated Markdown file. The app presents/polishes only and does not generate or materially rewrite content.
           States: Not configured • External AI setup required • Configured (waiting) • Brief available • Brief stale • Brief generation failed • Markdown parse warning.
-          <span className="ml-2"><a className="underline" href="#/settings">Configure folder / platform in Settings →</a></span>
+            <span className="ml-2"><Link to="/settings" className="underline">Configure folder / platform in Settings →</Link></span>
         </div>
         {fb.path && (
           <div className="text-[10px] text-[var(--hb-muted)] mt-1">File: {fb.path} {fb.generated_at ? `• ${fb.generated_at}` : ''}</div>

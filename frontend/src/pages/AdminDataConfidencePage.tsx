@@ -10,13 +10,13 @@ import { api } from '../lib/api'
 // All data advisory/metadata-only. No raw sensitive fields. Admin role required for these views.
 
 export function AdminDataConfidencePage() {
-  const { data: root } = useQuery({ queryKey: ['admin'], queryFn: api.getAdmin })
-  const { data: srcSync } = useQuery({ queryKey: ['admin', 'source-sync-health'], queryFn: api.getAdminSourceSyncHealth })
-  const { data: jobs } = useQuery({ queryKey: ['admin', 'workflow-job-health'], queryFn: api.getAdminWorkflowJobHealth })
-  const { data: guard } = useQuery({ queryKey: ['admin', 'evidence-guardrails'], queryFn: api.getAdminEvidenceGuardrails })
-  const { data: ret } = useQuery({ queryKey: ['admin', 'retrieval-ai-quality'], queryFn: api.getAdminRetrievalAiQuality })
-  const { data: perm } = useQuery({ queryKey: ['admin', 'permissions-governance'], queryFn: api.getAdminPermissionsGovernance })
-  const { data: comp } = useQuery({ queryKey: ['admin', 'data-completeness'], queryFn: api.getAdminDataCompleteness })
+  const { data: root, error: rootError } = useQuery({ queryKey: ['admin'], queryFn: api.getAdmin })
+  const { data: srcSync, error: srcSyncError } = useQuery({ queryKey: ['admin', 'source-sync-health'], queryFn: api.getAdminSourceSyncHealth })
+  const { data: jobs, error: jobsError } = useQuery({ queryKey: ['admin', 'workflow-job-health'], queryFn: api.getAdminWorkflowJobHealth })
+  const { data: guard, error: guardError } = useQuery({ queryKey: ['admin', 'evidence-guardrails'], queryFn: api.getAdminEvidenceGuardrails })
+  const { data: ret, error: retError } = useQuery({ queryKey: ['admin', 'retrieval-ai-quality'], queryFn: api.getAdminRetrievalAiQuality })
+  const { data: perm, error: permError } = useQuery({ queryKey: ['admin', 'permissions-governance'], queryFn: api.getAdminPermissionsGovernance })
+  const { data: comp, error: compError } = useQuery({ queryKey: ['admin', 'data-completeness'], queryFn: api.getAdminDataCompleteness })
 
   const sections = [
     { key: 'source', title: 'Source / Sync Health', data: srcSync, hint: 'Coverage, freshness, Graph/mailbox/calendar deltas, blocked/review items.' },
@@ -26,6 +26,15 @@ export function AdminDataConfidencePage() {
     { key: 'perm', title: 'Permissions / Governance', data: perm, hint: 'MCP receipts/denials, policy posture, prohibited attempts (metadata only).' },
     { key: 'comp', title: 'Data Completeness / Coverage', data: comp, hint: 'Table inventory, Procore/financial/document/correspondence coverage.' },
   ]
+
+  // Prompt 16 baseline: detect role-denied (403 from backend require_admin_role) without weakening guards.
+  const anyAdminError = rootError || srcSyncError || jobsError || guardError || retError || permError || compError
+  function isRoleDenied(err: any): boolean {
+    if (!err) return false
+    const status = (err as any)?.status
+    const msg = String((err as any)?.message || err || '')
+    return status === 403 || msg.includes('admin_role_required') || msg.includes('403')
+  }
 
   return (
     <div className="space-y-4 text-sm">
@@ -41,7 +50,11 @@ export function AdminDataConfidencePage() {
           <div key={s.key} className="card">
             <div className="font-medium mb-1">{s.title}</div>
             {!s.data ? (
-              <div className="text-[var(--hb-muted)]">Loading… (or start the analytics shell for live data)</div>
+              <div className="text-[var(--hb-muted)]">
+                {isRoleDenied(anyAdminError)
+                  ? 'Admin role required for detailed Data Confidence. Use the "Local dev role" selector in the header (switch to Admin). Backend guards remain enforced and fail-closed.'
+                  : 'Loading… (or start the analytics shell for live data)'}
+              </div>
             ) : (
               <>
                 {(s.data.metrics || []).slice(0, 6).map((m: any, i: number) => (

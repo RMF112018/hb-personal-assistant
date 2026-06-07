@@ -100,7 +100,7 @@ Daily Brief dedicated management (status, latest, configure, setup instructions,
   - `my-items/MyActionItemCard` (wired in My Items).
   - `ui/Badge` (FreshnessBadge + ConfidenceBadge, compact variants everywhere).
   - `ui/EmptyState`, `ui/StaleDataBanner` (graceful degradation across surfaces).
-- `lib/api.ts` extended with the full today-family, projects tabs, and my-items subs (thin fetchers; `VITE_API_BASE` or `/api` proxy unchanged).
+- `lib/api.ts` extended with the full today-family, projects tabs, and my-items subs (thin fetchers; `VITE_API_BASE` or `/api` proxy unchanged). Prompt 16: api.ts materialized as the canonical adapter (role header + envelope normalization docs); project tabs + My Items now consume object envelopes via aggregate only; see Prompt 16 closeout.
 - Providers: Theme (dark primary + system) + QueryClient remain the data backbone.
 
 No new top-level routes or nav items. No `/chat` route, page, widget, or nav item.

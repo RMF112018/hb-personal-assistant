@@ -103,6 +103,10 @@ def test_per_project_tabs_viewer_ok(tmp_path: Path) -> None:
         assert p["surface"].startswith("analytics.project.")
         assert p.get("project_key") == pk
         assert "freshness" in p and "confidence_summary" in p
+        # Prompt 16: object envelopes (metric_cards/attention_items arrays); not bare array or root 'items'
+        assert isinstance(p.get("metric_cards"), list)
+        assert isinstance(p.get("attention_items"), list)
+        assert not isinstance(p, list)
         _assert_safe(p)
 
 
@@ -113,6 +117,11 @@ def test_my_items_viewer_ok(tmp_path: Path) -> None:
     p = r.json()
     assert p["surface"] == "analytics.my_items"
     assert "sections" in p and "my_action_items" in p["sections"]
+    # Prompt 16: object envelope (not bare array); metric_cards/attention_items are lists; no root 'items' for my-items
+    assert isinstance(p.get("metric_cards"), list)
+    assert isinstance(p.get("attention_items"), list)
+    assert not isinstance(p, list)
+    assert "items" not in p or isinstance(p.get("items"), (dict, list))  # today-compat only use 'items'
     _assert_safe(p)
 
 

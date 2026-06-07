@@ -65,9 +65,9 @@ Routing lives in `app/routes.tsx` using `createBrowserRouter` + a root layout th
 - Tech: React 19 + Vite, Tailwind 3, React Router 6, TanStack Query 5 (client ready), Lucide icons, Recharts (declared), cva/clsx/tailwind-merge for shadcn-style primitives (modular off-the-shelf; no rigid design system).
 
 ## Data Integration (Prompt 07 read models)
-- Thin client: `src/lib/api.ts` (base URL via `VITE_API_BASE` or `/api` proxy).
+- Thin client: `src/lib/api.ts` (base URL via `VITE_API_BASE` or `/api` proxy; Prompt 16: materialized with `LocalUiRole` get/set, X-HB-UI-Role header injection on every call, and explicit normalization comments for object envelopes (`metric_cards`/`attention_items`/`sections`) on project tabs + `/api/my-items` vs. today-compat `items` arrays. All today/project/my-items/admin/daily-brief/settings surfaces covered via `api` object + named exports. any-tolerant to match page style; safety boundaries noted (read-only, no secrets/raw).).
 - Endpoints targeted (from 10 and Prompt 07 implementation): `/api/today`, `/api/projects/portfolio`, `/api/projects/all/overview`, per-key `/overview|meetings|field-operations|cost-time`, `/api/my-items`, admin health surfaces.
-- Pages currently render illustrative mock data matching the read-model envelopes (metric_cards, freshness, confidence_summary, attention_items, advisory_notes, guardrails posture). Real `useQuery` + the client can be wired per-page without changing contracts.
+- Pages now consume the real client (Prompt 09/16). Project tabs render `metric_cards` + `attention_items` via Metric/Attention cards (no `.slice` on object envelopes). My Items consumes aggregate only (no subroute calls). Hash links replaced with `<Link>`. Admin surfaces show role-denied state on 403 without weakening backend guards.
 - Daily Brief: status + external MD content only; no authoring path.
 - All fetch errors / empty / stale states degrade to EmptyState + badges (no crashes, no raw leakage).
 - Guardrails (advisory_only, no raw, no determinations, construction labels, hide admin details) are expressed in UI copy and links.
@@ -103,7 +103,7 @@ uvicorn hb_assistant.construction.analytics.api:create_app --factory --reload --
 - Theme provider + toggle + persistence + system respect implemented and wired through AppShell header.
 - All nine pages exist with documented sections (Important Today, Daily Brief external, Meetings, What Changed, Action Items, Portfolio Signals, etc.), construction labels, compact badges, advisory text, and /admin drill links.
 - Project sub-pages use contextual subnav only; no forbidden top-level nav items or routes.
-- Thin `lib/api.ts` + proxy + env support present (ready for full TanStack Query usage).
+- Thin `lib/api.ts` + proxy + env support present (Prompt 16: client materialized with role header + object-envelope normalization; pages updated for contract; hash links removed; Admin 403 baseline UI added — see evidence/frontend-production-readiness-implementation/prompt-16-route-api-contract-hardening-closeout.md and 00_PREFLIGHT.md).
 - `frontend/README.md` + `.env.example` document run + integration steps.
 - Python surface (analytics + tests) untouched; will be re-verified in the prompt run (targeted analytics tests + safe -m subset + ruff + mypy on analytics only) to prove "imports without optional frontend build".
 - Architecture cross-refs: Prompt 08, 11_FRONTEND_UI_STRUCTURE, 12_UI_KIT_THEME_AND_COMPONENTS, 17_IMPLEMENTATION_SEQUENCE, 09_FASTAPI_BACKEND_DESIGN, 10_ANALYTICS_READ_MODELS_AND_ENDPOINTS, 16_TESTING_VALIDATION_ACCEPTANCE, navigation_model.json, and prior 17x series (Prompts 05-07).
