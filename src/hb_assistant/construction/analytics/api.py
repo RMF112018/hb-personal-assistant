@@ -826,6 +826,24 @@ def create_app(*, db_path: str | None = None) -> Any:
             "guardrails": _guardrails(),
         }
 
+    @app.get("/api/environment")
+    def environment(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role  # all-roles; user-safe metadata only
+        from hb_assistant.construction.analytics.environment_status import (
+            EnvironmentStatusService,
+        )
+
+        return EnvironmentStatusService().build_environment()
+
+    @app.get("/api/sources/status")
+    def sources_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role  # all-roles; user-safe metadata only
+        from hb_assistant.construction.analytics.environment_status import (
+            EnvironmentStatusService,
+        )
+
+        return EnvironmentStatusService().build_sources_status()
+
     @app.get("/api/settings/keywords")
     def settings_keywords(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role

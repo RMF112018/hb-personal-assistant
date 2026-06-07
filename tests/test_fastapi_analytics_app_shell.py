@@ -140,6 +140,9 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/settings/connections/projects/preview",
         "/api/settings/connections/projects/save",
         "/api/settings/connections/projects",
+        # P01 — Graph/Procore Dev UI: aggregate environment + source-status contracts
+        "/api/environment",
+        "/api/sources/status",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 
