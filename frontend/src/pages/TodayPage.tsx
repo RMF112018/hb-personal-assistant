@@ -9,8 +9,8 @@ import { StaleDataBanner } from '../components/ui/StaleDataBanner'
 import { DailyBriefRenderer } from '../components/daily-brief/DailyBriefRenderer'
 import { api } from '../lib/api'
 
-// Today page (Prompt 09 / UI-09): primary landing with 6 sections driven from Prompt 07 read models.
-// Daily Brief is external-MD only (present/polish; never generate/rewrite). All surfaces advisory.
+// Today page (Prompt 09 / UI-09 + Prompt 17): primary landing with required sections (Important Today, What Changed, Today's Meetings, Action Items, Cost/Change/Time Signals, Documents & Correspondence Worth Reviewing, Daily Brief, compact Data Confidence context + header/day). 
+// Daily Brief is external-MD only (present/polish; never generate/rewrite). All surfaces advisory. Cost/time language advisory only — not determinations.
 
 export function TodayPage() {
   const { data: today, isLoading, error } = useQuery({
@@ -56,6 +56,8 @@ export function TodayPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header / day context (Prompt 17) */}
+      <div className="text-sm font-medium">Today</div>
       <div className="flex items-center gap-2">
         <FreshnessBadge status={d.freshness?.overall || 'unknown'} minutesAgo={d.freshness?.minutes_ago_max} />
         <ConfidenceBadge level={d.confidence_summary?.overall || 'not_available'} />
@@ -120,8 +122,8 @@ export function TodayPage() {
         <div className="text-xs mt-1"><Link to="/my-items" className="underline">See My Items for personal meeting queue →</Link></div>
       </section>
 
-      {/* What Changed + Action Items + Portfolio Signals (driven from today family where available) */}
-      <section className="grid md:grid-cols-3 gap-3">
+      {/* What Changed + Action Items (driven from today family where available) */}
+      <section className="grid md:grid-cols-2 gap-3">
         <div className="card">
           <div className="section-title">What Changed</div>
           {changeItems.length === 0 ? (
@@ -142,10 +144,24 @@ export function TodayPage() {
             </ul>
           )}
         </div>
+      </section>
+
+      {/* Cost / Change / Time Signals + Documents and Correspondence Worth Reviewing (Prompt 17: split from prior single Portfolio Signals; view-model presentation of advisory signals; data source unchanged) */}
+      <section className="grid md:grid-cols-2 gap-3">
         <div className="card">
-          <div className="section-title">Portfolio Signals</div>
+          <div className="section-title">Cost / Change / Time Signals</div>
           {portfolioItems.length === 0 ? (
-            <div className="text-sm">Projects needing attention, cost exposure, schedule/procurement, closeout/billing signals. See Admin for full diagnostics.</div>
+            <div className="text-sm">Budget vs actual, change exposure, schedule/procurement, closeout/billing signals. Advisory only — not a financial or schedule determination. See Admin for diagnostics.</div>
+          ) : (
+            <ul className="text-sm list-disc pl-4 space-y-1">
+              {portfolioItems.map((p: any, idx: number) => <li key={idx}>{p.title || p.project || JSON.stringify(p).slice(0, 80)}</li>)}
+            </ul>
+          )}
+        </div>
+        <div className="card">
+          <div className="section-title">Documents and Correspondence Worth Reviewing</div>
+          {portfolioItems.length === 0 ? (
+            <div className="text-sm">Documents changed or requiring review, correspondence worth attention, project-matched. See Admin for full diagnostics.</div>
           ) : (
             <ul className="text-sm list-disc pl-4 space-y-1">
               {portfolioItems.map((p: any, idx: number) => <li key={idx}>{p.title || p.project || JSON.stringify(p).slice(0, 80)}</li>)}

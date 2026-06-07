@@ -46,3 +46,5 @@ Prompt 01 adds focused tests in
 `tests/test_fastapi_analytics_service_boundary.py` covering service construction,
 metadata-only payloads, no CLI shell-out dependency, stale-schema degradation,
 empty-project fail-closed behavior, and planning-catalog metadata loading.
+
+Prompt 17 (Today UX/content): `build_today` sections list lightly updated to advertise the required split areas ("cost_change_time_signals", "documents_correspondence_worth_reviewing") for frontend contract/UX; granular portfolio-signals compat preserved. New dedicated `tests/test_fastapi_analytics_today.py` exercises the today envelope + sections + no-raw. See Prompt 17 closeout + 177/176 updates. (Client surface note in 176 also refreshed.)

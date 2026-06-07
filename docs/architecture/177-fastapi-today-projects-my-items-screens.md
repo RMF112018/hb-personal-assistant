@@ -23,7 +23,9 @@ Required sections (Prompt 09 + 11_ + navigation_model.json):
 - Today's Meetings (meeting list, prep readiness, related emails/files/Procore context, source/context freshness badge, one-click drill to prep).
 - What Changed (new/changed Procore records, document/file changes, correspondence highlights, meeting context changes, cost/change/schedule/field signals since last review window).
 - Action Items (open user-facing items, aging, review-required, locally reviewed/unreviewed state, items assigned or relevant to the current user).
-- Portfolio Signals (projects needing attention, portfolio cost exposure, schedule/procurement, closeout/billing/cash attention, compact confidence/freshness context).
+- Cost / Change / Time Signals (Prompt 17 split; budget vs actual, change exposure, schedule/procurement, closeout/billing — advisory only, not determinations).
+- Documents and Correspondence Worth Reviewing (Prompt 17 split; documents changed/requiring review, correspondence worth attention, project-matched).
+- Header/day context + compact Data Confidence badges/links (secondary; detailed source/sync/evidence hidden on primary Today; link to /admin). (Prompt 17 / FPR-008)
 
 Implementation notes (frontend):
 - Uses TanStack Query over the today family (`/api/today`, `/today/important|changes|meetings|action-items|portfolio-signals`, `/today/daily-brief`).
@@ -100,7 +102,7 @@ Daily Brief dedicated management (status, latest, configure, setup instructions,
   - `my-items/MyActionItemCard` (wired in My Items).
   - `ui/Badge` (FreshnessBadge + ConfidenceBadge, compact variants everywhere).
   - `ui/EmptyState`, `ui/StaleDataBanner` (graceful degradation across surfaces).
-- `lib/api.ts` extended with the full today-family, projects tabs, and my-items subs (thin fetchers; `VITE_API_BASE` or `/api` proxy unchanged). Prompt 16: api.ts materialized as the canonical adapter (role header + envelope normalization docs); project tabs + My Items now consume object envelopes via aggregate only; see Prompt 16 closeout.
+- `lib/api.ts` extended with the full today-family, projects tabs, and my-items subs (thin fetchers; `VITE_API_BASE` or `/api` proxy unchanged). Prompt 16: api.ts materialized as the canonical adapter (role header + envelope normalization docs); project tabs + My Items now consume object envelopes via aggregate only; see Prompt 16 closeout. Prompt 17: TodayPage updated for required sections + split (Cost/Change/Time + Documents/Correspondence), header/day context, CM-facing states/empties, compact confidence; new dedicated test; backend today sections list lightly aligned for contract; see Prompt 17 closeout.
 - Providers: Theme (dark primary + system) + QueryClient remain the data backbone.
 
 No new top-level routes or nav items. No `/chat` route, page, widget, or nav item.

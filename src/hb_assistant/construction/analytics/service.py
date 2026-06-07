@@ -502,7 +502,8 @@ class AnalyticsService:
                 "todays_meetings",
                 "what_changed",
                 "action_items",
-                "portfolio_signals",
+                "cost_change_time_signals",
+                "documents_correspondence_worth_reviewing",
             ],
             "freshness": freshness,
             "confidence_summary": {
