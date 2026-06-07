@@ -1,0 +1,30 @@
+{
+  "action": "preview",
+  "backend": "launchd",
+  "dry_run": true,
+  "installed": false,
+  "plist": {
+    "EnvironmentVariables": {
+      "PYTHONUNBUFFERED": "1"
+    },
+    "Label": "com.hb.personal-assistant.scheduler.production",
+    "ProgramArguments": [
+      "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+      "scheduler",
+      "run",
+      "daily-source-refresh",
+      "--environment",
+      "production",
+      "--if-due"
+    ],
+    "StandardErrorPath": "<LOCAL_APP_SUPPORT>/app-support/logs/scheduler.err.log",
+    "StandardOutPath": "<LOCAL_APP_SUPPORT>/app-support/logs/scheduler.out.log",
+    "StartCalendarInterval": {
+      "Hour": 20,
+      "Minute": 0
+    },
+    "WorkingDirectory": "/Users/bobbyfetting/hb-personal-assistant"
+  },
+  "plist_path": "/Users/bobbyfetting/Library/LaunchAgents/com.hb.personal-assistant.scheduler.production.plist",
+  "writes_files": false
+}

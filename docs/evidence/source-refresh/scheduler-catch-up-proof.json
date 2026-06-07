@@ -1,0 +1,9 @@
+{
+  "command": "scheduler due daily-source-refresh --environment production",
+  "next_expected_run": "2026-06-08T20:00:00-04:00",
+  "no_double_run_guard": "last_successful_schedule_date gates repeat runs",
+  "reason": "due_on_time",
+  "schedule_date": "2026-06-07",
+  "should_run": true,
+  "status": "ok"
+}

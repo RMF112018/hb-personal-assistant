@@ -173,6 +173,11 @@ module = [
   "hb_assistant.construction.second_brain.*",
   # Unified source-refresh orchestrator.
   "hb_assistant.source_refresh.*",
+  # Cross-platform launcher + scheduler.
+  "hb_assistant.launcher.*",
+  "hb_assistant.scheduler.*",
+  "hb_assistant.cli.launcher",
+  "hb_assistant.cli.scheduler",
 ]
 ignore_errors = false
 follow_imports = "normal"

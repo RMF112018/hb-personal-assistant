@@ -111,10 +111,24 @@ class RefreshOptions:
     skip_vector: bool = False
     skip_daily_brief_proof: bool = False
     brief_date: Optional[str] = None
+    # Local-only / mock mode: never touch live external systems (no Procore/Graph
+    # auth/status/probe/read). Rebuild from existing local SQLite only. Used by the dev
+    # scheduler and by production scheduled runs when live reads are config-disabled.
+    mock_data: bool = False
+    # Per-source live-read switches. Default True preserves the manual
+    # `refresh-sources --apply --confirm` behavior; scheduled jobs always set these
+    # explicitly rather than relying on the defaults.
+    allow_procore_live: bool = True
+    allow_graph_live: bool = True
 
     @property
     def dry_run(self) -> bool:
         return not self.apply
+
+    @property
+    def live_reads_enabled(self) -> bool:
+        """True only when this run may perform any live external read."""
+        return not self.mock_data and (self.allow_procore_live or self.allow_graph_live)
 
 
 def _safe_git_sha() -> Optional[str]:
@@ -202,6 +216,9 @@ class SourceRefreshOrchestrator:
             "repo_sha": self.repo_sha,
             "dry_run": options.dry_run,
             "apply": options.apply,
+            "mock_data": options.mock_data,
+            "live_reads_enabled": options.live_reads_enabled,
+            "live_mode": "live_source" if options.live_reads_enabled else "local_only",
             "status": "ok",
             "preflight": {},
             "procore_auth_status": None,
@@ -305,6 +322,17 @@ class SourceRefreshOrchestrator:
     # -- stage 2: procore ----------------------------------------------------------
 
     def _procore_stage(self, options: RefreshOptions) -> dict[str, Any]:
+        if options.mock_data or not options.allow_procore_live:
+            # Local-only/mock: never call Procore auth/status/probe/read. Rebuild stages
+            # read existing local SQLite. No credentials required.
+            return {
+                "status": "mock_data_local_only" if options.mock_data else "live_disabled",
+                "auth_status": "skipped",
+                "ready_for_live_calls": False,
+                "live_read_performed": False,
+                "counts": _zero_counts(),
+            }
+
         report = check_auth_status()
         auth_status = report.status
         ready = bool(report.ready_for_live_calls)
@@ -333,7 +361,9 @@ class SourceRefreshOrchestrator:
             }
 
         live_env = live_env_active()
-        do_live_apply = options.apply and options.confirm and ready and live_env
+        do_live_apply = (
+            options.apply and options.confirm and ready and live_env and options.allow_procore_live
+        )
         if options.apply and not live_env:
             self._warn(
                 "Procore apply requested but HB_PROCORE_LIVE is not set; live read gated "
@@ -410,9 +440,6 @@ class SourceRefreshOrchestrator:
     # -- stage 3: graph ------------------------------------------------------------
 
     def _graph_stage(self, options: RefreshOptions) -> dict[str, Any]:
-        info = self._graph_status()
-        token_type = info.get("token_type", "none")
-        token_ready = token_type != "none"
         dry_run = options.dry_run
 
         families: dict[str, dict[str, Any]] = {}
@@ -423,31 +450,43 @@ class SourceRefreshOrchestrator:
             lambda: self._graph_mail_thread_summary(dry_run),
         )
 
-        # Live families (calendar, files) read from Graph even to plan, so they require
-        # --confirm (the live-read gate) regardless of dry-run. Token readiness only
-        # blocks when a live read is actually intended (i.e. --confirm given).
-        live_intended = options.confirm
-        if live_intended and not token_ready:
-            blocked = {"status": "blocked_auth_not_ready", "reason": "no_delegated_token"}
-            families["calendar_event_index"] = dict(blocked)
-            families["files"] = dict(blocked)
-            self._acc.degraded = True
-            overall = "blocked_auth_not_ready"
-        elif not live_intended:
-            gated = {"status": "skipped", "reason": "confirm_required_for_live_read"}
+        # Live families (calendar, files) read from Graph even to plan. They require
+        # --confirm AND allow_graph_live AND not mock_data. The Graph auth/status probe
+        # is performed ONLY when a live read is actually intended — mock/local-only runs
+        # never touch Graph auth/status/probe/read.
+        live_intended = options.confirm and options.allow_graph_live and not options.mock_data
+        token_type = "skipped"
+        token_ready = False
+        if not live_intended:
+            if options.mock_data:
+                reason, overall = "mock_data_local_only", "mock_data_local_only"
+            elif not options.allow_graph_live:
+                reason, overall = "live_disabled", "partial_local_only"
+            else:
+                reason, overall = "confirm_required_for_live_read", "partial_local_only"
+            gated = {"status": "skipped", "reason": reason}
             families["calendar_event_index"] = dict(gated)
             families["files"] = dict(gated)
-            overall = "partial_local_only"
         else:
-            families["calendar_event_index"] = self._stage(
-                "graph.calendar_event_index",
-                lambda: self._graph_calendar(dry_run),
-            )
-            families["files"] = self._stage(
-                "graph.files",
-                lambda: self._graph_files(dry_run),
-            )
-            overall = "ok"
+            info = self._graph_status()
+            token_type = info.get("token_type", "none")
+            token_ready = token_type != "none"
+            if not token_ready:
+                blocked = {"status": "blocked_auth_not_ready", "reason": "no_delegated_token"}
+                families["calendar_event_index"] = dict(blocked)
+                families["files"] = dict(blocked)
+                self._acc.degraded = True
+                overall = "blocked_auth_not_ready"
+            else:
+                families["calendar_event_index"] = self._stage(
+                    "graph.calendar_event_index",
+                    lambda: self._graph_calendar(dry_run),
+                )
+                families["files"] = self._stage(
+                    "graph.files",
+                    lambda: self._graph_files(dry_run),
+                )
+                overall = "ok"
 
         return {
             "status": overall,

@@ -2107,6 +2107,12 @@ def refresh_sources(
     date_: Optional[str] = typer.Option(
         None, "--date", help="YYYY-MM-DD for the Daily Brief V2 packet (default: today)."
     ),
+    mock_data: bool = typer.Option(
+        False,
+        "--mock-data",
+        help="Local/dev mode: rebuild from existing local SQLite only; never call live "
+        "Procore/Graph auth/status/read (no credentials required).",
+    ),
     json_out: bool = typer.Option(True, "--json", help="Emit the consolidated JSON object."),
 ) -> None:
     """Unified local source refresh (Procore + Graph + Phase-09 rebuild).
@@ -2146,6 +2152,9 @@ def refresh_sources(
         skip_vector=skip_vector,
         skip_daily_brief_proof=skip_daily_brief_proof,
         brief_date=date_,
+        mock_data=mock_data,
+        allow_procore_live=not mock_data,
+        allow_graph_live=not mock_data,
     )
     summary = SourceRefreshOrchestrator().run(options=options)
     typer.echo(json.dumps(summary, indent=2, default=str) if json_out else str(summary))

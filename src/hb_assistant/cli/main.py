@@ -24,8 +24,10 @@ from . import construction as construction_mod
 from . import diagnostics as diag_mod
 from . import files as files_mod
 from . import graph as graph_mod
+from . import launcher as launcher_mod
 from . import procore as procore_mod
 from . import run as run_mod
+from . import scheduler as scheduler_mod
 from . import search as search_mod
 from . import second_brain as second_brain_mod
 
@@ -69,6 +71,8 @@ app.add_typer(construction_mod.app, name="construction-agent")
 app.add_typer(procore_mod.app, name="procore")
 app.add_typer(graph_mod.app, name="graph")
 app.add_typer(second_brain_mod.app, name="second-brain")
+app.add_typer(launcher_mod.app, name="launcher")
+app.add_typer(scheduler_mod.app, name="scheduler")
 
 
 # Explicit thin stubs for remaining command groups

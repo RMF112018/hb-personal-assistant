@@ -84,9 +84,27 @@ class LaunchdConfig(BaseModel):
     python_path: str | None = None
 
 
+class SchedulerConfig(BaseModel):
+    """Daily source-refresh scheduler config (repo-owned, cross-platform).
+
+    Live external reads for the scheduled production job are gated and default OFF:
+    the scheduled job always rebuilds local SQLite, and only performs live Procore/Graph
+    reads when the corresponding flags are explicitly enabled.
+    """
+
+    enabled: bool = True
+    schedule_time: str = "20:00"  # local HH:MM
+    timezone: str = "America/New_York"
+    catch_up_on_wake: bool = True
+    enable_live_reads: bool = False
+    enable_procore_live_reads: bool = False
+    enable_graph_live_reads: bool = False
+
+
 class AutomationConfig(BaseModel):
     morning_run: MorningRunConfig = Field(default_factory=MorningRunConfig)
     launchd: LaunchdConfig = Field(default_factory=LaunchdConfig)
+    scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
 
 
 class SecurityConfig(BaseModel):

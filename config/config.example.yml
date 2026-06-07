@@ -43,6 +43,17 @@ automation:
     working_directory: null
     label: null
     python_path: null
+  scheduler:
+    # Daily source-refresh scheduler (cross-platform; app-level catch-up).
+    enabled: true
+    schedule_time: "20:00"        # local HH:MM
+    timezone: "America/New_York"
+    catch_up_on_wake: true
+    # Live external reads for the scheduled production job are OFF by default:
+    # the job rebuilds local SQLite only. Enable explicitly to perform live reads.
+    enable_live_reads: false
+    enable_procore_live_reads: false
+    enable_graph_live_reads: false
 security:
   microsoft_365_writeback_enabled: false
   external_llm_enabled: false

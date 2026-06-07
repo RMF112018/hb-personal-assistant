@@ -1,0 +1,99 @@
+{
+  "app_version": "1.3.0",
+  "backend_status": "planned",
+  "background_mode_active": false,
+  "build_sha": "a6324e96",
+  "command": "launcher status",
+  "config_profile": "dev",
+  "db_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/db/hb-personal-assistant.sqlite",
+  "environment": "dev",
+  "environment_mode": "dev",
+  "executable_path": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+  "frontend_status": "planned",
+  "frontend_url": "http://127.0.0.1:5173",
+  "log_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/logs",
+  "mcp_status": "planned",
+  "processes": [
+    {
+      "argv": [
+        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python3.12",
+        "-m",
+        "uvicorn",
+        "hb_assistant.construction.analytics.api:create_app",
+        "--factory",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000"
+      ],
+      "keep_in_background": true,
+      "name": "backend",
+      "pid": null,
+      "reason": "plan_only",
+      "started_at": "2026-06-07T09:22:31.169686+00:00",
+      "status": "planned"
+    },
+    {
+      "argv": [
+        "npm",
+        "run",
+        "dev"
+      ],
+      "keep_in_background": false,
+      "name": "frontend",
+      "pid": null,
+      "reason": "plan_only",
+      "started_at": "2026-06-07T09:22:31.169694+00:00",
+      "status": "planned"
+    },
+    {
+      "argv": [
+        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+        "second-brain",
+        "mcp",
+        "serve",
+        "--stdio"
+      ],
+      "keep_in_background": true,
+      "name": "mcp",
+      "pid": null,
+      "reason": "plan_only",
+      "started_at": "2026-06-07T09:22:31.169697+00:00",
+      "status": "planned"
+    },
+    {
+      "argv": [
+        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+        "scheduler",
+        "run",
+        "daily-source-refresh",
+        "--environment",
+        "dev",
+        "--loop"
+      ],
+      "keep_in_background": true,
+      "name": "scheduler",
+      "pid": null,
+      "reason": "plan_only",
+      "started_at": "2026-06-07T09:22:31.169701+00:00",
+      "status": "planned"
+    }
+  ],
+  "profile": {
+    "app_support_root": "<LOCAL_APP_SUPPORT>/app-support (Dev)",
+    "backend_mode": "uvicorn_factory_dev",
+    "db_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/db/hb-personal-assistant.sqlite",
+    "environment": "dev",
+    "evidence_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/evidence",
+    "frontend_mode": "npm_dev",
+    "launcher_session_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/launcher-state/session-dev.json",
+    "log_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/logs",
+    "mcp_mode": "stdio",
+    "scheduler_enabled": true,
+    "scheduler_state_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/scheduler-state/daily-source-refresh.json",
+    "source_refresh_mode": "mock_data"
+  },
+  "python_path": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python3.12",
+  "scheduler_status": "planned",
+  "status": "ok"
+}

@@ -1,0 +1,16 @@
+{
+  "action": "background",
+  "background_active": true,
+  "command": "launcher close",
+  "environment": "production",
+  "generated_utc": "2026-06-07T09:22:31.205385+00:00",
+  "kept_alive": [],
+  "metadata_only": true,
+  "receipt_path": "<LOCAL_APP_SUPPORT>/app-support/evidence/launcher/close-background-production.json",
+  "repo_sha": "a6324e96",
+  "scheduler_active": true,
+  "status": "ok",
+  "terminated": [
+    "frontend"
+  ]
+}
