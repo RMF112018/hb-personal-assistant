@@ -7,14 +7,6 @@ import {
 } from '../../lib/api';
 import { ErrorState } from '../ui/ErrorState';
 
-/**
- * Prompt F — Admin First-Sync Approval Panel.
- * - Loads pending first-sync approvals via admin-only surface (getSettingsAdminSync equivalent).
- * - Renders safe list (connection/project ids, status, timestamps).
- * - Approve and Reject actions (POST to normalized admin endpoints) — backend requires admin role (403 otherwise).
- * - After action, refetches list. Explicit notes that these actions do not start sync (first_sync_triggered=false).
- * - Placed in Settings admin section; non-admins see 403 on mutate (or can be hidden by role in future).
- */
 export function AdminFirstSyncApprovalPanel() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,7 +44,7 @@ export function AdminFirstSyncApprovalPanel() {
       if (r && r.ok === false) {
         setActionMsg(`Approve failed: ${r.reason_code || r.kind || 'unknown'}`);
       } else {
-        setActionMsg('Approved. First sync not started (pending scheduling).');
+        setActionMsg('Approved. Updates are still controlled by the normal schedule.');
       }
       await load();
     } catch (e: any) {
@@ -71,7 +63,7 @@ export function AdminFirstSyncApprovalPanel() {
       if (r && r.ok === false) {
         setActionMsg(`Reject failed: ${r.reason_code || r.kind || 'unknown'}`);
       } else {
-        setActionMsg('Rejected. Connection remains locally configured but will not sync.');
+        setActionMsg('Rejected. The selection remains saved but will not update.');
       }
       await load();
     } catch (e: any) {
@@ -83,14 +75,13 @@ export function AdminFirstSyncApprovalPanel() {
 
   return (
     <div className="card">
-      <div className="font-medium mb-2">First-sync approvals (admin only)</div>
+      <h3 className="font-medium mb-2">Update Approval</h3>
       <div className="text-xs mb-2">
-        Approve or reject pending first-sync for saved connections (Procore projects and Microsoft sources).
-        Approvals do not start sync. Only admins can act; non-admin calls are rejected by the backend.
+        Approve or reject saved project selections before new data appears.
       </div>
 
       <button className="badge" onClick={load} disabled={loading}>
-        {loading ? 'Refreshing…' : 'Refresh pending list'}
+        {loading ? 'Checking...' : 'Request update approval'}
       </button>
 
       <ErrorState message={error} onRetry={load} />
@@ -98,7 +89,7 @@ export function AdminFirstSyncApprovalPanel() {
       {actionMsg && <div className="text-xs mt-2 text-green-600">{actionMsg}</div>}
 
       {items.length === 0 && !loading && (
-        <div className="text-xs text-[var(--hb-muted)] mt-2">No pending first-sync approvals.</div>
+        <div className="text-xs text-[var(--hb-muted)] mt-2">No update approvals are waiting.</div>
       )}
 
       {items.length > 0 && (
@@ -121,7 +112,7 @@ export function AdminFirstSyncApprovalPanel() {
                     onClick={() => doApprove(cid)}
                     disabled={!!busyId}
                   >
-                    {busyId === cid ? 'Approving…' : 'Approve first sync'}
+                    {busyId === cid ? 'Approving...' : 'Approve update'}
                   </button>
                   <button
                     className="badge"
@@ -138,8 +129,7 @@ export function AdminFirstSyncApprovalPanel() {
       )}
 
       <div className="advisory mt-3">
-        These actions update local approval state only. No live sync is triggered (first_sync_triggered remains false).
-        Scheduled or manual sync paths consult the same status before proceeding.
+        Approval changes do not start updates.
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useConnectionsAccounts } from '../../hooks/useOnboardingReadiness';
 import {
   previewProjectConnection,
@@ -10,15 +9,6 @@ import {
 import { ErrorState } from '../ui/ErrorState';
 import { ConnectionPreviewCard } from './ConnectionPreviewCard';
 
-/**
- * Prompt E — Project Connections auth-aware panel.
- * - Form supports Procore homepage URL, SharePoint site/folder/share-link, OneDrive (scope_mode + selected ids),
- *   and Outlook/Calendar include toggles (default false = project_matching_only semantics).
- * - Auth gating: Procore sources disabled unless procore account is connected_valid; Microsoft sources gated on graph.
- * - Preview (viewer ok) → renders ConnectionPreviewCard with explicit "no sync" and "admin approval" messaging.
- * - Save (operator) persists and refetches list; shows pending/approved/rejected status from backend.
- * - All via normalized /api/settings/connections/projects/* (safe metadata only).
- */
 export function ProjectConnectionsPanel() {
   const { data: accounts } = useConnectionsAccounts();
 
@@ -56,7 +46,6 @@ export function ProjectConnectionsPanel() {
   }
 
   useEffect(() => {
-    // Initial population of the saved connections list (setState inside effect is intentional for mount-once fetch; matches patterns elsewhere in the app).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshList();
   }, []);
@@ -95,7 +84,6 @@ export function ProjectConnectionsPanel() {
     setBusy('save');
     setSaveError(null);
     try {
-      // Rebuild body from current form (or from preview.proposed if desired; use form for fidelity)
       const body: any = {};
       if (url) body.url = url;
       if (projectKey) body.project_key = projectKey;
@@ -124,49 +112,48 @@ export function ProjectConnectionsPanel() {
 
   return (
     <div className="card">
-      <div className="font-medium mb-2">Project Connections (Prompt E)</div>
+      <h3 className="font-medium mb-2">Project Connections</h3>
 
       <div className="text-xs mb-3">
-        Enter a project/source URL (or calendar options) then Preview. Preview and Save do not start sync.
-        First live sync requires separate admin approval.
+        Review and save the project information this app should watch. Saving selections does not start updates.
       </div>
 
       {/* Auth gating messages */}
       {!procoreOk && (
         <div className="text-xs mb-1 text-amber-600">
-          Procore sources require a connected Procore account. <Link to="/settings" className="underline">Connect Procore</Link> or <Link to="/get-started" className="underline">Get Started</Link>.
+          Procore sources require a connected Procore account. <a href="/settings" className="underline">Connect Procore</a> or <a href="/get-started" className="underline">Get Started</a>.
         </div>
       )}
       {!graphOk && (
         <div className="text-xs mb-1 text-amber-600">
-          Microsoft sources (SharePoint, OneDrive, Outlook/Calendar) require a connected Microsoft 365 account. <Link to="/settings" className="underline">Connect Microsoft 365</Link> or <Link to="/get-started" className="underline">Get Started</Link>.
+          Microsoft project sources require a connected Microsoft 365 account. <a href="/settings" className="underline">Connect Microsoft 365</a> or <a href="/get-started" className="underline">Get Started</a>.
         </div>
       )}
 
       <div className="grid gap-3 text-sm">
         <div>
-          <label className="text-xs block mb-1">URL (Procore homepage, SharePoint site/folder/share-link, OneDrive)</label>
+          <label className="text-xs block mb-1">Project or folder link</label>
           <input
             className="w-full bg-[var(--hb-bg)] border border-[var(--hb-border)] rounded px-2 py-1 text-sm"
             value={url}
             onChange={(e) => { setUrl(e.target.value); resetPreview(); }}
-            placeholder="https://app.procore.com/123456/project/home  or  https://...sharepoint.com/sites/...  or  https://...my.sharepoint.com/personal/..."
+            placeholder="Paste a project or folder link"
             disabled={busy !== null}
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs block mb-1">Project key (optional)</label>
+            <label className="text-xs block mb-1">Project name (optional)</label>
             <input
               className="w-full bg-[var(--hb-bg)] border border-[var(--hb-border)] rounded px-2 py-1 text-sm"
               value={projectKey}
               onChange={(e) => setProjectKey(e.target.value)}
-              placeholder="proj-abc"
+              placeholder="Project name"
             />
           </div>
           <div>
-            <label className="text-xs block mb-1">Source name (optional)</label>
+            <label className="text-xs block mb-1">Connection name (optional)</label>
             <input
               className="w-full bg-[var(--hb-bg)] border border-[var(--hb-border)] rounded px-2 py-1 text-sm"
               value={sourceName}
@@ -177,21 +164,21 @@ export function ProjectConnectionsPanel() {
         </div>
 
         <div>
-          <label className="text-xs block mb-1">OneDrive scope (when applicable)</label>
+          <label className="text-xs block mb-1">Folder selection</label>
           <select
             className="bg-[var(--hb-bg)] border border-[var(--hb-border)] rounded px-2 py-1 text-sm"
             value={scopeMode}
             onChange={(e) => { setScopeMode(e.target.value); resetPreview(); }}
           >
-            <option value="">(default / not specified)</option>
-            <option value="selected_folders">selected_folders (provide IDs below)</option>
-            <option value="all_folders_explicit">all_folders_explicit (large scope warning)</option>
-            <option value="excluded">excluded (disabled source)</option>
+            <option value="">Use detected folder</option>
+            <option value="selected_folders">Selected folders</option>
+            <option value="all_folders_explicit">All folders</option>
+            <option value="excluded">Do not include this source</option>
           </select>
           {scopeMode === 'selected_folders' && (
             <input
               className="mt-1 w-full bg-[var(--hb-bg)] border border-[var(--hb-border)] rounded px-2 py-1 text-sm font-mono"
-              placeholder="folder-item-id-1, folder-item-id-2"
+              placeholder="Folder identifiers, separated by commas"
               value={selectedIds}
               onChange={(e) => setSelectedIds(e.target.value)}
             />
@@ -201,11 +188,11 @@ export function ProjectConnectionsPanel() {
         <div className="flex flex-wrap gap-4 text-xs">
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={includeOutlook} onChange={(e) => { setIncludeOutlook(e.target.checked); resetPreview(); }} />
-            Include Outlook (project_matching_only=false by default)
+            Include email
           </label>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={includeCalendar} onChange={(e) => { setIncludeCalendar(e.target.checked); resetPreview(); }} />
-            Include Calendar (project_matching_only=false by default)
+            Include calendar
           </label>
         </div>
       </div>
@@ -216,9 +203,9 @@ export function ProjectConnectionsPanel() {
           onClick={doPreview}
           disabled={busy !== null || (!url && !includeOutlook && !includeCalendar)}
         >
-          {busy === 'preview' ? 'Previewing…' : 'Preview'}
+          {busy === 'preview' ? 'Checking...' : 'Review project connections'}
         </button>
-        <button className="badge" onClick={refreshList} disabled={busy !== null}>Refresh list</button>
+        <button className="badge" onClick={refreshList} disabled={busy !== null}>Check saved selections</button>
       </div>
 
       <ErrorState message={previewError} onRetry={doPreview} />
@@ -235,35 +222,47 @@ export function ProjectConnectionsPanel() {
 
       {/* Current connections / pending approvals */}
       <div className="mt-4">
-        <div className="text-xs font-medium mb-1">Saved connections / first-sync status</div>
+        <div className="text-xs font-medium mb-1">Saved project selections</div>
         {pendingItems.length === 0 && (
-          <div className="text-xs text-[var(--hb-muted)]">No saved connections yet. Preview and save above.</div>
+          <div className="text-xs text-[var(--hb-muted)]">No saved project selections yet.</div>
         )}
         {pendingItems.length > 0 && (
           <div className="text-xs space-y-1">
             {pendingItems.map((it: any, idx: number) => (
               <div key={idx} className="border border-[var(--hb-border)] rounded p-2">
                 <div>
-                  <span className="font-mono">{it.connection_id || it.source_id || it.id}</span>
-                  {' '}<span className="badge">{it.source_type || it.detected_source_type || 'source'}</span>
-                  {' '}<span className="badge">{it.first_sync_status || it.sync_status || 'unknown'}</span>
-                  {it.admin_approval_required && <span className="badge badge-stale ml-1">admin approval required</span>}
+                  <span className="font-medium">{it.source_name || it.project_name || it.project_key || it.connection_id || it.source_id || it.id || 'Project selection'}</span>
+                  {' '}<span className="badge">{labelSource(it.source_type || it.detected_source_type)}</span>
+                  {' '}<span className="badge">{labelStatus(it.first_sync_status || it.sync_status)}</span>
+                  {it.admin_approval_required && <span className="badge badge-stale ml-1">Request update approval</span>}
                 </div>
-                {it.project_key && <div>project_key: {it.project_key}</div>}
-                {it.source_name && <div>source: {it.source_name}</div>}
+                {it.project_key && !it.project_name && <div>Project: {it.project_key}</div>}
               </div>
             ))}
           </div>
         )}
         <div className="text-[10px] text-[var(--hb-muted)] mt-1">
-          Statuses reflect local configuration only. Live sync requires separate admin approval via Admin surfaces.
+          Saved selections wait for update approval before new data appears.
         </div>
       </div>
 
       <div className="advisory mt-3">
-        All operations are local-first and advisory. Preview/save do not contact external sources for content and never start sync.
-        Outlook/Calendar project matching is optional and false by default (index safely, match after ingestion).
+        Reviewing or saving project selections does not start updates.
       </div>
     </div>
   );
+}
+
+function labelSource(value: unknown) {
+  const text = String(value || 'source').replace(/_/g, ' ')
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+function labelStatus(value: unknown) {
+  const status = String(value || 'unknown')
+  if (status.includes('pending')) return 'Waiting for update approval'
+  if (status.includes('approved')) return 'Approved'
+  if (status.includes('rejected')) return 'Needs review'
+  if (status === 'unknown') return 'Status unavailable'
+  return status.replace(/_/g, ' ')
 }

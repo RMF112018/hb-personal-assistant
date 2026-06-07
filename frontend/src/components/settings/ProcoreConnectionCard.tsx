@@ -10,16 +10,6 @@ import {
 } from '../../lib/api';
 import { ErrorState } from '../ui/ErrorState';
 
-/**
- * Prompt D — Procore connection card.
- * - Drives the normalized OAuth start + (callback or manual code) flow.
- * - Start returns a safe authorization_url. Primary UX: "Open Procore to authorize" (opens the URL).
- * - Backend callback (or manual exchange) completes the server-side token handling.
- * - This card polls status; on terminal success the parent refreshes accounts/readiness for verified state.
- * - Manual code fallback is shown when the start response indicates it is available (oob or when registered redirect requires it).
- * - Disconnect is local-cache only.
- * - Never renders tokens, codes (beyond the one the user pastes for manual), state values, cache paths, or raw Procore payloads.
- */
 export function ProcoreConnectionCard({
   procoreStatus,
   onComplete,

@@ -9,16 +9,6 @@ import {
 } from '../../lib/api';
 import { ErrorState } from '../ui/ErrorState';
 
-/**
- * Prompt D — Microsoft 365 (Graph) connection card.
- * - Drives the normalized device-code flow.
- * - Shows current status badge from parent-provided slice (safe fields only).
- * - On start: displays the one-time user_code (large, copyable) + verification link.
- * - Polls status until terminal (complete/expired/failed) or unmount.
- * - On success: shows safe account hint (display/tenant/expiry) if present in status or via parent refresh.
- * - Disconnect is local-cache only.
- * - Never renders tokens, refresh tokens, cache paths, or raw payloads.
- */
 export function GraphConnectionCard({
   graphStatus,
   onComplete,
@@ -117,7 +107,7 @@ export function GraphConnectionCard({
   return (
     <div className={compact ? 'text-xs' : ''}>
       <div className="font-medium mb-1 flex items-center gap-2">
-        Microsoft 365 (Graph)
+        Microsoft 365
         <span className="badge">{currentAuthStatus.replace(/_/g, ' ')}</span>
       </div>
 

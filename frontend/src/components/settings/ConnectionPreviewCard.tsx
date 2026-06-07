@@ -1,15 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ErrorState } from '../ui/ErrorState';
+import { TechnicalDetails } from '../common/TechnicalDetails';
+import { safeDisplayText } from '../../lib/errorCopy';
 
-/**
- * Prompt E — Connection Preview Card.
- * Renders a sanitized preview result from /api/settings/connections/projects/preview.
- * - Shows detected type, proposed safe metadata (ids, urls, names, policies).
- * - Explicitly states "Preview complete. No sync has started." and admin approval requirement.
- * - Warnings are advisory only (e.g. large OneDrive scope).
- * - Provides a "Save connection" action when ready (wired by parent panel).
- * Never renders raw external payloads, tokens, or secrets.
- */
 export function ConnectionPreviewCard({
   preview,
   onSave,
@@ -30,45 +23,38 @@ export function ConnectionPreviewCard({
   const warnings: string[] = preview.warnings || [];
   const firstSync = preview.first_sync_status || 'pending_admin_approval';
   const adminReq = preview.admin_approval_required !== false;
-
-  function safeText(v: any): string {
-    if (v == null) return '';
-    if (typeof v === 'string') return v;
-    try { return JSON.stringify(v); } catch { return String(v); }
-  }
+  const title = proposed.source_name || proposed.project_name || proposed.project_key || preview.message || 'Project selection'
 
   return (
     <div className="card mt-3">
       <div className="font-medium mb-1 flex items-center gap-2">
-        Preview result
-        <span className={`badge ${ready ? 'badge-fresh' : 'badge-stale'}`}>{status}</span>
-        <span className="badge badge-muted">{detected}</span>
+        Review result
+        <span className={`badge ${ready ? 'badge-fresh' : 'badge-stale'}`}>{ready ? 'Ready to save' : 'Needs review'}</span>
+        <span className="badge badge-muted">{labelSource(detected)}</span>
       </div>
 
-      {preview.message && <div className="text-xs mb-1">{preview.message}</div>}
+      <div className="text-xs mb-1">{safeDisplayText(title, 'Project selection ready for review.')}</div>
 
       <div className="text-xs mb-2">
-        <div><strong>Preview complete. No sync has started.</strong></div>
-        {adminReq && <div>First sync requires admin approval (pending_admin_approval).</div>}
-        {firstSync && <div>first_sync_status: {firstSync}</div>}
+        <div><strong>Review complete. No updates have started.</strong></div>
+        {adminReq && <div>Request update approval before new data appears.</div>}
+        {firstSync && <div>{labelStatus(firstSync)}</div>}
       </div>
 
       {Object.keys(proposed).length > 0 && (
-        <div className="text-xs mb-2">
-          <div className="font-medium mb-0.5">Proposed source (safe metadata)</div>
-          <div className="bg-[var(--hb-bg)] border border-[var(--hb-border)] rounded p-2 font-mono text-[10px] whitespace-pre-wrap">
-            {Object.entries(proposed).map(([k, v]) => `${k}: ${safeText(v)}`).join('\n')}
-          </div>
-        </div>
+        <TechnicalDetails
+          summary="Advanced details"
+          details={Object.entries(proposed).map(([key, value]) => `${key}: ${safeDisplayText(value)}`).join('\n')}
+          className="mb-2 text-xs"
+        />
       )}
 
       {warnings.length > 0 && (
-        <div className="text-xs mb-2">
-          <div className="font-medium mb-0.5">Warnings</div>
-          <ul className="list-disc ml-4">
-            {warnings.map((w, i) => <li key={i}>{w}</li>)}
-          </ul>
-        </div>
+        <TechnicalDetails
+          summary="Warnings"
+          details={warnings.join('\n')}
+          className="mb-2 text-xs"
+        />
       )}
 
       <ErrorState message={saveError || null} />
@@ -79,13 +65,26 @@ export function ConnectionPreviewCard({
           onClick={onSave}
           disabled={saving}
         >
-          {saving ? 'Saving…' : 'Save connection'}
+          {saving ? 'Saving...' : 'Save project selections'}
         </button>
       )}
 
       <div className="advisory mt-2">
-        Preview is local metadata only. Save persists configuration and queues for admin first-sync approval. No external data is fetched or written during preview/save.
+        Reviewing and saving project selections does not start updates.
       </div>
     </div>
   );
+}
+
+function labelSource(value: unknown) {
+  const text = String(value || 'source').replace(/_/g, ' ')
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+function labelStatus(value: unknown) {
+  const status = String(value || '')
+  if (status.includes('pending')) return 'Waiting for update approval.'
+  if (status.includes('approved')) return 'Approved for updates.'
+  if (status.includes('rejected')) return 'Needs review.'
+  return ''
 }
