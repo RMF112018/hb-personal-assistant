@@ -12,7 +12,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
   const location = useLocation()
 
   // Simple construction-facing header title (advisory posture)
-  const headerTitle = 'HB Analytics'
+  const headerTitle = 'Personal Assistant'
 
   return (
     <div className="h-[100dvh] overflow-hidden flex bg-[var(--hb-bg)] text-[var(--hb-text)]">
@@ -97,5 +97,5 @@ function getPageTitle(path: string): string {
   if (path.startsWith('/settings')) return 'Settings'
   // Prompt D
   if (path.startsWith('/get-started')) return 'Get Started'
-  return 'HB Analytics'
+  return 'Personal Assistant'
 }
