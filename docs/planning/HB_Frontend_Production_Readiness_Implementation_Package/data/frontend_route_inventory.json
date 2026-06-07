@@ -1,0 +1,483 @@
+{
+  "generated_utc": "2026-06-07T07:17:24.406486+00:00",
+  "branch": "main",
+  "audited_head": "be470af1326c82b4c78be6103969e6a0622067be",
+  "frontend_routes": [
+    {
+      "path": "/",
+      "component": "Navigate -> /today",
+      "status": "implemented"
+    },
+    {
+      "path": "/today",
+      "component": "TodayPage",
+      "status": "implemented"
+    },
+    {
+      "path": "/projects",
+      "component": "ProjectsPage",
+      "status": "implemented"
+    },
+    {
+      "path": "/projects/all",
+      "component": "ProjectDashboardPage",
+      "status": "implemented"
+    },
+    {
+      "path": "/projects/all/meetings",
+      "component": "ProjectMeetingsPage",
+      "status": "implemented_but_shape_risk"
+    },
+    {
+      "path": "/projects/all/field-operations",
+      "component": "ProjectFieldOperationsPage",
+      "status": "implemented_but_shape_risk"
+    },
+    {
+      "path": "/projects/all/cost-time",
+      "component": "ProjectCostTimePage",
+      "status": "implemented_but_shape_risk"
+    },
+    {
+      "path": "/projects/:projectKey",
+      "component": "ProjectDashboardPage",
+      "status": "implemented"
+    },
+    {
+      "path": "/projects/:projectKey/meetings",
+      "component": "ProjectMeetingsPage",
+      "status": "implemented_but_shape_risk"
+    },
+    {
+      "path": "/projects/:projectKey/field-operations",
+      "component": "ProjectFieldOperationsPage",
+      "status": "implemented_but_shape_risk"
+    },
+    {
+      "path": "/projects/:projectKey/cost-time",
+      "component": "ProjectCostTimePage",
+      "status": "implemented_but_shape_risk"
+    },
+    {
+      "path": "/my-items",
+      "component": "MyItemsPage",
+      "status": "implemented_but_api_404_risk"
+    },
+    {
+      "path": "/admin",
+      "component": "AdminDataConfidencePage",
+      "status": "implemented_admin_403_ux_risk"
+    },
+    {
+      "path": "/settings",
+      "component": "SettingsPage",
+      "status": "implemented_polish_gaps"
+    },
+    {
+      "path": "/chat",
+      "component": null,
+      "status": "not_implemented_by_design"
+    }
+  ],
+  "backend_routes": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "role": "viewer+",
+      "source": "api.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/chat/status",
+      "role": "viewer+",
+      "source": "api.py",
+      "status": "implemented_disabled"
+    },
+    {
+      "method": "GET",
+      "path": "/onboarding/auth/status",
+      "role": "viewer+",
+      "source": "api.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/graph/status",
+      "role": "viewer+",
+      "source": "api.py",
+      "status": "implemented"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/graph/device-login/start",
+      "role": "operator+",
+      "source": "api.py",
+      "status": "implemented_auth_setup"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/graph/device-login/complete",
+      "role": "operator+",
+      "source": "api.py",
+      "status": "implemented_auth_setup"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/procore/status",
+      "role": "viewer+",
+      "source": "api.py",
+      "status": "implemented"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/procore/oauth/start",
+      "role": "operator+",
+      "source": "api.py",
+      "status": "implemented_auth_setup"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/procore/oauth/exchange",
+      "role": "operator+",
+      "source": "api.py",
+      "status": "implemented_auth_setup"
+    },
+    {
+      "method": "POST",
+      "path": "/connections/preview",
+      "role": "viewer+",
+      "source": "api.py/connection_setup.py",
+      "status": "implemented_no_live_sync"
+    },
+    {
+      "method": "POST",
+      "path": "/connections/save",
+      "role": "operator+",
+      "source": "api.py/connection_setup.py",
+      "status": "implemented_local_write_only"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/connections/{connection_id}/approve-first-sync",
+      "role": "admin",
+      "source": "api.py/connection_setup.py",
+      "status": "implemented_admin_only_no_sync_trigger"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/projects/{project_key}/sync-schedule",
+      "role": "admin",
+      "source": "api.py/connection_setup.py",
+      "status": "implemented_admin_only"
+    },
+    {
+      "method": "GET",
+      "path": "/projects/{project_key}/keywords",
+      "role": "viewer+",
+      "source": "api.py/project_keywords.py",
+      "status": "implemented"
+    },
+    {
+      "method": "POST",
+      "path": "/projects/{project_key}/keywords",
+      "role": "operator+",
+      "source": "api.py/project_keywords.py",
+      "status": "implemented"
+    },
+    {
+      "method": "PATCH",
+      "path": "/projects/{project_key}/keywords/{keyword_id}",
+      "role": "operator+",
+      "source": "api.py/project_keywords.py",
+      "status": "implemented"
+    },
+    {
+      "method": "DELETE",
+      "path": "/projects/{project_key}/keywords/{keyword_id}",
+      "role": "operator+",
+      "source": "api.py/project_keywords.py",
+      "status": "implemented"
+    },
+    {
+      "method": "POST",
+      "path": "/projects/{project_key}/keywords/explain",
+      "role": "viewer+",
+      "source": "api.py/project_keywords.py",
+      "status": "implemented"
+    },
+    {
+      "method": "POST",
+      "path": "/projects/{project_key}/refresh-request",
+      "role": "operator+",
+      "source": "api.py/connection_setup.py",
+      "status": "implemented_no_live_sync"
+    },
+    {
+      "method": "GET",
+      "path": "/projects/{project_key}/sync-freshness",
+      "role": "viewer+",
+      "source": "api.py/connection_setup.py",
+      "status": "implemented_local_state"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/sync/pending-approvals",
+      "role": "admin",
+      "source": "api.py/connection_setup.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/today",
+      "role": "viewer+",
+      "source": "api.py/service.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/today/changes",
+      "role": "viewer+",
+      "source": "api.py/service.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/today/meetings",
+      "role": "viewer+",
+      "source": "api.py/service.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/today/action-items",
+      "role": "viewer+",
+      "source": "api.py/service.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/today/portfolio-signals",
+      "role": "viewer+",
+      "source": "api.py/service.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/portfolio",
+      "role": "viewer+",
+      "source": "api.py/service.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/all/overview",
+      "role": "viewer+",
+      "source": "api.py/service.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/{project_key}/overview",
+      "role": "viewer+",
+      "source": "api.py/service.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/{project_key}/meetings",
+      "role": "viewer+",
+      "source": "api.py/service.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/{project_key}/field-operations",
+      "role": "viewer+",
+      "source": "api.py/service.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/{project_key}/cost-time",
+      "role": "viewer+",
+      "source": "api.py/service.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/my-items",
+      "role": "viewer+",
+      "source": "api.py/service.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/daily-brief/status",
+      "role": "viewer+",
+      "source": "api.py/daily_brief.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/daily-brief/latest",
+      "role": "viewer+",
+      "source": "api.py/daily_brief.py",
+      "status": "implemented"
+    },
+    {
+      "method": "POST",
+      "path": "/api/daily-brief/configure",
+      "role": "operator+",
+      "source": "api.py/daily_brief.py",
+      "status": "implemented_local_config"
+    },
+    {
+      "method": "POST",
+      "path": "/api/daily-brief/generate-setup-instructions",
+      "role": "operator+",
+      "source": "api.py/daily_brief.py",
+      "status": "implemented_pure"
+    },
+    {
+      "method": "POST",
+      "path": "/api/daily-brief/validate-output-folder",
+      "role": "operator+",
+      "source": "api.py/daily_brief.py",
+      "status": "implemented_local_fs_check"
+    },
+    {
+      "method": "POST",
+      "path": "/api/daily-brief/detect-latest",
+      "role": "viewer+",
+      "source": "api.py/daily_brief.py",
+      "status": "implemented_local_fs_read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/today/daily-brief",
+      "role": "viewer+",
+      "source": "api.py/service.py/daily_brief.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings",
+      "role": "viewer+",
+      "source": "api.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/accounts",
+      "role": "viewer+",
+      "source": "api.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/projects",
+      "role": "viewer+",
+      "source": "api.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/sources",
+      "role": "viewer+",
+      "source": "api.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/keywords",
+      "role": "viewer+",
+      "source": "api.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/daily-brief",
+      "role": "viewer+",
+      "source": "api.py/daily_brief.py",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/preferences",
+      "role": "viewer+",
+      "source": "api.py",
+      "status": "implemented_stub"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/preferences",
+      "role": "viewer+",
+      "source": "api.py",
+      "status": "implemented_echo_stub"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/admin-sync",
+      "role": "admin",
+      "source": "api.py",
+      "status": "implemented_admin_only"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/admin",
+      "role": "admin",
+      "source": "api.py",
+      "status": "implemented_echo_stub"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin",
+      "role": "admin",
+      "source": "api.py/service.py",
+      "status": "implemented_admin_only"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/source-sync-health",
+      "role": "admin",
+      "source": "api.py/service.py",
+      "status": "implemented_admin_only"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/workflow-job-health",
+      "role": "admin",
+      "source": "api.py/service.py",
+      "status": "implemented_admin_only"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/evidence-guardrails",
+      "role": "admin",
+      "source": "api.py/service.py",
+      "status": "implemented_admin_only"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/retrieval-ai-quality",
+      "role": "admin",
+      "source": "api.py/service.py",
+      "status": "implemented_admin_only"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/permissions-governance",
+      "role": "admin",
+      "source": "api.py/service.py",
+      "status": "implemented_admin_only"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/data-completeness",
+      "role": "admin",
+      "source": "api.py/service.py",
+      "status": "implemented_admin_only"
+    }
+  ]
+}

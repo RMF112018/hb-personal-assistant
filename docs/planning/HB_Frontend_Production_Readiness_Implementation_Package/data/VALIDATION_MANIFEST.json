@@ -1,0 +1,34 @@
+{
+  "generated_utc": "2026-06-07T07:17:24.406486+00:00",
+  "base_path": "/mnt/data/frontend-production-readiness-audit/docs/evidence/frontend-production-readiness-audit",
+  "required_files_present": {
+    "00_EXECUTIVE_SUMMARY.md": true,
+    "01_REPO_TRUTH_BASELINE.md": true,
+    "02_BACKEND_FASTAPI_AUDIT.md": true,
+    "03_FRONTEND_STRUCTURE_AND_LAUNCH_AUDIT.md": true,
+    "04_CM_FIRST_UX_AUDIT.md": true,
+    "05_ROUTE_AND_API_ALIGNMENT_AUDIT.md": true,
+    "06_SETTINGS_CONNECTIONS_DAILY_BRIEF_AUDIT.md": true,
+    "07_TESTING_AND_VALIDATION_RESULTS.md": true,
+    "08_PRODUCTION_READINESS_GAP_REGISTER.md": true,
+    "09_IMPLEMENTATION_PLAN.md": true,
+    "10_NEXT_PROMPTS.md": true,
+    "frontend_production_readiness_gap_register.json": true,
+    "frontend_route_inventory.json": true,
+    "frontend_api_call_inventory.json": true
+  },
+  "json_parse_ok": {
+    "frontend_production_readiness_gap_register.json": true,
+    "frontend_route_inventory.json": true,
+    "frontend_api_call_inventory.json": true
+  },
+  "source_code_modified": false,
+  "frontend_source_modified": false,
+  "backend_source_modified": false,
+  "migration_files_modified": false,
+  "operator_db_writes": false,
+  "live_external_apis_called": false,
+  "notes": [
+    "Generated local audit evidence package only; no repository checkout was modified. GitHub connector was used read-only for repo truth."
+  ]
+}

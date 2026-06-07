@@ -1,0 +1,301 @@
+{
+  "generated_utc": "2026-06-07T07:17:24.406486+00:00",
+  "branch": "main",
+  "audited_head": "be470af1326c82b4c78be6103969e6a0622067be",
+  "api_calls": [
+    {
+      "method": "GET",
+      "path": "/api/today",
+      "backend_implemented": "yes",
+      "frontend_surface": "TodayPage",
+      "alignment": "compatible"
+    },
+    {
+      "method": "GET",
+      "path": "/api/today/important",
+      "backend_implemented": "no",
+      "frontend_surface": "api.ts exported only",
+      "alignment": "unused_export_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/today/changes",
+      "backend_implemented": "yes",
+      "frontend_surface": "TodayPage",
+      "alignment": "compatible"
+    },
+    {
+      "method": "GET",
+      "path": "/api/today/meetings",
+      "backend_implemented": "yes",
+      "frontend_surface": "TodayPage",
+      "alignment": "compatible"
+    },
+    {
+      "method": "GET",
+      "path": "/api/today/action-items",
+      "backend_implemented": "yes",
+      "frontend_surface": "TodayPage",
+      "alignment": "compatible"
+    },
+    {
+      "method": "GET",
+      "path": "/api/today/portfolio-signals",
+      "backend_implemented": "yes",
+      "frontend_surface": "TodayPage",
+      "alignment": "compatible"
+    },
+    {
+      "method": "GET",
+      "path": "/api/today/daily-brief",
+      "backend_implemented": "yes",
+      "frontend_surface": "TodayPage",
+      "alignment": "compatible"
+    },
+    {
+      "method": "GET",
+      "path": "/api/daily-brief/status",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "compatible"
+    },
+    {
+      "method": "GET",
+      "path": "/api/daily-brief/latest",
+      "backend_implemented": "yes",
+      "frontend_surface": "api.ts",
+      "alignment": "compatible"
+    },
+    {
+      "method": "POST",
+      "path": "/api/daily-brief/configure",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "compatible"
+    },
+    {
+      "method": "POST",
+      "path": "/api/daily-brief/generate-setup-instructions",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "compatible"
+    },
+    {
+      "method": "POST",
+      "path": "/api/daily-brief/validate-output-folder",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "compatible"
+    },
+    {
+      "method": "POST",
+      "path": "/api/daily-brief/detect-latest",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "compatible"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/portfolio",
+      "backend_implemented": "yes",
+      "frontend_surface": "ProjectsPage",
+      "alignment": "shape_mismatch_project_list"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/all/overview",
+      "backend_implemented": "yes",
+      "frontend_surface": "ProjectDashboardPage",
+      "alignment": "partial_shape_mismatch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/{project_key}/overview",
+      "backend_implemented": "yes",
+      "frontend_surface": "ProjectDashboardPage",
+      "alignment": "partial_shape_mismatch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/{project_key}/meetings",
+      "backend_implemented": "yes",
+      "frontend_surface": "ProjectMeetingsPage",
+      "alignment": "shape_crash_risk"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/{project_key}/field-operations",
+      "backend_implemented": "yes",
+      "frontend_surface": "ProjectFieldOperationsPage",
+      "alignment": "shape_crash_risk"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/{project_key}/cost-time",
+      "backend_implemented": "yes",
+      "frontend_surface": "ProjectCostTimePage",
+      "alignment": "shape_crash_risk"
+    },
+    {
+      "method": "GET",
+      "path": "/api/my-items",
+      "backend_implemented": "yes",
+      "frontend_surface": "MyItemsPage",
+      "alignment": "compatible_but_underused"
+    },
+    {
+      "method": "GET",
+      "path": "/api/my-items/action-items",
+      "backend_implemented": "no",
+      "frontend_surface": "MyItemsPage",
+      "alignment": "404_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/my-items/meetings",
+      "backend_implemented": "no",
+      "frontend_surface": "MyItemsPage",
+      "alignment": "404_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/my-items/correspondence",
+      "backend_implemented": "no",
+      "frontend_surface": "MyItemsPage",
+      "alignment": "404_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/my-items/files",
+      "backend_implemented": "no",
+      "frontend_surface": "MyItemsPage",
+      "alignment": "404_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/my-items/followed-projects",
+      "backend_implemented": "no",
+      "frontend_surface": "MyItemsPage",
+      "alignment": "404_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin",
+      "backend_implemented": "yes",
+      "frontend_surface": "AdminDataConfidencePage",
+      "alignment": "role_403_ux_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/source-sync-health",
+      "backend_implemented": "yes",
+      "frontend_surface": "AdminDataConfidencePage",
+      "alignment": "role_403_ux_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/workflow-job-health",
+      "backend_implemented": "yes",
+      "frontend_surface": "AdminDataConfidencePage",
+      "alignment": "role_403_ux_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/evidence-guardrails",
+      "backend_implemented": "yes",
+      "frontend_surface": "AdminDataConfidencePage",
+      "alignment": "role_403_ux_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/retrieval-ai-quality",
+      "backend_implemented": "yes",
+      "frontend_surface": "AdminDataConfidencePage",
+      "alignment": "role_403_ux_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/permissions-governance",
+      "backend_implemented": "yes",
+      "frontend_surface": "AdminDataConfidencePage",
+      "alignment": "role_403_ux_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/data-completeness",
+      "backend_implemented": "yes",
+      "frontend_surface": "AdminDataConfidencePage",
+      "alignment": "role_403_ux_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings",
+      "backend_implemented": "yes",
+      "frontend_surface": "api.ts",
+      "alignment": "compatible"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/accounts",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "raw_json_ux_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/projects",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "raw_json_ux_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/sources",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "raw_json_ux_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/keywords",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "raw_json_ux_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/daily-brief",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "raw_json_ux_gap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/preferences",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "stub"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/admin-sync",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "admin_only"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/preferences",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "echo_stub"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/admin",
+      "backend_implemented": "yes",
+      "frontend_surface": "SettingsPage",
+      "alignment": "echo_stub"
+    }
+  ]
+}

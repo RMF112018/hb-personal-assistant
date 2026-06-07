@@ -1,0 +1,43 @@
+{
+  "backend_commands": [
+    "python -m pytest tests/test_fastapi_analytics_app_shell.py",
+    "python -m pytest tests/test_fastapi_analytics_dashboard_read_models.py",
+    "python -m pytest tests/test_fastapi_analytics_daily_brief.py",
+    "python -m pytest tests/test_fastapi_analytics_settings.py",
+    "python -m pytest tests/test_fastapi_analytics_connection_setup.py",
+    "python -m pytest tests/test_fastapi_analytics_today.py",
+    "python -m ruff check src/hb_assistant/construction/analytics tests/test_fastapi_analytics_app_shell.py tests/test_fastapi_analytics_dashboard_read_models.py tests/test_fastapi_analytics_daily_brief.py tests/test_fastapi_analytics_settings.py tests/test_fastapi_analytics_connection_setup.py tests/test_fastapi_analytics_today.py",
+    "python -m mypy src/hb_assistant/construction/analytics"
+  ],
+  "frontend_commands": [
+    "npm install",
+    "npm run lint",
+    "npm run typecheck",
+    "npm run build"
+  ],
+  "browser_routes": [
+    "/",
+    "/today",
+    "/projects",
+    "/projects/all/overview",
+    "/projects/all/meetings",
+    "/projects/all/field-operations",
+    "/projects/all/cost-time",
+    "/my-items",
+    "/admin",
+    "/settings",
+    "/chat"
+  ],
+  "roles": [
+    "viewer",
+    "operator",
+    "admin"
+  ],
+  "guardrails": [
+    "no active chat",
+    "no writeback",
+    "no raw/secrets serialization",
+    "no setup-triggered live sync",
+    "admin stays admin-only"
+  ]
+}
