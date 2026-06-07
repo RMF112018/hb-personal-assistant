@@ -133,4 +133,4 @@ This document records the Prompt 11 / UI-11 implementation. Later phases (UI-12 
 - Architecture documentation updated (`docs/architecture/179-fastapi-admin-data-confidence.md`).
 - Verification suite run (Python analytics gate + targeted + safe subset; frontend lint/tsc/build; manual smoke of the 6 sections + role + no-raw + links).
 - Traditional commit prepared with appropriate manifest title + "Prompt 11 / UI-11" description.
-- Only the commit summary and description are output as the final result.
+- Only the commit summary and description are output as the final result.See Prompt 25 runbook and INDEX for the packaged local smoke (FPR-018 final) and final evidence summary. Cite prompt-25-documentation-runbook-packaging-closeout.md.

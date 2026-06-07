@@ -45,3 +45,4 @@ determinations. Active chat remains disabled and inaccessible.
 skips; with `analytics-ui` installed it verifies health, OpenAPI route inventory,
 role handling, disabled chat status, inaccessible active-chat routes, and
 metadata-only output.
+See Prompt 25 runbook and INDEX for the packaged local smoke (FPR-018 final) and final evidence summary. Cite prompt-25-documentation-runbook-packaging-closeout.md.

@@ -67,3 +67,12 @@ See the plan and `src/app/`, `src/layouts/`, `src/navigation/`, `src/pages/`, `s
 
 ## Next (future prompts)
 UI-09+ will flesh out richer panel content, real-time query usage in all pages, project selector, more charts, and full Daily Brief polished renderer while keeping the same nav + route + guardrail contract.
+
+## Prompt 25 packaging note (FPR-018 final)
+
+Prompt 25 packaged the final consumable local smoke instructions and evidence index so a new developer can follow from the repo docs:
+- Runbook: `docs/runbooks/frontend-local-analytics-smoke.md` (prerequisites, one-command scripted path via the P23 harness, two-terminal visual checklist from the 07 plan with role switching and "no expected 404s / console clean / /chat inaccessible", Settings/Daily Brief/Admin flows, capture instructions, known limitations, and guardrails re-statement).
+- Evidence index: `docs/evidence/frontend-production-readiness-implementation/INDEX.md` (or FINAL_EVIDENCE_INDEX.md) listing the Prompt 16–25 sequence, key artifacts (harness, synthetic fixtures + mutation proof, safety scan receipt, ErrorBoundary, vitest tests, all closeouts, 00_PREFLIGHT), and gaps status.
+- FPR-015 (charts) remains the main deferred P3 item (recharts is present in package.json but unused in src; no implementation or UX added in the 16–25 sequence). All docs distinguish implemented behavior from planned/future. No over-claims.
+
+After any change affecting launch or smoke paths, re-run the scripted harness + the two-terminal visual checklist and update the relevant evidence.

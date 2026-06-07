@@ -159,3 +159,4 @@ Today read model family and separate /daily-brief/* family both surface the same
 - Evidence/ops: metrics "Daily Brief Run Health", table inventory (legacy daily_brief_* tables are second-brain, not this UI presenter), validation_contract "daily_brief_markdown_presenter_only".
 
 This doc records the Prompt 10 / UI-10 implementation. Later phases (UI-11 Admin, UI-12 full Settings, UI-13 closeout) may consolidate config or add receipts; changes will be additive and will reference this baseline.
+See Prompt 25 runbook and INDEX for the packaged local smoke (FPR-018 final) and final evidence summary. Cite prompt-25-documentation-runbook-packaging-closeout.md.

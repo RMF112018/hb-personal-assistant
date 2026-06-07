@@ -100,3 +100,15 @@ Earlier remediation-addendum and Phase 14 evidence remains in-tree at its origin
 - `docs/evidence/remediation-addendum/`
 - `docs/evidence/phase-14-local-runtime-workstream-intelligence/`
 - `docs/evidence/remediation/remediation-baseline.md` (prior remediation baseline)
+
+## Local FastAPI Analytics Dashboard (command center)
+
+A local-first Vite/React/TypeScript/Tailwind command center (primary navigation: Today, Projects with contextual second-level tabs, My Items; support: Admin/Data Confidence (role-gated), Settings) built on the FastAPI analytics read-model shell.
+
+- Exact routes, navigation contract, data posture (advisory, CM-first, compact freshness/confidence badges, detailed diagnostics hidden on primary surfaces and linked to /admin), verification commands, and Daily Brief external-agent presenter-only posture are documented in `frontend/README.md`.
+- Packaged end-to-end local smoke instructions (FPR-018 final): see `docs/runbooks/frontend-local-analytics-smoke.md` (prerequisites, one-command scripted path via the P23 harness + `npm test` / build matrix, two-terminal visual checklist per the 07 plan with role switching, no expected 404s/console errors, /chat inaccessible, Settings/Daily Brief/Admin flows, capture instructions, known limitations, and guardrails re-statement).
+- Evidence index (Prompt 16–25 sequence, artifacts, gaps status): `docs/evidence/frontend-production-readiness-implementation/INDEX.md` (or FINAL_EVIDENCE_INDEX.md).
+- FPR-015 (charts) remains deferred (recharts present in package but unused in src; no implementation added in the 16–25 sequence). All documentation distinguishes implemented behavior from planned/future. No over-claims.
+
+All steps and docs preserve the core guardrails (read-only, local-first, no writeback, no raw/secrets serialization, chat disabled, local role = dev simulation only, construction-management-first language).
+

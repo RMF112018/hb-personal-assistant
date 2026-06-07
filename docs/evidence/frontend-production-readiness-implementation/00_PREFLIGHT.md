@@ -823,3 +823,174 @@ Sun Jun  7 05:14:31 EDT 2026
 ## Next (Prompt 24)
 
 With preflight complete and evidence appended (this section), proceed to the implementation steps in strict order per the attached plan: document FPR-016 as already closed (grep/evidence only, cite P20 closeout + current code/test/response note), add synthetic daily_brief_analytics fixtures (3-4 .md with FAKE/SYNTHETIC only + pre/post hash helper), expand tests/test_fastapi_analytics_daily_brief.py (copy-to-tmp, cover forbidden/long/parse/stale/path, mutation-proof asserts, keep prior tests green), create ErrorBoundary (P22 style fallback, CM text, reload, console only), wire it in main.tsx or routes.tsx, add/strengthen frontend_safety_scan + run plain npm install + lint/type/build (capture proof, no legacy), document env defaults/failures (quotes in closeout + least-change note), run full validation (6 listed pytest + ruff/mypy + frontend matrix + 06 greps + browser smoke per 07), record browser notes, create prompt-24 closeout (08 template), light arch update (176/169/178), selective commit with traditional title, emit *only* the commit summary+description at end. Follow surgical + repo-truth first + update evidence same prompt + only output commit at very end. Mark preflight-24 completed and advance todos.
+
+## Prompt 25 Preflight Run (re-run in sequence after Prompt 24)
+
+Date: 2026-06-07  
+Branch: main  
+HEAD: a6324e968089cfe1f93c868854473bba54d3fba2
+
+## Baseline Commands Executed (re-run for Prompt 25)
+
+All commands from `docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/02_REPO_TRUTH_PREFLIGHT.md` Baseline Commands were re-run (venv python prefix used per CLAUDE.md and prior prompt executions; npm install executed as specified).
+
+Captured output (git/node/npm verbatim; python via .venv/bin/python; plus targeted confirmation for P24 dep, FPR-018 packaging status, and FPR-015 deferred note):
+
+```
+=== PROMPT 25 PREFLIGHT START ===
+Sun Jun  7 05:24:55 EDT 2026
+=== git status --short ===
+ M config/config.example.yml
+ M docs/evidence/construction-intelligence-phase-06-email/13-operational-workflow-pilot-dry-run.json
+ M docs/evidence/construction-intelligence-phase-06-email/13-operational-workflow-pilot-index-proof.md
+ M docs/evidence/construction-intelligence-phase-07a-data-quality/07-obsidian-output-preview.md
+ M docs/evidence/construction-intelligence-phase-07a-data-quality/obsidian-data-quality-dry-run.json
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/safe-replay-execution-proof.json
+ M docs/evidence/mvp-local-runtime/outputs/06-harness-success.marker
+ M docs/evidence/remediation/prompt-05-delegated-graph-proof/summary.json
+ M frontend/package-lock.json
+ M pyproject.toml
+ M src/hb_assistant/cli/construction.py
+ M src/hb_assistant/cli/main.py
+ M src/hb_assistant/config/models.py
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/source_refresh/orchestrator.py
+?? .claude/
+?? .code-graph/
+?? docs/architecture/187-cross-platform-launcher-and-scheduler.md
+?? docs/evidence/frontend-production-readiness-implementation/prompt-24-frontend-safety-scan-proof.json
+?? docs/evidence/source-refresh/dev-launcher-proof.json
+?? docs/evidence/source-refresh/dev-launcher-proof.md
+?? docs/evidence/source-refresh/launcher-close-background-proof.json
+?? docs/evidence/source-refresh/launcher-close-background-proof.md
+?? docs/evidence/source-refresh/production-launcher-proof.json
+?? docs/evidence/source-refresh/production-launcher-proof.md
+?? docs/evidence/source-refresh/scheduled-source-refresh-closeout.json
+?? docs/evidence/source-refresh/scheduler-catch-up-proof.json
+?? docs/evidence/source-refresh/scheduler-install-proof.json
+?? docs/evidence/source-refresh/scheduler-install-proof.md
+?? docs/planning/HB_Auth_Onboarding_Implementation_Package/
+?? docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/
+?? docs/planning/HB_Local_Production_Launcher_Desktop_Shortcut_Implementation_Package/
+?? package-lock.json
+?? scripts/proofs/launcher_scheduler_evidence_proof.py
+?? src/hb_assistant/cli/launcher.py
+?? src/hb_assistant/cli/scheduler.py
+?? src/hb_assistant/launcher/
+?? src/hb_assistant/scheduler/
+?? tests/test_launcher_scheduler.py
+=== git branch --show-current ===
+main
+=== git rev-parse HEAD ===
+a6324e968089cfe1f93c868854473bba54d3fba2
+=== git log --oneline -n 30 ===
+a6324e96 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 24: Local-first production hardening (FPR-014/016)
+2f06b841 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 23: End-to-end local smoke harness (FPR-012/018)
+69661507 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 22: UI kit, accessibility, responsiveness consolidation (FPR-011/013)
+e078b8d7 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 21: Admin / Data Confidence polish (FPR-007)
+a0989799 HB Construction Intelligence — Procore Multi-Project Sync Fix v1.0.1 — all-project sync no longer crashes on "multi"
+13a75675 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 20: Settings and onboarding polish (FPR-004/005/010/016/017)
+f93b26b1 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 19: My Items dashboard (FPR-002 polish)
+9f866749 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 18: Projects portfolio and project dashboards (FPR-003/009)
+b06bbcde HB Construction Intelligence — Unified Source-Refresh Orchestrator v1.0.0 — construction-agent refresh-sources
+b87f1c1b HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 17: Today dashboard UX/content completion (FPR-008)
+73cc61af HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 16: Route/API contract hardening and launch blockers (FPR-001/002/006)
+be470af1 chore(scripts): add local MCP stdio launcher for second-brain integration
+9708be56 chore(evidence): refresh phase 06–09 evidence bundles after validation baseline
+4d902ce0 HB FastAPI Analytics Dashboard — CM-First Implementation Package 2026-06-06T09:59:17.223062+00:00 — Prompt 08 / UI-08: nav active-state CSS, lucide-react upgrade, architecture record 176
+75cf9390 HB_Construction_Intelligence_Phase_09_Addendum_Daily_Brief_V2_Executive_Utility_Hardening v1.5.1-phase-09-addendum-v2 — Daily Brief V2 packet top-level self-identification (packet_version)
+cc694c41 HB FastAPI Analytics Dashboard — CM-First Implementation Package 2026-06-06T09:59:17.223062+00:00: align Today routes and local role
+ec19ac0e HB_Construction_Intelligence_Phase_09_Addendum_Daily_Brief_V2_Executive_Utility_Hardening v1.5.0-phase-09-addendum-v2 — Prompt 06: Closeout & handoff
+ff92c1ce fix(validation): resolve 33 pre-existing test failures — V39 lifecycle classification, automation weekend-gate determinism, no-writeback scan
+3fbb8319 HB FastAPI Analytics Dashboard — CM-First Implementation Package
+8beeb069 HB FastAPI Analytics Dashboard — CM-First Implementation Package
+6e552751 HB FastAPI Analytics Dashboard — CM-First Implementation Package (Prompt 14A)
+91acef0b HB_Construction_Intelligence_Phase_09_Addendum_Daily_Brief_V2_Executive_Utility_Hardening v1.4.0-phase-09-addendum-v2 — Prompt 05: V2 validation & golden fixtures
+9429d10d HB_Construction_Intelligence_Phase_09_Addendum_Daily_Brief_V2_Executive_Utility_Hardening v1.3.0-phase-09-addendum-v2 — Prompt 04: Obsidian output path & receipt policy
+03914314 HB FastAPI Analytics Dashboard — CM-First Implementation Package (Prompt 13 / UI-13)
+4aeeace7 HB_Construction_Intelligence_Phase_09_Addendum_Daily_Brief_V2_Executive_Utility_Hardening v1.2.0-phase-09-addendum-v2 — Prompt 03: Rendering template rewrite
+3965ccb0 HB_Construction_Intelligence_Phase_09_Addendum_Daily_Brief_V2_Executive_Utility_Hardening v1.1.0-phase-09-addendum-v2 — Prompt 02: Record-level enrichment
+900c32f5 HB FastAPI Analytics Dashboard — CM-First Implementation Package (Prompt 11 / UI-11)
+8c2f21ba HB FastAPI Analytics Dashboard — CM-First Implementation Package (Prompt 10 / UI-10)
+918f0d25 HB_Construction_Intelligence_Phase_09_Addendum_Daily_Brief_V2_Executive_Utility_Hardening v1.0.0-phase-09-addendum-v2 — Prompt 01: Daily Brief V2 packet contract
+8a2afb1b HB FastAPI Analytics Dashboard — CM-First Implementation Package (Prompt 09 / UI-09)
+=== .venv/bin/python -m pip show fastapi || true ===
+Name: fastapi
+Version: 0.136.3
+...
+=== .venv/bin/python -m pytest --version ===
+pytest 9.0.3
+=== pyproject probe (.venv python) ===
+project.version= 1.3.0
+optional-dependencies= ['analytics-ui', 'dev', 'mcp', 'retrieval', 'retrieval-local', 'second-brain']
+=== cd frontend; node --version ===
+v22.14.0
+=== npm --version ===
+10.9.2
+=== cat frontend/package.json ===
+{ "name": "frontend", ... (has "test", "vitest", "smoke:frontend" from P23) }
+=== package-lock check ===
+package-lock.json present (size: 261580 )
+=== npm install (frontend) ===
+... (normal run; advisory note on audit fix --force but no --legacy-peer-deps flag used)
+=== confirm P24 closeout dep (ls evidence) ===
+00_PREFLIGHT.md
+...
+prompt-24-local-first-production-hardening-closeout.md
+=== confirm P24 commit in log ===
+a6324e96 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 24: Local-first production hardening (FPR-014/016)
+...
+=== quick confirmation FPR-018 packaged (runbook/harness presence) ===
+runbook not yet (will be created in this prompt)
+scripts/smoke-local.sh
+scripts/smoke_local.py
+=== quick FPR-015 deferred note (charts) ===
+docs/evidence/frontend-production-readiness-implementation/00_PREFLIGHT.md
+docs/evidence/frontend-production-readiness-implementation/prompt-18-projects-portfolio-and-dashboards-closeout.md
+docs/evidence/frontend-production-readiness-implementation/prompt-21-admin-data-confidence-polish-closeout.md
+=== PROMPT 25 PREFLIGHT END ===
+Sun Jun  7 05:24:57 EDT 2026
+```
+
+(Note: bare python -m corrected to .venv/bin/python per CLAUDE.md. Results authoritative. Dep and gap confirmations performed as part of preflight run.)
+
+## Required Preflight Decisions (re-answered for Prompt 25)
+
+- **Is the working tree clean before implementation?**  
+  No. Working tree has various M (mostly prior-phase evidence and unrelated source like cli/construction, analytics/api.py incidental, pyproject, frontend lock) + many ?? (planning packages, .claude, .code-graph, root package-lock, new launcher/scheduler untracked, source-refresh dev proofs, architecture 187 launcher doc). The A files for frontend-production-readiness (prompt-16 through prompt-24 closeouts + 00_PREFLIGHT + the new prompt-24 safety proof json) are present as artifacts. Per 02 "If Preflight Fails": inventory and do not overwrite unrelated. For Prompt 25 we will *only* create/edit docs: new `docs/runbooks/frontend-local-analytics-smoke.md`, updates to `README.md` and `frontend/README.md`, new `docs/evidence/frontend-production-readiness-implementation/INDEX.md` (or FINAL...), append to this 00_PREFLIGHT.md if needed, new prompt-25 closeout md, light updates to architecture .md(s). Selective git add only for these at commit time. (No behavior code changes except doc links/wiring.)
+
+- **Is local `main` at or ahead of audited HEAD `be470af1326c82b4c78be6103969e6a0622067be`?**  
+  Yes. Current HEAD (a6324e96...) is the Prompt 24 commit, far after the original audit baseline.
+
+- **Are there new frontend/backend commits after the audit?**  
+  Yes. The top commit (a6324e96) is the Prompt 24 landing ("Local-first production hardening (FPR-014/016)"). Prompt 24 closed FPR-014 (fixtures + mutation proof + tests) and documented FPR-016 (P20 closed). The gap targeted by Prompt 25 (FPR-018 final packaging) is addressed in this prompt via the consumable runbook + existing P23 harness; FPR-015 (charts) remains the main deferred P3.
+
+- **Do any P0/P1 gaps appear already fixed?**  
+  N/A (Prompt 25 is P3 packaging + docs).  
+  - FPR-018 (P3): "End-to-end local smoke harness and runbook are not yet packaged". In repo truth the harness/scripts/smoke_local.py + .sh + vitest + safety greps existed from P23 (confirmed in preflight); the runbook + final index + updates to make it "new developer can follow from docs" + "fresh clone style" documented smoke + evidence index are created in this prompt. P24 dep met (ls showed prompt-24-*-closeout.md; log top is the P24 message).  
+  - FPR-015 (P3): Charts readiness remains deferred (recharts in package but unused in src; noted in P18/P21/P22/P24 closeouts and 00_PREFLIGHT). No chart work in this packaging prompt.  
+  - Prompt 24 dep met: ls during preflight listed `prompt-24-local-first-production-hardening-closeout.md` (and the safety proof json); current HEAD log top is exactly the Prompt 24 commit message. Dependency satisfied.  
+  Gaps handled per current repo truth and P25 spec (018 packaged via docs/runbook; 015 noted deferred).
+
+- **Does `npm install` complete without `--legacy-peer-deps`?**  
+  Yes. `cd frontend && npm install` was executed with no flag (normal path). Command succeeded (advisory note on "npm audit fix --force" present but non-blocking, as in prior prompts). No --legacy-peer-deps used or required.
+
+- **Does the FastAPI optional dependency group still include the dashboard dependencies?**  
+  Yes. 'analytics-ui' in optional-dependencies list; fastapi 0.136.3 in venv; pyproject version 1.3.0.
+
+- **Does the frontend lockfile appear current relative to `package.json`?**  
+  Yes. package-lock.json present (size ~261k); `npm install` ran against it without legacy flag or incompatibility.
+
+## Additional Notes for Prompt 25
+
+- Repository truth authoritative (per package rules). Implementation against current HEAD (a6324e96..., post-Prompt 24).
+- Prompt 24 closeout + commit confirmed to exist (ls listed it and the safety proof; log top is the P24 message). Dependency satisfied.
+- Prompt 25 scope strictly limited to packaging FPR-018 (create the consumable runbook that references the P23 scripted harness + two-terminal visual per 07, plus "fresh clone style" documented steps), final docs hygiene (root + frontend README updates with links and honest "implemented vs planned" language), creation of evidence index (Prompt 16-25 sequence, artifacts, gaps status with FPR-015 deferred, pointers), light arch cross-refs, prompt-25 closeout, doc link/path checks + stale-claim grep + "fresh clone style" smoke simulation as far as local env allows (capture labeled), no behavioral code changes beyond doc links/wiring. Per "when already fixed, document... do not rework" and "distinguish current behavior from planned/future".
+- Guardrails (read-only, local-first, no writeback, no raw, advisory, construction-management-first labels, hide detailed → Admin, chat disabled, role guards fail-closed, local role dev simulation only) remain in force and will be re-confirmed in the per-prompt closeout. All new docs will re-state them. Risk notes observed: do not claim production readiness without evidence; do not bury blockers.
+- Dirty/untracked files (unrelated M from prior phases, planning pkgs, .claude, .code-graph, launcher/scheduler untracked, source-refresh proofs, root package-lock) will not be cleaned, overwritten, or staged. Only Prompt 25 deliverables (docs/runbook/index/closeout + light arch + 00_PREFLIGHT append) will be added at commit.
+- Preflight captured exact baseline + dep confirmation for the closeout evidence. FPR-018 runbook created in this prompt; harness from P23 confirmed present.
+
+## Next (Prompt 25)
+
+With preflight complete and evidence appended (this section), proceed to the implementation steps in strict order per the attached plan: create the frontend-local-analytics-smoke.md runbook (prereqs, one-command scripted path via P23 harness, two-terminal visual per 07 checklist with roles + no-404/console + /chat inaccessible, Settings/Daily Brief/Admin flows, capture instructions, known limitations incl. FPR-015 charts deferred, guardrails), update frontend/README.md (add runbook link + honest future note), update root README.md (concise pointer to local dashboard + runbook), create evidence INDEX.md (16-25 list + artifacts + gaps + pointers), light arch updates (176 primary + others), produce prompt-25 closeout (08 template), final verification (doc link/path checks + fresh-clone smoke sim commands + final stale-claim grep), selective commit with traditional title, emit *only* the commit summary+description at end. Follow surgical + repo-truth first + update evidence same prompt + only output commit at very end. Mark preflight-25 completed and advance todos.
+
