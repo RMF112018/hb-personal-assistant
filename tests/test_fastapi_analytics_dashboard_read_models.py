@@ -123,12 +123,20 @@ def test_my_items_viewer_ok(tmp_path: Path) -> None:
     assert r.status_code == 200
     p = r.json()
     assert p["surface"] == "analytics.my_items"
-    assert "sections" in p and "my_action_items" in p["sections"]
-    # Prompt 16: object envelope (not bare array); metric_cards/attention_items are lists; no root 'items' for my-items
+    # Prompt 16/19: object envelope (not bare array); 5 canonical sections present; explicit per-section arrays are lists.
+    assert "sections" in p
+    for sec in ("my_action_items", "my_meetings", "my_correspondence", "my_files", "my_followed_projects"):
+        assert sec in p["sections"]
     assert isinstance(p.get("metric_cards"), list)
     assert isinstance(p.get("attention_items"), list)
+    # Prompt 19: explicit section arrays for queue rendering (in addition to attention_items)
+    for k in ("my_action_items", "my_meetings", "my_correspondence", "my_files", "my_followed_projects"):
+        assert isinstance(p.get(k), list)
+    assert "project_keys" in p and isinstance(p.get("project_keys"), list)
     assert not isinstance(p, list)
     assert "items" not in p or isinstance(p.get("items"), (dict, list))  # today-compat only use 'items'
+    # freshness/confidence and empty handling are exercised by service + other tests
+    assert "freshness" in p and "confidence_summary" in p
     _assert_safe(p)
 
 

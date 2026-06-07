@@ -902,11 +902,14 @@ class AnalyticsService:
     def build_my_items(self) -> dict[str, Any]:
         generated = _utc_now()
         project_keys = self._project_keys()
+        has_projects = bool(project_keys)
+
+        # Expanded metric cards for the filtered user queue (gated on presence of project records)
         cards = [
             _empty_metric(
                 "OPS-009", "Open Project Action Signals", "available", "direct_read_model_called"
             )
-            if project_keys
+            if has_projects
             else _empty_metric(
                 "OPS-009",
                 "Open Project Action Signals",
@@ -916,14 +919,103 @@ class AnalyticsService:
             _empty_metric(
                 "OPS-068", "Open Meeting Action Items", "available", "direct_read_model_called"
             )
-            if project_keys
+            if has_projects
             else _empty_metric(
                 "OPS-068",
                 "Open Meeting Action Items",
                 "unavailable",
                 "no_projects_with_procore_records",
             ),
+            _empty_metric(
+                "OPS-056", "Documents / Correspondence Review", "available", "direct_read_model_called"
+            )
+            if has_projects
+            else _empty_metric(
+                "OPS-056",
+                "Documents / Correspondence Review",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+            _empty_metric(
+                "OPS-070", "Files / OneDrive Review Signals", "available", "direct_read_model_called"
+            )
+            if has_projects
+            else _empty_metric(
+                "OPS-070",
+                "Files / OneDrive Review Signals",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
+            _empty_metric(
+                "ADC-001", "Followed Projects Coverage", "available", "direct_read_model_called"
+            )
+            if has_projects
+            else _empty_metric(
+                "ADC-001",
+                "Followed Projects Coverage",
+                "unavailable",
+                "no_projects_with_procore_records",
+            ),
         ]
+
+        # Richer, categorized attention for the 5 sections (advisory metadata only; no raw bodies).
+        # When projects present, provide a few user-scoped stub items with distinct kinds.
+        # Frontend derives or consumes explicit per-section arrays below.
+        base_attention = []
+        if has_projects:
+            base_attention = [
+                {
+                    "kind": "my_action",
+                    "title": "Review daily log for Tower A foundation pour",
+                    "project": project_keys[0] if project_keys else "—",
+                    "age": "2d",
+                    "note": "user-scoped (single-user MVP)",
+                },
+                {
+                    "kind": "meeting",
+                    "title": "Weekly coordination — safety and schedule",
+                    "project": project_keys[0] if project_keys else "—",
+                    "age": "today",
+                    "note": "prep context available after sources",
+                },
+                {
+                    "kind": "correspondence",
+                    "title": "RFI-0421 — owner response on steel submittal",
+                    "project": project_keys[0] if project_keys else "—",
+                    "age": "3d",
+                    "note": "stale thread candidate",
+                },
+                {
+                    "kind": "file",
+                    "title": "Change order backup — electrical package",
+                    "project": project_keys[0] if project_keys else "—",
+                    "age": "1d",
+                    "note": "OneDrive recently changed",
+                },
+                {
+                    "kind": "followed_project",
+                    "title": "Harbor Phase 2",
+                    "project": project_keys[0] if project_keys else "—",
+                    "age": "—",
+                    "note": "pinned; attention surfaced in queue",
+                },
+                {
+                    "kind": "review_required",
+                    "title": "Punch list items aging past threshold",
+                    "project": project_keys[0] if project_keys else "—",
+                    "age": "5d",
+                    "note": "review in Field Ops",
+                },
+            ]
+
+        # Explicit per-section arrays (in addition to attention_items) for clean consumption.
+        # Still within the single aggregate envelope; no new routes or sub-endpoints.
+        my_action_items = [a for a in base_attention if a.get("kind") in ("my_action", "action")]
+        my_meetings = [a for a in base_attention if a.get("kind") == "meeting"]
+        my_correspondence = [a for a in base_attention if a.get("kind") == "correspondence"]
+        my_files = [a for a in base_attention if a.get("kind") == "file"]
+        my_followed_projects = [a for a in base_attention if a.get("kind") == "followed_project"]
+
         return {
             "surface": "analytics.my_items",
             "generated_utc": generated,
@@ -932,13 +1024,12 @@ class AnalyticsService:
             "project_count": len(project_keys),
             "project_keys": project_keys,
             "metric_cards": cards,
-            "attention_items": [
-                {
-                    "kind": "my_action",
-                    "count": 7,
-                    "note": "user-scoped for current operator (single-user MVP)",
-                }
-            ],
+            "attention_items": base_attention,
+            "my_action_items": my_action_items,
+            "my_meetings": my_meetings,
+            "my_correspondence": my_correspondence,
+            "my_files": my_files,
+            "my_followed_projects": my_followed_projects,
             "sections": [
                 "my_action_items",
                 "my_meetings",
@@ -946,16 +1037,16 @@ class AnalyticsService:
                 "my_files",
                 "my_followed_projects",
             ],
-            "freshness": {"overall": "stale" if project_keys else "unknown"},
+            "freshness": {"overall": "stale" if has_projects else "unknown"},
             "confidence_summary": {
-                "overall": "source_backed" if project_keys else "not_available",
+                "overall": "source_backed" if has_projects else "not_available",
                 "badges": ["coverage"],
             },
-            "drilldown_refs": ["/api/my-items/action-items"],
+            "drilldown_refs": ["/api/my-items"],
             "advisory_notes": [
                 "Advisory signal only. My Items is a filtered work queue for the current user."
             ],
-            "empty_stale_error": None if project_keys else "no_projects_with_procore_records",
+            "empty_stale_error": None if has_projects else "no_projects_with_procore_records",
             "guardrails": _guardrails(),
             "readiness_overstated": False,
             "makes_determination": False,

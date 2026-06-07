@@ -81,7 +81,7 @@ Sections (exactly 5):
 
 Explicit rule: "My Items should be a filtered work queue, not a replacement email client, calendar, or file browser."
 
-Implementation: wired to the my-items family (`/api/my-items` + subs for the 5 areas); uses `MyActionItemCard` and simple lists; badges + advisory to use Admin for full source evidence.
+Implementation: wired exclusively to the aggregate `/api/my-items` (Prompt 16 contract; backend implements no section subroutes — confirmed in app_shell OpenAPI tests and page/api client comments). Uses `MyActionItemCard` and simple lists derived from the envelope's explicit per-section arrays (my_action_items, my_meetings, ...) or attention_items with kinds (Prompt 19); badges + advisory to use Admin for full source evidence. Prompt 19: richer categorized attention (varied kinds) + explicit per-section arrays in the aggregate envelope; 5 distinct sections with CM-facing EmptyState hints (connections + "first sync approved (Admin)"); light TS interfaces on the page for the my-items surface; FPR-002 (subroute 404s) documented closed in Prompt 16 with 19 delivering UX/contract polish within the aggregate. See prompt-19-my-items-dashboard-closeout.md (and 00_PREFLIGHT.md update) + cross-refs in 176/169.
 
 ## Data Mapping to Prompt 07 Read Models
 All screens are thin presenters over the existing Prompt 07 / 10_ read-model endpoints (no new backend, no duplication of logic). Freshness and confidence summaries are surfaced as compact badges on every surface (page, cards, selector, tabs). Advisory language and "hide detailed diagnostics from primary; link to /admin" are consistent.
@@ -90,7 +90,7 @@ All screens are thin presenters over the existing Prompt 07 / 10_ read-model end
 - Projects Portfolio / selector: `/api/projects/portfolio`.
 - All Projects + tabs: `/api/projects/all/overview|meetings|field-operations|cost-time`.
 - Per-project + tabs: `/api/projects/{project_key}/overview|meetings|field-operations|cost-time`.
-- My Items: `/api/my-items` (+ `/my-items/action-items|meetings|correspondence|files|followed-projects`).
+- My Items: `/api/my-items` only (aggregate envelope with sections + explicit per-section arrays + attention_items; no subroutes per Prompt 16 contract and app_shell assertions). Prompt 19 enriched the envelope data and UX (see 177 My Items section + prompt-19 closeout).
 - Admin (linked from all primary surfaces): the admin health family (source-sync, workflow-job incl. Daily Brief receipts, evidence-guardrails, retrieval-ai-quality, permissions-governance, data-completeness).
 
 Daily Brief dedicated management (status, latest, configure, setup instructions, validate folder, detect) lives behind the `/api/daily-brief/*` family (backend) and is consumed by Today + Settings; frontend only renders.

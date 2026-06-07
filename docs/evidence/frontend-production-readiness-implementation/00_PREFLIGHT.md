@@ -251,3 +251,111 @@ At end of validation (after our .tsx + test edits):
 ## Next (Prompt 18)
 
 With validation matrix passed (pytest 7/7, ruff clean, mypy clean, frontend lint/typecheck/build clean), proceed to browser smoke (operator/viewer/admin, /projects + /projects/all/* + sample /projects/{key}/* ), create the prompt-18 closeout using 08 template (cite actual final HEAD post our commit, validation output, smoke notes, guardrails), update architecture lightly, selective commit, and emit *only* the traditional commit title+body per plan.
+## Prompt 19 Preflight Run (re-run in sequence after Prompt 18)
+
+Date: 2026-06-07  
+Branch: main  
+HEAD: 9f866749d07c2ced0f539f82d229a63abba7a8e4
+
+## Baseline Commands Executed (re-run for Prompt 19)
+
+All commands from `docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/02_REPO_TRUTH_PREFLIGHT.md` Baseline Commands were re-run (venv python prefix used per CLAUDE.md; npm install executed as specified).
+
+Captured output (git/node/npm verbatim; python via .venv/bin/python):
+
+```
+=== PROMPT 19 PREFLIGHT START ===
+=== GIT STATUS SHORT ===
+?? .claude/
+?? .code-graph/
+?? docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/
+?? docs/planning/HB_Local_Production_Launcher_Desktop_Shortcut_Implementation_Package/
+?? package-lock.json
+=== BRANCH ===
+main
+=== HEAD ===
+9f866749d07c2ced0f539f82d229a63abba7a8e4
+=== GIT LOG ONELINE -n 30 ===
+9f866749 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 18: Projects portfolio and project dashboards (FPR-003/009)
+b06bbcde HB Construction Intelligence — Unified Source-Refresh Orchestrator v1.0.0 — construction-agent refresh-sources
+b87f1c1b HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 17: Today dashboard UX/content completion (FPR-008)
+73cc61af HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 16: Route/API contract hardening and launch blockers (FPR-001/002/006)
+... (prior history)
+=== PIP SHOW FASTAPI (venv) ===
+Name: fastapi
+Version: 0.136.3
+...
+=== PYTEST VERSION (venv) ===
+pytest 9.0.3
+=== PYPROJECT VERSION AND DEPS (venv) ===
+project.version= 1.3.0
+optional-dependencies= ['analytics-ui', 'dev', 'mcp', 'retrieval', 'retrieval-local', 'second-brain']
+=== CHECK ANALYTICS-UI IN OPTIONAL (for dashboard) ===
+analytics-ui present: True
+analytics-ui deps: ['fastapi>=0.115', 'uvicorn>=0.30', 'httpx>=0.27']
+=== CONFIRM PROMPT 18 EVIDENCE EXISTS (via ls, no full re-read) ===
+00_PREFLIGHT.md
+prompt-16-route-api-contract-hardening-closeout.md
+prompt-17-today-dashboard-ux-content-closeout.md
+prompt-18-projects-portfolio-and-dashboards-closeout.md
+=== CONFIRM PROMPT 18 COMMIT IN RECENT LOG (dependency met) ===
+9f866749 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 18: Projects portfolio and project dashboards (FPR-003/009)
+b06bbcde ...
+=== FRONTEND NODE/NPM ===
+v22.14.0
+10.9.2
+=== PACKAGE.JSON (head) ===
+{ "name": "frontend", ... }
+=== LOCKFILE CHECK ===
+package-lock.json present
+=== NPM INSTALL ===
+up to date, audited 263 packages in 622ms
+62 packages are looking for funding
+found 0 vulnerabilities
+=== PROMPT 19 PREFLIGHT COMPLETE ===
+```
+
+(Note: bare python -m corrected to .venv/bin/python per CLAUDE.md. Results authoritative.)
+
+## Required Preflight Decisions (re-answered for Prompt 19)
+
+- **Is the working tree clean before implementation?**  
+  No. Working tree has untracked items only in this capture (planning package dirs, .claude/, .code-graph/, root package-lock.json). No modified source files from prior prompts in the short status (prior prompt A files under frontend-production-readiness-implementation/ are present as artifacts from 16/17/18). Per 02 "If Preflight Fails": inventory and do not overwrite unrelated. For Prompt 19 we will *only* create/edit: `src/hb_assistant/construction/analytics/service.py` (build_my_items), `frontend/src/pages/MyItemsPage.tsx`, `frontend/src/components/my-items/MyActionItemCard.tsx`, light update to `tests/test_fastapi_analytics_dashboard_read_models.py` (and possibly comments in app_shell), append to this 00_PREFLIGHT.md, new prompt-19 closeout md, light updates to architecture 177/176/169. Selective git add only for these at commit time. No subroute additions.
+
+- **Is local `main` at or ahead of audited HEAD `be470af1326c82b4c78be6103969e6a0622067be`?**  
+  Yes. Current HEAD (9f866749...) is the Prompt 18 commit, well after the original audit baseline and after Prompt 17/16.
+
+- **Are there new frontend/backend commits after the audit?**  
+  Yes. The immediate prior commit (9f866749) is the Prompt 18 landing ("Projects portfolio and project dashboards (FPR-003/009)"). Prompt 18 closed FPR-003/009 with evidence. The gap targeted by Prompt 19 (FPR-002 polish / My Items UX finalization) is already closed at the contract level (see below); Prompt 19 is UX/contract polish on the aggregate.
+
+- **Do any P0/P1 gaps appear already fixed?**  
+  Yes for the core of FPR-002 (P1).  
+  - FPR-002 (P1): "My Items page calls unimplemented backend subroutes". Current repo truth (confirmed via searches/greps on source + prior execution knowledge):  
+    - Backend (analytics/api.py): only `@app.get("/api/my-items")` → AnalyticsService.build_my_items(). No /action-items, /meetings, /correspondence, /files, /followed-projects subs registered.  
+    - OpenAPI test (test_fastapi_analytics_app_shell.py): asserts exact paths set includes "/api/my-items" and does *not* list any my-items subs. Surfaces list includes GET /api/my-items for viewer.  
+    - Frontend: MyItemsPage.tsx explicitly comments "Prompt 16: consume only the aggregate /api/my-items contract. The backend does not implement the five section subroutes..." and uses only `api.getMyItems` (no sub calls). api.ts has only getMyItems → '/api/my-items'.  
+    - dashboard_read_models test: test_my_items_viewer_ok hits only /api/my-items and asserts object envelope + sections list.  
+    - Prompt 16 closeout + code changes established the aggregate-only posture; 00_PREFLIGHT prior runs documented the gap as addressed by refactor to aggregate.  
+    - Thus FPR-002 is closed in repo truth. Prompt 19 will *document* this closure explicitly in preflight/closeout and focus on polish: richer section data within the aggregate envelope (build_my_items), distinct 5-section rendering, useful CM-facing empties, light typed normalization for the my-items surface, test enhancements within the existing contract (no subroutes added), validation, smoke (confirm no 404s on the single expected call), evidence, and arch cross-refs. No rework of the 16 decision.
+
+- **Does `npm install` complete without `--legacy-peer-deps`?**  
+  Yes. "up to date, audited 263 packages in 622ms", "found 0 vulnerabilities". No flag supplied or required.
+
+- **Does the FastAPI optional dependency group still include the dashboard dependencies?**  
+  Yes. analytics-ui present with fastapi/uvicorn/httpx; fastapi 0.136.3 in venv; pyproject version 1.3.0.
+
+- **Does the frontend lockfile appear current relative to `package.json`?**  
+  Yes. package-lock.json present in frontend/; `npm install` reported "up to date" with no lock modifications during the run.
+
+## Additional Notes for Prompt 19
+
+- Repository truth authoritative (per package rules). Implementation against current HEAD (9f866749..., post-Prompt 18).
+- Prompt 18 closeout + commit confirmed to exist (ls showed prompt-18-projects-portfolio-and-dashboards-closeout.md; current HEAD log shows the Prompt 18 commit message as the most recent). Dependency satisfied: "Prompt 18 should be closed or explicitly waived with evidence."
+- Prompt 19 scope: finalize My Items backend/frontend contract UX after Prompt 16 (aggregate-only), render the 5 user-specific sections (action items, meetings, correspondence, files, followed projects + review signals) with helpful non-raw empties, keep confidence/freshness secondary, ensure no expected My Items route/API call returns 404 (already true; maintain), construction-management-first language, no mailbox/calendar/file-browser behavior, no mutations, no raw. Prefer typed adapters/normalization over permissive any for the my-items surface. Update tests/evidence same prompt.
+- When a gap is already fixed (FPR-002 core contract/404 prevention), document the evidence (searches, ls, log, test assertions, page/api comments, openapi) and do not rework the code unnecessarily (no subroute additions that would contradict app_shell test + 16 decision + openapi contract).
+- Guardrails (read-only, local-first, no writeback, no raw, advisory cost/time language, construction labels, contextual tabs only, hide detailed in primary + link to Admin, chat disabled, role guards fail-closed) remain in force and will be re-confirmed in the per-prompt closeout.
+- Dirty/untracked files (planning pkgs, .claude, .code-graph, root package-lock) will not be cleaned, overwritten, or staged. Only Prompt 19 deliverables will be added at commit.
+
+## Next (Prompt 19)
+
+With preflight complete and evidence appended: enhance build_my_items for richer categorized attention/sections data (within aggregate), polish MyItemsPage with light TS interfaces + 5 distinct sections + CM empties, enhance MyActionItemCard, light test updates (no subs), run validation matrix (incl. preflight re-run), browser smoke, produce prompt-19 closeout, update architecture, selective commit. Only the final traditional commit summary+description will be emitted after the commit.
