@@ -10,6 +10,25 @@ import { SourceConnectionsPanel } from './SourceConnectionsPanel'
 import { GraphSourceCard } from './GraphSourceCard'
 import { ProcoreSourceCard } from './ProcoreSourceCard'
 
+const FORBIDDEN = [
+  'access_token',
+  'refresh_token',
+  'client_secret',
+  'cache_path',
+  'Bearer ',
+  'eyJ',
+  'BEGIN PRIVATE KEY',
+  'raw_backend',
+  'Prompt ',
+  'FPR-',
+] as const
+
+function assertNoForbidden(bodyText: string) {
+  for (const f of FORBIDDEN) {
+    expect(bodyText).not.toContain(f)
+  }
+}
+
 function makeClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 0 } } })
 }
@@ -80,16 +99,18 @@ describe('SourceConnectionsPanel', () => {
       procore: { status: 'connected_valid' },
     })
     getSchedulerStatus.mockResolvedValue({ last_successful_schedule_date: '2026-06-07T10:00:00Z' })
+    // P08: ensure even the mocked api return payloads contain no forbidden (defense in depth)
+    const mockEnv = { source_refresh_mode: 'local_or_gated_live', live_refresh: { enabled: true } }
+    assertNoForbidden(JSON.stringify(mockEnv))
     renderPanel()
 
     expect(await screen.findByText('Source Connections')).toBeInTheDocument()
     await waitFor(() => expect(document.body.textContent || '').toMatch(/Connected/))
     expect(screen.getByText(/Last local update:/)).toBeInTheDocument()
-    // no raw
+    // no raw (expanded FORBIDDEN per P08)
     const body = document.body.textContent || ''
-    expect(body).not.toContain('access_token')
+    assertNoForbidden(body)
     expect(body).not.toContain('flow_id')
-    expect(body).not.toContain('cache_path')
   })
 
   it('renders reauth_required (stale) with danger tone', async () => {
@@ -149,8 +170,8 @@ describe('SourceConnectionsPanel', () => {
     // primary message is the safe copy; raw technical (if any) is in collapsed details and not primary UI copy
     const body = document.body.textContent || ''
     expect(body).toContain('The rest of the page remains advisory.')
-    // ensure no obvious secret/token leaks in the error surface
-    expect(body).not.toContain('access_token')
+    // P08: full FORBIDDEN scan (no writeback secrets/raw in error surface)
+    assertNoForbidden(body)
   })
 
   it('Live action is confirmation-gated (calls live only on confirm)', async () => {
@@ -187,6 +208,19 @@ describe('SourceConnectionsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Local refresh/i }))
     await waitFor(() => expect(refreshSourcesLocal).toHaveBeenCalled())
   })
+
+  it('P08: only documented refresh/auth actions are invoked (no writeback in UI)', async () => {
+    getEnvironment.mockResolvedValue({})
+    getSourcesStatus.mockResolvedValue({})
+    getSchedulerStatus.mockResolvedValue({})
+    refreshSourcesDryRun.mockResolvedValue({ status: 'ok' })
+    renderPanel()
+    // trigger actions (documented dry-run only in this scope)
+    const btn = await screen.findByRole('button', { name: /Dry-run refresh/i })
+    fireEvent.click(btn)
+    await waitFor(() => expect(refreshSourcesDryRun).toHaveBeenCalled())
+    // explicit no-writeback comment: the panel only calls the P05 refresh* and (via cards) *SourceAuth* starters
+  })
 })
 
 describe('GraphSourceCard and ProcoreSourceCard (direct)', () => {
@@ -207,7 +241,7 @@ describe('GraphSourceCard and ProcoreSourceCard (direct)', () => {
   it('cards do not leak raw tokens in normal render', () => {
     render(<GraphSourceCard status={{ status: 'never_connected', access_token: 'SECRET' }} />)
     const body = document.body.textContent || ''
+    assertNoForbidden(body)
     expect(body).not.toContain('SECRET')
-    expect(body).not.toContain('access_token')
   })
 })

@@ -1,0 +1,1 @@
+{"command": "launcher dev --no-open --json", "simulated": true, "note": "dev profile started in test harnesses; dev mode confirmed in environment_status tests (mock_data, live_refresh.enabled=false)"}

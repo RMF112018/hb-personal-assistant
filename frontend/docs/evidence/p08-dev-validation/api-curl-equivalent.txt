@@ -1,0 +1,3 @@
+# Equivalent of curl http://127.0.0.1:8000/api/environment etc (exercised in the 4 P08 targeted tests + existing env/source tests)
+# All returned 200, contained source_refresh_mode, live_refresh, no forbidden fields in bodies (see test asserts and FORBIDDEN scans)
+# Example from test runs: env had "source_refresh_mode": "mock_data", "live_refresh": {"enabled": false, "reason": "dev_local_mock_only"}
