@@ -99,7 +99,7 @@ def status_cmd(
 ) -> None:
     from hb_assistant.launcher.profiles import resolve_profile
     from hb_assistant.scheduler.backends import default_backend_name, get_backend
-    from hb_assistant.scheduler.due import compute_next_run
+    from hb_assistant.scheduler.due import compute_next_run, current_local_date
     from hb_assistant.scheduler.state import SchedulerState
 
     _check_job(job, json_out)
@@ -108,6 +108,13 @@ def status_cmd(
     state = SchedulerState.load(profile.scheduler_state_path, environment=environment)
     impl = get_backend(backend or default_backend_name(), profile)  # type: ignore[arg-type]
     now = datetime.now(timezone.utc)
+    today = current_local_date(now, profile.scheduler.timezone)
+    # Health flag: a last_successful_schedule_date in the future indicates corrupt state
+    # (e.g. a prior future-dated manual run). Surface it rather than reporting as normal.
+    future_success = bool(
+        state.last_successful_schedule_date
+        and state.last_successful_schedule_date > today.isoformat()
+    )
     payload = {
         "command": "scheduler status",
         "environment": environment,
@@ -115,6 +122,7 @@ def status_cmd(
         "schedule_time_local": profile.scheduler.schedule_time,
         "timezone": profile.scheduler.timezone,
         "catch_up_on_wake": profile.scheduler.catch_up_on_wake,
+        "current_local_date": today.isoformat(),
         "next_expected_run": compute_next_run(
             now, profile.scheduler.schedule_time, profile.scheduler.timezone
         ).isoformat(),
@@ -124,6 +132,8 @@ def status_cmd(
         "consecutive_failures": state.consecutive_failures,
         "last_receipt_path": state.last_receipt_path,
         "live_reads_enabled": profile.scheduler.enable_live_reads,
+        "future_last_successful_schedule_date": future_success,
+        "state_health": "future_success_date_detected" if future_success else "ok",
         "status": "ok",
     }
     _emit(payload, json_out=json_out)
@@ -180,10 +190,17 @@ def run_cmd(
     mock_data: bool = typer.Option(
         False, "--mock-data", help="Dev mock (profile already governs)."
     ),
+    allow_future_date: bool = typer.Option(
+        False,
+        "--allow-future-date",
+        help="Fixtures/proofs only: permit a --date later than today (override; may "
+        "advance catch-up state to a future date).",
+    ),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Execute the scheduled source-refresh (force, if-due, or foreground loop)."""
     from hb_assistant.launcher.profiles import resolve_profile
+    from hb_assistant.scheduler.due import current_local_date
     from hb_assistant.scheduler.runner import SchedulerRunner
 
     _check_job(job, json_out)
@@ -194,7 +211,34 @@ def run_cmd(
         except ValueError:
             _emit({"status": "invalid_date", "requested": date_}, json_out=json_out, exit_code=2)
 
-    runner = SchedulerRunner(resolve_profile(environment))  # type: ignore[arg-type]
+    profile = resolve_profile(environment)  # type: ignore[arg-type]
+
+    # Fail-closed guard: a manual run may not target a schedule date later than the
+    # current local date — that corrupts catch-up state. Reject BEFORE any execution,
+    # state mutation, or receipt write. --allow-future-date is an explicit override.
+    if date_ is not None and not allow_future_date:
+        today = current_local_date(datetime.now(timezone.utc), profile.scheduler.timezone)
+        if date.fromisoformat(date_) > today:
+            _emit(
+                {
+                    "command": "scheduler run",
+                    "environment": environment,
+                    "status": "not_ready",
+                    "error": "future_schedule_date_not_allowed",
+                    "requested_date": date_,
+                    "current_local_date": today.isoformat(),
+                    "guardrail": (
+                        "manual scheduler runs may not target a schedule date later than "
+                        "the current local date; this protects catch-up state. Use "
+                        "--allow-future-date for fixtures/proofs only."
+                    ),
+                    "ran": False,
+                },
+                json_out=json_out,
+                exit_code=2,
+            )
+
+    runner = SchedulerRunner(profile)
 
     if loop:  # pragma: no cover - long-running daemon
         while True:
@@ -206,10 +250,55 @@ def run_cmd(
         _emit({"command": "scheduler run", "environment": environment, **result}, json_out=json_out)
 
     target = date.fromisoformat(date_) if date_ else _today_target(runner)
-    receipt = runner.run_once(schedule_date=target, trigger="manual")
+    trigger = "manual_future_override" if (date_ and allow_future_date) else "manual"
+    receipt = runner.run_once(schedule_date=target, trigger=trigger)
     payload = receipt.model_dump()
     payload["command"] = "scheduler run"
     _emit(payload, json_out=json_out, exit_code=0 if receipt.status in ("ok", "degraded") else 1)
+
+
+@app.command("reset")
+def reset_cmd(
+    job: str = typer.Argument(_JOB),
+    environment: str = typer.Option(..., "--environment"),
+    confirm: bool = typer.Option(False, "--confirm", help="Required to clear scheduler state."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Reset scheduler state for an environment (recovers corrupt/future state)."""
+    from hb_assistant.launcher.profiles import resolve_profile
+    from hb_assistant.scheduler.state import SchedulerState
+
+    _check_job(job, json_out)
+    _check_env(environment, json_out)
+    profile = resolve_profile(environment)  # type: ignore[arg-type]
+    if not confirm:
+        _emit(
+            {
+                "command": "scheduler reset",
+                "environment": environment,
+                "status": "confirmation_required",
+                "hint": "re-run with --confirm to clear scheduler state",
+                "state_path": str(profile.scheduler_state_path),
+            },
+            json_out=json_out,
+        )
+    fresh = SchedulerState(
+        environment=environment,
+        schedule_time_local=profile.scheduler.schedule_time,
+        timezone=profile.scheduler.timezone,
+        catch_up_on_wake=profile.scheduler.catch_up_on_wake,
+    )
+    fresh.save(profile.scheduler_state_path)
+    _emit(
+        {
+            "command": "scheduler reset",
+            "environment": environment,
+            "status": "ok",
+            "reset": True,
+            "state": fresh.model_dump(),
+        },
+        json_out=json_out,
+    )
 
 
 def _today_target(runner: Any) -> date:

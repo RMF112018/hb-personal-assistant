@@ -41,6 +41,11 @@ def compute_next_run(now: datetime, schedule_time_local: str, timezone: str) -> 
     return today_run
 
 
+def current_local_date(now: datetime, timezone: str) -> date:
+    """The current calendar date in the scheduler timezone."""
+    return now.astimezone(ZoneInfo(timezone)).date()
+
+
 def _target_schedule_date(now_local: datetime, hh: int, mm: int) -> date:
     """The most recent schedule date whose scheduled time is <= now."""
     today_run = now_local.replace(hour=hh, minute=mm, second=0, microsecond=0)

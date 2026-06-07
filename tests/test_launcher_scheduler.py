@@ -547,3 +547,108 @@ def test_graph_files_binds_db(monkeypatch: pytest.MonkeyPatch) -> None:
     orch = SourceRefreshOrchestrator(db_path=dev.db_path)
     orch._graph_files(dry_run=False)  # store constructed only when not dry_run
     assert captured == [str(dev.db_path)]
+
+
+# --- future-date guard + recovery -------------------------------------------------
+
+_FUTURE = "2099-01-01"
+
+
+def test_run_future_date_rejected() -> None:
+    result = runner.invoke(app, ["scheduler", "run", "daily-source-refresh",
+                                 "--environment", "production", "--date", _FUTURE, "--json"])
+    assert result.exit_code != 0
+    d = json.loads(result.stdout)
+    assert d["status"] == "not_ready"
+    assert d["error"] == "future_schedule_date_not_allowed"
+    assert d["requested_date"] == _FUTURE
+    assert "current_local_date" in d and d["ran"] is False
+
+
+def test_future_date_does_not_call_orchestrator(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _boom(self: Any, *, options: Any) -> Any:
+        raise AssertionError("SourceRefreshOrchestrator.run called for a rejected future date")
+
+    monkeypatch.setattr(dsr_mod.SourceRefreshOrchestrator, "run", _boom)
+    result = runner.invoke(app, ["scheduler", "run", "daily-source-refresh",
+                                 "--environment", "production", "--date", _FUTURE, "--json"])
+    assert result.exit_code != 0
+    assert json.loads(result.stdout)["error"] == "future_schedule_date_not_allowed"
+
+
+def test_future_date_does_not_mutate_state_or_write_receipt() -> None:
+    prof = resolve_profile("production")
+    state_path = prof.scheduler_state_path
+    scheduled_dir = prof.evidence_path / "scheduled"
+    assert not state_path.exists()
+    runner.invoke(app, ["scheduler", "run", "daily-source-refresh",
+                        "--environment", "production", "--date", _FUTURE, "--json"])
+    assert not state_path.exists()  # no state mutation
+    receipts = list(scheduled_dir.glob("*.json")) if scheduled_dir.exists() else []
+    assert not any(_FUTURE in p.name for p in receipts)  # no success receipt
+
+
+def test_due_reports_missed_with_future_success_date() -> None:
+    st = SchedulerState(environment="production", last_successful_schedule_date=_FUTURE)
+    now = datetime(2026, 6, 8, 1, 0, tzinfo=timezone.utc)  # 9pm ET Jun 7
+    d = decide_catch_up(now, st, schedule_time_local="20:00",
+                        timezone="America/New_York", catch_up_on_wake=True)
+    assert d.should_run is True
+    assert d.schedule_date == "2026-06-07"  # correct missed target, not the future date
+
+
+def test_run_today_and_past_date_succeed() -> None:
+    from datetime import date as _date
+    from zoneinfo import ZoneInfo
+
+    today = datetime.now(timezone.utc).astimezone(ZoneInfo("America/New_York")).date()
+    for d in (today, today - timedelta_days(2)):
+        result = runner.invoke(app, ["scheduler", "run", "daily-source-refresh",
+                                     "--environment", "production", "--date", d.isoformat(), "--json"])
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        assert payload["status"] == "ok"
+        assert payload["schedule_date"] == d.isoformat()
+    assert isinstance(today, _date)
+
+
+def test_allow_future_date_override() -> None:
+    result = runner.invoke(app, ["scheduler", "run", "daily-source-refresh",
+                                 "--environment", "production", "--date", _FUTURE,
+                                 "--allow-future-date", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    assert d["status"] == "ok" and d["schedule_date"] == _FUTURE
+
+
+def test_status_flags_future_success_date() -> None:
+    prof = resolve_profile("production")
+    SchedulerState(environment="production", last_successful_schedule_date=_FUTURE).save(
+        prof.scheduler_state_path
+    )
+    result = runner.invoke(app, ["scheduler", "status", "daily-source-refresh",
+                                 "--environment", "production", "--json"])
+    d = json.loads(result.stdout)
+    assert d["future_last_successful_schedule_date"] is True
+    assert d["state_health"] == "future_success_date_detected"
+
+
+def test_scheduler_reset() -> None:
+    prof = resolve_profile("production")
+    SchedulerState(environment="production", last_successful_schedule_date=_FUTURE).save(
+        prof.scheduler_state_path
+    )
+    no_confirm = runner.invoke(app, ["scheduler", "reset", "daily-source-refresh",
+                                     "--environment", "production", "--json"])
+    assert json.loads(no_confirm.stdout)["status"] == "confirmation_required"
+    assert SchedulerState.load(prof.scheduler_state_path, environment="production").last_successful_schedule_date == _FUTURE
+    confirmed = runner.invoke(app, ["scheduler", "reset", "daily-source-refresh",
+                                    "--environment", "production", "--confirm", "--json"])
+    assert json.loads(confirmed.stdout)["status"] == "ok"
+    assert SchedulerState.load(prof.scheduler_state_path, environment="production").last_successful_schedule_date is None
+
+
+def timedelta_days(n: int) -> Any:
+    from datetime import timedelta
+
+    return timedelta(days=n)

@@ -98,6 +98,19 @@ mock short-circuits before it); it is not a DB-isolation path. Tests assert a de
 scheduled run never opens/creates the production DB and vice versa, plus per-helper
 store-construction binding.
 
+**Manual run date guard.** `scheduler run --date YYYY-MM-DD` rejects any date later
+than the current local date (in the scheduler timezone) fail-closed — `status="not_ready"`,
+`error="future_schedule_date_not_allowed"`, with `requested_date`/`current_local_date` —
+and performs no orchestrator execution, no scheduler-state mutation, and writes no
+success receipt. `--allow-future-date` is an explicit fixtures/proofs override (runs with
+`trigger="manual_future_override"`). The no-`--date` catch-up path always targets a
+past/today date and is unaffected. Recovery for already-corrupt state:
+`scheduler status` reports `future_last_successful_schedule_date` /
+`state_health="future_success_date_detected"` instead of treating a future success date
+as normal, and `scheduler reset --environment <env> --confirm` clears scheduler state.
+Catch-up decisions are inherently safe (`decide_catch_up` suppresses only on an exact
+past-target equality, so a future success date never blocks a due run).
+
 **`mock_data` is Dev/explicit-only.** Production scheduled runs always resolve
 `mock_data=False`. A production local-only run (no live-read config) still performs zero
 live Procore/Graph auth/status/probe/read — that suppression comes from the per-source
