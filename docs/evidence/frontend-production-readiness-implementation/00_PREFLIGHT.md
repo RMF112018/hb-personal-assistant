@@ -580,3 +580,117 @@ Sun Jun  7 04:53:00 EDT 2026
 ## Next (Prompt 22)
 
 With preflight complete and evidence appended (this section), proceed to the implementation steps in strict order per the attached plan: add ErrorState (and optional LoadingState) under ui/, confirm no alert() (document), extend focus-visible, add skip link + #main, improve AppShell sidebar for narrow widths (light collapse + toggle + a11y), update Settings to use ErrorState + explicit labels, normalize loading if component added, run full validation matrix (lint/type/build + required grep alert + preflight re-run), browser smoke (keyboard + responsive per spec), create prompt-22 closeout, light arch update (176 primary), selective commit with traditional title, emit *only* the commit summary+description at end. Follow surgical + repo-truth first + update evidence same prompt + only output commit at very end. Mark preflight-22 completed and advance todos.
+
+## Prompt 23 Preflight Run (re-run in sequence after Prompt 22)
+
+Date: 2026-06-07  
+Branch: main  
+HEAD: 69661507312711eb573aeb958d4dde2aaf415c90
+
+## Baseline Commands Executed (re-run for Prompt 23)
+
+All commands from `docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/02_REPO_TRUTH_PREFLIGHT.md` Baseline Commands were re-run (venv python prefix used per CLAUDE.md and prior prompt executions; npm install executed as specified).
+
+Captured output (git/node/npm verbatim; python via .venv/bin/python; plus targeted gap confirmation greps/ls for FPR-012/018 and P22 dep):
+
+```
+=== PROMPT 23 PREFLIGHT START ===
+Sun Jun  7 05:01:55 EDT 2026
+=== git status --short ===
+ M src/hb_assistant/construction/analytics/api.py
+?? .claude/
+?? .code-graph/
+?? docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/
+?? docs/planning/HB_Local_Production_Launcher_Desktop_Shortcut_Implementation_Package/
+?? package-lock.json
+=== git branch --show-current ===
+main
+=== git rev-parse HEAD ===
+69661507312711eb573aeb958d4dde2aaf415c90
+=== git log --oneline -n 30 ===
+69661507 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 22: UI kit, accessibility, responsiveness consolidation (FPR-011/013)
+e078b8d7 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 21: Admin / Data Confidence polish (FPR-007)
+a0989799 HB Construction Intelligence — Procore Multi-Project Sync Fix v1.0.1 — all-project sync no longer crashes on "multi"
+13a75675 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 20: Settings and onboarding polish (FPR-004/005/010/016/017)
+f93b26b1 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 19: My Items dashboard (FPR-002 polish)
+9f866749 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 18: Projects portfolio and project dashboards (FPR-003/009)
+b06bbcde HB Construction Intelligence — Unified Source-Refresh Orchestrator v1.0.0 — construction-agent refresh-sources
+b87f1c1b HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 17: Today dashboard UX/content completion (FPR-008)
+73cc61af HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 16: Route/API contract hardening and launch blockers (FPR-001/002/006)
+be470af1 chore(scripts): add local MCP stdio launcher for second-brain integration
+9708be56 chore(evidence): refresh phase 06–09 evidence bundles after validation baseline
+... (prior)
+=== .venv/bin/python -m pip show fastapi || true ===
+Name: fastapi
+Version: 0.136.3
+...
+=== .venv/bin/python -m pytest --version ===
+pytest 9.0.3
+=== pyproject probe (.venv python) ===
+project.version= 1.3.0
+optional-dependencies= ['analytics-ui', 'dev', 'mcp', 'retrieval', 'retrieval-local', 'second-brain']
+=== cd frontend; node --version ===
+v22.14.0
+=== npm --version ===
+10.9.2
+=== cat frontend/package.json ===
+{ "name": "frontend", ... (no "test", "vitest", "playwright", or "smoke" scripts) }
+=== package-lock check ===
+package-lock.json present (size: 143765 )
+=== npm install (frontend) ===
+up to date, audited 263 packages...
+found 0 vulnerabilities
+=== confirm P22 closeout dep (ls evidence) ===
+00_PREFLIGHT.md
+prompt-16-route-api-contract-hardening-closeout.md
+...
+prompt-22-ui-kit-accessibility-responsiveness-closeout.md
+=== quick gap confirmation for FPR-012/018 (no vitest/playwright/test/smoke in frontend) ===
+No test/vitest/playwright/smoke scripts found in package.json
+No vitest/playwright config files
+No *.test.* or *.spec.* files under frontend/src
+=== PROMPT 23 PREFLIGHT END ===
+Sun Jun  7 05:01:57 EDT 2026
+```
+
+(Note: bare python -m corrected to .venv/bin/python per CLAUDE.md. Results authoritative. Gap confirmation greps/ls performed as part of preflight run.)
+
+## Required Preflight Decisions (re-answered for Prompt 23)
+
+- **Is the working tree clean before implementation?**  
+  No. Working tree has M src/hb_assistant/construction/analytics/api.py (unrelated to frontend/testing per plan inventory) + untracked (planning package dirs, .claude/, .code-graph/, root package-lock.json). The prior A files under frontend-production-readiness-implementation/ (00_PREFLIGHT + prompt-16 through prompt-22 closeouts) are present as artifacts. Per 02 "If Preflight Fails": inventory and do not overwrite unrelated. For Prompt 23 we will *only* create/edit: `frontend/package.json`, new `frontend/vitest.config.ts` + `frontend/src/test/setup.ts` + test files under `frontend/src/components/ui/` (and optionally thin api/envelope tests), new `scripts/smoke_local.py` (+ optional thin .sh), append to this 00_PREFLIGHT.md, new prompt-23 closeout md, light updates to architecture 176 (or 170). Selective git add only for these at commit time.
+
+- **Is local `main` at or ahead of audited HEAD `be470af1326c82b4c78be6103969e6a0622067be`?**  
+  Yes. Current HEAD (69661507...) is the Prompt 22 commit, far after the original audit baseline and after Prompt 21/20/etc.
+
+- **Are there new frontend/backend commits after the audit?**  
+  Yes. The top commit (69661507) is the Prompt 22 landing ("UI kit, accessibility, responsiveness consolidation (FPR-011/013)"). Prompt 22 closed FPR-011/013 with evidence. The gaps targeted by Prompt 23 (FPR-012/018) remain open in current repo truth (see below).
+
+- **Do any P0/P1 gaps appear already fixed?**  
+  No (for the Prompt 23 gaps FPR-012/018).  
+  - FPR-012 (P2): "No frontend test harness found". Current repo truth (confirmed via Glob/Grep/Read + the quick confirmation run during this preflight): `frontend/package.json` has no "test", "vitest", "playwright", or "smoke" scripts; no `vitest.config.*` or `playwright.config.*`; no `frontend/src/**/*.{test,spec}.*` or `frontend/tests/*` files. Dev deps have no vitest/@testing-library/* /jsdom. The 06_VALIDATION_MATRIX describes only manual two-terminal steps (uvicorn + npm run dev) plus "npm run lint && typecheck && build"; no `npm run test` or harness.  
+  - FPR-018 (P3): "End-to-end local smoke harness and runbook are not yet packaged". No `scripts/smoke*` (only unrelated proofs in scripts/proofs/); no documented one-command/scripted local smoke that starts/verifies backend surfaces the UI calls + frontend build + vitest + fails on expected 404s or bad envelope shapes. The matrix and prior closeouts reference manual visual smoke and "run the commands"; no packaged harness script producing evidence.  
+  - Prompt 22 dep met: ls during preflight listed `prompt-22-ui-kit-accessibility-responsiveness-closeout.md`; current HEAD log top is exactly the Prompt 22 commit message. Dependency satisfied: "Prompt 22 should be closed or explicitly waived with evidence."  
+  Gaps remain open against current repo truth.
+
+- **Does `npm install` complete without `--legacy-peer-deps`?**  
+  Yes. "up to date, audited 263 packages...", "found 0 vulnerabilities". No flag needed.
+
+- **Does the FastAPI optional dependency group still include the dashboard dependencies?**  
+  Yes. 'analytics-ui' in optional-dependencies list; fastapi 0.136.3 in venv; pyproject version 1.3.0.
+
+- **Does the frontend lockfile appear current relative to `package.json`?**  
+  Yes. package-lock.json present (size ~143k); `npm install` reported "up to date" with no lock modifications.
+
+## Additional Notes for Prompt 23
+
+- Repository truth authoritative (per package rules). Implementation against current HEAD (69661507..., post-Prompt 22).
+- Prompt 22 closeout + commit confirmed to exist (ls listed it; log top is the P22 message). Dependency satisfied.
+- Prompt 23 scope strictly limited to FPR-012 (add Vitest + RTL + jsdom harness + "test"/"smoke" scripts + small component/adapter tests focused on P22 primitives + contract protection) and FPR-018 (add `scripts/smoke_local.py` using the established tmp-DB + TestClient(create_app) pattern already used by app_shell/daily-brief/etc.; exercises the exact UI-facing surfaces from 06_VALIDATION_MATRIX + prior prompts; asserts envelope keys + no raw; drives frontend build + new vitest; prints evidence-ready summary; optional thin .sh wrapper; plus record the two-terminal visual smoke steps from the matrix with role switch and "no expected 404s" checks). No Playwright (per risk note: scripted API/route smoke + document as future). No real operator DB/auth cache/Obsidian. All fixtures temp. Update tests/evidence same prompt. When a sub-part is already covered (manual steps in 06), enhance/document rather than duplicate.
+- Guardrails (read-only, local-first, no writeback, no raw, advisory, construction-management-first labels, hide detailed → Admin, chat disabled, role guards fail-closed, local role dev simulation only) remain in force and will be re-confirmed in the per-prompt closeout.
+- Dirty/untracked files (unrelated M, planning pkgs, .claude, .code-graph, root package-lock) will not be cleaned, overwritten, or staged. Only Prompt 23 deliverables will be added at commit.
+- Preflight captured exact baseline + gap confirmation for the closeout evidence.
+
+## Next (Prompt 23)
+
+With preflight complete and evidence appended (this section), proceed to the implementation steps in strict order per the attached plan: add Vitest + RTL harness + scripts to frontend/, write initial component/adapter tests (ErrorState/LoadingState + contract protection), implement the smoke_local.py harness (TestClient for UI surfaces + drive build/vitest), run full validation matrix (listed pytest + frontend lint/type/build + `npm run test -- --run` + new smoke + re-run readonly preflight), record browser smoke notes (06 matrix visual), create prompt-23 closeout, light arch update, selective commit with traditional title, emit *only* the commit summary+description at end. Follow surgical + repo-truth first + update evidence same prompt + only output commit at very end. Mark preflight-23 completed and advance todos.
