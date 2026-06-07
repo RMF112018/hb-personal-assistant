@@ -875,6 +875,47 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return AuthOnboardingService().attempt_auth_refresh(["graph"])
 
+    @app.get("/api/sources/procore/status")
+    def sources_procore_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role  # all-roles; user-safe metadata only (no projects/sync/live content)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().procore_source_status()
+
+    @app.post("/api/sources/procore/auth/start")
+    def sources_procore_auth_start(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().start_procore_auth_flow()
+
+    @app.get("/api/sources/procore/auth/callback")
+    def sources_procore_auth_callback(code: str, state: str) -> Any:
+        # Browser callback (no UI role enforcement; protected by CSRF state + one-time code).
+        from fastapi import Response
+
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        html = AuthOnboardingService().handle_procore_oauth_callback(code=code, state=state)
+        return Response(content=html, media_type="text/html")
+
+    @app.get("/api/sources/procore/auth/status")
+    def sources_procore_auth_status(
+        flow_id: str,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().poll_procore_auth_status(flow_id)
+
+    @app.post("/api/sources/procore/auth/refresh")
+    def sources_procore_auth_refresh(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)  # safe silent refresh only; never starts sync or reads content
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().attempt_auth_refresh(["procore"])
+
     @app.get("/api/settings/keywords")
     def settings_keywords(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role

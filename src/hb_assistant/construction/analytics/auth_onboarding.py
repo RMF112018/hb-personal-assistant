@@ -406,6 +406,84 @@ class AuthOnboardingService:
             "guardrails": _auth_guardrails(),
         }
 
+    def procore_source_status(self) -> dict[str, Any]:
+        """Normalized, browser-safe Procore source status for /api/sources/procore/status.
+
+        Reuses ``procore_status()`` (offline; env/keychain/cache presence only, never a Procore data
+        API) and the offline mapping validator, adding a normalized ``state`` plus missing-config /
+        missing-mapping flags. Constructs no ProcoreHTTPClient and starts no sync.
+        """
+        auth = self.procore_status()
+        status = auth.get("status")
+        keychain = bool(auth.get("keychain_secret_present"))
+        token_present = bool(
+            auth.get("token_cache_present") or auth.get("cache_present") or auth.get("access_cached")
+        )
+        config_present = status in {"env_present", "env_partial"} or keychain
+        missing_config = not config_present
+
+        mapping = self._procore_mapping_summary()
+        missing_mapping = mapping.get("ok") is False
+
+        if missing_config:
+            state = "not_configured"
+        elif not token_present:
+            state = "configured_not_connected"
+        else:
+            state = "connected"
+
+        from hb_assistant.procore.live_gate import live_env_active
+
+        return {
+            "surface": "analytics.sources.procore.status",
+            "system": "procore",
+            "state": state,
+            "auth_status": status,
+            "ready_for_live_calls": auth.get("ready_for_live_calls"),
+            "token_cache_present": token_present,
+            "keychain_secret_present": keychain,
+            "env_keys_present": auth.get("env_keys_present"),
+            "env_keys_missing": auth.get("env_keys_missing"),
+            "expires_in_seconds_if_known": auth.get("expires_in_seconds_if_known"),
+            "missing_config": missing_config,
+            "missing_mapping": missing_mapping,
+            "mapping": mapping,
+            "live_reads_enabled": bool(live_env_active()),
+            "hint": auth.get("hint"),
+            "guardrails": auth.get("guardrails"),
+        }
+
+    def _procore_mapping_summary(self) -> dict[str, Any]:
+        """Offline project-mapping coverage summary (missing-mapping signal). No live call."""
+        try:
+            from hb_assistant.procore import (
+                EndpointAuditor,
+                load_endpoint_contract,
+                load_procore_projects,
+            )
+
+            report = (
+                EndpointAuditor(load_endpoint_contract(), load_procore_projects())
+                .validate_mapping()
+                .model_dump()
+            )
+            rows = report.get("rows") or []
+            pending = [r.get("hb_project_key") for r in rows if r.get("status") == "pending"]
+            return {
+                "status": "ok",
+                "ok": bool(report.get("ok")),
+                "company_id": report.get("company_id"),
+                "total": report.get("total"),
+                "by_status": report.get("by_status"),
+                "pending_projects": pending,
+            }
+        except Exception:
+            return {
+                "status": "unavailable",
+                "ok": None,
+                "message": "Procore project mapping could not be read locally.",
+            }
+
     def start_procore_oauth(self) -> dict[str, Any]:
         client = self._procore_oauth_client()
         return {
