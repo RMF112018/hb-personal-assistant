@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useTheme } from '../app/providers'
 import { AdminFirstSyncApprovalPanel } from '../components/settings/AdminFirstSyncApprovalPanel'
 import { AccountConnectionsPanel } from '../components/settings/AccountConnectionsPanel'
+import { SourceConnectionsPanel } from '../components/settings/SourceConnectionsPanel'
 import { DailyBriefSettingsPanel } from '../components/settings/DailyBriefSettingsPanel'
 import { DataHealthPanel } from '../components/settings/DataHealthPanel'
 import { KeywordManagementPanel } from '../components/settings/KeywordManagementPanel'
@@ -37,6 +38,7 @@ export function SettingsPage() {
     <PrimaryPageLayout>
       <DashboardGrid columns="sections" gap="lg">
         <AccountConnectionsPanel variant="settings" />
+        <SourceConnectionsPanel />
         <ProjectConnectionsPanel />
         <DailyBriefSettingsPanel />
 
