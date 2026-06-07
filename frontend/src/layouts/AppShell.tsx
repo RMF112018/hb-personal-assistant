@@ -115,5 +115,7 @@ function getPageTitle(path: string): string {
   if (path.startsWith('/my-items')) return 'My Items'
   if (path.startsWith('/admin')) return 'Admin / Data Confidence'
   if (path.startsWith('/settings')) return 'Settings'
+  // Prompt D
+  if (path.startsWith('/get-started')) return 'Get Started'
   return 'HB Analytics'
 }

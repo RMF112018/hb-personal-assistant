@@ -10,8 +10,7 @@ import {
   generateDailyBriefSetupInstructions,
   validateDailyBriefOutputFolder,
   detectDailyBriefLatest,
-  // Prompt 14B / 14C
-  getSettingsAccounts,
+  // Prompt 14B / 14C (accounts surface now via reusable panel; see Prompt D)
   getSettingsProjects,
   getSettingsSources,
   getSettingsKeywords,
@@ -24,6 +23,7 @@ import {
   patchSettingsPreferences,
   patchSettingsAdmin,
 } from '../lib/api'
+import { AccountConnectionsPanel } from '../components/settings/AccountConnectionsPanel'
 
 // Settings (Prompt 20 polish): guided local-first onboarding and preferences.
 // Sections: Account Connections, Project Connections, Daily Brief (external AI writes the .md; this app only detects/presents),
@@ -49,8 +49,7 @@ export function SettingsPage() {
   const [busy, setBusy] = useState<string | null>(null)
 
   // Prompt 14C/20: debug "Load" panels and alerts removed (FPR-004); use status + guided actions only.
-  const [accountsResult, setAccountsResult] = useState<any>(null)
-  const [accountsError, setAccountsError] = useState<string | null>(null)
+  // Account connections now rendered via AccountConnectionsPanel (Prompt D) — no per-section raw result state.
   const [projectsResult, setProjectsResult] = useState<any>(null)
   const [projectsError, setProjectsError] = useState<string | null>(null)
   const [sourcesResult, setSourcesResult] = useState<any>(null)
@@ -360,46 +359,9 @@ export function SettingsPage() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="font-medium mb-2">Account Connections (Prompt 14B)</div>
-        <button
-          className="text-xs underline mb-2"
-          onClick={async () => {
-            setAccountsError(null)
-            try {
-              const a = await getSettingsAccounts()
-              setAccountsResult(a)
-            } catch (e: any) {
-              setAccountsError(e?.message || String(e))
-              setAccountsResult(null)
-            }
-          }}
-        >
-          Load Accounts Status
-        </button>
-        <ErrorState
-          message={accountsError}
-          onRetry={() => {
-            setAccountsError(null)
-            ;(async () => {
-              try {
-                const a = await getSettingsAccounts()
-                setAccountsResult(a)
-              } catch (e: any) {
-                setAccountsError(e?.message || String(e))
-                setAccountsResult(null)
-              }
-            })()
-          }}
-        />
-        {accountsResult && (
-          <div className="text-xs mt-1">
-            Loaded. Graph: {accountsResult?.graph?.status || accountsResult?.graph?.connected ? 'connected' : 'n/a'} | Procore: {accountsResult?.procore?.status || 'n/a'}
-            (status shown above; raw panels removed per FPR-004)
-          </div>
-        )}
-        <div className="text-xs">Graph/Procore status (Connected/Needs sign-in/Expired). No tokens/secrets exposed. Reconnect/revoke actions (local cache clear) for operator+.</div>
-      </div>
+      {/* Prompt D: interactive, safe account connection cards (Graph device-code + Procore OAuth) replace the old Load + raw result block.
+          Panel handles its own fetches, polling, and success refresh. No raw JSON for normal users. */}
+      <AccountConnectionsPanel variant="settings" />
 
       <div className="card">
         <div className="font-medium mb-2">Project Connections (Prompt 14B)</div>

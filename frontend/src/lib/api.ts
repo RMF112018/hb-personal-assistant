@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* Thin, typed API client for the HB Analytics FastAPI shell (Prompt 07/08/09/10/11/14/16).
+/* Thin, typed API client for the HB Analytics FastAPI shell (Prompt 07/08/09/10/11/14/16/20 + D).
  *
  * - Uses relative /api paths (Vite dev proxy in vite.config.ts forwards to backend, e.g. http://127.0.0.1:8000).
  * - Falls back to VITE_API_BASE when provided (e.g. for standalone backend).
@@ -16,6 +16,8 @@
  *     a top-level 'items' for the primary tab content.
  *   - My Items page must consume the single aggregate /api/my-items only (no /api/my-items/{action-items|meetings|...}
  *     subroutes are implemented; calling them produces 404s). Sections are derived from the aggregate shape.
+ * - Prompt D (Get Started / Account Connections): adds readiness + normalized auth flow helpers under /api/settings/connections/*.
+ *   Responses are safe (no tokens, secrets, codes beyond one-time device user_code, cache paths, or raw payloads).
  * - Keep this surface thin: presentation only. Business logic lives in AnalyticsService + read models.
  * - any-tolerant per existing page style in this repo (see Project*Page.tsx etc.); eslint-disable at top to match.
  */
@@ -36,6 +38,60 @@ export function setLocalUiRole(role: LocalUiRole): void {
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(ROLE_KEY, role);
   }
+}
+
+/* Prompt D — minimal safe response shapes (matching backend contract; keep loose for page parity with any-tolerant style). */
+export type AuthStatus =
+  | 'never_connected'
+  | 'connected_valid'
+  | 'connected_refreshing'
+  | 'connected_stale_refreshable'
+  | 'connected_stale_reauth_required'
+  | 'connected_error'
+  | 'disconnected_by_user';
+
+export interface OnboardingReadinessResponse {
+  onboarding_state: 'first_time' | 'ready' | 'degraded' | 'reauth_required' | 'blocked';
+  main_app_allowed: boolean;
+  graph?: any;
+  procore?: any;
+  reauth_required?: string[];
+  required_actions?: any[];
+  has_prior_setup?: boolean;
+  guardrails?: any;
+}
+
+export interface ConnectionsAccountsResponse {
+  graph?: any;
+  procore?: any;
+  guardrails?: any;
+}
+
+export interface GraphAuthStartResult {
+  flow_id: string;
+  user_code: string;
+  verification_uri: string;
+  verification_uri_complete?: string;
+  expires_at?: string;
+  message?: string;
+  guardrails?: any;
+}
+
+export interface ProcoreAuthStartResult {
+  flow_id: string;
+  authorization_url: string;
+  expires_at?: string;
+  callback_mode?: 'localhost' | 'oob';
+  manual_code_fallback_available?: boolean;
+  message?: string;
+  guardrails?: any;
+}
+
+export interface AuthFlowStatus {
+  flow_id: string;
+  status: 'pending' | 'complete' | 'expired' | 'failed';
+  message?: string;
+  guardrails?: any;
 }
 
 async function fetchJson<T = any>(path: string, init?: RequestInit): Promise<T> {
@@ -207,6 +263,49 @@ export function patchSettingsAdmin(patch: any) {
   return fetchJson('/api/settings/admin', { method: 'PATCH', body: JSON.stringify(patch) });
 }
 
+/* Onboarding readiness (Prompt D) — drives first-time routing and returning-user reauth state.
+ * Uses only normalized /api paths. Never triggers sync.
+ */
+export function getOnboardingReadiness() {
+  return fetchJson<OnboardingReadinessResponse>('/api/onboarding/readiness');
+}
+
+/* Microsoft Graph device-code auth flows (Prompt B + D, normalized contract).
+ * start returns safe {flow_id, user_code, verification_uri, ...}
+ * status polls with flow_id (no secrets returned)
+ * disconnect clears local cache only.
+ */
+export function startGraphDeviceAuth() {
+  return fetchJson<GraphAuthStartResult>('/api/settings/connections/graph/auth/start', { method: 'POST' });
+}
+export function getGraphAuthStatus(flowId: string) {
+  const qs = encodeURIComponent(flowId);
+  return fetchJson<AuthFlowStatus>(`/api/settings/connections/graph/auth/status?flow_id=${qs}`);
+}
+export function disconnectGraphLocal() {
+  return fetchJson('/api/settings/connections/graph/disconnect-local', { method: 'POST' });
+}
+
+/* Procore local OAuth flows (Prompt C + D, normalized contract).
+ * start returns safe {flow_id, authorization_url, callback_mode, manual_code_fallback_available, ...}
+ * status for polling after browser callback or manual.
+ * exchange-code is the manual/OOB fallback under the normalized path (no cache_path in response).
+ * disconnect clears local only.
+ */
+export function startProcoreAuth() {
+  return fetchJson<ProcoreAuthStartResult>('/api/settings/connections/procore/auth/start', { method: 'POST' });
+}
+export function getProcoreAuthStatus(flowId: string) {
+  const qs = encodeURIComponent(flowId);
+  return fetchJson<AuthFlowStatus>(`/api/settings/connections/procore/auth/status?flow_id=${qs}`);
+}
+export function exchangeProcoreCode(body: { code: string }) {
+  return fetchJson('/api/settings/connections/procore/auth/exchange-code', { method: 'POST', body: JSON.stringify(body) });
+}
+export function disconnectProcoreLocal() {
+  return fetchJson('/api/settings/connections/procore/disconnect-local', { method: 'POST' });
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
   getToday,
@@ -249,6 +348,15 @@ export const api = {
   getSettingsAdminSync,
   patchSettingsPreferences,
   patchSettingsAdmin,
+  // Prompt D — onboarding + normalized auth flows (safe surfaces only)
+  getOnboardingReadiness,
+  startGraphDeviceAuth,
+  getGraphAuthStatus,
+  disconnectGraphLocal,
+  startProcoreAuth,
+  getProcoreAuthStatus,
+  exchangeProcoreCode,
+  disconnectProcoreLocal,
 };
 
 export default api;
