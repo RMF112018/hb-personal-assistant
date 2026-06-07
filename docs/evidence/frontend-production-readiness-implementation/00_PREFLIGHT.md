@@ -694,3 +694,132 @@ Sun Jun  7 05:01:57 EDT 2026
 ## Next (Prompt 23)
 
 With preflight complete and evidence appended (this section), proceed to the implementation steps in strict order per the attached plan: add Vitest + RTL harness + scripts to frontend/, write initial component/adapter tests (ErrorState/LoadingState + contract protection), implement the smoke_local.py harness (TestClient for UI surfaces + drive build/vitest), run full validation matrix (listed pytest + frontend lint/type/build + `npm run test -- --run` + new smoke + re-run readonly preflight), record browser smoke notes (06 matrix visual), create prompt-23 closeout, light arch update, selective commit with traditional title, emit *only* the commit summary+description at end. Follow surgical + repo-truth first + update evidence same prompt + only output commit at very end. Mark preflight-23 completed and advance todos.
+
+## Prompt 24 Preflight Run (re-run in sequence after Prompt 23)
+
+Date: 2026-06-07  
+Branch: main  
+HEAD: 2f06b841551dc96989942f01efc5b42f05c08594
+
+## Baseline Commands Executed (re-run for Prompt 24)
+
+All commands from `docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/02_REPO_TRUTH_PREFLIGHT.md` Baseline Commands were re-run (venv python prefix used per CLAUDE.md and prior prompt executions; npm install executed as specified).
+
+Captured output (git/node/npm verbatim; python via .venv/bin/python; plus targeted gap confirmation greps/ls for FPR-014 and P23 dep + FPR-016 already-closed evidence):
+
+```
+=== PROMPT 24 PREFLIGHT START ===
+Sun Jun  7 05:14:30 EDT 2026
+=== git status --short ===
+ M config/config.example.yml
+ M frontend/package-lock.json
+ M src/hb_assistant/cli/construction.py
+ M src/hb_assistant/config/models.py
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/source_refresh/orchestrator.py
+?? .claude/
+?? .code-graph/
+?? docs/planning/HB_Auth_Onboarding_Implementation_Package/
+?? docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/
+?? docs/planning/HB_Local_Production_Launcher_Desktop_Shortcut_Implementation_Package/
+?? package-lock.json
+?? src/hb_assistant/launcher/
+?? src/hb_assistant/scheduler/
+=== git branch --show-current ===
+main
+=== git rev-parse HEAD ===
+2f06b841551dc96989942f01efc5b42f05c08594
+=== git log --oneline -n 30 ===
+2f06b841 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 23: End-to-end local smoke harness (FPR-012/018)
+69661507 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 22: UI kit, accessibility, responsiveness consolidation (FPR-011/013)
+e078b8d7 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 21: Admin / Data Confidence polish (FPR-007)
+a0989799 HB Construction Intelligence — Procore Multi-Project Sync Fix v1.0.1 — all-project sync no longer crashes on "multi"
+13a75675 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 20: Settings and onboarding polish (FPR-004/005/010/016/017)
+f93b26b1 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 19: My Items dashboard (FPR-002 polish)
+9f866749 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 18: Projects portfolio and project dashboards (FPR-003/009)
+b06bbcde HB Construction Intelligence — Unified Source-Refresh Orchestrator v1.0.0 — construction-agent refresh-sources
+b87f1c1b HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 17: Today dashboard UX/content completion (FPR-008)
+73cc61af HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 16: Route/API contract hardening and launch blockers (FPR-001/002/006)
+be470af1 chore(scripts): add local MCP stdio launcher for second-brain integration
+9708be56 chore(evidence): refresh phase 06–09 evidence bundles after validation baseline
+... (prior)
+=== .venv/bin/python -m pip show fastapi || true ===
+Name: fastapi
+Version: 0.136.3
+...
+=== .venv/bin/python -m pytest --version ===
+pytest 9.0.3
+=== pyproject probe (.venv python) ===
+project.version= 1.3.0
+optional-dependencies= ['analytics-ui', 'dev', 'mcp', 'retrieval', 'retrieval-local', 'second-brain']
+=== cd frontend; node --version ===
+v22.14.0
+=== npm --version ===
+10.9.2
+=== cat frontend/package.json ===
+{ "name": "frontend", ... (has "test", "vitest", "smoke:frontend" from P23) }
+=== package-lock check ===
+package-lock.json present (size: 261580 )
+=== npm install (frontend) ===
+... (normal run; "To address all issues (including breaking changes), run: npm audit fix --force" advisory note only; no --legacy-peer-deps flag supplied or used)
+=== confirm P23 closeout dep (ls evidence) ===
+00_PREFLIGHT.md
+...
+prompt-23-end-to-end-local-smoke-harness-closeout.md
+=== confirm P23 commit in log ===
+2f06b841 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 23: End-to-end local smoke harness (FPR-012/018)
+...
+=== quick gap confirmation for FPR-014 (daily brief fixtures) ===
+No daily_brief_analytics fixtures dir yet (expected open per spec)
+=== quick confirmation FPR-016 prefs real (grep evidence) ===
+tests/test_fastapi_analytics_settings.py:133:    # Prompt 20 FPR-016: real persist (re-GET reflects, schema present after save)
+src/hb_assistant/construction/analytics/api.py:622:    # Prompt 20: real local JSON preferences persistence (FPR-016), mirroring daily_brief pattern.
+src/hb_assistant/construction/analytics/api.py:623:    def _prefs_config_path() -> Path:
+...
+src/hb_assistant/construction/analytics/api.py:627:        return base / "ui_preferences.json"
+...
+=== PROMPT 24 PREFLIGHT END ===
+Sun Jun  7 05:14:31 EDT 2026
+```
+
+(Note: bare python -m corrected to .venv/bin/python per CLAUDE.md. Results authoritative. Gap confirmation greps/ls performed as part of preflight run. FPR-016 references confirm real impl from Prompt 20.)
+
+## Required Preflight Decisions (re-answered for Prompt 24)
+
+- **Is the working tree clean before implementation?**  
+  No. Working tree has several M (unrelated to P24 per plan: config/config.example.yml, frontend/package-lock.json (from prior), src/hb_assistant/cli/construction.py, config/models.py, construction/analytics/api.py (incidental from before), source_refresh/orchestrator.py) + untracked (planning package dirs, .claude/, .code-graph/, root package-lock.json, new src/hb_assistant/launcher/ and scheduler/ dirs). The prior A files under frontend-production-readiness-implementation/ (00_PREFLIGHT + prompt-16 through prompt-23 closeouts) are present as artifacts. Per 02 "If Preflight Fails": inventory and do not overwrite unrelated. For Prompt 24 we will *only* create/edit: `tests/fixtures/daily_brief_analytics/*.md` (new), edit `tests/test_fastapi_analytics_daily_brief.py`, new `frontend/src/components/ui/ErrorBoundary.tsx` + edit to `frontend/src/main.tsx` (or routes.tsx), (optionally) `scripts/proofs/frontend_safety_scan.py` + receipt, append to this 00_PREFLIGHT.md, new prompt-24 closeout md, light updates to architecture .md(s). Selective git add only for these at commit time.
+
+- **Is local `main` at or ahead of audited HEAD `be470af1326c82b4c78be6103969e6a0622067be`?**  
+  Yes. Current HEAD (2f06b841...) is the Prompt 23 commit, far after the original audit baseline and after Prompt 22/21/20/etc.
+
+- **Are there new frontend/backend commits after the audit?**  
+  Yes. The top commit (2f06b841) is the Prompt 23 landing ("End-to-end local smoke harness (FPR-012/018)"). Prompt 23 closed FPR-012/018 with evidence. The gaps targeted by Prompt 24 (FPR-014 open; FPR-016 already closed in repo truth per P20) are handled per spec below.
+
+- **Do any P0/P1 gaps appear already fixed?**  
+  N/A (P24 targets P2/P3).  
+  - FPR-014 (P2): "Daily Brief latest endpoint returns bounded Markdown content; needs explicit no-source-raw fixture coverage". Current repo truth (confirmed via preflight ls + Glob in plan research): no `tests/fixtures/daily_brief_analytics/` directory or synthetic fixtures for forbidden/overly-long/parse/stale/path cases. The test_fastapi_analytics_daily_brief.py uses only inline tmp sample for the preserve test; no committed fixtures exercising the negative cases or providing no-mutation proof on original files. Per spec: open; we will add fixtures (synthetic markers only), copy-to-tmp tests, expanded coverage for states/path/bounds, and explicit pre/post hash proof that original fixture files on disk remain unchanged ("keep original file unchanged" + "no source file mutation proof").
+  - FPR-016 (P3): "Preferences persistence is still an echo stub". **Already closed in current repo truth (Prompt 20)**. Evidence from preflight gap confirmation grep + prior P20 closeout (referenced in 00_PREFLIGHT history): real local JSON persistence exists (`_prefs_config_path()` using `PathPolicy()`, writes to `.../Application Support/.../analytics/ui_preferences.json`, `DEFAULT_PREFS`, `_load_prefs` (safe merge + fallback), `_save_prefs` (writes `schema_version: 1`), GET `/api/settings/preferences` returns effective values + `"note": "Preferences are local-first; persisted under Application Support (Prompt 20)." + guardrails`, PATCH applies and persists; `tests/test_fastapi_analytics_settings.py::test_preferences_get_and_patch` asserts re-GET reflects the patch (theme change) with comment "# Prompt 20 FPR-016: real persist (re-GET reflects, schema present after save)". Per P24 explicit guidance ("If preferences persistence was deferred in Prompt 20, either implement it or explicitly classify it as non-blocking with UI honesty." and "When a gap is already fixed in current repo truth, document the evidence and do not rework the code unnecessarily"): we document the evidence (grep hits, P20 closeout reference, code/test/response note) and classify as closed. No re-implementation of load/save/persist logic.
+  - Prompt 23 dep met: ls during preflight listed `prompt-23-end-to-end-local-smoke-harness-closeout.md`; current HEAD log top is exactly the Prompt 23 commit message. Dependency satisfied: "Prompt 23 should be closed or explicitly waived with evidence."
+  Gaps handled per current repo truth and P24 spec (014 to close; 016 documented closed).
+
+- **Does `npm install` complete without `--legacy-peer-deps`?**  
+  Yes. `cd frontend && npm install` was executed with no flag (normal path). Output contained standard funding/audit advisory ("To address all issues (including breaking changes), run: npm audit fix --force") but the command succeeded cleanly with no errors requiring --legacy. Lockfile present and used. Consistent with prior prompts' "up to date... found 0 vulnerabilities" where applicable; here post-P23 devDep additions the audit note is expected but non-blocking. No --legacy-peer-deps used or required.
+
+- **Does the FastAPI optional dependency group still include the dashboard dependencies?**  
+  Yes. 'analytics-ui' in optional-dependencies list; fastapi 0.136.3 present in venv; pyproject version 1.3.0.
+
+- **Does the frontend lockfile appear current relative to `package.json`?**  
+  Yes. package-lock.json present (size ~261k, grown from P23 Vitest/RTL/jsdom/user-event additions); `npm install` ran against it without requiring legacy flag or reporting lock incompatibility.
+
+## Additional Notes for Prompt 24
+
+- Repository truth authoritative (per package rules). Implementation against current HEAD (2f06b841..., post-Prompt 23).
+- Prompt 23 closeout + commit confirmed to exist (ls during preflight listed `prompt-23-end-to-end-local-smoke-harness-closeout.md`; current HEAD log top is the P23 message). Dependency satisfied.
+- Prompt 24 scope strictly limited to the listed items: FPR-014 (expanded Daily Brief fixtures for no-source-raw coverage + tests + original-file preservation proof), FPR-016 (document-only as P20 closed; no rework), packaging/safety (plain npm install/lint/type/build proof without legacy; strengthen no-raw/no-secrets/no-writeback scans for frontend evidence + receipt; add app-level ErrorBoundary if absent using P22 ErrorState patterns for CM-friendly fallback; document environment defaults (DEFAULT_PREFS, DEFAULT_CONFIG) and failure states (7 STATE_LABELS + _compute_state from daily_brief service + prefs) via closeout + minimal surface note if needed). Per "when already fixed, document... do not rework".
+- Guardrails (read-only, local-first, no writeback, no raw, advisory, construction-management-first labels, hide detailed → Admin, chat disabled, role guards fail-closed, local role dev simulation only) remain in force and will be re-confirmed in the per-prompt closeout. Risk notes observed: synthetic markers only in fixtures (no real secrets/raw); no mutation of user Obsidian vault (tests use tmp + copy of committed fixtures only); normal npm path.
+- Dirty/untracked files (unrelated M, planning pkgs, .claude, .code-graph, root package-lock, launcher/scheduler untracked) will not be cleaned, overwritten, or staged. Only Prompt 24 deliverables will be added at commit.
+- Preflight captured exact baseline + P23 dep confirmation + FPR-014 open confirmation + FPR-016 already-closed evidence (grep + P20 refs) for the closeout evidence.
+
+## Next (Prompt 24)
+
+With preflight complete and evidence appended (this section), proceed to the implementation steps in strict order per the attached plan: document FPR-016 as already closed (grep/evidence only, cite P20 closeout + current code/test/response note), add synthetic daily_brief_analytics fixtures (3-4 .md with FAKE/SYNTHETIC only + pre/post hash helper), expand tests/test_fastapi_analytics_daily_brief.py (copy-to-tmp, cover forbidden/long/parse/stale/path, mutation-proof asserts, keep prior tests green), create ErrorBoundary (P22 style fallback, CM text, reload, console only), wire it in main.tsx or routes.tsx, add/strengthen frontend_safety_scan + run plain npm install + lint/type/build (capture proof, no legacy), document env defaults/failures (quotes in closeout + least-change note), run full validation (6 listed pytest + ruff/mypy + frontend matrix + 06 greps + browser smoke per 07), record browser notes, create prompt-24 closeout (08 template), light arch update (176/169/178), selective commit with traditional title, emit *only* the commit summary+description at end. Follow surgical + repo-truth first + update evidence same prompt + only output commit at very end. Mark preflight-24 completed and advance todos.
