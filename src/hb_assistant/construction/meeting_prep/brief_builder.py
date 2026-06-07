@@ -305,6 +305,33 @@ class MeetingPrepBriefBuilder:
             "unmatched_upcoming_meetings": unmatched,
             "matched_event_refs": matched_ids[:25],
         }
+        # Phase 10A: if raw calendar rows exist for these events (policy + ingest with flag),
+        # surface actual subject/body/attendees/join etc. in the packet for meeting prep consumers.
+        # Falls back silently to metadata-only if no raw row (prior behavior).
+        if matched_ids:
+            details: list[dict[str, Any]] = []
+            for eid in matched_ids[:10]:
+                raw = self._store.get_calendar_event_raw_content(event_index_id=eid)
+                if raw:
+                    details.append(
+                        {
+                            "event_index_id": eid,
+                            "subject": raw.get("subject"),
+                            "body_text": raw.get("body_text"),
+                            "body_html": raw.get("body_html"),
+                            "location": raw.get("location_display"),
+                            "organizer": {
+                                "name": raw.get("organizer_name"),
+                                "email": raw.get("organizer_email"),
+                            },
+                            "attendees": raw.get("attendees"),
+                            "join_url": raw.get("join_url"),
+                            "start": raw.get("start_datetime_utc"),
+                            "end": raw.get("end_datetime_utc"),
+                        }
+                    )
+            if details:
+                payload["matched_event_details"] = details
         if matched_ids:
             return self._section(
                 "meeting_context",

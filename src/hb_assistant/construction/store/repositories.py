@@ -7296,6 +7296,205 @@ class ConstructionStore:
                 ),
             )
 
+    def upsert_calendar_event_raw_content(
+        self,
+        *,
+        raw_calendar_event_id: str,
+        graph_event_id_hash: str,
+        event_index_id: Optional[str] = None,
+        source_ref_hash: Optional[str] = None,
+        project_key: Optional[str] = None,
+        subject: Optional[str] = None,
+        body_preview: Optional[str] = None,
+        body_text: Optional[str] = None,
+        body_html: Optional[str] = None,
+        location_display: Optional[str] = None,
+        organizer_name: Optional[str] = None,
+        organizer_email: Optional[str] = None,
+        attendees_json: str = "[]",
+        online_meeting_provider: Optional[str] = None,
+        join_url: Optional[str] = None,
+        recurrence_json: Optional[str] = None,
+        start_datetime_utc: Optional[str] = None,
+        end_datetime_utc: Optional[str] = None,
+    ) -> None:
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO calendar_event_raw_content
+                    (raw_calendar_event_id, event_index_id, graph_event_id_hash,
+                     source_ref_hash, project_key,
+                     subject, body_preview, body_text, body_html,
+                     location_display, organizer_name, organizer_email,
+                     attendees_json, online_meeting_provider, join_url,
+                     recurrence_json, start_datetime_utc, end_datetime_utc,
+                     created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(raw_calendar_event_id) DO UPDATE SET
+                    event_index_id = excluded.event_index_id,
+                    graph_event_id_hash = excluded.graph_event_id_hash,
+                    source_ref_hash = excluded.source_ref_hash,
+                    project_key = excluded.project_key,
+                    subject = excluded.subject,
+                    body_preview = excluded.body_preview,
+                    body_text = excluded.body_text,
+                    body_html = excluded.body_html,
+                    location_display = excluded.location_display,
+                    organizer_name = excluded.organizer_name,
+                    organizer_email = excluded.organizer_email,
+                    attendees_json = excluded.attendees_json,
+                    online_meeting_provider = excluded.online_meeting_provider,
+                    join_url = excluded.join_url,
+                    recurrence_json = excluded.recurrence_json,
+                    start_datetime_utc = excluded.start_datetime_utc,
+                    end_datetime_utc = excluded.end_datetime_utc,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    raw_calendar_event_id,
+                    event_index_id,
+                    graph_event_id_hash,
+                    source_ref_hash,
+                    project_key,
+                    subject,
+                    body_preview,
+                    body_text,
+                    body_html,
+                    location_display,
+                    organizer_name,
+                    organizer_email,
+                    attendees_json,
+                    online_meeting_provider,
+                    join_url,
+                    recurrence_json,
+                    start_datetime_utc,
+                    end_datetime_utc,
+                    _utc_now(),
+                    _utc_now(),
+                ),
+            )
+
+    def list_calendar_event_raw_content(
+        self, *, project_key: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT raw_calendar_event_id, event_index_id, graph_event_id_hash,
+                   source_ref_hash, project_key, subject, body_preview,
+                   body_text, body_html, location_display, organizer_name,
+                   organizer_email, attendees_json, online_meeting_provider,
+                   join_url, recurrence_json, start_datetime_utc, end_datetime_utc,
+                   created_utc, updated_utc
+            FROM calendar_event_raw_content {where}
+            ORDER BY start_datetime_utc DESC, raw_calendar_event_id
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        keys = (
+            "raw_calendar_event_id",
+            "event_index_id",
+            "graph_event_id_hash",
+            "source_ref_hash",
+            "project_key",
+            "subject",
+            "body_preview",
+            "body_text",
+            "body_html",
+            "location_display",
+            "organizer_name",
+            "organizer_email",
+            "attendees_json",
+            "online_meeting_provider",
+            "join_url",
+            "recurrence_json",
+            "start_datetime_utc",
+            "end_datetime_utc",
+            "created_utc",
+            "updated_utc",
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            rec = dict(zip(keys, row, strict=True))
+            # Parse JSON fields for convenience (callers can treat as strings too)
+            for jk in ("attendees_json", "recurrence_json"):
+                try:
+                    rec[jk.replace("_json", "")] = self._load_json(rec[jk]) or []
+                except Exception:
+                    rec[jk.replace("_json", "")] = []
+            results.append(rec)
+        return results
+
+    def get_calendar_event_raw_content(
+        self,
+        *,
+        event_index_id: Optional[str] = None,
+        graph_event_id_hash: Optional[str] = None,
+    ) -> Optional[dict[str, Any]]:
+        """Fetch a single raw calendar row by stable key (event_index_id or graph hash).
+        Returns None if not present. Used for meeting-prep packet enrichment etc.
+        """
+        if not event_index_id and not graph_event_id_hash:
+            return None
+        conn = get_connection(self._db_path)
+        if graph_event_id_hash:
+            cur = conn.execute(
+                "SELECT raw_calendar_event_id, event_index_id, graph_event_id_hash, "
+                "source_ref_hash, project_key, subject, body_preview, body_text, body_html, "
+                "location_display, organizer_name, organizer_email, attendees_json, "
+                "online_meeting_provider, join_url, recurrence_json, start_datetime_utc, end_datetime_utc "
+                "FROM calendar_event_raw_content WHERE graph_event_id_hash = ?",
+                (graph_event_id_hash,),
+            )
+        else:
+            cur = conn.execute(
+                "SELECT raw_calendar_event_id, event_index_id, graph_event_id_hash, "
+                "source_ref_hash, project_key, subject, body_preview, body_text, body_html, "
+                "location_display, organizer_name, organizer_email, attendees_json, "
+                "online_meeting_provider, join_url, recurrence_json, start_datetime_utc, end_datetime_utc "
+                "FROM calendar_event_raw_content WHERE event_index_id = ?",
+                (event_index_id,),
+            )
+        row = cur.fetchone()
+        if not row:
+            return None
+        keys = (
+            "raw_calendar_event_id",
+            "event_index_id",
+            "graph_event_id_hash",
+            "source_ref_hash",
+            "project_key",
+            "subject",
+            "body_preview",
+            "body_text",
+            "body_html",
+            "location_display",
+            "organizer_name",
+            "organizer_email",
+            "attendees_json",
+            "online_meeting_provider",
+            "join_url",
+            "recurrence_json",
+            "start_datetime_utc",
+            "end_datetime_utc",
+        )
+        rec = dict(zip(keys, row, strict=True))
+        for jk in ("attendees_json", "recurrence_json"):
+            try:
+                rec[jk.replace("_json", "")] = self._load_json(rec[jk]) or []
+            except Exception:
+                rec[jk.replace("_json", "")] = []
+        return rec
+
     # -------------------------------------------------------------------------
     # V20 Phase 07A Prompt 01 — Data Quality + Canonical Source-Record Map
     # All adapters enforce the guardrail flags=False at the Python layer (defense

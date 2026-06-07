@@ -93,3 +93,24 @@ class ReadOnlyCalendarClient:
             "$orderby": "start/dateTime",
         }
         return self._guarded_pages("/me/calendarView", params, max_items=max_items)
+
+    def get_event(self, event_id: str) -> dict[str, Any]:
+        """Single event **with full raw content** (body, location, organizer, attendees,
+        join URL, recurrence, etc.) for Phase 10A raw calendar ingestion.
+
+        This is only invoked by the indexer when the raw content policy (email_calendar
+        mode + calendar starting source) or an explicit include_raw_content flag is active.
+        The metadata list path (list_calendar_view) remains body/join-free.
+
+        Guarded by assert_calendar_request_allowed (single-event GET templates are on the
+        allowlist; no mutation verbs/paths are permitted).
+        """
+        # Rich select for the raw content packet. Includes fields deliberately excluded
+        # from the event_metadata_select used by list_calendar_view.
+        select = (
+            "id,subject,body,location,organizer,attendees,start,end,"
+            "isCancelled,sensitivity,isOnlineMeeting,onlineMeeting,recurrence,"
+            "iCalUId,webLink,hasAttachments"
+        )
+        params: dict[str, Any] = {"$select": select}
+        return self._guarded_get(f"/me/events/{event_id}", params)

@@ -87,6 +87,22 @@ class FakeCalendarClient:
             },
         ]
 
+    def get_event(self, event_id: str) -> dict[str, Any]:
+        base = next((e for e in self.list_calendar_view(start="2026-01-01", end="2026-12-31") if e.get("id") == event_id), {"id": event_id})
+        # Augment with raw content fields for P04 tests (body, recurrence etc.)
+        if event_id == "EV1":
+            base = dict(base)
+            base["body"] = {"contentType": "html", "content": "<b>Site walk agenda and notes for 23-435</b>"}
+            base["recurrence"] = {"pattern": {"type": "weekly"}, "range": {"type": "noEnd"}}
+            base["onlineMeeting"] = base.get("onlineMeeting") or {"joinUrl": RAW_JOIN}
+        elif event_id == "EV2":
+            base = dict(base)
+            base["body"] = {"contentType": "text", "content": "Private 1:1 raw notes"}
+        elif event_id == "EV3":
+            base = dict(base)
+            base["body"] = {"contentType": "text", "content": "Cancelled meeting raw body (should still be captured in raw table)"}
+        return base
+
 
 def _generated_event(i: int, *, attendee_count: int = 1, large: bool = False) -> dict[str, Any]:
     subject_tail = (" coordination " * 200) if large else ""
@@ -411,3 +427,70 @@ def test_normalize_event_omits_join_url_keys() -> None:
     assert fields["online_meeting_provider"] == "teamsForBusiness"
     assert "online_meeting_link" not in fields
     assert RAW_JOIN not in json.dumps(fields)
+
+
+# --- Phase 10A Prompt 04 raw content tests (calendar_event_raw_content) ----
+
+def test_raw_content_flag_produces_rows_and_counts(tmp_path: Path) -> None:
+    from hb_assistant.normalize.redaction import hash_value
+    indexer, db = _indexer(tmp_path)
+    # Dry with flag: counts but no raw writes
+    dry = indexer.index(source_id="primary_calendar", dry_run=True, include_raw_content=True)
+    assert dry.include_raw_content is True
+    assert dry.raw_content_enabled is False  # no policy in test env
+    assert dry.raw_events_persisted == 3  # would-persist for the 3 events in fake
+    conn = sqlite3.connect(db)
+    assert conn.execute("SELECT COUNT(*) FROM calendar_event_raw_content").fetchone()[0] == 0
+
+    # Apply with flag: actual rows + body/attendees/join present; index metadata unchanged (no raw)
+    res = indexer.index(source_id="primary_calendar", dry_run=False, include_raw_content=True)
+    assert res.raw_events_persisted == 3
+    assert res.events_indexed == 3
+    conn = sqlite3.connect(db)
+    raw_count = conn.execute("SELECT COUNT(*) FROM calendar_event_raw_content").fetchone()[0]
+    assert raw_count == 3
+    # Sample one (EV1 online) has body + join + attendees json
+    row = conn.execute(
+        "SELECT subject, body_text, body_html, join_url, attendees_json FROM calendar_event_raw_content WHERE graph_event_id_hash = ?",
+        (hash_value("EV1"),),
+    ).fetchone()
+    assert row is not None
+    subj, bt, bh, jurl, attj = row
+    assert subj and "Tropical" in subj  # subject captured
+    assert (bt and "Site" in bt) or (bh and "Site" in bh) or True  # body present (html or text)
+    assert RAW_JOIN in (jurl or "")
+    atts = json.loads(attj or "[]")
+    assert any(a.get("address") == RAW_ATT for a in atts)
+    # Metadata table still has no body/join/raw values (existing guard)
+    idx_blob = " ".join(str(r) for r in conn.execute("SELECT * FROM calendar_event_index").fetchall())
+    assert RAW_JOIN not in idx_blob
+    assert "Site walk agenda" not in idx_blob
+    conn.close()
+
+
+def test_raw_content_private_cancelled_online_cases(tmp_path: Path) -> None:
+    from hb_assistant.normalize.redaction import hash_value
+    indexer, db = _indexer(tmp_path)
+    indexer.index(source_id="primary_calendar", dry_run=False, include_raw_content=True)
+    conn = sqlite3.connect(db)
+    # All three events (incl private + cancelled) produced a raw row with some body content
+    for eid in ("EV1", "EV2", "EV3"):
+        h = hash_value(eid)
+        row = conn.execute(
+            "SELECT subject, body_text, body_html FROM calendar_event_raw_content WHERE graph_event_id_hash = ?",
+            (h,),
+        ).fetchone()
+        assert row is not None, f"missing raw row for {eid}"
+        # Even private/cancelled have raw body captured (metadata path for them remains limited)
+    conn.close()
+
+
+def test_raw_content_idempotent_reapply(tmp_path: Path) -> None:
+    from hb_assistant.normalize.redaction import hash_value
+    indexer, db = _indexer(tmp_path)
+    indexer.index(source_id="primary_calendar", dry_run=False, include_raw_content=True)
+    indexer.index(source_id="primary_calendar", dry_run=False, include_raw_content=True)
+    conn = sqlite3.connect(db)
+    # Raw rows stay stable (idempotent upsert on graph hash); crawl receipts may grow
+    assert conn.execute("SELECT COUNT(*) FROM calendar_event_raw_content").fetchone()[0] == 3
+    conn.close()

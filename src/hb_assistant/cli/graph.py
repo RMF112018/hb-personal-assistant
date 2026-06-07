@@ -1906,6 +1906,11 @@ def calendar_index_cmd(
     max_items: Optional[int] = typer.Option(
         None, "--max-items", help="Max events indexed per source (default: calendar source policy)"
     ),
+    include_raw_content: bool = typer.Option(
+        False,
+        "--include-raw-content",
+        help="Persist raw subject/body + location/organizer/attendees/join/recurrence into calendar_event_raw_content (policy email_calendar or explicit). Dry-run safe; the calendar_event_index metadata path remains redacted/hashed. Phase 10A.",
+    ),
     dry_run: bool = typer.Option(
         True,
         "--dry-run/--apply",
@@ -1917,9 +1922,12 @@ def calendar_index_cmd(
 
     Reads events via the guarded calendar client and persists only hashed/redacted
     metadata. The event body/description and online-meeting join URL are never
-    fetched or stored. Dry-run is the default; --apply writes
-    calendar_event_index / calendar_event_attendees / calendar_crawl_runs. Private
-    events store minimal metadata only and are flagged for review. Idempotent.
+    fetched or stored in the metadata tables. Supports --include-raw-content for
+    Phase 10A raw calendar content (when policy allows); raw values go only to the
+    designated V42 raw table. Dry-run is the default; --apply writes
+    calendar_event_index / calendar_event_attendees / calendar_crawl_runs (and raw rows
+    when enabled). Private events store minimal metadata only and are flagged for review.
+    Idempotent.
     """
     client: Optional[GraphHttpClient] = None
     try:
@@ -1959,6 +1967,7 @@ def calendar_index_cmd(
                     lookahead_days=la,
                     max_items=mx,
                     dry_run=dry_run,
+                    include_raw_content=include_raw_content,
                 )
                 results.append(result.model_dump())
 

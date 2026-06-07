@@ -41,6 +41,7 @@ from typing import Any, Callable, Optional
 from pydantic import BaseModel, Field
 
 from hb_assistant.construction.email.project_matcher import HB_PROJECT_NUMBER_RE
+from hb_assistant.construction.second_brain.local_ai import load_raw_content_policy
 from hb_assistant.construction.store import CalendarBatchApplyError, ConstructionStore
 from hb_assistant.graph.calendar_readonly_client import ReadOnlyCalendarClient
 from hb_assistant.normalize.redaction import hash_value, redact_location, redact_subject
@@ -198,6 +199,13 @@ class IndexResult(BaseModel):
     error_redacted: Optional[str] = None
     failure_diagnostics: list[dict[str, Any]] = Field(default_factory=list)
 
+    # Phase 10A raw content (calendar subject/body/location/organizer/attendees/join/recurrence)
+    # when policy email_calendar (or explicit flag). The redacted calendar_event_index path
+    # is unchanged (always hashed/redacted; private/cancelled handling preserved).
+    include_raw_content: bool = False
+    raw_content_enabled: bool = False
+    raw_events_persisted: int = 0
+
     model_config = {"extra": "forbid"}
 
 
@@ -225,6 +233,7 @@ class CalendarEventIndexer:
         lookahead_days: int = 30,
         max_items: int = 250,
         dry_run: bool = True,
+        include_raw_content: bool = False,
     ) -> IndexResult:
         now = _utc_now()
         window_start = _iso(now - timedelta(days=lookback_days))
@@ -238,6 +247,25 @@ class CalendarEventIndexer:
         status = "completed"
         error_redacted: Optional[str] = None
         failure_diagnostics: list[dict[str, Any]] = []
+
+        # Phase 10A Prompt 04: raw calendar content gated by explicit flag OR the
+        # raw_content policy (email_calendar mode + calendar starting source).
+        # Fail-closed on policy load issues. Does not affect the redacted metadata path.
+        raw_content_enabled = False
+        try:
+            rc = load_raw_content_policy()
+            rcs = rc.raw_content
+            raw_content_enabled = bool(
+                getattr(rcs, "enabled", False)
+                and getattr(rcs, "mode", None)
+                in ("email_calendar", "all_supported", "all_supported_plus_downstream")
+                and getattr(getattr(rcs, "starting_sources", None), "calendar", False)
+            )
+        except Exception:
+            raw_content_enabled = False
+        effective_raw = bool(include_raw_content or raw_content_enabled)
+
+        raw_events_persisted = 0
 
         try:
             me = self._calendar.get_me()
@@ -266,6 +294,42 @@ class CalendarEventIndexer:
                     events_review += 1
                 if len(sample) < _SAMPLE_LIMIT:
                     sample.append({k: fields[k] for k in _SAMPLE_KEYS})
+
+                # Phase 10A raw content: when effective, fetch full event (body/join/recurrence/attendees)
+                # via client.get_event (falls back to list item), build payload, upsert to raw table
+                # (idempotent). Count for evidence on both dry and apply; only write on apply.
+                if effective_raw and ev.get("id"):
+                    try:
+                        full_ev = self._calendar.get_event(ev["id"])
+                    except Exception:
+                        full_ev = ev
+                    rp = self._build_raw_calendar_payload(full_ev or ev)
+                    if not dry_run:
+                        ghash = hash_value(ev.get("id")) or ev.get("id")
+                        eidx = hash_value(f"{source_id}|{ghash}") if ghash else None
+                        self._store.upsert_calendar_event_raw_content(
+                            raw_calendar_event_id=f"raw:{ev.get('id')}",
+                            graph_event_id_hash=ghash or "",
+                            event_index_id=eidx,
+                            project_key=None,
+                            subject=rp.get("subject"),
+                            body_preview=rp.get("body_preview"),
+                            body_text=rp.get("body_text"),
+                            body_html=rp.get("body_html"),
+                            location_display=rp.get("location_display"),
+                            organizer_name=rp.get("organizer_name"),
+                            organizer_email=rp.get("organizer_email"),
+                            attendees_json=json.dumps(rp.get("attendees") or [], sort_keys=True),
+                            online_meeting_provider=rp.get("online_meeting_provider"),
+                            join_url=rp.get("join_url"),
+                            recurrence_json=json.dumps(rp.get("recurrence") or {}, sort_keys=True)
+                            if rp.get("recurrence")
+                            else None,
+                            start_datetime_utc=rp.get("start_datetime_utc"),
+                            end_datetime_utc=rp.get("end_datetime_utc"),
+                        )
+                    raw_events_persisted += 1
+
                 if dry_run:
                     continue
                 event_records.append(
@@ -358,4 +422,64 @@ class CalendarEventIndexer:
             sample=sample,
             error_redacted=error_redacted,
             failure_diagnostics=failure_diagnostics,
+            include_raw_content=include_raw_content,
+            raw_content_enabled=raw_content_enabled,
+            raw_events_persisted=raw_events_persisted,
         )
+
+    def _build_raw_calendar_payload(self, ev: dict[str, Any]) -> dict[str, Any]:
+        """Build plaintext raw payload for calendar_event_raw_content from a Graph event dict.
+
+        Captures subject, body (text/html), location, organizer, attendees (with type/status),
+        join URL, recurrence, and times. Defensive extraction for varying Graph shapes.
+        Only used when raw content policy/flag permits (never mutates metadata path).
+        """
+        body = ev.get("body") or {}
+        ctype = (body.get("contentType") or "text").lower()
+        bcontent = body.get("content")
+        body_text = bcontent if bcontent and "html" not in ctype else None
+        body_html = bcontent if bcontent and "html" in ctype else None
+
+        loc_node = ev.get("location") or {}
+        location_display = (
+            loc_node.get("displayName") or loc_node.get("address") or loc_node.get("locationUri")
+        )
+
+        org = ev.get("organizer") or {}
+        org_ea = org.get("emailAddress") or {}
+        organizer_name = org_ea.get("name")
+        organizer_email = org_ea.get("address")
+
+        atts: list[dict[str, Any]] = []
+        for a in ev.get("attendees") or []:
+            ea = a.get("emailAddress") or {}
+            atts.append(
+                {
+                    "type": a.get("type"),
+                    "status": (a.get("status") or {}).get("response"),
+                    "name": ea.get("name"),
+                    "address": ea.get("address"),
+                }
+            )
+
+        # joinUrl often lives under onlineMeeting.joinUrl; some payloads surface joinUrl directly
+        om = ev.get("onlineMeeting") or {}
+        join_url = om.get("joinUrl") or ev.get("joinUrl") or ev.get("onlineMeetingUrl")
+
+        recurrence = ev.get("recurrence")
+
+        return {
+            "subject": ev.get("subject"),
+            "body_preview": None,  # calendar list view has no separate preview body
+            "body_text": body_text,
+            "body_html": body_html,
+            "location_display": location_display,
+            "organizer_name": organizer_name,
+            "organizer_email": organizer_email,
+            "attendees": atts,
+            "online_meeting_provider": ev.get("onlineMeetingProvider"),
+            "join_url": join_url,
+            "recurrence": recurrence,
+            "start_datetime_utc": _event_datetime(ev.get("start")),
+            "end_datetime_utc": _event_datetime(ev.get("end")),
+        }
