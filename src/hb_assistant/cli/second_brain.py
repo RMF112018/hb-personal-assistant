@@ -123,6 +123,13 @@ mcp_app = typer.Typer(
 )
 app.add_typer(mcp_app, name="mcp")
 
+phase_10_app = typer.Typer(
+    name="phase-10",
+    help="Phase 10 local action intelligence — contracts/seeds substrate (declarative only).",
+    no_args_is_help=True,
+)
+app.add_typer(phase_10_app, name="phase-10")
+
 automation_app = typer.Typer(
     name="automation",
     help="Phase 08B automation health + observability (read-only status surface).",
@@ -7364,3 +7371,110 @@ def mcp_no_writeback(
         for s in proof["surfaces"]:
             typer.echo(f"  [{'ok' if s['passed'] else 'FAIL'}] {s['surface']}")
     raise typer.Exit(0 if proof.get("proof_passed") else 3)
+
+
+@phase_10_app.command("contracts-proof")
+def phase_10_contracts_proof(
+    write_evidence: bool = typer.Option(
+        False,
+        "--write-evidence/--no-write-evidence",
+        help="Write the contracts/seeds proof JSON+MD to the Phase 10 evidence dir.",
+    ),
+    evidence_dir: str | None = typer.Option(
+        None, "--evidence-dir", help="Override the evidence output directory."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Validate the Phase 10 contracts, seed policies, and fixtures (read-only, advisory).
+
+    Loads all ten Phase 10 JSON contracts, validates the four YAML seed policies against their
+    Pydantic models, structurally validates the bundled fixtures, and scans every artifact for
+    restricted raw content. No DB access, no Ollama call, no external request, no writeback. Exit 0
+    on a clean proof; 3 on a fail-closed failure or findings.
+    """
+    from hb_assistant.construction.second_brain.local_ai import (
+        Phase10ContractError,
+        build_phase_10_contracts_proof,
+    )
+    from hb_assistant.construction.second_brain.local_ai.proof import Phase10ProofError
+
+    try:
+        result = build_phase_10_contracts_proof(
+            evidence_dir=evidence_dir, write_evidence=write_evidence
+        )
+    except (Phase10ContractError, Phase10ProofError) as exc:
+        payload = {
+            "command": "second-brain phase-10 contracts-proof",
+            "proof_passed": False,
+            "error": type(exc).__name__,
+            "detail": str(exc),
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    g = result["gates"]
+    human = [
+        f"Phase 10 contracts proof passed={result['proof_passed']}"
+        f" (contracts={result['contract_count']}, seeds={result['seed_count']},"
+        f" fixtures={len(result['fixtures_validated'])},"
+        f" no_forbidden_content={g['no_forbidden_content']})",
+    ]
+    _emit_08c(result, json_out=json_out, human=human, exit_code=0 if result["proof_passed"] else 3)
+
+
+@phase_10_app.command("schema-status")
+def phase_10_schema_status(
+    db: str | None = typer.Option(None, "--db", help="Override the SQLite DB path."),
+    write_evidence: bool = typer.Option(
+        False,
+        "--write-evidence/--no-write-evidence",
+        help="Write the V41 schema-status proof JSON+MD to the Phase 10 evidence dir.",
+    ),
+    evidence_dir: str | None = typer.Option(
+        None, "--evidence-dir", help="Override the evidence output directory."
+    ),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="JSON envelope (default) or human-readable summary."
+    ),
+) -> None:
+    """Phase 10 V41 schema status (read-only, fail-closed).
+
+    Verifies the local schema is at the expected head (>=V41), that every one of the 21 Phase 10
+    tables exists with the full 13 guard columns, and that the guard columns sum to 0 across all
+    rows (no-raw/no-writeback attestation). Read-only over the DB; advisory only; never a
+    determination. Exit 0 when overall_status is `ready`, 3 otherwise (including a stale schema).
+    """
+    from hb_assistant.construction.second_brain.local_ai.schema import (
+        Phase10SchemaError,
+        build_phase_10_schema_status_report,
+    )
+
+    try:
+        report = build_phase_10_schema_status_report(
+            db_path=db, evidence_dir=evidence_dir, write_evidence=write_evidence
+        )
+    except Phase10SchemaError as exc:
+        payload = {
+            "command": "second-brain phase-10 schema-status",
+            "overall_status": "not_ready",
+            "error": type(exc).__name__,
+            "detail": str(exc),
+        }
+        _emit_08c(payload, json_out=json_out, human=[str(exc)], exit_code=3)
+        return
+
+    human = [
+        "Phase 10 V41 schema status (read-only, advisory)",
+        f"  overall: {report['overall_status']} | schema: {report['schema_version']}"
+        f" (expected {report['schema_version_expected']})",
+        f"  tables present: {report['all_tables_present']} ({report['phase_10_table_count']})"
+        f" | guards present: {report['all_guards_present']} | guard_sum: {report['guard_sum']}",
+    ]
+    _emit_08c(
+        report,
+        json_out=json_out,
+        human=human,
+        exit_code=0 if report["overall_status"] == "ready" else 3,
+    )

@@ -6,6 +6,7 @@ import json
 import re
 
 from hb_assistant.construction.second_brain.daily_brief import build_daily_brief_v2_closeout
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION
 
 _SECRET_OR_URL = re.compile(
     r"Bearer\s+[A-Za-z0-9]|-----BEGIN|eyJ[A-Za-z0-9_-]{5,}|https?://|access_token|refresh_token|client_secret"
@@ -14,7 +15,7 @@ _SECRET_OR_URL = re.compile(
 
 def test_closeout_reports_core_facts() -> None:
     c = build_daily_brief_v2_closeout(write_evidence=False)
-    assert c["schema_version"] == 40
+    assert c["schema_version"] == LATEST_SCHEMA_VERSION
     assert c["schema_changed_by_addendum"] is False
     assert c["packet_version"] == "DailyBriefHandoffPacketV2"
     assert c["output_path"].endswith("Work/Daily Brief/2026-06-06-daily-brief.md")

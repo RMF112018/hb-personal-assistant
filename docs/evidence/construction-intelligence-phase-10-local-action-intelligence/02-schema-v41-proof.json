@@ -1,0 +1,196 @@
+{
+  "command": "second-brain phase-10 schema-status",
+  "proof": "phase_10_schema_status",
+  "phase": "10",
+  "generated_utc": "2026-06-07T19:23:17.433288+00:00",
+  "repo_sha": "cc879caf4c05d5948c3d454b2b7ca5e2e6de2753",
+  "schema_version": 41,
+  "schema_version_expected": 41,
+  "schema_ready": true,
+  "phase_10_table_count": 21,
+  "guard_column_count": 13,
+  "all_tables_present": true,
+  "all_guards_present": true,
+  "guard_sum": 0,
+  "guards_clean": true,
+  "overall_status": "ready",
+  "tables": [
+    {
+      "table_name": "local_model_profiles",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "local_model_status_receipts",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "local_model_run_receipts",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "ai_job_queue",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "ai_job_runs",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "task_candidates",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "commitment_candidates",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "candidate_source_refs",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "candidate_review_events",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "accepted_tasks",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "accepted_commitments",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "follow_up_watch_items",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "follow_up_status_events",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "phase10_relationship_candidates",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "daily_brief_action_candidates",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "obsidian_note_index",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "obsidian_note_tag_index",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "obsidian_managed_section_registry",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "obsidian_note_update_receipts",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "claude_context_packets",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    },
+    {
+      "table_name": "claude_context_packet_items",
+      "present": true,
+      "guard_columns_present": true,
+      "missing_guard_columns": [],
+      "row_count": 0,
+      "guard_sum": 0
+    }
+  ],
+  "read_only": true,
+  "advisory_only": true,
+  "makes_determination": false,
+  "guard_attestation": {
+    "additive_only": true,
+    "no_raw_persistence": true,
+    "no_external_writeback": true,
+    "environment_isolated": true
+  }
+}

@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 194,
+  "table_count": 215,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1765,6 +1765,195 @@
       "blocking_for_phase": "none",
       "v": "V39",
       "notes": "Phase 09 review-burden policy evaluation snapshots (advisory promotion policy; metadata-only). Additive V39."
+    },
+    "local_model_profiles": {
+      "table_family": "phase10_local_model_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. registered local model profile tiers (advisory; no runtime yet)"
+    },
+    "local_model_status_receipts": {
+      "table_family": "phase10_local_model_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. local model daemon/profile status receipts (metadata-only)"
+    },
+    "local_model_run_receipts": {
+      "table_family": "phase10_local_model_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. per-run local model telemetry (hashes/counts only; no raw prompt/response)"
+    },
+    "ai_job_queue": {
+      "table_family": "phase10_ai_jobs_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. local AI job queue; environment-isolated idempotency key; dry-run default"
+    },
+    "ai_job_runs": {
+      "table_family": "phase10_ai_jobs_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. AI job run receipts (candidate/accepted/rejected counts; blockers)"
+    },
+    "task_candidates": {
+      "table_family": "phase10_action_candidates_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. advisory task candidates (redacted title/reason; provenance; review_status pending)"
+    },
+    "commitment_candidates": {
+      "table_family": "phase10_action_candidates_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. advisory commitment candidates (redacted; provenance; review_status pending)"
+    },
+    "candidate_source_refs": {
+      "table_family": "phase10_action_candidates_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. candidate->source provenance bridge (source_ref_hash; no candidate without a source ref)"
+    },
+    "candidate_review_events": {
+      "table_family": "phase10_action_candidates_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. candidate review audit trail (action/prior/new status; redacted note)"
+    },
+    "accepted_tasks": {
+      "table_family": "phase10_follow_up_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. user-accepted tasks promoted from candidates"
+    },
+    "accepted_commitments": {
+      "table_family": "phase10_follow_up_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. user-accepted commitments promoted from candidates"
+    },
+    "follow_up_watch_items": {
+      "table_family": "phase10_follow_up_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. follow-up lifecycle watch (stale/possibly-resolved tracking)"
+    },
+    "follow_up_status_events": {
+      "table_family": "phase10_follow_up_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. follow-up status transitions keyed by signal type"
+    },
+    "phase10_relationship_candidates": {
+      "table_family": "phase10_relationships_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. cross-source relationship candidates (deterministic/model-proposed; review_status)"
+    },
+    "daily_brief_action_candidates": {
+      "table_family": "phase10_daily_brief_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. action-focused daily-brief candidates by section (advisory)"
+    },
+    "obsidian_note_index": {
+      "table_family": "phase10_obsidian_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. Obsidian vault note index (vault_profile + path hash; redacted path)"
+    },
+    "obsidian_note_tag_index": {
+      "table_family": "phase10_obsidian_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. tags per indexed Obsidian note"
+    },
+    "obsidian_managed_section_registry": {
+      "table_family": "phase10_obsidian_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. HB-managed marker sections per note (marker-bounded writes only)"
+    },
+    "obsidian_note_update_receipts": {
+      "table_family": "phase10_obsidian_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. Obsidian write audit; changed_outside_managed_section guard = 0; mode dry_run/apply"
+    },
+    "claude_context_packets": {
+      "table_family": "phase10_mcp_packets_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. Claude/MCP context packet metadata (packet hash; redacted output path)"
+    },
+    "claude_context_packet_items": {
+      "table_family": "phase10_mcp_packets_v41",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V41",
+      "notes": "Phase 10 local action intelligence — additive V41. Claude/MCP packet items (source_ref_hash; review_required)"
     }
   }
 }

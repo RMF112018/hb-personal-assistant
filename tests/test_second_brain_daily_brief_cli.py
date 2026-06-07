@@ -8,6 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from hb_assistant.cli.main import app
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION
 
 
 @pytest.fixture
@@ -150,5 +151,5 @@ def test_daily_brief_v2_closeout_exit_zero(runner: CliRunner) -> None:
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["closeout_complete"] is True
-    assert payload["schema_version"] == 40
+    assert payload["schema_version"] == LATEST_SCHEMA_VERSION
     assert payload["packet_version"] == "DailyBriefHandoffPacketV2"
