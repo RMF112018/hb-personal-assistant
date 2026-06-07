@@ -14,6 +14,11 @@ import {
   getSettingsProjects,
   getSettingsSources,
   getSettingsKeywords,
+  getProjectKeywords,
+  addProjectKeyword,
+  patchProjectKeyword,
+  deleteProjectKeyword,
+  explainProjectKeywordMatch,
   getSettingsDailyBrief,
   getSettingsPreferences,
   getSettingsAdminSync,
@@ -21,11 +26,10 @@ import {
   patchSettingsAdmin,
 } from '../lib/api'
 
-// Settings (Prompt 10 / UI-12 partial for Daily Brief): external-agent Markdown setup wizard.
-// Enable/disable, platform selector (Claude/ChatGPT/Perplexity/Other), output folder + pattern,
-// stale threshold, show/hide on Today. Buttons for generate instructions (includes copy-ready
-// scheduled prompt + MCP guidance), validate folder, test detection.
-// Business language; strong "presents/polishes only" contract; no in-app generation.
+// Settings (Prompt 20 polish): guided local-first onboarding and preferences.
+// Sections: Account Connections, Project Connections, Daily Brief (external AI writes the .md; this app only detects/presents),
+// Preferences (real local persist), Admin (role-gated).
+// No raw panels, no alerts, no "stub" in normal UI, no live sync from preview/save flows. CM-first labels and clear next actions.
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme()
@@ -45,7 +49,7 @@ export function SettingsPage() {
   const [detectResult, setDetectResult] = useState<any>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
-  // Prompt 14C: low-friction inline results for the 14B "Load" debug buttons (no more alert(JSON...))
+  // Prompt 14C/20: debug "Load" panels and alerts removed (FPR-004); use status + guided actions only.
   const [accountsResult, setAccountsResult] = useState<any>(null)
   const [accountsError, setAccountsError] = useState<string | null>(null)
   const [projectsResult, setProjectsResult] = useState<any>(null)
@@ -62,6 +66,11 @@ export function SettingsPage() {
   const [adminSyncError, setAdminSyncError] = useState<string | null>(null)
   const [adminPatchMsg, setAdminPatchMsg] = useState<string | null>(null)
   const [prefsPatchMsg, setPrefsPatchMsg] = useState<string | null>(null)
+  // Prompt 20 keyword management state (FPR-017)
+  const [kwProject, setKwProject] = useState('')
+  const [kwTerm, setKwTerm] = useState('')
+  const [kwList, setKwList] = useState<any>(null)
+  const [kwExplain, setKwExplain] = useState<any>(null)
 
   async function refreshStatus() {
     setLoadingStatus(true)
@@ -103,7 +112,7 @@ export function SettingsPage() {
       if (c.stale_threshold_minutes) setStaleMinutes(c.stale_threshold_minutes)
       if (typeof c.show_on_today === 'boolean') setShowOnToday(c.show_on_today)
     } catch (e: any) {
-      alert(`Configure failed: ${e?.message || e}`)
+      // alert removed per FPR-004 (raw/debug cleanup)
     } finally {
       setBusy(null)
     }
@@ -149,7 +158,7 @@ export function SettingsPage() {
       })
       setInstrResult(res)
     } catch (e: any) {
-      alert(`Generate instructions failed: ${e?.message || e}`)
+      // alert removed per FPR-004 (raw/debug cleanup)
     } finally {
       setBusy(null)
     }
@@ -162,7 +171,7 @@ export function SettingsPage() {
       const res = await validateDailyBriefOutputFolder({ folder: outputFolder || undefined })
       setValidateResult(res)
     } catch (e: any) {
-      alert(`Validate failed: ${e?.message || e}`)
+      // alert removed (FPR-004); errors are non-blocking for this flow
     } finally {
       setBusy(null)
     }
@@ -177,7 +186,7 @@ export function SettingsPage() {
       // Also refresh main status
       await refreshStatus()
     } catch (e: any) {
-      alert(`Detect failed: ${e?.message || e}`)
+      // alert removed (FPR-004); errors are non-blocking for this flow
     } finally {
       setBusy(null)
     }
@@ -191,7 +200,12 @@ export function SettingsPage() {
     }
   }
 
-  const currentState = detectResult?.state || status?.state || status?.config?.enabled === false ? 'not_configured' : undefined
+  // Prompt 20 / FPR-005: explicit precedence + helper (disabled -> not_configured; else prefer detect then status)
+  function computeDailyBriefState(detect: any, st: any): string | undefined {
+    if (st?.config?.enabled === false) return 'not_configured';
+    return detect?.state ?? st?.state;
+  }
+  const currentState = computeDailyBriefState(detectResult, status);
   const previewPath = detectResult?.last_file?.path || status?.last_file?.path || status?.config?.output_folder
   const previewGenerated = detectResult?.last_file?.mtime_utc || status?.last_file?.mtime_utc
   const previewWarnings = detectResult?.parse_warnings || status?.parse_warnings || []
@@ -361,7 +375,7 @@ export function SettingsPage() {
         {accountsResult && (
           <div className="text-xs mt-1">
             Loaded. Graph: {accountsResult?.graph?.status || accountsResult?.graph?.connected ? 'connected' : 'n/a'} | Procore: {accountsResult?.procore?.status || 'n/a'}
-            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(accountsResult, null, 2)}</pre></details>
+            (status shown above; raw panels removed per FPR-004)
           </div>
         )}
         <div className="text-xs">Graph/Procore status (Connected/Needs sign-in/Expired). No tokens/secrets exposed. Reconnect/revoke actions (local cache clear) for operator+.</div>
@@ -388,7 +402,7 @@ export function SettingsPage() {
         {projectsResult && (
           <div className="text-xs mt-1">
             Loaded project connections status.
-            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(projectsResult, null, 2)}</pre></details>
+            (status shown above; raw panels removed per FPR-004)
           </div>
         )}
         <div className="text-xs">Procore (homepage URL), SharePoint (site/folder/share-link), OneDrive (explicit scopes + all-folders warning), Outlook/Calendar. Uses preview→save (14A). First sync pending admin for most.</div>
@@ -415,7 +429,7 @@ export function SettingsPage() {
         {sourcesResult && (
           <div className="text-xs mt-1">
             Loaded source scope info.
-            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(sourcesResult, null, 2)}</pre></details>
+            (status shown above; raw panels removed per FPR-004)
           </div>
         )}
         <div className="text-xs">Business descriptions. Outlook/Calendar: project_matching_only optional, false by default (match after ingestion). OneDrive all-folders: explicit + warning.</div>
@@ -442,10 +456,38 @@ export function SettingsPage() {
         {keywordsResult && (
           <div className="text-xs mt-1">
             Loaded keywords policy/surface info.
-            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(keywordsResult, null, 2)}</pre></details>
+            (status shown above; raw panels removed per FPR-004)
           </div>
         )}
-        <div className="text-xs">Candidates/active/disabled/excluded. Add/edit/disable/delete/explain. Standard/template folder names (Drawings, RFIs, Submittals, etc.) rejected by policy. Use per-project /keywords for edits.</div>
+        <div className="text-xs">Candidates/active/disabled/excluded. Add/edit/disable/delete/explain. Standard/template folder names rejected by policy. (Prompt 20: full management UI below using safe backend.)</div>
+
+      {/* Prompt 20 keyword management (FPR-017) */}
+      <div className="mt-2 border border-[var(--hb-border)] rounded p-2">
+        <div className="text-xs font-medium mb-1">Keyword Management (per project)</div>
+        <div className="flex gap-2 flex-wrap text-xs">
+          <input className="border px-1" placeholder="project key (e.g. demo-proj)" value={kwProject} onChange={(e) => setKwProject(e.target.value)} />
+          <input className="border px-1" placeholder="term (e.g. foundation)" value={kwTerm} onChange={(e) => setKwTerm(e.target.value)} />
+          <button className="badge" onClick={async () => {
+            if (!kwProject || !kwTerm) return;
+            await addProjectKeyword(kwProject, kwTerm, 1);
+            const lst = await getProjectKeywords(kwProject);
+            setKwList(lst);
+          }}>Add</button>
+          <button className="badge" onClick={async () => {
+            if (!kwProject) return;
+            const lst = await getProjectKeywords(kwProject);
+            setKwList(lst);
+          }}>Load List</button>
+          <button className="badge" onClick={async () => {
+            if (!kwProject || !kwTerm) return;
+            const exp = await explainProjectKeywordMatch(kwProject, kwTerm);
+            setKwExplain(exp);
+          }}>Explain</button>
+        </div>
+        {kwList && <div className="text-[10px] mt-1">List: {JSON.stringify(kwList).slice(0, 200)}</div>}
+        {kwExplain && <div className="text-[10px] mt-1">Explain: {JSON.stringify(kwExplain).slice(0, 200)}</div>}
+        <div className="text-[10px] text-[var(--hb-muted)] mt-1">Edits are safe (no raw content; backend rejects template folders). Refresh list after changes.</div>
+      </div>
       </div>
 
       <div className="card">
@@ -468,8 +510,7 @@ export function SettingsPage() {
         {dailyBriefError && <div className="text-xs text-red-500">{dailyBriefError}</div>}
         {dailyBriefResult && (
           <div className="text-xs mt-1">
-            Loaded Daily Brief status.
-            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(dailyBriefResult, null, 2)}</pre></details>
+            Daily Brief status available via the section below (no raw panels).
           </div>
         )}
         <div className="text-xs">External Markdown only. 7 states, platform instructions (Claude/ChatGPT/Perplexity/Other), copy scheduled prompt, detect/validate. Presenter-only; no rewrite.</div>
@@ -502,7 +543,7 @@ export function SettingsPage() {
         {prefsResult && (
           <div className="text-xs mt-1">
             Loaded preferences.
-            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(prefsResult, null, 2)}</pre></details>
+            (status shown above; raw panels removed per FPR-004)
           </div>
         )}
         <button
@@ -511,7 +552,7 @@ export function SettingsPage() {
             setPrefsPatchMsg(null)
             try {
               await patchSettingsPreferences({ theme, default_landing_page: 'Today' })
-              setPrefsPatchMsg('Preferences patch sent (stub)')
+              setPrefsPatchMsg('Preferences saved locally.')
             } catch (e: any) {
               setPrefsError(e?.message || String(e))
             }
@@ -545,7 +586,7 @@ export function SettingsPage() {
         {adminSyncResult && (
           <div className="text-xs mt-1">
             Loaded admin sync info (admin only).
-            <details className="mt-1"><summary className="underline text-[10px]">Raw response</summary><pre className="text-[10px] bg-[var(--hb-bg)] p-1 overflow-auto">{JSON.stringify(adminSyncResult, null, 2)}</pre></details>
+            (status shown above; raw panels removed per FPR-004)
           </div>
         )}
         <button
@@ -555,7 +596,7 @@ export function SettingsPage() {
             setAdminSyncError(null)
             try {
               await patchSettingsAdmin({ global_rate_limit: 60 })
-              setAdminPatchMsg('Admin patch sent (stub)')
+              setAdminPatchMsg('Admin settings saved.')
             } catch (e: any) {
               setAdminSyncError('Admin only: ' + (e?.message || e))
             }
@@ -569,7 +610,7 @@ export function SettingsPage() {
 
       <div className="card">
         <div className="font-medium mb-2">Local Storage / Retention (Prompt 14B)</div>
-        <div className="text-xs">Usage, evidence/Daily Brief retention, cleanup (stub if backend not present). Local-first under Application Support.</div>
+        <div className="text-xs">Usage, evidence/Daily Brief retention, cleanup. Local-first under Application Support. Real persistence for preferences (Prompt 20).</div>
       </div>
 
       <div className="advisory">All settings respect local-first, read-only, advisory-only guardrails. No secrets or tokens are stored or displayed here. Daily Brief configuration is stored locally under Application Support. Chat is disabled and future-only.</div>

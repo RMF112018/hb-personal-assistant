@@ -359,3 +359,112 @@ found 0 vulnerabilities
 ## Next (Prompt 19)
 
 With preflight complete and evidence appended: enhance build_my_items for richer categorized attention/sections data (within aggregate), polish MyItemsPage with light TS interfaces + 5 distinct sections + CM empties, enhance MyActionItemCard, light test updates (no subs), run validation matrix (incl. preflight re-run), browser smoke, produce prompt-19 closeout, update architecture, selective commit. Only the final traditional commit summary+description will be emitted after the commit.
+## Prompt 20 Preflight Run (re-run in sequence after Prompt 19)
+
+Date: 2026-06-07  
+Branch: main  
+HEAD: f93b26b1e227cf5d84580af4c9477247c9ada514
+
+## Baseline Commands Executed (re-run for Prompt 20)
+
+All commands from `docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/02_REPO_TRUTH_PREFLIGHT.md` Baseline Commands were re-run (venv python prefix used per CLAUDE.md and prior prompt executions; bare python -m corrected to .venv/bin/python; npm install executed as specified).
+
+Captured output (git/node/npm verbatim; python via .venv/bin/python):
+
+```
+=== PROMPT 20 PREFLIGHT START ===
+=== GIT STATUS SHORT ===
+ M src/hb_assistant/cli/procore.py
+ M src/hb_assistant/procore/sync.py
+?? .claude/
+?? .code-graph/
+?? docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/
+?? docs/planning/HB_Local_Production_Launcher_Desktop_Shortcut_Implementation_Package/
+?? package-lock.json
+=== BRANCH ===
+main
+=== HEAD ===
+f93b26b1e227cf5d84580af4c9477247c9ada514
+=== GIT LOG ONELINE -n 30 ===
+f93b26b1 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 19: My Items dashboard (FPR-002 polish)
+9f866749 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 18: Projects portfolio and project dashboards (FPR-003/009)
+... (prior)
+=== PIP SHOW FASTAPI (venv) ===
+Name: fastapi
+Version: 0.136.3
+...
+=== PYTEST VERSION (venv) ===
+pytest 9.0.3
+=== PYPROJECT VERSION AND DEPS (venv) ===
+project.version= 1.3.0
+optional-dependencies= ['analytics-ui', 'dev', 'mcp', 'retrieval', 'retrieval-local', 'second-brain']
+=== CHECK ANALYTICS-UI IN OPTIONAL (for dashboard) ===
+analytics-ui present: True
+analytics-ui deps: ['fastapi>=0.115', 'uvicorn>=0.30', 'httpx>=0.27']
+=== CONFIRM PROMPT 19 EVIDENCE EXISTS (via ls, no full re-read) ===
+00_PREFLIGHT.md
+prompt-16-route-api-contract-hardening-closeout.md
+prompt-17-today-dashboard-ux-content-closeout.md
+prompt-18-projects-portfolio-and-dashboards-closeout.md
+prompt-19-my-items-dashboard-closeout.md
+=== CONFIRM PROMPT 19 COMMIT IN RECENT LOG (dependency met) ===
+f93b26b1 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 19: My Items dashboard (FPR-002 polish)
+9f866749 ...
+=== FRONTEND NODE/NPM ===
+v22.14.0
+10.9.2
+=== PACKAGE.JSON (head) ===
+{ "name": "frontend", ... }
+=== LOCKFILE CHECK ===
+package-lock.json present
+=== NPM INSTALL ===
+up to date, audited 263 packages in 595ms
+62 packages are looking for funding
+found 0 vulnerabilities
+=== PROMPT 20 PREFLIGHT COMPLETE ===
+```
+
+(Note: Results authoritative. Bare python -m corrected to .venv/bin/python per CLAUDE.md and execution precedent.)
+
+## Required Preflight Decisions (re-answered for Prompt 20)
+
+- **Is the working tree clean before implementation?**  
+  No. Working tree has modified files (src/hb_assistant/cli/procore.py, src/hb_assistant/procore/sync.py — unrelated to analytics dashboard/Settings per plan inventory) + untracked (planning package dirs, .claude/, .code-graph/, root package-lock.json). The prior prompt A files under frontend-production-readiness-implementation/ (00_PREFLIGHT + prompt-16 through prompt-19 closeouts) are present as artifacts. Per 02 "If Preflight Fails": inventory and do not overwrite unrelated. For Prompt 20 we will *only* create/edit files directly required for the 5 FPRs: primarily `frontend/src/pages/SettingsPage.tsx` (and optionally tiny components/settings/* if proportional), backend prefs persistence (likely `src/hb_assistant/construction/analytics/api.py` + small helper mirroring daily_brief pattern), any light test updates (test_fastapi_analytics_settings.py etc.), append to this 00_PREFLIGHT.md, new prompt-20 closeout md, light updates to architecture 177/176/169. Selective git add only for these at commit time. The unrelated M files and all untracked will not be touched or staged.
+
+- **Is local `main` at or ahead of audited HEAD `be470af1326c82b4c78be6103969e6a0622067be`?**  
+  Yes. Current HEAD (f93b26b1...) is the Prompt 19 commit, well after the original audit baseline and after all prior prompts (19/18/17/16 etc.).
+
+- **Are there new frontend/backend commits after the audit?**  
+  Yes. The immediate prior commit (f93b26b1) is the Prompt 19 landing ("My Items dashboard (FPR-002 polish)"). Prompt 19 closed FPR-002 with evidence. The gaps targeted by Prompt 20 (FPR-004/005/010/016/017) remain open in current repo truth (see below).
+
+- **Do any P0/P1 gaps appear already fixed?**  
+  No (for the Prompt 20 gaps).  
+  - FPR-004 (P1): SettingsPage still contains multiple "Raw response" <details><summary>Raw response</summary><pre>{JSON.stringify(XXXResult...)} panels for the "Load" buttons (accounts/projects/sources/keywords/daily-brief/prefs/admin-sync), plus "Load Accounts Status" etc. text, and alert() calls on error paths. Confirmed via targeted searches.  
+  - FPR-005 (P1): The exact buggy line `const currentState = detectResult?.state || status?.state || status?.config?.enabled === false ? 'not_configured' : undefined` (precedence issue) is still present; Daily Brief section relies on it. Backend _compute_state is correct, but frontend bug remains.  
+  - FPR-010 (P2): Settings still mixes "Load" debug + raw panels + "sent (stub)" + stub copy; not yet fully guided CM-first sections with status cards and clear next actions (Account Connections, Project Connections, Daily Brief, Preferences).  
+  - FPR-016 (P3): /api/settings/preferences (GET/PATCH) is explicitly stubbed in api.py ("# Stub; full impl would load from local JSON under Application Support (like daily_brief config)."); returns static values; "Preferences patch sent (stub)" in UI. No real persistence yet.  
+  - FPR-017 (P3): /api/settings/keywords and keywords section in UI is still "informational only" / "Load Keywords Info" + raw panel + advisory note ("Candidates/active/disabled/excluded... Use per-project /keywords for edits."); while backend (project_keywords.py service + API CRUD/explain routes) is complete and already exercised in tests.  
+  Gaps remain open against current repo truth.
+
+- **Does `npm install` complete without `--legacy-peer-deps`?**  
+  Yes. "up to date, audited 263 packages in 595ms", "found 0 vulnerabilities". No flag needed.
+
+- **Does the FastAPI optional dependency group still include the dashboard dependencies?**  
+  Yes. analytics-ui present with fastapi/uvicorn/httpx; fastapi 0.136.3 in venv; pyproject version 1.3.0.
+
+- **Does the frontend lockfile appear current relative to `package.json`?**  
+  Yes. package-lock.json present in frontend/; `npm install` reported "up to date" with no lock modifications during the run.
+
+## Additional Notes for Prompt 20
+
+- Repository truth authoritative (per package rules). Implementation against current HEAD (f93b26b1..., post-Prompt 19).
+- Prompt 19 closeout + commit confirmed to exist (ls showed prompt-19-my-items-dashboard-closeout.md; current HEAD log shows the Prompt 19 commit message as the most recent). Dependency satisfied: "Prompt 19 should be closed or explicitly waived with evidence."
+- Prompt 20 scope strictly limited to the 5 listed FPRs (raw/debug removal + state bugfix + guided sections + real prefs persist + keyword management UI). No subroute changes, no live syncs from Settings, no secrets exposure, Daily Brief remains external presenter-only, openapi paths and existing route surface must remain stable (only consumer polish + one real impl for prefs + one bugfix). Preview/save/approve boundary preserved. CM-first language, no backend-console labels.
+- Guardrails (read-only, local-first, no writeback from primary/setup, no raw, advisory, construction labels, hide detailed → Admin, chat disabled, role guards fail-closed) remain in force and will be re-confirmed in the per-prompt closeout and final grep validation.
+- Dirty/untracked files (unrelated M in cli/procore + procore/sync, planning pkgs, .claude, .code-graph, root package-lock) will not be cleaned, overwritten, or staged. Only Prompt 20 deliverables will be added at commit.
+- When a gap is already fixed in truth, document (none primary here; all 5 targeted are open per searches).
+- Next (after this preflight + append): remove raw/alerts/stubs (FPR-004), fix state precedence + tests (FPR-005), guided sections refactor (FPR-010), real prefs JSON persist (FPR-016), keyword UI (FPR-017), full validation matrix (incl. the required grep for forbidden strings in frontend/src, must be clean for Settings), browser smoke, closeout, arch, selective commit. Only the final traditional commit summary+description will be emitted after the commit.
+
+## Next (Prompt 20)
+
+With preflight complete and evidence appended (this section), proceed to the implementation steps in strict order per the attached plan: remove raw panels/alerts/stubs from SettingsPage, fix Daily Brief state, refactor to guided sections, implement prefs persistence, implement keyword UI, run validation (pytest + ruff + mypy + frontend + explicit grep), browser smoke, create closeout, update arch, selective commit. Follow "surgical + repo-truth first + update evidence same prompt + only output commit at very end".

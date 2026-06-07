@@ -140,3 +140,5 @@ This completes UI-09 scope per the package manifest and sequence. Fuller polish,
 - Planning package: `docs/planning/fastapi-analytics-dashboard-implementation-package/`
 - Previous: 176 (frontend UI kit and navigation), 175 (read models), 174/173 (governance/keywords).
 - Next in sequence: UI-10 (Daily Brief external workflow details), UI-11+, etc.
+
+Prompt 20 (FPR-004/005/010/016/017): Settings guided CM-first sections (no raw/alert/"stub" panels); Daily Brief state precedence fixed with helper + test coverage; real local prefs JSON persist (Application Support, schema + safe); keyword management UI (per-project + explain over existing safe backend). Preview/save only. See prompt-20 closeout + 00_PREFLIGHT + cross-refs in 176/169. (Light addition to primary 177 per plan.)

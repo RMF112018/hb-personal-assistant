@@ -169,6 +169,28 @@ export function getSettingsSources() {
 export function getSettingsKeywords() {
   return fetchJson('/api/settings/keywords');
 }
+
+/* Project keywords (Prompt 20 / FPR-017): management UI over existing safe backend routes. */
+export function getProjectKeywords(projectKey: string) {
+  const key = projectKey || 'all';
+  return fetchJson(`/projects/${encodeURIComponent(key)}/keywords`);
+}
+export function addProjectKeyword(projectKey: string, term: string, strength: number = 1) {
+  const key = projectKey || 'all';
+  return fetchJson(`/projects/${encodeURIComponent(key)}/keywords`, { method: 'POST', body: JSON.stringify({ term, strength }) });
+}
+export function patchProjectKeyword(projectKey: string, keywordId: string | number, patch: any) {
+  const key = projectKey || 'all';
+  return fetchJson(`/projects/${encodeURIComponent(key)}/keywords/${encodeURIComponent(String(keywordId))}`, { method: 'PATCH', body: JSON.stringify(patch) });
+}
+export function deleteProjectKeyword(projectKey: string, keywordId: string | number) {
+  const key = projectKey || 'all';
+  return fetchJson(`/projects/${encodeURIComponent(key)}/keywords/${encodeURIComponent(String(keywordId))}`, { method: 'DELETE' });
+}
+export function explainProjectKeywordMatch(projectKey: string, text: string) {
+  const key = projectKey || 'all';
+  return fetchJson(`/projects/${encodeURIComponent(key)}/keywords/explain`, { method: 'POST', body: JSON.stringify({ text }) });
+}
 export function getSettingsDailyBrief() {
   return fetchJson('/api/settings/daily-brief');
 }
@@ -217,6 +239,11 @@ export const api = {
   getSettingsProjects,
   getSettingsSources,
   getSettingsKeywords,
+  getProjectKeywords,
+  addProjectKeyword,
+  patchProjectKeyword,
+  deleteProjectKeyword,
+  explainProjectKeywordMatch,
   getSettingsDailyBrief,
   getSettingsPreferences,
   getSettingsAdminSync,

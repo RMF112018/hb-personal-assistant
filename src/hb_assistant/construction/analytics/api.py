@@ -6,7 +6,10 @@ dependency factory so the base package remains FastAPI-free.
 
 from __future__ import annotations
 
+import json
 from typing import Any
+
+from hb_assistant.config.path_policy import PathPolicy  # Prompt 20 prefs + daily_brief config path
 
 from pydantic import BaseModel
 
@@ -616,16 +619,48 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return DailyBriefService().get_status()
 
+    # Prompt 20: real local JSON preferences persistence (FPR-016), mirroring daily_brief pattern.
+    def _prefs_config_path() -> Path:
+        pp = PathPolicy()
+        base = pp.get_app_support() / "analytics"
+        base.mkdir(parents=True, exist_ok=True)
+        return base / "ui_preferences.json"
+
+    DEFAULT_PREFS: dict[str, Any] = {
+        "theme": "dark",
+        "default_landing_page": "Today",
+        "show_daily_brief_on_today": True,
+        "followed_projects": [],
+    }
+
+    def _load_prefs() -> dict[str, Any]:
+        p = _prefs_config_path()
+        prefs = dict(DEFAULT_PREFS)
+        if p.exists():
+            try:
+                loaded = json.loads(p.read_text())
+                if isinstance(loaded, dict):
+                    prefs.update({k: v for k, v in loaded.items() if k in DEFAULT_PREFS})
+            except Exception:
+                pass
+        return prefs
+
+    def _save_prefs(updates: dict[str, Any]) -> dict[str, Any]:
+        current = _load_prefs()
+        for k, v in updates.items():
+            if k in DEFAULT_PREFS:
+                current[k] = v
+        current["schema_version"] = 1
+        _prefs_config_path().write_text(json.dumps(current, indent=2))
+        return current
+
     @app.get("/api/settings/preferences")
     def settings_preferences(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role
-        # Stub; full impl would load from local JSON under Application Support (like daily_brief config).
+        prefs = _load_prefs()
         return {
-            "theme": "dark",
-            "default_landing_page": "Today",
-            "show_daily_brief_on_today": True,
-            "followed_projects": [],
-            "note": "Preferences are local-first; persisted under Application Support.",
+            **prefs,
+            "note": "Preferences are local-first; persisted under Application Support (Prompt 20).",
             "guardrails": _guardrails(),
         }
 
@@ -635,9 +670,10 @@ def create_app(*, db_path: str | None = None) -> Any:
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         del role
+        applied = _save_prefs(patch.model_dump(exclude_none=True))
         return {
             "ok": True,
-            "applied": patch.model_dump(exclude_none=True),
+            "applied": applied,
             "guardrails": _guardrails(),
         }
 
