@@ -7,11 +7,9 @@ import { DashboardGrid } from './DashboardGrid'
 import { PrimaryPageLayout } from './PrimaryPageLayout'
 
 describe('dashboard layout primitives', () => {
-  it('renders a primary page visual label (non-heading), status row, actions, and content', () => {
+  it('renders status row, actions, and content (chrome header now owns page title; PrimaryPageLayout no longer renders duplicate label)', () => {
     render(
       <PrimaryPageLayout
-        title="Today"
-        subtitle="Current advisory signals"
         status={<span>Fresh</span>}
         actions={<button>Refresh</button>}
       >
@@ -19,9 +17,8 @@ describe('dashboard layout primitives', () => {
       </PrimaryPageLayout>,
     )
 
-    // Primary title is now a visual label (div), not a heading. Canonical h1 lives in shell PageHeader.
-    expect(screen.getByText('Today')).toBeInTheDocument()
-    expect(screen.getByText('Current advisory signals')).toBeInTheDocument()
+    // No title/subtitle props or rendering in the primitive; chrome header (AppShell) + sr-only h1 provide the page title/heading.
+    // Card/section titles inside content remain as h3s.
     expect(screen.getByText('Fresh')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument()
     expect(screen.getByText('Page content')).toBeInTheDocument()

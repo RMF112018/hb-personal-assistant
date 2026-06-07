@@ -45,7 +45,7 @@ describe('MyItemsPage work queue', () => {
     mockMyItems()
     renderMyItems()
 
-    // 'My Items' page label is visual non-heading text; the queue cards/sections provide the h3 headings.
+    // Chrome header owns the page title. Primary body label removed; the queue cards/sections provide the h3 headings.
     const headings = screen.getAllByRole('heading').map((heading) => heading.textContent)
     expect(headings).toEqual(expect.arrayContaining([
       'My Action Items',

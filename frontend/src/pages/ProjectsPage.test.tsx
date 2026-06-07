@@ -43,7 +43,7 @@ describe('ProjectsPage command center', () => {
     mockPortfolio()
     renderProjects()
 
-    // 'Projects' page label is now non-heading visual text; card/section titles are the h3 headings.
+    // Chrome header owns the page title. Primary body label removed; card/section titles are the h3 headings.
     const headings = screen.getAllByRole('heading').map((heading) => heading.textContent)
     expect(headings).toEqual(expect.arrayContaining([
       'Active Projects',

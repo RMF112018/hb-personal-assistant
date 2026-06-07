@@ -83,10 +83,12 @@ const router = createBrowserRouter([
       {
         path: 'today',
         element: <TodayPage />,
+        handle: { title: 'Today' },
       },
       {
         path: 'projects',
         element: <ProjectsPage />,
+        handle: { title: 'Projects' },
       },
       {
         path: 'projects/all',
@@ -123,19 +125,23 @@ const router = createBrowserRouter([
       {
         path: 'my-items',
         element: <MyItemsPage />,
+        handle: { title: 'My Items' },
       },
       {
         path: 'admin',
         element: <DataHealthPage />,
+        handle: { title: 'Data Health' },
       },
       {
         path: 'settings',
         element: <SettingsPage />,
+        handle: { title: 'Settings' },
       },
       // Prompt D — Get Started (first-time + returning reauth entry point). Additive; legacy root paths untouched.
       {
         path: 'get-started',
         element: <GetStartedPage />,
+        handle: { title: 'Get Started' },
       },
       // Explicitly no /chat route or page per requirements.
     ],

@@ -1,13 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { FreshnessBadge, ConfidenceBadge } from '../components/ui/Badge'
+import { Link } from 'react-router-dom'
+import { DashboardCard } from '../components/layout/DashboardCard'
+import { DashboardGrid } from '../components/layout/DashboardGrid'
+import { PrimaryPageLayout } from '../components/layout/PrimaryPageLayout'
+import { SectionCard } from '../components/common/SectionCard'
+import { ErrorState } from '../components/common/ErrorState'
 import { MetricCard } from '../components/dashboard/MetricCard'
 import { AttentionItemCard } from '../components/dashboard/AttentionItemCard'
-import { EmptyState } from '../components/ui/EmptyState'
 import { StaleDataBanner } from '../components/ui/StaleDataBanner'
-import { LoadingState } from '../components/ui/LoadingState'
+import { LoadingState } from '../components/common/LoadingState'
 import { DailyBriefRenderer } from '../components/daily-brief/DailyBriefRenderer'
+import { CheckDataHealthLink, SettingsLink } from '../components/today/TodayActions'
+import { TodayList } from '../components/today/TodayList'
+import { TodaySectionEmpty } from '../components/today/TodaySectionEmpty'
+import { TodayStatusRow } from '../components/today/TodayStatusRow'
 import { api } from '../lib/api'
 
 // Today page (Prompt 09 / UI-09 + Prompt 17): primary landing with required sections (Important Today, What Changed, Today's Meetings, Action Items, Cost/Change/Time Signals, Documents & Correspondence Worth Reviewing, Daily Brief, compact Data Confidence context + header/day). 
@@ -37,8 +44,11 @@ export function TodayPage() {
     return (
       <div className="space-y-3">
         <StaleDataBanner />
-        <EmptyState title="Unable to load Today" hint="Start the FastAPI analytics shell (pip install -e '.[analytics-ui]'; uvicorn ...) or check connection. All data advisory." />
-        <div className="text-xs"><Link to="/admin" className="underline">Open Admin / Data Confidence →</Link></div>
+        <ErrorState
+          error={error}
+          userMessage="This section could not be loaded. Restart the local app and try again."
+          actions={<CheckDataHealthLink />}
+        />
       </div>
     )
   }
@@ -56,123 +66,112 @@ export function TodayPage() {
   const portfolioItems = Array.isArray(portfolioSignals?.items) ? portfolioSignals.items.slice(0, 4) : (portfolioSignals ? [portfolioSignals] : [])
 
   return (
-    <div className="space-y-6">
-      {/* Header / day context (Prompt 17) */}
-      <div className="text-sm font-medium">Today</div>
-      <div className="flex items-center gap-2">
-        <FreshnessBadge status={d.freshness?.overall || 'unknown'} minutesAgo={d.freshness?.minutes_ago_max} />
-        <ConfidenceBadge level={d.confidence_summary?.overall || 'not_available'} />
-        <span className="text-xs text-[var(--hb-muted)]">{d.project_count ?? '—'} projects • advisory</span>
-        <Link to="/admin" className="text-xs underline ml-auto">View source &amp; sync details →</Link>
-      </div>
-
-      {/* Important Today */}
-      <section>
-        <div className="section-title">Important Today</div>
-        {metricCards.length === 0 && attention.length === 0 ? (
-          <EmptyState title="No signals" hint="Data will appear after sources sync. See Admin for freshness." />
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-              {metricCards.map((m: any, idx: number) => (
-                <MetricCard key={m.id || idx} label={m.label || m.name} value={m.value} unit={m.unit} status={m.status} />
-              ))}
-            </div>
-            <div className="mt-3 grid gap-2">
-              {attention.map((a: any, idx: number) => (
-                <AttentionItemCard key={a.id || idx} title={a.title} when={a.when || a.age} project={a.project} />
-              ))}
-            </div>
-          </>
-        )}
-      </section>
-
-      {/* Daily Brief — external Markdown only (present/polish contract, Prompt 10) */}
-      <section>
-        <div className="section-title">Daily Brief</div>
-        <DailyBriefRenderer
-          content={fb.content || fb.markdown}
-          status={fb.status || d.daily_brief?.status}
-          generatedAt={fb.generated_at || fb.generatedAt}
-          path={fb.path}
-          warnings={fb.warnings}
-          sections={fb.sections}
-        />
-        <div className="advisory mt-2">
-          Source: externally generated Markdown file. The app presents/polishes only and does not generate or materially rewrite content.
-          States: Not configured • External AI setup required • Configured (waiting) • Brief available • Brief stale • Brief generation failed • Markdown parse warning.
-            <span className="ml-2"><Link to="/settings" className="underline">Configure folder / platform in Settings →</Link></span>
-        </div>
-        {fb.path && (
-          <div className="text-[10px] text-[var(--hb-muted)] mt-1">File: {fb.path} {fb.generated_at ? `• ${fb.generated_at}` : ''}</div>
-        )}
-      </section>
-
-      {/* Today's Meetings */}
-      <section>
-        <div className="section-title">Today's Meetings</div>
-        {meetingItems.length === 0 ? (
-          <div className="card text-sm">No meetings data in current window. Prep readiness and context appear here after sync. <Link to="/projects" className="underline">Review in Projects →</Link></div>
-        ) : (
-          <div className="grid gap-2">
-            {meetingItems.map((m: any, idx: number) => (
-              <div key={idx} className="card text-sm">{m.title || m.subject || JSON.stringify(m).slice(0, 120)}</div>
-            ))}
-          </div>
-        )}
-        <div className="text-xs mt-1"><Link to="/my-items" className="underline">See My Items for personal meeting queue →</Link></div>
-      </section>
-
-      {/* What Changed + Action Items (driven from today family where available) */}
-      <section className="grid md:grid-cols-2 gap-3">
-        <div className="card">
-          <div className="section-title">What Changed</div>
-          {changeItems.length === 0 ? (
-            <div className="text-sm text-[var(--hb-muted)]">Recent Procore, file, correspondence, and signal deltas will appear here.</div>
+    <PrimaryPageLayout
+      actions={<CheckDataHealthLink />}
+      status={<TodayStatusRow freshness={d.freshness} confidence={d.confidence_summary} projectCount={d.project_count} />}
+    >
+      <DashboardGrid columns="sections" gap="lg">
+        <DashboardCard title="Priority Summary" span="full" tone={attention.length > 0 ? 'attention' : 'default'}>
+          {metricCards.length === 0 && attention.length === 0 ? (
+            <TodaySectionEmpty />
           ) : (
-            <ul className="text-sm list-disc pl-4 space-y-1">
-              {changeItems.map((c: any, idx: number) => <li key={idx}>{c.title || c.description || JSON.stringify(c).slice(0, 80)}</li>)}
-            </ul>
+            <div className="space-y-3">
+              <DashboardGrid columns="metrics">
+                {metricCards.map((m: any, idx: number) => (
+                  <MetricCard key={m.id || idx} label={m.label || m.name || 'Signal'} value={m.value ?? '—'} unit={m.unit} status={m.status} />
+                ))}
+              </DashboardGrid>
+              <div className="grid gap-2">
+                {attention.map((a: any, idx: number) => (
+                  <AttentionItemCard key={a.id || idx} title={a.title || a.name || 'Needs attention'} when={a.when || a.age || 'Today'} project={a.project} />
+                ))}
+              </div>
+            </div>
           )}
-        </div>
-        <div className="card">
-          <div className="section-title">Action Items</div>
+        </DashboardCard>
+
+        <DashboardCard title="Daily Brief" span="wide">
+          <DailyBriefRenderer
+            content={fb.content || fb.markdown}
+            status={fb.status || d.daily_brief?.status}
+            generatedAt={fb.generated_at || fb.generatedAt}
+            path={fb.path}
+            warnings={fb.warnings}
+            sections={fb.sections}
+          />
+        </DashboardCard>
+
+        <DashboardCard title="Meetings">
+          {meetingItems.length === 0 ? (
+            <TodaySectionEmpty
+              title="No meetings need attention right now."
+              hint="Meeting prep and context will appear here when available."
+              actions={<Link to="/projects" className="badge">Review Projects</Link>}
+            />
+          ) : (
+            <TodayList items={meetingItems} limit={4} />
+          )}
+        </DashboardCard>
+
+        <DashboardCard title="Action Items">
           {actionItemsList.length === 0 ? (
-            <div className="text-sm">Open and aging items for the current user. <Link to="/my-items" className="underline">Open My Items →</Link></div>
+            <TodaySectionEmpty
+              title="No items need attention right now."
+              hint="Open and aging items for you will appear here."
+              actions={<Link to="/my-items" className="badge">Open My Items</Link>}
+            />
           ) : (
-            <ul className="text-sm list-disc pl-4 space-y-1">
-              {actionItemsList.map((a: any, idx: number) => <li key={idx}>{a.title || a.description || JSON.stringify(a).slice(0, 80)}</li>)}
-            </ul>
+            <TodayList items={actionItemsList} />
           )}
-        </div>
-      </section>
+        </DashboardCard>
 
-      {/* Cost / Change / Time Signals + Documents and Correspondence Worth Reviewing (Prompt 17: split from prior single Portfolio Signals; view-model presentation of advisory signals; data source unchanged) */}
-      <section className="grid md:grid-cols-2 gap-3">
-        <div className="card">
-          <div className="section-title">Cost / Change / Time Signals</div>
-          {portfolioItems.length === 0 ? (
-            <div className="text-sm">Budget vs actual, change exposure, schedule/procurement, closeout/billing signals. Advisory only — not a financial or schedule determination. See Admin for diagnostics.</div>
+        <SectionCard title="Recent Changes">
+          {changeItems.length === 0 ? (
+            <TodaySectionEmpty title="No recent changes need attention right now." />
           ) : (
-            <ul className="text-sm list-disc pl-4 space-y-1">
-              {portfolioItems.map((p: any, idx: number) => <li key={idx}>{p.title || p.project || JSON.stringify(p).slice(0, 80)}</li>)}
-            </ul>
+            <TodayList items={changeItems} />
           )}
-        </div>
-        <div className="card">
-          <div className="section-title">Documents and Correspondence Worth Reviewing</div>
+        </SectionCard>
+
+        <SectionCard title="Correspondence">
           {portfolioItems.length === 0 ? (
-            <div className="text-sm">Documents changed or requiring review, correspondence worth attention, project-matched. See Admin for full diagnostics.</div>
+            <TodaySectionEmpty
+              title="No correspondence needs attention right now."
+              hint="Project-matched messages worth review will appear here."
+            />
           ) : (
-            <ul className="text-sm list-disc pl-4 space-y-1">
-              {portfolioItems.map((p: any, idx: number) => <li key={idx}>{p.title || p.project || JSON.stringify(p).slice(0, 80)}</li>)}
-            </ul>
+            <TodayList items={portfolioItems} limit={4} />
           )}
-        </div>
-      </section>
+        </SectionCard>
+
+        <SectionCard title="Documents">
+          {portfolioItems.length === 0 ? (
+            <TodaySectionEmpty
+              title="No document signals need attention right now."
+              hint="Changed or review-worthy documents will appear here."
+            />
+          ) : (
+            <TodayList items={portfolioItems} limit={4} />
+          )}
+        </SectionCard>
+
+        <SectionCard title="Cost / Change / Time">
+          {portfolioItems.length === 0 ? (
+            <TodaySectionEmpty
+              title="No cost, change, or time signals need attention right now."
+              hint="Advisory budget, change, schedule, and procurement signals will appear here."
+              actions={<CheckDataHealthLink />}
+            />
+          ) : (
+            <TodayList items={portfolioItems} limit={4} />
+          )}
+        </SectionCard>
+      </DashboardGrid>
 
       {(d.freshness?.overall === 'stale' || !today) && <StaleDataBanner />}
-      <div className="text-[10px] text-[var(--hb-muted)]">Data from composed read models (Prompt 07). Hide detailed source/sync/evidence here; link to Admin / Data Confidence.</div>
-    </div>
+      <div className="mt-4 text-xs text-[var(--hb-muted)]">
+        Need more detail? <Link to="/admin" className="underline">Check Data Health</Link> or <SettingsLink label="open Settings" />.
+      </div>
+    </PrimaryPageLayout>
   )
 }
