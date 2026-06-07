@@ -1,0 +1,2537 @@
+[
+  {
+    "url": "=== root / ===",
+    "status": "",
+    "method": ""
+  },
+  {
+    "url": "http://127.0.0.1:5173/",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/main.tsx?t=1780847689382",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/@vite/client",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/@react-refresh",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/ErrorBoundary.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/index.css?t=1780847689382",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/app/providers.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/app/routes.tsx?t=1780847689382",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-CZunmVaX.js?v=1884b6cd",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=30e5d30b",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=9335c8f4",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/AppShell.tsx?t=1780847689382",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectsPage.tsx?t=1780847526002",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/TodayPage.tsx?t=1780847522424",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8800d29a",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectDashboardPage.tsx?t=1780847528629",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectMeetingsPage.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/MyItemsPage.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/DataHealthPage.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectFieldOperationsPage.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectCostTimePage.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/SettingsPage.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/hooks/useOnboardingReadiness.ts",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/GetStartedPage.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-runtime.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-dom.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/SidebarFooter.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/MainNavigation.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/navigation/navigationModel.ts",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/LoadingState.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/HeaderNotificationsContext.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/EmptyState.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/ErrorState.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DashboardCard.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DashboardGrid.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectActions.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/PrimaryPageLayout.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/SectionCard.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectSetupState.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectCard.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectStatusRow.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/api.ts",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/dashboard/MetricCard.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/dashboard/AttentionItemCard.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodaySectionEmpty.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayList.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayStatusRow.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/StaleDataBanner.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/daily-brief/DailyBriefRenderer.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayActions.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/errorCopy.ts",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectSubNav.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/Badge.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/EmptyState.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsActions.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsStatusRow.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyWorkQueueItem.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/TechnicalDetails.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsSectionEmpty.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/lucide-react.js?v=3280a350",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/DailyBriefSettingsPanel.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/DataHealthPanel.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/AccountConnectionsPanel.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/AdminFirstSyncApprovalPanel.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/KeywordManagementPanel.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ProjectConnectionsPanel.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/ErrorState.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/LoadingState.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/SupportNavigation.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DataQualityIndicator.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/hooks/useDataQualitySummary.ts",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/statusCopy.ts",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/GraphConnectionCard.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ProcoreConnectionCard.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ConnectionPreviewCard.tsx",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/onboarding/readiness",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/onboarding/readiness",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/my-items",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "=== get-started /get-started ===",
+    "status": "",
+    "method": ""
+  },
+  {
+    "url": "http://127.0.0.1:5173/get-started",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/@vite/client",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/main.tsx?t=1780847689382",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=9335c8f4",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-CZunmVaX.js?v=1884b6cd",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-dom.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/@react-refresh",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/index.css?t=1780847689382",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/app/providers.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/ErrorBoundary.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/app/routes.tsx?t=1780847689382",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=30e5d30b",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8800d29a",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-runtime.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/AppShell.tsx?t=1780847689382",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/lucide-react.js?v=3280a350",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/TodayPage.tsx?t=1780847522424",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectsPage.tsx?t=1780847526002",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectDashboardPage.tsx?t=1780847528629",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectMeetingsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectFieldOperationsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectCostTimePage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/MyItemsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/DataHealthPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/GetStartedPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/hooks/useOnboardingReadiness.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/MainNavigation.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/SettingsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/SidebarFooter.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/navigation/navigationModel.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/HeaderNotificationsContext.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DashboardCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DashboardGrid.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/PrimaryPageLayout.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/SectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/ErrorState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/dashboard/MetricCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/dashboard/AttentionItemCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/StaleDataBanner.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/LoadingState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/daily-brief/DailyBriefRenderer.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayList.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodaySectionEmpty.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayStatusRow.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/api.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/EmptyState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectSetupState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectStatusRow.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectSubNav.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/errorCopy.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/Badge.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/EmptyState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsSectionEmpty.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsStatusRow.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyWorkQueueItem.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/TechnicalDetails.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/ErrorState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/LoadingState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/AccountConnectionsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/AdminFirstSyncApprovalPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/DailyBriefSettingsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/DataHealthPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/KeywordManagementPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ProjectConnectionsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DataQualityIndicator.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/SupportNavigation.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/GraphConnectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ProcoreConnectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/hooks/useDataQualitySummary.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/statusCopy.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ConnectionPreviewCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/index.css?t=1780847694956",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayStatusRow.tsx?t=1780847694956",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/onboarding/readiness",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/settings/accounts",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "=== settings /settings ===",
+    "status": "",
+    "method": ""
+  },
+  {
+    "url": "http://127.0.0.1:5173/settings",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/@vite/client",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/main.tsx?t=1780847694956",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=9335c8f4",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-CZunmVaX.js?v=1884b6cd",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-dom.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/@react-refresh",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/index.css?t=1780847694956",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/app/providers.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=30e5d30b",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/ErrorBoundary.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/app/routes.tsx?t=1780847694956",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-runtime.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8800d29a",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/AppShell.tsx?t=1780847689382",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/lucide-react.js?v=3280a350",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectsPage.tsx?t=1780847526002",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectDashboardPage.tsx?t=1780847528629",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/TodayPage.tsx?t=1780847694956",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectCostTimePage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectMeetingsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectFieldOperationsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/MyItemsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/DataHealthPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/SettingsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/GetStartedPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/hooks/useOnboardingReadiness.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/MainNavigation.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/SidebarFooter.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/navigation/navigationModel.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/HeaderNotificationsContext.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/EmptyState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/ErrorState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/LoadingState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DashboardCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DashboardGrid.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/PrimaryPageLayout.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/SectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectSetupState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectStatusRow.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/api.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectSubNav.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/errorCopy.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/dashboard/MetricCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/dashboard/AttentionItemCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/StaleDataBanner.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/daily-brief/DailyBriefRenderer.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayList.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodaySectionEmpty.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayStatusRow.tsx?t=1780847694956",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/Badge.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/EmptyState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsSectionEmpty.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsStatusRow.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyWorkQueueItem.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/TechnicalDetails.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/AdminFirstSyncApprovalPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/AccountConnectionsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/DailyBriefSettingsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/DataHealthPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/KeywordManagementPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ProjectConnectionsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/ErrorState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/LoadingState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/GraphConnectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ProcoreConnectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DataQualityIndicator.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/SupportNavigation.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/hooks/useDataQualitySummary.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/statusCopy.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ConnectionPreviewCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/daily-brief/status",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/daily-brief/status",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/settings/connections/projects",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/settings/data-quality/summary",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/settings/admin-sync",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/settings/accounts",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/settings/admin-sync",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/settings/connections/projects",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectStatusRow.tsx?t=1780847699247",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/index.css?t=1780847699247",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "=== admin /admin ===",
+    "status": "",
+    "method": ""
+  },
+  {
+    "url": "http://127.0.0.1:5173/admin",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/@vite/client",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/main.tsx?t=1780847699247",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=9335c8f4",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-CZunmVaX.js?v=1884b6cd",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-dom.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/@react-refresh",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/index.css?t=1780847699247",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/ErrorBoundary.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/app/providers.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=30e5d30b",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-runtime.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/app/routes.tsx?t=1780847699247",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8800d29a",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/AppShell.tsx?t=1780847689382",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/lucide-react.js?v=3280a350",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/TodayPage.tsx?t=1780847694956",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectMeetingsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectFieldOperationsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectCostTimePage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectsPage.tsx?t=1780847699247",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectDashboardPage.tsx?t=1780847699247",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/MyItemsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/DataHealthPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/SettingsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/GetStartedPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/hooks/useOnboardingReadiness.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/MainNavigation.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/SidebarFooter.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/navigation/navigationModel.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DashboardGrid.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/PrimaryPageLayout.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/HeaderNotificationsContext.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DashboardCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/SectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/ErrorState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/dashboard/MetricCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/dashboard/AttentionItemCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/StaleDataBanner.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/LoadingState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/daily-brief/DailyBriefRenderer.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayList.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodaySectionEmpty.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayStatusRow.tsx?t=1780847694956",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/api.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/Badge.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectSubNav.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/EmptyState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/EmptyState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectSetupState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectStatusRow.tsx?t=1780847699247",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/errorCopy.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsSectionEmpty.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsStatusRow.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyWorkQueueItem.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/TechnicalDetails.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/AdminFirstSyncApprovalPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/AccountConnectionsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/DailyBriefSettingsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/DataHealthPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/KeywordManagementPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ProjectConnectionsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/ErrorState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/LoadingState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DataQualityIndicator.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/SupportNavigation.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/GraphConnectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ProcoreConnectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/hooks/useDataQualitySummary.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/statusCopy.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ConnectionPreviewCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/admin/permissions-governance",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/admin/retrieval-ai-quality",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/admin/source-sync-health",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/admin/workflow-job-health",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/admin/data-completeness",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/admin/evidence-guardrails",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/admin",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "=== today /today ===",
+    "status": "",
+    "method": ""
+  },
+  {
+    "url": "http://127.0.0.1:5173/today",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/@vite/client",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/main.tsx?t=1780847699247",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=9335c8f4",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-CZunmVaX.js?v=1884b6cd",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-dom.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/@react-refresh",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/index.css?t=1780847699247",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/app/providers.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=30e5d30b",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-runtime.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/app/routes.tsx?t=1780847699247",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8800d29a",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/ErrorBoundary.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/AppShell.tsx?t=1780847689382",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/lucide-react.js?v=3280a350",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/TodayPage.tsx?t=1780847694956",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectsPage.tsx?t=1780847699247",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectDashboardPage.tsx?t=1780847699247",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectFieldOperationsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectCostTimePage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectMeetingsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/SettingsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/MyItemsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/DataHealthPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/GetStartedPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/hooks/useOnboardingReadiness.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/MainNavigation.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/SidebarFooter.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/navigation/navigationModel.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/HeaderNotificationsContext.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DashboardCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DashboardGrid.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/PrimaryPageLayout.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/SectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/ErrorState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/dashboard/MetricCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/dashboard/AttentionItemCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/StaleDataBanner.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/LoadingState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/daily-brief/DailyBriefRenderer.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayList.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodaySectionEmpty.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayStatusRow.tsx?t=1780847694956",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/api.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/EmptyState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectSetupState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectStatusRow.tsx?t=1780847699247",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectSubNav.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/errorCopy.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/Badge.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/EmptyState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/AdminFirstSyncApprovalPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/AccountConnectionsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/DailyBriefSettingsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/DataHealthPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/KeywordManagementPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ProjectConnectionsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsSectionEmpty.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsStatusRow.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyWorkQueueItem.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/TechnicalDetails.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/ErrorState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/LoadingState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DataQualityIndicator.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/SupportNavigation.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/GraphConnectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ProcoreConnectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/hooks/useDataQualitySummary.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/statusCopy.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ConnectionPreviewCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/today/daily-brief",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/today/changes",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/today/portfolio-signals",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/today",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/today/meetings",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/today/action-items",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/index.css?t=1780847704388",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsStatusRow.tsx?t=1780847704388",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "=== my-dashboard /my-dashboard ===",
+    "status": "",
+    "method": ""
+  },
+  {
+    "url": "http://127.0.0.1:5173/my-dashboard",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/@vite/client",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/main.tsx?t=1780847704388",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=9335c8f4",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-CZunmVaX.js?v=1884b6cd",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-dom.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/@react-refresh",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/index.css?t=1780847704388",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/ErrorBoundary.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/app/providers.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=30e5d30b",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-runtime.js?v=5d8e0b27",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/app/routes.tsx?t=1780847704388",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8800d29a",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/AppShell.tsx?t=1780847689382",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/node_modules/.vite/deps/lucide-react.js?v=3280a350",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/TodayPage.tsx?t=1780847694956",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectsPage.tsx?t=1780847699247",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectDashboardPage.tsx?t=1780847699247",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectMeetingsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectFieldOperationsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/ProjectCostTimePage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/DataHealthPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/MyItemsPage.tsx?t=1780847704388",
+    "status": 200,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/SettingsPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/pages/GetStartedPage.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/hooks/useOnboardingReadiness.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/MainNavigation.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/SidebarFooter.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/navigation/navigationModel.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/HeaderNotificationsContext.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DashboardCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DashboardGrid.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/PrimaryPageLayout.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/SectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/ErrorState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/dashboard/MetricCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/dashboard/AttentionItemCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/StaleDataBanner.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/LoadingState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/daily-brief/DailyBriefRenderer.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayList.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodaySectionEmpty.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/today/TodayStatusRow.tsx?t=1780847694956",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/api.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/EmptyState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectSetupState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectStatusRow.tsx?t=1780847699247",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/projects/ProjectSubNav.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/EmptyState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/errorCopy.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/Badge.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/common/TechnicalDetails.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsActions.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsSectionEmpty.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyItemsStatusRow.tsx?t=1780847704388",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/my-items/MyWorkQueueItem.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/AdminFirstSyncApprovalPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/AccountConnectionsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/DailyBriefSettingsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/DataHealthPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/KeywordManagementPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ProjectConnectionsPanel.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/ErrorState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/ui/LoadingState.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/layout/DataQualityIndicator.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/layouts/SupportNavigation.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/GraphConnectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ProcoreConnectionCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/hooks/useDataQualitySummary.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/lib/statusCopy.ts",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/src/components/settings/ConnectionPreviewCard.tsx",
+    "status": 304,
+    "method": "GET"
+  },
+  {
+    "url": "http://127.0.0.1:5173/api/my-items",
+    "status": 200,
+    "method": "GET"
+  }
+]
