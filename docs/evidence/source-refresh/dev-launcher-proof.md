@@ -1,28 +1,32 @@
 # Dev Launcher Proof (plan-only)
 
 - **command:** `hb-assistant launcher dev --plan --json`
-- **generated_utc:** 2026-06-07T10:48:58.176765+00:00
+- **generated_utc:** 2026-06-07T11:12:36.426230+00:00
 - **status:** `ok`
 
 ## Result
 
 ```json
 {
+  "alias_resolution_status": "not_configured",
   "app_version": "1.3.0",
   "backend_status": "planned",
   "background_mode_active": false,
-  "build_sha": "b2a02f94",
+  "build_sha": "b45c886d",
   "command": "launcher status",
   "config_profile": "dev",
   "db_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/db/hb-personal-assistant.sqlite",
   "environment": "dev",
   "environment_mode": "dev",
   "executable_path": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
+  "frontend_alias_url": null,
+  "frontend_display_name": "HB Assistant (Dev)",
   "frontend_status": "planned",
   "frontend_url": "http://127.0.0.1:5173",
   "frontend_url_source": "fallback",
   "log_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/logs",
   "mcp_status": "planned",
+  "opened_url": null,
   "processes": [
     {
       "argv": [
@@ -40,7 +44,7 @@
       "name": "backend",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T10:48:58.152273+00:00",
+      "started_at": "2026-06-07T11:12:36.408491+00:00",
       "status": "planned"
     },
     {
@@ -53,7 +57,7 @@
       "name": "frontend",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T10:48:58.152289+00:00",
+      "started_at": "2026-06-07T11:12:36.408511+00:00",
       "status": "planned"
     },
     {
@@ -68,7 +72,7 @@
       "name": "mcp",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T10:48:58.152295+00:00",
+      "started_at": "2026-06-07T11:12:36.408516+00:00",
       "status": "planned"
     },
     {
@@ -85,7 +89,7 @@
       "name": "scheduler",
       "pid": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T10:48:58.152297+00:00",
+      "started_at": "2026-06-07T11:12:36.408519+00:00",
       "status": "planned"
     }
   ],
@@ -95,6 +99,8 @@
     "db_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/db/hb-personal-assistant.sqlite",
     "environment": "dev",
     "evidence_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/evidence",
+    "frontend_alias_url": null,
+    "frontend_display_name": "HB Assistant (Dev)",
     "frontend_mode": "npm_dev",
     "frontend_open_timeout_seconds": 30,
     "frontend_url": "http://127.0.0.1:5173",
@@ -108,7 +114,8 @@
   },
   "python_path": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python3.12",
   "scheduler_status": "planned",
-  "status": "ok"
+  "status": "ok",
+  "warnings": []
 }
 ```
 

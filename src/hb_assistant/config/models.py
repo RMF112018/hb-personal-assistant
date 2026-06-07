@@ -117,6 +117,10 @@ class LauncherEnvConfig(BaseModel):
 
     frontend_url: str | None = None
     frontend_open_timeout_seconds: int = 30
+    # Optional display alias: a friendlier name/URL shown and opened when it
+    # resolves. `frontend_url` stays the routable URL used for readiness checks.
+    frontend_display_name: str | None = None
+    frontend_alias_url: str | None = None
 
 
 class LauncherConfig(BaseModel):

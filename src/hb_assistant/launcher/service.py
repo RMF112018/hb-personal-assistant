@@ -209,15 +209,28 @@ class LauncherService:
             else self.profile.frontend_open_timeout_seconds
         )
 
-        # Keep the resolved (possibly CLI-overridden) URL on the persisted session.
         result = self.start(plan_only=plan_only)
-        state = self.manager.load_session()
-        state.frontend_url = url
-        self.manager.save_session(state)
 
         warnings: list[str] = []
+        # 1. Health-check the routable URL (this is what readiness always tracks).
         reachable, wait_warnings = wait_for_frontend(url, timeout_seconds=timeout)
         warnings.extend(wait_warnings)
+
+        # 2-5. Optional display alias: open the friendlier URL only when it resolves.
+        alias_url = self.profile.frontend_alias_url
+        display_name = self.profile.frontend_display_name
+        if alias_url:
+            alias_ok, _alias_warn = wait_for_frontend(alias_url, timeout_seconds=min(timeout, 5))
+            if alias_ok:
+                opened_url, alias_resolution_status = alias_url, "resolved"
+            else:
+                opened_url, alias_resolution_status = url, "unreachable"
+                warnings.append(
+                    f"frontend_alias_url {alias_url} not reachable; "
+                    f"opening routable frontend_url {url} instead"
+                )
+        else:
+            opened_url, alias_resolution_status = url, "not_configured"
 
         requested_shell = shell
         actual_shell = shell
@@ -242,17 +255,31 @@ class LauncherService:
                     "pywebview requested but not installed; falling back to default browser. "
                     "Window-close interception is unavailable in browser mode."
                 )
-                opened, _method, open_warnings = open_browser(url)
+                opened, _method, open_warnings = open_browser(opened_url)
                 warnings.extend(open_warnings)
         else:
-            opened, open_method, open_warnings = open_browser(url)
+            opened, open_method, open_warnings = open_browser(opened_url)
             warnings.extend(open_warnings)
+
+        # Persist the resolved URLs + last-open outcome so `status` can report them.
+        state = self.manager.load_session()
+        state.frontend_url = url
+        state.frontend_display_name = display_name
+        state.frontend_alias_url = alias_url
+        state.opened_url = opened_url
+        state.alias_resolution_status = alias_resolution_status
+        state.last_open_warnings = warnings
+        self.manager.save_session(state)
 
         result.update(
             {
                 "command": "launcher open",
+                "frontend_display_name": display_name,
                 "frontend_url": url,
+                "frontend_alias_url": alias_url,
+                "opened_url": opened_url,
                 "frontend_url_source": url_source,
+                "alias_resolution_status": alias_resolution_status,
                 "frontend_reachable": reachable,
                 "frontend_opened": opened,
                 "open_method": open_method,
@@ -301,8 +328,13 @@ class LauncherService:
             "db_path": self.profile.summary()["db_path"],
             "log_path": self.profile.summary()["log_path"],
             "background_mode_active": state.background_active,
+            "frontend_display_name": self.profile.frontend_display_name,
             "frontend_url": state.frontend_url or self.profile.frontend_url,
+            "frontend_alias_url": self.profile.frontend_alias_url,
+            "opened_url": state.opened_url,
             "frontend_url_source": self.profile.frontend_url_source,
+            "alias_resolution_status": state.alias_resolution_status,
+            "warnings": state.last_open_warnings,
             "processes": [r.model_dump() for r in state.processes],
             "backend_status": _proc_status(state, "backend"),
             "frontend_status": _proc_status(state, "frontend"),

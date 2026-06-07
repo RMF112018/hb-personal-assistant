@@ -20,6 +20,11 @@ class SessionState(BaseModel):
     background_active: bool = False
     processes: list[ProcessRecord] = Field(default_factory=list)
     frontend_url: str | None = None
+    frontend_display_name: str | None = None
+    frontend_alias_url: str | None = None
+    opened_url: str | None = None
+    alias_resolution_status: str = "not_configured"
+    last_open_warnings: list[str] = Field(default_factory=list)
     last_shutdown_receipt: str | None = None
 
     @classmethod

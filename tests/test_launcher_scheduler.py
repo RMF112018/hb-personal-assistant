@@ -27,7 +27,7 @@ from hb_assistant.launcher.profiles import (
     resolve_profile,
     snapshot_source_db,
 )
-from hb_assistant.launcher.service import _hb_executable
+from hb_assistant.launcher.service import LauncherService, _hb_executable
 from hb_assistant.launcher.session_state import SessionState
 from hb_assistant.scheduler.daily_source_refresh import DailySourceRefreshJob
 from hb_assistant.scheduler.due import compute_next_run, decide_catch_up
@@ -283,6 +283,107 @@ def test_frontend_url_falls_back_when_unset() -> None:
         profile = resolve_profile(env)  # type: ignore[arg-type]
         assert profile.frontend_url == "http://127.0.0.1:5173"
         assert profile.frontend_url_source == "fallback"
+
+
+# --- frontend display alias ------------------------------------------------------
+
+
+def _patch_open_per_url(monkeypatch: pytest.MonkeyPatch, reachable: set[str]) -> dict[str, Any]:
+    """Patch the readiness wait/browser open so each URL resolves per ``reachable``."""
+    import hb_assistant.launcher.frontend_open as fo_mod
+
+    cap: dict[str, Any] = {"waits": []}
+
+    def _wait(url: str, *, timeout_seconds: int = 30, interval_seconds: float = 1.0) -> Any:
+        cap["waits"].append(url)
+        ok = url in reachable
+        return ok, ([] if ok else [f"frontend not reachable at {url}"])
+
+    def _open(url: str) -> Any:
+        cap["open_url"] = url
+        return True, "browser", []
+
+    monkeypatch.setattr(fo_mod, "wait_for_frontend", _wait)
+    monkeypatch.setattr(fo_mod, "open_browser", _open)
+    return cap
+
+
+def _alias_cfg(alias: str | None) -> Any:
+    from hb_assistant.config.models import AppConfig, LauncherConfig, LauncherEnvConfig
+
+    return AppConfig(
+        launcher=LauncherConfig(
+            dev=LauncherEnvConfig(
+                frontend_url="http://127.0.0.1:5173",
+                frontend_alias_url=alias,
+                frontend_display_name="HB Assistant Dev UI",
+            )
+        )
+    )
+
+
+def test_alias_reachable_opens_alias(monkeypatch: pytest.MonkeyPatch) -> None:
+    alias = "http://hb-dev.localhost:5173"
+    cap = _patch_open_per_url(monkeypatch, {"http://127.0.0.1:5173", alias})
+    svc = LauncherService(resolve_profile("dev", config=_alias_cfg(alias)))
+    d = svc.open_session(plan_only=True)
+    assert d["opened_url"] == alias
+    assert cap["open_url"] == alias
+    assert d["alias_resolution_status"] == "resolved"
+    assert d["frontend_url"] == "http://127.0.0.1:5173"  # routable URL unchanged
+    assert d["frontend_alias_url"] == alias
+    assert d["frontend_display_name"] == "HB Assistant Dev UI"
+    # The routable URL is health-checked first.
+    assert cap["waits"][0] == "http://127.0.0.1:5173"
+
+
+def test_alias_unreachable_falls_back_to_routable(monkeypatch: pytest.MonkeyPatch) -> None:
+    alias = "http://hb-dev.localhost:5173"
+    cap = _patch_open_per_url(monkeypatch, {"http://127.0.0.1:5173"})  # alias not reachable
+    svc = LauncherService(resolve_profile("dev", config=_alias_cfg(alias)))
+    d = svc.open_session(plan_only=True)
+    assert d["opened_url"] == "http://127.0.0.1:5173"
+    assert cap["open_url"] == "http://127.0.0.1:5173"
+    assert d["alias_resolution_status"] == "unreachable"
+    assert d["frontend_reachable"] is True  # routable URL still healthy
+    assert any("not reachable" in w for w in d["warnings"])
+
+
+def test_alias_not_configured_opens_routable(monkeypatch: pytest.MonkeyPatch) -> None:
+    cap = _patch_open_per_url(monkeypatch, {"http://127.0.0.1:5173"})
+    svc = LauncherService(resolve_profile("dev", config=_alias_cfg(None)))
+    d = svc.open_session(plan_only=True)
+    assert d["alias_resolution_status"] == "not_configured"
+    assert d["opened_url"] == d["frontend_url"] == "http://127.0.0.1:5173"
+    assert cap["open_url"] == "http://127.0.0.1:5173"
+    assert d["frontend_display_name"] == "HB Assistant Dev UI"
+
+
+def test_launcher_status_reports_alias_fields() -> None:
+    result = runner.invoke(app, ["launcher", "status", "--environment", "dev", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    for key in (
+        "frontend_display_name",
+        "frontend_url",
+        "frontend_alias_url",
+        "opened_url",
+        "alias_resolution_status",
+        "warnings",
+    ):
+        assert key in d
+    assert d["frontend_display_name"] == "HB Assistant (Dev)"  # default when unset
+    assert d["alias_resolution_status"] == "not_configured"
+    assert d["frontend_alias_url"] is None
+
+
+def test_open_result_includes_display_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_open(monkeypatch)
+    result = runner.invoke(app, ["launcher", "dev", "--open", "--plan", "--json"])
+    d = json.loads(result.stdout)
+    assert d["frontend_display_name"] == "HB Assistant (Dev)"
+    assert d["alias_resolution_status"] == "not_configured"
+    assert d["opened_url"] == d["frontend_url"]
 
 
 def test_shortcut_helpers_invoke_launcher_open() -> None:

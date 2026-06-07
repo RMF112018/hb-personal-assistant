@@ -51,6 +51,8 @@ class Profile:
     frontend_url: str = "http://127.0.0.1:5173"
     frontend_url_source: str = "fallback"
     frontend_open_timeout_seconds: int = 30
+    frontend_display_name: str = "HB Assistant"
+    frontend_alias_url: str | None = None
 
     @property
     def mock_data(self) -> bool:
@@ -74,6 +76,8 @@ class Profile:
             "frontend_url": self.frontend_url,
             "frontend_url_source": self.frontend_url_source,
             "frontend_open_timeout_seconds": self.frontend_open_timeout_seconds,
+            "frontend_display_name": self.frontend_display_name,
+            "frontend_alias_url": self.frontend_alias_url,
         }
 
 
@@ -107,6 +111,9 @@ def _build_profile(
 ) -> Profile:
     root = pp.get_app_support()
     frontend_url, frontend_url_source = _resolve_frontend_url(launcher_env)
+    display_name = launcher_env.frontend_display_name or (
+        "HB Assistant (Dev)" if environment == "dev" else "HB Assistant"
+    )
     return Profile(
         environment=environment,
         app_support_root=root,
@@ -126,6 +133,8 @@ def _build_profile(
         frontend_url=frontend_url,
         frontend_url_source=frontend_url_source,
         frontend_open_timeout_seconds=launcher_env.frontend_open_timeout_seconds,
+        frontend_display_name=display_name,
+        frontend_alias_url=launcher_env.frontend_alias_url,
     )
 
 

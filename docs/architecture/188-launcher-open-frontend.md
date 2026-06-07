@@ -75,12 +75,37 @@ When **not** installed, the launcher falls back to the browser, emits a warning,
 reports `open_method: "browser_fallback"`, `requested_shell: "pywebview"`,
 `actual_shell: "browser"` — it never fails and never hard-imports `webview`.
 
+## Display alias (v1.2.1)
+
+Optional `launcher.<env>.frontend_display_name` and `frontend_alias_url` let an
+environment present a friendlier name/URL without changing the routable
+`frontend_url` used for readiness. Resolution in `open_session`:
+
+1. Health-check the routable `frontend_url` (the readiness wait — this is always
+   what `frontend_reachable` reflects).
+2. If `frontend_alias_url` is configured, health-check it with a short bounded probe
+   (`min(timeout, 5)s`) so fallback stays responsive.
+3. Alias reachable → open the alias; `alias_resolution_status="resolved"`.
+4. Alias unreachable → open the routable `frontend_url` and emit a warning;
+   `alias_resolution_status="unreachable"`.
+5. No alias configured → open `frontend_url`; `alias_resolution_status="not_configured"`.
+
+`frontend_display_name` is always present (defaulting to `"HB Assistant (Dev)"` /
+`"HB Assistant"` when unset) and `opened_url` records the URL actually opened.
+Alias resolution is best-effort: it never raises, never requires a hosts-file edit,
+and never requires port 80 — the alias is only *probed* via `urllib` and opened if it
+answers. `frontend_url` always remains the source of truth for health checks.
+
 ## Open-result JSON (added to `status()` keys)
 
-`frontend_url`, `frontend_url_source`, `frontend_reachable`, `frontend_opened`,
-`open_method`, `requested_shell`, `actual_shell`, `timeout_seconds`,
-`window_close_intercept_supported`, `lifecycle_control`, `warnings`. Existing status
-keys (environment, processes/session, db_path, app-support via `profile`, build_sha,
+`frontend_display_name`, `frontend_url`, `frontend_alias_url`, `opened_url`,
+`frontend_url_source`, `alias_resolution_status`, `frontend_reachable`,
+`frontend_opened`, `open_method`, `requested_shell`, `actual_shell`,
+`timeout_seconds`, `window_close_intercept_supported`, `lifecycle_control`,
+`warnings`. `launcher status` reports `frontend_display_name`, `frontend_url`,
+`frontend_alias_url`, `opened_url`, `frontend_url_source`, `alias_resolution_status`,
+and `warnings` (last-open values persisted on the session). Existing status keys
+(environment, processes/session, db_path, app-support via `profile`, build_sha,
 executable/python paths, config_profile) are preserved.
 
 ## macOS shortcuts

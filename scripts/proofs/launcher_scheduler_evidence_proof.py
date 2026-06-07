@@ -232,6 +232,45 @@ def main() -> None:
         "CLI/UI actions via `launcher close`.",
     )
 
+    # 10. frontend display alias (resolved + unreachable fallback, mocked health checks)
+    from hb_assistant.config.loader import load_config
+
+    alias_cfg = load_config()
+    alias_cfg.launcher.dev.frontend_alias_url = "http://hb-dev.localhost:5173"
+    alias_cfg.launcher.dev.frontend_display_name = "HB Assistant Dev UI"
+    alias_profile = resolve_profile("dev", config=alias_cfg)
+    alias_keys = (
+        "frontend_display_name", "frontend_url", "frontend_alias_url", "opened_url",
+        "frontend_url_source", "alias_resolution_status", "frontend_reachable",
+        "frontend_opened", "warnings",
+    )
+
+    fo_mod.wait_for_frontend = lambda url, **k: (True, [])  # type: ignore[assignment]
+    alias_resolved = LauncherService(alias_profile).open_session(plan_only=True)
+
+    _routable = "http://127.0.0.1:5173"
+    fo_mod.wait_for_frontend = lambda url, **k: (  # type: ignore[assignment]
+        (url == _routable, [] if url == _routable else ["alias not reachable"])
+    )
+    alias_unreachable = LauncherService(alias_profile).open_session(plan_only=True)
+
+    alias_proof = {
+        "command": "hb-assistant launcher dev --open --json  (frontend_alias_url configured)",
+        "status": "ok",
+        "resolved_case": {k: alias_resolved[k] for k in alias_keys},
+        "unreachable_case": {k: alias_unreachable[k] for k in alias_keys},
+    }
+    _write(
+        "launcher-frontend-alias-proof",
+        "Launcher Frontend Display Alias Proof (resolved + fallback)",
+        "hb-assistant launcher dev --open --json  (frontend_alias_url configured)",
+        _sanitize(alias_proof, tmp),  # type: ignore[arg-type]
+        note_safe
+        + " Health checks are mocked. `frontend_url` stays the routable readiness URL; the alias is "
+        "opened only when it resolves, else the launcher falls back to frontend_url + a warning. "
+        "No hosts-file edit, no port 80, never a hard failure.",
+    )
+
     # 6. scheduled source refresh closeout (production local-only run)
     SchedulerState(environment="production").save(prod.scheduler_state_path)
     receipt = SchedulerRunner(prod).run_once(schedule_date=date(2026, 6, 7), trigger="evidence")
