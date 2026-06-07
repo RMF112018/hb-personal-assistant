@@ -1,7 +1,7 @@
 # Dev Launcher --open Proof (browser mode, mocked open)
 
 - **command:** `hb-assistant launcher dev --open --json`
-- **generated_utc:** 2026-06-07T11:51:17.432752+00:00
+- **generated_utc:** 2026-06-07T12:56:00.606797+00:00
 - **status:** `ok`
 
 ## Result
@@ -14,7 +14,7 @@
   "backend_port": 8000,
   "backend_status": "planned",
   "background_mode_active": false,
-  "build_sha": "5d75bf1c",
+  "build_sha": "8287d14c",
   "command": "launcher open",
   "config_profile": "dev",
   "db_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/db/hb-personal-assistant.sqlite",
@@ -31,7 +31,10 @@
   "frontend_url_source": "fallback",
   "lifecycle_control": "cli_or_ui_action_required",
   "log_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/logs",
-  "mcp_status": "planned",
+  "mcp_managed_by_launcher": false,
+  "mcp_mode": "stdio",
+  "mcp_reason": "stdio MCP is launched by Claude/Cursor and is not a persistent browser-launcher process",
+  "mcp_status": "external_client_managed",
   "open_method": "browser",
   "opened_url": "http://127.0.0.1:5173",
   "processes": [
@@ -53,7 +56,7 @@
       "pid": null,
       "port": 8000,
       "reason": "plan_only",
-      "started_at": "2026-06-07T11:51:17.418327+00:00",
+      "started_at": "2026-06-07T12:56:00.593179+00:00",
       "status": "planned"
     },
     {
@@ -74,24 +77,7 @@
       "pid": null,
       "port": 5173,
       "reason": "plan_only",
-      "started_at": "2026-06-07T11:51:17.418338+00:00",
-      "status": "planned"
-    },
-    {
-      "argv": [
-        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
-        "second-brain",
-        "mcp",
-        "serve",
-        "--stdio"
-      ],
-      "keep_in_background": true,
-      "log_path": null,
-      "name": "mcp",
-      "pid": null,
-      "port": null,
-      "reason": "plan_only",
-      "started_at": "2026-06-07T11:51:17.418341+00:00",
+      "started_at": "2026-06-07T12:56:00.593187+00:00",
       "status": "planned"
     },
     {
@@ -110,7 +96,7 @@
       "pid": null,
       "port": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T11:51:17.418343+00:00",
+      "started_at": "2026-06-07T12:56:00.593189+00:00",
       "status": "planned"
     }
   ],

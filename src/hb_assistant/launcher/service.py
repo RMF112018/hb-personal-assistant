@@ -139,18 +139,23 @@ class LauncherService:
                 )
             )
 
-        # MCP stdio server (background service).
-        specs.append(
-            ManagedProcessSpec(
-                name="mcp",
-                argv=[hb, "second-brain", "mcp", "serve", "--stdio"],
-                cwd=repo_root,
-                env=env,
-                enabled=True,
-                keep_in_background=True,
-                optional=True,
+        # MCP transport. stdio MCP is launched on demand by the IDE client
+        # (Claude/Cursor) and exits without an attached client, so it is NOT a
+        # launcher-managed persistent service — it is reported as external and never
+        # spawned/tracked. A future non-stdio transport may be managed only when
+        # explicitly configured (mcp_mode != "stdio").
+        if self.profile.mcp_mode != "stdio":
+            specs.append(
+                ManagedProcessSpec(
+                    name="mcp",
+                    argv=[hb, "second-brain", "mcp", "serve", "--stdio"],
+                    cwd=repo_root,
+                    env=env,
+                    enabled=True,
+                    keep_in_background=True,
+                    optional=True,
+                )
             )
-        )
 
         # Foreground scheduler runner (background service; OS backends use this same runner).
         specs.append(
@@ -365,6 +370,17 @@ class LauncherService:
         if reconcile:
             state = self.manager.reconcile(state)
             self.manager.save_session(state)
+        # stdio MCP is launched by the IDE client (Claude/Cursor), not the launcher.
+        mcp_managed = self.profile.mcp_mode != "stdio"
+        mcp_status = _proc_status(state, "mcp") if mcp_managed else "external_client_managed"
+        mcp_reason = (
+            None
+            if mcp_managed
+            else (
+                "stdio MCP is launched by Claude/Cursor and is not a persistent "
+                "browser-launcher process"
+            )
+        )
         return {
             "command": "launcher status",
             "environment": self.profile.environment,
@@ -389,7 +405,10 @@ class LauncherService:
             "processes": [r.model_dump() for r in state.processes],
             "backend_status": _proc_status(state, "backend"),
             "frontend_status": _proc_status(state, "frontend"),
-            "mcp_status": _proc_status(state, "mcp"),
+            "mcp_status": mcp_status,
+            "mcp_mode": self.profile.mcp_mode,
+            "mcp_managed_by_launcher": mcp_managed,
+            "mcp_reason": mcp_reason,
             "scheduler_status": _proc_status(state, "scheduler"),
             "profile": self.profile.summary(),
             "status": "ok",
