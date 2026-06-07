@@ -115,6 +115,40 @@ Use the local dev role selector (labeled "Local dev role — not production auth
 - Default remains `operator` unless intentionally changed for a specific visual step.
 - Affects the `X-HB-UI-Role` header sent by the frontend; backend `require_admin_role` is fail-closed.
 
+## Auth Onboarding & Data Quality (HB Auth Package Prompts A–I)
+
+**Posture (re-stated for A–I):** Local-first, read-only, advisory, construction-management-first. Hard rule: the auth/onboarding surfaces, Project Connections flows, Data Quality indicator, and the smoke harness **never** start live source syncs from setup/auth/preview/save/refresh/approval flows, never perform source-system writeback, and never expose raw bodies, tokens, secrets, signed/download URLs, PEM material, or local token cache paths to the frontend or into evidence.
+
+The end-to-end normalized contract and operator UX for first-time Get Started, Microsoft 365 device-code, Procore OAuth (callback primary + manual fallback), stale-auth refresh-before-reauth, auth-aware Project Connections preview/save with admin approval gate, non-admin sidebar Data Quality indicator, and admin-only diagnostics were implemented and regression-hardened in Prompts A–I. The one-command harness (`python -m scripts.smoke_local`) and this runbook now cover those surfaces and invariants.
+
+### Key implemented surfaces and labels (match repo truth)
+- Startup: `GET /api/onboarding/readiness` drives `StartupRedirect`; first_time → `/get-started`; returning (even with stale auth) prefers main shell after refresh attempt.
+- Get Started page: explains connect (M365 + Procore) → Project Connections (preview then save) → admin first-sync approval. Explicit copy: connecting accounts / preview / save does **not** start sync.
+- Account Connections (Settings or Get Started panel):
+  - Microsoft 365 card (`GraphConnectionCard`): "Connect Microsoft 365" → displays `user_code` (large, copyable) + `verification_uri`; polls status; shows connected state with safe account/tenant hints only; local disconnect.
+  - Procore card (`ProcoreConnectionCard`): "Connect Procore" → opens authorization URL (primary) or offers manual code fallback (labeled as fallback, not primary); polls callback completion; connected state with safe account/company hints; local disconnect.
+- Project Connections panel (`ProjectConnectionsPanel` + `ConnectionPreviewCard`): auth-aware (disabled until valid account connection); Procore project homepage URL (and SharePoint/OneDrive where supported); Outlook/Calendar matching optional and false by default. Preview result states "Preview complete. No sync has started.", `status: ready_to_save`, `first_sync_status: pending_admin_approval`, "First sync requires admin approval (pending_admin_approval)". Save queues pending approval; no live sync.
+- Admin First-Sync Approval (Settings, admin role): `AdminFirstSyncApprovalPanel` lists pending items (from both Procore project identities and Microsoft sources); Approve/Reject buttons (non-admin 403); clear copy that approval is required before first sync eligibility.
+- Sidebar (all normal users): `DataQualityIndicator` in `AppShell` footer after SupportNavigation — label "Data Quality" + status dot (green=good, yellow=degraded/attention, red=poor/no trusted data, neutral=unknown). Hover tooltip contains status, "Last updated:", and short message. No raw diagnostics.
+- Admin Data Quality Diagnostics (Settings): load button calls admin-only `/api/settings/data-quality/detail`; shows per-source readiness/freshness/approval/attention_items. Non-admin receives 403 with denied UI.
+
+### Scripted harness coverage (H + I)
+`UI_SURFACES` includes the normalized H/I surfaces (`/api/onboarding/readiness`, `/api/settings/data-quality/summary` (viewer), `/api/settings/data-quality/detail` (admin)). After the main loop, a dedicated "[Prompt H auth/onboarding/dq hygiene]" block re-drives critical auth/setup/dq surfaces and fails the run (appends to `failures`) on any raw leak or positive `first_sync_triggered`. Role 200/403, no-forbidden, and no-sync assertions are part of the contract gate.
+
+### Two-terminal visual smoke additions (A–I flows)
+Perform these in addition to the pre-existing dashboard / Daily Brief / admin steps (use a clean or test-isolated profile; mocks or test-only credentials only):
+
+1. Fresh launch (no prior auth/setup) → lands on `/get-started` (not the main shell). Get Started copy explains the full sequence and explicitly states that connect/preview/save do not start sync.
+2. Microsoft 365 card: click Connect → device code + verification link render (large, copyable); no token or cache path appears in UI or network; complete or mock → connected badge + accounts summary updates; Data Quality dot appears in sidebar.
+3. Procore card: click Connect → browser opens the returned auth URL (primary path); after callback, status reaches connected with safe hints; manual fallback entrypoint is visible and labeled as fallback only.
+4. Project Connections: with accounts connected, enter a Procore homepage URL → Preview renders sanitized result with "ready_to_save", "pending_admin_approval", "No sync has started", and "First sync requires admin approval"; Save succeeds and item appears as pending; confirm no sync side-effect (readiness or admin surfaces do not report triggered).
+5. Sidebar Data Quality: non-admin hover shows status + last updated + message; no per-source detail. Switch local dev role to admin → open Settings → "Data Quality Diagnostics" loads (source/attention counts); switch back to operator/viewer → detail load yields clear 403 denied state.
+6. Admin approval: pending items from save appear in the admin approval panel; approve or reject; post-action refresh eligibility reflects the decision (may still surface read-model reasons until actual data exists). Non-admin cannot see or act on the panel.
+7. Stale-auth returning user simulation (test profile with prior setup but forced stale Graph/Procore): readiness surfaces reauth_required (or degraded/reauth_required) for the affected source(s); main shell remains accessible if other auth is usable; automated refresh is attempted before any reauth prompt; no first-time Get Started reset; no sync is triggered by the readiness probe or refresh request.
+8. Inspect all network responses for the above flows: only safe metadata; no FORBIDDEN strings (access_token, refresh_token, id_token, client_secret, Authorization, Bearer, -----BEGIN, signed_url, download_url, msal-token-cache, procore-token-cache, raw bodies, etc.); `first_sync_triggered` is absent or false.
+
+Reference the planning package 07_BROWSER_SMOKE_TEST_PLAN and 10_ACCEPTANCE_CHECKLIST for the full manual checklist (first-time, returning valid, returning stale, project setup, security).
+
 ## Capture instructions (for evidence / closeout)
 
 - Scripted harness output (`python -m scripts.smoke_local` or the .sh) — pass/fail summary + key surfaces exercised.
@@ -133,6 +167,10 @@ Use the local dev role selector (labeled "Local dev role — not production auth
 - No active in-app chat (route and UI disabled/future-only; `/chat/status` reports disabled).
 - No setup-triggered live syncs; no source-system writeback at any layer.
 - The full visual experience requires two terminals + manual browser steps; the packaged harness provides the repeatable "one command" contract/build/vitest/scan evidence.
+- Auth/onboarding flows (Get Started, Graph device-code, Procore OAuth start/callback/fallback, Project Connections preview/save, refresh, admin approve/reject) are exercised in the harness and never produce a positive `first_sync_triggered` or initiate live sync (H regression + smoke hygiene block).
+- Data Quality summary (`/api/settings/data-quality/summary`) is safe for viewer/operator roles and contains only status, label, last_updated_at, and a short message; detail (`/api/settings/data-quality/detail`) is admin-only and returns 403 for non-admin.
+- All frontend-facing auth/onboarding/account/project/dq responses and rendered cards for normal users are free of forbidden fields (no tokens, secrets, cache paths, raw payloads, signed/download URLs, PEMs, or raw bodies). The harness and tests fail on any leak.
+- Procore manual code exchange (`/auth/exchange-code`) is documented and exposed only as a fallback; the primary path is the backend-generated authorization URL + localhost callback with state validation.
 
 ## Guardrails (re-stated for this runbook)
 
@@ -145,6 +183,9 @@ Use the local dev role selector (labeled "Local dev role — not production auth
 - Chat remains disabled/future-only.
 - Local role = dev simulation only.
 - All surfaces and docs remain construction-management-first with advisory language.
+- The auth/onboarding surfaces (readiness, accounts, graph/procore auth start/status/callback/exchange/disconnect, projects preview/save, admin approve/reject, data-quality summary/detail) are driven by the harness UI_SURFACES + hygiene block with role, no-raw, and no-positive-trigger gates.
+- First live sync eligibility requires explicit admin approval via the normalized `/api/settings/connections/admin/*` paths; preview/save/refresh never bypass this.
+- Non-admin Data Quality visibility is intentionally limited to the sidebar indicator + hover; detailed source-by-source diagnostics are admin-only.
 
 ## Related
 
@@ -154,6 +195,9 @@ Use the local dev role selector (labeled "Local dev role — not production auth
 - `docs/evidence/frontend-production-readiness-implementation/00_PREFLIGHT.md` (Prompt 25 run section).
 - `docs/evidence/frontend-production-readiness-implementation/INDEX.md` (or FINAL_EVIDENCE_INDEX.md).
 - Architecture 176 (UI kit + testing + harness), 177 (screens), 170 (app shell), 178 (Daily Brief external), 179 (Admin).
+- Architecture 172–180 (HB Auth Onboarding Implementation Package: Prompt A route contracts + safe models through Prompt I documentation/runbook; normalized /api surfaces, Get Started, Graph device-code, Procore OAuth with callback + fallback, Project Connections, Data Quality indicator + diagnostics, regression tests, smoke integration).
+- `docs/planning/HB_Auth_Onboarding_Implementation_Package/README.md` and prompts/PROMPT_A_... through PROMPT_I_... (package manifest 1.3.0, executive brief, security guardrails, onboarding/data-quality spec, test/validation plan, acceptance checklist, gap register).
+- H hygiene block (in `scripts/smoke_local.py`) + this runbook section (auth/onboarding/dq surfaces and the no-sync / no-leak invariants are re-asserted on every harness run).
 - Planning package 06_VALIDATION_MATRIX, 07_BROWSER_SMOKE_TEST_PLAN, 08_ACCEPTANCE_EVIDENCE_TEMPLATE for the exact command matrix and checklist.
 
 After any change that affects launch or smoke paths, re-run the scripted harness + the two-terminal visual checklist and update the relevant closeout/evidence.
