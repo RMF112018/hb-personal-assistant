@@ -1,0 +1,12 @@
+{
+  "fixture_id": "relationship_candidate_001",
+  "email_thread": {
+    "source_ref": "email_thread_summary:test:003",
+    "project_key_hint": "hilltop"
+  },
+  "calendar_event": {
+    "source_ref": "calendar_event_index:test:010",
+    "subject_redacted": "Hilltop coordination"
+  },
+  "expected_relationship_type": "email_calendar"
+}

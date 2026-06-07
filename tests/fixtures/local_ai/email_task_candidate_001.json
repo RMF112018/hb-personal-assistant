@@ -1,0 +1,18 @@
+{
+  "fixture_id": "email_task_candidate_001",
+  "source_family": "email_thread_summary",
+  "source_ref": "email_thread_summary:test:001",
+  "input_redacted": {
+    "thread_subject_redacted": "Hilltop RFI follow-up",
+    "sender_domain": "example-subcontractor.com",
+    "received_at": "2026-06-07T13:30:00-04:00",
+    "summary_redacted": "Sender asks Bobby to confirm whether the revised sketch will be issued today and requests response before tomorrow's coordination meeting."
+  },
+  "expected": {
+    "candidate_type": "task",
+    "assignee": "user",
+    "waiting_state": "waiting_on_me",
+    "recommended_next_action": "review",
+    "source_refs_min": 1
+  }
+}

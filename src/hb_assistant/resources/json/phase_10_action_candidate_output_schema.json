@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Phase10ActionCandidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "candidate_type",
+    "title",
+    "source_refs",
+    "confidence",
+    "reason",
+    "recommended_next_action",
+    "external_action_requires_approval",
+    "safety_category"
+  ],
+  "properties": {
+    "candidate_type": {
+      "type": "string",
+      "enum": [
+        "task",
+        "commitment",
+        "decision",
+        "question",
+        "meeting_prep",
+        "risk_signal",
+        "relationship"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240
+    },
+    "project_key": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assignee": {
+      "type": "string",
+      "enum": [
+        "user",
+        "other",
+        "unknown"
+      ]
+    },
+    "due_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "ISO 8601 timestamp/date when available"
+    },
+    "urgency": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high",
+        "critical"
+      ]
+    },
+    "waiting_state": {
+      "type": "string",
+      "enum": [
+        "waiting_on_me",
+        "waiting_on_others",
+        "unknown",
+        "not_applicable"
+      ]
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "reason": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "model_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model_profile_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "prompt_template_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "input_window_hash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "rejected",
+        "snoozed",
+        "suppressed"
+      ],
+      "default": "pending"
+    },
+    "safety_category": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "contract",
+        "legal",
+        "financial",
+        "payment",
+        "claim",
+        "entitlement",
+        "schedule",
+        "safety"
+      ]
+    },
+    "recommended_next_action": {
+      "type": "string",
+      "enum": [
+        "review",
+        "accept",
+        "snooze",
+        "ignore",
+        "draft_followup",
+        "prepare_meeting",
+        "prepare_packet"
+      ]
+    },
+    "external_action_requires_approval": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "fixture_id": "follow_up_monitor_001",
+  "accepted_task": {
+    "title_redacted": "Send updated VE summary",
+    "due_at": "2026-06-05",
+    "status": "open"
+  },
+  "subsequent_signals": [],
+  "expected_watch_status": "stale"
+}

@@ -1,0 +1,40 @@
+{
+  "schema": "phase_10_frontend_review_queue_contract",
+  "version": "1.0.0",
+  "lanes": [
+    "waiting_on_me",
+    "waiting_on_others",
+    "needs_follow_up",
+    "review_queue",
+    "meeting_prep",
+    "project_signals",
+    "obsidian_suggestions",
+    "claude_packets"
+  ],
+  "actions": [
+    "accept",
+    "reject",
+    "edit",
+    "snooze",
+    "suppress_similar",
+    "mark_complete",
+    "view_provenance",
+    "prepare_packet"
+  ],
+  "copy_rule": "End-user friendly; no internal jargon outside Admin/Data Health.",
+  "guard_columns": [
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_procore_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
+    "graph_writeback_performed",
+    "procore_writeback_performed",
+    "email_send_performed",
+    "calendar_mutation_performed"
+  ]
+}
