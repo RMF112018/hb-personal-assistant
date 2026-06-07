@@ -34,15 +34,19 @@ from .proof import Phase10ProofError, build_phase_10_contracts_proof
 from .schema import (
     PHASE_10_GUARD_COLUMNS,
     PHASE_10_V41_TABLES,
+    PHASE_10A_RAW_TABLES,
     Phase10SchemaError,
     build_phase_10_schema_status_report,
+    get_raw_content_table_row_counts,
 )
 
 __all__ = [
     "PHASE_10_GUARD_COLUMNS",
     "PHASE_10_V41_TABLES",
+    "PHASE_10A_RAW_TABLES",
     "Phase10SchemaError",
     "build_phase_10_schema_status_report",
+    "get_raw_content_table_row_counts",
     "PHASE_10_CONTRACT_FILES",
     "PHASE_10_SEED_FILES",
     "Phase10ContractError",
