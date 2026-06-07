@@ -9,15 +9,16 @@ describe('ErrorState', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('renders the message text', () => {
+  it('renders safe primary copy instead of the raw message text', () => {
     render(<ErrorState message="Something went wrong" />)
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument()
+    expect(screen.getByText('We could not load this section.')).toBeInTheDocument()
+    expect(screen.getByText('Something went wrong')).not.toBeVisible()
   })
 
   it('renders a retry button when onRetry is provided and calls it on click', async () => {
     const user = userEvent.setup()
     const onRetry = vi.fn()
-    render(<ErrorState message="Try again" onRetry={onRetry} />)
+    render(<ErrorState userMessage="Try again" message="raw detail" onRetry={onRetry} />)
     const btn = screen.getByRole('button', { name: /retry/i })
     expect(btn).toBeInTheDocument()
     await user.click(btn)
