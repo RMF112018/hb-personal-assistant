@@ -218,3 +218,20 @@ def test_daily_brief_states_configured_waiting_and_available(tmp_path: Path) -> 
     assert st in ("not_configured", "configured_waiting", "brief_available", "brief_stale", "external_ai_setup_required", "brief_generation_failed", "markdown_parse_warning") or st == ""
 
     # Note: full file-present -> brief_available would require writing a fake HB-Daily-Brief-*.md ; covered in daily_brief dedicated tests + smoke.
+
+
+# Prompt A light coverage — the normalized connections paths under /api/settings/connections/*
+# are present and safe. Full matrix is exercised in test_fastapi_analytics_auth_onboarding.py.
+
+
+def test_prompt_a_normalized_connections_paths_reachable(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    # accounts and readiness under new family (viewer ok)
+    assert client.get("/api/settings/connections/accounts").status_code == 200
+    assert client.get("/api/onboarding/readiness").status_code == 200
+    # project preview works at the new location too (behavior parity with legacy)
+    p = client.post("/api/settings/connections/projects/preview", json={"url": "https://app.procore.com/123/project/home"})
+    assert p.status_code == 200
+    assert "status" in p.json()
+    # data quality summary
+    assert client.get("/api/settings/data-quality/summary").status_code == 200

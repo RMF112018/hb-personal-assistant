@@ -7,12 +7,13 @@ dependency factory so the base package remains FastAPI-free.
 from __future__ import annotations
 
 import json
+from enum import Enum
+from pathlib import Path
 from typing import Any
-
-from hb_assistant.config.path_policy import PathPolicy  # Prompt 20 prefs + daily_brief config path
 
 from pydantic import BaseModel
 
+from hb_assistant.config.path_policy import PathPolicy  # Prompt 20 prefs + daily_brief config path
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 ALLOWED_UI_ROLES = frozenset({"viewer", "operator", "admin"})
@@ -95,6 +96,147 @@ class SettingsPreferencesPatch(BaseModel):
 class SettingsAdminPatch(BaseModel):
     global_rate_limit: int | None = None
     backoff_seconds: int | None = None
+
+
+# Prompt A — normalized safe response models for auth/onboarding, connections, and data-quality.
+# These are the frontend contract shapes. All fields are safe (no tokens, secrets, raw payloads,
+# cache paths, signed/download URLs, or raw external content).
+class AuthSource(str, Enum):
+    graph = "graph"
+    procore = "procore"
+
+
+class AuthStatus(str, Enum):
+    never_connected = "never_connected"
+    connected_valid = "connected_valid"
+    connected_refreshing = "connected_refreshing"
+    connected_stale_refreshable = "connected_stale_refreshable"
+    connected_stale_reauth_required = "connected_stale_reauth_required"
+    connected_error = "connected_error"
+    disconnected_by_user = "disconnected_by_user"
+
+
+class OnboardingState(str, Enum):
+    first_time = "first_time"
+    ready = "ready"
+    degraded = "degraded"
+    reauth_required = "reauth_required"
+    blocked = "blocked"
+
+
+class DataQualityStatus(str, Enum):
+    good = "good"
+    degraded = "degraded"
+    poor = "poor"
+    unknown = "unknown"
+
+
+class ApprovalStatus(str, Enum):
+    not_requested = "not_requested"
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+    not_required = "not_required"
+
+
+class RequiredAction(BaseModel):
+    source: AuthSource
+    status: AuthStatus
+    message: str | None = None
+
+
+class DataQualitySummary(BaseModel):
+    status: DataQualityStatus | str
+    label: str = "Data Quality"
+    last_updated_at: str | None = None
+    message: str | None = None
+    admin_detail_available: bool = False
+
+
+class OnboardingReadinessResponse(BaseModel):
+    onboarding_state: OnboardingState
+    has_prior_setup: bool
+    main_app_allowed: bool
+    get_started_required: bool
+    reauth_required: list[AuthSource] = []
+    required_actions: list[RequiredAction] = []
+    data_quality: DataQualitySummary
+
+
+class AccountStatus(BaseModel):
+    source: AuthSource
+    status: AuthStatus
+    display_name: str | None = None
+    account_hint: str | None = None
+    tenant_hint: str | None = None
+    company_hint: str | None = None
+    scopes: list[str] = []
+    needs_reauth: bool = False
+    last_verified_at: str | None = None
+    message: str | None = None
+
+
+class ConnectionsAccountsResponse(BaseModel):
+    graph: AccountStatus
+    procore: AccountStatus
+
+
+class AuthRefreshResultItem(BaseModel):
+    source: AuthSource
+    before: AuthStatus
+    after: AuthStatus
+    reauth_required: bool
+    message: str | None = None
+
+
+class AuthRefreshResponse(BaseModel):
+    results: list[AuthRefreshResultItem] = []
+
+
+class ProjectConnectionPreviewResponse(BaseModel):
+    # Mirrors the existing preview shape for the normalized path; values are safe metadata only.
+    status: str
+    connection_id: str | None = None
+    detected_source_type: str | None = None
+    proposed_source: dict[str, Any] | None = None
+    warnings: list[str] = []
+    admin_approval_required: bool = True
+    first_sync_status: str | None = None
+    guardrails: dict[str, Any] | None = None
+    options: dict[str, Any] | None = None
+
+
+class ProjectConnectionSaveResponse(BaseModel):
+    ok: bool
+    kind: str | None = None
+    connection_id: str | None = None
+    detected_source_type: str | None = None
+    first_sync_status: str | None = None
+    admin_approval_required: bool = True
+    guardrails: dict[str, Any] | None = None
+    preview: dict[str, Any] | None = None
+    reason_code: str | None = None
+
+
+class AdminApprovalResponse(BaseModel):
+    ok: bool
+    kind: str | None = None
+    connection_id: str | None = None
+    source_type: str | None = None
+    first_sync_status: str | None = None
+    first_sync_triggered: bool = False
+    guardrails: dict[str, Any] | None = None
+
+
+class DataQualityDetail(BaseModel):
+    # Admin-only richer view; still advisory metadata only. No raw content.
+    surface: str
+    generated_utc: str | None = None
+    summary: dict[str, Any] | None = None
+    sources: list[dict[str, Any]] = []
+    attention_items: list[dict[str, Any]] = []
+    advisory_notes: list[str] = []
+    guardrails: dict[str, Any] | None = None
 
 
 def _schema_version(db_path: str | None) -> int:
@@ -751,5 +893,130 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.construction.analytics.service import AnalyticsService
 
         return AnalyticsService(db_path=db_path).build_admin_data_completeness()
+
+    # Prompt A — normalized frontend contract routes under /api/onboarding/readiness and
+    # /api/settings/connections/* (plus data-quality). These coexist with (do not replace)
+    # all prior root-level routes so existing tests and any legacy callers continue to work.
+    # All responses are safe; no tokens/secrets/raw payloads/paths are emitted.
+    # Readiness and connection setup actions never start live sync.
+
+    @app.get("/api/onboarding/readiness")
+    def onboarding_readiness(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        # Delegate to the service for the canonical mapping (7 auth states + 5 onboarding states).
+        # Response shape matches the contract in the planning package.
+        del role
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().build_readiness(db_path=db_path)
+
+    @app.get("/api/settings/connections/accounts")
+    def settings_connections_accounts(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        # Delegate for the normalized account connection summaries (safe, no secrets).
+        del role
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().build_account_summaries()
+
+    @app.post("/api/settings/connections/auth/refresh")
+    def settings_connections_auth_refresh(
+        request: dict[str, Any] | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        # Delegates to service (safe stub behavior: status check + optimistic transition for
+        # stale-refreshable; never starts sync or login flows).
+        del role
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        sources = (request or {}).get("sources") or ["graph", "procore"]
+        return AuthOnboardingService().attempt_auth_refresh(list(sources))
+
+    # Normalized project connection routes under the settings/connections/projects family.
+    # These delegate to the same ConnectionSetupService as the legacy paths to guarantee
+    # identical behavior and guardrails (preview/save never start sync; admin approval is explicit).
+    @app.post("/api/settings/connections/projects/preview")
+    def settings_connections_projects_preview(
+        request: ConnectionSetupRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        # Return the established safe preview payload (identical to legacy /connections/preview).
+        # The ProjectConnectionPreviewResponse model documents the normalized contract shape.
+        del role
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
+
+        return ConnectionSetupService(db_path=db_path).preview_connection(
+            request.model_dump(exclude_none=True)
+        )
+
+    @app.post("/api/settings/connections/projects/save")
+    def settings_connections_projects_save(
+        request: ConnectionSetupRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
+
+        return ConnectionSetupService(db_path=db_path).save_connection(
+            request.model_dump(exclude_none=True)
+        )
+
+    @app.get("/api/settings/connections/projects")
+    def settings_connections_projects(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
+
+        conn = ConnectionSetupService(db_path=db_path)
+        return {
+            "pending_approvals": conn.list_pending_approvals(),
+            "note": "Project connections managed via /api/settings/connections/projects/preview and /save (Prompt A normalized contract). Legacy paths preserved for compatibility.",
+            "guardrails": _guardrails(),
+        }
+
+    # Admin approval surfaces under the normalized admin family.
+    @app.post("/api/settings/connections/admin/{connection_id}/approve-first-sync")
+    def settings_connections_admin_approve(
+        connection_id: str,
+        role: dict[str, str] = role_dep,
+    ) -> AdminApprovalResponse:
+        require_admin_role(role)
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
+
+        raw = ConnectionSetupService(db_path=db_path).approve_first_sync(connection_id)
+        return AdminApprovalResponse(**{k: raw.get(k) for k in AdminApprovalResponse.model_fields if k in raw} | {"guardrails": raw.get("guardrails")})  # type: ignore[arg-type]
+
+    # Data-quality summary (all roles) and detail (admin). Safe projections; no raw content.
+    @app.get("/api/settings/data-quality/summary")
+    def settings_data_quality_summary(role: dict[str, str] = role_dep) -> DataQualitySummary:
+        del role
+        # Reuse admin confidence summary logic but project to a compact sidebar-safe shape.
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        conf = AnalyticsService(db_path=db_path).build_admin_confidence_summary()
+        status_counts = (conf.get("status_counts") or {})
+        # Heuristic mapping: if any unavailable, degrade; else good when schema_ready.
+        overall = DataQualityStatus.good
+        if not conf.get("schema_ready") or any(v for k, v in status_counts.items() if "unavailable" in str(k).lower()):
+            overall = DataQualityStatus.degraded
+        return DataQualitySummary(
+            status=overall,
+            last_updated_at=conf.get("generated_utc"),
+            message="See Admin Data Confidence for source-by-source diagnostics.",
+            admin_detail_available=True,
+        )
+
+    @app.get("/api/settings/data-quality/detail")
+    def settings_data_quality_detail(role: dict[str, str] = role_dep) -> DataQualityDetail:
+        require_admin_role(role)
+        from hb_assistant.construction.analytics.service import AnalyticsService
+
+        conf = AnalyticsService(db_path=db_path).build_admin_confidence_summary()
+        return DataQualityDetail(
+            surface="analytics.settings.data_quality.detail",
+            generated_utc=conf.get("generated_utc"),
+            summary={"status_counts": conf.get("status_counts"), "metric_count": conf.get("metric_count")},
+            sources=[],
+            attention_items=[],
+            advisory_notes=["Admin-only data quality detail. Advisory metadata; see individual /api/admin/* sections for drill-down."],
+            guardrails=conf.get("guardrails"),
+        )
 
     return app

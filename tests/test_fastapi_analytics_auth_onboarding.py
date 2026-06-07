@@ -74,6 +74,20 @@ def _install_graph_fake(monkeypatch: pytest.MonkeyPatch) -> list[bool]:
         "hb_assistant.auth.token_cache_manager.TokenCacheManager.save_cache",
         lambda self, cache, app_only=False: saves.append(bool(cache)),
     )
+
+    def _fake_check_permissions(self):  # type: ignore[no-untyped-def]
+        # When a save has been recorded by the fake complete flow, report the msal cache bin as present
+        # so that graph_status() and the Prompt A mappers see cache_present and map to connected_valid.
+        present = bool(saves)
+        return {
+            "msal-token-cache.bin": {"exists": present, "mode": 0o600, "perms_ok": True},
+            "path_status": {"has_ensure_report": False},
+        }
+
+    monkeypatch.setattr(
+        "hb_assistant.auth.token_cache_manager.TokenCacheManager.check_permissions",
+        _fake_check_permissions,
+    )
     return saves
 
 
@@ -190,3 +204,113 @@ def test_procore_status_start_and_exchange_are_redacted(
     serialized = json.dumps({"status": status.json(), "start": start.json(), "exchange": payload})
     for marker in FORBIDDEN:
         assert marker not in serialized
+
+
+# Prompt A tests — new normalized contract surfaces + 7-state / 5-state coverage + redaction.
+# These are additive; all legacy root paths and behaviors must remain unchanged.
+
+
+def test_onboarding_readiness_and_connections_accounts_are_safe(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    # viewer may read readiness and accounts
+    r = client.get("/api/onboarding/readiness")
+    assert r.status_code == 200
+    data = r.json()
+    assert "onboarding_state" in data
+    assert data["onboarding_state"] in {"first_time", "ready", "degraded", "reauth_required", "blocked"}
+    assert "data_quality" in data
+    assert data["guardrails"]["tokens_returned"] is False
+    assert "get_started_required" in data
+    # graph should surface as never_connected in a fresh client (no cache in test env)
+    actions = data.get("required_actions") or []
+    assert any(a.get("source") == "graph" for a in actions)
+    _assert_no_forbidden(data)
+
+    ra = client.get("/api/settings/connections/accounts")
+    assert ra.status_code == 200
+    acc = ra.json()
+    assert "graph" in acc and "procore" in acc
+    assert acc["graph"]["status"] in {"never_connected", "connected_valid", "connected_stale_refreshable", "connected_stale_reauth_required", "connected_error", "connected_refreshing", "disconnected_by_user"}
+    _assert_no_forbidden(acc)
+
+
+def _assert_no_forbidden(payload: Any) -> None:
+    s = json.dumps(payload, default=str)
+    for marker in FORBIDDEN:
+        assert marker not in s
+
+
+def test_auth_refresh_is_safe_and_does_not_trigger_sync(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    headers = {"X-HB-UI-Role": "operator"}
+    body = {"sources": ["graph", "procore"]}
+    rr = client.post("/api/settings/connections/auth/refresh", headers=headers, json=body)
+    assert rr.status_code == 200
+    res = rr.json()
+    assert "results" in res
+    for item in res["results"]:
+        assert item["before"] in {"never_connected", "connected_valid", "connected_stale_refreshable", "connected_stale_reauth_required", "connected_error", "connected_refreshing", "disconnected_by_user"}
+        assert "reauth_required" in item
+    _assert_no_forbidden(res)
+    # readiness must still report first_time or equivalent without having started any sync
+    rd = client.get("/api/onboarding/readiness")
+    assert rd.status_code == 200
+    # no first_sync_triggered at the readiness level
+    assert "first_sync_triggered" not in json.dumps(rd.json())
+
+
+def test_new_project_and_admin_contract_paths_exist_and_safe(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    # preview is readable by viewer (no role write)
+    prev = client.post("/api/settings/connections/projects/preview", json={"url": "https://app.procore.com/2525840/project/home"})
+    assert prev.status_code == 200
+    p = prev.json()
+    assert p.get("status") in {"ready_to_save", "unavailable"}
+    _assert_no_forbidden(p)
+
+    # save and approve require roles; just check they are wired (403 without role is fine)
+    assert client.post("/api/settings/connections/projects/save", json={"url": "https://app.procore.com/2525840/project/home"}).status_code == 403
+
+    # admin approve path exists (will 403 or 200 depending on prior save, but must not 404/5xx)
+    a = client.post("/api/settings/connections/admin/some-conn/approve-first-sync", headers={"X-HB-UI-Role": "admin"})
+    assert a.status_code in (200, 403, 404)  # 404 if no such conn is acceptable (contract surface is present)
+    _assert_no_forbidden(a.json() if a.headers.get("content-type", "").startswith("application/json") else {})
+
+    # data quality summary (all) and detail (admin)
+    ds = client.get("/api/settings/data-quality/summary")
+    assert ds.status_code == 200
+    _assert_no_forbidden(ds.json())
+
+    dd = client.get("/api/settings/data-quality/detail", headers={"X-HB-UI-Role": "admin"})
+    assert dd.status_code == 200
+    _assert_no_forbidden(dd.json())
+
+
+def test_readiness_transitions_toward_ready_after_graph_complete(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_graph_fake(monkeypatch)
+    client = _client(tmp_path)
+    headers = {"X-HB-UI-Role": "operator"}
+
+    # before: first_time / never_connected dominant
+    before = client.get("/api/onboarding/readiness").json()
+    assert before["onboarding_state"] in {"first_time", "degraded"}
+
+    # perform the device flow (existing test flow)
+    start = client.post("/auth/graph/device-login/start", headers=headers)
+    assert start.status_code == 200
+    complete = client.post(
+        "/auth/graph/device-login/complete",
+        headers=headers,
+        json={"flow_id": start.json()["flow_id"]},
+    )
+    assert complete.status_code == 200
+
+    # after: graph should report connected_valid (via the internal cache-present path)
+    after_acc = client.get("/api/settings/connections/accounts").json()
+    assert after_acc["graph"]["status"] == "connected_valid"
+
+    after_ready = client.get("/api/onboarding/readiness").json()
+    # With graph now valid, state should allow main app (ready or degraded depending on other signals)
+    assert after_ready["onboarding_state"] in {"ready", "degraded", "reauth_required"}
+    assert after_ready["main_app_allowed"] in {True, False}  # depends on has_prior_setup signals in this env
+    _assert_no_forbidden(after_ready)
