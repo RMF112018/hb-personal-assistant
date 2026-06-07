@@ -1,9 +1,9 @@
 {
   "command": "second-brain retrieval no-raw-vector-index-proof",
   "phase": "09",
-  "generated_utc": "2026-06-07T13:01:19.771026+00:00",
-  "repo_sha": "8287d14cca8c8c6f94196d2bdc7c85e096316dbb",
-  "schema_version": 40,
+  "generated_utc": "2026-06-07T19:45:14.366827+00:00",
+  "repo_sha": "59f12ddf74f0a3259d75bf38038b803a61907ddb",
+  "schema_version": 41,
   "run_id": "nrv_3ccba987b7f23867f1224ef5d292ea30",
   "proof_passed": true,
   "overall_status": "clean",
