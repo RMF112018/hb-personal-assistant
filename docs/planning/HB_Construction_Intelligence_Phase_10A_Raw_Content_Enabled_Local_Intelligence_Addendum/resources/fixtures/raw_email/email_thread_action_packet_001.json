@@ -1,0 +1,21 @@
+{
+  "packet_type": "email_thread_action_packet",
+  "thread_ref": "fixture-thread-001",
+  "project_key": "hilltop",
+  "messages": [
+    {
+      "direction": "inbound",
+      "from_name": "Example Sender",
+      "from_address": "sender@example.com",
+      "to_recipients": [
+        "bobby@example.com"
+      ],
+      "received_at_utc": "2026-06-07T15:00:00Z",
+      "subject": "Need updated VE summary before coordination meeting",
+      "body_preview": "Please send the revised VE summary before tomorrow's coordination meeting.",
+      "body_text": "Bobby, please send the revised VE summary before tomorrow's coordination meeting. We need to confirm which alternates remain accepted.",
+      "body_html": null,
+      "attachments": []
+    }
+  ]
+}

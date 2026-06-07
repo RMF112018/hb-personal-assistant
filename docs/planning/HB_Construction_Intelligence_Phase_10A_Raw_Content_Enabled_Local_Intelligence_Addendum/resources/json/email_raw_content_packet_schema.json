@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EmailRawContentPacket",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "packet_type",
+    "thread_ref",
+    "messages"
+  ],
+  "properties": {
+    "packet_type": {
+      "type": "string",
+      "const": "email_thread_action_packet"
+    },
+    "thread_ref": {
+      "type": "string"
+    },
+    "project_key": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "direction",
+          "subject",
+          "body_text",
+          "received_at_utc"
+        ],
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "inbound",
+              "outbound",
+              "unknown"
+            ]
+          },
+          "from_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "from_address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "to_recipients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "received_at_utc": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sent_at_utc": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subject": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "body_preview": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "body_text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "body_html": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

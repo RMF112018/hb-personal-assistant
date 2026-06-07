@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CalendarRawContentPacket",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "packet_type",
+    "event_ref",
+    "subject",
+    "start_datetime_utc",
+    "end_datetime_utc"
+  ],
+  "properties": {
+    "packet_type": {
+      "type": "string",
+      "const": "calendar_meeting_prep_packet"
+    },
+    "event_ref": {
+      "type": "string"
+    },
+    "project_key": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "subject": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "body_text": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "body_html": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "location_display": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "organizer_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "organizer_email": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "attendees": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "join_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "start_datetime_utc": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "end_datetime_utc": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

@@ -1,0 +1,484 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RawActionIntelligenceOutput",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "summary",
+    "task_candidates",
+    "commitment_candidates",
+    "follow_up_candidates",
+    "meeting_prep_candidates",
+    "project_relationship_candidates"
+  ],
+  "properties": {
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "records_reviewed",
+        "overall_confidence",
+        "limitations"
+      ],
+      "properties": {
+        "records_reviewed": {
+          "type": "integer"
+        },
+        "overall_confidence": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "task_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "source_family",
+          "source_ref",
+          "source_excerpt",
+          "project_key",
+          "waiting_state",
+          "urgency",
+          "reason",
+          "recommended_next_action",
+          "confidence",
+          "review_required"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "source_family": {
+            "type": "string",
+            "enum": [
+              "email",
+              "calendar",
+              "file",
+              "procore",
+              "mixed"
+            ]
+          },
+          "source_ref": {
+            "type": "string"
+          },
+          "source_excerpt": {
+            "type": "string"
+          },
+          "project_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "waiting_state": {
+            "type": "string",
+            "enum": [
+              "waiting_on_me",
+              "waiting_on_others",
+              "unknown",
+              "not_applicable"
+            ]
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "critical"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "recommended_next_action": {
+            "type": "string",
+            "enum": [
+              "review",
+              "snooze",
+              "ignore",
+              "prepare_packet",
+              "draft_response",
+              "prepare_meeting"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "review_required": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      }
+    },
+    "commitment_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "source_family",
+          "source_ref",
+          "source_excerpt",
+          "project_key",
+          "waiting_state",
+          "urgency",
+          "reason",
+          "recommended_next_action",
+          "confidence",
+          "review_required"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "source_family": {
+            "type": "string",
+            "enum": [
+              "email",
+              "calendar",
+              "file",
+              "procore",
+              "mixed"
+            ]
+          },
+          "source_ref": {
+            "type": "string"
+          },
+          "source_excerpt": {
+            "type": "string"
+          },
+          "project_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "waiting_state": {
+            "type": "string",
+            "enum": [
+              "waiting_on_me",
+              "waiting_on_others",
+              "unknown",
+              "not_applicable"
+            ]
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "critical"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "recommended_next_action": {
+            "type": "string",
+            "enum": [
+              "review",
+              "snooze",
+              "ignore",
+              "prepare_packet",
+              "draft_response",
+              "prepare_meeting"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "review_required": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      }
+    },
+    "follow_up_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "source_family",
+          "source_ref",
+          "source_excerpt",
+          "project_key",
+          "waiting_state",
+          "urgency",
+          "reason",
+          "recommended_next_action",
+          "confidence",
+          "review_required"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "source_family": {
+            "type": "string",
+            "enum": [
+              "email",
+              "calendar",
+              "file",
+              "procore",
+              "mixed"
+            ]
+          },
+          "source_ref": {
+            "type": "string"
+          },
+          "source_excerpt": {
+            "type": "string"
+          },
+          "project_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "waiting_state": {
+            "type": "string",
+            "enum": [
+              "waiting_on_me",
+              "waiting_on_others",
+              "unknown",
+              "not_applicable"
+            ]
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "critical"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "recommended_next_action": {
+            "type": "string",
+            "enum": [
+              "review",
+              "snooze",
+              "ignore",
+              "prepare_packet",
+              "draft_response",
+              "prepare_meeting"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "review_required": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      }
+    },
+    "meeting_prep_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "source_family",
+          "source_ref",
+          "source_excerpt",
+          "project_key",
+          "waiting_state",
+          "urgency",
+          "reason",
+          "recommended_next_action",
+          "confidence",
+          "review_required"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "source_family": {
+            "type": "string",
+            "enum": [
+              "email",
+              "calendar",
+              "file",
+              "procore",
+              "mixed"
+            ]
+          },
+          "source_ref": {
+            "type": "string"
+          },
+          "source_excerpt": {
+            "type": "string"
+          },
+          "project_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "waiting_state": {
+            "type": "string",
+            "enum": [
+              "waiting_on_me",
+              "waiting_on_others",
+              "unknown",
+              "not_applicable"
+            ]
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "critical"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "recommended_next_action": {
+            "type": "string",
+            "enum": [
+              "review",
+              "snooze",
+              "ignore",
+              "prepare_packet",
+              "draft_response",
+              "prepare_meeting"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "review_required": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      }
+    },
+    "project_relationship_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "source_family",
+          "source_ref",
+          "source_excerpt",
+          "project_key",
+          "waiting_state",
+          "urgency",
+          "reason",
+          "recommended_next_action",
+          "confidence",
+          "review_required"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "source_family": {
+            "type": "string",
+            "enum": [
+              "email",
+              "calendar",
+              "file",
+              "procore",
+              "mixed"
+            ]
+          },
+          "source_ref": {
+            "type": "string"
+          },
+          "source_excerpt": {
+            "type": "string"
+          },
+          "project_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "waiting_state": {
+            "type": "string",
+            "enum": [
+              "waiting_on_me",
+              "waiting_on_others",
+              "unknown",
+              "not_applicable"
+            ]
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "critical"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "recommended_next_action": {
+            "type": "string",
+            "enum": [
+              "review",
+              "snooze",
+              "ignore",
+              "prepare_packet",
+              "draft_response",
+              "prepare_meeting"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "review_required": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+version: "1.0.0"
+raw_content:
+  enabled: true
+  mode: email_calendar
+  default_endpoint_behavior: include_raw
+  starting_sources:
+    email: true
+    calendar: true
+  downstream:
+    mcp_allow_raw_content: false
+    obsidian_allow_raw_content: false
+  model_context:
+    include_raw_content: true
+    max_threads_per_run: 50
+    max_messages_per_thread: 10
+    max_body_chars_per_message: 8000
+    max_events_per_run: 50
+    max_calendar_body_chars_per_event: 8000
+  persistence:
+    persist_email_subject: true
+    persist_email_body_preview: true
+    persist_email_body_text: true
+    persist_email_body_html: true
+    persist_calendar_subject: true
+    persist_calendar_body_text: true
+    persist_calendar_body_html: true
+    persist_calendar_location: true
+    persist_calendar_attendees: true
+    persist_calendar_join_url: true
+  endpoints:
+    allow_include_raw_param: true
+    default_raw_mode: include
+  prohibited_without_future_approval:
+    external_writeback: true
+    automatic_email_send: true
+    automatic_calendar_mutation: true
+    cloud_llm_submission: true

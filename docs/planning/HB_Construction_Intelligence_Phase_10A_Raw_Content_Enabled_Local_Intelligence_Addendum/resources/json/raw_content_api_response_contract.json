@@ -1,0 +1,18 @@
+{
+  "schema": "phase_10a_raw_content_api_response_contract",
+  "version": "1.0.0",
+  "required_response_fields": [
+    "raw_content_included",
+    "raw_content_mode",
+    "source_refs"
+  ],
+  "raw_modes": [
+    "include",
+    "redacted",
+    "metadata"
+  ],
+  "endpoint_param_examples": [
+    "include_raw=true",
+    "raw_mode=include"
+  ]
+}
