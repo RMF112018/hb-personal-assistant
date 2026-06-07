@@ -809,6 +809,7 @@ class ConnectionSetupService:
         }
 
     # Prompt F: rejection response (symmetric, safe, first_sync_triggered never true)
+    @staticmethod
     def _rejection_response(connection_id: str, source_type: str) -> dict[str, Any]:
         return {
             "ok": True,
@@ -817,5 +818,198 @@ class ConnectionSetupService:
             "source_type": source_type,
             "first_sync_status": "first_sync_rejected",
             "first_sync_triggered": False,
+            "guardrails": _guardrails(),
+        }
+
+    # Prompt G: unified, conservative data quality summary driven by saved connections,
+    # approval markers (pending/approved/rejected from sync_state + project_stage), and
+    # freshness (last_attempted / last_seen). Used by sidebar indicator, readiness embedding,
+    # and the /api/settings/data-quality/* surfaces. No live calls, no raw exposure.
+    def build_data_quality_summary(self) -> dict[str, Any]:
+        """Return sidebar-safe + readiness-compatible data quality status.
+
+        Statuses are deterministic and conservative: unknown (no configured sources),
+        good (approved connections with evidence of currency), degraded (pending or stale approved),
+        poor (rejected or no approved data despite prior setup attempts).
+        last_updated_at is the max observed timestamp across sources/identities (or null).
+        """
+        from datetime import datetime, timezone
+
+        all_sources = self._store.list_source_locations(limit=5000)
+        items: list[dict[str, Any]] = []
+        latest_ts: str | None = None
+        has_any_approved = False
+        has_pending = False
+        has_rejected = False
+        has_stale_approved = False
+        now = datetime.now(timezone.utc)
+
+        def _update_latest(ts: str | None) -> None:
+            nonlocal latest_ts
+            if not ts:
+                return
+            try:
+                if latest_ts is None or ts > latest_ts:
+                    latest_ts = ts
+            except Exception:
+                pass
+
+        # File/email/calendar sources
+        for src in all_sources or []:
+            if not src:
+                continue
+            sid = src.get("source_id")
+            st = self._store.get_source_sync_state(sid) or {} if sid else {}
+            status = st.get("sync_status") or ""
+            last = st.get("last_attempted_sync_utc") or st.get("last_success_utc")
+            _update_latest(last)
+
+            approved = (status == _APPROVED) or (status and "approved" in status.lower())
+            pending = any(m in status for m in ("pending_admin", _PENDING, _USER_REFRESH_REQUESTED, "schedule_pending_admin"))
+            rejected = "reject" in (status or "").lower()
+            stale = False
+            if last:
+                try:
+                    dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
+                    if (now - dt).total_seconds() > (24 * 3600):
+                        stale = True
+                except Exception:
+                    pass
+
+            if approved:
+                has_any_approved = True
+            if pending:
+                has_pending = True
+            if rejected:
+                has_rejected = True
+            if approved and stale:
+                has_stale_approved = True
+
+            items.append(
+                {
+                    "connection_like_id": sid,
+                    "project_key": src.get("project_key"),
+                    "source_name": src.get("source_name"),
+                    "approval_status": "approved" if approved else ("pending" if pending else ("rejected" if rejected else "unknown")),
+                    "last_attempted": last,
+                    "stale": stale,
+                }
+            )
+
+        # Procore project identities (post-F list_pending also covers these via procore_* ids)
+        try:
+            from hb_assistant.construction.store.repositories import get_connection
+
+            conn = get_connection(self._db_path)
+            cur = conn.execute(
+                """
+                SELECT project_key, procore_project_id, project_name_raw, project_stage, last_seen_utc
+                FROM construction_project_identity
+                """
+            )
+            for row in cur.fetchall() or []:
+                pk = row[0]
+                stage = row[3] or ""
+                last = row[4]
+                _update_latest(last)
+
+                approved = (stage == _APPROVED) or (stage and "approved" in stage.lower())
+                pending = ("pending" in stage.lower()) or (stage == "setup_pending_admin_approval")
+                rejected = "reject" in stage.lower()
+                stale = False
+                if last:
+                    try:
+                        dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
+                        if (now - dt).total_seconds() > (24 * 3600):
+                            stale = True
+                    except Exception:
+                        pass
+
+                if approved:
+                    has_any_approved = True
+                if pending:
+                    has_pending = True
+                if rejected:
+                    has_rejected = True
+                if approved and stale:
+                    has_stale_approved = True
+
+                items.append(
+                    {
+                        "connection_like_id": f"procore_{pk}",
+                        "project_key": pk,
+                        "source_name": row[2] or pk,
+                        "approval_status": "approved" if approved else ("pending" if pending else ("rejected" if rejected else "unknown")),
+                        "last_attempted": last,
+                        "stale": stale,
+                    }
+                )
+        except Exception:
+            # best effort; do not break summary if procore table projection differs
+            pass
+
+        # Conservative status decision (no over-claiming readiness)
+        if not items:
+            status = "unknown"
+            message = "No approved source data has been collected yet."
+        elif has_rejected or (not has_any_approved):
+            status = "poor"
+            message = "No approved source data has been collected yet."
+        elif has_pending or has_stale_approved:
+            status = "degraded"
+            message = "Some approved sources are stale or pending sync."
+        else:
+            status = "good"
+            message = "Sources are current."
+
+        return {
+            "status": status,
+            "label": "Data Quality",
+            "last_updated_at": latest_ts,
+            "message": message,
+            "admin_detail_available": True,
+            # internal carrier for detail (not returned to callers of summary)
+            "_sources": items,
+        }
+
+    def build_data_quality_detail(self) -> dict[str, Any]:
+        """Admin diagnostic view. Safe projections only; source-by-source approval/freshness/attention.
+        Never includes tokens, raw payloads, paths, or signed URLs.
+        """
+        from datetime import datetime, timezone
+
+        summ = self.build_data_quality_summary()
+        sources = summ.pop("_sources", []) if isinstance(summ, dict) else []
+        attention: list[dict[str, Any]] = []
+        for it in sources:
+            if it.get("approval_status") in ("pending", "rejected") or it.get("stale"):
+                note = (
+                    "pending first-sync approval"
+                    if it.get("approval_status") == "pending"
+                    else ("first-sync rejected" if it.get("approval_status") == "rejected" else "stale (no recent sync)")
+                )
+                attention.append(
+                    {
+                        "kind": "data_quality",
+                        "connection_like_id": it.get("connection_like_id"),
+                        "project_key": it.get("project_key"),
+                        "note": note,
+                    }
+                )
+
+        generated: str | None = None
+        with contextlib.suppress(Exception):
+            generated = datetime.now(timezone.utc).isoformat()
+
+        return {
+            "surface": "analytics.settings.data_quality.detail",
+            "generated_utc": generated,
+            "summary": {"status": summ.get("status"), "source_count": len(sources)},
+            "sources": sources,
+            "attention_items": attention,
+            "advisory_notes": [
+                "Admin-only data quality detail. Advisory metadata only. Approvals and sync eligibility are enforced at the domain level.",
+                "This view does not start sync and contains no raw source content.",
+            ],
             "guardrails": _guardrails(),
         }

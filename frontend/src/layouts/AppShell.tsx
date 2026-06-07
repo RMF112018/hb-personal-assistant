@@ -1,23 +1,21 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { MainNavigation } from './MainNavigation'
-import { SupportNavigation } from './SupportNavigation'
 import { PageHeader } from './PageHeader'
+import { SidebarFooter } from '../components/layout/SidebarFooter'
 import { useTheme } from '../app/providers'
 import { Moon, Sun, Monitor, Menu } from 'lucide-react'
 import { useState } from 'react'
-import { getLocalUiRole, setLocalUiRole, type LocalUiRole } from '../lib/api'
 
 export function AppShell({ children }: { children?: React.ReactNode }) {
   const { resolvedTheme, theme: prefTheme, toggle } = useTheme()
-  const [localRole, setLocalRole] = useState<LocalUiRole>(() => getLocalUiRole())
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
 
   // Simple construction-facing header title (advisory posture)
-  const headerTitle = 'HB Analytics'
+  const headerTitle = 'Personal Assistant'
 
   return (
-    <div className="min-h-screen flex bg-[var(--hb-bg)] text-[var(--hb-text)]">
+    <div className="h-[100dvh] overflow-hidden flex bg-[var(--hb-bg)] text-[var(--hb-text)]">
       {/* Skip link for keyboard users (becomes visible on focus) */}
       <a
         href="#main"
@@ -27,13 +25,12 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       </a>
       {/* Primary sidebar navigation (Today / Projects / My Items) — lightweight collapse for narrow widths */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 w-56 border-r border-[var(--hb-border)] p-3 flex flex-col bg-[var(--hb-bg)] transform transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        aria-label="Primary navigation"
+        className={`fixed md:static inset-y-0 left-0 z-50 h-[100dvh] w-56 shrink-0 border-r border-[var(--hb-border)] p-3 flex flex-col min-h-0 overflow-hidden bg-[var(--hb-bg)] transform transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
-        <div className="px-2 py-3 text-xs tracking-[2px] text-[var(--hb-muted)]">CONSTRUCTION INTELLIGENCE</div>
+        <div className="px-2 py-3 text-xs tracking-[2px] text-[var(--hb-muted)] shrink-0">CONSTRUCTION INTELLIGENCE</div>
         <MainNavigation currentPath={location.pathname} />
-        <div className="mt-auto pt-4">
-          <SupportNavigation currentPath={location.pathname} />
-        </div>
+        <SidebarFooter currentPath={location.pathname} />
       </aside>
       {/* Mobile sidebar overlay (click to close) */}
       {sidebarOpen && (
@@ -45,8 +42,8 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       )}
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-12 border-b border-[var(--hb-border)] px-4 flex items-center justify-between bg-[var(--hb-surface)]">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+        <header className="h-12 shrink-0 border-b border-[var(--hb-border)] px-4 flex items-center justify-between bg-[var(--hb-surface)]">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -59,23 +56,6 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
             <div className="font-medium">{headerTitle}</div>
           </div>
           <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1 text-[10px] text-[var(--hb-muted)]">
-              Local dev role — not production auth
-              <select
-                className="badge bg-[var(--hb-surface)]"
-                value={localRole}
-                onChange={(event) => {
-                  const next = event.target.value as LocalUiRole
-                  setLocalUiRole(next)
-                  setLocalRole(next)
-                }}
-                aria-label="Local dev role"
-              >
-                <option value="viewer">Viewer</option>
-                <option value="operator">Operator</option>
-                <option value="admin">Admin</option>
-              </select>
-            </label>
             <button
               onClick={toggle}
               className="badge"
@@ -91,13 +71,13 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
           </div>
         </header>
 
-        <main id="main" className="flex-1 p-4 overflow-auto">
+        <main id="main" className="flex-1 min-h-0 p-4 overflow-y-auto overflow-x-hidden">
           <PageHeader title={getPageTitle(location.pathname)} />
           {children ?? <Outlet />}
         </main>
 
-        <footer className="text-[10px] px-4 py-2 border-t border-[var(--hb-border)] text-[var(--hb-muted)]">
-          No determinations. All signals advisory. See Admin / Data Confidence for source, sync, evidence, and retrieval details.
+        <footer className="shrink-0 text-[10px] px-4 py-2 border-t border-[var(--hb-border)] text-[var(--hb-muted)]">
+          No determinations. All signals advisory. See Data Health for coverage and freshness.
         </footer>
       </div>
     </div>
@@ -113,9 +93,9 @@ function getPageTitle(path: string): string {
   if (path.startsWith('/projects/')) return 'Project'
   if (path.startsWith('/projects')) return 'Projects'
   if (path.startsWith('/my-items')) return 'My Items'
-  if (path.startsWith('/admin')) return 'Admin / Data Confidence'
+  if (path.startsWith('/admin')) return 'Data Health'
   if (path.startsWith('/settings')) return 'Settings'
   // Prompt D
   if (path.startsWith('/get-started')) return 'Get Started'
-  return 'HB Analytics'
+  return 'Personal Assistant'
 }

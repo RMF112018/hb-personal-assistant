@@ -1,0 +1,12 @@
+P09 changed files (exact set staged for the traditional commit):
+
+scripts/proofs/frontend_display_copy_check.py (new)
+frontend/package.json
+frontend/src/App.tsx
+frontend/src/lib/api.ts (comment rephrasing for term hygiene)
+docs/architecture/197-frontend-copy-regression-harness-and-shell-contracts.md (new)
+docs/evidence/frontend-ui-ux-shell-layout-implementation/CLOSEOUT.md (new)
+docs/evidence/frontend-ui-ux-shell-layout-implementation/copycheck-output.txt (new)
+docs/evidence/frontend-ui-ux-shell-layout-implementation/changed-files.txt (new)
+
+(Plus any minor evidence updates during validation run. Full list confirmed at commit via git diff --name-only --cached.)

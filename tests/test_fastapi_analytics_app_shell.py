@@ -116,6 +116,16 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/settings/preferences",
         "/api/settings/admin-sync",
         "/api/settings/admin",
+        "/api/settings/connections/accounts",
+        "/api/settings/connections/auth/refresh",
+        # Prompt F normalized admin reject (additive to approve)
+        "/api/settings/connections/admin/{connection_id}/reject-first-sync",
+        "/api/settings/connections/admin/{connection_id}/approve-first-sync",
+        # Prompt A/D/G normalized onboarding readiness (viewer-safe) + data-quality summary (all roles) / detail (admin)
+        # These are H-critical for auth/security regression: first-time vs returning, no-forbidden, admin-only detail.
+        "/api/onboarding/readiness",
+        "/api/settings/data-quality/summary",
+        "/api/settings/data-quality/detail",
         # Prompt B normalized graph auth contract (additive only; legacy /auth/graph/* paths preserved)
         "/api/settings/connections/graph/auth/start",
         "/api/settings/connections/graph/auth/status",
@@ -224,6 +234,10 @@ def test_all_ui_analytics_routes_no_forbidden_sensitive_fields_and_role_guards(
         ("POST", "viewer", "/api/settings/connections/projects/preview", {"url": "https://example.com"}),
         ("POST", "operator", "/api/settings/connections/projects/save", {"url": "https://example.com"}),
         ("GET", "viewer", "/api/settings/connections/projects", None),
+        # Prompt H regression surfaces: normalized readiness (first-time / returning stale) + data-quality (summary viewer, detail admin)
+        ("GET", "viewer", "/api/onboarding/readiness", None),
+        ("GET", "viewer", "/api/settings/data-quality/summary", None),
+        ("GET", "admin", "/api/settings/data-quality/detail", None),
     ]
 
     for method, _min_role, path, body in surfaces:
@@ -261,6 +275,15 @@ def test_all_ui_analytics_routes_no_forbidden_sensitive_fields_and_role_guards(
     # Daily brief configure requires operator+
     r = client.post("/api/daily-brief/configure", json={}, headers={"X-HB-UI-Role": "viewer"})
     assert r.status_code == 403
+
+    # Prompt H: data-quality detail is strictly admin-only (non-admin 403); summary is viewer-safe
+    r = client.get("/api/settings/data-quality/detail", headers={"X-HB-UI-Role": "viewer"})
+    assert r.status_code == 403
+    r = client.get("/api/settings/data-quality/detail", headers={"X-HB-UI-Role": "operator"})
+    assert r.status_code == 403
+    # summary should succeed for non-admin (used by sidebar indicator)
+    r = client.get("/api/settings/data-quality/summary", headers={"X-HB-UI-Role": "viewer"})
+    assert r.status_code == 200
 
     # chat/status remains disabled for all roles (already covered but re-assert)
     for role in ALLOWED_UI_ROLES:

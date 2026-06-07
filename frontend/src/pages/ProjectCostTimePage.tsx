@@ -58,7 +58,7 @@ export function ProjectCostTimePage() {
           </>
         )}
       </div>
-      <div className="text-xs mt-2"><Link to="/admin" className="underline">Cost code &amp; financial readiness → Admin / Data Confidence</Link></div>
+      <div className="text-xs mt-2"><Link to="/admin" className="underline">Cost code &amp; financial readiness → Data Health</Link></div>
     </div>
   )
 }

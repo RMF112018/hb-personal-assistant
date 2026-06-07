@@ -1,7 +1,7 @@
 # Launcher Close — Run-in-Background Proof
 
 - **command:** `hb-assistant launcher close --environment production --action background --json`
-- **generated_utc:** 2026-06-07T09:22:31.221763+00:00
+- **generated_utc:** 2026-06-07T11:51:17.415659+00:00
 - **status:** `ok`
 
 ## Result
@@ -12,16 +12,22 @@
   "background_active": true,
   "command": "launcher close",
   "environment": "production",
-  "generated_utc": "2026-06-07T09:22:31.205385+00:00",
+  "generated_utc": "2026-06-07T11:51:17.401260+00:00",
   "kept_alive": [],
   "metadata_only": true,
   "receipt_path": "<LOCAL_APP_SUPPORT>/app-support/evidence/launcher/close-background-production.json",
-  "repo_sha": "a6324e96",
+  "repo_sha": "5d75bf1c",
   "scheduler_active": true,
+  "skipped_unknown": [],
   "status": "ok",
+  "still_running": [],
   "terminated": [
     "frontend"
-  ]
+  ],
+  "terminated_current_session": [
+    "frontend"
+  ],
+  "terminated_stale": []
 }
 ```
 

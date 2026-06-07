@@ -107,6 +107,32 @@ class AutomationConfig(BaseModel):
     scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
 
 
+class LauncherEnvConfig(BaseModel):
+    """Per-environment launcher settings (Dev / Production).
+
+    ``frontend_url`` lets each environment resolve a distinct UI URL; when unset
+    the launcher falls back to the Vite/static default. ``frontend_open_timeout_seconds``
+    bounds the readiness wait when ``launcher <env> --open`` is used.
+    """
+
+    frontend_url: str | None = None
+    frontend_open_timeout_seconds: int = 30
+    # Optional display alias: a friendlier name/URL shown and opened when it
+    # resolves. `frontend_url` stays the routable URL used for readiness checks.
+    frontend_display_name: str | None = None
+    frontend_alias_url: str | None = None
+    # Backend (analytics API) port. Resolved deterministically per environment so
+    # the launcher does not silently drift; preflight frees/conflicts on this port.
+    backend_port: int = 8000
+
+
+class LauncherConfig(BaseModel):
+    """Cross-platform launcher config (Dev/Production frontend URL + open timeout)."""
+
+    dev: LauncherEnvConfig = Field(default_factory=LauncherEnvConfig)
+    production: LauncherEnvConfig = Field(default_factory=LauncherEnvConfig)
+
+
 class SecurityConfig(BaseModel):
     microsoft_365_writeback_enabled: bool = False
     external_llm_enabled: bool = False
@@ -123,6 +149,7 @@ class AppConfig(BaseModel):
     files: FilesConfig = Field(default_factory=FilesConfig)
     graph: GraphConfig = Field(default_factory=GraphConfig)
     automation: AutomationConfig = Field(default_factory=AutomationConfig)
+    launcher: LauncherConfig = Field(default_factory=LauncherConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
 
     @field_validator("paths")

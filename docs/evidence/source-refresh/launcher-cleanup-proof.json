@@ -1,0 +1,14 @@
+{
+  "applied": false,
+  "candidates": [
+    {
+      "pid": 666,
+      "role": "scheduler",
+      "source": "signature"
+    }
+  ],
+  "command": "launcher cleanup",
+  "environment": "dev",
+  "skipped_unknown": [],
+  "status": "ok"
+}

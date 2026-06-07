@@ -169,6 +169,108 @@ def main() -> None:
         note_safe + " Run-in-Background keeps MCP + scheduler alive; UI is closed.",
     )
 
+    # 7 & 8. dev / production launcher --open (browser mode, mocked open — no browser/spawn)
+    import hb_assistant.launcher.frontend_open as fo_mod
+
+    fo_mod.wait_for_frontend = lambda url, **k: (True, [])  # type: ignore[assignment]
+    fo_mod.open_browser = lambda url: (True, "browser", [])  # type: ignore[assignment]
+
+    dev_open = LauncherService(resolve_profile("dev")).open_session(plan_only=True)
+    _write(
+        "dev-launcher-open-proof",
+        "Dev Launcher --open Proof (browser mode, mocked open)",
+        "hb-assistant launcher dev --open --json",
+        _sanitize(dev_open, tmp),  # type: ignore[arg-type]
+        note_safe
+        + " Browser open + readiness wait are mocked (no browser/server). Dev frontend URL "
+        "resolved from config/fallback; window-close interception is unavailable in browser mode.",
+    )
+    prod_open = LauncherService(prod).open_session(plan_only=True)
+    _write(
+        "production-launcher-open-proof",
+        "Production Launcher --open Proof (browser mode, mocked open)",
+        "hb-assistant launcher production --open --json",
+        _sanitize(prod_open, tmp),  # type: ignore[arg-type]
+        note_safe
+        + " Browser open + readiness wait are mocked (no browser/server). Production frontend URL "
+        "resolved from config/build metadata; lifecycle stays CLI/UI-driven.",
+    )
+
+    # 9. browser-mode close-policy proof (open fields + explicit background/quit receipts)
+    SessionState(
+        environment="production",
+        processes=[
+            ProcessRecord(name="frontend", pid=None, started_at=now.isoformat(), argv=["x"],
+                          status="planned", keep_in_background=False),
+            ProcessRecord(name="mcp", pid=None, started_at=now.isoformat(), argv=["x"],
+                          status="planned", keep_in_background=True),
+            ProcessRecord(name="scheduler", pid=None, started_at=now.isoformat(), argv=["x"],
+                          status="planned", keep_in_background=True),
+        ],
+    ).save(prod.launcher_session_path)
+    close_bg = ClosePolicy(prod, ProcessManager(prod)).apply("background")
+    close_quit = ClosePolicy(prod, ProcessManager(prod)).apply("quit")
+    browser_close = {
+        "command": "launcher open (browser) → launcher close",
+        "status": "ok",
+        "open_lifecycle": {
+            "open_method": prod_open["open_method"],
+            "window_close_intercept_supported": prod_open["window_close_intercept_supported"],
+            "lifecycle_control": prod_open["lifecycle_control"],
+        },
+        "close_background": {k: close_bg[k] for k in ("action", "terminated", "kept_alive",
+                                                       "background_active", "scheduler_active")},
+        "close_quit": {k: close_quit[k] for k in ("action", "terminated", "background_active")},
+    }
+    _write(
+        "browser-mode-close-policy-proof",
+        "Browser-Mode Close Policy Proof",
+        "hb-assistant launcher production --open --json  (then launcher close --action ...)",
+        _sanitize(browser_close, tmp),  # type: ignore[arg-type]
+        note_safe
+        + " Browser mode does not intercept window-close; Quit vs Run-in-Background remain explicit "
+        "CLI/UI actions via `launcher close`.",
+    )
+
+    # 10. frontend display alias (resolved + unreachable fallback, mocked health checks)
+    from hb_assistant.config.loader import load_config
+
+    alias_cfg = load_config()
+    alias_cfg.launcher.dev.frontend_alias_url = "http://hb-dev.localhost:5173"
+    alias_cfg.launcher.dev.frontend_display_name = "HB Assistant Dev UI"
+    alias_profile = resolve_profile("dev", config=alias_cfg)
+    alias_keys = (
+        "frontend_display_name", "frontend_url", "frontend_alias_url", "opened_url",
+        "frontend_url_source", "alias_resolution_status", "frontend_reachable",
+        "frontend_opened", "warnings",
+    )
+
+    fo_mod.wait_for_frontend = lambda url, **k: (True, [])  # type: ignore[assignment]
+    alias_resolved = LauncherService(alias_profile).open_session(plan_only=True)
+
+    _routable = "http://127.0.0.1:5173"
+    fo_mod.wait_for_frontend = lambda url, **k: (  # type: ignore[assignment]
+        (url == _routable, [] if url == _routable else ["alias not reachable"])
+    )
+    alias_unreachable = LauncherService(alias_profile).open_session(plan_only=True)
+
+    alias_proof = {
+        "command": "hb-assistant launcher dev --open --json  (frontend_alias_url configured)",
+        "status": "ok",
+        "resolved_case": {k: alias_resolved[k] for k in alias_keys},
+        "unreachable_case": {k: alias_unreachable[k] for k in alias_keys},
+    }
+    _write(
+        "launcher-frontend-alias-proof",
+        "Launcher Frontend Display Alias Proof (resolved + fallback)",
+        "hb-assistant launcher dev --open --json  (frontend_alias_url configured)",
+        _sanitize(alias_proof, tmp),  # type: ignore[arg-type]
+        note_safe
+        + " Health checks are mocked. `frontend_url` stays the routable readiness URL; the alias is "
+        "opened only when it resolves, else the launcher falls back to frontend_url + a warning. "
+        "No hosts-file edit, no port 80, never a hard failure.",
+    )
+
     # 6. scheduled source refresh closeout (production local-only run)
     SchedulerState(environment="production").save(prod.scheduler_state_path)
     receipt = SchedulerRunner(prod).run_once(schedule_date=date(2026, 6, 7), trigger="evidence")
@@ -183,6 +285,119 @@ def main() -> None:
         "--date 2026-06-07 --json",
         _sanitize(closeout, tmp),  # type: ignore[arg-type]
         note_safe + " live_reads_enabled=false; mode=local_only; HB_PROCORE_LIVE never set.",
+    )
+
+    # 11. preflight / cleanup / quit-stale (mocked scan + termination; host untouched)
+    import hb_assistant.launcher.process_scan as scan_mod
+    from hb_assistant.launcher.preflight import cleanup as launcher_cleanup
+    from hb_assistant.launcher.preflight import run_preflight
+    from hb_assistant.launcher.process_scan import ProcInfo
+
+    ProcessManager.is_alive = lambda self, pid: False  # type: ignore[method-assign,assignment]
+    ProcessManager.terminate = lambda self, rec, **k: "exited"  # type: ignore[method-assign,assignment]
+    ProcessManager.terminate_pid = lambda self, pid, **k: "exited"  # type: ignore[method-assign,assignment]
+
+    dev_profile = resolve_profile("dev")
+    req = [
+        ("backend", dev_profile.backend_port),
+        ("frontend", dev_profile.frontend_port),
+    ]
+
+    # (a) stale launcher-owned backend on 8000 → freed.
+    stale_be = ProcInfo(
+        999, "python -m uvicorn hb_assistant.construction.analytics.api:create_app --port 8000"
+    )
+    scan_mod.list_system_processes = lambda: [stale_be]  # type: ignore[assignment]
+    scan_mod.port_in_use = lambda port, host="127.0.0.1": port == dev_profile.backend_port  # type: ignore[assignment]
+    scan_mod.port_listener_pids = lambda port: ([999] if port == dev_profile.backend_port else [])  # type: ignore[assignment]
+    pf_freed = run_preflight(
+        dev_profile, ProcessManager(dev_profile), force_restart=False, required_ports=req
+    ).to_dict()
+
+    # (b) unknown process on the frontend port → fail closed.
+    unknown = ProcInfo(777, "/opt/other/server --port 5173")
+    scan_mod.list_system_processes = lambda: [unknown]  # type: ignore[assignment]
+    scan_mod.port_in_use = lambda port, host="127.0.0.1": port == dev_profile.frontend_port  # type: ignore[assignment]
+    scan_mod.port_listener_pids = lambda port: ([777] if port == dev_profile.frontend_port else [])  # type: ignore[assignment]
+    pf_conflict = run_preflight(
+        dev_profile, ProcessManager(dev_profile), force_restart=False, required_ports=req
+    ).to_dict()
+    _write(
+        "launcher-preflight-proof",
+        "Launcher Preflight Proof (free stale vs fail-closed on unknown)",
+        "hb-assistant launcher dev --json (preflight)",
+        _sanitize(
+            {
+                "command": "launcher dev (preflight)",
+                "status": "ok",
+                "stale_owned_freed": {k: pf_freed[k] for k in ("ok", "freed_ports", "conflicts")},
+                "unknown_conflict_fail_closed": {
+                    k: pf_conflict[k] for k in ("ok", "freed_ports", "conflicts")
+                },
+            },
+            tmp,
+        ),  # type: ignore[arg-type]
+        note_safe
+        + " Scan/ports/termination are mocked. Launcher-owned stale port holders are freed; an "
+        "unknown holder fails closed (ok=false) without spawning a conflicting session.",
+    )
+
+    # cleanup dry-run: stale scheduler identified, FOREIGN MCP left untouched.
+    foreign_mcp = ProcInfo(555, "hb-assistant second-brain mcp serve --stdio")
+    stale_sched = ProcInfo(
+        666, "hb-assistant scheduler run daily-source-refresh --environment dev --loop"
+    )
+    scan_mod.list_system_processes = lambda: [foreign_mcp, stale_sched]  # type: ignore[assignment]
+    scan_mod.port_in_use = lambda port, host="127.0.0.1": False  # type: ignore[assignment]
+    scan_mod.port_listener_pids = lambda port: []  # type: ignore[assignment]
+    cleanup_proof = launcher_cleanup(dev_profile, ProcessManager(dev_profile), apply=False)
+    _write(
+        "launcher-cleanup-proof",
+        "Launcher Cleanup Proof (dry-run; foreign MCP safe)",
+        "hb-assistant launcher cleanup --environment dev --json",
+        _sanitize(cleanup_proof, tmp),  # type: ignore[arg-type]
+        note_safe
+        + " Dry-run identifies the stale scheduler (pid 666) but NOT the foreign MCP (pid 555): the "
+        "MCP stdio signature is shared with Claude/Cursor and is only swept via a tracked session PID.",
+    )
+
+    # quit stale sweep receipt.
+    prod_profile = resolve_profile("production")
+    stale_sched_prod = ProcInfo(
+        888, "hb-assistant scheduler run daily-source-refresh --environment production --loop"
+    )
+    scan_mod.list_system_processes = lambda: [stale_sched_prod]  # type: ignore[assignment]
+    SessionState(
+        environment="production",
+        processes=[
+            ProcessRecord(name="frontend", pid=None, started_at=now.isoformat(), argv=["x"],
+                          status="planned", keep_in_background=False),
+            ProcessRecord(name="mcp", pid=None, started_at=now.isoformat(), argv=["x"],
+                          status="planned", keep_in_background=True),
+        ],
+    ).save(prod_profile.launcher_session_path)
+    quit_receipt = ClosePolicy(prod_profile, ProcessManager(prod_profile)).apply("quit")
+    _write(
+        "launcher-quit-stale-proof",
+        "Launcher Quit Stale-Sweep Proof",
+        "hb-assistant launcher close --environment production --action quit --json",
+        _sanitize(
+            {
+                k: quit_receipt[k]
+                for k in (
+                    "action",
+                    "terminated_current_session",
+                    "terminated_stale",
+                    "skipped_unknown",
+                    "still_running",
+                    "status",
+                )
+            },
+            tmp,
+        ),  # type: ignore[arg-type]
+        note_safe
+        + " Quit terminates the current session AND signature-matched stale launcher processes; "
+        "unknown port holders are reported under skipped_unknown, never killed.",
     )
 
     print("wrote launcher/scheduler evidence to", OUT)

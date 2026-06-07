@@ -1,0 +1,26 @@
+{
+  "close_background": {
+    "action": "background",
+    "background_active": true,
+    "kept_alive": [],
+    "scheduler_active": true,
+    "terminated": [
+      "frontend"
+    ]
+  },
+  "close_quit": {
+    "action": "quit",
+    "background_active": false,
+    "terminated": [
+      "mcp",
+      "scheduler"
+    ]
+  },
+  "command": "launcher open (browser) \u2192 launcher close",
+  "open_lifecycle": {
+    "lifecycle_control": "cli_or_ui_action_required",
+    "open_method": "browser",
+    "window_close_intercept_supported": false
+  },
+  "status": "ok"
+}

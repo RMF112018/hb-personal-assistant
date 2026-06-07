@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* Thin, typed API client for the HB Analytics FastAPI shell (Prompt 07/08/09/10/11/14/16/20 + D + E).
+/* Thin, typed API client for the HB Analytics local shell (historical notes 07/08/09/10/11/14/16/20 + D + E; see package docs).
  *
- * - Uses relative /api paths (Vite dev proxy in vite.config.ts forwards to backend, e.g. http://127.0.0.1:8000).
+ * - Uses relative /api paths (dev server proxy in vite.config.ts forwards to backend, e.g. http://127.0.0.1:8000).
  * - Falls back to VITE_API_BASE when provided (e.g. for standalone backend).
  * - Injects X-HB-UI-Role header on every request from localStorage 'hb-ui-role' (viewer|operator|admin).
  *   Default: 'operator'. The value is local-dev simulation only; real backend role guards (require_admin_role etc.)
@@ -22,7 +22,7 @@
  *   under the normalized /api/settings/connections/projects/* family. Preview and save are read-only metadata only and
  *   explicitly never start sync; first sync requires separate admin approval. Auth-aware surfaces are handled in UI by
  *   checking account status before enabling source types.
- * - Keep this surface thin: presentation only. Business logic lives in AnalyticsService + read models.
+ * - Keep this surface thin: presentation only. Business logic lives in AnalyticsService + read projections (internal).
  * - any-tolerant per existing page style in this repo (see Project*Page.tsx etc.); eslint-disable at top to match.
  */
 
@@ -213,7 +213,7 @@ export function detectDailyBriefLatest() {
   return fetchJson('/api/daily-brief/detect-latest', { method: 'POST' });
 }
 
-/* Settings / Connection surfaces (Prompt 14B). */
+/* Settings / Connection surfaces (historical note 14B — see planning package for remediation context). */
 export function getSettings() {
   return fetchJson('/api/settings');
 }
@@ -230,7 +230,7 @@ export function getSettingsKeywords() {
   return fetchJson('/api/settings/keywords');
 }
 
-/* Project keywords (Prompt 20 / FPR-017): management UI over existing safe backend routes. */
+/* Project keywords (historical note 20 / FPR-017): management UI over existing safe backend routes. */
 export function getProjectKeywords(projectKey: string) {
   const key = projectKey || 'all';
   return fetchJson(`/projects/${encodeURIComponent(key)}/keywords`);
@@ -406,6 +406,38 @@ export function rejectFirstSyncAdmin(connectionId: string) {
   return fetchJson<AdminApprovalResponse>(`/api/settings/connections/admin/${id}/reject-first-sync`, { method: 'POST' });
 }
 
+/* Prompt G — Data Quality readiness/freshness surfaces (normalized /api/settings/data-quality/*).
+ * Summary is safe for all roles (sidebar indicator + embedded in readiness).
+ * Detail is admin-only (source-by-source approval/freshness/attention, advisory notes).
+ * Responses are safe: no tokens, secrets, cache paths, raw payloads, signed URLs, or raw content.
+ * Statuses: good | degraded | poor | unknown (conservative; degrade when freshness cannot be proven).
+ */
+export interface DataQualitySummary {
+  status?: string; // good | degraded | poor | unknown
+  label?: string; // "Data Quality"
+  last_updated_at?: string | null;
+  message?: string | null;
+  admin_detail_available?: boolean;
+}
+
+export interface DataQualityDetail {
+  surface?: string;
+  generated_utc?: string | null;
+  summary?: any;
+  sources?: any[];
+  attention_items?: any[];
+  advisory_notes?: string[];
+  guardrails?: any;
+}
+
+export function getDataQualitySummary() {
+  return fetchJson<DataQualitySummary>('/api/settings/data-quality/summary');
+}
+
+export function getDataQualityDetail() {
+  return fetchJson<DataQualityDetail>('/api/settings/data-quality/detail');
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
   getToday,
@@ -465,6 +497,9 @@ export const api = {
   getAdminPendingApprovals,
   approveFirstSyncAdmin,
   rejectFirstSyncAdmin,
+  // Prompt G — data quality summary (all roles) + admin detail (safe, approval/freshness per source)
+  getDataQualitySummary,
+  getDataQualityDetail,
 };
 
 export default api;

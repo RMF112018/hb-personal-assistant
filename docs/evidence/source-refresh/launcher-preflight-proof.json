@@ -1,0 +1,31 @@
+{
+  "command": "launcher dev (preflight)",
+  "stale_owned_freed": {
+    "conflicts": [],
+    "freed_ports": [
+      {
+        "pid": 999,
+        "port": 8000,
+        "role": "backend",
+        "source": "signature",
+        "surface": "backend",
+        "terminate_status": "exited"
+      }
+    ],
+    "ok": true
+  },
+  "status": "ok",
+  "unknown_conflict_fail_closed": {
+    "conflicts": [
+      {
+        "command": "/opt/other/server --port 5173",
+        "pid": 777,
+        "port": 5173,
+        "reason": "unknown_owner",
+        "surface": "frontend"
+      }
+    ],
+    "freed_ports": [],
+    "ok": false
+  }
+}

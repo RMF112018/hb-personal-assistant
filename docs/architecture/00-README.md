@@ -24,6 +24,22 @@ This directory contains living architecture and decision records for the HB Pers
 - `remediation-idempotent-action-persistence.md` — Phase 14 Prompt 03: idempotent action upsert by stable_key (completed status preserved), action-aware source link helper in Registry, service refactor, and duplicate/completed/migration tests.
 - `remediation-signal-integration-action-intelligence.md` — Phase 14 Prompt 04: multi-source bounded signal loading (body mentions, parser, calendar, file review, retrieval) into actions extractor, phrase mapping for full actionTypes, confidence + weak monitor, with seeded-DB tests and CLI dry-run validation.
 - `remediation-morning-run-orchestration-upgrade.md` — Phase 14 Prompt 07: full 05 stage model in orchestrator with Graph consent blocker classification (skipped_* for Graph while local stages continue), P02-P06 integration (actions, context, brief+obsidian provenance), explicit failure isolation, and exact 05 JSON contract (blocker_classification + stages array).
+
+HB Auth Onboarding Implementation Package (cross-cutting for frontend analytics shell; Prompts A–I, normalized contract, Get Started, Graph device-code, Procore OAuth, Project Connections, Data Quality surfaces, regression + smoke):
+
+- 171-fastapi-auth-onboarding-surfaces.md (older Prompt 03 pre-normalization surfaces — superseded for the current normalized `/api/...` UI contract)
+- 172-prompt-a-auth-route-contracts-and-safe-models.md (Prompt A)
+- 173-prompt-b-microsoft-graph-local-auth-flow.md (Prompt B)
+- 174-prompt-c-procore-local-oauth-flow.md (Prompt C)
+- 175-prompt-d-get-started-and-account-connections-ux.md (Prompt D)
+- 176-prompt-e-project-connections-auth-aware-setup-flow.md (Prompt E)
+- 177-prompt-f-admin-first-sync-approval-integration.md (Prompt F)
+- 178-prompt-g-data-quality-readiness-freshness-surfaces.md (Prompt G)
+- 179-prompt-h-auth-security-regression-tests-and-smoke-harness.md (Prompt H)
+- 180-prompt-i-documentation-and-runbook.md (Prompt I; documentation/runbook closeout)
+
+See also the HB Auth Onboarding Implementation Package (manifest, guardrails, UX spec, validation plan, acceptance) under `docs/planning/HB_Auth_Onboarding_Implementation_Package/`.
+
 - `docs/decisions/` — Closed technical decisions (D-CLI-001 etc.)
 
 - Prompt 02: Dry-Run Semantics and Run Ledger Policy — explicit documentation of allowed ledger/evidence writes vs forbidden business object mutations (action_items, source_links, Obsidian notes); CLI notes aligned; tests proving zero mutations in dry-run (before/after row counts); evidence at `docs/evidence/mvp-local-runtime/02-dry-run-policy-proof.md`.

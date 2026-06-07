@@ -1,0 +1,28 @@
+{
+  "command": "hb-assistant launcher dev --open --json  (frontend_alias_url configured)",
+  "resolved_case": {
+    "alias_resolution_status": "resolved",
+    "frontend_alias_url": "http://hb-dev.localhost:5173",
+    "frontend_display_name": "HB Assistant Dev UI",
+    "frontend_opened": true,
+    "frontend_reachable": true,
+    "frontend_url": "http://127.0.0.1:5173",
+    "frontend_url_source": "fallback",
+    "opened_url": "http://hb-dev.localhost:5173",
+    "warnings": []
+  },
+  "status": "ok",
+  "unreachable_case": {
+    "alias_resolution_status": "unreachable",
+    "frontend_alias_url": "http://hb-dev.localhost:5173",
+    "frontend_display_name": "HB Assistant Dev UI",
+    "frontend_opened": true,
+    "frontend_reachable": true,
+    "frontend_url": "http://127.0.0.1:5173",
+    "frontend_url_source": "fallback",
+    "opened_url": "http://127.0.0.1:5173",
+    "warnings": [
+      "frontend_alias_url http://hb-dev.localhost:5173 not reachable; opening routable frontend_url http://127.0.0.1:5173 instead"
+    ]
+  }
+}

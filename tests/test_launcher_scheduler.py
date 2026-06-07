@@ -22,7 +22,11 @@ from hb_assistant.cli.main import app
 from hb_assistant.config.loader import load_config
 from hb_assistant.launcher.models import ProcessRecord
 from hb_assistant.launcher.process_manager import ProcessManager
-from hb_assistant.launcher.profiles import ProfileCollisionError, resolve_profile, snapshot_source_db
+from hb_assistant.launcher.profiles import (
+    ProfileCollisionError,
+    resolve_profile,
+    snapshot_source_db,
+)
 from hb_assistant.launcher.service import LauncherService, _hb_executable
 from hb_assistant.launcher.session_state import SessionState
 from hb_assistant.scheduler.daily_source_refresh import DailySourceRefreshJob
@@ -38,6 +42,19 @@ runner = CliRunner()
 def _migrate(db: Path) -> None:
     db.parent.mkdir(parents=True, exist_ok=True)
     SQLiteMigrator(db).apply()
+
+
+@pytest.fixture(autouse=True)
+def _stub_process_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hermetic default: no OS process/port scanning (also protects the host machine).
+
+    Individual tests override these via monkeypatch to inject fake processes/ports.
+    """
+    import hb_assistant.launcher.process_scan as ps
+
+    monkeypatch.setattr(ps, "list_system_processes", lambda: [])
+    monkeypatch.setattr(ps, "port_in_use", lambda port, host="127.0.0.1": False)
+    monkeypatch.setattr(ps, "port_listener_pids", lambda port: [])
 
 
 def _canned_summary(**over: Any) -> dict[str, Any]:
@@ -108,6 +125,498 @@ def test_launcher_dev_plan_does_not_spawn(monkeypatch: pytest.MonkeyPatch) -> No
     d = json.loads(result.stdout)
     statuses = {p["name"]: p["status"] for p in d["processes"]}
     assert all(s in ("planned", "skipped") for s in statuses.values())
+
+
+# --- launcher --open (frontend auto-open) ----------------------------------------
+
+
+def _patch_open(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """Patch the readiness wait + browser open so no network/browser is touched.
+
+    Returns a dict that records the (url, timeout) the wait was called with and the
+    url the browser open was called with.
+    """
+    import hb_assistant.launcher.frontend_open as fo_mod
+
+    captured: dict[str, Any] = {}
+
+    def _wait(url: str, *, timeout_seconds: int = 30, interval_seconds: float = 1.0) -> Any:
+        captured["wait_url"] = url
+        captured["wait_timeout"] = timeout_seconds
+        return True, []
+
+    def _open(url: str) -> Any:
+        captured["open_url"] = url
+        return True, "browser", []
+
+    monkeypatch.setattr(fo_mod, "wait_for_frontend", _wait)
+    monkeypatch.setattr(fo_mod, "open_browser", _open)
+    return captured
+
+
+def test_launcher_dev_open_opens_resolved_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured = _patch_open(monkeypatch)
+    result = runner.invoke(app, ["launcher", "dev", "--open", "--plan", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    assert d["command"] == "launcher open"
+    assert d["frontend_opened"] is True
+    assert d["frontend_reachable"] is True
+    assert d["open_method"] == "browser"
+    assert d["frontend_url"] == captured["open_url"] == "http://127.0.0.1:5173"
+
+
+def test_launcher_production_open_opens_resolved_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured = _patch_open(monkeypatch)
+    result = runner.invoke(app, ["launcher", "production", "--open", "--plan", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    assert d["command"] == "launcher open"
+    assert d["frontend_opened"] is True
+    assert captured["open_url"] == d["frontend_url"]
+
+
+def test_launcher_status_reports_frontend_url() -> None:
+    for env in ("dev", "production"):
+        result = runner.invoke(app, ["launcher", "status", "--environment", env, "--json"])
+        assert result.exit_code == 0
+        d = json.loads(result.stdout)
+        assert d["frontend_url"] == "http://127.0.0.1:5173"
+        assert d["frontend_url_source"] == "fallback"
+
+
+def test_launcher_open_waits_for_readiness(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured = _patch_open(monkeypatch)
+    result = runner.invoke(
+        app,
+        ["launcher", "dev", "--open", "--open-timeout-seconds", "7", "--plan", "--json"],
+    )
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    assert captured["wait_url"] == "http://127.0.0.1:5173"
+    assert captured["wait_timeout"] == 7
+    assert d["timeout_seconds"] == 7
+
+
+def test_launcher_open_timeout_warns_but_does_not_crash(monkeypatch: pytest.MonkeyPatch) -> None:
+    import hb_assistant.launcher.frontend_open as fo_mod
+
+    monkeypatch.setattr(
+        fo_mod, "wait_for_frontend", lambda url, **k: (False, ["frontend not reachable"])
+    )
+    monkeypatch.setattr(fo_mod, "open_browser", lambda url: (True, "browser", []))
+    result = runner.invoke(app, ["launcher", "dev", "--open", "--plan", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    assert d["frontend_reachable"] is False
+    assert d["frontend_url"] == "http://127.0.0.1:5173"
+    assert any("not reachable" in w for w in d["warnings"])
+
+
+def test_launcher_open_browser_mode_no_close_intercept(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_open(monkeypatch)
+    result = runner.invoke(app, ["launcher", "dev", "--open", "--plan", "--json"])
+    d = json.loads(result.stdout)
+    assert d["window_close_intercept_supported"] is False
+    assert d["lifecycle_control"] == "cli_or_ui_action_required"
+    assert d["requested_shell"] == "browser"
+    assert d["actual_shell"] == "browser"
+
+
+def test_browser_open_is_non_blocking_and_non_fatal(monkeypatch: pytest.MonkeyPatch) -> None:
+    import hb_assistant.launcher.frontend_open as fo_mod
+
+    def _boom(url: str, new: int = 0) -> bool:
+        raise RuntimeError("no browser")
+
+    monkeypatch.setattr(fo_mod.webbrowser, "open", _boom)
+    opened, method, warnings = fo_mod.open_browser("http://127.0.0.1:5173")
+    assert opened is False
+    assert method == "browser"
+    assert warnings and "failed to open browser" in warnings[0]
+
+
+def test_wait_for_frontend_timeout_returns_warning() -> None:
+    import hb_assistant.launcher.frontend_open as fo_mod
+
+    # Port 1 is never listening; timeout 0 means the deadline is already past.
+    reachable, warnings = fo_mod.wait_for_frontend(
+        "http://127.0.0.1:1", timeout_seconds=0, interval_seconds=0.01
+    )
+    assert reachable is False
+    assert warnings and "not reachable" in warnings[0]
+
+
+def test_pywebview_lazy_optional_falls_back_to_browser(monkeypatch: pytest.MonkeyPatch) -> None:
+    import hb_assistant.launcher.webview_shell as webview_shell
+
+    _patch_open(monkeypatch)
+    monkeypatch.setattr(webview_shell, "pywebview_available", lambda: False)
+    result = runner.invoke(
+        app, ["launcher", "dev", "--open", "--shell", "pywebview", "--plan", "--json"]
+    )
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    assert d["open_method"] == "browser_fallback"
+    assert d["requested_shell"] == "pywebview"
+    assert d["actual_shell"] == "browser"
+    assert d["window_close_intercept_supported"] is False
+    assert any("pywebview requested but not installed" in w for w in d["warnings"])
+
+
+def test_pywebview_module_has_no_top_level_webview_import() -> None:
+    import sys
+
+    import hb_assistant.launcher.webview_shell  # noqa: F401
+
+    # Importing the shell module must not import the optional `webview` package.
+    assert "webview" not in sys.modules
+
+
+def test_dev_prod_frontend_urls_can_differ_via_config() -> None:
+    from hb_assistant.config.models import AppConfig, LauncherConfig, LauncherEnvConfig
+
+    cfg = AppConfig(
+        launcher=LauncherConfig(
+            dev=LauncherEnvConfig(frontend_url="http://127.0.0.1:5173"),
+            production=LauncherEnvConfig(frontend_url="http://127.0.0.1:4173"),
+        )
+    )
+    dev = resolve_profile("dev", config=cfg)
+    prod = resolve_profile("production", config=cfg)
+    assert dev.frontend_url == "http://127.0.0.1:5173"
+    assert prod.frontend_url == "http://127.0.0.1:4173"
+    assert dev.frontend_url != prod.frontend_url
+    assert dev.frontend_url_source == "config"
+    assert prod.frontend_url_source == "config"
+
+
+def test_frontend_url_falls_back_when_unset() -> None:
+    for env in ("dev", "production"):
+        profile = resolve_profile(env)  # type: ignore[arg-type]
+        assert profile.frontend_url == "http://127.0.0.1:5173"
+        assert profile.frontend_url_source == "fallback"
+
+
+# --- frontend display alias ------------------------------------------------------
+
+
+def _patch_open_per_url(monkeypatch: pytest.MonkeyPatch, reachable: set[str]) -> dict[str, Any]:
+    """Patch the readiness wait/browser open so each URL resolves per ``reachable``."""
+    import hb_assistant.launcher.frontend_open as fo_mod
+
+    cap: dict[str, Any] = {"waits": []}
+
+    def _wait(url: str, *, timeout_seconds: int = 30, interval_seconds: float = 1.0) -> Any:
+        cap["waits"].append(url)
+        ok = url in reachable
+        return ok, ([] if ok else [f"frontend not reachable at {url}"])
+
+    def _open(url: str) -> Any:
+        cap["open_url"] = url
+        return True, "browser", []
+
+    monkeypatch.setattr(fo_mod, "wait_for_frontend", _wait)
+    monkeypatch.setattr(fo_mod, "open_browser", _open)
+    return cap
+
+
+def _alias_cfg(alias: str | None) -> Any:
+    from hb_assistant.config.models import AppConfig, LauncherConfig, LauncherEnvConfig
+
+    return AppConfig(
+        launcher=LauncherConfig(
+            dev=LauncherEnvConfig(
+                frontend_url="http://127.0.0.1:5173",
+                frontend_alias_url=alias,
+                frontend_display_name="HB Assistant Dev UI",
+            )
+        )
+    )
+
+
+def test_alias_reachable_opens_alias(monkeypatch: pytest.MonkeyPatch) -> None:
+    alias = "http://hb-dev.localhost:5173"
+    cap = _patch_open_per_url(monkeypatch, {"http://127.0.0.1:5173", alias})
+    svc = LauncherService(resolve_profile("dev", config=_alias_cfg(alias)))
+    d = svc.open_session(plan_only=True)
+    assert d["opened_url"] == alias
+    assert cap["open_url"] == alias
+    assert d["alias_resolution_status"] == "resolved"
+    assert d["frontend_url"] == "http://127.0.0.1:5173"  # routable URL unchanged
+    assert d["frontend_alias_url"] == alias
+    assert d["frontend_display_name"] == "HB Assistant Dev UI"
+    # The routable URL is health-checked first.
+    assert cap["waits"][0] == "http://127.0.0.1:5173"
+
+
+def test_alias_unreachable_falls_back_to_routable(monkeypatch: pytest.MonkeyPatch) -> None:
+    alias = "http://hb-dev.localhost:5173"
+    cap = _patch_open_per_url(monkeypatch, {"http://127.0.0.1:5173"})  # alias not reachable
+    svc = LauncherService(resolve_profile("dev", config=_alias_cfg(alias)))
+    d = svc.open_session(plan_only=True)
+    assert d["opened_url"] == "http://127.0.0.1:5173"
+    assert cap["open_url"] == "http://127.0.0.1:5173"
+    assert d["alias_resolution_status"] == "unreachable"
+    assert d["frontend_reachable"] is True  # routable URL still healthy
+    assert any("not reachable" in w for w in d["warnings"])
+
+
+def test_alias_not_configured_opens_routable(monkeypatch: pytest.MonkeyPatch) -> None:
+    cap = _patch_open_per_url(monkeypatch, {"http://127.0.0.1:5173"})
+    svc = LauncherService(resolve_profile("dev", config=_alias_cfg(None)))
+    d = svc.open_session(plan_only=True)
+    assert d["alias_resolution_status"] == "not_configured"
+    assert d["opened_url"] == d["frontend_url"] == "http://127.0.0.1:5173"
+    assert cap["open_url"] == "http://127.0.0.1:5173"
+    assert d["frontend_display_name"] == "HB Assistant Dev UI"
+
+
+def test_launcher_status_reports_alias_fields() -> None:
+    result = runner.invoke(app, ["launcher", "status", "--environment", "dev", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    for key in (
+        "frontend_display_name",
+        "frontend_url",
+        "frontend_alias_url",
+        "opened_url",
+        "alias_resolution_status",
+        "warnings",
+    ):
+        assert key in d
+    assert d["frontend_display_name"] == "HB Assistant (Dev)"  # default when unset
+    assert d["alias_resolution_status"] == "not_configured"
+    assert d["frontend_alias_url"] is None
+
+
+def test_open_result_includes_display_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_open(monkeypatch)
+    result = runner.invoke(app, ["launcher", "dev", "--open", "--plan", "--json"])
+    d = json.loads(result.stdout)
+    assert d["frontend_display_name"] == "HB Assistant (Dev)"
+    assert d["alias_resolution_status"] == "not_configured"
+    assert d["opened_url"] == d["frontend_url"]
+
+
+# --- preflight / ports / cleanup / output isolation ------------------------------
+
+
+def _patch_scan(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    processes: list[Any] | None = None,
+    ports_in_use: tuple[int, ...] = (),
+    listeners: dict[int, list[int]] | None = None,
+) -> None:
+    import hb_assistant.launcher.process_scan as ps
+
+    procs = list(processes or [])
+    in_use = set(ports_in_use)
+    lis = listeners or {}
+    monkeypatch.setattr(ps, "list_system_processes", lambda: list(procs))
+    monkeypatch.setattr(ps, "port_in_use", lambda port, host="127.0.0.1": port in in_use)
+    monkeypatch.setattr(ps, "port_listener_pids", lambda port: list(lis.get(port, [])))
+
+
+def _fake_spawn_factory(calls: list[str]) -> Any:
+    def _spawn(self: Any, spec: Any) -> ProcessRecord:
+        calls.append(spec.name)
+        return ProcessRecord(
+            name=spec.name,
+            pid=4242,
+            started_at="2026-06-07T00:00:00+00:00",
+            argv=spec.argv,
+            status="running",
+            keep_in_background=spec.keep_in_background,
+            port=spec.port,
+            log_path="/tmp/log",
+        )
+
+    return _spawn
+
+
+def test_preflight_frees_launcher_owned_stale_backend_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.launcher.process_scan import ProcInfo
+    from hb_assistant.launcher.service import LauncherService
+
+    stale = ProcInfo(
+        999, "python -m uvicorn hb_assistant.construction.analytics.api:create_app --port 8000"
+    )
+    _patch_scan(monkeypatch, processes=[stale], ports_in_use=(8000,), listeners={8000: [999]})
+    freed: list[int] = []
+    monkeypatch.setattr(ProcessManager, "is_alive", lambda self, pid: False)
+    monkeypatch.setattr(
+        ProcessManager, "terminate_pid", lambda self, pid, **k: (freed.append(pid) or "exited")
+    )
+    calls: list[str] = []
+    monkeypatch.setattr(ProcessManager, "spawn", _fake_spawn_factory(calls))
+
+    result = LauncherService(resolve_profile("dev")).start()
+    assert result["status"] == "ok"
+    assert 999 in freed
+    pf = result["preflight"]
+    assert any(f["port"] == 8000 and f["pid"] == 999 for f in pf["freed_ports"])
+    assert "backend" in calls and "frontend" in calls  # session actually started
+
+
+def test_preflight_unknown_port_conflict_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.launcher.process_scan import ProcInfo
+
+    unknown = ProcInfo(777, "/some/random/server --port 5173")
+    _patch_scan(monkeypatch, processes=[unknown], ports_in_use=(5173,), listeners={5173: [777]})
+    monkeypatch.setattr(ProcessManager, "is_alive", lambda self, pid: False)
+
+    def _boom_spawn(self: Any, spec: Any) -> Any:
+        raise AssertionError("spawn must not run on an unknown port conflict")
+
+    monkeypatch.setattr(ProcessManager, "spawn", _boom_spawn)
+    result = runner.invoke(app, ["launcher", "dev", "--json"])
+    assert result.exit_code == 2
+    d = json.loads(result.stdout)
+    assert d["status"] == "port_conflict"
+    assert any(c["port"] == 5173 and c["pid"] == 777 for c in d["port_conflicts"])
+
+
+def test_preflight_reuses_healthy_session_unless_force_restart(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from hb_assistant.launcher.service import LauncherService
+
+    _seed_session("dev", [_rec("backend", keep=True), _rec("frontend", keep=False)])
+    monkeypatch.setattr(ProcessManager, "is_alive", lambda self, pid: True)
+    calls: list[str] = []
+    monkeypatch.setattr(ProcessManager, "spawn", _fake_spawn_factory(calls))
+
+    reused = LauncherService(resolve_profile("dev")).start()
+    assert reused.get("reused") is True
+    assert calls == []  # no respawn
+
+    monkeypatch.setattr(ProcessManager, "terminate", lambda self, rec, **k: "exited")
+    restarted = LauncherService(resolve_profile("dev")).start(force_restart=True)
+    assert restarted["preflight"]["stopped_prior"]
+    assert "backend" in calls  # respawned
+
+
+def test_dev_frontend_spec_uses_strict_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    import hb_assistant.launcher.service as svc_mod
+    from hb_assistant.launcher.service import LauncherService
+
+    monkeypatch.setattr(svc_mod.shutil, "which", lambda name: "/usr/bin/npm")
+    profile = resolve_profile("dev")
+    specs = {s.name: s for s in LauncherService(profile).build_specs()}
+    fe = specs["frontend"]
+    assert "--strictPort" in fe.argv
+    assert "--port" in fe.argv and str(profile.frontend_port) in fe.argv
+    assert fe.port == profile.frontend_port == 5173
+    assert profile.frontend_url.endswith(":5173")  # opened URL matches the bound port
+
+
+def test_spawn_redirects_child_output_to_logfile(monkeypatch: pytest.MonkeyPatch) -> None:
+    import subprocess
+
+    import hb_assistant.launcher.process_manager as pm_mod
+    from hb_assistant.launcher.models import ManagedProcessSpec
+
+    captured: dict[str, Any] = {}
+
+    class _FakeProc:
+        pid = 5151
+
+    def _fake_popen(argv: Any, **kwargs: Any) -> Any:
+        captured.update(kwargs)
+        return _FakeProc()
+
+    monkeypatch.setattr(pm_mod.subprocess, "Popen", _fake_popen)
+    pm = ProcessManager(resolve_profile("dev"))
+    spec = ManagedProcessSpec(name="backend", argv=["x"], cwd=".", port=8000)
+    rec = pm.spawn(spec)
+    assert captured["stdin"] == subprocess.DEVNULL
+    assert captured["stderr"] == subprocess.STDOUT
+    assert captured["stdout"] is not None  # a real file handle, not the terminal
+    assert rec.log_path and rec.log_path.endswith("dev-backend.log")
+    assert rec.port == 8000
+
+
+def test_json_output_is_clean(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Plan mode: no real spawn; stdout must be valid JSON only (Automator-safe).
+    result = runner.invoke(app, ["launcher", "dev", "--plan", "--json"])
+    assert result.exit_code == 0
+    parsed = json.loads(result.stdout)  # raises if any child log were appended
+    assert parsed["command"] == "launcher status"
+
+
+def test_quit_sweeps_stale_launcher_processes(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.launcher.close_policy import ClosePolicy
+    from hb_assistant.launcher.process_scan import ProcInfo
+
+    stale_sched = ProcInfo(
+        888, "hb-assistant scheduler run daily-source-refresh --environment production --loop"
+    )
+    _patch_scan(monkeypatch, processes=[stale_sched])
+    monkeypatch.setattr(ProcessManager, "is_alive", lambda self, pid: True)
+    monkeypatch.setattr(ProcessManager, "terminate", lambda self, rec, **k: "exited")
+    killed: list[int] = []
+    monkeypatch.setattr(
+        ProcessManager, "terminate_pid", lambda self, pid, **k: (killed.append(pid) or "exited")
+    )
+    _seed_session("production", [_rec("frontend", keep=False), _rec("mcp", keep=True)])
+    profile = resolve_profile("production")
+    receipt = ClosePolicy(profile, ProcessManager(profile)).apply("quit")
+    assert set(receipt["terminated_current_session"]) == {"frontend", "mcp"}
+    assert any(s["pid"] == 888 and s["role"] == "scheduler" for s in receipt["terminated_stale"])
+    assert 888 in killed
+
+
+def test_cleanup_dry_run_skips_foreign_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.launcher.process_scan import ProcInfo
+
+    foreign_mcp = ProcInfo(555, "hb-assistant second-brain mcp serve --stdio")
+    stale_sched = ProcInfo(
+        666, "hb-assistant scheduler run daily-source-refresh --environment dev --loop"
+    )
+    _patch_scan(monkeypatch, processes=[foreign_mcp, stale_sched])
+    killed: list[int] = []
+    monkeypatch.setattr(
+        ProcessManager, "terminate_pid", lambda self, pid, **k: (killed.append(pid) or "exited")
+    )
+    result = runner.invoke(app, ["launcher", "cleanup", "--environment", "dev", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    pids = {c["pid"] for c in d["candidates"]}
+    assert 666 in pids  # stale scheduler identified
+    assert 555 not in pids  # foreign MCP NOT a candidate
+    assert killed == []  # dry-run terminates nothing
+
+
+def test_cleanup_apply_terminates_candidates_including_tracked_mcp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(ProcessManager, "is_alive", lambda self, pid: True)
+    killed: list[int] = []
+    monkeypatch.setattr(
+        ProcessManager, "terminate_pid", lambda self, pid, **k: (killed.append(pid) or "exited")
+    )
+    mcp_rec = _rec("mcp", keep=True)  # tracked → launcher-owned even though MCP
+    _seed_session("dev", [mcp_rec])
+    result = runner.invoke(app, ["launcher", "cleanup", "--environment", "dev", "--apply", "--json"])
+    d = json.loads(result.stdout)
+    assert d["applied"] is True
+    assert mcp_rec.pid in killed  # a TRACKED mcp is swept (it is launcher-owned)
+
+
+def test_shortcut_helpers_invoke_launcher_open() -> None:
+    repo = resolve_profile("dev").path_policy.resolve_repo_root()
+    shortcuts = repo / "scripts" / "shortcuts"
+    dev = (shortcuts / "hb-launcher-dev.command").read_text()
+    prod = (shortcuts / "hb-launcher-production.command").read_text()
+    assert "launcher dev --open" in dev
+    assert "launcher production --open" in prod
+    for text in (dev, prod):
+        assert "vite" not in text
+        assert "npm run dev" not in text
+        assert "uvicorn" not in text
+        assert "open http" not in text
 
 
 # --- close policy ----------------------------------------------------------------
