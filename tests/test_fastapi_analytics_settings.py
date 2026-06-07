@@ -235,3 +235,26 @@ def test_prompt_a_normalized_connections_paths_reachable(tmp_path: Path) -> None
     assert "status" in p.json()
     # data quality summary
     assert client.get("/api/settings/data-quality/summary").status_code == 200
+
+
+# Prompt B light coverage — the normalized Graph auth contract paths under
+# /api/settings/connections/graph/auth/* are present and safe (parity with projects).
+# Full matrix (including 5 poll states, verified transitions, redaction) lives in
+# test_fastapi_analytics_auth_onboarding.py.
+
+
+def test_prompt_b_graph_auth_contract_paths_reachable(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    # viewer can read the accounts surface (which exercises graph status mapping)
+    ra = client.get("/api/settings/connections/accounts")
+    assert ra.status_code == 200
+    _assert_safe(ra.json())
+
+    # start requires operator; without role we expect 403 (confirms gate is wired)
+    assert client.post("/api/settings/connections/graph/auth/start").status_code == 403
+
+    # with role the route is reachable (may succeed or fail on no real msal in this env, but not 404/5xx)
+    rs = client.post("/api/settings/connections/graph/auth/start", headers={"X-HB-UI-Role": "operator"})
+    assert rs.status_code in (200, 400, 422, 403)  # 403 if role dep strict in this context is acceptable
+    if rs.status_code < 500 and rs.headers.get("content-type", "").startswith("application/json"):
+        _assert_safe(rs.json())

@@ -369,6 +369,34 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return AuthOnboardingService().complete_graph_device_login(request.flow_id)
 
+    # Prompt B — normalized Microsoft Graph local auth contract routes.
+    # These are additive to the legacy /auth/graph/* surfaces. Role: operator+ for
+    # start/poll/disconnect (consistent with prior device-login). All responses safe;
+    # no tokens, secrets, cache paths, or raw claims. Does not start sync.
+    @app.post("/api/settings/connections/graph/auth/start")
+    def settings_graph_auth_start(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().start_graph_device_auth()
+
+    @app.get("/api/settings/connections/graph/auth/status")
+    def settings_graph_auth_status(
+        flow_id: str,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().poll_graph_device_auth_status(flow_id)
+
+    @app.post("/api/settings/connections/graph/disconnect-local")
+    def settings_graph_disconnect_local(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().disconnect_graph_local()
+
     @app.get("/auth/procore/status")
     def procore_auth_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role

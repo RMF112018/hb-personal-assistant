@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from hb_assistant.auth.providers import DelegatedAuthProvider
@@ -64,7 +65,8 @@ class AuthOnboardingService:
         cache_present = bool(
             isinstance(delegated_cache, dict) and delegated_cache.get("exists")
         )
-        return {
+
+        base = {
             "surface": "analytics.auth_onboarding.graph_status",
             "token_type": "cached_unverified" if cache_present else "none",
             "classification": "delegated_cache_present" if cache_present else None,
@@ -77,6 +79,41 @@ class AuthOnboardingService:
             "next_step": "verify_graph_status" if cache_present else "start_graph_device_login",
             "guardrails": _auth_guardrails(),
         }
+
+        if not cache_present:
+            return base
+
+        # Prompt B: verify with silent MSAL acquisition (not just file presence).
+        # This makes connected status honest and allows readiness to avoid false "valid"
+        # when the cached token is expired/revoked. On success we populate safe metadata.
+        try:
+            prov = self._graph_provider()
+            info = prov.status_info()  # performs get_token() -> acquire_token_silent + claims ensure
+            if info.get("token_type") == "delegated":
+                claims = info.get("id_token_claims") or {}
+                return {
+                    **base,
+                    "token_type": "delegated",
+                    "classification": "delegated_verified",
+                    "account": info.get("upn") or claims.get("upn") or claims.get("preferred_username"),
+                    "tenant": info.get("tenant") or claims.get("tid") or identity.tenant_id,
+                    "scopes": info.get("scopes") or _scope_diagnostics(list(identity.delegated_scopes)).get("effective_msal_scopes", []),
+                    "expires_in_seconds_if_known": info.get("expires_in"),
+                    "next_step": None,
+                }
+            else:
+                # File existed but status_info reports none (silent failed) => stale/reauth
+                return {
+                    **base,
+                    "classification": "stale_reauth_required",
+                    "message": "Cached Graph credentials present but silent acquisition failed.",
+                }
+        except Exception:
+            return {
+                **base,
+                "classification": "stale_reauth_required",
+                "message": "Silent verification of cached Graph auth failed; re-auth may be required.",
+            }
 
     def start_graph_device_login(self) -> dict[str, Any]:
         provider = self._graph_provider()
@@ -135,6 +172,150 @@ class AuthOnboardingService:
             "tenant": claims.get("tid"),
             "expires_in_seconds_if_known": result.get("expires_in"),
             "scope_diagnostics": _scope_diagnostics(slot["raw_scopes"]),
+            "guardrails": _auth_guardrails(),
+        }
+
+    # Prompt B — new normalized contract methods for the /api/settings/connections/graph/auth/* family.
+    # Share the same in-memory _GRAPH_FLOWS slot as the legacy device login methods so that
+    # either surface can observe in-flight flows. The new methods return the exact frontend
+    # contract shapes (no tokens, no cache paths, safe account hints only). Expiry and pending
+    # are handled without blocking.
+
+    def start_graph_device_auth(self) -> dict[str, Any]:
+        provider = self._graph_provider()
+        app = provider._get_app()  # noqa: SLF001 - existing auth primitive
+        raw_scopes = list(provider._configured_scopes)  # noqa: SLF001
+        scopes = provider.default_scopes
+        flow = app.initiate_device_flow(scopes=scopes)
+        if not isinstance(flow, dict) or "user_code" not in flow:
+            return {
+                "ok": False,
+                "kind": "graph_device_flow_start_failed",
+                "guardrails": _auth_guardrails(),
+            }
+        flow_id = uuid.uuid4().hex
+        expires_in = int(flow.get("expires_in") or 900)
+        started_at = datetime.now(timezone.utc).isoformat()
+        _GRAPH_FLOWS[flow_id] = {
+            "flow": flow,
+            "provider": provider,
+            "raw_scopes": raw_scopes,
+            "started_at": started_at,
+            "expires_in": expires_in,
+        }
+        expires_at = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
+        return {
+            "flow_id": flow_id,
+            "verification_uri": flow.get("verification_uri"),
+            "verification_uri_complete": flow.get("verification_uri_complete"),
+            "user_code": flow.get("user_code"),
+            "expires_at": expires_at,
+            "interval_seconds": int(flow.get("interval") or 5),
+            "message": "Sign in to Microsoft 365 using the displayed code. Connecting does not start sync.",
+            "guardrails": _auth_guardrails(),
+        }
+
+    def poll_graph_device_auth_status(self, flow_id: str) -> dict[str, Any]:
+        slot = _GRAPH_FLOWS.get(flow_id)
+        if slot is None:
+            return {
+                "flow_id": flow_id,
+                "status": "failed",
+                "message": "No active flow for this id (it may have completed, expired, or been replaced).",
+                "guardrails": _auth_guardrails(),
+            }
+
+        # Expiry check (best-effort; fallback to flow's expires_in if present)
+        expires_in = slot.get("expires_in")
+        if expires_in is None and isinstance(slot.get("flow"), dict):
+            expires_in = slot["flow"].get("expires_in")
+        started_at = slot.get("started_at")
+        if started_at and expires_in:
+            try:
+                start_dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                if start_dt.tzinfo is None:
+                    start_dt = start_dt.replace(tzinfo=timezone.utc)
+                if (datetime.now(timezone.utc) - start_dt).total_seconds() > int(expires_in) + 30:
+                    _GRAPH_FLOWS.pop(flow_id, None)
+                    return {
+                        "flow_id": flow_id,
+                        "status": "expired",
+                        "message": "Device code expired. Please start a new sign-in.",
+                        "guardrails": _auth_guardrails(),
+                    }
+            except Exception:
+                pass
+
+        provider: DelegatedAuthProvider = slot["provider"]
+        app = provider._get_app()  # noqa: SLF001
+        result = app.acquire_token_by_device_flow(slot["flow"])
+        if not isinstance(result, dict):
+            _GRAPH_FLOWS.pop(flow_id, None)
+            return {
+                "flow_id": flow_id,
+                "status": "failed",
+                "message": "Device flow failed.",
+                "guardrails": _auth_guardrails(),
+            }
+
+        if "access_token" in result:
+            provider._cache_mgr.save_cache(app.token_cache, app_only=False)  # noqa: SLF001
+            _GRAPH_FLOWS.pop(flow_id, None)
+            claims = result.get("id_token_claims") if isinstance(result.get("id_token_claims"), dict) else {}
+            account = {
+                "display_name": None,
+                "account_hint": claims.get("upn") or claims.get("preferred_username"),
+                "tenant_hint": claims.get("tid"),
+                "scopes": _scope_diagnostics(slot.get("raw_scopes", [])).get("effective_msal_scopes", []),
+            }
+            return {
+                "flow_id": flow_id,
+                "status": "complete",
+                "account": account,
+                "message": "Microsoft 365 is connected.",
+                "guardrails": _auth_guardrails(),
+            }
+
+        # No token yet — classify the error
+        err = str((result or {}).get("error") or "")
+        err_desc = str((result or {}).get("error_description") or "").lower()
+        if "authorization_pending" in err or "slow_down" in err:
+            return {
+                "flow_id": flow_id,
+                "status": "pending",
+                "message": "Waiting for user to complete sign-in in the browser.",
+                "guardrails": _auth_guardrails(),
+            }
+
+        # Terminal: pop and classify
+        _GRAPH_FLOWS.pop(flow_id, None)
+        if "expired" in err or "code_expired" in err_desc:
+            return {
+                "flow_id": flow_id,
+                "status": "expired",
+                "message": "Device code expired.",
+                "guardrails": _auth_guardrails(),
+            }
+        # Treat user cancel / deny / other as failed (cancelled can be surfaced as message if needed)
+        return {
+            "flow_id": flow_id,
+            "status": "failed",
+            "message": "Sign-in failed or was cancelled.",
+            "guardrails": _auth_guardrails(),
+        }
+
+    def disconnect_graph_local(self) -> dict[str, Any]:
+        try:
+            provider = self._graph_provider()
+            # Clear local delegated cache + remove MSAL account. Discard any returned paths.
+            provider.logout()
+        except Exception:
+            # Best effort; absence of cache on next status is the observable effect.
+            pass
+        return {
+            "ok": True,
+            "kind": "graph_disconnected_local",
+            "message": "Microsoft 365 local authentication cleared. Sign-in will be required to reconnect.",
             "guardrails": _auth_guardrails(),
         }
 
@@ -266,6 +447,19 @@ class AuthOnboardingService:
 
     def build_readiness(self, *, db_path: str | None = None) -> dict[str, Any]:
         graph = self.graph_status()
+        # Prompt B: ensure we attempt silent Graph refresh (via provider) before
+        # classifying reauth_required or building required_actions. graph_status
+        # already does a verify on cache_present paths; this makes it explicit at
+        # the readiness entry point and re-samples so the map sees a possible promotion
+        # from stale* to connected_valid.
+        try:
+            gcache = (graph.get("cache") or {}).get("msal-token-cache.bin") or {}
+            if gcache.get("exists") or graph.get("cache_present"):
+                p = self._graph_provider()
+                p.get_token(force_refresh=False)
+                graph = self.graph_status()
+        except Exception:
+            pass
         procore = self.procore_status()
         graph_status = self._map_internal_to_auth_status(graph, "graph")
         procore_status = self._map_internal_to_auth_status(procore, "procore")
@@ -385,9 +579,14 @@ class AuthOnboardingService:
             if s == "graph":
                 before = self._map_internal_to_auth_status(graph, "graph")
                 after = before
-                if before == "connected_stale_refreshable":
-                    # In a later increment a silent refresh could be attempted here via the MSAL app.
-                    after = "connected_valid"
+                if before in {"connected_stale_refreshable", "connected_stale_reauth_required"}:
+                    # Prompt B: attempt real silent refresh via provider before deciding final state.
+                    try:
+                        p = self._graph_provider()
+                        p.get_token(force_refresh=False)
+                        after = "connected_valid"
+                    except Exception:
+                        after = "connected_stale_reauth_required"
                 results.append(
                     {
                         "source": "graph",
@@ -414,7 +613,8 @@ class AuthOnboardingService:
     @staticmethod
     def _map_internal_to_auth_status(raw: dict[str, Any], source: str) -> str:
         """Map the existing internal status dicts to the 7 canonical states.
-        Conservative mapping; never upgrades a state without positive confirmation.
+        Prompt B: uses verified/silent results from graph_status (which calls provider
+        status_info/get_token) rather than file existence alone. Supports all 7 states.
         """
         if not raw:
             return "never_connected"
@@ -426,8 +626,19 @@ class AuthOnboardingService:
                 ms = cache.get("msal-token-cache.bin") or cache
                 if isinstance(ms, dict):
                     cache_present = bool(ms.get("exists"))
-            if token_type in {"delegated", "cached_unverified"} and cache_present:
+            cls = str(raw.get("classification") or "").lower()
+            if token_type in {"delegated"} and cache_present:
                 return "connected_valid"
+            if cache_present:
+                if "stale_reauth" in cls or "reauth_required" in cls:
+                    return "connected_stale_reauth_required"
+                if "error" in cls:
+                    return "connected_error"
+                if token_type in {"cached_unverified"}:
+                    # Unverified cache after silent attempt failed => reauth
+                    return "connected_stale_reauth_required"
+            # explicit disconnect path returns a kind on the action; subsequent status is never_connected
+            # (disconnected_by_user can be observed from the action response if needed by callers)
             return "never_connected"
         if source == "procore":
             if raw.get("ready_for_live_calls") or (raw.get("cache_present") and raw.get("access_cached")):

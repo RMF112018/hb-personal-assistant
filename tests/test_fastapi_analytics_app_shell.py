@@ -116,6 +116,10 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/settings/preferences",
         "/api/settings/admin-sync",
         "/api/settings/admin",
+        # Prompt B normalized graph auth contract (additive only; legacy /auth/graph/* paths preserved)
+        "/api/settings/connections/graph/auth/start",
+        "/api/settings/connections/graph/auth/status",
+        "/api/settings/connections/graph/disconnect-local",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 

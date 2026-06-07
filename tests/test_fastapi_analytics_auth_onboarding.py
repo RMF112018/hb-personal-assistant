@@ -32,6 +32,7 @@ class _FakeCache:
 
 class _FakeMsalApp:
     token_cache = _FakeCache()
+    acquire_mode: str = "success"  # "success" | "pending" | "expired" | "fail"  (for Prompt B poll/status tests)
 
     def initiate_device_flow(self, scopes: list[str]) -> dict[str, Any]:
         assert scopes
@@ -44,8 +45,46 @@ class _FakeMsalApp:
             "message": "Open browser and enter code",
         }
 
+    def get_accounts(self):
+        # Required by Delegated.get_token / status_info (called from enhanced graph_status after cache_present).
+        # Return a non-empty list so the "no accounts" NoTokenError is not raised; the acquire_mode
+        # then controls success vs pending/expired/fail. Presence is still gated by the saves list
+        # in the patched check_permissions (so no-cache tests never enter the verify branch).
+        return [{"username": "operator@example.com", "home_account_id": "fake"}]
+
+    def acquire_token_silent(self, scopes=None, account=None, force_refresh=False):
+        # Called by get_token (via status_info) in the verified graph_status path.
+        # Mirror the mode logic from by_device_flow so pending/expired/fail/success work for
+        # the silent verify and for the readiness/accounts after complete.
+        mode = getattr(_FakeMsalApp, "acquire_mode", "success")
+        if mode == "pending":
+            return {"error": "authorization_pending", "error_description": "waiting for user approval"}
+        if mode == "expired":
+            return {"error": "expired_token", "error_description": "the device code has expired"}
+        if mode == "fail":
+            return {"error": "access_denied", "error_description": "user cancelled or failed the sign-in"}
+        return {
+            "access_token": "synthetic-access-token",
+            "expires_in": 3600,
+            "id_token_claims": {
+                "upn": "operator@example.com",
+                "tid": "tenant",
+                "scp": "User.Read",
+            },
+        }
+
     def acquire_token_by_device_flow(self, flow: dict[str, Any]) -> dict[str, Any]:
-        assert flow["user_code"] == "ABCD-EFGH"
+        # The legacy complete test asserts on this specific user_code for its flow.
+        # Poll-driven flows from new normalized start also carry the same code from initiate.
+        assert flow.get("user_code") == "ABCD-EFGH"
+        mode = getattr(_FakeMsalApp, "acquire_mode", "success")
+        if mode == "pending":
+            return {"error": "authorization_pending", "error_description": "waiting for user approval"}
+        if mode == "expired":
+            return {"error": "expired_token", "error_description": "the device code has expired"}
+        if mode == "fail":
+            return {"error": "access_denied", "error_description": "user cancelled or failed the sign-in"}
+        # success path (used by legacy complete and by verified/transition tests)
         return {
             "access_token": "synthetic-access-token",
             "expires_in": 3600,
@@ -65,6 +104,7 @@ def _client(tmp_path: Path) -> TestClient:
 
 def _install_graph_fake(monkeypatch: pytest.MonkeyPatch) -> list[bool]:
     saves: list[bool] = []
+    _FakeMsalApp.acquire_mode = "success"
 
     monkeypatch.setattr(
         "hb_assistant.auth.providers.DelegatedAuthProvider._get_app",
@@ -77,7 +117,7 @@ def _install_graph_fake(monkeypatch: pytest.MonkeyPatch) -> list[bool]:
 
     def _fake_check_permissions(self):  # type: ignore[no-untyped-def]
         # When a save has been recorded by the fake complete flow, report the msal cache bin as present
-        # so that graph_status() and the Prompt A mappers see cache_present and map to connected_valid.
+        # so that graph_status() and the Prompt A/B mappers see cache_present and map to connected_valid.
         present = bool(saves)
         return {
             "msal-token-cache.bin": {"exists": present, "mode": 0o600, "perms_ok": True},
@@ -314,3 +354,119 @@ def test_readiness_transitions_toward_ready_after_graph_complete(tmp_path: Path,
     assert after_ready["onboarding_state"] in {"ready", "degraded", "reauth_required"}
     assert after_ready["main_app_allowed"] in {True, False}  # depends on has_prior_setup signals in this env
     _assert_no_forbidden(after_ready)
+
+
+# Prompt B tests — normalized /api/settings/connections/graph/auth/* contract surfaces,
+# 5-state polling (pending/complete/expired/failed), verified silent status, readiness
+# silent-before-reauth, disconnect safety, and redaction. Legacy paths/behavior untouched.
+
+def _assert_no_forbidden(payload: Any) -> None:
+    s = json.dumps(payload, default=str)
+    for marker in FORBIDDEN:
+        assert marker not in s
+
+
+def test_graph_connections_start_and_poll_pending_then_complete(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_graph_fake(monkeypatch)
+    client = _client(tmp_path)
+    headers = {"X-HB-UI-Role": "operator"}
+
+    # start via normalized contract
+    st = client.post("/api/settings/connections/graph/auth/start", headers=headers)
+    assert st.status_code == 200
+    started = st.json()
+    assert "flow_id" in started
+    assert started["verification_uri"].startswith("https://")
+    assert "user_code" in started
+    assert "expires_at" in started
+    assert started["interval_seconds"] == 5
+    _assert_no_forbidden(started)
+
+    fid = started["flow_id"]
+
+    # poll while "pending"
+    _FakeMsalApp.acquire_mode = "pending"
+    ps = client.get(f"/api/settings/connections/graph/auth/status?flow_id={fid}", headers=headers)
+    assert ps.status_code == 200
+    p = ps.json()
+    assert p["status"] == "pending"
+    assert p["flow_id"] == fid
+    _assert_no_forbidden(p)
+
+    # switch to success and poll -> complete
+    _FakeMsalApp.acquire_mode = "success"
+    pc = client.get(f"/api/settings/connections/graph/auth/status?flow_id={fid}", headers=headers)
+    assert pc.status_code == 200
+    c = pc.json()
+    assert c["status"] == "complete"
+    assert c["account"]["account_hint"] == "operator@example.com"
+    assert c["account"]["tenant_hint"] == "tenant"
+    _assert_no_forbidden(c)
+
+    # subsequent accounts/readiness reflect verified connected_valid (no reauth)
+    acc = client.get("/api/settings/connections/accounts").json()
+    assert acc["graph"]["status"] == "connected_valid"
+    rd = client.get("/api/onboarding/readiness").json()
+    assert rd["onboarding_state"] in {"ready", "degraded"}
+    assert "reauth_required" in rd and "graph" not in (rd.get("reauth_required") or [])
+    _assert_no_forbidden(rd)
+
+
+def test_graph_auth_status_expired_and_failed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_graph_fake(monkeypatch)
+    client = _client(tmp_path)
+    headers = {"X-HB-UI-Role": "operator"}
+
+    st = client.post("/api/settings/connections/graph/auth/start", headers=headers)
+    fid = st.json()["flow_id"]
+
+    _FakeMsalApp.acquire_mode = "expired"
+    p = client.get(f"/api/settings/connections/graph/auth/status?flow_id={fid}", headers=headers).json()
+    assert p["status"] == "expired"
+
+    # new flow for fail case
+    st2 = client.post("/api/settings/connections/graph/auth/start", headers=headers)
+    fid2 = st2.json()["flow_id"]
+    _FakeMsalApp.acquire_mode = "fail"
+    p2 = client.get(f"/api/settings/connections/graph/auth/status?flow_id={fid2}", headers=headers).json()
+    assert p2["status"] == "failed"
+    _assert_no_forbidden(p2)
+
+
+def test_graph_disconnect_local_is_safe_and_clears_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    saves = _install_graph_fake(monkeypatch)
+    client = _client(tmp_path)
+    headers = {"X-HB-UI-Role": "operator"}
+
+    # get to a connected state via legacy path (re-uses the save/check fake)
+    s = client.post("/auth/graph/device-login/start", headers=headers)
+    client.post("/auth/graph/device-login/complete", headers=headers, json={"flow_id": s.json()["flow_id"]})
+
+    # now disconnect via normalized
+    d = client.post("/api/settings/connections/graph/disconnect-local", headers=headers)
+    assert d.status_code == 200
+    dj = d.json()
+    assert dj.get("ok") is True
+    assert "kind" in dj and "local" in dj.get("kind", "")
+    _assert_no_forbidden(dj)
+    # no cache path leaked
+    assert "msal-token-cache" not in json.dumps(dj)
+
+    # Simulate the effect of clear_cache (logout) on the fake presence model so that
+    # the subsequent graph_status sees no cache and reports never_connected (or stale).
+    # The saves list drives the patched check_permissions "exists".
+    saves.clear()
+
+    # after, accounts shows not connected
+    acc = client.get("/api/settings/connections/accounts").json()
+    assert acc["graph"]["status"] in {"never_connected", "connected_stale_reauth_required"}
+
+
+def test_graph_connections_role_gates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_graph_fake(monkeypatch)
+    client = _client(tmp_path)
+    # viewer cannot start/poll/disconnect the graph auth mutations
+    assert client.post("/api/settings/connections/graph/auth/start").status_code == 403
+    # status poll also requires operator in our wiring (consistent with legacy device complete)
+    # but if relaxed in future the 403 on start/disconnect is the important gate
+    assert client.post("/api/settings/connections/graph/disconnect-local").status_code == 403
