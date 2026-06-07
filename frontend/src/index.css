@@ -82,7 +82,9 @@ body {
 }
 
 .nav-item.active {
-  @apply bg-[var(--hb-accent)]/10 text-[var(--hb-accent)] font-medium;
+  background: color-mix(in srgb, var(--hb-accent) 10%, transparent);
+  color: var(--hb-accent);
+  font-weight: 500;
 }
 
 .nav-item:disabled,
@@ -126,7 +128,8 @@ table.data-table th {
 }
 
 .subnav a.active {
-  @apply bg-[var(--hb-accent)]/10 text-[var(--hb-accent)];
+  background: color-mix(in srgb, var(--hb-accent) 10%, transparent);
+  color: var(--hb-accent);
 }
 
 /* Focus styles for a11y */
