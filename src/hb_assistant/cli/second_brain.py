@@ -2205,7 +2205,9 @@ def daily_brief_v2_proof(
 def daily_brief_v2_closeout(
     brief_date: str = typer.Option("2026-06-06", "--date", help="Brief date for the output path."),
     validation_dir: str = typer.Option(
-        None, "--validation-dir", help="Dir of captured validation-command --json outputs to summarize."
+        None,
+        "--validation-dir",
+        help="Dir of captured validation-command --json outputs to summarize.",
     ),
     evidence: bool = typer.Option(
         True, "--evidence/--no-evidence", help="Write the closeout bundle to the evidence dir."
@@ -7478,3 +7480,69 @@ def phase_10_schema_status(
         human=human,
         exit_code=0 if report["overall_status"] == "ready" else 3,
     )
+
+
+@phase_10_app.command("raw-email-packet")
+def phase_10_raw_email_packet(
+    project: "str | None" = typer.Option(
+        None, "--project", help="Project key filter for raw email content."
+    ),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit the packet as JSON (default)."),  # noqa: B008
+) -> None:
+    """Build a model-ready raw email context packet (actual subject/body/participants when policy allows).
+
+    Uses the Phase 10A raw content tables + model_context bounds from policy.
+    Packet is persisted to raw_content_model_context_packets (local only) and returned.
+    Source refs are hashes + stable row refs. Exit 0 on success.
+    """
+    from hb_assistant.construction.second_brain.local_ai import (
+        build_raw_email_context_packet,
+    )
+
+    try:
+        pkt = build_raw_email_context_packet(project_key=project)
+        typer.echo(json.dumps(pkt, indent=2, default=str) if json_out else str(pkt))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "second-brain phase-10 raw-email-packet",
+            "ok": False,
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@phase_10_app.command("raw-calendar-packet")
+def phase_10_raw_calendar_packet(
+    project: "str | None" = typer.Option(
+        None, "--project", help="Project key filter for raw calendar content."
+    ),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit the packet as JSON (default)."),  # noqa: B008
+) -> None:
+    """Build a model-ready raw calendar context packet (actual subject/body/location/attendees/join when policy allows).
+
+    Uses the Phase 10A raw content tables + model_context bounds from policy.
+    Packet is persisted to raw_content_model_context_packets (local only) and returned.
+    Source refs are event_index_id + graph hashes. Exit 0 on success.
+    """
+    from hb_assistant.construction.second_brain.local_ai import (
+        build_raw_calendar_context_packet,
+    )
+
+    try:
+        pkt = build_raw_calendar_context_packet(project_key=project)
+        typer.echo(json.dumps(pkt, indent=2, default=str) if json_out else str(pkt))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "second-brain phase-10 raw-calendar-packet",
+            "ok": False,
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None

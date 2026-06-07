@@ -7714,6 +7714,100 @@ class ConstructionStore:
         return rec
 
     # -------------------------------------------------------------------------
+    # --- Phase 10A Prompt 06 — Raw Model Context Packets (V42 table) ---
+    # Builders (local_ai/raw_context) persist model-ready packets containing
+    # actual raw email/calendar content (when policy + model_context allow).
+    # Bounded per ModelContextConfig; carry source refs + token_estimate.
+    # -------------------------------------------------------------------------
+
+    def upsert_raw_content_model_context_packet(
+        self,
+        *,
+        packet_id: str,
+        packet_type: str,
+        source_family: str,
+        source_ref_hash: Optional[str] = None,
+        project_key: Optional[str] = None,
+        raw_content_included: int = 1,
+        packet_json: str,
+        token_estimate: Optional[int] = None,
+    ) -> None:
+        """Idempotent upsert for a raw content model context packet (P06)."""
+        if not packet_id:
+            raise ValueError("packet_id is required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO raw_content_model_context_packets
+                    (packet_id, packet_type, source_family, source_ref_hash,
+                     project_key, raw_content_included, packet_json, token_estimate,
+                     created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(packet_id) DO UPDATE SET
+                    packet_type = excluded.packet_type,
+                    source_family = excluded.source_family,
+                    source_ref_hash = excluded.source_ref_hash,
+                    project_key = excluded.project_key,
+                    raw_content_included = excluded.raw_content_included,
+                    packet_json = excluded.packet_json,
+                    token_estimate = excluded.token_estimate
+                """,
+                (
+                    packet_id,
+                    packet_type,
+                    source_family,
+                    source_ref_hash,
+                    project_key,
+                    raw_content_included,
+                    packet_json,
+                    token_estimate,
+                    _utc_now(),
+                ),
+            )
+
+    def list_raw_content_model_context_packets(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        packet_type: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """List persisted raw model context packets (for inspection/evidence)."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if packet_type is not None:
+            clauses.append("packet_type = ?")
+            params.append(packet_type)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT packet_id, packet_type, source_family, source_ref_hash,
+                   project_key, raw_content_included, packet_json, token_estimate, created_utc
+            FROM raw_content_model_context_packets {where}
+            ORDER BY created_utc DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        keys = (
+            "packet_id",
+            "packet_type",
+            "source_family",
+            "source_ref_hash",
+            "project_key",
+            "raw_content_included",
+            "packet_json",
+            "token_estimate",
+            "created_utc",
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
     # V20 Phase 07A Prompt 01 — Data Quality + Canonical Source-Record Map
     # All adapters enforce the guardrail flags=False at the Python layer (defense
     # in depth with the schema CHECKs). No raw bodies, full text, or writeback.

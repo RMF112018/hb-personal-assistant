@@ -31,6 +31,10 @@ from .models import (
     RawContentPolicy,
 )
 from .proof import Phase10ProofError, build_phase_10_contracts_proof
+from .raw_context import (
+    build_raw_calendar_context_packet,
+    build_raw_email_context_packet,
+)
 
 __all__ = [
     "PHASE_10_CONTRACT_FILES",
@@ -53,4 +57,7 @@ __all__ = [
     "load_mcp_packet_policy",
     "load_raw_content_policy",
     "RawContentPolicy",
+    # Prompt 06 raw model context packets (actual content, bounded, source-referenced)
+    "build_raw_email_context_packet",
+    "build_raw_calendar_context_packet",
 ]
