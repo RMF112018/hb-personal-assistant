@@ -1,0 +1,43 @@
+{
+  "schema": "phase_10_claude_mcp_packet_contract",
+  "version": "1.0.0",
+  "packet_types": [
+    "daily_brief",
+    "meeting_prep",
+    "project_review",
+    "follow_up_queue",
+    "weekly_action_review",
+    "obsidian_update_plan"
+  ],
+  "required_item_fields": [
+    "item_type",
+    "title_redacted",
+    "source_ref_hash",
+    "confidence",
+    "freshness_label",
+    "review_required"
+  ],
+  "forbidden": [
+    "arbitrary_sql",
+    "raw_content",
+    "writeback_tools",
+    "secrets",
+    "tokens",
+    "raw_paths"
+  ],
+  "guard_columns": [
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_procore_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
+    "graph_writeback_performed",
+    "procore_writeback_performed",
+    "email_send_performed",
+    "calendar_mutation_performed"
+  ]
+}

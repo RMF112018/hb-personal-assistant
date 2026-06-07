@@ -1,0 +1,34 @@
+version: "1.0.0"
+vault_profile: work
+target_daily_brief_folder: "Work/Daily-Brief"
+allowlisted_folders:
+  - "Work/Daily-Brief"
+  - "Work/Projects"
+  - "Work/Actions"
+  - "Work/Meetings"
+  - "Work/References"
+  - "Work/AI-Outputs"
+  - "Work/MCP-Packets"
+managed_markers:
+  start_prefix: "<!-- HB:"
+  end_prefix: "<!-- /HB:"
+frontmatter_allowlist:
+  - type
+  - domain
+  - status
+  - tags
+  - project
+  - source_refs
+  - generated_utc
+  - updated_utc
+default_tags:
+  daily_brief: ["hb/daily-brief", "hb/source-linked"]
+  action: ["hb/action"]
+  follow_up: ["hb/follow-up"]
+  waiting_on_me: ["hb/waiting-on-me"]
+  waiting_on_others: ["hb/waiting-on-others"]
+  mcp_ready: ["hb/mcp-ready"]
+guardrails:
+  marker_bounded_writes_only: true
+  preserve_user_body: true
+  source_file_copied_to_vault: false

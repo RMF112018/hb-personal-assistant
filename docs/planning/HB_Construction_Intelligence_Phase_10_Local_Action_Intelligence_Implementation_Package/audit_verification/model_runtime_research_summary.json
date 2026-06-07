@@ -1,0 +1,36 @@
+{
+  "generated_utc": "2026-06-07T18:16:29.167838+00:00",
+  "hardware_target": "MacBook Pro M4, 24 GB unified memory",
+  "recommended_profiles": [
+    {
+      "profile_id": "fast_extract",
+      "model": "qwen3:8b",
+      "provider": "ollama",
+      "role": "optional fast/bulk extraction"
+    },
+    {
+      "profile_id": "default_extract",
+      "model": "qwen3:14b",
+      "provider": "ollama",
+      "role": "default task/commitment/relationship extraction"
+    },
+    {
+      "profile_id": "quality_reasoning",
+      "model": "gpt-oss:20b",
+      "provider": "ollama",
+      "role": "daily brief intelligence and MCP packet synthesis"
+    },
+    {
+      "profile_id": "heavy_context",
+      "model": "qwen3:30b",
+      "provider": "ollama",
+      "role": "manual/on-demand long-context synthesis only"
+    }
+  ],
+  "source_notes": [
+    "Ollama qwen3 library lists qwen3:14b at 9.3GB / 40K context and qwen3:30b at 19GB / 256K context.",
+    "Ollama structured outputs support JSON schema and Pydantic validation through format=model_json_schema().",
+    "OpenAI gpt-oss-20b is Apache 2.0, 21B total / 3.6B active parameters, 128k context, and requires 16GB memory according to OpenAI.",
+    "Qwen3-30B-A3B-Instruct-2507 is Apache 2.0, 30.5B total / 3.3B activated parameters, and 262,144 native context according to the Hugging Face model card."
+  ]
+}

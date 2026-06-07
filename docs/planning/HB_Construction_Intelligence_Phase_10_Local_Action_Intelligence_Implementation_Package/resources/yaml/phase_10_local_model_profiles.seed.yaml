@@ -1,0 +1,54 @@
+version: "1.0.0"
+provider_default: ollama
+profiles:
+  - profile_id: fast_extract
+    provider: ollama
+    model_name: qwen3:8b
+    enabled: false
+    role: bulk_triage_retry
+    max_context_tokens: 24000
+    timeout_seconds: 90
+    concurrency_limit: 1
+    heavy_profile: false
+    requires_explicit_enable: false
+
+  - profile_id: default_extract
+    provider: ollama
+    model_name: qwen3:14b
+    enabled: true
+    role: task_commitment_relationship_extraction
+    max_context_tokens: 32768
+    timeout_seconds: 120
+    concurrency_limit: 1
+    heavy_profile: false
+    requires_explicit_enable: false
+
+  - profile_id: quality_reasoning
+    provider: ollama
+    model_name: gpt-oss:20b
+    enabled: false
+    role: daily_brief_and_mcp_packet_synthesis
+    max_context_tokens: 65536
+    timeout_seconds: 180
+    concurrency_limit: 1
+    heavy_profile: false
+    requires_explicit_enable: true
+
+  - profile_id: heavy_context
+    provider: ollama
+    model_name: qwen3:30b
+    enabled: false
+    role: manual_on_demand_long_context_synthesis
+    max_context_tokens: 65536
+    timeout_seconds: 240
+    concurrency_limit: 1
+    heavy_profile: true
+    requires_explicit_enable: true
+fallbacks:
+  quality_reasoning: default_extract
+  heavy_context: default_extract
+guardrails:
+  scheduled_heavy_profile_default: false
+  raw_prompt_persisted: false
+  raw_response_persisted: false
+  external_writeback: false

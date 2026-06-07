@@ -1,0 +1,22 @@
+# 28 Acceptance Checklist
+
+- [ ] Rebaseline recorded.
+- [ ] Schema migration additive.
+- [ ] Guard columns present.
+- [ ] Local model status works without Ollama.
+- [ ] Local model status works with Ollama.
+- [ ] `qwen3:14b` profile documented/configured.
+- [ ] `gpt-oss:20b` quality profile optional.
+- [ ] `qwen3:30b` heavy profile gated.
+- [ ] AI job queue dry-run works.
+- [ ] Task candidates source-linked.
+- [ ] Commitment candidates source-linked.
+- [ ] Follow-up monitor status works.
+- [ ] Relationship candidates reviewable.
+- [ ] Daily Brief action candidates source-linked.
+- [ ] Obsidian dry-run marker-bound proof passes.
+- [ ] MCP packet build safe.
+- [ ] Frontend My Dashboard / Review Queue renders.
+- [ ] Admin/Data Health shows Phase 10 status.
+- [ ] Full validation passes.
+- [ ] Evidence closeout complete.

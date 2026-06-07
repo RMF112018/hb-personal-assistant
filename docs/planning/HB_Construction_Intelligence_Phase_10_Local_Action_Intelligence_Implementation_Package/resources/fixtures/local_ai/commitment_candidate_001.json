@@ -1,0 +1,17 @@
+{
+  "fixture_id": "commitment_candidate_001",
+  "source_family": "email_thread_summary",
+  "source_ref": "email_thread_summary:test:002",
+  "input_redacted": {
+    "thread_subject_redacted": "OCCC VE pricing",
+    "sender_domain": "example.com",
+    "sent_by_user": true,
+    "summary_redacted": "Bobby replied that he would send the updated VE summary by Friday afternoon."
+  },
+  "expected": {
+    "candidate_type": "commitment",
+    "assignee": "user",
+    "waiting_state": "waiting_on_me",
+    "recommended_next_action": "review"
+  }
+}

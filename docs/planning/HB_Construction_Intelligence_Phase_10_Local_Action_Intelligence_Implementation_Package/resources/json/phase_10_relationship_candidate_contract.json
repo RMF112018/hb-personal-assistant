@@ -1,0 +1,44 @@
+{
+  "schema": "phase_10_relationship_candidate_contract",
+  "version": "1.0.0",
+  "relationship_types": [
+    "email_project",
+    "email_calendar",
+    "calendar_project",
+    "procore_email",
+    "procore_calendar",
+    "obsidian_project",
+    "daily_brief_source",
+    "task_source",
+    "commitment_source",
+    "claude_packet_source"
+  ],
+  "confidence_classes": [
+    "deterministic",
+    "high",
+    "medium",
+    "low",
+    "unknown"
+  ],
+  "review_required_when": [
+    "low_confidence",
+    "model_proposed",
+    "high_stakes",
+    "cross_source_uncertain"
+  ],
+  "guard_columns": [
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_procore_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
+    "graph_writeback_performed",
+    "procore_writeback_performed",
+    "email_send_performed",
+    "calendar_mutation_performed"
+  ]
+}

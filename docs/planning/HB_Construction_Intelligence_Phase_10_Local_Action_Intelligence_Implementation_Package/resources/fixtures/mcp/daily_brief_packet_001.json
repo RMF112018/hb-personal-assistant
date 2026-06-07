@@ -1,0 +1,26 @@
+{
+  "packet_type": "daily_brief",
+  "packet_date": "2026-06-07",
+  "items": [
+    {
+      "item_type": "task",
+      "title_redacted": "Confirm revised sketch issuance",
+      "source_ref_hash": "sha256:test001",
+      "confidence": 0.82,
+      "freshness_label": "fresh",
+      "review_required": true
+    },
+    {
+      "item_type": "follow_up",
+      "title_redacted": "Updated VE summary is stale",
+      "source_ref_hash": "sha256:test002",
+      "confidence": 0.76,
+      "freshness_label": "stale",
+      "review_required": true
+    }
+  ],
+  "expected": {
+    "source_ref_count": 2,
+    "raw_content_present": false
+  }
+}
