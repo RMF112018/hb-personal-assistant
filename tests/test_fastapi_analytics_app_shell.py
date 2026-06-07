@@ -120,6 +120,12 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/settings/connections/graph/auth/start",
         "/api/settings/connections/graph/auth/status",
         "/api/settings/connections/graph/disconnect-local",
+        # Prompt C normalized procore local OAuth contract (additive only; legacy /auth/procore/* preserved)
+        "/api/settings/connections/procore/auth/start",
+        "/api/settings/connections/procore/auth/callback",
+        "/api/settings/connections/procore/auth/status",
+        "/api/settings/connections/procore/auth/exchange-code",
+        "/api/settings/connections/procore/disconnect-local",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 
@@ -201,6 +207,15 @@ def test_all_ui_analytics_routes_no_forbidden_sensitive_fields_and_role_guards(
         # Operator/admin write-ish for local config (use admin to simplify)
         ("POST", "admin", "/api/daily-brief/configure", {}),
         ("POST", "admin", "/api/daily-brief/detect-latest", {}),
+        # Prompt C (and B for completeness) normalized auth contract surfaces (use operator; admin also allowed)
+        ("POST", "operator", "/api/settings/connections/graph/auth/start", None),
+        ("GET", "operator", "/api/settings/connections/graph/auth/status?flow_id=missing", None),
+        ("POST", "operator", "/api/settings/connections/graph/disconnect-local", None),
+        ("POST", "operator", "/api/settings/connections/procore/auth/start", None),
+        ("GET", "operator", "/api/settings/connections/procore/auth/callback?code=x&state=y", None),
+        ("GET", "operator", "/api/settings/connections/procore/auth/status?flow_id=missing", None),
+        ("POST", "operator", "/api/settings/connections/procore/auth/exchange-code", {"code": "x"}),
+        ("POST", "operator", "/api/settings/connections/procore/disconnect-local", None),
     ]
 
     for method, _min_role, path, body in surfaces:

@@ -13,6 +13,10 @@ from hb_assistant.procore.auth import check_auth_status
 
 _GRAPH_FLOWS: dict[str, dict[str, Any]] = {}
 
+# Prompt C: in-memory store for Procore OAuth flows (flow_id -> slot with state for CSRF validation,
+# timestamps, profile info). Short-lived; popped on completion/expiry/use. Never persisted.
+_PROCORE_FLOWS: dict[str, dict[str, Any]] = {}
+
 
 def _auth_guardrails() -> dict[str, Any]:
     return {
@@ -358,7 +362,145 @@ class AuthOnboardingService:
             "guardrails": _auth_guardrails(),
         }
 
-    def exchange_procore_oauth_code(self, code: str) -> dict[str, Any]:
+    # (legacy exchange_procore_oauth_code body removed; single implementation below supports both
+    # legacy callers (default normalized_path=False, emits cache_path for root paths) and the
+    # normalized contract surfaces (normalized_path=True suppresses cache_path).)
+
+    # Prompt C — normalized contract methods for the /api/settings/connections/procore/auth/* family.
+    # These implement the split start + (callback or manual) + poll flow using the existing
+    # ProcoreOAuthClient for URL/exchange/refresh and token_provider for cache write/clear/refresh.
+    # In-memory flow slots hold state for CSRF; short expiry; never return tokens, codes, state,
+    # or cache paths to callers. The callback returns minimal safe HTML only.
+
+    def start_procore_auth_flow(self) -> dict[str, Any]:
+        from hb_assistant.procore.config import load_procore_app_profile
+
+        profile = load_procore_app_profile()
+        # Acquire client via the test seam ( _procore_oauth_client ) so fakes work for both legacy and new surfaces.
+        client = self._procore_oauth_client()
+        # Generate opaque flow and CSRF state. Store profile info for validation on callback.
+        flow_id = uuid.uuid4().hex
+        state = uuid.uuid4().hex
+        started_at = datetime.now(timezone.utc).isoformat()
+        expires_in = 600  # 10 min window for the OAuth dance
+        _PROCORE_FLOWS[flow_id] = {
+            "state": state,
+            "started_at": started_at,
+            "expires_in": expires_in,
+            "environment": profile.environment,
+            "redirect_uri": profile.redirect_uri,
+            "client_id": profile.client_id,
+        }
+        # Build the URL (client provides base + params; append state for our CSRF).
+        base_url = client.build_authorization_url()
+        # Ensure state is present (idempotent append if not already in the OOB URL).
+        sep = "&" if "?" in base_url else "?"
+        auth_url = f"{base_url}{sep}state={state}" if "state=" not in base_url else base_url
+        expires_at = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
+        # Determine callback posture from the registered redirect (OOB vs localhost).
+        callback_mode = "localhost" if profile.redirect_uri.startswith("http://localhost") else "oob"
+        return {
+            "flow_id": flow_id,
+            "authorization_url": auth_url,
+            "expires_at": expires_at,
+            "callback_mode": callback_mode,
+            "manual_code_fallback_available": True,
+            "message": "Open Procore to authorize. Connecting does not start sync.",
+            "guardrails": _auth_guardrails(),
+        }
+
+    def handle_procore_oauth_callback(self, code: str, state: str) -> str:
+        """Server-side callback handler. Validates state, exchanges, writes cache (server only),
+        returns minimal safe static HTML. Never includes any token material or paths.
+        """
+        # Find the slot by state (CSRF). Linear scan is fine for small in-mem set.
+        flow_id = None
+        slot = None
+        for fid, s in list(_PROCORE_FLOWS.items()):
+            if s.get("state") == state:
+                flow_id = fid
+                slot = s
+                break
+        if slot is None:
+            # Invalid state or expired flow; still return safe HTML (no leak of why).
+            return "<html><body>Procore sign-in could not be completed (invalid or expired). You may close this window and try again.</body></html>"
+
+        # Expiry check
+        try:
+            started = datetime.fromisoformat(slot.get("started_at", "").replace("Z", "+00:00"))
+            if started.tzinfo is None:
+                started = started.replace(tzinfo=timezone.utc)
+            if (datetime.now(timezone.utc) - started).total_seconds() > int(slot.get("expires_in", 600)) + 30:
+                _PROCORE_FLOWS.pop(flow_id, None)
+                return "<html><body>Procore sign-in expired. Please start again from the app.</body></html>"
+        except Exception:
+            pass
+
+        try:
+            from hb_assistant.procore.config import load_procore_app_profile
+            from hb_assistant.procore.oauth import ProcoreOAuthError
+            from hb_assistant.procore.token_provider import write_token_cache
+
+            # profile only for potential future use / parity; client action goes through seam for fakes
+            _ = load_procore_app_profile()
+            client = self._procore_oauth_client()
+            token_set = client.exchange_authorization_code(code)
+            # Write for the rest of the system to use; discard the path so it is never returned.
+            write_token_cache(token_set)
+        except ProcoreOAuthError:
+            _PROCORE_FLOWS.pop(flow_id, None)
+            return "<html><body>Procore sign-in failed. You may close this window and retry.</body></html>"
+        except Exception:
+            _PROCORE_FLOWS.pop(flow_id, None)
+            return "<html><body>Procore sign-in could not complete due to a temporary error. Close this window and try again.</body></html>"
+
+        # Success: clean the one-time flow and return safe static HTML.
+        _PROCORE_FLOWS.pop(flow_id, None)
+        return "<html><body>Procore connected. You may return to the app.</body></html>"
+
+    def poll_procore_auth_status(self, flow_id: str) -> dict[str, Any]:
+        slot = _PROCORE_FLOWS.get(flow_id)
+        if slot is None:
+            # Completed flows are removed; treat missing as terminal (user may have completed via callback).
+            # For explicit "not found" we can still say failed to avoid leaking existence, but for UX
+            # after a known start we surface a generic terminal; callers that just connected via callback
+            # will see status via procore_status() instead.
+            return {
+                "flow_id": flow_id,
+                "status": "failed",
+                "message": "No active Procore sign-in for this id (it may have completed via callback, expired, or been replaced).",
+                "guardrails": _auth_guardrails(),
+            }
+
+        # Expiry
+        try:
+            started = datetime.fromisoformat(slot.get("started_at", "").replace("Z", "+00:00"))
+            if started.tzinfo is None:
+                started = started.replace(tzinfo=timezone.utc)
+            if (datetime.now(timezone.utc) - started).total_seconds() > int(slot.get("expires_in", 600)) + 30:
+                _PROCORE_FLOWS.pop(flow_id, None)
+                return {
+                    "flow_id": flow_id,
+                    "status": "expired",
+                    "message": "Procore sign-in window expired. Start again from the app.",
+                    "guardrails": _auth_guardrails(),
+                }
+        except Exception:
+            pass
+
+        # If still present and not expired, it is pending (callback or manual exchange not yet performed).
+        return {
+            "flow_id": flow_id,
+            "status": "pending",
+            "message": "Waiting for Procore authorization to complete.",
+            "guardrails": _auth_guardrails(),
+        }
+
+    def exchange_procore_oauth_code(self, code: str, normalized_path: bool = False) -> dict[str, Any]:
+        """Manual fallback exchange. When called from normalized paths (normalized_path=True),
+        the response omits any local cache_path for safety under the new contract.
+        Legacy callers (root paths) continue to receive prior shape for compatibility.
+        """
         from hb_assistant.procore.config import SecretNotAvailableError
         from hb_assistant.procore.oauth import ProcoreOAuthError
         from hb_assistant.procore.token_provider import write_token_cache
@@ -381,13 +523,31 @@ class AuthOnboardingService:
                 "correlation_id": exc.correlation_id,
                 "guardrails": _auth_guardrails(),
             }
-        return {
+        result = {
             "ok": True,
             "kind": "procore_oauth_exchange",
             "access_cached": True,
             "refresh_cached": bool(getattr(token_set, "refresh_token", None)),
             "expires_in_seconds": token_set.expires_in_seconds(),
-            "cache_path": str(cache_path),
+            "guardrails": _auth_guardrails(),
+        }
+        if not normalized_path:
+            # Preserve legacy behavior for root paths.
+            result["cache_path"] = str(cache_path)
+        return result
+
+    def disconnect_procore_local(self) -> dict[str, Any]:
+        """Clear local Procore OAuth token cache only. Does not contact Procore."""
+        try:
+            from hb_assistant.procore.token_provider import clear_token_cache
+            clear_token_cache()
+        except Exception:
+            # Best effort; observable effect is absence of cache on next status.
+            pass
+        return {
+            "ok": True,
+            "kind": "procore_disconnected_local",
+            "message": "Procore local authentication cleared. Sign-in will be required to reconnect.",
             "guardrails": _auth_guardrails(),
         }
 
@@ -461,6 +621,23 @@ class AuthOnboardingService:
         except Exception:
             pass
         procore = self.procore_status()
+        # Prompt C: attempt refresh for Procore (via the default provider chain which
+        # includes RefreshingOAuthTokenProvider) when a cache is present. This ensures
+        # we promote to connected_valid if a refresh succeeds, before deciding reauth_required.
+        try:
+            pcache = procore.get("cache_present") or (procore.get("access_cached") or procore.get("refresh_cached"))
+            if pcache:
+                from hb_assistant.procore.token_provider import default_procore_token_provider
+                chain = default_procore_token_provider()
+                # Force a token acquisition which will refresh via the chain if near expiry.
+                # The call is safe (fail-closed inside the provider); it exercises the refresh path.
+                for prov in getattr(chain, "providers", ()):
+                    if hasattr(prov, "get_access_token"):
+                        prov.get_access_token()
+                        break
+                procore = self.procore_status()
+        except Exception:
+            pass
         graph_status = self._map_internal_to_auth_status(graph, "graph")
         procore_status = self._map_internal_to_auth_status(procore, "procore")
 
@@ -599,13 +776,27 @@ class AuthOnboardingService:
             elif s == "procore":
                 before = self._map_internal_to_auth_status(procore, "procore")
                 after = before
+                if before in {"connected_stale_refreshable", "connected_stale_reauth_required"}:
+                    # Prompt C: perform real refresh attempt via the provider before finalizing state.
+                    try:
+                        from hb_assistant.procore.token_provider import (
+                            default_procore_token_provider,
+                        )
+                        chain = default_procore_token_provider()
+                        for prov in getattr(chain, "providers", ()):
+                            if hasattr(prov, "get_access_token"):
+                                prov.get_access_token()
+                                break
+                        after = "connected_valid"
+                    except Exception:
+                        after = "connected_stale_reauth_required"
                 results.append(
                     {
                         "source": "procore",
                         "before": before,
                         "after": after,
                         "reauth_required": after == "connected_stale_reauth_required",
-                        "message": "Procore authentication status checked.",
+                        "message": "Procore authentication refreshed." if after != before else "Procore authentication status checked.",
                     }
                 )
         return {"results": results, "guardrails": _auth_guardrails(), "surface": "analytics.settings.connections.auth.refresh"}

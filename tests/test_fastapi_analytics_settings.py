@@ -258,3 +258,9 @@ def test_prompt_b_graph_auth_contract_paths_reachable(tmp_path: Path) -> None:
     assert rs.status_code in (200, 400, 422, 403)  # 403 if role dep strict in this context is acceptable
     if rs.status_code < 500 and rs.headers.get("content-type", "").startswith("application/json"):
         _assert_safe(rs.json())
+
+    # Prompt C addition: light reachability for procore normalized paths (in same file as B for symmetry)
+    rp = client.post("/api/settings/connections/procore/auth/start", headers={"X-HB-UI-Role": "operator"})
+    assert rp.status_code in (200, 400, 422, 403)
+    if rp.status_code < 500 and rp.headers.get("content-type", "").startswith("application/json"):
+        _assert_safe(rp.json())

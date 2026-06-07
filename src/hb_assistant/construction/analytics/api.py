@@ -421,6 +421,58 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return AuthOnboardingService().exchange_procore_oauth_code(request.code)
 
+    # Prompt C — normalized Procore local OAuth contract family under /api/settings/connections/procore/auth/*.
+    # Additive to legacy /auth/procore/* (OOB start/exchange/status). 
+    # - start: operator, returns safe authorize URL + flow_id + state-driven callback support.
+    # - callback: browser redirect target (state-validated), performs exchange server-side, returns minimal safe HTML.
+    # - status (poll): operator, pending/complete/expired/failed.
+    # - exchange-code: operator, manual OOB fallback.
+    # - disconnect-local: operator, clears local token cache only.
+    # All responses safe: no tokens, secrets, codes, state values, cache paths, or raw Procore payloads.
+    # Callback security is the one-time code + state CSRF; UI role header not required for the redirect target.
+
+    @app.post("/api/settings/connections/procore/auth/start")
+    def settings_procore_auth_start(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().start_procore_auth_flow()
+
+    @app.get("/api/settings/connections/procore/auth/callback")
+    def settings_procore_auth_callback(code: str, state: str) -> Any:
+        # Browser callback (no UI role enforcement; protected by state + one-time code).
+        from fastapi import Response
+
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        html = AuthOnboardingService().handle_procore_oauth_callback(code=code, state=state)
+        return Response(content=html, media_type="text/html")
+
+    @app.get("/api/settings/connections/procore/auth/status")
+    def settings_procore_auth_status(flow_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().poll_procore_auth_status(flow_id)
+
+    @app.post("/api/settings/connections/procore/auth/exchange-code")
+    def settings_procore_auth_exchange_code(
+        request: ProcoreOAuthExchangeRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        # Manual fallback; reuses the exchange logic but under normalized path (no cache_path in response).
+        return AuthOnboardingService().exchange_procore_oauth_code(request.code, normalized_path=True)
+
+    @app.post("/api/settings/connections/procore/disconnect-local")
+    def settings_procore_disconnect_local(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().disconnect_procore_local()
+
     @app.post("/connections/preview")
     def connection_preview(
         request: ConnectionSetupRequest,
