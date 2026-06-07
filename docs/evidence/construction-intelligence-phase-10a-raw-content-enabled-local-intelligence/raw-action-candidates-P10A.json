@@ -1,0 +1,28 @@
+{
+  "command": "second-brain phase-10 raw-action-candidates",
+  "ok": true,
+  "project": "P10A",
+  "source": "both",
+  "dry_run": true,
+  "produced": 0,
+  "accepted": 0,
+  "rejected": 0,
+  "persisted": 0,
+  "candidates": [],
+  "rejections": [
+    {
+      "reason": "model returned no output"
+    }
+  ],
+  "note": "exhausted retries",
+  "would_persist": 0,
+  "guardrails": {
+    "local_only": true,
+    "advisory_only": true,
+    "strict_schema": true,
+    "business_contract_validation": "rejects generic data-clean/analysis hallucinations",
+    "retry_repair": true,
+    "raw_excerpts_bounded_in_evidence_only": true,
+    "no_auto_accept": true
+  }
+}

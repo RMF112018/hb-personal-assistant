@@ -1,0 +1,29 @@
+{
+  "produced": 1,
+  "accepted": 0,
+  "rejected": 1,
+  "persisted": 0,
+  "candidates": [],
+  "rejections": [
+    {
+      "reason": "schema_or_business_validation_error: 6 validation errors for ActionCandidate\ntitle\n  Field required [type=missing, input_value={'candidate_type': 'task'..., 'project_key': 'P10A'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nsource_refs.0\n  Input should be a valid string [type=string_type, input_value={'source_family': 'email_...ached submittal 123...'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type\nsafety_category\n  Input should be 'normal', 'contract', 'legal', 'financial', 'payment', 'claim', 'entitlement', 'schedule' or 'safety' [type=literal_error, input_value='none', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\nrecommended_next_action\n  Input should be 'review', 'accept', 'snooze', 'ignore', 'draft_followup', 'prepare_meeting' or 'prepare_packet' [type=literal_error, input_value='operator_review', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\ntitle_redacted\n  Extra inputs are not permitted [type=extra_forbidden, input_value='Review submittal 123 for WBS update', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\ndescription_redacted\n  Extra inputs are not permitted [type=extra_forbidden, input_value='Please review the attach...riday or slip the pour.', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+      "raw_item": {
+        "candidate_type": "task",
+        "title_redacted": "Review submittal 123 for WBS update",
+        "description_redacted": "Please review the attached submittal 123 for the WBS update. Need sign-off by COB Friday or slip the pour.",
+        "source_refs": [
+          {
+            "source_family": "email_message_raw_content",
+            "source_ref_hash": "ec671cfa5027430a",
+            "evidence_redacted": "Please review the attached submittal 123..."
+          }
+        ],
+        "reason": "explicit request for review and sign-off with deadline",
+        "safety_category": "none",
+        "recommended_next_action": "operator_review",
+        "confidence": 0.82,
+        "project_key": "P10A"
+      }
+    }
+  ]
+}

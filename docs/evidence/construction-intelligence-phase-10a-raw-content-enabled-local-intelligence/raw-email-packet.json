@@ -1,0 +1,16 @@
+{
+  "packet_id": "raw-email:147a797e-3ea4-4b88-82b2-89f27dee99b1",
+  "packet_type": "raw_email_context",
+  "project_key": null,
+  "raw_content_included": 1,
+  "source_refs": [],
+  "content": {
+    "threads": []
+  },
+  "bounds": {
+    "max_threads_per_run": 50,
+    "max_messages_per_thread": 10,
+    "max_body_chars_per_message": 8000
+  },
+  "token_estimate": 3
+}

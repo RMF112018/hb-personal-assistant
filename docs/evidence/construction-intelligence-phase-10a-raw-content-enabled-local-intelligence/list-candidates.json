@@ -1,0 +1,15 @@
+{
+  "command": "second-brain phase-10 list-candidates",
+  "ok": true,
+  "project": null,
+  "candidate_type": "both",
+  "review_status": "pending",
+  "count": 0,
+  "candidates": [],
+  "guardrails": {
+    "advisory_only": true,
+    "no_auto_accept": true,
+    "review_status_preserved": true,
+    "raw_excerpts_bounded_in_refs": true
+  }
+}

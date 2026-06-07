@@ -1,0 +1,18 @@
+raw rows for P10A: 0
+{
+  "produced": 1,
+  "accepted": 0,
+  "rejected": 1,
+  "persisted": 0,
+  "candidates": [],
+  "rejections": [
+    {
+      "reason": "schema_or_business_validation_error: 7 validation errors for ActionCandidate\nsource_refs\n  Field required [type=missing, input_value={'candidate_type': 'task'..., 'project_key': 'P10A'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nreason\n  Field required [type=missing, input_value={'candidate_type': 'task'..., 'project_key': 'P10A'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nsafety_category\n  Field required [type=missing, input_value={'candidate_type': 'task'..., 'project_key': 'P10A'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nrecommended_next_action\n  Field required [type=missing, input_value={'candidate_type': 'task'..., 'project_key': 'P10A'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ndescription_redacted\n  Extra inputs are not permitted [type=extra_forbidden, input_value='Review attached submitta...sign-off by COB Friday.', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\ndue_redacted\n  Extra inputs are not permitted [type=extra_forbidden, input_value='Friday', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nsource_hint\n  Extra inputs are not permitted [type=extra_forbidden, input_value='email', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+      "raw_item": {
+        "candidate_type": "task",
+        "title": "Review submittal 123 for WBS",
+        "description_redacted": "Review attached submittal 123, sign-off by COB Friday.",
+        "due_redacted": "Friday",
+        "source_hint": "email",
+        "confidence": 0.85,
+        "project_key": "P10A
