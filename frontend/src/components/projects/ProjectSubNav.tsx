@@ -10,7 +10,7 @@ export function ProjectSubNav({ projectKey }: { projectKey: string }) {
     { to: `${base}/cost-time`, label: 'Cost & Time' },
   ]
   return (
-    <nav className="subnav" aria-label="Project sections (contextual only)">
+    <nav className="subnav" aria-label="Project sections">
       {items.map((it) => {
         const active = loc.pathname === it.to || (it.to === base && loc.pathname === base)
         return (
@@ -19,7 +19,6 @@ export function ProjectSubNav({ projectKey }: { projectKey: string }) {
           </Link>
         )
       })}
-      <div className="ml-auto text-[10px] text-[var(--hb-muted)] self-center">Contextual sections — not top-level nav</div>
     </nav>
   )
 }
