@@ -1,7 +1,7 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation, useMatches } from 'react-router-dom'
 import { MainNavigation } from './MainNavigation'
-import { PageHeader } from './PageHeader'
 import { SidebarFooter } from '../components/layout/SidebarFooter'
+import { getRouteTitleForPath } from '../navigation/navigationModel'
 import { useTheme } from '../app/providers'
 import { Moon, Sun, Monitor, Menu } from 'lucide-react'
 import { useState } from 'react'
@@ -10,9 +10,9 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
   const { resolvedTheme, theme: prefTheme, toggle } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
-
-  // Simple construction-facing header title (advisory posture)
-  const headerTitle = 'Personal Assistant'
+  const matches = useMatches()
+  const routeTitle = (matches as Array<{ handle?: { title?: string } }>).slice().reverse().find(m => m?.handle?.title)?.handle?.title
+  const headerTitle = routeTitle || getRouteTitleForPath(location.pathname)
 
   return (
     <div className="h-[100dvh] overflow-hidden flex bg-[var(--hb-bg)] text-[var(--hb-text)]">
@@ -23,7 +23,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       >
         Skip to main content
       </a>
-      {/* Primary sidebar navigation (Today / Projects / My Items) — lightweight collapse for narrow widths */}
+      {/* Primary sidebar navigation (My Dashboard / Projects) — lightweight collapse for narrow widths */}
       <aside
         aria-label="Primary navigation"
         className={`fixed md:static inset-y-0 left-0 z-50 h-[100dvh] w-56 shrink-0 border-r border-[var(--hb-border)] p-3 flex flex-col min-h-0 overflow-hidden bg-[var(--hb-bg)] transform transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
@@ -72,7 +72,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
         </header>
 
         <main id="main" className="flex-1 min-h-0 p-4 overflow-y-auto overflow-x-hidden">
-          <PageHeader title={getPageTitle(location.pathname)} />
+          <h1 className="sr-only">{headerTitle}</h1>
           {children ?? <Outlet />}
         </main>
 
@@ -84,18 +84,5 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
   )
 }
 
-function getPageTitle(path: string): string {
-  if (path.startsWith('/today')) return 'Today'
-  if (path.startsWith('/projects/all/meetings') || path === '/projects/all/meetings') return 'All Projects • Meetings'
-  if (path.startsWith('/projects/all/field-operations')) return 'All Projects • Field Operations'
-  if (path.startsWith('/projects/all/cost-time')) return 'All Projects • Cost & Time'
-  if (path.startsWith('/projects/all')) return 'All Projects'
-  if (path.startsWith('/projects/')) return 'Project'
-  if (path.startsWith('/projects')) return 'Projects'
-  if (path.startsWith('/my-items')) return 'My Items'
-  if (path.startsWith('/admin')) return 'Data Health'
-  if (path.startsWith('/settings')) return 'Settings'
-  // Prompt D
-  if (path.startsWith('/get-started')) return 'Get Started'
-  return 'Personal Assistant'
-}
+// Page title is resolved centrally via getRouteTitleForPath (navigationModel) + route handle metadata.
+// The chrome header renders it; a sr-only h1 provides the single accessible page heading per route.

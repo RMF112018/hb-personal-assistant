@@ -66,7 +66,8 @@ describe('TodayPage command center', () => {
     mockTodayQueries()
     renderToday()
 
-    // 'Today' page label is visual text (non-heading) after PrimaryPageLayout standardization; card/section h3s remain headings.
+    // Chrome header owns the page title (dynamic + sr-only h1 in shell). PrimaryPageLayout no longer renders a body title label.
+    // Card/section h3s (from DashboardCard/SectionCard) provide the in-page headings.
     const headings = screen.getAllByRole('heading').map((heading) => heading.textContent)
     expect(headings).toEqual(expect.arrayContaining([
       'Priority Summary',

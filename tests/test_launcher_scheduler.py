@@ -605,6 +605,59 @@ def test_cleanup_apply_terminates_candidates_including_tracked_mcp(
     assert mcp_rec.pid in killed  # a TRACKED mcp is swept (it is launcher-owned)
 
 
+# --- MCP lifecycle (stdio is external-client-managed) ----------------------------
+
+
+def test_stdio_mcp_not_spawned_or_recorded() -> None:
+    result = runner.invoke(app, ["launcher", "dev", "--plan", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    names = {p["name"] for p in d["processes"]}
+    assert "mcp" not in names  # stdio MCP is never a managed record
+    assert {"backend", "frontend", "scheduler"} <= names  # others unchanged
+
+
+def test_status_reports_external_stdio_mcp() -> None:
+    result = runner.invoke(app, ["launcher", "status", "--environment", "dev", "--json"])
+    assert result.exit_code == 0
+    d = json.loads(result.stdout)
+    assert d["mcp_status"] == "external_client_managed"
+    assert d["mcp_mode"] == "stdio"
+    assert d["mcp_managed_by_launcher"] is False
+    assert "Claude/Cursor" in d["mcp_reason"]
+
+
+def test_open_result_reports_external_stdio_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_open(monkeypatch)
+    result = runner.invoke(app, ["launcher", "dev", "--open", "--plan", "--json"])
+    d = json.loads(result.stdout)
+    assert d["mcp_status"] == "external_client_managed"
+    assert d["mcp_managed_by_launcher"] is False
+
+
+def test_quit_does_not_terminate_external_stdio_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.launcher.close_policy import ClosePolicy
+
+    calls: list[str] = []
+    monkeypatch.setattr(ProcessManager, "spawn", _fake_spawn_factory(calls))
+    monkeypatch.setattr(ProcessManager, "is_alive", lambda self, pid: False)
+    monkeypatch.setattr(ProcessManager, "terminate", lambda self, rec, **k: "exited")
+    profile = resolve_profile("dev")
+    LauncherService(profile).start()  # real (non-seeded) session: no mcp record
+    assert "mcp" not in calls  # mcp never spawned
+    receipt = ClosePolicy(profile, ProcessManager(profile)).apply("quit")
+    assert "mcp" not in receipt["terminated_current_session"]
+    assert all(s.get("role") != "mcp" for s in receipt["terminated_stale"])
+
+
+def test_classify_never_matches_mcp_signature() -> None:
+    from hb_assistant.launcher.process_scan import ProcInfo, classify
+
+    profile = resolve_profile("dev")
+    proc = ProcInfo(321, "hb-assistant second-brain mcp serve --stdio")
+    assert classify(proc, profile) is None  # external IDE MCP is never launcher-owned
+
+
 def test_shortcut_helpers_invoke_launcher_open() -> None:
     repo = resolve_profile("dev").path_policy.resolve_repo_root()
     shortcuts = repo / "scripts" / "shortcuts"

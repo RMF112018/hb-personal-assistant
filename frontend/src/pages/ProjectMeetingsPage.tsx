@@ -59,7 +59,7 @@ export function ProjectMeetingsPage() {
         )}
         <div className="text-xs mt-2 text-[var(--hb-muted)]">Uses calendar, Outlook, meeting action items, related files, related Procore context, and Daily Brief/meeting-prep context. Contextual under Projects (or All Projects). Not a top-level nav.</div>
       </div>
-      <div className="mt-2 text-xs"><Link to="/my-items" className="underline">See My Items for personal meeting queue →</Link></div>
+      <div className="mt-2 text-xs"><Link to="/my-dashboard" className="underline">See My Dashboard for personal meeting queue →</Link></div>
     </div>
   )
 }

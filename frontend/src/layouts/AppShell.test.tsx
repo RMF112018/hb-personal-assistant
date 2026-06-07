@@ -1,5 +1,5 @@
 import { render, screen, within, cleanup } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, test, beforeEach, vi } from 'vitest'
 
 import { ThemeProvider } from '../app/providers'
@@ -10,13 +10,22 @@ vi.mock('../components/layout/DataQualityIndicator', () => ({
 }))
 
 function renderShell(path = '/today') {
+  const router = createMemoryRouter(
+    [
+      {
+        path: '*',
+        element: (
+          <AppShell>
+            <div>Page content</div>
+          </AppShell>
+        ),
+      },
+    ],
+    { initialEntries: [path] }
+  )
   return render(
     <ThemeProvider>
-      <MemoryRouter initialEntries={[path]}>
-        <AppShell>
-          <div>Page content</div>
-        </AppShell>
-      </MemoryRouter>
+      <RouterProvider router={router} />
     </ThemeProvider>,
   )
 }
@@ -45,13 +54,22 @@ describe('AppShell production chrome', () => {
 
     // Admin role: indicator gated out (SidebarFooter); Data Health nav item present instead.
     window.localStorage.setItem('hb-ui-role', 'admin')
+    const adminRouter = createMemoryRouter(
+      [
+        {
+          path: '*',
+          element: (
+            <AppShell>
+              <div>Page content</div>
+            </AppShell>
+          ),
+        },
+      ],
+      { initialEntries: ['/today'] }
+    )
     const { unmount } = render(
       <ThemeProvider>
-        <MemoryRouter initialEntries={['/today']}>
-          <AppShell>
-            <div>Page content</div>
-          </AppShell>
-        </MemoryRouter>
+        <RouterProvider router={adminRouter} />
       </ThemeProvider>,
     )
     expect(screen.queryByText('Data Quality')).not.toBeInTheDocument()
@@ -81,5 +99,37 @@ describe('AppShell production chrome', () => {
     const supportNav = screen.getByRole('navigation', { name: /Support/i })
     const settingsLink = within(supportNav).getByRole('link', { name: /Settings/i })
     expect(settingsLink).toHaveAttribute('aria-current', 'page')
+  })
+
+  test('renders dynamic page title from route in chrome header (replacing static brand)', () => {
+    renderShell('/today')
+    // The chrome header (top bar) now owns the active title; sr-only h1 in main for a11y.
+    // Scope to the header to avoid matching the nav child label "Today" or the sr-only h1.
+    const header = document.querySelector('header') as HTMLElement
+    expect(within(header).getByText('Today')).toBeInTheDocument()
+
+    // Verify a different route resolves a different title in chrome
+    // (re-render with new path via new shell instance to keep test isolated)
+    const projectsRouter = createMemoryRouter(
+      [
+        {
+          path: '*',
+          element: (
+            <AppShell>
+              <div>Page content</div>
+            </AppShell>
+          ),
+        },
+      ],
+      { initialEntries: ['/projects'] }
+    )
+    const { unmount, container: projectsContainer } = render(
+      <ThemeProvider>
+        <RouterProvider router={projectsRouter} />
+      </ThemeProvider>,
+    )
+    const projectsHeader = projectsContainer.querySelector('header') as HTMLElement
+    expect(within(projectsHeader).getByText('Projects')).toBeInTheDocument()
+    unmount()
   })
 })

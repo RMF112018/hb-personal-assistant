@@ -45,7 +45,7 @@ describe('MyItemsPage work queue', () => {
     mockMyItems()
     renderMyItems()
 
-    // 'My Items' page label is visual non-heading text; the queue cards/sections provide the h3 headings.
+    // Chrome header owns the page title. Primary body label removed; the queue cards/sections provide the h3 headings.
     const headings = screen.getAllByRole('heading').map((heading) => heading.textContent)
     expect(headings).toEqual(expect.arrayContaining([
       'My Action Items',
@@ -85,6 +85,8 @@ describe('MyItemsPage work queue', () => {
     expect(screen.getByText('Submittal response')).toBeInTheDocument()
     expect(screen.getByText('Updated drawing set')).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'Open Projects' })[0]).toHaveAttribute('href', '/projects')
+    // Today navigation added to status row (reciprocal to My Dashboard link from Today page); Settings remains in status + empty-state cards.
+    expect(screen.getByRole('link', { name: 'Open Today' })).toHaveAttribute('href', '/today')
   })
 
   it('uses safe fallback text for object-like items', () => {
@@ -98,7 +100,7 @@ describe('MyItemsPage work queue', () => {
   it('renders source-agnostic loading and error states', () => {
     useQueryMock.mockReturnValue({ data: null, isLoading: true, error: null })
     const { unmount } = renderMyItems()
-    expect(screen.getByText('Loading My Items')).toBeInTheDocument()
+    expect(screen.getByText('Loading My Dashboard')).toBeInTheDocument()
     unmount()
 
     useQueryMock.mockReturnValue({ data: null, isLoading: false, error: new Error('Graph diagnostics failed') })

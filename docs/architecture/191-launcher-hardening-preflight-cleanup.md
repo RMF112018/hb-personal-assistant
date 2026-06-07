@@ -80,6 +80,28 @@ launcher processes (MCP excluded). The receipt gains
 `still_running` (existing `terminated`/`kept_alive` keys preserved). Background is
 unchanged (the four new keys default empty).
 
+## MCP lifecycle (v1.3.1)
+
+stdio MCP (`second-brain mcp serve --stdio`) is launched on demand by the IDE
+client (Claude/Cursor) and exits without an attached client — it is **not** a
+persistent launcher-owned background service. So when `profile.mcp_mode ==
+"stdio"` (today's only mode) the launcher:
+
+- does not build an MCP spec → never spawns it and never records it in the
+  session's managed processes (so it is never marked failed/exited);
+- reports it as externally managed in `status()` / `--open`:
+  `mcp_status="external_client_managed"`, `mcp_mode="stdio"`,
+  `mcp_managed_by_launcher=false`,
+  `mcp_reason="stdio MCP is launched by Claude/Cursor and is not a persistent
+  browser-launcher process"`.
+
+Because stdio MCP is never a managed record and `process_scan.classify` never
+matches the MCP signature, `close`/`quit`/`background`/`cleanup` never terminate an
+external IDE MCP. A future non-stdio transport may be launcher-managed only when
+explicitly configured (`mcp_mode != "stdio"`), in which case the MCP spec is built
+and reported via the normal managed path. Claude/Cursor MCP launcher scripts are
+untouched.
+
 ## Guardrails
 
 Dev/Production isolation unchanged (per-environment session/DB/app-support;

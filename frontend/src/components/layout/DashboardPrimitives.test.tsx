@@ -7,11 +7,9 @@ import { DashboardGrid } from './DashboardGrid'
 import { PrimaryPageLayout } from './PrimaryPageLayout'
 
 describe('dashboard layout primitives', () => {
-  it('renders a primary page visual label (non-heading), status row, actions, and content', () => {
+  it('renders status row, actions, and content (chrome header owns page title; PrimaryPageLayout renders top actions bar only when actions prop supplied; primary pages use status rows for controls to avoid redundant header row)', () => {
     render(
       <PrimaryPageLayout
-        title="Today"
-        subtitle="Current advisory signals"
         status={<span>Fresh</span>}
         actions={<button>Refresh</button>}
       >
@@ -19,9 +17,9 @@ describe('dashboard layout primitives', () => {
       </PrimaryPageLayout>,
     )
 
-    // Primary title is now a visual label (div), not a heading. Canonical h1 lives in shell PageHeader.
-    expect(screen.getByText('Today')).toBeInTheDocument()
-    expect(screen.getByText('Current advisory signals')).toBeInTheDocument()
+    // The primitive supports supplying both status and actions (dual pattern shown here for contract coverage).
+    // Primary pages (Today / Projects / ProjectDashboard / My Dashboard) no longer pass a top-level actions prop because their *StatusRow components own the equivalent links; removing the prop suppresses the actions+spacer bar so the status row appears directly under the chrome title.
+    // Card/section titles inside content remain as h3s.
     expect(screen.getByText('Fresh')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument()
     expect(screen.getByText('Page content')).toBeInTheDocument()
