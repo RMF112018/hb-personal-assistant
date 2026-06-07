@@ -2009,6 +2009,81 @@ def calendar_index_cmd(
             client.close()
 
 
+@calendar_app.command("events")
+def calendar_events_cmd(
+    project: Optional[str] = typer.Option(
+        None,
+        "--project",
+        help="Optional project key filter for the event list (informational only; index rows carry project_key from matching)",
+    ),
+    source: Optional[str] = typer.Option(
+        None, "--source", help="Limit to one calendar source id (e.g. primary)"
+    ),
+    include_raw: bool = typer.Option(
+        False,
+        "--include-raw",
+        help="Return raw subject/body/location/organizer/attendees/join_url/recurrence when the raw_content policy (email_calendar + calendar source) or explicit allows. Adds 'raw_content' sub-object to items. Phase 10A.",
+    ),
+    raw_mode: Optional[str] = typer.Option(
+        None,
+        "--raw-mode",
+        help="Force 'include' or 'metadata_only' for this call (subject to policy endpoints.allow_include_raw_param).",
+    ),
+    limit: int = typer.Option(1000, "--limit", help="Max events to return (bounded)"),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Query the local calendar event index (redacted metadata).
+
+    Supports --include-raw / --raw-mode to surface Phase 10A persisted raw
+    calendar content (when policy permits). When raw is not included the
+    response shape is the standard calendar_event_index metadata (no body,
+    no join, hashed fields). This is the local-API counterpart to the ingest
+    index command. Pure local read; no Graph.
+    """
+    try:
+        from hb_assistant.construction.calendar import list_calendar_events
+        from hb_assistant.construction.store import ConstructionStore
+
+        store = ConstructionStore()
+        # raw_mode may be "include" or "metadata_only"; pass through (endpoint resolves)
+        rm = raw_mode if raw_mode in (None, "include", "metadata_only") else None
+        rows = list_calendar_events(
+            source_id=source,
+            limit=limit,
+            include_raw=include_raw,
+            raw_mode=rm,  # type: ignore[arg-type]
+            store=store,
+        )
+        payload: Dict[str, Any] = {
+            "command": "graph calendar events",
+            "ok": True,
+            "count": len(rows),
+            "source_id": source,
+            "raw_included_some": any(bool(r.get("_raw_content_included")) for r in rows),
+            "events": rows,
+            "guardrails": {
+                "local_only": True,
+                "graph_calls": 0,
+                "writeback": "none",
+                "raw_content": "policy_and_param_controlled",
+                "metadata_mode_always_available": True,
+            },
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph calendar events",
+            "ok": False,
+            "status": "query_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @calendar_app.command("project-match")
 def calendar_project_match_cmd(
     project: Optional[str] = typer.Option(None, "--project", help="Target project key to report."),
@@ -2314,6 +2389,74 @@ def index_cmd(
     finally:
         if client is not None:
             client.close()
+
+
+@mail_app.command("threads")
+def mail_threads_cmd(
+    project: Optional[str] = typer.Option(
+        None, "--project", help="Project key filter (passed to thread summaries and raw context)"
+    ),
+    include_raw: bool = typer.Option(
+        False,
+        "--include-raw",
+        help="Include raw thread context (messages with plaintext subject/body/participants) when policy email_calendar + email source (or explicit) allows. Phase 10A.",
+    ),
+    raw_mode: Optional[str] = typer.Option(
+        None,
+        "--raw-mode",
+        help="Force 'include' or 'metadata_only' (subject to policy allow_include_raw_param).",
+    ),
+    limit: int = typer.Option(500, "--limit", help="Max threads (bounded)"),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Query the local email thread summaries (redacted metadata base).
+
+    With --include-raw (when allowed by raw_content policy EndpointsConfig)
+    each thread carries a 'raw_content' block with the captured messages list
+    (subject/body/recipients) from email_thread_raw_context. Without, the
+    standard redacted thread summary shape is returned. Local only, no Graph.
+    """
+    try:
+        from hb_assistant.construction.email import list_email_threads
+        from hb_assistant.construction.store import ConstructionStore
+
+        store = ConstructionStore()
+        rm = raw_mode if raw_mode in (None, "include", "metadata_only") else None
+        rows = list_email_threads(
+            project_key=project,
+            limit=limit,
+            include_raw=include_raw,
+            raw_mode=rm,  # type: ignore[arg-type]
+            store=store,
+        )
+        payload: Dict[str, Any] = {
+            "command": "graph mail threads",
+            "ok": True,
+            "count": len(rows),
+            "project": project,
+            "raw_included_some": any(bool(r.get("_raw_content_included")) for r in rows),
+            "threads": rows,
+            "guardrails": {
+                "local_only": True,
+                "graph_calls": 0,
+                "writeback": "none",
+                "raw_content": "policy_and_param_controlled",
+                "metadata_mode_always_available": True,
+            },
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail threads",
+            "ok": False,
+            "status": "query_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
 
 
 @mail_app.command("discover")

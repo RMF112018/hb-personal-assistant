@@ -22,6 +22,16 @@ from .email_classifier import (
     InvalidEmailModelOutputError,
     parse_and_validate_email_output,
 )
+from .endpoints import (
+    RawMode,
+    get_email_message,
+    get_email_message_raw_content,
+    get_email_thread_raw_context,
+    list_email_message_raw_content,
+    list_email_messages,
+    list_email_thread_raw_context,
+    list_email_threads,
+)
 from .folder_discovery import (
     DiscoveredFolder,
     EmailFolderDiscovery,
@@ -119,4 +129,13 @@ __all__ = [
     "normalize_message",
     "parse_and_validate_email_output",
     "run_operational_validation",
+    # Phase 10A Prompt 05: raw-content capable email endpoints (policy include_raw/raw_mode)
+    "RawMode",
+    "get_email_message",
+    "get_email_message_raw_content",
+    "get_email_thread_raw_context",
+    "list_email_message_raw_content",
+    "list_email_messages",
+    "list_email_thread_raw_context",
+    "list_email_threads",
 ]

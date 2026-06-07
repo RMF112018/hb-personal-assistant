@@ -35,6 +35,8 @@ from .contracts import (
     load_local_model_profiles,
     load_mcp_packet_policy,
     load_obsidian_vault_policy,
+    load_raw_content_api_response_contract,
+    load_raw_content_policy,
 )
 
 EVIDENCE_DIR = "docs/evidence/construction-intelligence-phase-10-local-action-intelligence"
@@ -178,6 +180,8 @@ def build_phase_10_contracts_proof(
     try:
         contracts = load_all_phase_10_contracts()
         contracts_loaded = len(contracts) == len(PHASE_10_CONTRACT_FILES)
+        # Exercise the Prompt 05 API response contract load (additive)
+        _ = load_raw_content_api_response_contract()
     except (Phase10ContractError, KeyError) as exc:
         errors.append(f"contracts_load: {exc}")
 
@@ -186,11 +190,13 @@ def build_phase_10_contracts_proof(
         schema = contracts["action_candidate_output_schema"]
         required = set(schema.get("required", []))
         source_refs = schema.get("properties", {}).get("source_refs", {})
-        provenance_required = (
-            {"source_refs", "confidence"} <= required and source_refs.get("minItems") == 1
-        )
+        provenance_required = {"source_refs", "confidence"} <= required and source_refs.get(
+            "minItems"
+        ) == 1
         if not provenance_required:
-            errors.append("provenance_required: candidate schema must require source_refs/confidence")
+            errors.append(
+                "provenance_required: candidate schema must require source_refs/confidence"
+            )
         for name, body in contracts.items():
             forbidden_findings.extend(_scan_forbidden(f"contract:{name}", body, json.dumps(body)))
 
@@ -203,6 +209,7 @@ def build_phase_10_contracts_proof(
             "ai_job_policy": load_ai_job_policy,
             "obsidian_vault_policy": load_obsidian_vault_policy,
             "mcp_packet_policy": load_mcp_packet_policy,
+            "raw_content_policy": load_raw_content_policy,
         }
         for name, loader in loaders.items():
             model = loader()

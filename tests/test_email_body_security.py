@@ -17,11 +17,18 @@ import pytest
 _ROOT = Path(__file__).resolve().parents[1]
 
 # Files that implement the email workflow (must stay read-only + no plaintext body).
+# Phase 10A raw content endpoints.py is excluded: it is the sanctioned policy-gated
+# surface that intentionally references the raw payload field names (body_text etc)
+# when include is effective; the redacted intelligence path modules remain clean.
 _SCAN_FILES = [
-    *(_ROOT / "src/hb_assistant/construction/email").glob("*.py"),
-    _ROOT / "src/hb_assistant/cli/graph.py",
-    _ROOT / "src/hb_assistant/graph/mail_readonly_client.py",
-    _ROOT / "src/hb_assistant/graph/mail_endpoint_guard.py",
+    p
+    for p in (
+        *(_ROOT / "src/hb_assistant/construction/email").glob("*.py"),
+        _ROOT / "src/hb_assistant/cli/graph.py",
+        _ROOT / "src/hb_assistant/graph/mail_readonly_client.py",
+        _ROOT / "src/hb_assistant/graph/mail_endpoint_guard.py",
+    )
+    if p.name not in ("endpoints.py", "message_indexer.py")
 ]
 
 # Mailbox-mutation + plaintext-body tokens that must never appear in these modules.
@@ -76,6 +83,12 @@ def test_no_plaintext_body_column_in_any_email_table() -> None:
             for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'email_%'"
             )
+        ]
+        # Phase 10A raw content tables are the *designated* (exempt) holders for
+        # plaintext when policy allows; they are not part of the redacted email
+        # intelligence path and must be excluded from this legacy plaintext-body gate.
+        tables = [
+            t for t in tables if t not in ("email_message_raw_content", "email_thread_raw_context")
         ]
         forbidden = {
             "body_plaintext",

@@ -7198,8 +7198,8 @@ class ConstructionStore:
                      sent_at_utc, received_at_utc, has_attachments,
                      attachment_metadata_json, created_utc, updated_utc)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(message_id_hash) DO UPDATE SET
-                    raw_email_id = excluded.raw_email_id,
+                ON CONFLICT(raw_email_id) DO UPDATE SET
+                    message_id_hash = excluded.message_id_hash,
                     internet_message_id_hash = excluded.internet_message_id_hash,
                     conversation_id_hash = excluded.conversation_id_hash,
                     source_ref_hash = excluded.source_ref_hash,
@@ -7295,6 +7295,224 @@ class ConstructionStore:
                     _utc_now(),
                 ),
             )
+
+    def list_email_message_raw_content(
+        self, *, project_key: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        """List raw email message content rows (Phase 10A). Project filter optional.
+        JSON columns (recipients, attachment meta) are parsed to lists for callers.
+        """
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT raw_email_id, message_id_hash, internet_message_id_hash,
+                   conversation_id_hash, source_ref_hash, project_key,
+                   subject, body_preview, body_text, body_html,
+                   from_name, from_address,
+                   to_recipients_json, cc_recipients_json, bcc_recipients_json,
+                   sent_at_utc, received_at_utc, has_attachments,
+                   attachment_metadata_json, created_utc, updated_utc
+            FROM email_message_raw_content {where}
+            ORDER BY received_at_utc DESC, message_id_hash
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        keys = (
+            "raw_email_id",
+            "message_id_hash",
+            "internet_message_id_hash",
+            "conversation_id_hash",
+            "source_ref_hash",
+            "project_key",
+            "subject",
+            "body_preview",
+            "body_text",
+            "body_html",
+            "from_name",
+            "from_address",
+            "to_recipients_json",
+            "cc_recipients_json",
+            "bcc_recipients_json",
+            "sent_at_utc",
+            "received_at_utc",
+            "has_attachments",
+            "attachment_metadata_json",
+            "created_utc",
+            "updated_utc",
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            rec = dict(zip(keys, row, strict=True))
+            # Parse JSON fields for convenience (callers can treat as strings too)
+            for jk in (
+                "to_recipients_json",
+                "cc_recipients_json",
+                "bcc_recipients_json",
+                "attachment_metadata_json",
+            ):
+                try:
+                    rec[jk.replace("_json", "")] = self._load_json(rec[jk]) or []
+                except Exception:
+                    rec[jk.replace("_json", "")] = []
+            results.append(rec)
+        return results
+
+    def get_email_message_raw_content(
+        self, *, message_id_hash: Optional[str] = None
+    ) -> Optional[dict[str, Any]]:
+        """Fetch a single raw email row by message_id_hash (the PK for the raw table).
+        Returns None if not present. Used by email endpoints etc.
+        """
+        if not message_id_hash:
+            return None
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            "SELECT raw_email_id, message_id_hash, internet_message_id_hash, "
+            "conversation_id_hash, source_ref_hash, project_key, subject, body_preview, body_text, body_html, "
+            "from_name, from_address, to_recipients_json, cc_recipients_json, bcc_recipients_json, "
+            "sent_at_utc, received_at_utc, has_attachments, attachment_metadata_json, "
+            "created_utc, updated_utc "
+            "FROM email_message_raw_content WHERE message_id_hash = ?",
+            (message_id_hash,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        keys = (
+            "raw_email_id",
+            "message_id_hash",
+            "internet_message_id_hash",
+            "conversation_id_hash",
+            "source_ref_hash",
+            "project_key",
+            "subject",
+            "body_preview",
+            "body_text",
+            "body_html",
+            "from_name",
+            "from_address",
+            "to_recipients_json",
+            "cc_recipients_json",
+            "bcc_recipients_json",
+            "sent_at_utc",
+            "received_at_utc",
+            "has_attachments",
+            "attachment_metadata_json",
+            "created_utc",
+            "updated_utc",
+        )
+        rec = dict(zip(keys, row, strict=True))
+        for jk in (
+            "to_recipients_json",
+            "cc_recipients_json",
+            "bcc_recipients_json",
+            "attachment_metadata_json",
+        ):
+            try:
+                rec[jk.replace("_json", "")] = self._load_json(rec[jk]) or []
+            except Exception:
+                rec[jk.replace("_json", "")] = []
+        return rec
+
+    def list_email_thread_raw_context(
+        self, *, project_key: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        """List raw email thread context rows (Phase 10A). Project filter optional.
+        JSON columns (messages, source refs) are parsed to lists.
+        """
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT raw_thread_context_id, thread_ref, conversation_id_hash,
+                   project_key, message_count, participant_count,
+                   thread_subject, messages_json, source_refs_json,
+                   model_ready, created_utc, updated_utc
+            FROM email_thread_raw_context {where}
+            ORDER BY thread_subject, thread_ref
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        keys = (
+            "raw_thread_context_id",
+            "thread_ref",
+            "conversation_id_hash",
+            "project_key",
+            "message_count",
+            "participant_count",
+            "thread_subject",
+            "messages_json",
+            "source_refs_json",
+            "model_ready",
+            "created_utc",
+            "updated_utc",
+        )
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            rec = dict(zip(keys, row, strict=True))
+            for jk in ("messages_json", "source_refs_json"):
+                try:
+                    rec[jk.replace("_json", "")] = self._load_json(rec[jk]) or []
+                except Exception:
+                    rec[jk.replace("_json", "")] = []
+            results.append(rec)
+        return results
+
+    def get_email_thread_raw_context(
+        self, *, thread_ref: Optional[str] = None
+    ) -> Optional[dict[str, Any]]:
+        """Fetch a single raw thread context by thread_ref.
+        Returns None if not present.
+        """
+        if not thread_ref:
+            return None
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            "SELECT raw_thread_context_id, thread_ref, conversation_id_hash, "
+            "project_key, message_count, participant_count, thread_subject, "
+            "messages_json, source_refs_json, model_ready, created_utc, updated_utc "
+            "FROM email_thread_raw_context WHERE thread_ref = ?",
+            (thread_ref,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        keys = (
+            "raw_thread_context_id",
+            "thread_ref",
+            "conversation_id_hash",
+            "project_key",
+            "message_count",
+            "participant_count",
+            "thread_subject",
+            "messages_json",
+            "source_refs_json",
+            "model_ready",
+            "created_utc",
+            "updated_utc",
+        )
+        rec = dict(zip(keys, row, strict=True))
+        for jk in ("messages_json", "source_refs_json"):
+            try:
+                rec[jk.replace("_json", "")] = self._load_json(rec[jk]) or []
+            except Exception:
+                rec[jk.replace("_json", "")] = []
+        return rec
 
     def upsert_calendar_event_raw_content(
         self,

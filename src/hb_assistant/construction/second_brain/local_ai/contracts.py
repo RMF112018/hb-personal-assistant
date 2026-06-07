@@ -17,7 +17,13 @@ import yaml
 from hb_assistant.config.path_policy import PathPolicy
 
 from ..contracts import _load_json_resource
-from .models import AiJobPolicy, LocalModelProfiles, McpPacketPolicy, ObsidianVaultPolicy, RawContentPolicy
+from .models import (
+    AiJobPolicy,
+    LocalModelProfiles,
+    McpPacketPolicy,
+    ObsidianVaultPolicy,
+    RawContentPolicy,
+)
 
 # Logical name -> packaged JSON filename (src/hb_assistant/resources/json/).
 PHASE_10_CONTRACT_FILES: dict[str, str] = {
@@ -32,6 +38,7 @@ PHASE_10_CONTRACT_FILES: dict[str, str] = {
     "evaluation_metrics_contract": "phase_10_evaluation_metrics_contract.json",
     "frontend_review_queue_contract": "phase_10_frontend_review_queue_contract.json",
     "raw_content_policy_contract": "phase_10a_raw_content_policy_contract.json",
+    "raw_content_api_response_contract": "raw_content_api_response_contract.json",
 }
 
 # Logical name -> (repo-root seed filename, env override var, Pydantic model).
@@ -113,3 +120,8 @@ def load_mcp_packet_policy() -> McpPacketPolicy:
 def load_raw_content_policy() -> RawContentPolicy:
     """Load + validate the raw content policy (Phase 10A Prompt 01; fail-closed)."""
     return RawContentPolicy.model_validate(_load_seed_dict("raw_content_policy"))
+
+
+def load_raw_content_api_response_contract() -> dict[str, Any]:
+    """Load the Phase 10A raw content API response contract (shapes for include vs metadata modes)."""
+    return load_phase_10_contract("raw_content_api_response_contract")

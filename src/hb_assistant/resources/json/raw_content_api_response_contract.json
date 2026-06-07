@@ -1,0 +1,45 @@
+{
+  "contract": "phase_10a_raw_content_api_response",
+  "version": "1",
+  "description": "Response shapes for the Phase 10A backend raw-content query endpoints (email + calendar). These are the Python callable surfaces (construction.email.endpoints.*, construction.calendar.endpoints.*) used by CLI query commands, meeting prep, daily brief enrichment, MCP, and future model context builders. The metadata/redacted path is always available and unchanged from prior read models. Raw plaintext is only present when policy + effective params resolve to include.",
+  "invariants": [
+    "No Graph tokens, no PEMs, no signed URLs, no raw deltas in any shape.",
+    "When _raw_content_included=false or absent, the item shape matches the pre-Phase10A redacted metadata (email_thread_summaries, email_messages, calendar_event_index).",
+    "Raw inclusion is gated by RawContentPolicy.raw_content.endpoints (allow_include_raw_param, default_raw_mode) + mode + starting_sources + explicit include_raw/raw_mode params.",
+    "Direct raw_* accessors return [] or None when not effective for the call (fail-closed).",
+    "JSON fields from raw tables are normalized to lists/objects in the endpoint responses for convenience."
+  ],
+  "email": {
+    "list_threads": {
+      "metadata_only": "list of email_thread_summaries rows + _raw_content_included=false",
+      "raw_included": "same base + optional 'raw_content': {thread_subject, message_count, participant_count, messages: [{subject, body_text, body_html, from_name, from_address, to_recipients, ...}], source_refs } + _raw_content_included=true for those that had raw rows"
+    },
+    "list_messages": {
+      "metadata_only": "list of email_messages (redacted) + _raw...=false",
+      "raw_included": "base + per-message 'raw_content': {subject, body_text, body_html, from_*, *_recipients, sent/received, has_attachments, attachment_metadata} when a matching email_message_raw_content row exists"
+    },
+    "get_message": "single email_messages row + optional raw_content sub-dict",
+    "direct_raw": {
+      "list_email_message_raw_content": "rows matching the email_message_raw_content table select (with JSON parsed)",
+      "list_email_thread_raw_context": "rows matching email_thread_raw_context (messages_json parsed to list)"
+    }
+  },
+  "calendar": {
+    "list_events": {
+      "metadata_only": "list of calendar_event_index rows (subject_hash etc, no body/join) + _raw_content_included=false",
+      "raw_included": "base + 'raw_content' for matched: {subject, body_text, body_html, location, organizer:{name,email}, attendees: list, join_url, recurrence, start, end} + marker true"
+    },
+    "get_event": "single index row + optional raw_content",
+    "direct_raw": "list/get_calendar_event_raw_content returning the V42 table columns (JSON parsed)"
+  },
+  "policy_surface": {
+    "include_raw": "explicit bool hint (subject to endpoints.allow_include_raw_param)",
+    "raw_mode": "explicit 'include' | 'metadata_only' (subject to allow)",
+    "default_behavior": "from raw_content.default_endpoint_behavior (include_raw | metadata_only)",
+    "gating": "raw_content.enabled && mode in (email_calendar, all_supported, ...) && starting_sources.* "
+  },
+  "acceptance": [
+    "Local callers (CLI graph mail threads, graph calendar events, brief builders, etc.) can obtain raw content when configured.",
+    "Metadata/redacted shapes and all no-raw downstreams (daily brief packets without raw, safety gates, etc.) remain bit-for-bit compatible when raw is excluded."
+  ]
+}

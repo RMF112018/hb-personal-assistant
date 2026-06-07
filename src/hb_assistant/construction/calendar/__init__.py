@@ -13,6 +13,13 @@ from .contracts import (
     load_email_thread_summary_contract,
     load_meeting_email_relationship_candidate_contract,
 )
+from .endpoints import (
+    RawMode,
+    get_calendar_event,
+    get_calendar_event_raw_content,
+    list_calendar_event_raw_content,
+    list_calendar_events,
+)
 from .policy import (
     CalendarSourcePolicy,
     EmailThreadSummaryPolicy,
@@ -32,4 +39,10 @@ __all__ = [
     "load_calendar_project_match_contract",
     "load_email_thread_summary_contract",
     "load_meeting_email_relationship_candidate_contract",
+    # Phase 10A Prompt 05: raw-content capable calendar endpoints (policy include_raw/raw_mode)
+    "RawMode",
+    "get_calendar_event",
+    "get_calendar_event_raw_content",
+    "list_calendar_event_raw_content",
+    "list_calendar_events",
 ]

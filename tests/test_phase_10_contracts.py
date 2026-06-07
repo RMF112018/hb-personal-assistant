@@ -39,12 +39,16 @@ PHASE_10_CONTRACT_NAMES = sorted(c10.PHASE_10_CONTRACT_FILES)
 # ---------------------------------------------------------------------------
 def test_all_contracts_load() -> None:
     contracts = load_all_phase_10_contracts()
-    assert len(contracts) == 10
+    assert (
+        len(contracts) == 12
+    )  # 10 Phase 10 + Phase 10A raw_content_policy + raw_content_api_response (Prompt 05)
     for name, body in contracts.items():
         assert isinstance(body, dict) and body, name
     # The action candidate schema is a JSON Schema; the rest carry a logical schema id + version.
     assert contracts["action_candidate_output_schema"]["title"] == "Phase10ActionCandidate"
     assert contracts["ai_job_contract"]["version"] == "1.0.0"
+    assert "raw_content_policy_contract" in contracts
+    assert "raw_content_api_response_contract" in contracts
 
 
 def test_contract_provenance_requires_source_refs() -> None:
@@ -167,9 +171,7 @@ def test_action_candidate_rejects_forbidden_raw_field() -> None:
 
 def test_action_candidate_external_approval_must_be_true() -> None:
     with pytest.raises(ValidationError):
-        ActionCandidate.model_validate(
-            _valid_candidate(external_action_requires_approval=False)
-        )
+        ActionCandidate.model_validate(_valid_candidate(external_action_requires_approval=False))
 
 
 def test_high_stakes_must_route_to_review() -> None:
@@ -204,8 +206,8 @@ def test_proof_passes_clean() -> None:
     result = build_phase_10_contracts_proof()
     assert result["proof_passed"] is True
     assert result["overall_status"] == "clean"
-    assert result["contract_count"] == 10
-    assert result["seed_count"] == 4
+    assert result["contract_count"] == 12
+    assert result["seed_count"] == 5
     assert len(result["fixtures_validated"]) == 5
     assert result["forbidden_findings"] == []
     assert result["guard_attestation"]["no_external_writeback"] is True
