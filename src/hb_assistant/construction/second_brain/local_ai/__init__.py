@@ -31,6 +31,9 @@ from .models import (
     RawContentPolicy,
 )
 from .proof import Phase10ProofError, build_phase_10_contracts_proof
+from .raw_action_intelligence import (
+    extract_action_candidates_from_raw,
+)
 from .raw_context import (
     build_raw_calendar_context_packet,
     build_raw_email_context_packet,
@@ -60,4 +63,6 @@ __all__ = [
     # Prompt 06 raw model context packets (actual content, bounded, source-referenced)
     "build_raw_email_context_packet",
     "build_raw_calendar_context_packet",
+    # Prompt 07: action intelligence from raw content (strict schema + business contract + retry/repair)
+    "extract_action_candidates_from_raw",
 ]

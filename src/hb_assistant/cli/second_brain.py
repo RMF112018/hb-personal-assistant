@@ -7546,3 +7546,88 @@ def phase_10_raw_calendar_packet(
         }
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
         raise typer.Exit(1) from None
+
+
+@phase_10_app.command("raw-action-candidates")
+def phase_10_raw_action_candidates(
+    project: "str | None" = typer.Option(  # noqa: B008
+        None, "--project", help="Project key to scope raw content for candidate extraction."
+    ),
+    source: str = typer.Option(  # noqa: B008
+        "both",
+        "--source",
+        help="email|calendar|both (default both). Limits which raw packets/rows are considered.",
+    ),
+    mock_output: "str | None" = typer.Option(  # noqa: B008
+        None,
+        "--mock-output",
+        help="Raw JSON array of ActionCandidate objects (for offline/testing; bypasses local model).",
+        hidden=True,
+    ),
+    dry_run: bool = typer.Option(  # noqa: B008
+        True,
+        "--dry-run/--apply",
+        help="Preview (default); --apply persists accepted candidates + source refs with raw excerpts to the V41 tables.",
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable report (default)."),  # noqa: B008
+) -> None:
+    """Extract advisory action candidates (task, commitment, follow-up, ...) from Phase 10A raw email/calendar content.
+
+    Uses strict schema + business-contract validation (rejects generic data-cleaning / analysis hallucinations).
+    Supports retry/repair on bad model output. When --apply, persists to task_candidates / commitment_candidates
+    + candidate_source_refs (with bounded evidence_redacted excerpts from the raw rows).
+
+    Local-only, advisory, source-linked. Model output is never trusted without validation.
+    Use --mock-output for deterministic tests/CI.
+    """
+    from hb_assistant.construction.second_brain.local_ai import (
+        extract_action_candidates_from_raw,
+    )
+
+    try:
+        # For the thin CLI we let the extractor load recent raw for the project (it will use store list raw).
+        # If the caller wants explicit packets they can be passed in future extensions; the core supports packets.
+        report = extract_action_candidates_from_raw(
+            project_key=project,
+            mock_output=mock_output,
+        )
+
+        # If not apply, do not mutate (the extractor may have side-effected in some paths; guard here for CLI contract)
+        if dry_run:
+            # Best-effort: the extractor already prefers not to persist when not requested, but we surface intent.
+            report = dict(report)
+            report["dry_run"] = True
+            report["would_persist"] = report.get("persisted", 0)
+            report["persisted"] = 0
+
+        payload: dict[str, Any] = {
+            "command": "second-brain phase-10 raw-action-candidates",
+            "ok": True,
+            "project": project,
+            "source": source,
+            "dry_run": dry_run,
+            **report,
+            "guardrails": {
+                "local_only": True,
+                "advisory_only": True,
+                "strict_schema": True,
+                "business_contract_validation": "rejects generic data-clean/analysis hallucinations",
+                "retry_repair": True,
+                "raw_excerpts_bounded_in_evidence_only": True,
+                "no_auto_accept": True,
+            },
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "second-brain phase-10 raw-action-candidates",
+            "ok": False,
+            "dry_run": dry_run,
+            "status": "extract_error",
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None

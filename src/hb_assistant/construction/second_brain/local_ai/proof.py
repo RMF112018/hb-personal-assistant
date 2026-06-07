@@ -182,6 +182,10 @@ def build_phase_10_contracts_proof(
         contracts_loaded = len(contracts) == len(PHASE_10_CONTRACT_FILES)
         # Exercise the Prompt 05 API response contract load (additive)
         _ = load_raw_content_api_response_contract()
+        # Exercise P07 extractor import (covers ActionCandidate schema usage in contracts proof run)
+        from .raw_action_intelligence import (
+            extract_action_candidates_from_raw as _p07,  # noqa: F401
+        )
     except (Phase10ContractError, KeyError) as exc:
         errors.append(f"contracts_load: {exc}")
 

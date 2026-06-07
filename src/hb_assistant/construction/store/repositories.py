@@ -7808,6 +7808,366 @@ class ConstructionStore:
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
+    # --- Phase 10 V41 Action Candidates (task, commitment, source refs) from raw content (P07) ---
+    # Advisory candidates produced by local models over Phase 10A raw email/calendar content.
+    # Persist with evidence_redacted = bounded verbatim raw excerpt from the source raw row
+    # (the raw tables themselves are the exempt holders; these carry short excerpts for explainability).
+    # Idempotent on candidate_id (PK) / stable_key (UNIQUE for tasks/comms). Source refs link
+    # back to raw rows (email_message_raw_content, calendar_event_raw_content, etc.).
+    # The 13 _P10_GUARDS are enforced by the table DDL (never set here).
+    # -------------------------------------------------------------------------
+
+    def upsert_task_candidate(
+        self,
+        *,
+        candidate_id: str,
+        stable_key: str,
+        title_redacted: str,
+        project_key: Optional[str] = None,
+        assignee_class: str = "unknown",
+        due_at_utc: Optional[str] = None,
+        urgency: str = "normal",
+        waiting_state: str = "unknown",
+        safety_category: str = "normal",
+        confidence: float = 0.0,
+        reason_redacted: Optional[str] = None,
+        recommended_next_action: str = "review",
+        review_status: str = "pending",
+        model_profile_id: Optional[str] = None,
+        prompt_template_version: Optional[str] = None,
+    ) -> None:
+        """Upsert a Phase 10 V41 task candidate (advisory, produced from raw content).
+
+        Idempotent by candidate_id (and stable_key UNIQUE). Mirrors the V41 DDL.
+        """
+        if not candidate_id or not stable_key or not title_redacted:
+            raise ValueError("candidate_id, stable_key and title_redacted are required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO task_candidates
+                    (candidate_id, stable_key, title_redacted, project_key, assignee_class,
+                     due_at_utc, urgency, waiting_state, safety_category, confidence,
+                     reason_redacted, recommended_next_action, review_status,
+                     model_profile_id, prompt_template_version, created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(candidate_id) DO UPDATE SET
+                    stable_key = excluded.stable_key,
+                    title_redacted = excluded.title_redacted,
+                    project_key = excluded.project_key,
+                    assignee_class = excluded.assignee_class,
+                    due_at_utc = excluded.due_at_utc,
+                    urgency = excluded.urgency,
+                    waiting_state = excluded.waiting_state,
+                    safety_category = excluded.safety_category,
+                    confidence = excluded.confidence,
+                    reason_redacted = excluded.reason_redacted,
+                    recommended_next_action = excluded.recommended_next_action,
+                    review_status = excluded.review_status,
+                    model_profile_id = excluded.model_profile_id,
+                    prompt_template_version = excluded.prompt_template_version,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    candidate_id,
+                    stable_key,
+                    title_redacted,
+                    project_key,
+                    assignee_class,
+                    due_at_utc,
+                    urgency,
+                    waiting_state,
+                    safety_category,
+                    confidence,
+                    reason_redacted,
+                    recommended_next_action,
+                    review_status,
+                    model_profile_id,
+                    prompt_template_version,
+                    _utc_now(),
+                    _utc_now(),
+                ),
+            )
+
+    def upsert_commitment_candidate(
+        self,
+        *,
+        candidate_id: str,
+        stable_key: str,
+        title_redacted: str,
+        project_key: Optional[str] = None,
+        commitment_actor_class: str = "unknown",
+        promised_at_utc: Optional[str] = None,
+        due_at_utc: Optional[str] = None,
+        urgency: str = "normal",
+        waiting_state: str = "unknown",
+        safety_category: str = "normal",
+        confidence: float = 0.0,
+        reason_redacted: Optional[str] = None,
+        recommended_next_action: str = "review",
+        review_status: str = "pending",
+        model_profile_id: Optional[str] = None,
+        prompt_template_version: Optional[str] = None,
+    ) -> None:
+        """Upsert a Phase 10 V41 commitment candidate (advisory, produced from raw content).
+
+        Idempotent by candidate_id (and stable_key UNIQUE). Mirrors the V41 DDL.
+        """
+        if not candidate_id or not stable_key or not title_redacted:
+            raise ValueError("candidate_id, stable_key and title_redacted are required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO commitment_candidates
+                    (candidate_id, stable_key, title_redacted, project_key, commitment_actor_class,
+                     promised_at_utc, due_at_utc, urgency, waiting_state, safety_category,
+                     confidence, reason_redacted, recommended_next_action, review_status,
+                     model_profile_id, prompt_template_version, created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(candidate_id) DO UPDATE SET
+                    stable_key = excluded.stable_key,
+                    title_redacted = excluded.title_redacted,
+                    project_key = excluded.project_key,
+                    commitment_actor_class = excluded.commitment_actor_class,
+                    promised_at_utc = excluded.promised_at_utc,
+                    due_at_utc = excluded.due_at_utc,
+                    urgency = excluded.urgency,
+                    waiting_state = excluded.waiting_state,
+                    safety_category = excluded.safety_category,
+                    confidence = excluded.confidence,
+                    reason_redacted = excluded.reason_redacted,
+                    recommended_next_action = excluded.recommended_next_action,
+                    review_status = excluded.review_status,
+                    model_profile_id = excluded.model_profile_id,
+                    prompt_template_version = excluded.prompt_template_version,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    candidate_id,
+                    stable_key,
+                    title_redacted,
+                    project_key,
+                    commitment_actor_class,
+                    promised_at_utc,
+                    due_at_utc,
+                    urgency,
+                    waiting_state,
+                    safety_category,
+                    confidence,
+                    reason_redacted,
+                    recommended_next_action,
+                    review_status,
+                    model_profile_id,
+                    prompt_template_version,
+                    _utc_now(),
+                    _utc_now(),
+                ),
+            )
+
+    def upsert_candidate_source_ref(
+        self,
+        *,
+        source_ref_id: str,
+        candidate_type: str,
+        candidate_id: str,
+        source_family: str,
+        source_ref_hash: str,
+        source_table: Optional[str] = None,
+        source_primary_key_hash: Optional[str] = None,
+        evidence_redacted: Optional[str] = None,
+    ) -> None:
+        """Upsert a source reference for a Phase 10 action candidate.
+
+        candidate_type: "task" | "commitment" (or other Phase 10 types).
+        When source is raw email/calendar content, pass a short bounded excerpt in
+        evidence_redacted (verbatim from the raw row body/subject etc.).
+        Idempotent by source_ref_id.
+        """
+        if not source_ref_id or not candidate_id or not source_family or not source_ref_hash:
+            raise ValueError(
+                "source_ref_id, candidate_id, source_family and source_ref_hash are required"
+            )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO candidate_source_refs
+                    (source_ref_id, candidate_type, candidate_id, source_family,
+                     source_ref_hash, source_table, source_primary_key_hash,
+                     evidence_redacted, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source_ref_id) DO UPDATE SET
+                    candidate_type = excluded.candidate_type,
+                    candidate_id = excluded.candidate_id,
+                    source_family = excluded.source_family,
+                    source_ref_hash = excluded.source_ref_hash,
+                    source_table = excluded.source_table,
+                    source_primary_key_hash = excluded.source_primary_key_hash,
+                    evidence_redacted = excluded.evidence_redacted
+                """,
+                (
+                    source_ref_id,
+                    candidate_type,
+                    candidate_id,
+                    source_family,
+                    source_ref_hash,
+                    source_table,
+                    source_primary_key_hash,
+                    evidence_redacted,
+                    _utc_now(),
+                ),
+            )
+
+    def list_task_candidates(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        review_status: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """List task candidates (for tests/evidence). Safe fields only."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if review_status is not None:
+            clauses.append("review_status = ?")
+            params.append(review_status)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT candidate_id, stable_key, title_redacted, project_key, assignee_class,
+                   due_at_utc, urgency, waiting_state, safety_category, confidence,
+                   reason_redacted, recommended_next_action, review_status,
+                   model_profile_id, prompt_template_version, created_utc, updated_utc
+            FROM task_candidates {where}
+            ORDER BY created_utc DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        keys = (
+            "candidate_id",
+            "stable_key",
+            "title_redacted",
+            "project_key",
+            "assignee_class",
+            "due_at_utc",
+            "urgency",
+            "waiting_state",
+            "safety_category",
+            "confidence",
+            "reason_redacted",
+            "recommended_next_action",
+            "review_status",
+            "model_profile_id",
+            "prompt_template_version",
+            "created_utc",
+            "updated_utc",
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    def list_commitment_candidates(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        review_status: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """List commitment candidates (for tests/evidence). Safe fields only."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if review_status is not None:
+            clauses.append("review_status = ?")
+            params.append(review_status)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT candidate_id, stable_key, title_redacted, project_key, commitment_actor_class,
+                   promised_at_utc, due_at_utc, urgency, waiting_state, safety_category, confidence,
+                   reason_redacted, recommended_next_action, review_status,
+                   model_profile_id, prompt_template_version, created_utc, updated_utc
+            FROM commitment_candidates {where}
+            ORDER BY created_utc DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        keys = (
+            "candidate_id",
+            "stable_key",
+            "title_redacted",
+            "project_key",
+            "commitment_actor_class",
+            "promised_at_utc",
+            "due_at_utc",
+            "urgency",
+            "waiting_state",
+            "safety_category",
+            "confidence",
+            "reason_redacted",
+            "recommended_next_action",
+            "review_status",
+            "model_profile_id",
+            "prompt_template_version",
+            "created_utc",
+            "updated_utc",
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    def list_candidate_source_refs(
+        self,
+        *,
+        candidate_id: Optional[str] = None,
+        candidate_type: Optional[str] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """List source refs for Phase 10 candidates (for tests/evidence). Includes evidence_redacted excerpts."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if candidate_id is not None:
+            clauses.append("candidate_id = ?")
+            params.append(candidate_id)
+        if candidate_type is not None:
+            clauses.append("candidate_type = ?")
+            params.append(candidate_type)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT source_ref_id, candidate_type, candidate_id, source_family,
+                   source_ref_hash, source_table, source_primary_key_hash,
+                   evidence_redacted, created_utc
+            FROM candidate_source_refs {where}
+            ORDER BY created_utc DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        keys = (
+            "source_ref_id",
+            "candidate_type",
+            "candidate_id",
+            "source_family",
+            "source_ref_hash",
+            "source_table",
+            "source_primary_key_hash",
+            "evidence_redacted",
+            "created_utc",
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
     # V20 Phase 07A Prompt 01 — Data Quality + Canonical Source-Record Map
     # All adapters enforce the guardrail flags=False at the Python layer (defense
     # in depth with the schema CHECKs). No raw bodies, full text, or writeback.
