@@ -225,6 +225,30 @@ def test_procore_homepage_urls_extract_numeric_id_and_pending_admin(tmp_path: Pa
     assert s.get("first_sync_status") == "pending_admin_approval" or s.get("admin_approval_required") is True
     _assert_safe({"save": s})
 
+    # Prompt F: procore appears in pending list via normalized admin surface; approve via normalized flips stage
+    # (non-admin cannot approve)
+    # list may be via projects or the admin-sync; both surface the service list which now includes procore
+    # Use the dedicated admin pending for approvals
+    pend = client.get("/api/settings/admin-sync", headers={"X-HB-UI-Role": "admin"})
+    assert pend.status_code == 200
+    items = (pend.json().get("items") or [])
+    pro_ids = [i.get("connection_like_id") for i in items if (i.get("connection_like_id") or "").startswith("procore_")]
+    assert any("procore_" in (i or "") for i in pro_ids)
+
+    # non-admin cannot approve
+    bad_approve = client.post("/api/settings/connections/admin/procore_tropical/approve-first-sync")
+    assert bad_approve.status_code == 403
+
+    # admin approve via normalized route
+    app = client.post("/api/settings/connections/admin/procore_tropical/approve-first-sync", headers={"X-HB-UI-Role": "admin"})
+    assert app.status_code == 200
+    assert app.json().get("first_sync_triggered") is False
+    ident2 = ConstructionStore(db).get_project_identity("tropical")
+    assert ident2 is not None
+    assert ident2.get("project_stage") in ("approved_first_sync_not_started", "approved")
+
+    _assert_safe({"pend": pend.json(), "approve": app.json()})
+
 
 def test_procore_legacy_urls_and_invalid_are_handled(tmp_path: Path) -> None:
     client, db = _client(tmp_path)
@@ -323,6 +347,53 @@ def test_save_only_persists_local_and_approve_does_not_trigger_live_sync(tmp_pat
     sync = ConstructionStore(db).get_source_sync_state(connection_id)
     assert sync is not None
     assert sync["sync_status"] == "approved_first_sync_not_started"
+
+
+# Prompt F additions: reject, procore list/approve parity (via normalized), and eligibility gate on refresh-request
+def test_prompt_f_reject_and_procore_list_approve_and_refresh_gate(tmp_path: Path) -> None:
+    client, db = _client(tmp_path)
+    # procore save (already sets pending stage in identity)
+    body = {"url": "https://app.procore.com/12345/project/home", "project_key": "f-proj"}
+    saved = client.post("/connections/save", headers={"X-HB-UI-Role": "operator"}, json=body)
+    assert saved.status_code == 200
+    cid = "procore_f-proj"
+
+    # appears in normalized pending list (admin)
+    pend = client.get("/api/settings/admin-sync", headers={"X-HB-UI-Role": "admin"})
+    assert pend.status_code == 200
+    items = pend.json().get("items") or []
+    assert any((i.get("connection_like_id") or "").startswith("procore_") for i in items)
+
+    # reject via normalized (admin)
+    rej = client.post(f"/api/settings/connections/admin/{cid}/reject-first-sync", headers={"X-HB-UI-Role": "admin"})
+    assert rej.status_code == 200
+    assert rej.json().get("first_sync_triggered") is False
+
+    # now approve a fresh one and test refresh gate
+    body2 = {"url": "https://app.procore.com/67890/project/home", "project_key": "g-proj"}
+    s2 = client.post("/connections/save", headers={"X-HB-UI-Role": "operator"}, json=body2)
+    assert s2.status_code == 200
+    cid2 = "procore_g-proj"
+
+    # before approve: refresh-request should be blocked (not-ok, reason first_sync_pending...)
+    r0 = client.post("/projects/g-proj/refresh-request", headers={"X-HB-UI-Role": "operator"}, json={})
+    assert r0.status_code == 200
+    j0 = r0.json()
+    assert j0.get("ok") is False
+    assert j0.get("reason_code") == "first_sync_pending_admin_approval" or j0.get("kind") == "first_sync_not_approved"
+
+    # approve
+    ap = client.post(f"/api/settings/connections/admin/{cid2}/approve-first-sync", headers={"X-HB-UI-Role": "admin"})
+    assert ap.status_code == 200
+    assert ap.json().get("first_sync_triggered") is False
+
+    # after approve: refresh-request succeeds
+    r1 = client.post("/projects/g-proj/refresh-request", headers={"X-HB-UI-Role": "operator"}, json={})
+    assert r1.status_code == 200
+    assert r1.json().get("ok") is True
+    assert r1.json().get("kind") == "user_refresh_requested"
+
+    _assert_safe({"reject": rej.json(), "approve": ap.json(), "refresh_blocked": j0, "refresh_ok": r1.json()})
 
 
 def test_viewer_cannot_save_operator_can_preview_and_save_chat_still_disabled(tmp_path: Path) -> None:

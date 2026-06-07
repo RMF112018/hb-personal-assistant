@@ -18,12 +18,12 @@ import {
   explainProjectKeywordMatch,
   getSettingsDailyBrief,
   getSettingsPreferences,
-  getSettingsAdminSync,
   patchSettingsPreferences,
   patchSettingsAdmin,
 } from '../lib/api'
 import { AccountConnectionsPanel } from '../components/settings/AccountConnectionsPanel'
 import { ProjectConnectionsPanel } from '../components/settings/ProjectConnectionsPanel'
+import { AdminFirstSyncApprovalPanel } from '../components/settings/AdminFirstSyncApprovalPanel'
 
 // Settings (Prompt 20 polish): guided local-first onboarding and preferences.
 // Sections: Account Connections, Project Connections, Daily Brief (external AI writes the .md; this app only detects/presents),
@@ -58,8 +58,6 @@ export function SettingsPage() {
   const [dailyBriefError, setDailyBriefError] = useState<string | null>(null)
   const [prefsResult, setPrefsResult] = useState<any>(null)
   const [prefsError, setPrefsError] = useState<string | null>(null)
-  const [adminSyncResult, setAdminSyncResult] = useState<any>(null)
-  const [adminSyncError, setAdminSyncError] = useState<string | null>(null)
   const [adminPatchMsg, setAdminPatchMsg] = useState<string | null>(null)
   const [prefsPatchMsg, setPrefsPatchMsg] = useState<string | null>(null)
   // Prompt 20 keyword management state (FPR-017)
@@ -582,62 +580,28 @@ export function SettingsPage() {
         <div className="text-xs mt-1">Default landing, followed projects, Daily Brief display. Local persistence.</div>
       </div>
 
+      {/* Prompt F: interactive admin-only first-sync approvals panel (approve/reject) replaces the raw Load + result stub.
+          Panel fetches via admin surface and calls normalized approve/reject. Actions require admin role (backend 403s otherwise).
+          The rate-limit patch is retained as a small admin convenience below the panel. */}
       <div className="card">
-        <div className="font-medium mb-2">Admin Sync Controls (Prompt 14B, admin only)</div>
+        <div className="font-medium mb-2">Admin Sync Controls (first-sync approvals)</div>
+        <AdminFirstSyncApprovalPanel />
         <button
-          className="text-xs underline mb-2"
-          onClick={async () => {
-            setAdminSyncError(null)
-            setAdminPatchMsg(null)
-            try {
-              const ad = await getSettingsAdminSync()
-              setAdminSyncResult(ad)
-            } catch (e: any) {
-              setAdminSyncError(e?.message || String(e))
-              setAdminSyncResult(null)
-            }
-          }}
-        >
-          Load Admin Sync (admin role)
-        </button>
-        <ErrorState
-          message={adminSyncError}
-          onRetry={() => {
-            setAdminSyncError(null)
-            ;(async () => {
-              try {
-                const ad = await getSettingsAdminSync()
-                setAdminSyncResult(ad)
-              } catch (e: any) {
-                setAdminSyncError(e?.message || String(e))
-                setAdminSyncResult(null)
-              }
-            })()
-          }}
-        />
-        {adminSyncResult && (
-          <div className="text-xs mt-1">
-            Loaded admin sync info (admin only).
-            (status shown above; raw panels removed per FPR-004)
-          </div>
-        )}
-        <button
-          className="text-xs underline"
+          className="badge mt-3"
           onClick={async () => {
             setAdminPatchMsg(null)
-            setAdminSyncError(null)
             try {
               await patchSettingsAdmin({ global_rate_limit: 60 })
               setAdminPatchMsg('Admin settings saved.')
             } catch (e: any) {
-              setAdminSyncError('Admin only: ' + (e?.message || e))
+              setAdminPatchMsg('Admin only: ' + (e?.message || e))
             }
           }}
         >
           Apply sample admin rate limit (admin)
         </button>
         {adminPatchMsg && <div className="text-xs mt-1 text-green-600">{adminPatchMsg}</div>}
-        <div className="text-xs">Pending approvals, cadence/priority, rate-limit/backoff. CM User/operator cannot approve first sync.</div>
+        <div className="text-xs mt-1">Pending first-sync approvals for all connection types (Procore + Microsoft sources). Only admins can approve or reject. These actions do not start sync.</div>
       </div>
 
       <div className="card">

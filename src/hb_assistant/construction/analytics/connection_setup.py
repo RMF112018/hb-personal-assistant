@@ -152,8 +152,23 @@ class ConnectionSetupService:
                 sync_status=_APPROVED,
             )
             return self._approval_response(connection_id, "graph_file_source")
-        identity = self._store.get_project_identity(connection_id.replace("procore_", "", 1))
+        # Prompt F: Procore project identity must also be flipped to approved stage (preserve other fields)
+        project_key = connection_id.replace("procore_", "", 1)
+        identity = self._store.get_project_identity(project_key)
         if identity:
+            self._store.upsert_project_identity(
+                project_key=project_key,
+                hb_project_number=identity.get("hb_project_number"),
+                project_name_raw=identity.get("project_name_raw"),
+                project_name_normalized=identity.get("project_name_normalized"),
+                is_active=identity.get("is_active", True),
+                procore_project_id=identity.get("procore_project_id"),
+                project_stage=_APPROVED,
+                last_seen_utc=identity.get("last_seen_utc"),
+                last_validated_utc=identity.get("last_validated_utc"),
+                match_status=identity.get("match_status"),
+                match_confidence=identity.get("match_confidence"),
+            )
             return self._approval_response(connection_id, "procore_project")
         return {
             "ok": False,
@@ -162,6 +177,58 @@ class ConnectionSetupService:
             "reason_code": "requires_saved_connection",
             "guardrails": _guardrails(),
         }
+
+    # Prompt F: symmetric reject for first-sync (admin only action)
+    def reject_first_sync(self, connection_id: str) -> dict[str, Any]:
+        source = self._store.get_source_location(connection_id)
+        if source:
+            self._store.upsert_source_sync_state(
+                source_id=connection_id,
+                drive_id=source.get("drive_id"),
+                folder_item_id=source.get("folder_item_id"),
+                sync_status="first_sync_rejected",
+            )
+            return self._rejection_response(connection_id, "graph_file_source")
+        project_key = connection_id.replace("procore_", "", 1)
+        identity = self._store.get_project_identity(project_key)
+        if identity:
+            self._store.upsert_project_identity(
+                project_key=project_key,
+                hb_project_number=identity.get("hb_project_number"),
+                project_name_raw=identity.get("project_name_raw"),
+                project_name_normalized=identity.get("project_name_normalized"),
+                is_active=identity.get("is_active", True),
+                procore_project_id=identity.get("procore_project_id"),
+                project_stage="first_sync_rejected",
+                last_seen_utc=identity.get("last_seen_utc"),
+                last_validated_utc=identity.get("last_validated_utc"),
+                match_status=identity.get("match_status"),
+                match_confidence=identity.get("match_confidence"),
+            )
+            return self._rejection_response(connection_id, "procore_project")
+        return {
+            "ok": False,
+            "kind": "connection_not_found",
+            "connection_id": connection_id,
+            "reason_code": "requires_saved_connection",
+            "guardrails": _guardrails(),
+        }
+
+    # Prompt F: reusable eligibility check (domain level, used by gates and UIs)
+    def _is_first_sync_approved(self, *, source_id: str | None = None, project_key: str | None = None) -> tuple[bool, str | None]:
+        if source_id:
+            st = self._store.get_source_sync_state(source_id) or {}
+            status = st.get("sync_status") or ""
+            if status == _APPROVED or (status and "approved" in status.lower()):
+                return True, None
+            return False, status or "pending_admin_approval"
+        if project_key:
+            ident = self._store.get_project_identity(project_key) or {}
+            stage = ident.get("project_stage") or ""
+            if stage == _APPROVED or (stage and "approved" in stage.lower()):
+                return True, None
+            return False, stage or "setup_pending_admin_approval"
+        return False, "no_identifier_provided"
 
     def save_project_sync_schedule(
         self, project_key: str, request: dict[str, Any]
@@ -247,6 +314,24 @@ class ConnectionSetupService:
                 "reason_code": "no_saved_project_sources",
                 "guardrails": _guardrails(),
             }
+        # Prompt F: eligibility gate — first-sync must be approved for the project's sources
+        # (Procore project identities and/or file sources). No state mutation if not eligible.
+        for source in sources:
+            ok, _reason = self._is_first_sync_approved(source_id=source["source_id"])
+            if not ok:
+                # also check project-level for procore-centric sources
+                pk = source.get("project_key") or project_key
+                ok2, _r2 = self._is_first_sync_approved(project_key=pk)
+                if ok2:
+                    continue
+                return {
+                    "ok": False,
+                    "kind": "first_sync_not_approved",
+                    "project_key": project_key,
+                    "reason_code": "first_sync_pending_admin_approval",
+                    "admin_approval_required": True,
+                    "guardrails": _guardrails(),
+                }
         updated: list[str] = []
         for source in sources:
             self._store.upsert_source_sync_state(
@@ -359,6 +444,34 @@ class ConnectionSetupService:
                         "last_attempted": st.get("last_attempted_sync_utc"),
                     }
                 )
+        # Prompt F: also scan Procore project identities pending first-sync approval
+        # Use stable connection_like_id "procore_{project_key}" so approve/reject routes work unchanged.
+        try:
+            from hb_assistant.construction.store.repositories import get_connection
+            conn = get_connection(self._db_path)
+            cur = conn.execute(
+                """
+                SELECT project_key, procore_project_id, project_name_raw, project_stage, last_seen_utc
+                FROM construction_project_identity
+                WHERE (project_stage IS NOT NULL AND (
+                    project_stage LIKE '%pending%' OR project_stage = 'setup_pending_admin_approval'
+                ))
+                """
+            )
+            for row in cur.fetchall():
+                pk = row[0]
+                pending.append(
+                    {
+                        "connection_like_id": f"procore_{pk}",
+                        "project_key": pk,
+                        "source_name": row[2] or pk,
+                        "sync_status": row[3] or "",
+                        "last_attempted": row[4],
+                    }
+                )
+        except Exception:
+            # best effort; do not break pending list if procore identities table/query varies
+            pass
         return {
             "surface": "analytics.sync_governance.pending_approvals",
             "count": len(pending),
@@ -691,6 +804,18 @@ class ConnectionSetupService:
             "connection_id": connection_id,
             "source_type": source_type,
             "first_sync_status": _APPROVED,
+            "first_sync_triggered": False,
+            "guardrails": _guardrails(),
+        }
+
+    # Prompt F: rejection response (symmetric, safe, first_sync_triggered never true)
+    def _rejection_response(connection_id: str, source_type: str) -> dict[str, Any]:
+        return {
+            "ok": True,
+            "kind": "first_sync_rejected",
+            "connection_id": connection_id,
+            "source_type": source_type,
+            "first_sync_status": "first_sync_rejected",
             "first_sync_triggered": False,
             "guardrails": _guardrails(),
         }

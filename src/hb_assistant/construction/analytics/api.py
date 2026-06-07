@@ -1063,6 +1063,19 @@ def create_app(*, db_path: str | None = None) -> Any:
         raw = ConnectionSetupService(db_path=db_path).approve_first_sync(connection_id)
         return AdminApprovalResponse(**{k: raw.get(k) for k in AdminApprovalResponse.model_fields if k in raw} | {"guardrails": raw.get("guardrails")})  # type: ignore[arg-type]
 
+    # Prompt F: normalized reject sibling (additive; admin only; first_sync_triggered remains false)
+    @app.post("/api/settings/connections/admin/{connection_id}/reject-first-sync")
+    def settings_connections_admin_reject(
+        connection_id: str,
+        role: dict[str, str] = role_dep,
+    ) -> AdminApprovalResponse:
+        require_admin_role(role)
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
+
+        raw = ConnectionSetupService(db_path=db_path).reject_first_sync(connection_id)
+        # Reuse the approval response shape for simplicity (kind distinguishes approved vs rejected)
+        return AdminApprovalResponse(**{k: raw.get(k) for k in AdminApprovalResponse.model_fields if k in raw} | {"guardrails": raw.get("guardrails")})  # type: ignore[arg-type]
+
     # Data-quality summary (all roles) and detail (admin). Safe projections; no raw content.
     @app.get("/api/settings/data-quality/summary")
     def settings_data_quality_summary(role: dict[str, str] = role_dep) -> DataQualitySummary:

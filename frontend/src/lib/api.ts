@@ -375,6 +375,37 @@ export function getProjectConnections() {
   return fetchJson('/api/settings/connections/projects');
 }
 
+/* Prompt F — Admin first-sync approval (normalized under /api/settings/connections/admin/*).
+ * Only admin role can approve or reject. Responses are safe (no tokens, no raw source data).
+ * first_sync_triggered is always false on these responses.
+ */
+export interface AdminApprovalResponse {
+  ok?: boolean;
+  kind?: string;
+  connection_id?: string;
+  source_type?: string;
+  first_sync_status?: string;
+  first_sync_triggered?: boolean;
+  guardrails?: any;
+  message?: string;
+  reason_code?: string; // safe error detail for not-ok cases (e.g. connection_not_found)
+}
+
+export function getAdminPendingApprovals() {
+  // Admin only (backend enforces); re-uses the existing settings admin-sync surface which returns pending list
+  return fetchJson('/api/settings/admin-sync');
+}
+
+export function approveFirstSyncAdmin(connectionId: string) {
+  const id = encodeURIComponent(connectionId);
+  return fetchJson<AdminApprovalResponse>(`/api/settings/connections/admin/${id}/approve-first-sync`, { method: 'POST' });
+}
+
+export function rejectFirstSyncAdmin(connectionId: string) {
+  const id = encodeURIComponent(connectionId);
+  return fetchJson<AdminApprovalResponse>(`/api/settings/connections/admin/${id}/reject-first-sync`, { method: 'POST' });
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
   getToday,
@@ -430,6 +461,10 @@ export const api = {
   previewProjectConnection,
   saveProjectConnection,
   getProjectConnections,
+  // Prompt F — admin first-sync approve/reject (admin role only; safe responses; eligibility enforced server-side)
+  getAdminPendingApprovals,
+  approveFirstSyncAdmin,
+  rejectFirstSyncAdmin,
 };
 
 export default api;
