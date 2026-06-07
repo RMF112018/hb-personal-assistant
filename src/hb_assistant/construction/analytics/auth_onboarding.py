@@ -119,6 +119,61 @@ class AuthOnboardingService:
                 "message": "Silent verification of cached Graph auth failed; re-auth may be required.",
             }
 
+    def graph_source_status(self) -> dict[str, Any]:
+        """Normalized, browser-safe Graph source status for /api/sources/graph/status.
+
+        Reuses ``graph_status()`` (offline; silent-MSAL only, never a Graph data API) and adds a
+        normalized ``state`` plus a missing-scope surface. Constructs no Graph data client.
+        """
+        from hb_assistant.auth.scope_policy import EXPECTED_GRAPH_SCOPES
+
+        base = self.graph_status()
+        token_type = base.get("token_type")
+        classification = base.get("classification")
+        if token_type == "delegated" and classification == "delegated_verified":
+            state = "connected_valid"
+        elif classification == "stale_reauth_required":
+            state = "reauth_required"
+        elif classification == "delegated_cache_present":
+            state = "cache_present_unverified"
+        else:
+            state = "not_connected"
+
+        diag = base.get("scope_diagnostics") or {}
+        present = {s.lower() for s in (diag.get("configured_scopes") or [])} | {
+            s.lower() for s in (base.get("scopes") or [])
+        }
+
+        def _satisfied(expected: str) -> bool:
+            # A read scope is satisfied by the same scope or a write-capable superset of the
+            # same resource (e.g. Calendars.ReadWrite.Shared satisfies Calendars.Read), since
+            # ReadWrite grants read. Exact match also satisfies.
+            resource = expected.split(".", 1)[0]
+            return any(p.startswith(f"{resource}.") and "read" in p for p in present)
+
+        missing = sorted(s for s in EXPECTED_GRAPH_SCOPES if not _satisfied(s))
+
+        return {
+            "surface": "analytics.sources.graph.status",
+            "system": "microsoft_365_graph",
+            "state": state,
+            "token_type": token_type,
+            "classification": classification,
+            "account": base.get("account"),
+            "tenant": base.get("tenant"),
+            "scopes": base.get("scopes"),
+            "expires_in_seconds_if_known": base.get("expires_in_seconds_if_known"),
+            "scope_presence": {
+                "expected": sorted(EXPECTED_GRAPH_SCOPES),
+                "missing": missing,
+                "all_present": not missing,
+            },
+            "scope_diagnostics": diag,
+            "next_step": base.get("next_step"),
+            "message": base.get("message"),
+            "guardrails": base.get("guardrails"),
+        }
+
     def start_graph_device_login(self) -> dict[str, Any]:
         provider = self._graph_provider()
         app = provider._get_app()  # noqa: SLF001 - existing auth primitive, no CLI shell-out.

@@ -844,6 +844,37 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return EnvironmentStatusService().build_sources_status()
 
+    @app.get("/api/sources/graph/status")
+    def sources_graph_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role  # all-roles; user-safe metadata only (no mail/calendar/files read)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().graph_source_status()
+
+    @app.post("/api/sources/graph/auth/start")
+    def sources_graph_auth_start(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().start_graph_device_auth()
+
+    @app.get("/api/sources/graph/auth/status")
+    def sources_graph_auth_status(
+        flow_id: str,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().poll_graph_device_auth_status(flow_id)
+
+    @app.post("/api/sources/graph/auth/refresh")
+    def sources_graph_auth_refresh(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)  # safe silent refresh only; never reads content or starts sync
+        from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
+
+        return AuthOnboardingService().attempt_auth_refresh(["graph"])
+
     @app.get("/api/settings/keywords")
     def settings_keywords(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role

@@ -143,6 +143,11 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         # P01 — Graph/Procore Dev UI: aggregate environment + source-status contracts
         "/api/environment",
         "/api/sources/status",
+        # P02 — Graph/Procore Dev UI: Microsoft Graph safe status + auth bridge
+        "/api/sources/graph/status",
+        "/api/sources/graph/auth/start",
+        "/api/sources/graph/auth/status",
+        "/api/sources/graph/auth/refresh",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 
