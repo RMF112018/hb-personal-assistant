@@ -26,6 +26,28 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _utc_older_than(earlier_iso: str, reference_iso: str, seconds: int) -> bool:
+    """True when ``earlier_iso`` is at least ``seconds`` before ``reference_iso``.
+
+    Used for retry-backoff eligibility. Unparseable timestamps are treated as eligible (True)
+    so a malformed receipt never permanently blocks a job.
+    """
+
+    def _parse(value: str) -> Optional[datetime]:
+        try:
+            text = value.replace("Z", "+00:00") if value.endswith("Z") else value
+            dt = datetime.fromisoformat(text)
+        except (ValueError, AttributeError):
+            return None
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
+    a = _parse(earlier_iso)
+    b = _parse(reference_iso)
+    if a is None or b is None:
+        return True
+    return (b - a).total_seconds() >= seconds
+
+
 class CalendarBatchApplyError(RuntimeError):
     """Calendar apply failed after producing a sanitized operation diagnostic."""
 
@@ -8020,6 +8042,467 @@ class ConstructionStore:
                     _utc_now(),
                 ),
             )
+
+    def insert_local_model_run_receipt(
+        self,
+        *,
+        model_run_receipt_id: str,
+        profile_id: str,
+        provider: str,
+        model_name: str,
+        task_type: str,
+        status: str,
+        input_context_hash: str,
+        output_hash: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        schema_valid: bool = False,
+        input_token_count: Optional[int] = None,
+        output_token_count: Optional[int] = None,
+        latency_ms: Optional[int] = None,
+        fallback_used: bool = False,
+    ) -> None:
+        """Persist a Phase 10 V41 ``local_model_run_receipts`` row (hashing-only).
+
+        This method is the only write path to the receipt table. By contract it accepts
+        **hashes and metadata only** — there is no parameter that can carry a raw prompt,
+        raw response, body, URL, token, or path. ``input_context_hash`` / ``output_hash``
+        are the SHA-256[:12] prefixes from ``procore.normalizers.hashing.hash_summary``.
+        The 13 no-raw / no-writeback guard columns are pinned to literal 0 (the schema CHECK
+        forbids any other value and the schema-status proof sums them to 0).
+        """
+        if not model_run_receipt_id or not profile_id or not provider or not model_name:
+            raise ValueError(
+                "model_run_receipt_id, profile_id, provider and model_name are required"
+            )
+        if not task_type or not status or not input_context_hash:
+            raise ValueError("task_type, status and input_context_hash are required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO local_model_run_receipts
+                    (model_run_receipt_id, profile_id, provider, model_name, task_type,
+                     status, input_context_hash, output_hash, schema_name, schema_valid,
+                     input_token_count, output_token_count, latency_ms, fallback_used,
+                     created_utc,
+                     raw_email_body_persisted, raw_document_text_persisted,
+                     raw_calendar_payload_persisted, raw_procore_payload_persisted,
+                     raw_prompt_persisted, raw_response_persisted, signed_url_persisted,
+                     download_url_persisted, external_writeback_performed,
+                     graph_writeback_performed, procore_writeback_performed,
+                     email_send_performed, calendar_mutation_performed)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+                """,
+                (
+                    model_run_receipt_id,
+                    profile_id,
+                    provider,
+                    model_name,
+                    task_type,
+                    status,
+                    input_context_hash,
+                    output_hash,
+                    schema_name,
+                    1 if schema_valid else 0,
+                    input_token_count,
+                    output_token_count,
+                    latency_ms,
+                    1 if fallback_used else 0,
+                    _utc_now(),
+                ),
+            )
+
+    def list_local_model_run_receipts(
+        self,
+        *,
+        profile_id: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """List run receipts (for tests/evidence). Hash-only fields."""
+        conn = get_connection(self._db_path)
+        sql = (
+            "SELECT model_run_receipt_id, profile_id, provider, model_name, task_type, "
+            "status, input_context_hash, output_hash, schema_name, schema_valid, "
+            "input_token_count, output_token_count, latency_ms, fallback_used, created_utc "
+            "FROM local_model_run_receipts WHERE 1=1"
+        )
+        params: list[Any] = []
+        if profile_id is not None:
+            sql += " AND profile_id = ?"
+            params.append(profile_id)
+        sql += " ORDER BY created_utc DESC LIMIT ?"
+        params.append(int(limit))
+        keys = (
+            "model_run_receipt_id",
+            "profile_id",
+            "provider",
+            "model_name",
+            "task_type",
+            "status",
+            "input_context_hash",
+            "output_hash",
+            "schema_name",
+            "schema_valid",
+            "input_token_count",
+            "output_token_count",
+            "latency_ms",
+            "fallback_used",
+            "created_utc",
+        )
+        rows = [
+            dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()
+        ]
+        for r in rows:
+            r["schema_valid"] = bool(r["schema_valid"])
+            r["fallback_used"] = bool(r["fallback_used"])
+        return rows
+
+    def ai_job_status_summary(
+        self,
+        *,
+        environment: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Read-only Phase 10 AI-job posture: queue counts by status + recent run aggregates.
+
+        Scoped by ``environment`` (dev/production isolation) when provided. Uses the
+        ``ix_ai_job_queue_env_status`` index. Metadata/counts only — no payloads, no raw.
+        """
+        conn = get_connection(self._db_path)
+
+        q_sql = "SELECT status, COUNT(*) FROM ai_job_queue WHERE 1=1"
+        q_params: list[Any] = []
+        if environment is not None:
+            q_sql += " AND environment = ?"
+            q_params.append(environment)
+        q_sql += " GROUP BY status"
+        queue_by_status = {
+            str(row[0]): int(row[1]) for row in conn.execute(q_sql, tuple(q_params)).fetchall()
+        }
+        queue_total = sum(queue_by_status.values())
+
+        r_sql = (
+            "SELECT COUNT(*), "
+            "COALESCE(SUM(candidate_count),0), "
+            "COALESCE(SUM(accepted_count),0), "
+            "COALESCE(SUM(rejected_count),0), "
+            "COALESCE(SUM(CASE WHEN dry_run = 1 THEN 1 ELSE 0 END),0) "
+            "FROM ai_job_runs"
+        )
+        r_params: list[Any] = []
+        if environment is not None:
+            r_sql += (
+                " WHERE job_id IN (SELECT job_id FROM ai_job_queue WHERE environment = ?)"
+            )
+            r_params.append(environment)
+        rrow = conn.execute(r_sql, tuple(r_params)).fetchone()
+        runs = {
+            "run_count": int(rrow[0]),
+            "candidate_count": int(rrow[1]),
+            "accepted_count": int(rrow[2]),
+            "rejected_count": int(rrow[3]),
+            "dry_run_count": int(rrow[4]),
+        }
+        return {
+            "environment": environment,
+            "queue_total": queue_total,
+            "queue_by_status": queue_by_status,
+            "runs": runs,
+        }
+
+    # -- Phase 10 Prompt 05: AI job queue + run lifecycle (advisory, local-only) -------------
+    def enqueue_ai_job(
+        self,
+        *,
+        job_id: str,
+        environment: str,
+        job_type: str,
+        idempotency_key: str,
+        priority: int = 100,
+        source_watermark: Optional[str] = None,
+        payload_json: str = "{}",
+        max_retries: int = 2,
+        status: str = "queued",
+    ) -> bool:
+        """Idempotent enqueue into V41 ``ai_job_queue`` (metadata only).
+
+        Keyed by ``UNIQUE(environment, job_type, idempotency_key)`` via INSERT OR IGNORE — returns
+        True when a new row was created, False when an equivalent job already exists. The 13 no-raw /
+        no-writeback guard columns are pinned to literal 0.
+        """
+        if not job_id or not environment or not job_type or not idempotency_key:
+            raise ValueError("job_id, environment, job_type and idempotency_key are required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                INSERT OR IGNORE INTO ai_job_queue
+                    (job_id, environment, job_type, status, priority, idempotency_key,
+                     source_watermark, payload_json, queued_utc, retry_count, max_retries,
+                     raw_email_body_persisted, raw_document_text_persisted,
+                     raw_calendar_payload_persisted, raw_procore_payload_persisted,
+                     raw_prompt_persisted, raw_response_persisted, signed_url_persisted,
+                     download_url_persisted, external_writeback_performed,
+                     graph_writeback_performed, procore_writeback_performed,
+                     email_send_performed, calendar_mutation_performed)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+                """,
+                (
+                    job_id,
+                    environment,
+                    job_type,
+                    status,
+                    int(priority),
+                    idempotency_key,
+                    source_watermark,
+                    payload_json,
+                    _utc_now(),
+                    int(max_retries),
+                ),
+            )
+            return cur.rowcount > 0
+
+    def claim_eligible_ai_jobs(
+        self,
+        *,
+        environment: str,
+        limit: int,
+        backoff_seconds: int = 0,
+        now: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """Return queued jobs eligible to run (read-only; the caller transitions them).
+
+        A job is eligible when ``status='queued'``, ``retry_count < max_retries``, and it has no
+        prior run *or* its latest ``ai_job_runs.finished_utc`` is older than ``backoff_seconds``.
+        Ordered ``priority ASC, queued_utc ASC``. Metadata only.
+        """
+        conn = get_connection(self._db_path)
+        now_s = now or _utc_now()
+        rows = conn.execute(
+            """
+            SELECT q.job_id, q.environment, q.job_type, q.status, q.priority,
+                   q.idempotency_key, q.source_watermark, q.payload_json, q.queued_utc,
+                   q.retry_count, q.max_retries, q.last_error_redacted,
+                   (SELECT MAX(r.finished_utc) FROM ai_job_runs r WHERE r.job_id = q.job_id)
+                       AS latest_run_finished_utc
+            FROM ai_job_queue q
+            WHERE q.environment = ? AND q.status = 'queued' AND q.retry_count < q.max_retries
+            ORDER BY q.priority ASC, q.queued_utc ASC
+            """,
+            (environment,),
+        ).fetchall()
+        keys = (
+            "job_id",
+            "environment",
+            "job_type",
+            "status",
+            "priority",
+            "idempotency_key",
+            "source_watermark",
+            "payload_json",
+            "queued_utc",
+            "retry_count",
+            "max_retries",
+            "last_error_redacted",
+            "latest_run_finished_utc",
+        )
+        eligible: list[dict[str, Any]] = []
+        for row in rows:
+            rec = dict(zip(keys, row, strict=True))
+            last = rec.get("latest_run_finished_utc")
+            if last and backoff_seconds > 0 and not _utc_older_than(last, now_s, backoff_seconds):
+                continue  # within backoff window — skip until eligible
+            eligible.append(rec)
+            if len(eligible) >= int(limit):
+                break
+        return eligible
+
+    def mark_ai_job_running(self, *, job_id: str, now: Optional[str] = None) -> bool:
+        """Transition a queued job to ``running`` and stamp ``started_utc``."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                "UPDATE ai_job_queue SET status = 'running', started_utc = ? WHERE job_id = ?",
+                (now or _utc_now(), job_id),
+            )
+            return cur.rowcount > 0
+
+    def complete_ai_job(
+        self,
+        *,
+        job_id: str,
+        status: str,
+        error_redacted: Optional[str] = None,
+        increment_retry: bool = False,
+        now: Optional[str] = None,
+    ) -> bool:
+        """Finalize a job's queue row: set status (+ optional redacted error), stamp finished_utc.
+
+        When ``increment_retry`` is True, ``retry_count`` is bumped (used when a failed job is
+        returned to ``queued`` for a backoff retry). ``error_redacted`` must be a short category
+        code — never raw error text.
+        """
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            if increment_retry:
+                cur = conn.execute(
+                    "UPDATE ai_job_queue SET status = ?, last_error_redacted = ?, "
+                    "finished_utc = ?, retry_count = retry_count + 1 WHERE job_id = ?",
+                    (status, error_redacted, now or _utc_now(), job_id),
+                )
+            else:
+                cur = conn.execute(
+                    "UPDATE ai_job_queue SET status = ?, last_error_redacted = ?, "
+                    "finished_utc = ? WHERE job_id = ?",
+                    (status, error_redacted, now or _utc_now(), job_id),
+                )
+            return cur.rowcount > 0
+
+    def insert_ai_job_run(
+        self,
+        *,
+        run_id: str,
+        job_id: str,
+        run_kind: str,
+        status: str,
+        dry_run: bool,
+        profile_id: Optional[str] = None,
+        started_utc: Optional[str] = None,
+    ) -> None:
+        """Open a V41 ``ai_job_runs`` receipt (metadata only; 13 guards pinned to 0)."""
+        if not run_id or not job_id or not run_kind or not status:
+            raise ValueError("run_id, job_id, run_kind and status are required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO ai_job_runs
+                    (run_id, job_id, run_kind, status, dry_run, profile_id, started_utc,
+                     raw_email_body_persisted, raw_document_text_persisted,
+                     raw_calendar_payload_persisted, raw_procore_payload_persisted,
+                     raw_prompt_persisted, raw_response_persisted, signed_url_persisted,
+                     download_url_persisted, external_writeback_performed,
+                     graph_writeback_performed, procore_writeback_performed,
+                     email_send_performed, calendar_mutation_performed)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+                """,
+                (
+                    run_id,
+                    job_id,
+                    run_kind,
+                    status,
+                    1 if dry_run else 0,
+                    profile_id,
+                    started_utc or _utc_now(),
+                ),
+            )
+
+    def complete_ai_job_run(
+        self,
+        *,
+        run_id: str,
+        status: str,
+        candidate_count: int = 0,
+        accepted_count: int = 0,
+        rejected_count: int = 0,
+        warning_count: int = 0,
+        blockers_json: str = "[]",
+        finished_utc: Optional[str] = None,
+    ) -> bool:
+        """Finalize an ``ai_job_runs`` receipt with counts + status (no raw)."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                UPDATE ai_job_runs SET
+                    status = ?, finished_utc = ?, candidate_count = ?, accepted_count = ?,
+                    rejected_count = ?, warning_count = ?, blockers_json = ?
+                WHERE run_id = ?
+                """,
+                (
+                    status,
+                    finished_utc or _utc_now(),
+                    int(candidate_count),
+                    int(accepted_count),
+                    int(rejected_count),
+                    int(warning_count),
+                    blockers_json,
+                    run_id,
+                ),
+            )
+            return cur.rowcount > 0
+
+    def list_ai_jobs(
+        self,
+        *,
+        environment: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """List ai_job_queue rows (metadata only; for status --list / tests)."""
+        conn = get_connection(self._db_path)
+        sql = (
+            "SELECT job_id, environment, job_type, status, priority, idempotency_key, "
+            "source_watermark, queued_utc, started_utc, finished_utc, retry_count, "
+            "max_retries, last_error_redacted FROM ai_job_queue WHERE 1=1"
+        )
+        params: list[Any] = []
+        if environment is not None:
+            sql += " AND environment = ?"
+            params.append(environment)
+        if status is not None:
+            sql += " AND status = ?"
+            params.append(status)
+        sql += " ORDER BY priority ASC, queued_utc ASC LIMIT ?"
+        params.append(int(limit))
+        keys = (
+            "job_id",
+            "environment",
+            "job_type",
+            "status",
+            "priority",
+            "idempotency_key",
+            "source_watermark",
+            "queued_utc",
+            "started_utc",
+            "finished_utc",
+            "retry_count",
+            "max_retries",
+            "last_error_redacted",
+        )
+        return [
+            dict(zip(keys, row, strict=True)) for row in conn.execute(sql, tuple(params)).fetchall()
+        ]
+
+    def latest_ai_job_run(self, job_id: str) -> Optional[dict[str, Any]]:
+        """Return the most recent ai_job_runs row for a job (metadata only) or None."""
+        conn = get_connection(self._db_path)
+        row = conn.execute(
+            "SELECT run_id, job_id, run_kind, status, dry_run, profile_id, started_utc, "
+            "finished_utc, candidate_count, accepted_count, rejected_count, warning_count "
+            "FROM ai_job_runs WHERE job_id = ? ORDER BY started_utc DESC LIMIT 1",
+            (job_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        keys = (
+            "run_id",
+            "job_id",
+            "run_kind",
+            "status",
+            "dry_run",
+            "profile_id",
+            "started_utc",
+            "finished_utc",
+            "candidate_count",
+            "accepted_count",
+            "rejected_count",
+            "warning_count",
+        )
+        rec = dict(zip(keys, row, strict=True))
+        rec["dry_run"] = bool(rec["dry_run"])
+        return rec
 
     def list_task_candidates(
         self,

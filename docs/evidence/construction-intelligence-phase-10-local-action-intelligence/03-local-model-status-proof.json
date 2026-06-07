@@ -1,0 +1,76 @@
+{
+  "command": "second-brain local-model status",
+  "phase": "10",
+  "generated_utc": "2026-06-07T21:33:44.396386+00:00",
+  "repo_sha": "f294eeac82d481fcf0a53f4f66dd4a2eff7bf3db",
+  "overall_status": "not_ready",
+  "provider": "mock",
+  "endpoint_url": "mock://local",
+  "endpoint_source": "mock",
+  "daemon_reachable": false,
+  "ready": false,
+  "present_models": [],
+  "required_models": [
+    "qwen3:14b"
+  ],
+  "missing_required_models": [
+    "qwen3:14b"
+  ],
+  "profiles": [
+    {
+      "profile_id": "fast_extract",
+      "model_name": "qwen3:8b",
+      "role": "bulk_triage_retry",
+      "enabled": false,
+      "heavy_profile": false,
+      "requires_explicit_enable": false,
+      "available": false,
+      "blocked_reason": "daemon_unreachable"
+    },
+    {
+      "profile_id": "default_extract",
+      "model_name": "qwen3:14b",
+      "role": "task_commitment_relationship_extraction",
+      "enabled": true,
+      "heavy_profile": false,
+      "requires_explicit_enable": false,
+      "available": false,
+      "blocked_reason": "daemon_unreachable"
+    },
+    {
+      "profile_id": "quality_reasoning",
+      "model_name": "gpt-oss:20b",
+      "role": "daily_brief_and_mcp_packet_synthesis",
+      "enabled": false,
+      "heavy_profile": false,
+      "requires_explicit_enable": true,
+      "available": false,
+      "blocked_reason": "daemon_unreachable"
+    },
+    {
+      "profile_id": "heavy_context",
+      "model_name": "qwen3:30b",
+      "role": "manual_on_demand_long_context_synthesis",
+      "enabled": false,
+      "heavy_profile": true,
+      "requires_explicit_enable": true,
+      "available": false,
+      "blocked_reason": "heavy_profile_requires_explicit_enable"
+    }
+  ],
+  "blockers": [
+    "daemon_unreachable"
+  ],
+  "heavy_enabled": false,
+  "suggested_pull_commands": [],
+  "error_redacted": "daemon_unreachable_mock",
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "live_generation": false,
+    "endpoint_path": "/api/tags",
+    "no_external_writeback": true,
+    "no_raw_persistence": true,
+    "heavy_profile_default_blocked": true
+  }
+}

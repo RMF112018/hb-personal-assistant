@@ -1,0 +1,93 @@
+{
+  "proof": "phase_10_structured_output_client_proof",
+  "command": "second-brain action-intel / ai-jobs (Prompt 04 client)",
+  "phase": "10",
+  "prompt": "04",
+  "generated_utc": "2026-06-07T21:33:43.682776+00:00",
+  "repo_sha": "f294eeac82d481fcf0a53f4f66dd4a2eff7bf3db",
+  "schema_version": 42,
+  "proof_passed": true,
+  "overall_status": "clean",
+  "gates": {
+    "fixtures_schema_valid": true,
+    "heavy_profile_blocked": true,
+    "unavailable_fallback_redacted": true,
+    "dry_run_zero_writes": true,
+    "apply_single_receipt": true,
+    "receipt_guards_clean": true,
+    "receipt_hash_only": true
+  },
+  "fixtures_validated": [
+    {
+      "fixture": "tests/fixtures/local_ai/email_task_candidate_001.json",
+      "ok": true,
+      "status": "ok",
+      "input_context_hash": "1047d6e40aa7",
+      "output_hash": "9fc885ddbd04"
+    },
+    {
+      "fixture": "tests/fixtures/local_ai/commitment_candidate_001.json",
+      "ok": true,
+      "status": "ok",
+      "input_context_hash": "1de5efd3d99a",
+      "output_hash": "bb7de0164864"
+    },
+    {
+      "fixture": "tests/fixtures/local_ai/follow_up_monitor_001.json",
+      "ok": true,
+      "status": "ok",
+      "input_context_hash": "44136fa355b3",
+      "output_hash": "4e7e82574fae"
+    },
+    {
+      "fixture": "tests/fixtures/local_ai/relationship_candidate_001.json",
+      "ok": true,
+      "status": "ok",
+      "input_context_hash": "44136fa355b3",
+      "output_hash": "5462543549d9"
+    }
+  ],
+  "receipt_sample": {
+    "model_run_receipt_id": "1a0fd3a225e644c8b834966ea3aea5ed",
+    "profile_id": "default_extract",
+    "provider": "ollama",
+    "model_name": "qwen3:14b",
+    "task_type": "extract_email_tasks",
+    "status": "ok",
+    "input_context_hash": "0230c6b1d833",
+    "output_hash": "9fc885ddbd04",
+    "schema_name": "ActionCandidate",
+    "schema_valid": true,
+    "input_token_count": null,
+    "output_token_count": null,
+    "latency_ms": 0,
+    "fallback_used": false,
+    "created_utc": "2026-06-07T21:33:43.677034+00:00"
+  },
+  "guard_columns": [
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_procore_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
+    "graph_writeback_performed",
+    "procore_writeback_performed",
+    "email_send_performed",
+    "calendar_mutation_performed"
+  ],
+  "guard_sum": 0,
+  "guardrails": {
+    "local_only": true,
+    "schema_validation_required": true,
+    "no_raw_persistence": true,
+    "no_external_writeback": true,
+    "receipts_hash_only": true,
+    "heavy_profile_default_blocked": true,
+    "dry_run_default": true,
+    "errors_redacted": true
+  }
+}

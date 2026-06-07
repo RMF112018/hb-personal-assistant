@@ -7505,7 +7505,7 @@ def phase_10_schema_status(
 
 @phase_10_app.command("raw-email-packet")
 def phase_10_raw_email_packet(
-    project: "str | None" = typer.Option(
+    project: "str | None" = typer.Option(  # noqa: B008
         None, "--project", help="Project key filter for raw email content."
     ),  # noqa: B008
     json_out: bool = typer.Option(True, "--json", help="Emit the packet as JSON (default)."),  # noqa: B008
@@ -7538,7 +7538,7 @@ def phase_10_raw_email_packet(
 
 @phase_10_app.command("raw-calendar-packet")
 def phase_10_raw_calendar_packet(
-    project: "str | None" = typer.Option(
+    project: "str | None" = typer.Option(  # noqa: B008
         None, "--project", help="Project key filter for raw calendar content."
     ),  # noqa: B008
     json_out: bool = typer.Option(True, "--json", help="Emit the packet as JSON (default)."),  # noqa: B008
@@ -7656,13 +7656,13 @@ def phase_10_raw_action_candidates(
 
 @phase_10_app.command("list-candidates")
 def phase_10_list_candidates(
-    project: "str | None" = typer.Option(
+    project: "str | None" = typer.Option(  # noqa: B008
         None, "--project", help="Project key filter for candidates."
     ),  # noqa: B008
     candidate_type: str = typer.Option(
         "both", "--type", help="task|commitment|both (default both)."
     ),  # noqa: B008
-    review_status: "str | None" = typer.Option(
+    review_status: "str | None" = typer.Option(  # noqa: B008
         "pending", "--review-status", help="Filter by review_status (e.g. pending, accepted)."
     ),  # noqa: B008
     limit: int = typer.Option(100, "--limit", help="Max rows (bounded)."),  # noqa: B008
@@ -7871,7 +7871,7 @@ def phase_10_review_candidate(
     decision: str = typer.Option(
         ..., "--decision", help="pending|accepted|ignored|snoozed|rejected (maps to review_status)."
     ),  # noqa: B008
-    reason: "str | None" = typer.Option(
+    reason: "str | None" = typer.Option(  # noqa: B008
         None, "--reason", help="Redacted operator note for the decision."
     ),  # noqa: B008
     emit: bool = typer.Option(
@@ -7977,7 +7977,7 @@ def phase_10_review_candidate(
 
 @phase_10_app.command("obsidian-raw-export")
 def phase_10_obsidian_raw_export(
-    project: "str | None" = typer.Option(
+    project: "str | None" = typer.Option(  # noqa: B008
         None, "--project", help="Project key to scope raw packets for export."
     ),  # noqa: B008
     date: "str | None" = typer.Option(None, "--date", help="Brief date or note date (YYYY-MM-DD)."),  # noqa: B008
@@ -8156,6 +8156,9 @@ def ai_jobs_status(
     environment: "str | None" = typer.Option(  # noqa: B008
         None, "--environment", help="dev|production. Scopes queue/run counts (isolation)."
     ),
+    list_jobs: bool = typer.Option(  # noqa: B008
+        False, "--list", help="Also list queued/running job rows (metadata only)."
+    ),
     db: "str | None" = typer.Option(  # noqa: B008
         None, "--db", help="Explicit SQLite path (tests/isolation). Default: ambient app DB."
     ),
@@ -8165,7 +8168,8 @@ def ai_jobs_status(
     from hb_assistant.construction.store import ConstructionStore
 
     try:
-        summary = ConstructionStore(db_path=db).ai_job_status_summary(environment=environment)
+        store = ConstructionStore(db_path=db)
+        summary = store.ai_job_status_summary(environment=environment)
         payload: dict[str, Any] = {
             "command": "second-brain ai-jobs status",
             "ok": True,
@@ -8176,6 +8180,8 @@ def ai_jobs_status(
                 "environment_isolated": True,
             },
         }
+        if list_jobs:
+            payload["jobs"] = store.list_ai_jobs(environment=environment, limit=200)
     except Exception as e:
         payload = {
             "command": "second-brain ai-jobs status",
@@ -8189,127 +8195,109 @@ def ai_jobs_status(
     raise typer.Exit(0)
 
 
-@ai_jobs_app.command("run")
-def ai_jobs_run(
-    fixtures_dir: str = typer.Option(  # noqa: B008
-        "tests/fixtures/local_ai",
-        "--fixtures-dir",
-        help="Directory of local_ai fixtures to exercise the structured-output client against.",
+@ai_jobs_app.command("enqueue")
+def ai_jobs_enqueue(
+    job_type: str = typer.Option(  # noqa: B008
+        ..., "--job-type", help="Job type (must be in the Phase 10 ai_job_contract)."
     ),
-    max_items: int = typer.Option(10, "--max-items", help="Cap fixtures processed this run."),  # noqa: B008
-    profile_id: str = typer.Option(  # noqa: B008
-        "default_extract", "--profile", help="Local model profile to resolve for the run."
+    environment: str = typer.Option(  # noqa: B008
+        "dev", "--environment", help="dev|production (row-level isolation)."
+    ),
+    idempotency_key: "str | None" = typer.Option(  # noqa: B008
+        None, "--idempotency-key", help="Idempotency key; defaults to a deterministic daily hash."
+    ),
+    priority: int = typer.Option(100, "--priority", help="Lower runs first."),  # noqa: B008
+    source_watermark: "str | None" = typer.Option(  # noqa: B008
+        None, "--source-watermark", help="Optional source watermark recorded on the job."
+    ),
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Explicit SQLite path (tests/isolation). Default: ambient app DB."
     ),
     dry_run: bool = typer.Option(  # noqa: B008
         True,
         "--dry-run/--apply",
-        help="Preview only (default). --apply is blocked in Phase 10 Prompt 04 (advisory-only).",
+        help="Preview only (default). --apply writes the queue row (idempotent).",
     ),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
 ) -> None:
-    """Dry-run the structured-output client over local fixtures; report counts + blockers.
+    """Idempotently enqueue an AI job into the V41 ai_job_queue (advisory; metadata only).
 
-    No DB writes, no enqueue, no run row — strictly advisory. Each fixture is validated against the
-    ActionCandidate schema via a deterministic offline backend; would-be hash-only receipt fields
-    are surfaced but never persisted. --apply is intentionally not enabled in Prompt 04.
+    Dry-run (default) previews the would-be row and writes nothing. --apply inserts the row keyed by
+    UNIQUE(environment, job_type, idempotency_key); a duplicate is a no-op. No raw, no writeback.
     """
-    import pathlib
-
-    from hb_assistant.construction.second_brain.local_ai import (
-        ActionCandidate,
-        StaticOutputClient,
-        StructuredOutputClient,
-        action_candidate_dict_from_fixture,
-        load_local_model_profiles,
-    )
-
-    blockers: list[str] = []
-    if not dry_run:
-        blockers.append("apply_not_enabled_in_p04")
-        payload: dict[str, Any] = {
-            "command": "second-brain ai-jobs run",
-            "ok": False,
-            "dry_run": False,
-            "status": "blocked",
-            "blockers": blockers,
-            "note": "Prompt 04 is advisory-only; the apply/enqueue lifecycle lands in a later prompt.",
-        }
-        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
-        raise typer.Exit(2)
+    from hb_assistant.construction.second_brain.local_ai import enqueue_ai_job_request
+    from hb_assistant.construction.store import ConstructionStore
 
     try:
-        profiles = load_local_model_profiles()
-        profile = next((p for p in profiles.profiles if p.profile_id == profile_id), None)
-        if profile is None:
-            raise ValueError(f"unknown profile_id {profile_id!r}")
-        client = StructuredOutputClient()
-        base = pathlib.Path(fixtures_dir)
-        fixture_paths = sorted(base.glob("*.json"))[: max(0, int(max_items))]
-        produced = 0
-        valid = 0
-        items: list[dict[str, Any]] = []
-        for fp in fixture_paths:
-            try:
-                fixture = json.loads(fp.read_text(encoding="utf-8"))
-            except Exception:
-                blockers.append(f"unreadable_fixture:{fp.name}")
-                continue
-            produced += 1
-            candidate = action_candidate_dict_from_fixture(fixture)
-            result = client.run(
-                schema=ActionCandidate,
-                profile=profile,
-                profiles=profiles,
-                system="dry-run structured extraction",
-                prompt="extract action candidate",
-                input_context=json.dumps(fixture.get("input_redacted", {}), sort_keys=True),
-                task_type="extract_email_tasks",
-                backend=StaticOutputClient(json.dumps(candidate)),
-                store=None,
-                dry_run=True,
-            )
-            if result.schema_valid:
-                valid += 1
-            items.append(
-                {
-                    "fixture": fp.name,
-                    "status": result.status,
-                    "schema_valid": result.schema_valid,
-                    "input_context_hash": result.input_context_hash,
-                    "output_hash": result.output_hash,
-                    "would_write_receipt": result.would_write_receipt,
-                }
-            )
+        result = enqueue_ai_job_request(
+            store=ConstructionStore(db_path=db),
+            job_type=job_type,
+            environment=environment,
+            idempotency_key=idempotency_key,
+            priority=priority,
+            source_watermark=source_watermark,
+            dry_run=dry_run,
+        )
+        payload: dict[str, Any] = {"command": "second-brain ai-jobs enqueue", **result}
+    except Exception as e:
         payload = {
-            "command": "second-brain ai-jobs run",
-            "ok": True,
-            "dry_run": True,
-            "profile_id": profile_id,
-            "produced": produced,
-            "schema_valid": valid,
-            "persisted": 0,
-            "blockers": blockers,
-            "items": items,
-            "guardrails": {
-                "local_only": True,
-                "advisory_only": True,
-                "dry_run_zero_writes": True,
-                "no_enqueue": True,
-                "receipts_hash_only_when_applied": True,
-            },
+            "command": "second-brain ai-jobs enqueue",
+            "ok": False,
+            "status": "enqueue_error",
+            "error": str(e)[:300],
         }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if payload.get("ok") else 2)
+
+
+@ai_jobs_app.command("run")
+def ai_jobs_run(
+    environment: str = typer.Option(  # noqa: B008
+        "dev", "--environment", help="dev|production. Scopes claimed jobs + the no-overlap lock."
+    ),
+    max_items: int = typer.Option(10, "--max-items", help="Cap jobs claimed this run."),  # noqa: B008
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Explicit SQLite path (tests/isolation). Default: ambient app DB."
+    ),
+    dry_run: bool = typer.Option(  # noqa: B008
+        True,
+        "--dry-run/--apply",
+        help="Preview only (default; zero writes). --apply runs jobs + writes receipts.",
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Claim + run eligible queued AI jobs under a no-overlap lock (retry/backoff; dry-run default).
+
+    Dry-run claims and simulates with zero writes. --apply transitions jobs (running→succeeded /
+    failed→retry), writes ai_job_runs + hash-only local_model_run_receipts, and respects
+    max_concurrent_jobs=1 via a per-environment file lock. Local-only, advisory, no writeback.
+    """
+    from hb_assistant.construction.second_brain.local_ai import run_ai_jobs
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        result = run_ai_jobs(
+            store=ConstructionStore(db_path=db),
+            environment=environment,
+            max_items=max_items,
+            dry_run=dry_run,
+        )
+        payload: dict[str, Any] = {"command": "second-brain ai-jobs run", **result}
     except Exception as e:
         payload = {
             "command": "second-brain ai-jobs run",
             "ok": False,
-            "dry_run": True,
+            "dry_run": dry_run,
             "status": "run_error",
             "error": str(e)[:300],
         }
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
         raise typer.Exit(1) from None
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
-    raise typer.Exit(0)
+    # Exit 2 when a run was blocked by an in-progress run (no-overlap); 0 otherwise.
+    raise typer.Exit(0 if payload.get("ok") else 2)
 
 
 @action_intel_app.command("extract-fixture")

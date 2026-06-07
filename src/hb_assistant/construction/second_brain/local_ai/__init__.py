@@ -8,6 +8,7 @@ read-only contracts proof. No Ollama call, no DB schema, no job execution, no wr
 
 from __future__ import annotations
 
+from .ai_jobs import enqueue_ai_job_request, run_ai_jobs
 from .contracts import (
     PHASE_10_CONTRACT_FILES,
     PHASE_10_SEED_FILES,
@@ -31,12 +32,20 @@ from .models import (
     RawContentPolicy,
 )
 from .proof import Phase10ProofError, build_phase_10_contracts_proof
+from .provider import build_local_model_status
 from .raw_action_intelligence import (
     extract_action_candidates_from_raw,
 )
 from .raw_context import (
     build_raw_calendar_context_packet,
     build_raw_email_context_packet,
+)
+from .structured_output import (
+    GenerationBackend,
+    StaticOutputClient,
+    StructuredOutputClient,
+    StructuredOutputResult,
+    action_candidate_dict_from_fixture,
 )
 
 __all__ = [
@@ -65,4 +74,15 @@ __all__ = [
     "build_raw_calendar_context_packet",
     # Prompt 07: action intelligence from raw content (strict schema + business contract + retry/repair)
     "extract_action_candidates_from_raw",
+    # Prompt 03: local model readiness status (probe-only)
+    "build_local_model_status",
+    # Prompt 04: schema-enforced structured-output client + hash-only receipts
+    "StructuredOutputClient",
+    "StructuredOutputResult",
+    "StaticOutputClient",
+    "GenerationBackend",
+    "action_candidate_dict_from_fixture",
+    # Prompt 05: AI job queue enqueue + run lifecycle (no-overlap, retry/backoff, receipts)
+    "enqueue_ai_job_request",
+    "run_ai_jobs",
 ]
