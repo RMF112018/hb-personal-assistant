@@ -184,3 +184,5 @@ cython_debug/
 .tmp-app-support-remediation/db/hb-personal-assistant.sqlite
 .code-graph/daemon.pid
 .code-graph/graph.bin
+/.claude
+/.code-graph
