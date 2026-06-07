@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { MainNavigation } from './MainNavigation'
 import { SupportNavigation } from './SupportNavigation'
 import { PageHeader } from './PageHeader'
+import { DataQualityIndicator } from '../components/layout/DataQualityIndicator'
 import { useTheme } from '../app/providers'
 import { Moon, Sun, Monitor, Menu } from 'lucide-react'
 import { useState } from 'react'
@@ -33,6 +34,10 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
         <MainNavigation currentPath={location.pathname} />
         <div className="mt-auto pt-4">
           <SupportNavigation currentPath={location.pathname} />
+          {/* Prompt G: sidebar footer Data Quality indicator (non-admin, simple dot + hover; admin detail in Settings) */}
+          <div className="pt-2 border-t border-[var(--hb-border)] mt-2">
+            <DataQualityIndicator />
+          </div>
         </div>
       </aside>
       {/* Mobile sidebar overlay (click to close) */}

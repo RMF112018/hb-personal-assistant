@@ -1076,40 +1076,39 @@ def create_app(*, db_path: str | None = None) -> Any:
         # Reuse the approval response shape for simplicity (kind distinguishes approved vs rejected)
         return AdminApprovalResponse(**{k: raw.get(k) for k in AdminApprovalResponse.model_fields if k in raw} | {"guardrails": raw.get("guardrails")})  # type: ignore[arg-type]
 
-    # Data-quality summary (all roles) and detail (admin). Safe projections; no raw content.
+    # Prompt G: Data-quality summary (all roles) and detail (admin). Safe projections; no raw content.
+    # Implementation delegates to ConnectionSetupService (post-F approval + freshness aware) so the
+    # indicator and detail reflect saved project connections, pending/approved/rejected state, and
+    # last sync timestamps. Conservative degrade if freshness cannot be proven. The broad admin
+    # confidence summary (phase gates etc.) remains available under /api/admin/* surfaces.
     @app.get("/api/settings/data-quality/summary")
     def settings_data_quality_summary(role: dict[str, str] = role_dep) -> DataQualitySummary:
         del role
-        # Reuse admin confidence summary logic but project to a compact sidebar-safe shape.
-        from hb_assistant.construction.analytics.service import AnalyticsService
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
 
-        conf = AnalyticsService(db_path=db_path).build_admin_confidence_summary()
-        status_counts = (conf.get("status_counts") or {})
-        # Heuristic mapping: if any unavailable, degrade; else good when schema_ready.
-        overall = DataQualityStatus.good
-        if not conf.get("schema_ready") or any(v for k, v in status_counts.items() if "unavailable" in str(k).lower()):
-            overall = DataQualityStatus.degraded
+        dq = ConnectionSetupService(db_path=db_path).build_data_quality_summary()
         return DataQualitySummary(
-            status=overall,
-            last_updated_at=conf.get("generated_utc"),
-            message="See Admin Data Confidence for source-by-source diagnostics.",
-            admin_detail_available=True,
+            status=dq.get("status", "unknown"),
+            label=dq.get("label", "Data Quality"),
+            last_updated_at=dq.get("last_updated_at"),
+            message=dq.get("message"),
+            admin_detail_available=bool(dq.get("admin_detail_available", True)),
         )
 
     @app.get("/api/settings/data-quality/detail")
     def settings_data_quality_detail(role: dict[str, str] = role_dep) -> DataQualityDetail:
         require_admin_role(role)
-        from hb_assistant.construction.analytics.service import AnalyticsService
+        from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService
 
-        conf = AnalyticsService(db_path=db_path).build_admin_confidence_summary()
+        dq = ConnectionSetupService(db_path=db_path).build_data_quality_detail()
         return DataQualityDetail(
-            surface="analytics.settings.data_quality.detail",
-            generated_utc=conf.get("generated_utc"),
-            summary={"status_counts": conf.get("status_counts"), "metric_count": conf.get("metric_count")},
-            sources=[],
-            attention_items=[],
-            advisory_notes=["Admin-only data quality detail. Advisory metadata; see individual /api/admin/* sections for drill-down."],
-            guardrails=conf.get("guardrails"),
+            surface=dq.get("surface", "analytics.settings.data_quality.detail"),
+            generated_utc=dq.get("generated_utc"),
+            summary=dq.get("summary"),
+            sources=dq.get("sources", []),
+            attention_items=dq.get("attention_items", []),
+            advisory_notes=dq.get("advisory_notes", []),
+            guardrails=dq.get("guardrails"),
         )
 
     return app

@@ -406,6 +406,38 @@ export function rejectFirstSyncAdmin(connectionId: string) {
   return fetchJson<AdminApprovalResponse>(`/api/settings/connections/admin/${id}/reject-first-sync`, { method: 'POST' });
 }
 
+/* Prompt G — Data Quality readiness/freshness surfaces (normalized /api/settings/data-quality/*).
+ * Summary is safe for all roles (sidebar indicator + embedded in readiness).
+ * Detail is admin-only (source-by-source approval/freshness/attention, advisory notes).
+ * Responses are safe: no tokens, secrets, cache paths, raw payloads, signed URLs, or raw content.
+ * Statuses: good | degraded | poor | unknown (conservative; degrade when freshness cannot be proven).
+ */
+export interface DataQualitySummary {
+  status?: string; // good | degraded | poor | unknown
+  label?: string; // "Data Quality"
+  last_updated_at?: string | null;
+  message?: string | null;
+  admin_detail_available?: boolean;
+}
+
+export interface DataQualityDetail {
+  surface?: string;
+  generated_utc?: string | null;
+  summary?: any;
+  sources?: any[];
+  attention_items?: any[];
+  advisory_notes?: string[];
+  guardrails?: any;
+}
+
+export function getDataQualitySummary() {
+  return fetchJson<DataQualitySummary>('/api/settings/data-quality/summary');
+}
+
+export function getDataQualityDetail() {
+  return fetchJson<DataQualityDetail>('/api/settings/data-quality/detail');
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
   getToday,
@@ -465,6 +497,9 @@ export const api = {
   getAdminPendingApprovals,
   approveFirstSyncAdmin,
   rejectFirstSyncAdmin,
+  // Prompt G — data quality summary (all roles) + admin detail (safe, approval/freshness per source)
+  getDataQualitySummary,
+  getDataQualityDetail,
 };
 
 export default api;

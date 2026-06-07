@@ -24,6 +24,7 @@ import {
 import { AccountConnectionsPanel } from '../components/settings/AccountConnectionsPanel'
 import { ProjectConnectionsPanel } from '../components/settings/ProjectConnectionsPanel'
 import { AdminFirstSyncApprovalPanel } from '../components/settings/AdminFirstSyncApprovalPanel'
+import { getDataQualityDetail } from '../lib/api'
 
 // Settings (Prompt 20 polish): guided local-first onboarding and preferences.
 // Sections: Account Connections, Project Connections, Daily Brief (external AI writes the .md; this app only detects/presents),
@@ -602,6 +603,30 @@ export function SettingsPage() {
         </button>
         {adminPatchMsg && <div className="text-xs mt-1 text-green-600">{adminPatchMsg}</div>}
         <div className="text-xs mt-1">Pending first-sync approvals for all connection types (Procore + Microsoft sources). Only admins can approve or reject. These actions do not start sync.</div>
+
+        {/* Prompt G: admin-only data quality diagnostics (source-by-source readiness/freshness/approval).
+            Uses the same safe /detail surface. Non-admin callers get 403 (backend). This does not start sync. */}
+        <div className="mt-3 pt-2 border-t border-[var(--hb-border)]">
+          <div className="font-medium mb-1 text-xs">Data Quality Diagnostics (admin only)</div>
+          <button
+            className="badge"
+            onClick={async () => {
+              setAdminPatchMsg(null)
+              try {
+                const d = await getDataQualityDetail()
+                // Render a compact safe summary in place of raw (reuse patch msg area for brevity; real render below)
+                const srcCount = (d?.sources || []).length || 0
+                const attCount = (d?.attention_items || []).length || 0
+                setAdminPatchMsg(`DQ: ${d?.summary?.status || 'unknown'} • sources:${srcCount} • attention:${attCount}`)
+              } catch (e: any) {
+                setAdminPatchMsg('Admin only: ' + (e?.message || e))
+              }
+            }}
+          >
+            Load Data Quality detail (admin)
+          </button>
+          <div className="text-xs mt-1">Source-by-source approval/freshness/attention (safe metadata). Advisory only.</div>
+        </div>
       </div>
 
       <div className="card">

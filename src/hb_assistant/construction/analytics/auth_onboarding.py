@@ -688,9 +688,28 @@ class AuthOnboardingService:
             main_allowed = bool(has_prior_setup)
             get_started = not main_allowed
 
+        # Prompt G: replace the prior stub with unified computation from ConnectionSetupService
+        # (approval stages + freshness from saved sources/identities). Falls back to simple
+        # has_prior_setup heuristic only if no db_path or service unavailable.
+        # The embedded shape stays identical so OnboardingReadinessResponse consumers are unaffected.
         dq_status = "unknown"
         dq_msg = "No approved source data has been collected yet."
-        if has_prior_setup:
+        dq_last: str | None = None
+        if db_path:
+            try:
+                from hb_assistant.construction.analytics.connection_setup import ConnectionSetupService  # noqa: I001
+
+                dq = ConnectionSetupService(db_path=db_path).build_data_quality_summary()
+                if isinstance(dq, dict):
+                    dq_status = dq.get("status") or dq_status
+                    dq_msg = dq.get("message") or dq_msg
+                    dq_last = dq.get("last_updated_at")
+            except Exception:
+                # degrade conservatively; do not break readiness
+                if has_prior_setup:
+                    dq_status = "degraded"
+                    dq_msg = "Sources are present; see Admin Data Confidence for details."
+        elif has_prior_setup:
             dq_status = "good"
             dq_msg = "Sources are present; see Admin Data Confidence for details."
 
@@ -704,7 +723,7 @@ class AuthOnboardingService:
             "data_quality": {
                 "status": dq_status,
                 "label": "Data Quality",
-                "last_updated_at": None,
+                "last_updated_at": dq_last,
                 "message": dq_msg,
             },
             "guardrails": _auth_guardrails(),
