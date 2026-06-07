@@ -249,6 +249,7 @@ def run_operational_validation(
                     "--lookback-days",
                     str(lookback_days),
                     "--include-encrypted-body",
+                    "--include-raw-content",
                     "--json",
                 ],
             )

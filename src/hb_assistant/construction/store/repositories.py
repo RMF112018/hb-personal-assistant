@@ -7157,6 +7157,145 @@ class ConstructionStore:
             record[bool_field] = bool(record[bool_field])
         return record
 
+    # --- Phase 10A raw content tables (Prompt 03/04 email+calendar raw ingestion) ---
+    # Plaintext raw bodies (when policy email_calendar / include flag) live ONLY here.
+    # These are exempt from the Phase 10 13-guard CHECK columns (the designated holders).
+    # Idempotent upserts; callers (indexer) enforce policy and bounded budgets.
+
+    def upsert_email_message_raw_content(
+        self,
+        *,
+        raw_email_id: str,
+        message_id_hash: str,
+        internet_message_id_hash: Optional[str] = None,
+        conversation_id_hash: Optional[str] = None,
+        source_ref_hash: Optional[str] = None,
+        project_key: Optional[str] = None,
+        subject: Optional[str] = None,
+        body_preview: Optional[str] = None,
+        body_text: Optional[str] = None,
+        body_html: Optional[str] = None,
+        from_name: Optional[str] = None,
+        from_address: Optional[str] = None,
+        to_recipients_json: str = "[]",
+        cc_recipients_json: str = "[]",
+        bcc_recipients_json: str = "[]",
+        sent_at_utc: Optional[str] = None,
+        received_at_utc: Optional[str] = None,
+        has_attachments: int = 0,
+        attachment_metadata_json: str = "[]",
+    ) -> None:
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_message_raw_content
+                    (raw_email_id, message_id_hash, internet_message_id_hash,
+                     conversation_id_hash, source_ref_hash, project_key,
+                     subject, body_preview, body_text, body_html,
+                     from_name, from_address,
+                     to_recipients_json, cc_recipients_json, bcc_recipients_json,
+                     sent_at_utc, received_at_utc, has_attachments,
+                     attachment_metadata_json, created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(message_id_hash) DO UPDATE SET
+                    raw_email_id = excluded.raw_email_id,
+                    internet_message_id_hash = excluded.internet_message_id_hash,
+                    conversation_id_hash = excluded.conversation_id_hash,
+                    source_ref_hash = excluded.source_ref_hash,
+                    project_key = excluded.project_key,
+                    subject = excluded.subject,
+                    body_preview = excluded.body_preview,
+                    body_text = excluded.body_text,
+                    body_html = excluded.body_html,
+                    from_name = excluded.from_name,
+                    from_address = excluded.from_address,
+                    to_recipients_json = excluded.to_recipients_json,
+                    cc_recipients_json = excluded.cc_recipients_json,
+                    bcc_recipients_json = excluded.bcc_recipients_json,
+                    sent_at_utc = excluded.sent_at_utc,
+                    received_at_utc = excluded.received_at_utc,
+                    has_attachments = excluded.has_attachments,
+                    attachment_metadata_json = excluded.attachment_metadata_json,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    raw_email_id,
+                    message_id_hash,
+                    internet_message_id_hash,
+                    conversation_id_hash,
+                    source_ref_hash,
+                    project_key,
+                    subject,
+                    body_preview,
+                    body_text,
+                    body_html,
+                    from_name,
+                    from_address,
+                    to_recipients_json,
+                    cc_recipients_json,
+                    bcc_recipients_json,
+                    sent_at_utc,
+                    received_at_utc,
+                    has_attachments,
+                    attachment_metadata_json,
+                    _utc_now(),
+                    _utc_now(),
+                ),
+            )
+
+    def upsert_email_thread_raw_context(
+        self,
+        *,
+        raw_thread_context_id: str,
+        thread_ref: str,
+        conversation_id_hash: Optional[str] = None,
+        project_key: Optional[str] = None,
+        message_count: int = 0,
+        participant_count: int = 0,
+        thread_subject: Optional[str] = None,
+        messages_json: str = "[]",
+        source_refs_json: str = "[]",
+        model_ready: int = 1,
+    ) -> None:
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_thread_raw_context
+                    (raw_thread_context_id, thread_ref, conversation_id_hash,
+                     project_key, message_count, participant_count,
+                     thread_subject, messages_json, source_refs_json,
+                     model_ready, created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(thread_ref) DO UPDATE SET
+                    raw_thread_context_id = excluded.raw_thread_context_id,
+                    conversation_id_hash = excluded.conversation_id_hash,
+                    project_key = excluded.project_key,
+                    message_count = excluded.message_count,
+                    participant_count = excluded.participant_count,
+                    thread_subject = excluded.thread_subject,
+                    messages_json = excluded.messages_json,
+                    source_refs_json = excluded.source_refs_json,
+                    model_ready = excluded.model_ready,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    raw_thread_context_id,
+                    thread_ref,
+                    conversation_id_hash,
+                    project_key,
+                    message_count,
+                    participant_count,
+                    thread_subject,
+                    messages_json,
+                    source_refs_json,
+                    model_ready,
+                    _utc_now(),
+                    _utc_now(),
+                ),
+            )
+
     # -------------------------------------------------------------------------
     # V20 Phase 07A Prompt 01 — Data Quality + Canonical Source-Record Map
     # All adapters enforce the guardrail flags=False at the Python layer (defense

@@ -1,0 +1,34 @@
+version: "1.0.0"
+resources:
+  - hb://daily-brief/latest
+  - hb://daily-brief/{date}
+  - hb://projects/{project_key}/summary
+  - hb://projects/{project_key}/signals
+  - hb://tasks/open
+  - hb://tasks/waiting-on-me
+  - hb://tasks/waiting-on-others
+  - hb://meetings/upcoming
+  - hb://meeting/{event_id}/prep
+  - hb://source-ref/{source_ref_hash}
+  - hb://obsidian/daily-brief/latest
+  - hb://claude-packets/{packet_id}
+tools:
+  - build_claude_context_packet
+  - get_project_context
+  - get_meeting_prep_packet
+  - get_follow_up_queue
+  - search_source_refs
+  - list_daily_brief_candidates
+  - export_packet_to_obsidian
+forbidden:
+  - arbitrary_sql
+  - source_system_writeback
+  - email_send
+  - calendar_mutation
+  - procore_writeback
+  - graph_writeback
+  - raw_content_access
+guardrails:
+  read_only: true
+  metadata_only: true
+  source_refs_required: true

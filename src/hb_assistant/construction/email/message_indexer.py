@@ -18,6 +18,7 @@ later prompt; here `--project` is a validated crawl-run label only.
 from __future__ import annotations
 
 import hashlib
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -34,6 +35,7 @@ from hb_assistant.construction.policy import (
     EmailIntelligenceActivePolicy,
     load_email_intelligence_active_policy,
 )
+from hb_assistant.construction.second_brain.local_ai import load_raw_content_policy
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.graph.mail_readonly_client import ReadOnlyMailClient
 from hb_assistant.normalize.redaction import (
@@ -176,6 +178,9 @@ class IndexedFolder(BaseModel):
     source_link_candidates: int = 0
     review_items_created: int = 0
     bodies_encrypted: int = 0
+    # Phase 10A raw content (email subject/body + thread aggregates) when enabled.
+    raw_emails_persisted: int = 0
+    raw_threads_built: int = 0
     status: str
 
     model_config = {"extra": "forbid"}
@@ -209,6 +214,11 @@ class IndexResult(BaseModel):
     max_full_body_fetch_per_run: int = 0
     plaintext_persisted: bool = False
     vault_blob_written: bool = False
+    # Phase 10A raw content (policy-driven or explicit flag; bodies in email_message_raw_content + thread context).
+    include_raw_content: bool = False
+    raw_content_enabled: bool = False
+    raw_emails_persisted: int = 0
+    raw_threads_built: int = 0
 
     model_config = {"extra": "forbid"}
 
@@ -229,6 +239,7 @@ class EmailMessageIndexer:
         dry_run: bool = False,
         max_messages_per_folder: int = _DEFAULT_MAX_MESSAGES_PER_FOLDER,
         include_encrypted_body: bool = False,
+        include_raw_content: bool = False,
     ) -> IndexResult:
         policy = load_email_intelligence_active_policy()
         lookback = self._clamp_lookback(lookback_days or policy.default_lookback_days)
@@ -239,6 +250,23 @@ class EmailMessageIndexer:
         # per-run budget; never a full-mailbox backfill.
         body_capture_enabled = bool(include_encrypted_body and policy.full_body_storage_allowed)
         self._body_budget = policy.max_full_body_fetch_per_run if body_capture_enabled else 0
+
+        # Phase 10A Prompt 03: raw content (plaintext bodies + thread context) gated by
+        # explicit flag OR the raw_content policy (email_calendar mode + email source).
+        # Fail-closed on any policy load or mode mismatch. No effect on metadata path.
+        raw_content_enabled = False
+        try:
+            rc = load_raw_content_policy()
+            rc_settings = rc.raw_content
+            raw_content_enabled = bool(
+                rc_settings.enabled
+                and rc_settings.mode
+                in ("email_calendar", "all_supported", "all_supported_plus_downstream")
+                and getattr(getattr(rc_settings, "starting_sources", None), "email", False)
+            )
+        except Exception:
+            raw_content_enabled = False
+        effective_raw = bool(include_raw_content or raw_content_enabled)
 
         project_resolved = False
         if project_key:
@@ -265,6 +293,7 @@ class EmailMessageIndexer:
                     project_key=project_key,
                     dry_run=dry_run,
                     body_capture=body_capture_enabled,
+                    include_raw_content=effective_raw,
                 )
             )
 
@@ -278,6 +307,8 @@ class EmailMessageIndexer:
             "source_link_candidates": sum(f.source_link_candidates for f in folder_results),
             "review_items_created": sum(f.review_items_created for f in folder_results),
             "bodies_encrypted": sum(f.bodies_encrypted for f in folder_results),
+            "raw_emails_persisted": sum(f.raw_emails_persisted for f in folder_results),
+            "raw_threads_built": sum(f.raw_threads_built for f in folder_results),
         }
 
         # Dry-run eligibility: how many bodies WOULD be captured (no fetch, no blob).
@@ -313,6 +344,8 @@ class EmailMessageIndexer:
             max_full_body_fetch_per_run=policy.max_full_body_fetch_per_run,
             plaintext_persisted=False,
             vault_blob_written=bool((not dry_run) and totals["bodies_encrypted"] > 0),
+            include_raw_content=include_raw_content,
+            raw_content_enabled=raw_content_enabled,
             **totals,
         )
 
@@ -343,6 +376,7 @@ class EmailMessageIndexer:
         project_key: Optional[str],
         dry_run: bool,
         body_capture: bool = False,
+        include_raw_content: bool = False,
     ) -> IndexedFolder:
         source_id = folder["source_id"]
         folder_id = folder["folder_id"]
@@ -368,6 +402,10 @@ class EmailMessageIndexer:
         candidates = 0
         review_items = 0
         bodies_encrypted = 0
+        # Phase 10A raw: per-folder would/was counts + in-memory grouping for thread context
+        raw_emails_persisted = 0
+        raw_threads_built = 0
+        raw_thread_groups: dict[str, list[dict[str, Any]]] = {}
         status = "completed"
         error_redacted: Optional[str] = None
 
@@ -380,6 +418,33 @@ class EmailMessageIndexer:
             )
             for msg in messages:
                 messages_seen += 1
+                message_id = msg.get("id")
+                conversation_id = msg.get("conversationId")
+                raw_payload: Optional[dict[str, Any]] = None
+                if include_raw_content and message_id:
+                    # Build raw payload from list-level fields (subject/preview/participants/att meta)
+                    raw_payload = self._build_raw_payload(msg)
+                    if not dry_run:
+                        # Fetch full body (text/html) only on apply path when raw enabled.
+                        # Reuses the existing get_message_body pattern; bounded by list scope.
+                        try:
+                            full = self._mail.get_message_body(message_id) or {}
+                            body = full.get("body") or {}
+                            ctype = (body.get("contentType") or "text").lower()
+                            content = body.get("content")
+                            if content:
+                                if "html" in ctype:
+                                    raw_payload["body_html"] = content
+                                else:
+                                    raw_payload["body_text"] = content
+                        except Exception:
+                            # fetch failure is non-fatal for the raw row (preview etc still useful)
+                            pass
+                    # Group for later thread_raw_context aggregation (keyed by conversationId)
+                    th_ref = conversation_id or message_id
+                    if th_ref not in raw_thread_groups:
+                        raw_thread_groups[th_ref] = []
+                    raw_thread_groups[th_ref].append(raw_payload)
                 if dry_run:
                     continue
                 fields, recipients = self._normalize(msg, owner_hash, source_id, folder_id, role)
@@ -399,6 +464,39 @@ class EmailMessageIndexer:
                 if body_capture and self._body_budget > 0 and self._capture_body(msg):
                     bodies_encrypted += 1
                     self._body_budget -= 1
+                if include_raw_content and raw_payload:
+                    # Persist raw row (idempotent). Only on apply (not dry_run).
+                    mid_hash = hash_value(message_id) or message_id
+                    self._store.upsert_email_message_raw_content(
+                        raw_email_id=f"raw:{message_id}",
+                        message_id_hash=mid_hash,
+                        internet_message_id_hash=hash_value(raw_payload.get("internet_message_id")),
+                        conversation_id_hash=hash_value(conversation_id),
+                        source_ref_hash=None,
+                        project_key=project_key,
+                        subject=raw_payload.get("subject"),
+                        body_preview=raw_payload.get("body_preview"),
+                        body_text=raw_payload.get("body_text"),
+                        body_html=raw_payload.get("body_html"),
+                        from_name=raw_payload.get("from_name"),
+                        from_address=raw_payload.get("from_address"),
+                        to_recipients_json=json.dumps(
+                            raw_payload.get("to_recipients") or [], sort_keys=True
+                        ),
+                        cc_recipients_json=json.dumps(
+                            raw_payload.get("cc_recipients") or [], sort_keys=True
+                        ),
+                        bcc_recipients_json=json.dumps(
+                            raw_payload.get("bcc_recipients") or [], sort_keys=True
+                        ),
+                        sent_at_utc=raw_payload.get("sent_at"),
+                        received_at_utc=raw_payload.get("received_at"),
+                        has_attachments=1 if raw_payload.get("has_attachments") else 0,
+                        attachment_metadata_json=json.dumps(
+                            raw_payload.get("attachment_metadata") or [], sort_keys=True
+                        ),
+                    )
+                    raw_emails_persisted += 1
                 messages_indexed += 1
         except Exception as e:  # bounded, sanitized
             status = "failed"
@@ -416,6 +514,51 @@ class EmailMessageIndexer:
                 error_redacted=error_redacted,
             )
 
+        # Phase 10A: after per-msg processing, aggregate + upsert thread-level raw context.
+        # messages_json contains the per-message subject/body/from/received for model use.
+        # Runs for both dry (counts) and apply (persists); upserts skipped on dry.
+        if include_raw_content and raw_thread_groups:
+            for th_ref, msgs_in_thread in raw_thread_groups.items():
+                if not dry_run:
+                    participants: set[str] = set()
+                    for m in msgs_in_thread:
+                        if m.get("from_address"):
+                            participants.add(m["from_address"])
+                        for lst_name in ("to_recipients", "cc_recipients", "bcc_recipients"):
+                            for rec in m.get(lst_name) or []:
+                                addr = rec.get("address") if isinstance(rec, dict) else None
+                                if addr:
+                                    participants.add(addr)
+                    messages_json = json.dumps(
+                        [
+                            {
+                                "subject": m.get("subject"),
+                                "body_text": m.get("body_text"),
+                                "body_html": m.get("body_html"),
+                                "from_name": m.get("from_name"),
+                                "from_address": m.get("from_address"),
+                                "received_at": m.get("received_at"),
+                            }
+                            for m in msgs_in_thread
+                        ],
+                        sort_keys=True,
+                    )
+                    self._store.upsert_email_thread_raw_context(
+                        raw_thread_context_id=f"rawctx:{th_ref}",
+                        thread_ref=th_ref,
+                        conversation_id_hash=hash_value(th_ref),
+                        project_key=project_key,
+                        message_count=len(msgs_in_thread),
+                        participant_count=len(participants),
+                        thread_subject=(
+                            msgs_in_thread[0].get("subject") if msgs_in_thread else None
+                        ),
+                        messages_json=messages_json,
+                        source_refs_json="[]",
+                        model_ready=1,
+                    )
+                raw_threads_built += 1
+
         return IndexedFolder(
             source_id=source_id,
             folder_role=role,
@@ -429,6 +572,8 @@ class EmailMessageIndexer:
             source_link_candidates=candidates,
             review_items_created=review_items,
             bodies_encrypted=bodies_encrypted,
+            raw_emails_persisted=raw_emails_persisted,
+            raw_threads_built=raw_threads_built,
             status=status,
         )
 
@@ -580,3 +725,58 @@ class EmailMessageIndexer:
         role: str,
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         return normalize_message(msg, owner_hash, source_id, folder_id, role)
+
+    def _build_raw_payload(self, msg: dict[str, Any]) -> dict[str, Any]:
+        """Build plaintext raw payload for email_message_raw_content from a Graph message dict.
+        Captures subject, preview, full bodies (filled by caller after fetch), participant
+        names+addresses (not redacted), attachment metadata stub, and timestamps.
+        Used only when raw content policy/flag permits.
+        """
+        subject = msg.get("subject")
+        body_preview = msg.get("bodyPreview")
+        from_obj = msg.get("from") or msg.get("sender") or {}
+        from_addr = _address(from_obj)
+        from_name = (
+            (from_obj.get("emailAddress") or {}).get("name") if isinstance(from_obj, dict) else None
+        )
+
+        def _rec_list(field: str) -> list[dict[str, Optional[str]]]:
+            out: list[dict[str, Optional[str]]] = []
+            for entry in msg.get(field) or []:
+                addr = _address(entry)
+                name = (
+                    (entry.get("emailAddress") or {}).get("name")
+                    if isinstance(entry, dict)
+                    else None
+                )
+                if addr or name:
+                    out.append({"name": name, "address": addr})
+            return out
+
+        to_rec = _rec_list("toRecipients")
+        cc_rec = _rec_list("ccRecipients")
+        bcc_rec = _rec_list("bccRecipients")
+
+        att_meta: list[dict[str, Any]] = []
+        if msg.get("hasAttachments"):
+            # Lightweight; full metadata is indexed separately via _index_attachments.
+            # For raw packet we record has + count; detailed name/contentType lives in attachments table.
+            att_meta = [{"has_attachments": True}]
+
+        return {
+            "subject": subject,
+            "body_preview": body_preview,
+            "body_text": None,
+            "body_html": None,
+            "from_name": from_name,
+            "from_address": from_addr,
+            "to_recipients": to_rec,
+            "cc_recipients": cc_rec,
+            "bcc_recipients": bcc_rec,
+            "sent_at": msg.get("sentDateTime"),
+            "received_at": msg.get("receivedDateTime"),
+            "has_attachments": bool(msg.get("hasAttachments")),
+            "attachment_metadata": att_meta,
+            "internet_message_id": msg.get("internetMessageId"),
+            "conversation_id": msg.get("conversationId"),
+        }

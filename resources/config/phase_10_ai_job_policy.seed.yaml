@@ -1,0 +1,37 @@
+version: "1.0.0"
+defaults:
+  dry_run_default: true
+  max_concurrent_jobs: 1
+  max_items_per_run: 25
+  max_retries: 2
+  retry_backoff_seconds: 30
+  timeout_seconds: 300
+  run_after_source_refresh: enqueue_only
+job_types:
+  extract_email_tasks:
+    profile_id: default_extract
+    max_items_per_run: 20
+    source_families: [email_thread_summary, source_system_record_map]
+  extract_commitments:
+    profile_id: default_extract
+    max_items_per_run: 20
+    source_families: [email_thread_summary, calendar_event_index]
+  detect_followups_due:
+    profile_id: default_extract
+    max_items_per_run: 50
+    source_families: [accepted_tasks, accepted_commitments, follow_up_watch_items]
+  prepare_daily_brief_candidates:
+    profile_id: quality_reasoning
+    fallback_profile_id: default_extract
+    max_items_per_run: 50
+  prepare_claude_context_packet:
+    profile_id: quality_reasoning
+    fallback_profile_id: default_extract
+    max_items_per_run: 80
+  index_obsidian_vault:
+    profile_id: null
+    deterministic_only: true
+guardrails:
+  no_external_writeback: true
+  no_raw_content_persistence: true
+  schema_validation_required: true

@@ -1,0 +1,63 @@
+{
+  "proof": "phase_10_contracts_proof",
+  "command": "second-brain phase-10 contracts-proof",
+  "phase": "10",
+  "generated_utc": "2026-06-07T18:57:15.006796+00:00",
+  "repo_sha": "89283d08fbdce2af7bb492e537ac02c905cf713d",
+  "schema_version": 40,
+  "proof_passed": true,
+  "overall_status": "clean",
+  "gates": {
+    "contracts_load": true,
+    "seeds_valid": true,
+    "fixtures_valid": true,
+    "provenance_required": true,
+    "no_forbidden_content": true
+  },
+  "contract_count": 10,
+  "contracts": [
+    "action_candidate_output_schema",
+    "ai_job_contract",
+    "claude_mcp_packet_contract",
+    "daily_brief_action_candidate_contract",
+    "evaluation_metrics_contract",
+    "follow_up_watch_contract",
+    "frontend_review_queue_contract",
+    "local_model_profile_contract",
+    "obsidian_vault_manager_contract",
+    "relationship_candidate_contract"
+  ],
+  "seed_count": 4,
+  "seed_versions": {
+    "local_model_profiles": "1.0.0",
+    "ai_job_policy": "1.0.0",
+    "obsidian_vault_policy": "1.0.0",
+    "mcp_packet_policy": "1.0.0"
+  },
+  "fixtures_validated": [
+    "email_task_candidate_001",
+    "commitment_candidate_001",
+    "follow_up_monitor_001",
+    "relationship_candidate_001",
+    "daily_brief_packet_001"
+  ],
+  "forbidden_findings": [],
+  "errors": [],
+  "guard_attestation": {
+    "advisory_only": true,
+    "read_only": true,
+    "metadata_only": true,
+    "makes_determination": false,
+    "no_external_writeback": true,
+    "no_raw_persistence": true,
+    "no_ollama_call": true,
+    "no_db_access": true
+  },
+  "guardrails": {
+    "local_first": true,
+    "structured_output_validated": true,
+    "high_stakes_review_only": true,
+    "candidate_requires_source_refs": true,
+    "environment_isolation_intended": true
+  }
+}

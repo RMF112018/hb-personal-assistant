@@ -2241,6 +2241,11 @@ def index_cmd(
         "--include-encrypted-body",
         help="Also capture full bodies ENCRYPTED at rest (policy-gated; no plaintext persisted)",
     ),
+    include_raw_content: bool = typer.Option(
+        False,
+        "--include-raw-content",
+        help="Persist raw subject/body text+html + participants/att meta into email_message_raw_content + email_thread_raw_context (policy email_calendar or explicit). Dry-run safe; metadata path unchanged. Phase 10A.",
+    ),
     dry_run: bool = typer.Option(
         False,
         "--dry-run/--no-dry-run",
@@ -2253,6 +2258,7 @@ def index_cmd(
     Discovers messages in the included folders within the lookback window, normalizes
     redacted metadata, and persists email_messages + recipients + attachment metadata
     + crawl runs + receipts. Idempotent: re-running upserts in place.
+    Supports --include-raw-content for Phase 10A raw email content (when policy allows).
     """
     client: Optional[GraphHttpClient] = None
     try:
@@ -2278,6 +2284,7 @@ def index_cmd(
             dry_run=dry_run,
             max_messages_per_folder=max_messages,
             include_encrypted_body=include_encrypted_body,
+            include_raw_content=include_raw_content,
         )
 
         payload: Dict[str, Any] = {"command": "graph mail index", "ok": True, **result.model_dump()}
