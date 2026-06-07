@@ -25,6 +25,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       </a>
       {/* Primary sidebar navigation (Today / Projects / My Items) — lightweight collapse for narrow widths */}
       <aside
+        aria-label="Primary navigation"
         className={`fixed md:static inset-y-0 left-0 z-50 h-[100dvh] w-56 shrink-0 border-r border-[var(--hb-border)] p-3 flex flex-col min-h-0 overflow-hidden bg-[var(--hb-bg)] transform transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
         <div className="px-2 py-3 text-xs tracking-[2px] text-[var(--hb-muted)] shrink-0">CONSTRUCTION INTELLIGENCE</div>
