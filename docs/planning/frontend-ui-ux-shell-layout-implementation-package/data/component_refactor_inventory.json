@@ -1,0 +1,36 @@
+{
+  "layout_components": [
+    "AppTopBar",
+    "Sidebar",
+    "SidebarFooter",
+    "DataQualityIndicator",
+    "PrimaryPageLayout"
+  ],
+  "dashboard_components": [
+    "DashboardGrid",
+    "DashboardCard",
+    "SectionCard",
+    "StatusSummaryRow"
+  ],
+  "shared_state_components": [
+    "EmptyState",
+    "ErrorState",
+    "LoadingState",
+    "TechnicalDetails"
+  ],
+  "copy_helpers": [
+    "statusCopy.ts",
+    "errorCopy.ts"
+  ],
+  "hooks": [
+    "useDataQualitySummary",
+    "useOnboardingReadiness normalized accounts update"
+  ],
+  "page_refactors": [
+    "TodayPage",
+    "ProjectsPage",
+    "MyItemsPage",
+    "SettingsPage",
+    "AdminDataConfidencePage"
+  ]
+}

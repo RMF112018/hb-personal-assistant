@@ -1,0 +1,92 @@
+[
+  {
+    "current": "Local dev role \u2014 not production auth",
+    "replace_with": "Developer testing (hidden unless enabled)",
+    "surface": "AppShell"
+  },
+  {
+    "current": "Admin / Data Confidence",
+    "replace_with": "Admin & Data Health or Data Health",
+    "surface": "Navigation/Admin"
+  },
+  {
+    "current": "View source & sync details",
+    "replace_with": "Check data health",
+    "surface": "Today/Projects"
+  },
+  {
+    "current": "Prompt 14B / Prompt 20 / FPR-004",
+    "replace_with": "Remove from visible UI",
+    "surface": "Settings"
+  },
+  {
+    "current": "Load Accounts Status",
+    "replace_with": "Check connection status",
+    "surface": "Settings"
+  },
+  {
+    "current": "Load Projects",
+    "replace_with": "Review project connections",
+    "surface": "Settings"
+  },
+  {
+    "current": "preview\u2192save",
+    "replace_with": "Review before saving",
+    "surface": "Settings"
+  },
+  {
+    "current": "raw panels removed",
+    "replace_with": "Remove entirely",
+    "surface": "Settings"
+  },
+  {
+    "current": "Project key",
+    "replace_with": "Project",
+    "surface": "Keywords"
+  },
+  {
+    "current": "JSON.stringify output",
+    "replace_with": "Formatted table/cards",
+    "surface": "Keywords/Project data"
+  },
+  {
+    "current": "Evidence / Guardrail Health",
+    "replace_with": "Safety Checks",
+    "surface": "Admin"
+  },
+  {
+    "current": "Retrieval / AI Quality",
+    "replace_with": "Answer Quality",
+    "surface": "Admin"
+  },
+  {
+    "current": "Workflow / Job Health",
+    "replace_with": "Background Tasks",
+    "surface": "Admin"
+  },
+  {
+    "current": "Source / Sync Health",
+    "replace_with": "Source Updates",
+    "surface": "Admin"
+  },
+  {
+    "current": "FastAPI analytics shell / uvicorn",
+    "replace_with": "The local app service is not running. Restart the app.",
+    "surface": "Today error"
+  },
+  {
+    "current": "read models",
+    "replace_with": "latest project information",
+    "surface": "Core pages"
+  },
+  {
+    "current": "external Markdown / MCP / scheduled prompt",
+    "replace_with": "Daily Brief file / advanced setup",
+    "surface": "Daily Brief"
+  },
+  {
+    "current": "Chat (disabled)",
+    "replace_with": "No visible chat nav item",
+    "surface": "Support nav"
+  }
+]

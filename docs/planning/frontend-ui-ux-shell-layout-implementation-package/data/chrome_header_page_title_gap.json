@@ -1,0 +1,22 @@
+{
+  "gap_id": "UIUX-P0-003",
+  "title": "Static chrome title and duplicate page-body headers create double-header shell",
+  "severity": "P0",
+  "affected_area": "App shell / page title hierarchy / secondary pages",
+  "why_it_matters": "Duplicate visible page titles make the shell feel unfinished and reduce navigation clarity. The chrome header should orient the user to the active route while the page body focuses on dashboard content and section hierarchy.",
+  "recommended_fix": "Move active page title rendering into AppShell chrome header, replace static Personal Assistant/HB Analytics header text, and remove duplicate top-level page-body titles from all routed pages.",
+  "likely_files_touched": [
+    "frontend/src/layouts/AppShell.tsx",
+    "frontend/src/app/routes.tsx",
+    "frontend/src/pages/*.tsx",
+    "frontend/src/components/layout/PrimaryPageLayout.tsx"
+  ],
+  "tests_validation_required": [
+    "frontend lint/typecheck/build",
+    "route title render tests if available",
+    "manual smoke for all primary and secondary routes",
+    "accessibility check for one page-level heading per route"
+  ],
+  "implementation_prompt_placement": "P01/P02 plus page-specific prompts P03-P08",
+  "source": "user_scope_correction_2026-06-07"
+}

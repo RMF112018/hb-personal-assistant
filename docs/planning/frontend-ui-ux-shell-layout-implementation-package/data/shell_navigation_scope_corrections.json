@@ -1,0 +1,48 @@
+[
+  {
+    "gap_id": "UIUX-P0-003",
+    "title": "Static chrome title and duplicate page-body headers create double-header shell",
+    "severity": "P0",
+    "affected_area": "App shell / page title hierarchy / secondary pages",
+    "why_it_matters": "Duplicate visible page titles make the shell feel unfinished and reduce navigation clarity. The chrome header should orient the user to the active route while the page body focuses on dashboard content and section hierarchy.",
+    "recommended_fix": "Move active page title rendering into AppShell chrome header, replace static Personal Assistant/HB Analytics header text, and remove duplicate top-level page-body titles from all routed pages.",
+    "likely_files_touched": [
+      "frontend/src/layouts/AppShell.tsx",
+      "frontend/src/app/routes.tsx",
+      "frontend/src/pages/*.tsx",
+      "frontend/src/components/layout/PrimaryPageLayout.tsx"
+    ],
+    "tests_validation_required": [
+      "frontend lint/typecheck/build",
+      "route title render tests if available",
+      "manual smoke for all primary and secondary routes",
+      "accessibility check for one page-level heading per route"
+    ],
+    "implementation_prompt_placement": "P01/P02 plus page-specific prompts P03-P08",
+    "source": "user_scope_correction_2026-06-07"
+  },
+  {
+    "gap_id": "UIUX-P0-004",
+    "title": "Primary nav hierarchy should be My Dashboard-first with Today nested as landing view",
+    "severity": "P0",
+    "affected_area": "Primary navigation / route hierarchy / chrome header title metadata",
+    "why_it_matters": "The current top-level separation between Today and My Items creates unclear ownership of personal dashboard content. My Dashboard should be the first-level user home, with Today as its primary landing subview.",
+    "recommended_fix": "Rename My Items to My Dashboard, move it to the first primary nav position, nest Today underneath it, set Today as the default landing view, and preserve legacy /today and /my-items redirects or aliases.",
+    "likely_files_touched": [
+      "frontend/src/navigation/navigationModel.ts",
+      "frontend/src/app/routes.tsx",
+      "frontend/src/layouts/AppShell.tsx",
+      "frontend/src/pages/TodayPage.tsx",
+      "frontend/src/pages/MyItemsPage.tsx",
+      "frontend/src/components/layout/PrimaryPageLayout.tsx"
+    ],
+    "tests_validation_required": [
+      "frontend lint/typecheck/build",
+      "route/nav render tests if available",
+      "manual smoke for /, /my-dashboard/today, /today, /my-items",
+      "copy grep for stale My Items labels"
+    ],
+    "implementation_prompt_placement": "P01/P02/P03/P05 plus addendum prompt",
+    "source": "user_scope_correction_2026-06-07"
+  }
+]

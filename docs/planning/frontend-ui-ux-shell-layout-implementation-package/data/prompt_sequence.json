@@ -1,0 +1,263 @@
+[
+  {
+    "id": "P00",
+    "title": "Preflight and branch discipline",
+    "objective": "Reconfirm repo truth, establish branch discipline, inventory current frontend source, and capture baseline validation before source changes.",
+    "depends_on": [],
+    "severity_focus": [
+      "P0",
+      "P1"
+    ],
+    "likely_files_touched": [
+      "none unless adding evidence notes after implementation"
+    ],
+    "validation": [
+      "git status --short",
+      "git branch --show-current",
+      "git rev-parse HEAD",
+      "git log --oneline -n 20",
+      "cat frontend/package.json",
+      "cat pyproject.toml",
+      "find frontend/src -maxdepth 4 -type f | sort"
+    ]
+  },
+  {
+    "id": "P01",
+    "title": "App shell overflow, sidebar footer, and production chrome",
+    "objective": "Fix viewport-height shell behavior, pin the sidebar footer/status area, remove normal-user dev chrome, and remove disabled Chat from visible navigation.",
+    "depends_on": [
+      "P00"
+    ],
+    "severity_focus": [
+      "P0"
+    ],
+    "likely_files_touched": [
+      "frontend/src/index.css",
+      "frontend/src/layouts/AppShell.tsx",
+      "frontend/src/layouts/SupportNavigation.tsx",
+      "frontend/src/navigation/navigationModel.ts",
+      "frontend/src/components/layout/SidebarFooter.tsx",
+      "frontend/src/components/layout/DataQualityIndicator.tsx"
+    ],
+    "validation": [
+      "cd frontend && npm run lint",
+      "cd frontend && npm run typecheck",
+      "cd frontend && npm run build",
+      "manual: scroll Today/Projects/My Items and confirm sidebar footer remains visible"
+    ]
+  },
+  {
+    "id": "P02",
+    "title": "Shared layout, card, state, and copy primitives",
+    "objective": "Add reusable page/grid/card/status primitives and centralize user-safe copy/status/error mapping.",
+    "depends_on": [
+      "P01"
+    ],
+    "severity_focus": [
+      "P0",
+      "P1"
+    ],
+    "likely_files_touched": [
+      "frontend/src/components/layout/PrimaryPageLayout.tsx",
+      "frontend/src/components/layout/DashboardGrid.tsx",
+      "frontend/src/components/layout/DashboardCard.tsx",
+      "frontend/src/components/common/EmptyState.tsx",
+      "frontend/src/components/common/ErrorState.tsx",
+      "frontend/src/components/common/LoadingState.tsx",
+      "frontend/src/components/common/TechnicalDetails.tsx",
+      "frontend/src/lib/statusCopy.ts",
+      "frontend/src/lib/errorCopy.ts"
+    ],
+    "validation": [
+      "cd frontend && npm run lint",
+      "cd frontend && npm run typecheck",
+      "cd frontend && npm run build",
+      "cd frontend && npm run test"
+    ]
+  },
+  {
+    "id": "P03",
+    "title": "Today masonry dashboard and copy rewrite",
+    "objective": "Refactor Today into a responsive masonry-style dashboard and remove backend/read-model/Daily Brief pipeline language from normal UI.",
+    "depends_on": [
+      "P01",
+      "P02"
+    ],
+    "severity_focus": [
+      "P1"
+    ],
+    "likely_files_touched": [
+      "frontend/src/pages/TodayPage.tsx",
+      "frontend/src/components/today/*",
+      "frontend/src/components/daily-brief/DailyBriefRenderer.tsx",
+      "frontend/src/lib/statusCopy.ts"
+    ],
+    "validation": [
+      "cd frontend && npm run lint",
+      "cd frontend && npm run typecheck",
+      "cd frontend && npm run build",
+      "python -m pytest tests/test_fastapi_analytics_app_shell.py",
+      "manual: Today desktop/tablet/mobile smoke"
+    ]
+  },
+  {
+    "id": "P04",
+    "title": "Projects grid and project command-center copy",
+    "objective": "Refactor Projects into a production-ready grid with useful setup/empty states and remove route/domain-nav implementation copy.",
+    "depends_on": [
+      "P01",
+      "P02"
+    ],
+    "severity_focus": [
+      "P1"
+    ],
+    "likely_files_touched": [
+      "frontend/src/pages/ProjectsPage.tsx",
+      "frontend/src/pages/ProjectDashboardPage.tsx",
+      "frontend/src/components/projects/*"
+    ],
+    "validation": [
+      "cd frontend && npm run lint",
+      "cd frontend && npm run typecheck",
+      "cd frontend && npm run build",
+      "manual: Projects empty/data states"
+    ]
+  },
+  {
+    "id": "P05",
+    "title": "My Items responsive work-queue grid",
+    "objective": "Refactor My Items into a user-focused work queue with prioritized cards and source-agnostic, action-oriented copy.",
+    "depends_on": [
+      "P01",
+      "P02"
+    ],
+    "severity_focus": [
+      "P1"
+    ],
+    "likely_files_touched": [
+      "frontend/src/pages/MyItemsPage.tsx",
+      "frontend/src/components/my-items/*"
+    ],
+    "validation": [
+      "cd frontend && npm run lint",
+      "cd frontend && npm run typecheck",
+      "cd frontend && npm run build",
+      "manual: My Items keyboard and responsive smoke"
+    ]
+  },
+  {
+    "id": "P06",
+    "title": "Settings guided setup and normalized route consumption",
+    "objective": "Rewrite Settings into guided user-facing setup panels and update client hooks to consume normalized readiness/account/project/data-quality routes.",
+    "depends_on": [
+      "P02"
+    ],
+    "severity_focus": [
+      "P0",
+      "P1"
+    ],
+    "likely_files_touched": [
+      "frontend/src/pages/SettingsPage.tsx",
+      "frontend/src/components/settings/AccountConnectionsPanel.tsx",
+      "frontend/src/components/settings/ProjectConnectionsPanel.tsx",
+      "frontend/src/components/settings/DailyBriefSettingsPanel.tsx",
+      "frontend/src/components/settings/KeywordManagementPanel.tsx",
+      "frontend/src/lib/api.ts",
+      "frontend/src/hooks/useOnboardingReadiness.ts",
+      "frontend/src/hooks/useDataQualitySummary.ts"
+    ],
+    "validation": [
+      "python -m pytest tests/test_fastapi_analytics_auth_onboarding.py tests/test_fastapi_analytics_settings.py tests/test_fastapi_analytics_connection_setup.py",
+      "cd frontend && npm run lint",
+      "cd frontend && npm run typecheck",
+      "cd frontend && npm run build"
+    ]
+  },
+  {
+    "id": "P07",
+    "title": "Sidebar Data Quality and Admin/Data Health translation",
+    "objective": "Add non-admin Data Quality footer status and translate admin diagnostics into business-readable Data Health surfaces with technical detail behind disclosure.",
+    "depends_on": [
+      "P01",
+      "P02",
+      "P06"
+    ],
+    "severity_focus": [
+      "P0",
+      "P1"
+    ],
+    "likely_files_touched": [
+      "frontend/src/components/layout/DataQualityIndicator.tsx",
+      "frontend/src/pages/AdminDataConfidencePage.tsx",
+      "frontend/src/lib/statusCopy.ts",
+      "frontend/src/hooks/useDataQualitySummary.ts"
+    ],
+    "validation": [
+      "cd frontend && npm run lint",
+      "cd frontend && npm run typecheck",
+      "cd frontend && npm run build",
+      "manual: viewer/operator/admin shell and tooltip/focus behavior"
+    ]
+  },
+  {
+    "id": "P08",
+    "title": "Visual hierarchy, spacing, typography, responsiveness, and accessibility hardening",
+    "objective": "Polish the shell and primary screens for production-grade hierarchy, density, responsive behavior, focus order, and screen-reader semantics.",
+    "depends_on": [
+      "P03",
+      "P04",
+      "P05",
+      "P07"
+    ],
+    "severity_focus": [
+      "P1",
+      "P2"
+    ],
+    "likely_files_touched": [
+      "frontend/src/index.css",
+      "frontend/src/**/*.tsx",
+      "frontend/src/**/*.css",
+      "frontend/src/test/* if present"
+    ],
+    "validation": [
+      "cd frontend && npm run lint",
+      "cd frontend && npm run typecheck",
+      "cd frontend && npm run build",
+      "manual: keyboard, screen-reader landmark, responsive matrix"
+    ]
+  },
+  {
+    "id": "P09",
+    "title": "Copy regression harness, docs, and closeout evidence",
+    "objective": "Add copycheck regression coverage, document layout/copy rules, and produce closeout evidence proving no P0/P1 UI/copy gaps remain.",
+    "depends_on": [
+      "P01",
+      "P02",
+      "P03",
+      "P04",
+      "P05",
+      "P06",
+      "P07",
+      "P08"
+    ],
+    "severity_focus": [
+      "P0",
+      "P1",
+      "P2"
+    ],
+    "likely_files_touched": [
+      "frontend/package.json",
+      "scripts/proofs/frontend_display_copy_check.py or frontend/scripts/copycheck.*",
+      "docs/evidence/frontend-ui-ux-shell-layout-implementation/*",
+      "tests/* as appropriate"
+    ],
+    "validation": [
+      "cd frontend && npm run copycheck",
+      "cd frontend && npm run lint",
+      "cd frontend && npm run typecheck",
+      "cd frontend && npm run build",
+      "cd frontend && npm run test",
+      "python -m pytest tests/test_fastapi_analytics_app_shell.py tests/test_fastapi_analytics_auth_onboarding.py tests/test_fastapi_analytics_settings.py tests/test_fastapi_analytics_connection_setup.py"
+    ]
+  }
+]

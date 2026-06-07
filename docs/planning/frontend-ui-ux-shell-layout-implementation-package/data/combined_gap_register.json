@@ -1,0 +1,559 @@
+[
+  {
+    "gap_id": "UIUX-P0-001",
+    "title": "Shell is not constrained to viewport height; main scroll can expand the full app shell",
+    "severity": "P0",
+    "affected_area": "App shell / sidebar / main scroll",
+    "screenshot_evidence": "Today scrolled screenshots show a document-level scrollbar and support controls near the viewport bottom while the page body continues beneath the visible window; this matches a shared body scroll container rather than an independent main scroll region.",
+    "repo_evidence": [
+      "frontend/src/layouts/AppShell.tsx:22 uses min-h-screen on the shell, not h-[100dvh]/overflow-hidden.",
+      "frontend/src/layouts/AppShell.tsx:31-39 renders sidebar as md:static within the same expanding flex container.",
+      "frontend/src/layouts/AppShell.tsx:96 sets main to overflow-auto but parent height is not bounded.",
+      "frontend/src/index.css:34-43 sets body margin and #root min-height:100svh but not html/body/#root height:100% and not overflow:hidden."
+    ],
+    "why_it_matters": "When page content is taller than the viewport, the app shell grows and the sidebar footer can be displaced below the viewport. Navigation and support/status controls become unreliable during normal dashboard scanning.",
+    "recommended_fix": "Refactor the shell to a viewport-locked layout: html/body/#root height:100%; app shell height:100dvh and overflow:hidden; desktop sidebar h-dvh/flex-none/flex-col; main panel min-h-0/flex-col; main content flex-1 min-h-0 overflow-y-auto. Keep sidebar footer outside any scrolling nav region.",
+    "likely_files_touched": [
+      "frontend/src/index.css",
+      "frontend/src/layouts/AppShell.tsx"
+    ],
+    "tests_validation_required": [
+      "Frontend lint/typecheck/build",
+      "Manual desktop scroll smoke on Today/Projects/My Items",
+      "Responsive smoke at tablet/mobile widths"
+    ],
+    "implementation_prompt": "Prompt A",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "UIUX-P0-002",
+    "title": "Sidebar footer lacks a dedicated pinned status/action zone",
+    "severity": "P0",
+    "affected_area": "Sidebar footer / future Data Quality indicator",
+    "screenshot_evidence": "Sidebar footer shows Admin/Data Confidence, Settings, and disabled Chat; planned non-admin Data Quality status has no stable location beyond the existing support nav.",
+    "repo_evidence": [
+      "frontend/src/layouts/AppShell.tsx:36-38 puts SupportNavigation inside mt-auto but not in a named footer/status component.",
+      "frontend/src/layouts/SupportNavigation.tsx:9-38 mixes support nav links and disabled Chat inside one support nav.",
+      "frontend/src/navigation/navigationModel.ts:19-26 defines support and disabled nav but no data-quality/status zone."
+    ],
+    "why_it_matters": "Data Quality, account status, settings, admin diagnostics, and future auth/readiness controls need a stable, predictable footer area that does not scroll away or mix product links with disabled/future features.",
+    "recommended_fix": "Create SidebarFooter with two subregions: StatusSummary/DataQualityIndicator and SupportActions. Remove disabled Chat from visible production nav. Admin-only diagnostics should be a support action; viewer/operator should see Data Quality with green/yellow/red status and last update on hover/focus.",
+    "likely_files_touched": [
+      "frontend/src/layouts/AppShell.tsx",
+      "frontend/src/layouts/SupportNavigation.tsx",
+      "frontend/src/navigation/navigationModel.ts",
+      "frontend/src/components/layout/SidebarFooter.tsx",
+      "frontend/src/components/layout/DataQualityIndicator.tsx",
+      "frontend/src/lib/statusCopy.ts"
+    ],
+    "tests_validation_required": [
+      "RTL/nav render test ensuring no disabled Chat in production chrome",
+      "Manual hover/focus test for Data Quality tooltip",
+      "Narrow viewport sidebar test"
+    ],
+    "implementation_prompt": "Prompt A / Prompt F",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "COPY-P0-001",
+    "title": "Local dev role selector is visible in normal app chrome",
+    "severity": "P0",
+    "affected_area": "App shell header / production chrome",
+    "screenshot_evidence": "Header visibly shows 'Local dev role \u2014 not production auth' and Viewer/Operator/Admin selector.",
+    "repo_evidence": [
+      "frontend/src/layouts/AppShell.tsx:63-80 renders the local dev role selector and options in the normal header."
+    ],
+    "why_it_matters": "Normal users should not see developer role simulation or production-auth disclaimers in the primary interface. It makes the app look like a test harness and can undermine trust.",
+    "recommended_fix": "Hide the selector behind an explicit dev-only flag/panel. Production/default chrome should not render local role/auth simulation text. If the selector remains in development, label it in a non-production developer drawer only.",
+    "likely_files_touched": [
+      "frontend/src/layouts/AppShell.tsx",
+      "frontend/src/lib/api.ts",
+      "frontend/src/components/dev/DevRoleSelector.tsx"
+    ],
+    "tests_validation_required": [
+      "Copy scan for 'local dev role' and 'not production auth' in production-rendered TSX",
+      "Manual header smoke"
+    ],
+    "implementation_prompt": "Prompt A / Copy C01",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "COPY-P0-002",
+    "title": "Settings and account connection surfaces still expose prompt IDs and dev guidance",
+    "severity": "P0",
+    "affected_area": "Settings / Account Connections / Project Connections",
+    "screenshot_evidence": "Not directly shown in supplied screenshots, but included in attached copy-remediation package and confirmed by repo source.",
+    "repo_evidence": [
+      "frontend/src/components/settings/AccountConnectionsPanel.tsx:26 renders 'Account Connections (Prompt 14B / D)'.",
+      "frontend/src/components/settings/AccountConnectionsPanel.tsx:51-52 tells users to use the header role selector for local dev simulation.",
+      "frontend/src/pages/SettingsPage.tsx:228-301 shows Daily Brief external/Markdown/MCP/setup-prompt language and detection controls.",
+      "frontend/src/pages/SettingsPage.tsx:109-148 of fetched later segment shows 'Project Connections (Prompt 14B)', 'Load Projects', 'raw panels removed per FPR-004', and 'preview\u2192save (14A)'."
+    ],
+    "why_it_matters": "Settings is the primary onboarding and connection-management surface. Prompt IDs, FPR references, raw-panel notes, and local-dev guidance are not end-user copy.",
+    "recommended_fix": "Rewrite Settings as guided panels: Account Connections, Project Connections, Daily Brief, Preferences, Data Health/Admin Approval. Move advanced Daily Brief/MCP instructions behind disclosure. Replace Load/Test labels with business actions such as 'Check connection status', 'Review project connections', and 'Check for today\u2019s brief'.",
+    "likely_files_touched": [
+      "frontend/src/pages/SettingsPage.tsx",
+      "frontend/src/components/settings/AccountConnectionsPanel.tsx",
+      "frontend/src/components/settings/ProjectConnectionsPanel.tsx",
+      "frontend/src/components/settings/DailyBriefSettingsPanel.tsx",
+      "frontend/src/lib/statusCopy.ts"
+    ],
+    "tests_validation_required": [
+      "Frontend copycheck forbidden term scan",
+      "Manual Settings smoke through empty/connected/error states",
+      "Frontend lint/typecheck/build"
+    ],
+    "implementation_prompt": "Prompt B / Prompt F / Copy C02-C03",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "COPY-P0-003",
+    "title": "Frontend only partially consumes normalized readiness/account/data-quality routes",
+    "severity": "P0",
+    "affected_area": "API client / onboarding / data quality footer",
+    "screenshot_evidence": "Data Quality footer indicator requested by user is not present in screenshots; Admin/Data Confidence link remains instead.",
+    "repo_evidence": [
+      "src/hb_assistant/construction/analytics/api.py:286-301 exposes /api/onboarding/readiness and /api/settings/connections/accounts.",
+      "src/hb_assistant/construction/analytics/api.py:70-103 in fetched second segment exposes /api/settings/data-quality/summary and detail.",
+      "frontend/src/hooks/useOnboardingReadiness.ts:30-34 uses getSettingsAccounts, which calls legacy /api/settings/accounts rather than /api/settings/connections/accounts.",
+      "frontend/src/lib/api.ts:214-230 still exposes legacy settings helpers; no client helper is present for /api/settings/data-quality/summary/detail."
+    ],
+    "why_it_matters": "The shell cannot show the planned non-admin Data Quality indicator or accurate account-readiness states while the frontend mixes legacy and normalized status routes.",
+    "recommended_fix": "Add typed frontend helpers for normalized accounts, auth refresh, project preview/save/list, admin approve-first-sync, and data-quality summary/detail. Update hooks/components to use normalized routes. Translate 7 auth states and 4 data-quality states to plain user labels.",
+    "likely_files_touched": [
+      "frontend/src/lib/api.ts",
+      "frontend/src/hooks/useOnboardingReadiness.ts",
+      "frontend/src/hooks/useDataQualitySummary.ts",
+      "frontend/src/components/layout/DataQualityIndicator.tsx",
+      "frontend/src/lib/statusCopy.ts"
+    ],
+    "tests_validation_required": [
+      "API client unit tests/mocks",
+      "Backend contract pytest for auth onboarding/settings",
+      "Frontend typecheck/build"
+    ],
+    "implementation_prompt": "Prompt B / Prompt F / Copy C02",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "UIUX-P1-001",
+    "title": "Primary pages use linear stacked layouts instead of reusable dashboard/masonry primitives",
+    "severity": "P1",
+    "affected_area": "Today / Projects / My Items",
+    "screenshot_evidence": "Today has long stacked sections with large horizontal cards; Projects is sparse; My Items stacks cards vertically after one two-column row.",
+    "repo_evidence": [
+      "frontend/src/pages/TodayPage.tsx:60-178 uses a page-level space-y stack with ad hoc grids for subsections.",
+      "frontend/src/pages/ProjectsPage.tsx:35-75 uses one md:grid-cols-3 card grid and a plain text footer note.",
+      "frontend/src/pages/MyItemsPage.tsx:79-157 uses space-y plus one two-column grid, then single full-width sections."
+    ],
+    "why_it_matters": "The command-center experience should support fast executive scanning. Linear stacked sections force excessive scrolling and bury important cards.",
+    "recommended_fix": "Create PrimaryPageLayout, DashboardGrid, DashboardCard, SectionCard, and EmptyState primitives. Refactor Today, Projects, and My Items to use a responsive masonry-style grid with priority cards first and stable DOM order.",
+    "likely_files_touched": [
+      "frontend/src/components/layout/PrimaryPageLayout.tsx",
+      "frontend/src/components/dashboard/DashboardGrid.tsx",
+      "frontend/src/components/dashboard/DashboardCard.tsx",
+      "frontend/src/pages/TodayPage.tsx",
+      "frontend/src/pages/ProjectsPage.tsx",
+      "frontend/src/pages/MyItemsPage.tsx",
+      "frontend/src/index.css"
+    ],
+    "tests_validation_required": [
+      "Visual/manual smoke at desktop/tablet/mobile",
+      "RTL render tests for page headings and card order",
+      "Frontend build"
+    ],
+    "implementation_prompt": "Prompt B / Prompt C / Prompt D / Prompt E",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "UIUX-P1-002",
+    "title": "Today page hierarchy is diluted by duplicated headings, wide cards, and technical Daily Brief/status copy",
+    "severity": "P1",
+    "affected_area": "Today",
+    "screenshot_evidence": "Today screenshots show repeated 'Today' heading, large full-width Daily Brief area, over-wide cards, internal state copy, and multiple sections competing for attention.",
+    "repo_evidence": [
+      "frontend/src/pages/TodayPage.tsx:63 duplicates a Today label under the global PageHeader.",
+      "frontend/src/pages/TodayPage.tsx:92-107 exposes Daily Brief state-machine copy and external Markdown workflow.",
+      "frontend/src/pages/TodayPage.tsx:121,136,146,160,170 use JSON.stringify fallbacks for visible item rows.",
+      "frontend/src/pages/TodayPage.tsx:177 mentions composed read models and source/sync/evidence."
+    ],
+    "why_it_matters": "Today is the primary landing dashboard. It should present business action, not system internals or raw data fallbacks.",
+    "recommended_fix": "Refactor Today into page header + dashboard grid: Important Today, Daily Brief, Meetings, Action Items, Recent Changes, Cost/Change/Time, Documents/Correspondence. Remove duplicate heading and technical copy; replace fallback rows with safe title/description rendering and 'More details available in Data Health' where needed.",
+    "likely_files_touched": [
+      "frontend/src/pages/TodayPage.tsx",
+      "frontend/src/components/daily-brief/DailyBriefRenderer.tsx",
+      "frontend/src/components/dashboard/*",
+      "frontend/src/lib/statusCopy.ts"
+    ],
+    "tests_validation_required": [
+      "Today empty-data and sample-data smoke",
+      "Copy scan for FastAPI/uvicorn/read model/JSON.stringify in rendered pages",
+      "Keyboard order smoke"
+    ],
+    "implementation_prompt": "Prompt C / Copy C04",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "UIUX-P1-003",
+    "title": "Projects page is sparse and not ready for project-intelligence onboarding",
+    "severity": "P1",
+    "affected_area": "Projects",
+    "screenshot_evidence": "Projects screenshot shows only two card areas and a long explanatory note; the page does not yet provide setup guidance, source health, recent updates, or active project prioritization.",
+    "repo_evidence": [
+      "frontend/src/pages/ProjectsPage.tsx:43-74 renders a simple selector with All Projects and individual cards; copy explains contextual tabs/no-top-level nav mechanics."
+    ],
+    "why_it_matters": "Projects is expected to become the project intelligence entry point. It needs a clear split between Active Projects, Needs Setup, Recently Updated, and Project Connections rather than a basic route selector.",
+    "recommended_fix": "Refactor Projects into page header + dashboard/grid: Active Projects, Needs Setup, Recently Updated, Project Connections, Setup Guidance. Use project cards with actionable metadata and Data Health badges.",
+    "likely_files_touched": [
+      "frontend/src/pages/ProjectsPage.tsx",
+      "frontend/src/components/projects/ProjectCard.tsx",
+      "frontend/src/components/dashboard/DashboardGrid.tsx"
+    ],
+    "tests_validation_required": [
+      "Projects empty-state smoke",
+      "Project card keyboard/focus test",
+      "Responsive grid smoke"
+    ],
+    "implementation_prompt": "Prompt D / Copy C04",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "UIUX-P1-004",
+    "title": "My Items is a work queue but lacks prioritization and masonry layout",
+    "severity": "P1",
+    "affected_area": "My Items",
+    "screenshot_evidence": "My Items screenshots show a mostly stacked work queue. Important items do not receive a stronger priority lane, and lower cards become long full-width sections.",
+    "repo_evidence": [
+      "frontend/src/pages/MyItemsPage.tsx:86-105 renders action items as a full-width card, then meetings/correspondence in a two-column grid, then files and followed projects as full-width cards.",
+      "frontend/src/pages/MyItemsPage.tsx:88,111-147 includes implementation/setup language around Outlook, Procore, Graph, Admin, diagnostics."
+    ],
+    "why_it_matters": "My Items should feel like a personal queue: what requires action, what meetings need prep, what correspondence/files require attention, and what projects are followed.",
+    "recommended_fix": "Refactor into a responsive work-queue grid: My Action Items priority card, My Meetings, My Correspondence, My Files, Followed Projects. Use empty states that route to Settings/Data Health without source-system internals.",
+    "likely_files_touched": [
+      "frontend/src/pages/MyItemsPage.tsx",
+      "frontend/src/components/my-items/*",
+      "frontend/src/components/dashboard/DashboardGrid.tsx"
+    ],
+    "tests_validation_required": [
+      "My Items empty-data smoke",
+      "Responsive grid smoke",
+      "Copy scan"
+    ],
+    "implementation_prompt": "Prompt E / Copy C04",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "COPY-P1-001",
+    "title": "Admin/Data Confidence copy is telemetry-oriented and exposes development access guidance",
+    "severity": "P1",
+    "affected_area": "Admin / Data Health",
+    "screenshot_evidence": "Sidebar and pages label the support surface as Admin / Data Confidence; planned user-facing footer should be Data Quality/Data Health.",
+    "repo_evidence": [
+      "frontend/src/pages/AdminDataConfidencePage.tsx:23-30 labels sections Source / Sync Health, Workflow / Job Health, Evidence / Guardrail Health, Retrieval / AI Quality, Permissions / Governance, Data Completeness / Coverage.",
+      "frontend/src/pages/AdminDataConfidencePage.tsx:56-58 instructs users to use the Local dev role selector.",
+      "frontend/src/pages/AdminDataConfidencePage.tsx:81-82 exposes /api/admin/* read models and ADC metric IDs."
+    ],
+    "why_it_matters": "Admin users can see more detail, but the first layer should still be business-readable. Viewer/operator users need a compact Data Quality indicator, not telemetry jargon.",
+    "recommended_fix": "Rename surface to Data Health / Admin Data Health. Use labels Source Updates, Background Tasks, Safety Checks, Answer Quality, Access & Permissions, Data Coverage. Put route/metric IDs behind a Technical details disclosure only.",
+    "likely_files_touched": [
+      "frontend/src/pages/AdminDataConfidencePage.tsx",
+      "frontend/src/navigation/navigationModel.ts",
+      "frontend/src/lib/statusCopy.ts"
+    ],
+    "tests_validation_required": [
+      "Admin viewer/operator/admin role smoke",
+      "Copy scan",
+      "Backend admin contract pytest if labels derive from backend"
+    ],
+    "implementation_prompt": "Prompt F / Copy C05",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "COPY-P1-002",
+    "title": "Disabled Chat is visible in production navigation",
+    "severity": "P1",
+    "affected_area": "Support navigation",
+    "screenshot_evidence": "Screenshots show Chat rendered as disabled in the sidebar footer.",
+    "repo_evidence": [
+      "frontend/src/navigation/navigationModel.ts:24-26 defines Chat as disabled.",
+      "frontend/src/layouts/SupportNavigation.tsx:25-36 renders disabled Chat with '(disabled)'."
+    ],
+    "why_it_matters": "A disabled future feature in primary chrome reads as unfinished product rather than a production command center.",
+    "recommended_fix": "Remove disabled Chat from visible nav. Preserve absence of /chat route and document future chat in developer docs only.",
+    "likely_files_touched": [
+      "frontend/src/navigation/navigationModel.ts",
+      "frontend/src/layouts/SupportNavigation.tsx",
+      "tests/frontend navigation tests if present"
+    ],
+    "tests_validation_required": [
+      "Render test that Chat is absent from production nav",
+      "Manual sidebar smoke"
+    ],
+    "implementation_prompt": "Prompt A / Copy C01",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "UIUX-P2-001",
+    "title": "Empty, loading, and error states are visually weak and sometimes expose technical instructions",
+    "severity": "P2",
+    "affected_area": "Shared UI states",
+    "screenshot_evidence": "Empty cards in screenshots are low-density bordered rows; several sections read as technical setup/status rather than helpful user states.",
+    "repo_evidence": [
+      "frontend/src/components/ui/EmptyState.tsx:4-10 renders a basic card with default 'No data'.",
+      "frontend/src/pages/TodayPage.tsx:42 directs users to start FastAPI/uvicorn.",
+      "frontend/src/lib/api.ts:110-120 builds errors from raw HTTP status/detail; ErrorState displays messages directly in current component pattern."
+    ],
+    "why_it_matters": "Production UI needs recovery-oriented, user-safe messages, especially when backend/local app services are offline.",
+    "recommended_fix": "Centralize ErrorState/EmptyState/LoadingState copy and map backend errors to plain outcomes. Put technical details behind an admin/developer disclosure only.",
+    "likely_files_touched": [
+      "frontend/src/components/ui/EmptyState.tsx",
+      "frontend/src/components/ui/ErrorState.tsx",
+      "frontend/src/components/ui/LoadingState.tsx",
+      "frontend/src/lib/api.ts",
+      "frontend/src/lib/statusCopy.ts"
+    ],
+    "tests_validation_required": [
+      "Component tests for empty/error/loading states",
+      "Copy scan",
+      "Manual backend-off smoke"
+    ],
+    "implementation_prompt": "Prompt B / Prompt H / Copy C06",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "UIUX-P2-002",
+    "title": "Responsive behavior is present but not intentionally specified or regression-tested for shell overflow",
+    "severity": "P2",
+    "affected_area": "Responsive shell / accessibility",
+    "screenshot_evidence": "Screenshots are desktop-width only; current mobile behavior cannot be confirmed visually. Sidebar uses a mobile overlay but shell height bug likely persists across widths.",
+    "repo_evidence": [
+      "frontend/src/layouts/AppShell.tsx:31-47 implements fixed mobile sidebar overlay and md:static desktop sidebar.",
+      "frontend/src/index.css:137-171 includes focus styles and skip link, but layout-specific responsive regression tests are not evident from inspected files."
+    ],
+    "why_it_matters": "The app must remain usable on laptop/tablet widths and must not regress the pinned footer/main scroll fix.",
+    "recommended_fix": "Document breakpoints and add smoke/RTL tests where feasible: nav visibility, skip link, focus order, absence of horizontal overflow, shell footer pinned at desktop/tablet/mobile.",
+    "likely_files_touched": [
+      "frontend/src/index.css",
+      "frontend/src/layouts/AppShell.tsx",
+      "frontend/src/components/layout/*",
+      "frontend/src/test/*"
+    ],
+    "tests_validation_required": [
+      "Manual browser resize smoke",
+      "RTL navigation tests",
+      "Future Playwright screenshot baseline if the project adds browser automation"
+    ],
+    "implementation_prompt": "Prompt H / Prompt I",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "COPY-P2-001",
+    "title": "Daily Brief copy exposes Markdown/MCP/scheduled prompt internals in normal view",
+    "severity": "P2",
+    "affected_area": "Today / Settings / Daily Brief",
+    "screenshot_evidence": "Today screenshots show Daily Brief Not configured plus external Markdown/presenter-only/state copy in the main dashboard.",
+    "repo_evidence": [
+      "frontend/src/components/daily-brief/DailyBriefRenderer.tsx:60-65 renders 'external file', 'external agent + settings', and presenter/polish language.",
+      "frontend/src/pages/TodayPage.tsx:103-107 lists state-machine statuses and links to configure folder/platform.",
+      "frontend/src/pages/SettingsPage.tsx:228-301 exposes Markdown, external AI platform, MCP guidance, setup instructions, scheduled prompt, and test detection controls."
+    ],
+    "why_it_matters": "The end-user concept is 'Daily Brief' with a folder/source status. Technical pipeline details should not dominate primary screens.",
+    "recommended_fix": "Normal view: Today\u2019s brief, Last updated, Ready/Stale/Missing, Change folder, Check for today\u2019s brief. Advanced setup details behind disclosure for admin/operator only.",
+    "likely_files_touched": [
+      "frontend/src/components/daily-brief/DailyBriefRenderer.tsx",
+      "frontend/src/pages/TodayPage.tsx",
+      "frontend/src/pages/SettingsPage.tsx",
+      "frontend/src/components/settings/DailyBriefSettingsPanel.tsx"
+    ],
+    "tests_validation_required": [
+      "Copy scan for MCP/Markdown/scheduled prompt in primary screens",
+      "Manual Daily Brief setup smoke"
+    ],
+    "implementation_prompt": "Prompt C / Prompt F / Copy C03-C04",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "COPY-P2-002",
+    "title": "No dedicated production display-copy regression harness",
+    "severity": "P2",
+    "affected_area": "Regression safety",
+    "screenshot_evidence": "Multiple visible internal/dev strings are present in screenshots and confirmed in source.",
+    "repo_evidence": [
+      "frontend/src/pages/SettingsPage.tsx and related components contain prompt IDs, raw-panel notes, JSON.stringify fallbacks, and backend terms.",
+      "frontend/src/navigation/navigationModel.ts and SupportNavigation render disabled future feature copy.",
+      "frontend/src/App.tsx likely remains unused starter/demo source per attached copy package; not inspected through connector in this audit because current route entrypoint is AppRouter."
+    ],
+    "why_it_matters": "Manual copy cleanup will regress without a guardrail. The app has a history of prompt/gap/test-harness copy leaking into UI.",
+    "recommended_fix": "Add frontend copycheck script/test scanning production-rendered TS/TSX/CSS with allowlists for docs/tests/dev-only files. Fail on prompt IDs, FPR/ADC IDs, raw panels, JSON.stringify, FastAPI/uvicorn/Vite/HMR, read model, endpoint/route in normal UI, and local dev role strings.",
+    "likely_files_touched": [
+      "scripts/proofs/frontend_display_copy_scan.py",
+      "frontend/package.json",
+      "docs/evidence/frontend-ui-ux-shell-layout-audit/*",
+      "tests/test_frontend_display_copy.py or frontend vitest equivalent"
+    ],
+    "tests_validation_required": [
+      "python -m pytest targeted copy scan test",
+      "cd frontend && npm run copycheck && npm run lint && npm run typecheck && npm run build"
+    ],
+    "implementation_prompt": "Prompt I / Copy C08",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "gap_id": "UIUX-P3-001",
+    "title": "Future onboarding/auth/sync/data-quality surfaces need reserved shell placement now",
+    "severity": "P3",
+    "affected_area": "Future feature readiness",
+    "screenshot_evidence": "Screenshots show Admin/Data Confidence and Settings/Chat footer entries, but no account status, Data Quality dot, or onboarding-aware shell area.",
+    "repo_evidence": [
+      "src/hb_assistant/construction/analytics/api.py:286-301 and 70-103 of fetched later segment expose readiness/account/data-quality contracts.",
+      "frontend/src/app/routes.tsx:21,35-74 and 137-140 include Get Started routing but shell does not yet visually reserve a first-run or stale-auth status region."
+    ],
+    "why_it_matters": "If the shell is not prepared now, adding account connection, stale auth, first-sync approval, and data-quality feedback will cause another layout refactor.",
+    "recommended_fix": "Introduce a shell-level StatusRail/SidebarFooter contract now: account readiness summary, data-quality dot, last-updated hover/focus, settings, admin detail link. Keep admin-only diagnostics behind role gate; non-admin sees simple indicator.",
+    "likely_files_touched": [
+      "frontend/src/layouts/AppShell.tsx",
+      "frontend/src/components/layout/SidebarFooter.tsx",
+      "frontend/src/components/layout/DataQualityIndicator.tsx",
+      "frontend/src/hooks/useDataQualitySummary.ts"
+    ],
+    "tests_validation_required": [
+      "Role-based render tests",
+      "Manual readiness first-time/returning-user smoke",
+      "Backend contract tests if frontend route assumptions change"
+    ],
+    "implementation_prompt": "Prompt F",
+    "source": "ui_ux_shell_layout_audit"
+  },
+  {
+    "id": "COPY-P0-001",
+    "severity": "P0",
+    "area": "App shell / production chrome",
+    "title": "Local dev role selector is visible in normal app chrome",
+    "evidence": "frontend/src/layouts/AppShell.tsx lines 63-80 render 'Local dev role \u2014 not production auth' plus Viewer/Operator/Admin selector.",
+    "why": "Normal users should not see implementation-role simulation or auth disclaimers in the primary header.",
+    "recommended_fix": "Move role selector behind an explicit development-only flag or developer panel; remove from production shell. Ensure default production UI has no local role copy.",
+    "prompt": "Prompt C01",
+    "source": "end_user_copy_remediation_package"
+  },
+  {
+    "id": "COPY-P1-002",
+    "severity": "P1",
+    "area": "Navigation / chat exposure",
+    "title": "Disabled Chat remains visible as a support-nav item",
+    "evidence": "frontend/src/navigation/navigationModel.ts lines 24-26 define Chat as disabled; SupportNavigation.tsx lines 25-36 renders it with '(disabled)'.",
+    "why": "Product direction says chat is future/stub-only and no active or accessible in-app chat interface should be visible to users.",
+    "recommended_fix": "Remove disabled chat nav item from visible UI; keep route absent and optionally document chat disabled in developer docs only.",
+    "prompt": "Prompt C01",
+    "source": "end_user_copy_remediation_package"
+  },
+  {
+    "id": "COPY-P0-003",
+    "severity": "P0",
+    "area": "Settings / auth onboarding",
+    "title": "Frontend does not consume new normalized auth/readiness contract",
+    "evidence": "Backend now exposes /api/onboarding/readiness and /api/settings/connections/* routes, but frontend/src/lib/api.ts only exposes legacy Settings functions through /api/settings/accounts/projects/sources/keywords and lacks Prompt A client helpers.",
+    "why": "After Prompt A, the frontend should stop presenting old status loaders and use end-user account readiness states for Microsoft 365, Procore, project connections, approvals, and data quality.",
+    "recommended_fix": "Add typed client helpers for readiness, accounts, auth refresh, normalized project preview/save/list, admin approval, data-quality summary/detail; update Settings and shell to consume them.",
+    "prompt": "Prompt C02",
+    "source": "end_user_copy_remediation_package"
+  },
+  {
+    "id": "COPY-P0-004",
+    "severity": "P0",
+    "area": "Settings / connection management",
+    "title": "Settings still exposes prompt IDs, loader actions, raw-panel remnants, and backend workflow labels",
+    "evidence": "SettingsPage.tsx includes labels such as 'Account Connections (Prompt 14B)', 'Load Accounts Status', 'Project Connections (Prompt 14B)', 'Load Projects', 'Source Scope (Prompt 14B)', 'Load Source Scope', 'raw panels removed per FPR-004', and 'preview\u2192save (14A)'.",
+    "why": "Settings is the onboarding gateway; internal labels make it feel unfinished and can confuse non-engineering users.",
+    "recommended_fix": "Rewrite Settings as guided Account Connections, Project Connections, Daily Brief, Preferences, and Admin Approval flows with plain actions and no prompt IDs or raw/debug language.",
+    "prompt": "Prompt C03",
+    "source": "end_user_copy_remediation_package"
+  },
+  {
+    "id": "COPY-P1-005",
+    "severity": "P1",
+    "area": "Settings / keyword management",
+    "title": "Keyword management exposes project keys, JSON.stringify output, Explain/List debug surfaces",
+    "evidence": "SettingsPage.tsx lines 269-298 show 'Keyword Management (per project)', 'Project key', 'Load List', 'Explain', and render JSON.stringify output slices.",
+    "why": "Project matching needs a business-facing management surface, not a developer/debug panel.",
+    "recommended_fix": "Replace with project picker, keywords table/list, add/remove actions, and plain preview wording; no JSON output in the normal UI.",
+    "prompt": "Prompt C03",
+    "source": "end_user_copy_remediation_package"
+  },
+  {
+    "id": "COPY-P1-006",
+    "severity": "P1",
+    "area": "Today",
+    "title": "Today still includes backend/startup and read-model copy",
+    "evidence": "TodayPage.tsx lines 38-43 tell the user to start FastAPI/uvicorn; line 177 mentions composed read models and source/sync/evidence; Daily Brief advisory names state machine values.",
+    "why": "Today is the primary command center and must not read like an engineering test harness.",
+    "recommended_fix": "Replace technical failure states with end-user guidance: 'This section could not be loaded', 'Check Data Health', 'Connect sources', 'Last updated'. Simplify Daily Brief states.",
+    "prompt": "Prompt C04",
+    "source": "end_user_copy_remediation_package"
+  },
+  {
+    "id": "COPY-P1-007",
+    "severity": "P1",
+    "area": "Admin / Data Health",
+    "title": "Admin page still uses engineering telemetry labels",
+    "evidence": "AdminDataConfidencePage.tsx lines 23-30 use Source / Sync Health, Workflow / Job Health, Evidence / Guardrail Health, Retrieval / AI Quality, Permissions / Governance, Data Completeness / Coverage; lines 56-58 instruct use of local dev role selector.",
+    "why": "Admin can retain detail but should translate system health into business-readable labels and actions.",
+    "recommended_fix": "Rename to Source Updates, Background Tasks, Safety Checks, Answer Quality, Access & Permissions, Data Coverage; hide technical diagnostics behind disclosure; replace local-role instructions with production access language.",
+    "prompt": "Prompt C05",
+    "source": "end_user_copy_remediation_package"
+  },
+  {
+    "id": "COPY-P1-008",
+    "severity": "P1",
+    "area": "My Items / Projects",
+    "title": "Core pages still mention source systems, Admin approvals, domain-nav implementation constraints, and diagnostics",
+    "evidence": "MyItemsPage.tsx lines 86-156 and ProjectsPage.tsx lines 43-74 contain source-system/setup/admin language; ProjectDashboardPage.tsx lines 48-55 mention contextual tabs, read models, Admin Data Confidence, and no top-level domain navs.",
+    "why": "Core work surfaces should explain what the user can do, not how the app is architected.",
+    "recommended_fix": "Use simple empty states and helper copy: 'Connect Microsoft 365/Procore in Settings', 'Waiting for first update approval', 'No items need attention'. Move architecture constraints to docs/tests.",
+    "prompt": "Prompt C04",
+    "source": "end_user_copy_remediation_package"
+  },
+  {
+    "id": "COPY-P2-009",
+    "severity": "P2",
+    "area": "Shared errors / API client",
+    "title": "ErrorState renders raw backend error messages and HTTP status text",
+    "evidence": "api.ts lines 54-64 builds errors from HTTP status/detail; ErrorState.tsx lines 3-11 displays message directly.",
+    "why": "Raw 403/404/backend details degrade trust and expose internal state vocabulary.",
+    "recommended_fix": "Introduce user-safe error mapping with optional admin/developer details disclosure; never show route names/status codes in normal views.",
+    "prompt": "Prompt C06",
+    "source": "end_user_copy_remediation_package"
+  },
+  {
+    "id": "COPY-P2-010",
+    "severity": "P2",
+    "area": "Unused starter source",
+    "title": "Vite starter App.tsx remains in source tree with React/Vite demo copy",
+    "evidence": "frontend/src/App.tsx lines 21-64 include 'Edit src/App.tsx', HMR, Vite/React docs, Count is, and community links, although main.tsx uses AppRouter.",
+    "why": "Even if unused, production scans and future imports can surface demo copy; it is repo clutter.",
+    "recommended_fix": "Delete or replace unused App.tsx/App.css/assets starter copy after confirming no imports, or update to a harmless redirect/test-only placeholder.",
+    "prompt": "Prompt C07",
+    "source": "end_user_copy_remediation_package"
+  },
+  {
+    "id": "COPY-P2-011",
+    "severity": "P2",
+    "area": "Daily Brief",
+    "title": "Daily Brief still exposes external Markdown, MCP, scheduled prompt, 7 states, parse/state language",
+    "evidence": "SettingsPage.tsx lines 229-256 and 560-599; TodayPage.tsx lines 92-107 expose Markdown/presenter workflow and state names.",
+    "why": "The intended user-facing concept is a Daily Brief, not a Markdown/MCP pipeline.",
+    "recommended_fix": "Keep advanced setup behind disclosure; normal UI says folder, brief file, last updated, ready/stale/missing, and source brief. Avoid 'MCP' unless advanced instructions are opened.",
+    "prompt": "Prompt C03/C04",
+    "source": "end_user_copy_remediation_package"
+  },
+  {
+    "id": "COPY-P2-012",
+    "severity": "P2",
+    "area": "Regression safety",
+    "title": "No dedicated frontend display-copy forbidden-term scan is visible in current client code",
+    "evidence": "Current UI still contains prompt IDs, local dev role, raw panels removed text, JSON.stringify outputs, backend terms, read-model text, and Vite starter copy.",
+    "why": "Manual cleanup will regress without automated guardrails.",
+    "recommended_fix": "Add a copy audit script/test with allowlists for docs/tests/dev-only files and forbidden terms for production-rendered TSX/TS files.",
+    "prompt": "Prompt C08",
+    "source": "end_user_copy_remediation_package"
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "file": "Screenshot 2026-06-07 at 6.02.09 AM.png",
+    "route": "/today",
+    "finding": "Top of Today: sidebar footer not visible at initial top state due viewport/window crop; content is wide and sparse; Important Today cards use fixed grid but page sections stack vertically."
+  },
+  {
+    "file": "Screenshot 2026-06-07 at 6.02.21 AM.png",
+    "route": "/today scrolled",
+    "finding": "Document-level page scroll visible; sidebar support controls appear near viewport bottom while main content continues. Confirms shared page scroll hypothesis."
+  },
+  {
+    "file": "Screenshot 2026-06-07 at 6.02.34 AM.png",
+    "route": "/today",
+    "finding": "Full shell shows header with local dev role selector and advisory copy; Daily Brief and other sections are over-wide; main scrollbar appears at browser/document edge."
+  },
+  {
+    "file": "Screenshot 2026-06-07 at 6.02.44 AM.png",
+    "route": "/projects",
+    "finding": "Projects page is sparse: two card regions and a note. Support nav/footer remains visible but footer is coupled to shell height."
+  },
+  {
+    "file": "Screenshot 2026-06-07 at 6.02.51 AM.png",
+    "route": "/my-items",
+    "finding": "My Items top state uses full-width action-items card followed by two-column cards; text includes source-system and setup implementation details."
+  },
+  {
+    "file": "Screenshot 2026-06-07 at 6.02.57 AM.png",
+    "route": "/my-items scrolled",
+    "finding": "Lower My Items shows long full-width cards and footer/sidebar support controls; body scroll is still document-level."
+  },
+  {
+    "file": "Screenshot 2026-06-07 at 6.03.17 AM.png",
+    "route": "/my-items zoomed",
+    "finding": "At zoomed/scaled view, same structural issues remain: exposed local role selector, stacked cards, technical copy, no masonry shell."
+  }
+]

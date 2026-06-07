@@ -1,0 +1,24 @@
+{
+  "gap_id": "UIUX-P0-004",
+  "title": "Primary nav hierarchy should be My Dashboard-first with Today nested as landing view",
+  "severity": "P0",
+  "affected_area": "Primary navigation / route hierarchy / chrome header title metadata",
+  "why_it_matters": "The current top-level separation between Today and My Items creates unclear ownership of personal dashboard content. My Dashboard should be the first-level user home, with Today as its primary landing subview.",
+  "recommended_fix": "Rename My Items to My Dashboard, move it to the first primary nav position, nest Today underneath it, set Today as the default landing view, and preserve legacy /today and /my-items redirects or aliases.",
+  "likely_files_touched": [
+    "frontend/src/navigation/navigationModel.ts",
+    "frontend/src/app/routes.tsx",
+    "frontend/src/layouts/AppShell.tsx",
+    "frontend/src/pages/TodayPage.tsx",
+    "frontend/src/pages/MyItemsPage.tsx",
+    "frontend/src/components/layout/PrimaryPageLayout.tsx"
+  ],
+  "tests_validation_required": [
+    "frontend lint/typecheck/build",
+    "route/nav render tests if available",
+    "manual smoke for /, /my-dashboard/today, /today, /my-items",
+    "copy grep for stale My Items labels"
+  ],
+  "implementation_prompt_placement": "P01/P02/P03/P05 plus addendum prompt",
+  "source": "user_scope_correction_2026-06-07"
+}
