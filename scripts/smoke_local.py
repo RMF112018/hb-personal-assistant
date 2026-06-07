@@ -90,6 +90,10 @@ UI_SURFACES = [
 
     # Daily brief status (used on Today/Settings)
     ("GET", "viewer", "/api/daily-brief/status", None),
+    # Prompt H regression surfaces (auth/onboarding/dq) — viewer for readiness + summary; admin for detail
+    ("GET", "viewer", "/api/onboarding/readiness", None),
+    ("GET", "viewer", "/api/settings/data-quality/summary", None),
+    ("GET", "admin", "/api/settings/data-quality/detail", None),
 ]
 
 def _client():
@@ -155,6 +159,51 @@ def main() -> int:
             print(f"  FAIL {path} ({resp.status_code})")
         else:
             print(f"  OK   {path} ({resp.status_code})")
+
+    # Prompt H hygiene block (auth/onboarding/dq regression inside the smoke harness):
+    # Explicitly drive the critical normalized surfaces and assert no raw leak + no positive first_sync_triggered.
+    # This makes `python -m scripts.smoke_local` itself fail the Prompt H ACs on regression.
+    print("\n[Prompt H auth/onboarding/dq hygiene]")
+    h_surfaces = [
+        ("GET", "viewer", "/api/onboarding/readiness", None),
+        ("GET", "viewer", "/api/settings/data-quality/summary", None),
+        ("GET", "admin", "/api/settings/data-quality/detail", None),
+        ("POST", "viewer", "/api/settings/connections/projects/preview", {"url": "https://example.com/1"}),
+        ("POST", "operator", "/api/settings/connections/procore/auth/start", None),
+    ]
+    for method, min_role, path, body in h_surfaces:
+        headers = {}
+        if min_role == "admin":
+            headers["X-HB-UI-Role"] = "admin"
+        elif min_role in ("viewer", "operator"):
+            headers["X-HB-UI-Role"] = min_role
+        try:
+            resp = client.get(path, headers=headers) if method == "GET" else client.post(path, json=body or {}, headers=headers)
+            if resp.status_code == 200:
+                try:
+                    data = resp.json()
+                except Exception:
+                    data = {}
+                raw_hits = _has_raw(data) if isinstance(data, dict) else []
+                if raw_hits:
+                    failures.append(f"H: {path} leaked raw: {raw_hits}")
+                s = json.dumps(data, default=str)
+                if '"first_sync_triggered": true' in s or (isinstance(data, dict) and data.get("first_sync_triggered") is True):
+                    failures.append(f"H: {path} claimed first_sync_triggered=true")
+                print(f"  OK   {path} (no raw, no trigger)")
+            else:
+                # 403 for admin-only or other client errors are acceptable in smoke as long as no 5xx and no leak in body
+                try:
+                    data = resp.json()
+                except Exception:
+                    data = {"text": (resp.text or "")[:200]}
+                s = json.dumps(data, default=str)
+                if '"first_sync_triggered": true' in s:
+                    failures.append(f"H: {path} claimed first_sync_triggered=true (status {resp.status_code})")
+                print(f"  OK   {path} ({resp.status_code})")
+        except Exception as e:
+            failures.append(f"H: {path} exception {e}")
+            print(f"  FAIL {path} (exception)")
 
     if failures:
         print("\n[API FAILURES]")

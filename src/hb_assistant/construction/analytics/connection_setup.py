@@ -809,6 +809,7 @@ class ConnectionSetupService:
         }
 
     # Prompt F: rejection response (symmetric, safe, first_sync_triggered never true)
+    @staticmethod
     def _rejection_response(connection_id: str, source_type: str) -> dict[str, Any]:
         return {
             "ok": True,
