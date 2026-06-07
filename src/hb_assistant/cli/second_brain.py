@@ -7631,3 +7631,324 @@ def phase_10_raw_action_candidates(
         }
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
         raise typer.Exit(1) from None
+
+
+@phase_10_app.command("list-candidates")
+def phase_10_list_candidates(
+    project: "str | None" = typer.Option(
+        None, "--project", help="Project key filter for candidates."
+    ),  # noqa: B008
+    candidate_type: str = typer.Option(
+        "both", "--type", help="task|commitment|both (default both)."
+    ),  # noqa: B008
+    review_status: "str | None" = typer.Option(
+        "pending", "--review-status", help="Filter by review_status (e.g. pending, accepted)."
+    ),  # noqa: B008
+    limit: int = typer.Option(100, "--limit", help="Max rows (bounded)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable (default)."),  # noqa: B008
+) -> None:
+    """List persisted Phase 10 V41 action candidates (task / commitment) with source ref summaries.
+
+    Advisory only. Use --review-status to focus the review queue. Source refs (with evidence_redacted excerpts)
+    are included so you can drive `candidate-source` or the graph raw-detail commands.
+    """
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        s = ConstructionStore()
+        items: list[dict[str, Any]] = []
+        if candidate_type in ("task", "both"):
+            for t in s.list_task_candidates(
+                project_key=project, review_status=review_status, limit=limit
+            ):
+                refs = s.list_candidate_source_refs(candidate_id=t.get("candidate_id"), limit=10)
+                t = dict(t)
+                t["source_refs"] = [
+                    {
+                        "source_family": r.get("source_family"),
+                        "source_ref_hash": r.get("source_ref_hash"),
+                        "evidence_redacted": r.get("evidence_redacted"),
+                    }
+                    for r in refs
+                ]
+                items.append({"type": "task", **t})
+        if candidate_type in ("commitment", "both"):
+            for c in s.list_commitment_candidates(
+                project_key=project, review_status=review_status, limit=limit
+            ):
+                refs = s.list_candidate_source_refs(candidate_id=c.get("candidate_id"), limit=10)
+                c = dict(c)
+                c["source_refs"] = [
+                    {
+                        "source_family": r.get("source_family"),
+                        "source_ref_hash": r.get("source_ref_hash"),
+                        "evidence_redacted": r.get("evidence_redacted"),
+                    }
+                    for r in refs
+                ]
+                items.append({"type": "commitment", **c})
+        payload: dict[str, Any] = {
+            "command": "second-brain phase-10 list-candidates",
+            "ok": True,
+            "project": project,
+            "candidate_type": candidate_type,
+            "review_status": review_status,
+            "count": len(items),
+            "candidates": items,
+            "guardrails": {
+                "advisory_only": True,
+                "no_auto_accept": True,
+                "review_status_preserved": True,
+                "raw_excerpts_bounded_in_refs": True,
+            },
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "second-brain phase-10 list-candidates",
+            "ok": False,
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+def _resolve_raw_for_source_ref(ref: dict[str, Any], store: Any) -> "dict[str, Any] | None":
+    """Resolve a candidate_source_ref to the actual raw content row (full) when available.
+
+    Uses the P05 direct raw getters (policy controlled at store level for these direct paths).
+    Returns None if no raw or unknown family. Bounded caller responsibility.
+    """
+    fam = (ref or {}).get("source_family")
+    h = (ref or {}).get("source_ref_hash")
+    if not fam or not h:
+        return None
+    try:
+        if fam == "email_message_raw_content":
+            return store.get_email_message_raw_content(message_id_hash=h)
+        if fam == "calendar_event_raw_content":
+            # h may be event_index_id or graph hash; try both
+            row = store.get_calendar_event_raw_content(event_index_id=h)
+            if row:
+                return row
+            return store.get_calendar_event_raw_content(graph_event_id_hash=h)
+        # thread context etc. can be added; for P08 focus on message/event raw
+    except Exception:
+        pass
+    return None
+
+
+@phase_10_app.command("candidate-source")
+def phase_10_candidate_source(
+    candidate_id: str = typer.Option(
+        ...,
+        "--candidate-id",
+        help="The candidate_id from task_candidates or commitment_candidates.",
+    ),  # noqa: B008
+    candidate_type: str = typer.Option(
+        "task", "--candidate-type", help="task|commitment (used to select table for load)."
+    ),  # noqa: B008
+    include_full_raw: bool = typer.Option(
+        True,
+        "--include-full-raw/--excerpts-only",
+        help="Resolve source refs to full raw content rows from V42 (default). When false, only the stored evidence_redacted excerpts are shown.",
+    ),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Machine readable (default)."),  # noqa: B008
+) -> None:
+    """Inspect the actual raw email/calendar content behind a Phase 10 action candidate's source refs.
+
+    Loads the candidate (review_status etc.) + its candidate_source_refs, then (when --include-full-raw)
+    resolves each ref via the local raw getters to attach the full 'raw_content' payload (subject/body/etc.).
+    This makes the 'actual content behind candidates' visible for review without leaving the local tool.
+    """
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        s = ConstructionStore()
+        cand: "dict[str, Any] | None" = None
+        ctype = candidate_type
+        if ctype == "task":
+            # filter client-side for the id (list doesn't take id filter)
+            for r in s.list_task_candidates(limit=10000):
+                if r.get("candidate_id") == candidate_id:
+                    cand = dict(r)
+                    break
+        else:
+            for r in s.list_commitment_candidates(limit=10000):
+                if r.get("candidate_id") == candidate_id:
+                    cand = dict(r)
+                    ctype = "commitment"
+                    break
+        if not cand:
+            payload = {
+                "command": "second-brain phase-10 candidate-source",
+                "ok": False,
+                "error": "candidate_not_found",
+                "candidate_id": candidate_id,
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(3)
+
+        refs = s.list_candidate_source_refs(candidate_id=candidate_id, limit=50)
+        enriched_refs: list[dict[str, Any]] = []
+        for r in refs:
+            er = dict(r)
+            if include_full_raw:
+                raw = _resolve_raw_for_source_ref(
+                    {
+                        "source_family": r.get("source_family"),
+                        "source_ref_hash": r.get("source_ref_hash"),
+                    },
+                    s,
+                )
+                if raw:
+                    er["raw_content"] = raw
+                    er["_raw_content_included"] = True
+            enriched_refs.append(er)
+
+        payload = {
+            "command": "second-brain phase-10 candidate-source",
+            "ok": True,
+            "candidate_id": candidate_id,
+            "candidate_type": ctype,
+            "candidate": cand,
+            "source_refs": enriched_refs,
+            "raw_mode_visible": True,
+            "guardrails": {
+                "local_only": True,
+                "advisory_only": True,
+                "no_auto_accept": True,
+                "full_raw_bodies_only_in_sanctioned_review_detail": True,
+                "bounded_excerpts_in_candidate_source_refs": True,
+                "review_inspect_only": True,
+            },
+            "note": "Raw content (actual body from local V42; policy email_calendar) — review/inspect use only. Use phase-10 review-candidate to change review_status.",
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "second-brain phase-10 candidate-source",
+            "ok": False,
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@phase_10_app.command("review-candidate")
+def phase_10_review_candidate(
+    candidate_id: str = typer.Option(
+        ..., "--candidate-id", help="candidate_id of the task or commitment candidate."
+    ),  # noqa: B008
+    candidate_type: str = typer.Option("task", "--candidate-type", help="task|commitment"),  # noqa: B008
+    decision: str = typer.Option(
+        ..., "--decision", help="pending|accepted|ignored|snoozed|rejected (maps to review_status)."
+    ),  # noqa: B008
+    reason: "str | None" = typer.Option(
+        None, "--reason", help="Redacted operator note for the decision."
+    ),  # noqa: B008
+    emit: bool = typer.Option(
+        False,
+        "--emit/--no-emit",
+        help="Persist the review_status change (dry-run default, like memory review).",
+    ),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable report (default)."),  # noqa: B008
+) -> None:
+    """Apply an explicit operator review decision to a Phase 10 raw-content action candidate.
+
+    Mirrors the memory review pattern exactly (dry default, --emit to persist, guardrails, exit codes).
+    Updates review_status on the V41 candidate row. Optionally writes a candidate_review_event row
+    (if the table is present). Does not auto-promote to accepted_* tables; advisory only.
+    Raw source content can be inspected first via candidate-source or the graph raw-* detail commands.
+    """
+    from hb_assistant.construction.store import ConstructionStore
+
+    VALID = {"pending", "accepted", "ignored", "snoozed", "rejected"}
+    if decision not in VALID:
+        payload = {
+            "command": "second-brain phase-10 review-candidate",
+            "ok": False,
+            "error": "invalid_decision",
+            "valid": sorted(VALID),
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(2)
+
+    try:
+        s = ConstructionStore()
+        # locate the row
+        cand = None
+        if candidate_type == "task":
+            for r in s.list_task_candidates(limit=10000):
+                if r.get("candidate_id") == candidate_id:
+                    cand = dict(r)
+                    break
+        else:
+            for r in s.list_commitment_candidates(limit=10000):
+                if r.get("candidate_id") == candidate_id:
+                    cand = dict(r)
+                    break
+        if not cand:
+            payload = {
+                "command": "second-brain phase-10 review-candidate",
+                "ok": False,
+                "error": "candidate_not_found",
+                "candidate_id": candidate_id,
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(3)
+
+        prior_status = cand.get("review_status") or "pending"
+        if emit:
+            # Use the additive store helpers (P08) — clean, no private access.
+            s.set_candidate_review_status(
+                candidate_type=candidate_type,
+                candidate_id=candidate_id,
+                review_status=decision,
+            )
+            # best-effort event (non-fatal if table absent or other issue)
+            s.insert_candidate_review_event(
+                candidate_type=candidate_type,
+                candidate_id=candidate_id,
+                decision=decision,
+                reason_redacted=reason,
+                reviewer_ref="operator",
+            )
+
+        payload = {
+            "command": "second-brain phase-10 review-candidate",
+            "ok": True,
+            "emitted": emit,
+            "candidate_id": candidate_id,
+            "candidate_type": candidate_type,
+            "decision": decision,
+            "prior_review_status": prior_status,
+            "new_review_status": decision if emit else prior_status,
+            "reason_redacted": reason,
+            "guardrails": {
+                "explicit_confirmation_required_like_memory": True,
+                "advisory_only": True,
+                "no_silent_accept": True,
+                "no_auto_promote": True,
+                "review_status_preserved": True,
+                "raw_excerpts_bounded": True,
+            },
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "second-brain phase-10 review-candidate",
+            "ok": False,
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None

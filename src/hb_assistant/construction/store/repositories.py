@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
@@ -8167,6 +8168,66 @@ class ConstructionStore:
             "created_utc",
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    # --- Phase 10 Prompt 08 review helpers (additive, minimal) ---
+    # Support operator review of V41 task/commitment candidates (review_status transitions)
+    # and optional audit rows in candidate_review_events (table may be present from V41).
+    # Keep the surface thin; callers (CLI) remain responsible for guardrails/dry-run.
+    # -------------------------------------------------------------------------
+
+    def set_candidate_review_status(
+        self,
+        *,
+        candidate_type: str,
+        candidate_id: str,
+        review_status: str,
+    ) -> bool:
+        """Set review_status on a task or commitment candidate. Returns True if a row was updated."""
+        if candidate_type not in ("task", "commitment"):
+            return False
+        table = "task_candidates" if candidate_type == "task" else "commitment_candidates"
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"UPDATE {table} SET review_status = ?, updated_utc = ? WHERE candidate_id = ?",
+                (review_status, _utc_now(), candidate_id),
+            )
+            return cur.rowcount > 0
+
+    def insert_candidate_review_event(
+        self,
+        *,
+        candidate_type: str,
+        candidate_id: str,
+        decision: str,
+        reason_redacted: Optional[str] = None,
+        reviewer_ref: str = "operator",
+    ) -> Optional[str]:
+        """Insert an audit row for a candidate review decision (best-effort; table may be absent)."""
+        try:
+            event_id = str(uuid.uuid4())
+            conn = get_connection(self._db_path)
+            with transaction(conn):
+                conn.execute(
+                    """
+                    INSERT INTO candidate_review_events
+                        (event_id, candidate_type, candidate_id, decision, reason_redacted, reviewer_ref, created_utc)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        event_id,
+                        candidate_type,
+                        candidate_id,
+                        decision,
+                        reason_redacted,
+                        reviewer_ref,
+                        _utc_now(),
+                    ),
+                )
+            return event_id
+        except Exception:
+            # Table may not exist or other constraint; non-fatal for review surface.
+            return None
 
     # V20 Phase 07A Prompt 01 — Data Quality + Canonical Source-Record Map
     # All adapters enforce the guardrail flags=False at the Python layer (defense

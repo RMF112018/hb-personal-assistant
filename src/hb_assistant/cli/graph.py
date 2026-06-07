@@ -2084,6 +2084,161 @@ def calendar_events_cmd(
         raise typer.Exit(1) from None
 
 
+@calendar_app.command("event")
+def calendar_event_cmd(
+    event_index_id: str = typer.Option(
+        ...,
+        "--event-index-id",
+        help="Stable event_index_id from calendar event index (or list output).",
+    ),
+    include_raw: bool = typer.Option(
+        False,
+        "--include-raw",
+        help="Return actual subject/body/location/organizer/attendees/join/recurrence when raw_content policy (email_calendar + calendar source) or explicit allows. Phase 10A review/inspect surface.",
+    ),
+    raw_mode: Optional[str] = typer.Option(
+        None,
+        "--raw-mode",
+        help="Force 'include' or 'metadata_only' for this call (subject to policy).",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Get a single calendar event (metadata base + optional raw content).
+
+    This is the local detail/inspect surface for raw calendar content (V42).
+    When raw is included the item carries a 'raw_content' sub-dict with the
+    actual plaintext fields captured at index time. Pure local read.
+    """
+    try:
+        from hb_assistant.construction.calendar import get_calendar_event
+        from hb_assistant.construction.store import ConstructionStore
+
+        store = ConstructionStore()
+        rm = raw_mode if raw_mode in (None, "include", "metadata_only") else None
+        row = get_calendar_event(
+            event_index_id=event_index_id,
+            include_raw=include_raw,
+            raw_mode=rm,  # type: ignore[arg-type]
+            store=store,
+        )
+        if row is None:
+            payload: Dict[str, Any] = {
+                "command": "graph calendar event",
+                "ok": False,
+                "error": "not_found",
+                "event_index_id": event_index_id,
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(3)
+        payload = {
+            "command": "graph calendar event",
+            "ok": True,
+            "event_index_id": event_index_id,
+            "_raw_content_included": bool(row.get("_raw_content_included")),
+            "event": row,
+            "guardrails": {
+                "local_only": True,
+                "graph_calls": 0,
+                "writeback": "none",
+                "raw_content": "policy_and_param_controlled",
+                "metadata_mode_always_available": True,
+                "review_inspect_only": True,
+            },
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph calendar event",
+            "ok": False,
+            "status": "query_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@calendar_app.command("raw-event")
+def calendar_raw_event_cmd(
+    event_index_id: Optional[str] = typer.Option(
+        None,
+        "--event-index-id",
+        help="event_index_id for the raw calendar row (preferred stable key).",
+    ),
+    graph_event_id_hash: Optional[str] = typer.Option(
+        None, "--graph-event-id-hash", help="Alternative lookup by graph_event_id_hash."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Direct access to the persisted raw calendar event content (V42 table).
+
+    Returns the full captured fields (subject, body_text/html, location, organizer,
+    attendees, join_url, recurrence, start/end) when present. Local only.
+    Use this (or the enriched 'event' command) to inspect the actual source content
+    behind a candidate's source ref.
+    """
+    try:
+        from hb_assistant.construction.calendar import get_calendar_event_raw_content
+        from hb_assistant.construction.store import ConstructionStore
+
+        if not event_index_id and not graph_event_id_hash:
+            payload = {
+                "command": "graph calendar raw-event",
+                "ok": False,
+                "error": "missing_key",
+                "detail": "provide --event-index-id or --graph-event-id-hash",
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+        store = ConstructionStore()
+        row = get_calendar_event_raw_content(
+            event_index_id=event_index_id,
+            graph_event_id_hash=graph_event_id_hash,
+            store=store,
+        )
+        if row is None:
+            payload = {
+                "command": "graph calendar raw-event",
+                "ok": False,
+                "error": "not_found",
+                "event_index_id": event_index_id,
+                "graph_event_id_hash": graph_event_id_hash,
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(3)
+        payload = {
+            "command": "graph calendar raw-event",
+            "ok": True,
+            "event_index_id": event_index_id,
+            "graph_event_id_hash": graph_event_id_hash,
+            "raw_content": row,
+            "_raw_content_included": True,
+            "guardrails": {
+                "local_only": True,
+                "graph_calls": 0,
+                "writeback": "none",
+                "raw_content": "direct_V42_access_policy_controlled",
+                "review_inspect_only": True,
+                "full_raw_bodies_only_in_sanctioned_review_detail": True,
+            },
+            "note": "Raw content (actual body from local V42; policy email_calendar) — review/inspect use only.",
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph calendar raw-event",
+            "ok": False,
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @calendar_app.command("project-match")
 def calendar_project_match_cmd(
     project: Optional[str] = typer.Option(None, "--project", help="Target project key to report."),
@@ -2456,6 +2611,215 @@ def mail_threads_cmd(
             "error": str(e)[:200],
         }
         typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@mail_app.command("message")
+def mail_message_cmd(
+    message_id: str = typer.Option(
+        ..., "--message-id", help="Graph message id (the 'id' from list or summaries)."
+    ),
+    include_raw: bool = typer.Option(
+        False,
+        "--include-raw",
+        help="Include raw plaintext subject/body/participants/attachments meta when policy (email_calendar + email source) or explicit allows. Phase 10A review/inspect surface.",
+    ),
+    raw_mode: Optional[str] = typer.Option(
+        None,
+        "--raw-mode",
+        help="Force 'include' or 'metadata_only' for this call (subject to policy endpoints.allow_include_raw_param).",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Get a single email message (metadata + optional raw content when permitted).
+
+    This is the local detail/inspect surface for raw email content (V42 tables).
+    When raw included, the response carries a 'raw_content' sub-object with the
+    actual captured body_text/html etc. Local read only; no Graph.
+    """
+    try:
+        from hb_assistant.construction.email import get_email_message
+        from hb_assistant.construction.store import ConstructionStore
+
+        store = ConstructionStore()
+        rm = raw_mode if raw_mode in (None, "include", "metadata_only") else None
+        row = get_email_message(
+            message_id=message_id,
+            include_raw=include_raw,
+            raw_mode=rm,  # type: ignore[arg-type]
+            store=store,
+        )
+        if row is None:
+            payload: Dict[str, Any] = {
+                "command": "graph mail message",
+                "ok": False,
+                "error": "not_found",
+                "message_id": message_id,
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(3)
+        payload = {
+            "command": "graph mail message",
+            "ok": True,
+            "message_id": message_id,
+            "_raw_content_included": bool(row.get("_raw_content_included")),
+            "message": row,
+            "guardrails": {
+                "local_only": True,
+                "graph_calls": 0,
+                "writeback": "none",
+                "raw_content": "policy_and_param_controlled",
+                "metadata_mode_always_available": True,
+                "review_inspect_only": True,
+            },
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail message",
+            "ok": False,
+            "status": "query_error",
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@mail_app.command("raw-message")
+def mail_raw_message_cmd(
+    message_id: Optional[str] = typer.Option(
+        None,
+        "--message-id",
+        help="Graph message id; will be hashed internally for the raw row lookup.",
+    ),
+    message_id_hash: Optional[str] = typer.Option(
+        None, "--message-id-hash", help="Direct message_id_hash key into email_message_raw_content."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Direct access to the persisted raw email message content (V42).
+
+    Returns the full captured fields (subject, body_text, body_html, from/to/cc/bcc,
+    sent/received, has_attachments, attachment_metadata). Local only.
+    Primary surface to inspect the actual source content behind a raw action candidate's
+    source ref (email_message_raw_content family).
+    """
+    try:
+        from hb_assistant.construction.email import get_email_message_raw_content
+        from hb_assistant.construction.store import ConstructionStore
+        from hb_assistant.normalize.redaction import hash_value
+
+        if not message_id and not message_id_hash:
+            payload = {
+                "command": "graph mail raw-message",
+                "ok": False,
+                "error": "missing_key",
+                "detail": "provide --message-id or --message-id-hash",
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+        mhash = message_id_hash or hash_value(message_id)
+        store = ConstructionStore()
+        row = get_email_message_raw_content(message_id_hash=mhash, store=store)
+        if row is None:
+            payload = {
+                "command": "graph mail raw-message",
+                "ok": False,
+                "error": "not_found",
+                "message_id": message_id,
+                "message_id_hash": mhash,
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(3)
+        payload = {
+            "command": "graph mail raw-message",
+            "ok": True,
+            "message_id": message_id,
+            "message_id_hash": mhash,
+            "raw_content": row,
+            "_raw_content_included": True,
+            "guardrails": {
+                "local_only": True,
+                "graph_calls": 0,
+                "writeback": "none",
+                "raw_content": "direct_V42_access_policy_controlled",
+                "review_inspect_only": True,
+                "full_raw_bodies_only_in_sanctioned_review_detail": True,
+            },
+            "note": "Raw content (actual body from local V42; policy email_calendar) — review/inspect use only.",
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail raw-message",
+            "ok": False,
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@mail_app.command("raw-thread")
+def mail_raw_thread_cmd(
+    thread_ref: str = typer.Option(
+        ...,
+        "--thread-ref",
+        help="thread_ref (conversation or stable key) for email_thread_raw_context.",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Direct access to a persisted raw email thread context (V42).
+
+    The row includes the aggregated messages list (with per-message subject/body/participants)
+    and source_refs. Useful for reviewing full thread content behind candidates.
+    """
+    try:
+        from hb_assistant.construction.email import get_email_thread_raw_context
+        from hb_assistant.construction.store import ConstructionStore
+
+        store = ConstructionStore()
+        row = get_email_thread_raw_context(thread_ref=thread_ref, store=store)
+        if row is None:
+            payload = {
+                "command": "graph mail raw-thread",
+                "ok": False,
+                "error": "not_found",
+                "thread_ref": thread_ref,
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(3)
+        payload = {
+            "command": "graph mail raw-thread",
+            "ok": True,
+            "thread_ref": thread_ref,
+            "raw_content": row,
+            "_raw_content_included": True,
+            "guardrails": {
+                "local_only": True,
+                "graph_calls": 0,
+                "writeback": "none",
+                "raw_content": "direct_V42_access_policy_controlled",
+                "review_inspect_only": True,
+            },
+            "note": "Raw content (actual body from local V42; policy email_calendar) — review/inspect use only.",
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "graph mail raw-thread",
+            "ok": False,
+            "error": str(e)[:200],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
         raise typer.Exit(1) from None
 
 
