@@ -85,6 +85,8 @@ describe('MyItemsPage work queue', () => {
     expect(screen.getByText('Submittal response')).toBeInTheDocument()
     expect(screen.getByText('Updated drawing set')).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'Open Projects' })[0]).toHaveAttribute('href', '/projects')
+    // Today navigation added to status row (reciprocal to My Dashboard link from Today page); Settings remains in status + empty-state cards.
+    expect(screen.getByRole('link', { name: 'Open Today' })).toHaveAttribute('href', '/today')
   })
 
   it('uses safe fallback text for object-like items', () => {

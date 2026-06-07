@@ -76,7 +76,6 @@ export function MyItemsPage() {
           itemCount={itemCount}
         />
       }
-      actions={<MyItemsSettingsLink />}
     >
       <DashboardGrid>
         <DashboardCard title="My Action Items" span="wide" tone="attention">
