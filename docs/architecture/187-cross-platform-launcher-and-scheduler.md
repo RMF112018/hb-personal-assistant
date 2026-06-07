@@ -98,6 +98,15 @@ mock short-circuits before it); it is not a DB-isolation path. Tests assert a de
 scheduled run never opens/creates the production DB and vice versa, plus per-helper
 store-construction binding.
 
+**`mock_data` is Dev/explicit-only.** Production scheduled runs always resolve
+`mock_data=False`. A production local-only run (no live-read config) still performs zero
+live Procore/Graph auth/status/probe/read — that suppression comes from the per-source
+`allow_procore_live`/`allow_graph_live` gates (both False), not from `mock_data`. So the
+scheduled-run modes are: Dev → `mock_data=true, live_reads_enabled=false, local_only`;
+Production default → `mock_data=false, live_reads_enabled=false, local_only`; Production
+live (config-enabled) → `mock_data=false, live_reads_enabled=true, live_source` with
+`HB_PROCORE_LIVE` set only for that run.
+
 ## Guardrails
 
 No Procore/M365 writeback; no raw bodies/URLs/tokens; no vectors in SQLite; scheduler

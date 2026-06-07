@@ -63,13 +63,14 @@ class DailySourceRefreshJob:
         master = sc.enable_live_reads
         procore_live = bool(master and sc.enable_procore_live_reads)
         graph_live = bool(master and sc.enable_graph_live_reads)
-        any_live = procore_live or graph_live
+        # Production is never "mock". Local-only (no live source) still performs zero
+        # live auth/status/probe because the orchestrator gates on allow_*_live, not
+        # mock_data. mock_data is reserved for Dev / explicit --mock-data.
         return RefreshOptions(
             all_=True,
             apply=True,
             confirm=True,
-            # When no source is live, run pure local-only (no auth/status/probe at all).
-            mock_data=not any_live,
+            mock_data=False,
             allow_procore_live=procore_live,
             allow_graph_live=graph_live,
             brief_date=schedule_date.isoformat(),

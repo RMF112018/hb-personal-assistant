@@ -275,7 +275,9 @@ def test_scheduled_dev_uses_mock() -> None:
 def test_scheduled_production_default_local_only() -> None:
     opts = DailySourceRefreshJob(resolve_profile("production")).build_options(date(2026, 6, 7))
     assert opts.live_reads_enabled is False
-    assert opts.mock_data is True  # no source live ⇒ pure local-only, no auth/probe
+    assert opts.mock_data is False  # production is never "mock"
+    assert opts.allow_procore_live is False
+    assert opts.allow_graph_live is False
 
 
 def test_production_default_no_hb_procore_live(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -289,9 +291,11 @@ def test_production_default_no_hb_procore_live(monkeypatch: pytest.MonkeyPatch) 
         return _canned_summary()
 
     monkeypatch.setattr(dsr_mod.SourceRefreshOrchestrator, "run", fake_run)
-    DailySourceRefreshJob(profile).execute(schedule_date=date(2026, 6, 7), trigger="test")
+    receipt = DailySourceRefreshJob(profile).execute(schedule_date=date(2026, 6, 7), trigger="test")
     assert seen["live"] is None  # never armed for a local-only run
-    assert seen["options"].mock_data is True
+    assert seen["options"].mock_data is False  # production default is not mock
+    assert receipt.mode == "local_only"
+    assert receipt.live_reads_enabled is False
 
 
 def test_enable_procore_live_sets_env_only_for_run(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -313,6 +317,8 @@ def test_enable_procore_live_sets_env_only_for_run(monkeypatch: pytest.MonkeyPat
     assert os.environ.get("HB_PROCORE_LIVE") is None  # restored afterward
     assert receipt.mode == "live_source"
     assert receipt.procore_live is True
+    assert receipt.mock_data is False
+    assert receipt.live_reads_enabled is True
 
 
 def test_receipts_distinguish_local_vs_live(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -326,6 +332,32 @@ def test_receipts_distinguish_local_vs_live(monkeypatch: pytest.MonkeyPatch) -> 
     _migrate(prof_live.db_path)
     live = DailySourceRefreshJob(prof_live).execute(schedule_date=date(2026, 6, 7), trigger="t")
     assert live.mode == "live_source" and live.graph_live is True
+    # distinct modes: dev mock vs production local-only vs production live-source
+    dev = DailySourceRefreshJob(resolve_profile("dev")).build_options(date(2026, 6, 7))
+    assert (dev.mock_data, dev.live_reads_enabled) == (True, False)
+    assert (local.mock_data, local.live_reads_enabled) == (False, False)
+    assert (live.mock_data, live.live_reads_enabled) == (False, True)
+
+
+def test_production_default_no_live_auth_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Real production-default run must never call live Procore auth or the Graph probe."""
+    import hb_assistant.source_refresh.orchestrator as orch_mod
+
+    def _boom_auth() -> Any:
+        raise AssertionError("check_auth_status called during production local-only run")
+
+    def _boom_graph(self: Any) -> Any:
+        raise AssertionError("_graph_status (Graph probe) called during production local-only run")
+
+    monkeypatch.setattr(orch_mod, "check_auth_status", _boom_auth)
+    monkeypatch.setattr(orch_mod.SourceRefreshOrchestrator, "_graph_status", _boom_graph)
+
+    profile = resolve_profile("production")
+    receipt = DailySourceRefreshJob(profile).execute(schedule_date=date(2026, 6, 8), trigger="t")
+    assert receipt.status == "ok"
+    assert receipt.mode == "local_only"
+    assert receipt.mock_data is False
+    assert receipt.live_reads_enabled is False
 
 
 def test_no_raw_guardrails_in_receipt(monkeypatch: pytest.MonkeyPatch) -> None:
