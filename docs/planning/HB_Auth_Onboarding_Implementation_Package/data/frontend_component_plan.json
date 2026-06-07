@@ -1,0 +1,49 @@
+{
+  "generated": "2026-06-07",
+  "components": [
+    {
+      "path": "frontend/src/pages/GetStartedPage.tsx",
+      "purpose": "first-time unauthenticated onboarding landing screen"
+    },
+    {
+      "path": "frontend/src/components/settings/AccountConnectionsPanel.tsx",
+      "purpose": "settings section wrapper for Graph and Procore cards"
+    },
+    {
+      "path": "frontend/src/components/settings/GraphConnectionCard.tsx",
+      "purpose": "Microsoft 365 device-code connect/status/reauth/disconnect UX"
+    },
+    {
+      "path": "frontend/src/components/settings/ProcoreConnectionCard.tsx",
+      "purpose": "Procore OAuth connect/callback/manual-fallback/status/reauth/disconnect UX"
+    },
+    {
+      "path": "frontend/src/components/settings/ProjectConnectionsPanel.tsx",
+      "purpose": "project/source URL input, preview, save, approval status"
+    },
+    {
+      "path": "frontend/src/components/settings/ConnectionPreviewCard.tsx",
+      "purpose": "sanitized preview result display"
+    },
+    {
+      "path": "frontend/src/components/settings/AdminFirstSyncApprovalPanel.tsx",
+      "purpose": "admin-only pending approval queue"
+    },
+    {
+      "path": "frontend/src/components/layout/DataQualityIndicator.tsx",
+      "purpose": "sidebar footer Data Quality dot and hover timestamp"
+    },
+    {
+      "path": "frontend/src/hooks/useOnboardingReadiness.ts",
+      "purpose": "startup readiness and route decision hook"
+    },
+    {
+      "path": "frontend/src/hooks/useDataQualitySummary.ts",
+      "purpose": "poll/fetch non-admin-safe data-quality summary"
+    },
+    {
+      "path": "frontend/src/lib/api.ts",
+      "purpose": "typed helpers for normalized auth/onboarding/project/data-quality routes"
+    }
+  ]
+}

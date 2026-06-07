@@ -1,0 +1,133 @@
+{
+  "generated": "2026-06-07",
+  "gaps": [
+    {
+      "id": "AUTH-P0-01",
+      "severity": "P0",
+      "title": "No usable frontend path to authenticate Microsoft Graph",
+      "affected_area": "Frontend Settings / API client / Graph auth",
+      "recommended_fix": "Add Graph connection card, typed API helpers, device-code start/status polling, safe connected summary, disconnect and reauth actions.",
+      "prompt": "B,D,H"
+    },
+    {
+      "id": "AUTH-P0-02",
+      "severity": "P0",
+      "title": "No usable frontend path to authenticate Procore",
+      "affected_area": "Frontend Settings / API client / Procore auth",
+      "recommended_fix": "Add Procore connection card, OAuth start/callback/status flow, manual code fallback, safe connected summary, disconnect and reauth actions.",
+      "prompt": "C,D,H"
+    },
+    {
+      "id": "AUTH-P0-03",
+      "severity": "P0",
+      "title": "Frontend API/proxy contract does not cover auth/setup routes",
+      "affected_area": "Backend routes / frontend api.ts / Vite proxy",
+      "recommended_fix": "Normalize frontend-facing routes under /api/settings/connections/* and expose typed client helpers.",
+      "prompt": "A,D,E"
+    },
+    {
+      "id": "AUTH-P0-04",
+      "severity": "P0",
+      "title": "Project Connections setup is not exposed as a real UX flow",
+      "affected_area": "Settings Project Connections",
+      "recommended_fix": "Build auth-aware preview/save/approval setup workflow with no automatic sync.",
+      "prompt": "E,F,H"
+    },
+    {
+      "id": "AUTH-P0-05",
+      "severity": "P0",
+      "title": "Fully unauthenticated sessions do not land on a dedicated Get Started screen",
+      "affected_area": "App routing / onboarding",
+      "recommended_fix": "Add /get-started and startup readiness routing using /api/onboarding/readiness.",
+      "prompt": "A,D,H"
+    },
+    {
+      "id": "AUTH-P1-01",
+      "severity": "P1",
+      "title": "Graph status is not sufficiently verified for user-facing readiness",
+      "affected_area": "Graph backend status",
+      "recommended_fix": "Use silent MSAL status_info/account validation and return safe account/scopes/reauth state.",
+      "prompt": "B,H"
+    },
+    {
+      "id": "AUTH-P1-02",
+      "severity": "P1",
+      "title": "Stale auth should attempt automated refresh before prompting reauth",
+      "affected_area": "Backend auth readiness / startup UX",
+      "recommended_fix": "Add refresh attempt behavior to readiness and explicit refresh endpoint.",
+      "prompt": "A,B,C,D,H"
+    },
+    {
+      "id": "AUTH-P1-03",
+      "severity": "P1",
+      "title": "Procore lacks primary localhost callback flow",
+      "affected_area": "Procore OAuth backend",
+      "recommended_fix": "Add callback route with state validation and browser-safe completion page; retain manual fallback.",
+      "prompt": "C,H"
+    },
+    {
+      "id": "AUTH-P1-04",
+      "severity": "P1",
+      "title": "Procore status lacks account/company confirmation",
+      "affected_area": "Procore backend status",
+      "recommended_fix": "Add safe identity/company metadata after auth without exposing raw API payloads.",
+      "prompt": "C,H"
+    },
+    {
+      "id": "AUTH-P1-05",
+      "severity": "P1",
+      "title": "First-sync approval needs normalized sync eligibility enforcement",
+      "affected_area": "Admin approval / sync governance",
+      "recommended_fix": "Persist approvals consistently and block live sync until approved.",
+      "prompt": "F,H"
+    },
+    {
+      "id": "AUTH-P1-06",
+      "severity": "P1",
+      "title": "Settings UI exposes raw JSON/debug panels instead of user workflow",
+      "affected_area": "Frontend Settings",
+      "recommended_fix": "Replace debug panels with cards, state badges, safe messages, and admin-only diagnostics.",
+      "prompt": "D,E,G"
+    },
+    {
+      "id": "AUTH-P1-07",
+      "severity": "P1",
+      "title": "Non-admin data quality should be simple and non-diagnostic",
+      "affected_area": "Sidebar / data quality UX",
+      "recommended_fix": "Add Data Quality footer indicator with green/yellow/red dot and hover timestamp.",
+      "prompt": "G,H"
+    },
+    {
+      "id": "AUTH-P2-01",
+      "severity": "P2",
+      "title": "Graph permission posture may be broader than no-writeback product intent",
+      "affected_area": "Config / delegated scopes",
+      "recommended_fix": "Assess narrowing default scopes to read-only and enforce no-writeback policy regardless of consent scope.",
+      "prompt": "B,H,I"
+    },
+    {
+      "id": "AUTH-P2-02",
+      "severity": "P2",
+      "title": "Procore exchange response may expose local cache path",
+      "affected_area": "Procore backend response hygiene",
+      "recommended_fix": "Remove cache_path from frontend-facing response envelopes.",
+      "prompt": "C,H"
+    },
+    {
+      "id": "AUTH-P2-03",
+      "severity": "P2",
+      "title": "Missing complete loading/error/expired/cancel states",
+      "affected_area": "Frontend auth UX",
+      "recommended_fix": "Implement explicit UI state machines for Graph and Procore auth flows.",
+      "prompt": "D,H"
+    },
+    {
+      "id": "AUTH-P3-01",
+      "severity": "P3",
+      "title": "Advanced account/company/project discovery can be enriched later",
+      "affected_area": "Procore/Graph discovery",
+      "recommended_fix": "Add optional governed metadata-only verification after core auth flow is stable.",
+      "prompt": "I"
+    }
+  ]
+}

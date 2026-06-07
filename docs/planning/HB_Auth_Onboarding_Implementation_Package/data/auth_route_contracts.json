@@ -1,0 +1,102 @@
+{
+  "generated": "2026-06-07",
+  "repo": "/Users/bobbyfetting/hb-personal-assistant",
+  "contracts": [
+    {
+      "method": "GET",
+      "path": "/api/onboarding/readiness",
+      "role": "all",
+      "purpose": "startup onboarding, refresh-before-reauth, get-started/app-shell decision"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/connections/accounts",
+      "role": "all",
+      "purpose": "safe Graph/Procore account connection status"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/connections/auth/refresh",
+      "role": "all",
+      "purpose": "attempt automated refresh for stale auth before reauth prompt"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/connections/graph/auth/start",
+      "role": "all",
+      "purpose": "start MSAL device-code flow"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/connections/graph/auth/status",
+      "role": "all",
+      "purpose": "poll/complete Graph device-code auth"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/connections/graph/disconnect-local",
+      "role": "admin_or_current_user",
+      "purpose": "clear local Graph auth cache only"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/connections/procore/auth/start",
+      "role": "all",
+      "purpose": "generate Procore authorization URL and state"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/connections/procore/auth/callback",
+      "role": "browser_callback",
+      "purpose": "validate state and exchange Procore code server-side"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/connections/procore/auth/status",
+      "role": "all",
+      "purpose": "poll Procore auth flow completion"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/connections/procore/auth/exchange-code",
+      "role": "all",
+      "purpose": "manual OOB authorization-code fallback"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/connections/procore/disconnect-local",
+      "role": "admin_or_current_user",
+      "purpose": "clear local Procore auth cache only"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/connections/projects/preview",
+      "role": "all",
+      "purpose": "parse/preview source connection without sync"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/connections/projects/save",
+      "role": "all",
+      "purpose": "save source connection and require/queue first-sync approval"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/connections/projects",
+      "role": "all",
+      "purpose": "list safe source connection summaries"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/data-quality/summary",
+      "role": "all",
+      "purpose": "non-admin safe sidebar Data Quality indicator data"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/data-quality/detail",
+      "role": "admin",
+      "purpose": "admin-only data freshness/readiness diagnostics"
+    }
+  ]
+}
