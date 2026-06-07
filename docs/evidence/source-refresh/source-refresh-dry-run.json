@@ -1,0 +1,173 @@
+{
+  "apply": false,
+  "command": "construction-agent refresh-sources",
+  "daily_brief_v2_summary": {
+    "brief_date": "2026-06-07",
+    "mode": "dry_run",
+    "packet_proof_passed": true,
+    "packet_status": null,
+    "packet_version": "DailyBriefHandoffPacketV2",
+    "quality_proof_passed": true,
+    "status": "ok"
+  },
+  "dry_run": true,
+  "failures": [],
+  "generated_utc": "2026-06-07T07:54:24.449226+00:00",
+  "graph_auth_status": "none",
+  "graph_sync_summary": {
+    "auth_status": "none",
+    "counts": {
+      "failed": 0,
+      "inserted": 0,
+      "planned": 0,
+      "skipped": 0,
+      "updated": 0
+    },
+    "families": {
+      "calendar_event_index": {
+        "reason": "confirm_required_for_live_read",
+        "status": "skipped"
+      },
+      "files": {
+        "reason": "confirm_required_for_live_read",
+        "status": "skipped"
+      },
+      "mail_thread_summary": {
+        "considered": 0,
+        "local_only": true,
+        "mode": "dry_run",
+        "persisted": false,
+        "status": "ok",
+        "summarized": 0
+      }
+    },
+    "status": "partial_local_only",
+    "token_ready": false
+  },
+  "guardrails": {
+    "fail_closed": true,
+    "local_sqlite_only": true,
+    "mcp_exposure_unchanged": true,
+    "mcp_no_raw_access_proof_passed": true,
+    "mcp_no_writeback_proof_passed": true,
+    "no_join_url_persisted": true,
+    "no_m365_writeback": true,
+    "no_procore_writeback": true,
+    "no_prompts_or_model_responses_persisted": true,
+    "no_raw_email_or_calendar_body": true,
+    "no_raw_procore_payload": true,
+    "no_raw_vector_index_proof_passed": true,
+    "no_vectors_in_sqlite": true
+  },
+  "next_operator_action": "Re-run with `--apply --confirm` (and HB_PROCORE_LIVE=1 for live Procore reads) to persist the refresh.",
+  "preflight": {
+    "auto_migrated": false,
+    "db_path": "<LOCAL_APP_SUPPORT>/app-support/db/hb-personal-assistant.sqlite",
+    "latest_schema_version": 40,
+    "no_writeback_attestation": true,
+    "repo_sha": "73cc61af",
+    "schema_ok": true,
+    "schema_version": 40,
+    "status": "ok"
+  },
+  "procore_auth_status": "env_partial",
+  "procore_sync_summary": {
+    "auth_status": "env_partial",
+    "counts": {
+      "failed": 0,
+      "inserted": 0,
+      "planned": 0,
+      "skipped": 0,
+      "updated": 0
+    },
+    "live_env_active": false,
+    "live_read_performed": false,
+    "mode": "dry_run",
+    "projects": [
+      {
+        "audit_prerequisite_passed": true,
+        "persisted_to_sqlite": false,
+        "project_key": "tropical",
+        "status": "planned",
+        "total_items_normalized": 0
+      },
+      {
+        "audit_prerequisite_passed": true,
+        "persisted_to_sqlite": false,
+        "project_key": "pga-modern-garage",
+        "status": "planned",
+        "total_items_normalized": 0
+      },
+      {
+        "audit_prerequisite_passed": true,
+        "persisted_to_sqlite": false,
+        "project_key": "alton-hilltop-pbg",
+        "status": "planned",
+        "total_items_normalized": 0
+      },
+      {
+        "audit_prerequisite_passed": true,
+        "persisted_to_sqlite": false,
+        "project_key": "the-wellington",
+        "status": "planned",
+        "total_items_normalized": 0
+      }
+    ],
+    "ready_for_live_calls": false,
+    "status": "planned"
+  },
+  "repo_sha": "73cc61af",
+  "retrieval_rebuild_summary": {
+    "approved_sources": {
+      "approved_family_count": 0,
+      "approved_ref_count": 0,
+      "manifest_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "proof_passed": true,
+      "status": "empty"
+    },
+    "coverage_parity": {
+      "closeout_ok": true,
+      "status": "ok",
+      "sub_proofs_passed": {
+        "approved_read_model_manifest": true,
+        "read_model_vector_loader": true,
+        "reader_registry_parity": true
+      }
+    },
+    "status": "ok"
+  },
+  "sqlite_upsert_summary": {
+    "graph": {
+      "failed": 0,
+      "inserted": 0,
+      "planned": 0,
+      "skipped": 0,
+      "updated": 0
+    },
+    "procore": {
+      "failed": 0,
+      "inserted": 0,
+      "planned": 0,
+      "skipped": 0,
+      "updated": 0
+    },
+    "total": {
+      "failed": 0,
+      "inserted": 0,
+      "planned": 0,
+      "skipped": 0,
+      "updated": 0
+    }
+  },
+  "status": "ok",
+  "vector_rebuild_summary": {
+    "dry_run": {
+      "planned_chunk_count": 0,
+      "ready_to_apply": false,
+      "status": "dry_run",
+      "vectors_persisted_to_sqlite": false
+    },
+    "status": "planned"
+  },
+  "warnings": []
+}

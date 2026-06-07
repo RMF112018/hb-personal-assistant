@@ -1,0 +1,37 @@
+{
+  "apply_status": "degraded",
+  "command": "construction-agent refresh-sources (closeout)",
+  "dry_run_status": "ok",
+  "external_reads": {
+    "graph": "blocked_auth_not_ready",
+    "posture": "gated; operator-pending live run with credentials + HB_PROCORE_LIVE=1",
+    "procore": "blocked_auth_not_ready"
+  },
+  "generated_utc": "2026-06-07T07:54:29.647878+00:00",
+  "guardrails": {
+    "fail_closed": true,
+    "local_sqlite_only": true,
+    "mcp_exposure_unchanged": true,
+    "mcp_no_raw_access_proof_passed": true,
+    "mcp_no_writeback_proof_passed": true,
+    "no_join_url_persisted": true,
+    "no_m365_writeback": true,
+    "no_procore_writeback": true,
+    "no_prompts_or_model_responses_persisted": true,
+    "no_raw_email_or_calendar_body": true,
+    "no_raw_procore_payload": true,
+    "no_raw_vector_index_proof_passed": true,
+    "no_vectors_in_sqlite": true
+  },
+  "next_operator_action": "Run `hb-assistant procore auth login` to enable Procore live sync.",
+  "rebuild_proofs": {
+    "approved_source_manifest_proof_passed": true,
+    "coverage_parity_closeout_ok": true,
+    "daily_brief_v2_packet_proof_passed": true,
+    "daily_brief_v2_quality_proof_passed": true,
+    "mcp_no_raw_access_proof_passed": true,
+    "mcp_no_writeback_proof_passed": true,
+    "no_raw_vector_index_proof_passed": true
+  },
+  "repo_sha": "73cc61af"
+}

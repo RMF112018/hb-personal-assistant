@@ -1,0 +1,151 @@
+{
+  "apply": true,
+  "command": "construction-agent refresh-sources",
+  "daily_brief_v2_summary": {
+    "brief_date": "2026-06-07",
+    "mode": "apply",
+    "packet_proof_passed": true,
+    "packet_status": null,
+    "packet_version": "DailyBriefHandoffPacketV2",
+    "quality_proof_passed": true,
+    "status": "ok"
+  },
+  "dry_run": false,
+  "failures": [],
+  "generated_utc": "2026-06-07T07:54:27.344694+00:00",
+  "graph_auth_status": "none",
+  "graph_sync_summary": {
+    "auth_status": "none",
+    "counts": {
+      "failed": 0,
+      "inserted": 0,
+      "planned": 0,
+      "skipped": 0,
+      "updated": 0
+    },
+    "families": {
+      "calendar_event_index": {
+        "reason": "no_delegated_token",
+        "status": "blocked_auth_not_ready"
+      },
+      "files": {
+        "reason": "no_delegated_token",
+        "status": "blocked_auth_not_ready"
+      },
+      "mail_thread_summary": {
+        "considered": 0,
+        "local_only": true,
+        "mode": "apply",
+        "persisted": true,
+        "status": "ok",
+        "summarized": 0
+      }
+    },
+    "status": "blocked_auth_not_ready",
+    "token_ready": false
+  },
+  "guardrails": {
+    "fail_closed": true,
+    "local_sqlite_only": true,
+    "mcp_exposure_unchanged": true,
+    "mcp_no_raw_access_proof_passed": true,
+    "mcp_no_writeback_proof_passed": true,
+    "no_join_url_persisted": true,
+    "no_m365_writeback": true,
+    "no_procore_writeback": true,
+    "no_prompts_or_model_responses_persisted": true,
+    "no_raw_email_or_calendar_body": true,
+    "no_raw_procore_payload": true,
+    "no_raw_vector_index_proof_passed": true,
+    "no_vectors_in_sqlite": true
+  },
+  "next_operator_action": "Run `hb-assistant procore auth login` to enable Procore live sync.",
+  "preflight": {
+    "auto_migrated": false,
+    "db_path": "<LOCAL_APP_SUPPORT>/app-support/db/hb-personal-assistant.sqlite",
+    "latest_schema_version": 40,
+    "no_writeback_attestation": true,
+    "repo_sha": "73cc61af",
+    "schema_ok": true,
+    "schema_version": 40,
+    "status": "ok"
+  },
+  "procore_auth_status": "env_partial",
+  "procore_sync_summary": {
+    "auth_status": "env_partial",
+    "counts": {
+      "failed": 0,
+      "inserted": 0,
+      "planned": 0,
+      "skipped": 0,
+      "updated": 0
+    },
+    "hint": "macOS Keychain has the Procore client secret but no OAuth token cache exists yet. Run 'hb-assistant procore auth login' to complete the OOB exchange.",
+    "live_read_performed": false,
+    "ready_for_live_calls": false,
+    "status": "blocked_auth_not_ready"
+  },
+  "repo_sha": "73cc61af",
+  "retrieval_rebuild_summary": {
+    "approved_sources": {
+      "approved_family_count": 0,
+      "approved_ref_count": 0,
+      "manifest_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "proof_passed": true,
+      "status": "empty"
+    },
+    "coverage_parity": {
+      "closeout_ok": true,
+      "status": "ok",
+      "sub_proofs_passed": {
+        "approved_read_model_manifest": true,
+        "read_model_vector_loader": true,
+        "reader_registry_parity": true
+      }
+    },
+    "status": "ok"
+  },
+  "sqlite_upsert_summary": {
+    "graph": {
+      "failed": 0,
+      "inserted": 0,
+      "planned": 0,
+      "skipped": 0,
+      "updated": 0
+    },
+    "procore": {
+      "failed": 0,
+      "inserted": 0,
+      "planned": 0,
+      "skipped": 0,
+      "updated": 0
+    },
+    "total": {
+      "failed": 0,
+      "inserted": 0,
+      "planned": 0,
+      "skipped": 0,
+      "updated": 0
+    }
+  },
+  "status": "degraded",
+  "vector_rebuild_summary": {
+    "apply": {
+      "applied_item_count": null,
+      "blocker_reason": "no_indexable_nodes",
+      "status": "apply_blocked",
+      "vector_store_location": "external_filesystem",
+      "vectors_persisted_to_sqlite": false
+    },
+    "dry_run": {
+      "planned_chunk_count": 0,
+      "ready_to_apply": false,
+      "status": "dry_run",
+      "vectors_persisted_to_sqlite": false
+    },
+    "status": "apply_blocked"
+  },
+  "warnings": [
+    "vector apply blocked: no_indexable_nodes (install retrieval extras or use --skip-vector)"
+  ]
+}

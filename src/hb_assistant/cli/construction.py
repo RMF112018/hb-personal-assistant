@@ -2081,6 +2081,77 @@ def validate_all(
     raise typer.Exit(0 if failed == 0 else 1)
 
 
+@app.command("refresh-sources")
+def refresh_sources(
+    all_: bool = typer.Option(
+        False, "--all", help="Refresh all sources + run the full post-sync rebuild."
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Persist to local SQLite. Default off = dry-run (plan only, no writes).",
+    ),
+    confirm: bool = typer.Option(
+        False,
+        "--confirm",
+        help="Required with --apply, and required for any live external (Procore/Graph) read.",
+    ),
+    procore_only: bool = typer.Option(False, "--procore-only", help="Skip the Graph stage."),
+    graph_only: bool = typer.Option(False, "--graph-only", help="Skip the Procore stage."),
+    skip_vector: bool = typer.Option(
+        False, "--skip-vector", help="Skip the llamaindex vector build/apply."
+    ),
+    skip_daily_brief_proof: bool = typer.Option(
+        False, "--skip-daily-brief-proof", help="Skip Daily Brief V2 packet + proofs."
+    ),
+    date_: Optional[str] = typer.Option(
+        None, "--date", help="YYYY-MM-DD for the Daily Brief V2 packet (default: today)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit the consolidated JSON object."),
+) -> None:
+    """Unified local source refresh (Procore + Graph + Phase-09 rebuild).
+
+    Dry-run by default (no DB writes). ``--apply`` upserts to local SQLite only and
+    requires ``--confirm``; any live external read additionally requires ``--confirm``
+    and the relevant live gate (``HB_PROCORE_LIVE=1`` for Procore, a delegated token
+    for Graph). Fails closed when auth is not ready. Never writes back to Procore or
+    Microsoft 365; never persists raw bodies/URLs/tokens or vectors to SQLite.
+    """
+    from datetime import datetime as _dt
+
+    from hb_assistant.source_refresh import RefreshOptions, SourceRefreshOrchestrator
+
+    if apply and not confirm:
+        typer.echo("ERROR: --apply requires --confirm (guardrail).", err=True)
+        raise typer.Exit(1)
+    if procore_only and graph_only:
+        typer.echo("ERROR: --procore-only and --graph-only are mutually exclusive.", err=True)
+        raise typer.Exit(2)
+    if all_ and (procore_only or graph_only):
+        typer.echo("ERROR: --all cannot be combined with --procore-only/--graph-only.", err=True)
+        raise typer.Exit(2)
+    if date_ is not None:
+        try:
+            _dt.strptime(date_, "%Y-%m-%d")
+        except ValueError:
+            typer.echo("ERROR: --date must be YYYY-MM-DD.", err=True)
+            raise typer.Exit(2) from None
+
+    options = RefreshOptions(
+        all_=all_ or not (procore_only or graph_only),
+        apply=apply,
+        confirm=confirm,
+        procore_only=procore_only,
+        graph_only=graph_only,
+        skip_vector=skip_vector,
+        skip_daily_brief_proof=skip_daily_brief_proof,
+        brief_date=date_,
+    )
+    summary = SourceRefreshOrchestrator().run(options=options)
+    typer.echo(json.dumps(summary, indent=2, default=str) if json_out else str(summary))
+    raise typer.Exit(0 if summary["status"] == "ok" else 1)
+
+
 # ---------------------------------------------------------------------------
 # Fixture validation harness (Phase 01 Step 11 / Prompt 10)
 # ---------------------------------------------------------------------------

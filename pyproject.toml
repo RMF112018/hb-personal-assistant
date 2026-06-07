@@ -171,6 +171,8 @@ module = [
   "hb_assistant.procore.live_gate",
   # Phase 08A Prompt 03: strict typing for the second-brain config/adapter surface.
   "hb_assistant.construction.second_brain.*",
+  # Unified source-refresh orchestrator.
+  "hb_assistant.source_refresh.*",
 ]
 ignore_errors = false
 follow_imports = "normal"
