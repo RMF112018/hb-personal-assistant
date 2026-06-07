@@ -1,0 +1,80 @@
+[
+  {
+    "id": "LPR-001",
+    "title": "No stable single-command local production launcher",
+    "severity": "P1",
+    "affected_area": "Local app startup",
+    "why_it_matters": "User must understand backend/frontend internals to start the app.",
+    "recommended_fix": "Add CLI command such as hb-assistant analytics serve --open.",
+    "prompt": "Prompt 26",
+    "validation": [
+      "hb-assistant analytics serve --no-open",
+      "curl /health",
+      "browser smoke"
+    ]
+  },
+  {
+    "id": "LPR-002",
+    "title": "Production frontend static serving not guaranteed",
+    "severity": "P1",
+    "affected_area": "Frontend delivery",
+    "why_it_matters": "A local production shortcut should not depend on Vite dev server.",
+    "recommended_fix": "Serve frontend/dist from FastAPI or approved static server.",
+    "prompt": "Prompt 26",
+    "validation": [
+      "npm run build",
+      "open /today without npm run dev"
+    ]
+  },
+  {
+    "id": "LPR-003",
+    "title": "No repo-managed desktop shortcut script",
+    "severity": "P2",
+    "affected_area": "User launch workflow",
+    "why_it_matters": "User wants desktop shortcut without maintaining raw terminal commands.",
+    "recommended_fix": "Add scripts/local/launch_hb_dashboard.command that calls stable CLI.",
+    "prompt": "Prompt 27",
+    "validation": [
+      "zsh -n script",
+      "open script",
+      "manual smoke"
+    ]
+  },
+  {
+    "id": "LPR-004",
+    "title": "Port/process conflict behavior not specified",
+    "severity": "P2",
+    "affected_area": "Reliability",
+    "why_it_matters": "Duplicate launches can create confusing failures.",
+    "recommended_fix": "Detect occupied port and existing dashboard instance.",
+    "prompt": "Prompt 26",
+    "validation": [
+      "duplicate launch test"
+    ]
+  },
+  {
+    "id": "LPR-005",
+    "title": "Launcher logs and troubleshooting not formalized",
+    "severity": "P2",
+    "affected_area": "Supportability",
+    "why_it_matters": "Failures need actionable messages for non-engineering use.",
+    "recommended_fix": "Define log path and runbook.",
+    "prompt": "Prompt 27",
+    "validation": [
+      "inspect logs",
+      "runbook review"
+    ]
+  },
+  {
+    "id": "LPR-006",
+    "title": "No explicit future executable packaging decision",
+    "severity": "P3",
+    "affected_area": "Roadmap",
+    "why_it_matters": "Shortcut and executable packaging are separate implementation tracks.",
+    "recommended_fix": "Document that executable packaging is deferred pending launcher stability.",
+    "prompt": "Prompt 27",
+    "validation": [
+      "architecture/runbook review"
+    ]
+  }
+]

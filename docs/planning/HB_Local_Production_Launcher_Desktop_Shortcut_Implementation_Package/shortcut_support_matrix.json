@@ -1,0 +1,33 @@
+{
+  "macos_command_file": {
+    "status": "in_scope",
+    "recommended": true,
+    "target_path": "scripts/local/launch_hb_dashboard.command",
+    "notes": "Primary shortcut workflow for user's current macOS development environment."
+  },
+  "macos_automator_or_shortcuts_app": {
+    "status": "document_only",
+    "recommended": "optional",
+    "notes": "Cleaner app-like wrapper around the .command script; should not duplicate launcher logic."
+  },
+  "windows_shortcut": {
+    "status": "future_optional",
+    "recommended": false,
+    "notes": "Can be documented later with .bat or PowerShell wrapper if Windows deployment becomes a requirement."
+  },
+  "electron": {
+    "status": "deferred",
+    "recommended": false,
+    "notes": "Do not add until launcher and local production app are stable."
+  },
+  "tauri": {
+    "status": "deferred",
+    "recommended": false,
+    "notes": "Good future option, but not part of this package."
+  },
+  "pywebview_pyinstaller": {
+    "status": "deferred",
+    "recommended": "future_candidate",
+    "notes": "Python-first executable packaging option after local launcher hardening."
+  }
+}

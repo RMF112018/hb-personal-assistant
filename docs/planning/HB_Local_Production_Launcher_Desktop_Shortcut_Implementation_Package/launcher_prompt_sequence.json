@@ -1,0 +1,42 @@
+{
+  "package": "HB Local Production Launcher + Desktop Shortcut Implementation Package",
+  "execute_after": "HB_Frontend_Production_Readiness_Implementation_Package Prompt 16-25 closeout",
+  "prompts": [
+    {
+      "prompt": 26,
+      "name": "Single-Command Local Production Launcher",
+      "objective": "Add stable CLI launcher that starts backend, serves production frontend, and optionally opens browser.",
+      "depends_on": [
+        "Frontend production readiness package complete"
+      ],
+      "primary_outputs": [
+        "CLI command",
+        "static frontend serving",
+        "launcher tests",
+        "startup/log/port handling"
+      ]
+    },
+    {
+      "prompt": 27,
+      "name": "Desktop Shortcuts and Launcher Runbook",
+      "objective": "Add macOS .command shortcut and user-facing runbook for local launch.",
+      "depends_on": [
+        "Prompt 26"
+      ],
+      "primary_outputs": [
+        "macOS .command script",
+        "desktop shortcut instructions",
+        "troubleshooting runbook",
+        "manual smoke evidence"
+      ]
+    }
+  ],
+  "guardrails": [
+    "No Electron/Tauri in this package",
+    "No cloud deployment",
+    "Bind to 127.0.0.1 by default",
+    "No live sync on startup",
+    "No source-system writeback",
+    "No secret/raw-content logging"
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-06-07T07:51:05.617603+00:00",
+  "package_name": "HB_Local_Production_Launcher_Desktop_Shortcut_Implementation_Package",
+  "file_count": 15,
+  "files": {
+    "00_PACKAGE_MANIFEST.md": {
+      "bytes": 3177,
+      "sha256": "20d2f2c3e2159a60af9c1a018d4b183105108aa28e30899536b9075b56c44c32"
+    },
+    "01_EXECUTION_BRIEF.md": {
+      "bytes": 1700,
+      "sha256": "1cc1e96337f4ad6a656a7bcda3719611225a279ccdf7336051ed6fdd03d78221"
+    },
+    "02_PRODUCT_AND_ARCHITECTURE_DECISION.md": {
+      "bytes": 1688,
+      "sha256": "65bfaa39a95c9fdc9ffe0aca6e7e92c7fc8ab362b2f3c039c11e3814ac782614"
+    },
+    "03_LAUNCHER_REQUIREMENTS.md": {
+      "bytes": 3066,
+      "sha256": "ba61112142d6c9fda4e5e3d1e34189a664fd677d4b5e09d7ae26c04226171935"
+    },
+    "04_PROMPT_26_SINGLE_COMMAND_LOCAL_PRODUCTION_LAUNCHER.md": {
+      "bytes": 6146,
+      "sha256": "272f21e60ba5f9efd99f8f89a3ff2a7df0691efe7db0419c4d640f33852baa99"
+    },
+    "05_PROMPT_27_DESKTOP_SHORTCUTS_AND_RUNBOOK.md": {
+      "bytes": 4777,
+      "sha256": "8ee2b485e9c48a7010346771e5f540cc58ccedc47d74488437da4f2c97f07180"
+    },
+    "06_VALIDATION_MATRIX.md": {
+      "bytes": 2392,
+      "sha256": "d5fa60c6cb078eebb7ae5f95963afd4183041c75831525571b4b0cef787c0983"
+    },
+    "07_SMOKE_TEST_PLAN.md": {
+      "bytes": 2331,
+      "sha256": "7ca0e874a3c4278fb49d152d994c1f2b9ff2403429bbb6a6599263811102f3f9"
+    },
+    "08_RISK_REGISTER.md": {
+      "bytes": 1863,
+      "sha256": "0f29af63e40039ffd809d0765baa57fd4b2b31dbef8ef1394e4add52d724af15"
+    },
+    "09_ACCEPTANCE_EVIDENCE_TEMPLATE.md": {
+      "bytes": 2482,
+      "sha256": "2981d22feed160e5f9fbe74172ec4a2543b1a4a657d9ef2ad39d19cd8cf5b5db"
+    },
+    "10_NEXT_PHASE_OPTIONS.md": {
+      "bytes": 2191,
+      "sha256": "173b04a1135233cb1384d78c5fcbfefd2fdf9a06a05d47a0073c22acebb45dd2"
+    },
+    "launcher_gap_register.json": {
+      "bytes": 2615,
+      "sha256": "5c847d3c44c88e6153d9217be923ecce62acb98a5c54b89bc1f071131369d672"
+    },
+    "launcher_prompt_sequence.json": {
+      "bytes": 1303,
+      "sha256": "46f21f830c87e442765a9301c44fce3f73de89db778b88dc052865e3a3c50c2c"
+    },
+    "shortcut_support_matrix.json": {
+      "bytes": 1128,
+      "sha256": "c9b78777b39a86e12368503ae81d7a67dd4a00a3bc984087ea737ed3052bce03"
+    }
+  }
+}
