@@ -24,13 +24,15 @@ export function ProjectFieldOperationsPage() {
   const f = fieldData || {}
   const metricCards = Array.isArray(f.metric_cards) ? f.metric_cards : []
   const attention = Array.isArray(f.attention_items) ? f.attention_items : []
+  const ff = f.freshness || {}
+  const cc = f.confidence_summary || {}
 
   return (
     <div>
       <ProjectSubNav projectKey={key} />
       <div className="flex gap-2 mb-3">
-        <FreshnessBadge status="stale" minutesAgo={19} />
-        <ConfidenceBadge level="source_backed" />
+        <FreshnessBadge status={ff.overall || 'unknown'} minutesAgo={ff.minutes_ago_max} />
+        <ConfidenceBadge level={cc.overall || 'not_available'} />
       </div>
       <div className="card">
         <div className="section-title">Field Operations</div>

@@ -89,7 +89,14 @@ def test_projects_portfolio_and_all_overview_viewer_ok(tmp_path: Path) -> None:
         assert r.status_code == 200
         p = r.json()
         assert "surface" in p and p["surface"].startswith("analytics.projects")
-        assert "metric_cards" in p
+        # Prompt 18: portfolio response is object (not bare array); project_keys present as array for selector;
+        # freshness/confidence on the envelope (used for header badges); metric_cards/attention safe per 16.
+        assert not isinstance(p, list)
+        if path.endswith("/portfolio"):
+            assert "project_keys" in p and isinstance(p.get("project_keys"), list)
+            assert "freshness" in p and "confidence_summary" in p
+        assert isinstance(p.get("metric_cards"), list)
+        assert isinstance(p.get("attention_items"), list)
         _assert_safe(p)
 
 

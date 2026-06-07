@@ -24,13 +24,15 @@ export function ProjectMeetingsPage() {
   const m = meetingsData || {}
   const metricCards = Array.isArray(m.metric_cards) ? m.metric_cards : []
   const attention = Array.isArray(m.attention_items) ? m.attention_items : []
+  const f = m.freshness || {}
+  const c = m.confidence_summary || {}
 
   return (
     <div>
       <ProjectSubNav projectKey={key} />
       <div className="flex gap-2 mb-3">
-        <FreshnessBadge status="fresh" />
-        <ConfidenceBadge level="source_backed" />
+        <FreshnessBadge status={f.overall || 'unknown'} minutesAgo={f.minutes_ago_max} />
+        <ConfidenceBadge level={c.overall || 'not_available'} />
       </div>
       <div className="card">
         <div className="section-title">Meetings Needing Prep / Recent</div>

@@ -208,4 +208,46 @@ found 0 vulnerabilities
 
 ## Next (Prompt 17)
 
-Create dedicated `tests/test_fastapi_analytics_today.py`, align backend today sections list lightly for contract truth, edit TodayPage to add header context + split the portfolio area into the two required sections with CM-facing states/empties/advisory copy, ensure no raw and real Link navigation for Daily Brief (already good), run full validation matrix (incl. new test), perform browser smoke, produce prompt-17 closeout, update architecture, selective commit. Only the final traditional commit summary+description will be emitted after the commit.
+Create dedicated `tests/test_fastapi_analytics_today.py`, align backend today sections list lightly for contract truth, edit TodayPage to add header context + split the portfolio area into the two required sections with CM-facing states/empties/advisory copy, ensure no raw and real Link navigation for Daily Brief (already good), run full validation matrix (incl. new test), perform browser smoke, produce prompt-17 closeout, update architecture, selective commit. Only the final traditional commit summary+description will be emitted after the commit.## Prompt 18 Preflight Run (re-run in sequence after Prompt 17; actual repo advanced with unrelated source-refresh commit)
+
+Date: 2026-06-07  
+Branch: main  
+Initial capture HEAD (first preflight shell): b87f1c1bdcaad22c85de0b0ce2f51625eb92d7d8 (post-Prompt 17)  
+Current HEAD at validation/close of this preflight note: b06bbcdea54d9c4a47d8ec1b0167934fec0b2568 (post "HB Construction Intelligence — Unified Source-Refresh Orchestrator" commit)
+
+## Baseline Commands Executed (re-run for Prompt 18)
+
+Commands from `02_REPO_TRUTH_PREFLIGHT.md` were executed at start of Prompt 18 (see first preflight shell transcript in this file's prior section for full verbatim of b87f run). A selected readonly subset was re-executed at end of validation (see RUN-VALIDATION-18 output). Key facts:
+
+- Branch: main
+- At first preflight: HEAD b87f1c1b (Prompt 17 commit message visible in log)
+- ls of evidence dir at first preflight confirmed prompt-17-today-dashboard-ux-content-closeout.md present (Prompt 17 dependency met)
+- pyproject has analytics-ui; fastapi present in venv; pytest 9; node 22 / npm 10.9; lock present; npm install "up to date" no legacy flag
+- Working tree at start of edits: many prior phase M (06-09 evidence, pyproject, cli/construction) + untracked (.claude, .code-graph, planning pkg, source_refresh/, test_sources_refresh, root package-lock, new arch 185, evidence/source-refresh). Per plan and 02: selective edits only; inventory and do not touch unrelated.
+
+At end of validation (after our .tsx + test edits):
+- Only our intended files showed as M in the captured status: the 4 Project*.tsx + test_fastapi_analytics_dashboard_read_models.py . (Prior phase M had been committed by the intervening source-refresh commit on main.)
+- Our append to this 00_PREFLIGHT (first attempt) + planned new closeout + arch updates were not yet present in that snapshot (we re-append here for accurate evidence).
+
+## Required Preflight Decisions (re-affirmed / updated for actual execution state)
+
+- Working tree: dirty at start (phase evidence + untracked as captured); we followed "selective only" — edited/created only Prompt 18 files (4 .tsx, 1 test update, this 00 append, closeout md, 3 arch .md touches). No cleaning of unrelated.
+- Local main ahead of audit baseline: yes (b06b includes 17 + source-refresh; 17 closed its FPRs).
+- New commits after audit: yes (Prompt 17 at b87f; then source-refresh at b06b — the latter is unrelated construction-agent work, not touching analytics dashboard surfaces or closing FPR-003/009).
+- P0/P1 gaps for *this prompt* (FPR-003/009) not pre-fixed: confirmed at edit time via direct file reads + grep on the 4 pages (raw/portfolio/items fallback still present, project_keys unused for selector; 4 locations with hardcoded fresh/stale/source_backed badges in headers). Our replaces addressed exactly those. FPR-015 remains deferred (no rechart usage in src confirmed via grep; no charts added).
+- npm without legacy: yes (both runs).
+- FastAPI analytics-ui group: yes.
+- Lockfile current: yes.
+
+## Additional Notes for Prompt 18
+
+- Repo truth authoritative. Edits made against code at/after b87f1c1b (Prompt 17 landed); intervening b06b commit on main did not alter the dashboard files or close our targeted gaps.
+- Prompt 17 closeout present in history and on disk at start (ls + log); "Prompt 17 should be closed" satisfied.
+- Scope: only FPR-003 (project_keys consumption in ProjectsPage selector + dual-shape), FPR-009 (data-driven badges on portfolio + 3 subpages), FPR-015 (defer + light test assert). No top-level nav, no charts, no raw, construction labels preserved, advisory language untouched.
+- Guardrails preserved throughout.
+- The first append attempt's section may have been against a pre-source-refresh tree view; this re-append ensures the 00 has a Prompt 18 entry with actual observed HEADs and post-validation state for the closeout to reference.
+- At commit time we will `git add` only: the 4 .tsx, the test, this 00_PREFLIGHT.md (now dirty by this append), the new prompt-18 closeout, and the touched architecture .md files. No phase M, no untracked, no unrelated.
+
+## Next (Prompt 18)
+
+With validation matrix passed (pytest 7/7, ruff clean, mypy clean, frontend lint/typecheck/build clean), proceed to browser smoke (operator/viewer/admin, /projects + /projects/all/* + sample /projects/{key}/* ), create the prompt-18 closeout using 08 template (cite actual final HEAD post our commit, validation output, smoke notes, guardrails), update architecture lightly, selective commit, and emit *only* the traditional commit title+body per plan.

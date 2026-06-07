@@ -67,6 +67,8 @@ Documents, correspondence, vendors, closeout, billing, schedule, procurement, RF
 
 Implementation: `ProjectsPage` drives the selector from `/api/projects/portfolio` (All special card + individuals with badges); `ProjectDashboardPage` renders the 8 sections for All and keyed (data from `/api/projects/all/overview` or per-key); the three tab pages (`Project*Page.tsx`) are wired to the tab-specific read models (`/all/*` and `/:key/*`) and contain explicit ownership language + content areas.
 
+Prompt 18 (FPR-003/009): `ProjectsPage` now supports backend `project_keys` list (when present and no legacy projects/items array, maps keys to minimal {key, name: key} cards for the selector; "All Projects" card always present). Page header badges and the three tab page headers are bound to the envelope's `freshness` (overall + minutes_ago_max) and `confidence_summary` (overall) instead of hardcoded values. Field Operations and Cost & Time pages retain their construction-facing ownership language ("is the location for...") and advisory notes. No top-level domain nav added (contextual tabs only). FPR-015 (charts) deferred. See prompt-18-projects-portfolio-and-dashboards-closeout.md (and 00_PREFLIGHT.md update) + cross-refs in 176/169.
+
 ## My Items (`/my-items`)
 User-specific dashboard / filtered work queue (Prompt 09 + 11_).
 

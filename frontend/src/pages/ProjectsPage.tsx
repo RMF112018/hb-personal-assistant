@@ -6,6 +6,7 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { api } from '../lib/api'
 
 // /projects = Portfolio dashboard + project selector (All Projects special entry + individuals).
+// Support backend project_keys list or legacy projects/items array.
 // No top-level domain navs; contextual tabs only inside project or All views.
 
 export function ProjectsPage() {
@@ -18,15 +19,21 @@ export function ProjectsPage() {
     return <div className="p-6 text-sm text-[var(--hb-muted)]">Loading Portfolio…</div>
   }
 
-  // Support common shapes from the read model (array, {projects: [...]}, or {items: [...]})
-  const raw = portfolio?.projects || portfolio?.items || portfolio || []
-  const individuals = Array.isArray(raw) ? raw : []
+  // Support backend project_keys list or legacy projects/items array.
+  // If project_keys present and no legacy array content, map keys to minimal cards.
+  let individuals: any[] = []
+  const raw = portfolio?.projects || portfolio?.items || portfolio
+  if (Array.isArray(raw) && raw.length > 0) {
+    individuals = raw
+  } else if (portfolio?.project_keys && Array.isArray(portfolio.project_keys)) {
+    individuals = portfolio.project_keys.map((k: string) => ({ key: k, name: k, status: 'active' }))
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex gap-2 items-center">
-        <FreshnessBadge status="fresh" />
-        <ConfidenceBadge level="source_backed" />
+        <FreshnessBadge status={portfolio?.freshness?.overall || 'unknown'} minutesAgo={portfolio?.freshness?.minutes_ago_max} />
+        <ConfidenceBadge level={portfolio?.confidence_summary?.overall || 'not_available'} />
         <Link to="/projects/all" className="ml-auto underline text-sm">View All Projects aggregated →</Link>
       </div>
 
@@ -46,7 +53,7 @@ export function ProjectsPage() {
             const key = p.key || p.project_key || p.id || `p-${idx}`
             const name = p.name || p.display_name || key
             const status = p.status || p.health || 'active'
-            const fr = p.freshness || p.freshness_status || 'unknown'
+            const fr = p.freshness || p.freshness_status || portfolio?.freshness?.overall || 'unknown'
             return (
               <Link key={key} to={`/projects/${encodeURIComponent(key)}`} className="card hover:border-[var(--hb-accent)] block">
                 <div className="font-medium">{name}</div>
