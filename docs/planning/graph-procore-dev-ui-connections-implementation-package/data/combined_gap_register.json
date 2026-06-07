@@ -1,0 +1,65 @@
+[
+  {
+    "gap_id": "GPC-P0-001",
+    "severity": "P0",
+    "title": "Dev UI lacks reliable aggregate source status contract",
+    "prompt": "P01",
+    "fix": "Add/adapt environment and aggregate source status endpoints that are metadata-only."
+  },
+  {
+    "gap_id": "GPC-P0-002",
+    "severity": "P0",
+    "title": "Graph UI lacks safe metadata-only status/auth bridge",
+    "prompt": "P02",
+    "fix": "Expose Graph status/auth routes backed by existing services; no live content reads."
+  },
+  {
+    "gap_id": "GPC-P0-003",
+    "severity": "P0",
+    "title": "Procore UI lacks safe metadata-only status/auth bridge",
+    "prompt": "P03",
+    "fix": "Expose Procore status/OAuth routes backed by existing services; no live project/content reads."
+  },
+  {
+    "gap_id": "GPC-P0-004",
+    "severity": "P0",
+    "title": "Auth/connect buttons fail or are placeholders",
+    "prompt": "P02/P03/P06",
+    "fix": "Wire buttons to backend-controlled auth flows or clear disabled next-action states."
+  },
+  {
+    "gap_id": "GPC-P0-005",
+    "severity": "P0",
+    "title": "Refresh actions are ambiguous",
+    "prompt": "P04/P06",
+    "fix": "Split dry-run, local/mock refresh, and gated live refresh."
+  },
+  {
+    "gap_id": "GPC-P0-006",
+    "severity": "P0",
+    "title": "Endpoint/response mismatch likely between frontend and backend",
+    "prompt": "P05",
+    "fix": "Typed API client and response normalization."
+  },
+  {
+    "gap_id": "GPC-P1-001",
+    "severity": "P1",
+    "title": "Dev/local data mode unclear",
+    "prompt": "P07",
+    "fix": "Show environment, local mode, and live-disabled reason."
+  },
+  {
+    "gap_id": "GPC-P1-002",
+    "severity": "P1",
+    "title": "Scheduler/source freshness not surfaced",
+    "prompt": "P04/P07",
+    "fix": "Add read-only scheduler/daily brief/source freshness status."
+  },
+  {
+    "gap_id": "GPC-P1-003",
+    "severity": "P1",
+    "title": "Internal copy/raw errors leak to UI",
+    "prompt": "P07/P08",
+    "fix": "User-safe copy/error mapper and admin-only diagnostics."
+  }
+]

@@ -1,0 +1,23 @@
+{
+  "package_name": "graph-procore-dev-ui-connections-implementation-package",
+  "created_on": "2026-06-07",
+  "repo": "RMF112018/hb-personal-assistant",
+  "repo_path": "/Users/bobbyfetting/hb-personal-assistant",
+  "baseline_from_audit": {
+    "branch": "capture during P00",
+    "head": "capture during P00",
+    "frontend_package_version": "capture during P00",
+    "python_package_version_reported_in_context": "1.3.0"
+  },
+  "purpose": "Implementation package for Dev UI Microsoft Graph and Procore connection/status/auth/refresh remediation.",
+  "source_code_modified_by_this_package_generation": false,
+  "prompt_count": 10,
+  "required_closeout_validation": [
+    "backend compile/ruff/mypy/tests",
+    "frontend install/lint/build/tests",
+    "manual Dev launcher validation",
+    "browser console/network validation",
+    "no live reads from status page",
+    "live refresh fail-closed evidence"
+  ]
+}

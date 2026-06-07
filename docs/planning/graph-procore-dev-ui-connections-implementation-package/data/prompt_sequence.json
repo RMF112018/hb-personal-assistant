@@ -1,0 +1,52 @@
+[
+  {
+    "id": "P00",
+    "file": "01_PRECHECK_AND_BRANCH_DISCIPLINE.md",
+    "title": "P00 \u2014 Precheck and Branch Discipline"
+  },
+  {
+    "id": "P01",
+    "file": "02_BACKEND_SOURCE_STATUS_CONTRACTS.md",
+    "title": "P01 \u2014 Backend Environment and Source Status Contracts"
+  },
+  {
+    "id": "P02",
+    "file": "03_GRAPH_STATUS_AUTH_BRIDGE.md",
+    "title": "P02 \u2014 Microsoft Graph Safe Status and Auth Bridge"
+  },
+  {
+    "id": "P03",
+    "file": "04_PROCORE_STATUS_AUTH_BRIDGE.md",
+    "title": "P03 \u2014 Procore Safe Status and Auth Bridge"
+  },
+  {
+    "id": "P04",
+    "file": "05_SOURCE_REFRESH_AND_SCHEDULER_SURFACES.md",
+    "title": "P04 \u2014 Source Refresh, Scheduler, and Daily Brief Status Surfaces"
+  },
+  {
+    "id": "P05",
+    "file": "06_FRONTEND_API_CLIENT_AND_STATE_MODELS.md",
+    "title": "P05 \u2014 Frontend API Client and State Models"
+  },
+  {
+    "id": "P06",
+    "file": "07_CONNECTIONS_UI_CARDS_AND_WORKFLOWS.md",
+    "title": "P06 \u2014 Connections UI Cards and Workflows"
+  },
+  {
+    "id": "P07",
+    "file": "08_DEV_PROD_MODE_DATA_QUALITY_COPY.md",
+    "title": "P07 \u2014 Dev/Production Mode, Data Quality, and Copy Remediation"
+  },
+  {
+    "id": "P08",
+    "file": "09_TESTS_SECURITY_REGRESSION_VALIDATION.md",
+    "title": "P08 \u2014 Tests, Security Regression Coverage, and Manual Validation"
+  },
+  {
+    "id": "P09",
+    "file": "10_DOCS_CLOSEOUT_EVIDENCE.md",
+    "title": "P09 \u2014 Documentation, Closeout, and Evidence Capture"
+  }
+]

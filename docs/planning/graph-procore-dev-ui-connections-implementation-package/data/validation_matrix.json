@@ -1,0 +1,42 @@
+[
+  {
+    "area": "backend",
+    "command": "python -m compileall src tests"
+  },
+  {
+    "area": "backend",
+    "command": "ruff check src tests"
+  },
+  {
+    "area": "backend",
+    "command": "mypy src"
+  },
+  {
+    "area": "backend",
+    "command": "pytest -m \"not live and not integration and not manual\""
+  },
+  {
+    "area": "frontend",
+    "command": "cd frontend && npm install"
+  },
+  {
+    "area": "frontend",
+    "command": "cd frontend && npm run lint"
+  },
+  {
+    "area": "frontend",
+    "command": "cd frontend && npm run build"
+  },
+  {
+    "area": "frontend",
+    "command": "cd frontend && npm test -- --run"
+  },
+  {
+    "area": "manual",
+    "command": "hb-assistant launcher dev --open --open-timeout-seconds 45 --json"
+  },
+  {
+    "area": "manual",
+    "command": "browser: Settings / Connections cards load"
+  }
+]

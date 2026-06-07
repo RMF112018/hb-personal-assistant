@@ -1,0 +1,26 @@
+[
+  {
+    "raw": "mock_data",
+    "user": "Local data mode"
+  },
+  {
+    "raw": "HB_PROCORE_LIVE=false",
+    "user": "Live Procore refresh is disabled in this environment."
+  },
+  {
+    "raw": "Graph token cache expired",
+    "user": "Microsoft 365 needs to be reconnected."
+  },
+  {
+    "raw": "OAuth client missing",
+    "user": "Procore setup is incomplete."
+  },
+  {
+    "raw": "source-refresh orchestrator dry run",
+    "user": "Preview refresh"
+  },
+  {
+    "raw": "mapping validate failed",
+    "user": "Project mapping needs attention."
+  }
+]

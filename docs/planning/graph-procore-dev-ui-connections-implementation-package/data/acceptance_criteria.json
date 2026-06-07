@@ -1,0 +1,24 @@
+{
+  "backend": [
+    "metadata-only status",
+    "no live reads from status",
+    "no tokens/secrets/cache paths",
+    "live refresh fail-closed",
+    "no writeback routes"
+  ],
+  "frontend": [
+    "Graph card loads",
+    "Procore card loads",
+    "local mode visible",
+    "local refresh action works",
+    "live action disabled/gated",
+    "user-safe copy"
+  ],
+  "manual": [
+    "no console errors",
+    "no failed status requests",
+    "backend logs show status-only page load",
+    "dry-run no writes",
+    "local refresh no live clients"
+  ]
+}
